@@ -3,6 +3,7 @@ import compiletime.uninitialized
 import annotation.{experimental, tailrec, constructorOnly}
 import collection.mutable
 import caps.unsafe.untrackedCaptures
+import minicheck.*
 
 case class Symbol(name: String, initOwner: Symbol | Null) extends caps.Pure:
   def owner = initOwner.nn
@@ -109,6 +110,7 @@ object NoContext extends FreshCtx(-1):
   owner = NoSymbol
   scope = EmptyScope
 
+object minicheck {
 type FreshContext = FreshCtx^
 
 inline def ctx(using c: Context): Ctx^{c} = c
@@ -221,6 +223,7 @@ def compile(tree: Tree)(using Context) =
     val tp = typed(tree)(using c)
     if run.errorCount == 0 then
       println(s"OK $tp")
+}
 
 @main def Test =
   given Context = NoContext

@@ -9,8 +9,8 @@ import org.junit.Test
 
 class CompletionSnippetNegSuite extends BaseCompletionSuite:
 
-  override def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       isCompletionSnippetsEnabled = false
     )
 

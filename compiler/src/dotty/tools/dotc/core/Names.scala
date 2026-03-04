@@ -504,7 +504,7 @@ object Names {
     }
 
     override def isEmpty: Boolean = false
-    override def encode: ThisName = underlying.encode.derived(info.map(_.encode))
+    override def encode: ThisName = underlying.encode.derived(info.map(NameTransformer.encode)) // encodes <init>
     override def decode: ThisName = underlying.decode.derived(info.map(_.decode))
     override def firstPart: SimpleName = underlying.firstPart
     override def lastPart: SimpleName = info match {

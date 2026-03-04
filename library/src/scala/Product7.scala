@@ -21,8 +21,7 @@ object Product7 {
     Some(x)
 }
 
-/** Product7 is a Cartesian product of 7 components.
- */
+/** Product7 is a Cartesian product of 7 components. */
 trait Product7[+T1, +T2, +T3, +T4, +T5, +T6, +T7] extends Any with Product {
   /** The arity of this product.
    *  @return 7

@@ -148,7 +148,7 @@ abstract class Recheck extends Phase, SymTransformer:
     then atPhase(firstPrepPhase)(sym.denot.copySymDenotation())
     else symd
 
-  def run(using Context): Unit =
+  protected def run(using Context): Unit =
     ctx.base.recordRecheckPhase(this)
     val rechecker = newRechecker()
     rechecker.checkUnit(ctx.compilationUnit)
@@ -268,6 +268,9 @@ abstract class Recheck extends Phase, SymTransformer:
       tree.tpe
 
     def recheckSuper(tree: Super, pt: Type)(using Context): Type =
+      tree.tpe
+
+    def recheckNew(tree: New, pt: Type)(using Context): Type =
       tree.tpe
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
@@ -566,7 +569,8 @@ abstract class Recheck extends Phase, SymTransformer:
         case tree: TypeApply => recheckTypeApply(tree, pt)
         case tree: This => recheckThis(tree, pt)
         case tree: Super => recheckSuper(tree, pt)
-        case _: New | _: Literal => tree.tpe
+        case tree: New => recheckNew(tree, pt)
+        case _: Literal => tree.tpe
         case tree: Typed => recheckTyped(tree)
         case tree: Assign => recheckAssign(tree)
         case tree: Block => recheckBlock(tree, pt)

@@ -16,9 +16,7 @@ package scala
 
 import scala.language.`2.13`
 
-/** A function of 8 parameters.
- *
- */
+/** A function of 8 parameters. */
 trait Function8[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, +R] extends AnyRef {
   /** Applies the body of this function to the arguments.
    *  @return   the result of function application.

@@ -2,13 +2,13 @@ package dotty.tools.pc.utils
 
 import scala.meta.pc.VirtualFileParams
 
-import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.Trees
+import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.SimpleCollector
 import dotty.tools.pc.EndMarker
+import dotty.tools.pc.SimpleCollector
 
 final class DefSymbolCollector(
     driver: InteractiveDriver,

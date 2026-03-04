@@ -16,7 +16,7 @@ object boundary:
 
 def test =
   boundary[boundary.Label[Int]^]: l1 ?=>
-    boundary[Int]: l2 ?=>  // error
-      boundary.break(l2)(using l1)
+    boundary[Int]: l2 ?=>
+      boundary.break(l2)(using l1) // error
       15
     ???

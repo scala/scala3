@@ -25,8 +25,7 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException, UnpicklerConfig, TastyVersion}
-import dotty.tools.dotc.core.tasty.TastyUnpickler
+import dotty.tools.tasty.UnpickleException
 import dotty.tools.tasty.besteffort.BestEffortTastyHeaderUnpickler
 
 object SymbolLoaders {
@@ -287,7 +286,16 @@ object SymbolLoaders {
     def maybeModuleClass(classRep: ClassRepresentation): Boolean =
       classRep.name.nonEmpty && classRep.name.last == '$'
 
-    def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
+    /** Enter classes from the classpath into the given package.
+      *
+      * @param root The package denotation to enter classes into
+      * @param packageName The name of the package
+      * @param flat Whether to enter flat names (nested classes with $ in name)
+      * @param forceAbsentCheck If true, always check isAbsent to avoid re-entering existing classes.
+      *                         This is needed when merging entries from a new JAR (REPL :jar/:dep).
+      *                         If false, only check isAbsent for flat names (original behavior).
+      */
+    def enterClasses(root: SymDenotation, packageName: String, flat: Boolean, forceAbsentCheck: Boolean = false)(using Context) = {
       def isAbsent(classRep: ClassRepresentation) =
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
@@ -296,7 +304,7 @@ object SymbolLoaders {
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
-            (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
+            ((!forceAbsentCheck && !flat) || isAbsent(classRep))) // Check isAbsent: always if forceAbsentCheck, or on 2nd enter of flat names
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classReps)
           if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -336,20 +344,32 @@ object SymbolLoaders {
     packageClass: ClassSymbol, fullPackageName: String,
     jarClasspath: ClassPath, fullClasspath: ClassPath,
   )(using Context): Unit =
-    if jarClasspath.classes(fullPackageName).nonEmpty then
+    val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
+    val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
+
+    if hasClasses then
       // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
       val packageVal = packageClass.sourceModule.asInstanceOf[TermSymbol]
       if packageClass.isRoot then
         val loader = new PackageLoader(packageVal, fullClasspath)
-        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
-        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
-      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
-        () // skip
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false, forceAbsentCheck = true)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true, forceAbsentCheck = true)
       else if fullClasspath.hasPackage(fullPackageName) then
-        packageClass.info = new PackageLoader(packageVal, fullClasspath)
+        // Enter new classes into the existing scope without replacing the package info
+        // (which would cause cyclic references). Use jarClasspath (not fullClasspath)
+        // to only enter new classes from the JAR.
+        // This allows libraries like scala-parallel-collections and os-lib-watch to work with :dep/:jar
+        val loader = new PackageLoader(packageVal, jarClasspath)
+        loader.enterClasses(packageClass, fullPackageName, flat = false, forceAbsentCheck = true)
+        loader.enterClasses(packageClass, fullPackageName, flat = true, forceAbsentCheck = true)
       else
         packageClass.owner.info.decls.openForMutations.unlink(packageVal)
-    else
+
+    // Always process sub-packages, even when hasClasses is true.
+    // This is needed when a package has BOTH classes AND sub-packages,
+    // e.g. scala-parallel-collections adds both classes to scala.collection
+    // and the new scala.collection.parallel sub-package.
+    if hasPackages then
       for p <- jarClasspath.packages(fullPackageName) do
         val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
         val subPackage = packageClass.info.decl(subPackageName).orElse:

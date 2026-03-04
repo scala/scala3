@@ -13,5 +13,5 @@
    |  Footprint set of second argument      : {io3}
    |  The two sets overlap at               : {io3}
    |
-   |where:    ^  refers to a fresh root capability in the type of parameter io3
-   |          ^² refers to a fresh root capability created in method test when checking argument to parameter io2 of method withFile
+   |where:    ^  refers to a root capability in the type of parameter io3
+   |          ^² refers to a root capability created in method test when checking argument to parameter io2 of method withFile

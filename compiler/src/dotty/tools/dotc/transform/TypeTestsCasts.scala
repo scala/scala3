@@ -108,9 +108,10 @@ object TypeTestsCasts {
         //
         // If we perform widening, we will get X = Nothing, and we don't have
         // Ident[X] <:< Ident[Int] any more.
-        TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = true)
+        val forceInvariantRefinement = !tycon.classSymbol.is(Trait)
+        TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = forceInvariantRefinement)
         debug.println(
-          TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = true))
+          TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = forceInvariantRefinement))
         )
       }
 
@@ -205,12 +206,11 @@ object TypeTestsCasts {
           def testCls = effectiveClass(testType.widen)
           def unboxedTestCls = effectiveClass(unboxedTestType.widen)
 
-          def unreachable(why: => String)(using Context): Boolean = {
-            if (flagUnrelated)
-              if (inMatch) report.error(em"this case is unreachable since $why", expr.srcPos)
+          def unreachable(why: => String)(using Context): false =
+            if flagUnrelated then
+              if inMatch then report.error(MatchCaseUnreachable(why), expr.srcPos)
               else report.warning(em"this will always yield false since $why", expr.srcPos)
             false
-          }
 
           /** Are `foundCls` and `testCls` classes that allow checks
            *  whether a test would be always false?

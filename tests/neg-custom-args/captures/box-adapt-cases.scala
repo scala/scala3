@@ -5,7 +5,7 @@ def test1(): Unit = {
   class Id[X](val value: [T] -> (op: X => T) -> T)
 
   val x: Id[Cap^] = ???
-  x.value(cap => cap.use())
+  x.value(cap => cap.use()) // error
 }
 
 def test2(io: Cap^): Unit = {

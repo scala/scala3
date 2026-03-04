@@ -69,7 +69,7 @@ object report:
 
   def error(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     val fullPos = addInlineds(pos)
-    ctx.reporter.report(new Error(msg, fullPos))
+    ctx.reporter.report(Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 
   def error(msg: => String, pos: SrcPos)(using Context): Unit =
@@ -98,7 +98,7 @@ object report:
           |Cause:
           | ${ex.toString.replace("\n", "\n ")}
           |${stackTrace}"""
-    ctx.reporter.report(new Error(fullMsg, NoSourcePosition))
+    ctx.reporter.report(Error(fullMsg, NoSourcePosition))
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
     if sourceVersion != SourceVersion.`2.13` then
@@ -112,7 +112,7 @@ object report:
     error(msg.mapMsg("Implementation restriction: " + _), pos)
 
   def incompleteInputError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
-    ctx.reporter.incomplete(new Error(msg, pos.sourcePos))
+    ctx.reporter.incomplete(Error(msg, pos.sourcePos))
 
   /** Log msg if settings.log contains the current phase.
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of

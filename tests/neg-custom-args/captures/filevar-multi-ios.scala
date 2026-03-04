@@ -17,10 +17,10 @@ object test1:
     op(new File)
 
   def test(io3: IO, io4: IO) =
-    withFile(io3): f => // error
+    withFile(io3): f =>
       val o = Service(io3, io4)
-      o.file = f
-      o.file2 = f
+      o.file = f  // error
+      o.file2 = f // error
       o.log
 
 object test2:
@@ -34,8 +34,8 @@ object test2:
     op(new File)
 
   def test(io3: IO, io4: IO) =
-    withFile(io3): f => // error
+    withFile(io3): f =>
       val o = Service(io3, io4)
       o.file = f
-      o.file2 = f
+      o.file2 = f // error
       o.log

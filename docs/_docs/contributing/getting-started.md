@@ -135,7 +135,6 @@ For more information, see the [scaladoc section](./scaladoc.md).
 The main development discussion channels are:
 - [github.com/scala/scala3/discussions](https://github.com/scala/scala3/discussions)
 - [contributors.scala-lang.org](https://contributors.scala-lang.org)
-- [gitter.im/scala/contributors](https://gitter.im/scala/contributors)
 
 [git]: https://git-scm.com
 [Metals]: https://scalameta.org/metals/

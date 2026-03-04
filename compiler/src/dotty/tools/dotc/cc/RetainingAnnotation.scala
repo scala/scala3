@@ -7,7 +7,10 @@ import Types.*, Symbols.*, Contexts.*
 import Annotations.{Annotation, CompactAnnotation, EmptyAnnotation}
 import config.Feature
 
-/** A class for annotations @retains, @retainsByName and @retainsCap */
+/** A class for annotations @retains, @retainsByName and @retainsCap
+ *  We make sure that all annotations with these classes are represented
+ *  as RetainingAnnotations.
+ */
 class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe):
 
   def this(cls: ClassSymbol, args: Type*)(using Context) = this(cls.typeRef.appliedTo(args.toList))
@@ -36,7 +39,7 @@ class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe):
   def isStrict(using Context): Boolean = symbol.isRetains
 
   def retainedType(using Context): Type =
-    if symbol == defn.RetainsCapAnnot then defn.captureRoot.termRef
+    if symbol == defn.RetainsCapAnnot then defn.Caps_any.termRef
     else argumentType(0)
 
   private var myCaptureSet: CaptureSet | Null = null

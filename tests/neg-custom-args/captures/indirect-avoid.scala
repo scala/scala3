@@ -22,7 +22,7 @@ object Test:
     nll
 
   val x1 = filterImpl1(LL()) // error
-  val _: LL^{cap.rd}= x1
+  val _: LL^{any.rd}= x1
   val _: LL = x1 // error
 
   def filterImpl2(ll: LL^): LL^{ll} =

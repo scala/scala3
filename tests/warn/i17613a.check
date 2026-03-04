@@ -1,28 +1,42 @@
--- Warning: tests/warn/i17613a.scala:8:13 ------------------------------------------------------------------------------
+-- [E226] Naming Warning: tests/warn/i17613a.scala:8:13 ----------------------------------------------------------------
 8 |		def foobar[D](in: D) = in.toString // warn method parameter shadows some other type
   |		           ^
   |		           Type parameter D for method foobar shadows the type defined by trait D in class B
--- Warning: tests/warn/i17613a.scala:9:13 ------------------------------------------------------------------------------
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E226] Naming Warning: tests/warn/i17613a.scala:9:13 ----------------------------------------------------------------
 9 |		type MySeq[D] = Seq[D] // warn type member's parameter shadows some other type
   |		           ^
   |		           Type parameter D for type MySeq shadows the type defined by trait D in class B
--- Warning: tests/warn/i17613a.scala:11:12 -----------------------------------------------------------------------------
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E226] Naming Warning: tests/warn/i17613a.scala:11:12 ---------------------------------------------------------------
 11 |		class Foo[T](t: T): // warn class parameter shadows some other type
    |		          ^
    |		          Type parameter T for class Foo shadows the type defined by type T in class B
--- Warning: tests/warn/i17613a.scala:12:11 -----------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E226] Naming Warning: tests/warn/i17613a.scala:12:11 ---------------------------------------------------------------
 12 |			def bar[T](w: T) = w.toString // warn a type parameter shadows another type parameter
    |			        ^
    |			        Type parameter T for method bar shadows the type defined by type T in class Foo
--- Warning: tests/warn/i17613a.scala:15:12 -----------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E226] Naming Warning: tests/warn/i17613a.scala:15:12 ---------------------------------------------------------------
 15 |		class C[M[List[_]]] // warn
    |		          ^^^^^^^
    |		          Type parameter List for class C shadows the type defined by type List in package scala
--- Warning: tests/warn/i17613a.scala:16:11 -----------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E226] Naming Warning: tests/warn/i17613a.scala:16:11 ---------------------------------------------------------------
 16 |		type E[M[List[_]]] = Int // warn
    |		         ^^^^^^^
    |		         Type parameter List for type E shadows the type defined by type List in package scala
--- Warning: tests/warn/i17613a.scala:17:14 -----------------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E226] Naming Warning: tests/warn/i17613a.scala:17:14 ---------------------------------------------------------------
 17 |		def foo[N[M[List[_]]]] = ??? // warn
    |		            ^^^^^^^
    |		            Type parameter List for method foo shadows the type defined by type List in package scala
+   |
+   | longer explanation available when compiling with `-explain`

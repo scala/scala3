@@ -172,15 +172,16 @@ object ImplicitConversionsToScala extends ToScalaImplicits
  * It is recommended to use explicit conversions provided by [[collection.JavaConverters]] instead.
  * Implicit conversions may cause unexpected issues. Example:
  *
- * {{{
+ * ```
  *   import collection.convert.ImplicitConversions._
  *   case class StringBox(s: String)
  *   val m = Map(StringBox("one") -> "uno")
  *   m.get("one")
- * }}}
+ * ```
  *
  * The above example returns `null` instead of producing a type error at compile-time. The map is
  * implicitly converted to a `java.util.Map` which provides a method `get(x: AnyRef)`.
+ 
  */
 @deprecated("Use `scala.jdk.CollectionConverters` instead", "2.13.0")
 object ImplicitConversions extends ToScalaImplicits with ToJavaImplicits

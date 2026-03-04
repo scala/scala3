@@ -1,18 +1,19 @@
 package dotty.tools.pc.tests.hover
 
-import dotty.tools.pc.base.BaseHoverSuite
-
-import org.junit.Test
-import dotty.tools.pc.utils.MockEntries
-import scala.meta.pc.SymbolDocumentation
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.ContentType
 import scala.meta.pc.PresentationCompilerConfig
+import scala.meta.pc.SymbolDocumentation
+
+import dotty.tools.pc.base.BaseHoverSuite
+import dotty.tools.pc.utils.MockEntries
+
+import org.junit.Test
 
 class HoverPlainTextSuite extends BaseHoverSuite:
 
-  override protected def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(
+  override def config: PresentationCompilerConfigImpl =
+    super.config.copy(
       snippetAutoIndent = false,
       hoverContentType = ContentType.PLAINTEXT
     )
@@ -24,7 +25,7 @@ class HoverPlainTextSuite extends BaseHoverSuite:
       ScalaMockDocumentation("_empty_/Alpha.apply().", "apply", List(), List(MockParam("x"))),
       ScalaMockDocumentation("_empty_/Alpha#", "init", List(), List(MockParam("x"))),
       ScalaMockDocumentation("scala/collection/LinearSeqOps#headOption().", "headOption"),
-      ScalaMockDocumentation("scala/Option#fold().", "fold", List(MockParam("B"))),
+      ScalaMockDocumentation("scala/Option#fold().", "fold", List(MockParam("B")))
     )
 
   @Test def `basic-plaintext` =
@@ -47,7 +48,6 @@ class HoverPlainTextSuite extends BaseHoverSuite:
          |""".stripMargin
     )
 
-
   @Test def `head-plaintext` =
     check(
       """|object a {
@@ -65,7 +65,7 @@ class HoverPlainTextSuite extends BaseHoverSuite:
       """|trait XX
          |object Main extends <<X@@X>>{}
          |""".stripMargin,
-      "trait XX: XX",
+      "trait XX: XX"
     )
 
   @Test def `function-chain4-plaintext` =

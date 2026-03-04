@@ -4,7 +4,7 @@ package completions
 import java.nio.file.Files
 import java.nio.file.Path
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.meta.internal.pc.CompletionFuzzy
 
 import dotty.tools.dotc.ast.tpd.*
@@ -95,6 +95,5 @@ object AmmoniteFileCompletions:
           } ++ parentTextEdit
       case _ =>
         Nil
-    end match
   end contribute
 end AmmoniteFileCompletions

@@ -26,12 +26,12 @@ realising the full potential of these ideas. Its main objectives are to
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
 This is our 13th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+[6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 
 # What’s new in the 0.13.0-RC1 technology preview?
 
@@ -72,7 +72,7 @@ def b = a._2
 ```
 
 You can read about [dropping package
-objects](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html)
+objects](https://nightly.scala-lang.org/docs/reference/dropped-features/package-objects.html)
 at the documentation linked or at the relevant PR
 [#5754](https://github.com/scala/scala3/pull/5754).
 
@@ -209,7 +209,7 @@ object B {
 ```
 
 **You can read more about** [implied
-imports](https://dotty.epfl.ch/docs/reference/contextual/import-delegate.html)
+imports](https://nightly.scala-lang.org/docs/reference/contextual/import-delegate.html)
 from the docs or the relevant PR
 [#5868](https://github.com/scala/scala3/pull/5868).
 
@@ -277,7 +277,7 @@ def derived[T] given Generic[T] = ...
 ```
 
 **You can read more about** [Type class
-Derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) or
+Derivation](https://nightly.scala-lang.org/docs/reference/contextual/derivation.html) or
 have a deep dive at the relevant PRs:
 [#5540](https://github.com/scala/scala3/pull/5540) and
 [#5839](https://github.com/scala/scala3/pull/5839).
@@ -305,9 +305,9 @@ implied for Conversion[String, Token] {
 
 **Note:** that these release notes contain only a brief summary of the new
 features, for more details please read our documentation page under the new
-section named [*Contextual Abstractions*](https://dotty.epfl.ch/docs/). Equally
+section named [*Contextual Abstractions*](https://nightly.scala-lang.org/docs/). Equally
 important with the documentation of each feature, please consult the
-[Relationship with Scala 2 Implicits](https://dotty.epfl.ch/docs/reference/contextual/relationship-implicits.html) section as well.
+[Relationship with Scala 2 Implicits](https://nightly.scala-lang.org/docs/reference/contextual/relationship-implicits.html) section as well.
 
 ## Implicit resolution rule changes
 
@@ -416,7 +416,7 @@ According to `git shortlog -sn --no-merges 0.12.0-RC1..0.13.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

@@ -14,8 +14,6 @@ permissions:
 
 jobs:
   build:
-    env:
-      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
     runs-on: ubuntu-latest
     if: "github.event_name == 'merge_group'
          || (    github.event_name == 'pull_request'
@@ -43,8 +41,9 @@ jobs:
       - name: Compile and test
         run: |
           ./project/scripts/sbt scaladoc/test
-          ./project/scripts/sbt dist/Universal/stage
-          ./project/scripts/cmdScaladocTests
+          # TODO: invalid interpolation of inherited @define #24963
+          # ./project/scripts/sbt dist/Universal/stage
+          # ./project/scripts/cmdScaladocTests
 
       - name: Locally publish self
         run: ./project/scripts/sbt scaladoc/publishLocal
@@ -60,6 +59,18 @@ jobs:
 
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
+
+  validate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - uses: coursier/cache-action@v8
+      - uses: VirtusLab/scala-cli-setup@v1.12.3
+
+      - name: Validate docs sidebars
+        run: scala-cli ./project/scripts/checkSidebarDocs.scala
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest

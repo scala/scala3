@@ -2,8 +2,8 @@ package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class CompletionScalaCliSuite extends BaseCompletionSuite:
 
@@ -14,6 +14,27 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|io.circe
          |io.circul""".stripMargin
+    )
+
+  @Test def `simple-lib-name` =
+    checkSubset(
+      """|//> using dep "org.scala-lang::scala@@
+         |package A
+         |""".stripMargin,
+      """|scala3-library
+         |""".stripMargin,
+    )
+
+  @Test def `ordering` =
+    check(
+      """|//> using dep "org.scala@@
+         |package A
+         |""".stripMargin,
+      """|org.scala-debugger
+         |org.scala-lang
+         |org.scala-lang-osgi
+         |""".stripMargin,
+      filter = a => a.contains("scala-lang") || a.contains("scala-debugger")
     )
 
   @Test def `multiple-deps` =
@@ -140,6 +161,16 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |io.circul""".stripMargin
     )
 
+  @Test def `lexicographic-order` =
+    checkSubset(
+      """|//> using dep "org.scala-lang@@"
+         |package A
+         |""".stripMargin,
+      """|org.scala-lang
+         |org.scala-lang-osgi
+         |""".stripMargin
+    )
+
   @Ignore
   @Test def `multiple-deps2` =
     checkSubset(
@@ -154,7 +185,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       expected: String,
       filename: String = "A.scala",
       enablePackageWrap: Boolean = true
-  ) = {
+  ) =
     val expectedAtLeast = expected.linesIterator.toSet
     check(
       original,
@@ -163,7 +194,6 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       filename = filename,
       enablePackageWrap = enablePackageWrap
     )
-  }
 
   private def scriptWrapper(code: String, filename: String): String =
     // Vaguely looks like a scala file that ScalaCLI generates

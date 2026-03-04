@@ -6,7 +6,6 @@ import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Symbols.defn
 
 import ast.Trees.*
 import ast.tpd
@@ -16,7 +15,7 @@ import core.Flags
 import core.Names.*
 import core.NameKinds
 import core.Types.*
-import core.Symbols.{NoSymbol, isLocalToBlock}
+import core.Symbols.isLocalToBlock
 import interactive.Interactive
 import util.Spans.Span
 import reporting.*
@@ -107,7 +106,7 @@ object Signatures {
 
   def isEnclosingApply(tree: tpd.Tree, span: Span)(using Context): Boolean =
     tree match
-      case apply @ Apply(fun, _) => !fun.span.contains(span) && isValid(apply)
+      case apply @ Apply(fun, _) => !fun.span.contains(span) && !fun.span.isZeroExtent && isValid(apply)
       case unapply @ UnApply(fun, _, _) =>
         !fun.span.contains(span) && !ctx.definitions.isFunctionNType(tree.tpe) // we want to show tuples in unapply
       case typeTree @ AppliedTypeTree(fun, _) => !fun.span.contains(span) && isValid(typeTree)
@@ -227,7 +226,7 @@ object Signatures {
         val alternativeIndex = bestAlternative(alternatives, params, paramssListIndex)
         (alternativeIndex, alternatives)
 
-    if alternativeIndex < alternatives.length then
+    if alternativeIndex < alternatives.length && alternatives(alternativeIndex).symbol.paramSymss.nonEmpty then
       val alternativeSymbol = alternatives(alternativeIndex).symbol
       val safeParamssListIndex = paramssListIndex min (alternativeSymbol.paramSymss.length - 1)
       val previousArgs = alternativeSymbol.paramSymss.take(safeParamssListIndex).foldLeft(0)(_ + _.length)

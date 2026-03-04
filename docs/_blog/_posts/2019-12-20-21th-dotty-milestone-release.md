@@ -37,7 +37,7 @@ the SIP committee. But the envelope of what will (most likely) be in Scala 3 is
 now defined and implemented.
 
 For an overview of the feature envelope that Scala 3 carries you can read our
-[Overview](https://dotty.epfl.ch/docs/reference/overview.html) page.
+[Overview](https://nightly.scala-lang.org/docs/reference/overview.html) page.
 For a more detailed discussion on the transition to Scala 3 you can read the
 [Scala 2 roadmap update: The road to Scala 3](https://www.scala-lang.org/2019/12/18/road-to-scala-3.html).
 
@@ -78,7 +78,7 @@ objectives are to:
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
@@ -169,7 +169,7 @@ val s2 = if (ret != null) {
 
 This feature is the result of a successful collaboration between LAMP/EPFL, Abel
 Nieto, Yaoyu Zhao and Ondřej Lhoták from the University of Waterloo. For more
-info refer to the docs on [Explicit Nulls](https://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html).
+info refer to the docs on [Explicit Nulls](https://nightly.scala-lang.org/docs/reference/other-new-features/explicit-nulls.html).
 
 ## New syntax for given instances defining extension methods
 
@@ -200,7 +200,7 @@ After experimenting with both, one will be settled upon.
 The rationale is to communicate in a clean way that the parameters go on the
 extension method and not the wrapper (e.g., `listOps`) .
 
-To learn more about extension methods and given instances for extension methods in particular follow the docs on [Given Instances for Extension Methods](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html#given-instances-for-extension-methods)
+To learn more about extension methods and given instances for extension methods in particular follow the docs on [Given Instances for Extension Methods](https://nightly.scala-lang.org/docs/reference/contextual/extension-methods.html#given-instances-for-extension-methods)
 
 ## New syntax for conditional givens
 
@@ -277,7 +277,7 @@ xs.match {
 }
 ```
 
-You can read more in our docs [Match Expressions](https://dotty.epfl.ch/docs/reference/changed-features/match-syntax.html) and on the interesting discussions in [contributors](https://contributors.scala-lang.org/t/pre-sip-demote-match-keyword-to-a-method/2137/2).
+You can read more in our docs [Match Expressions](https://nightly.scala-lang.org/docs/reference/changed-features/match-syntax.html) and on the interesting discussions in [contributors](https://contributors.scala-lang.org/t/pre-sip-demote-match-keyword-to-a-method/2137/2).
 
 ## Metaprogramming: New quoted pattern matching
 
@@ -320,7 +320,7 @@ def rewrite(expr: Expr[Double])(given QuoteContext): Expr[Double] = {
 }
 ```
 
-To learn more read our docs on [pattern matching over quotes](https://dotty.epfl.ch/docs/reference/metaprogramming/macros.html#pattern-matching-on-quoted-expressions).
+To learn more read our docs on [pattern matching over quotes](https://nightly.scala-lang.org/docs/reference/metaprogramming/macros.html#pattern-matching-on-quoted-expressions).
 
 ## Added support for SemanticDB file generation
 
@@ -377,7 +377,7 @@ According to `git shortlog -sn --no-merges 0.20.0-RC1..0.21.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

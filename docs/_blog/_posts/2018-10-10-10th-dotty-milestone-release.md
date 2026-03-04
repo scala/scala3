@@ -21,12 +21,12 @@ be a big step towards realising the full potential of these ideas. Its main obje
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
 This is our 10th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+[6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 
 ## What’s new in the 0.10.0-RC1 technology preview?
 
@@ -61,7 +61,7 @@ Elem[Nil]          =:=  Nothing
 Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
 This feature is still experimental and subject to changes. For more information, visit the
-[Match Types](https://dotty.epfl.ch/docs/reference/new-types/match-types.html) section of our documentation.
+[Match Types](https://nightly.scala-lang.org/docs/reference/new-types/match-types.html) section of our documentation.
 
 ### Documentation in the REPL
 
@@ -221,7 +221,7 @@ According to `git shortlog -sn --no-merges 0.9.0..0.10.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

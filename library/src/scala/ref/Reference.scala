@@ -15,7 +15,7 @@ package scala.ref
 import scala.language.`2.13`
 
 /**
- * @see `java.lang.ref.Reference`
+ *  @see `java.lang.ref.Reference`
  */
 trait Reference[+T <: AnyRef] extends Function0[T] {
   /** Returns the underlying value. */

@@ -17,19 +17,18 @@ import scala.language.`2.13`
 import scala.runtime.Statics
 import scala.util.control.NonFatal
 
-/**
- * The `Try` type represents a computation that may fail during evaluation by raising an exception.
- * It holds either a successfully computed value or the exception that was thrown.
- * This is similar to the [[scala.util.Either]] type, but with different semantics.
+/** The `Try` type represents a computation that may fail during evaluation by raising an exception.
+ *  It holds either a successfully computed value or the exception that was thrown.
+ *  This is similar to the [[scala.util.Either]] type, but with different semantics.
  *
- * Instances of `Try[T]` are an instance of either [[scala.util.Success]][T] or [[scala.util.Failure]][T].
+ *  Instances of `Try[T]` are an instance of either [[scala.util.Success]][T] or [[scala.util.Failure]][T].
  *
- * For example, consider a computation that performs division on user-defined input.
- * `Try` can reduce or eliminate the need for explicit exception handling in all of the places
- * where an exception might be thrown.
+ *  For example, consider a computation that performs division on user-defined input.
+ *  `Try` can reduce or eliminate the need for explicit exception handling in all of the places
+ *  where an exception might be thrown.
  *
- * Example:
- * {{{
+ *  Example:
+ *  ```
  *   import scala.io.StdIn
  *   import scala.util.{Try, Success, Failure}
  *
@@ -48,69 +47,56 @@ import scala.util.control.NonFatal
  *     }
  *   }
  *
- * }}}
+ *  ```
  *
- * An important property of `Try` shown in the above example is its ability to ''pipeline'', or chain, operations,
- * catching exceptions along the way. The `flatMap` and `map` combinators in the above example each essentially
- * pass off either their successfully completed value, wrapped in the `Success` type for it to be further operated
- * upon by the next combinator in the chain, or the exception wrapped in the `Failure` type usually to be simply
- * passed on down the chain. Combinators such as `recover` and `recoverWith` are designed to provide some type of
- * default behavior in the case of failure.
+ *  An important property of `Try` shown in the above example is its ability to *pipeline*, or chain, operations,
+ *  catching exceptions along the way. The `flatMap` and `map` combinators in the above example each essentially
+ *  pass off either their successfully completed value, wrapped in the `Success` type for it to be further operated
+ *  upon by the next combinator in the chain, or the exception wrapped in the `Failure` type usually to be simply
+ *  passed on down the chain. Combinators such as `recover` and `recoverWith` are designed to provide some type of
+ *  default behavior in the case of failure.
  *
- * ''Note'': only non-fatal exceptions are caught by the combinators on `Try` (see [[scala.util.control.NonFatal]]).
- * Serious system errors, on the other hand, will be thrown.
+ *  *Note*: only non-fatal exceptions are caught by the combinators on `Try` (see [[scala.util.control.NonFatal]]).
+ *  Serious system errors, on the other hand, will be thrown.
  *
- * ''Note:'': all Try combinators will catch exceptions and return failure unless otherwise specified in the documentation.
+ *  *Note:*: all Try combinators will catch exceptions and return failure unless otherwise specified in the documentation.
  */
 sealed abstract class Try[+T] extends Product with Serializable {
 
-  /** Returns `true` if the `Try` is a `Failure`, `false` otherwise.
-   */
+  /** Returns `true` if the `Try` is a `Failure`, `false` otherwise. */
   def isFailure: Boolean
 
-  /** Returns `true` if the `Try` is a `Success`, `false` otherwise.
-   */
+  /** Returns `true` if the `Try` is a `Success`, `false` otherwise. */
   def isSuccess: Boolean
 
   /** Returns the value from this `Success` or the given `default` argument if this is a `Failure`.
    *
-   * ''Note:'': This will throw an exception if it is not a success and default throws an exception.
+   *  *Note:*: This will throw an exception if it is not a success and default throws an exception.
    */
   def getOrElse[U >: T](default: => U): U
 
-  /** Returns this `Try` if it's a `Success` or the given `default` argument if this is a `Failure`.
-   */
+  /** Returns this `Try` if it's a `Success` or the given `default` argument if this is a `Failure`. */
   def orElse[U >: T](default: => Try[U]): Try[U]
 
-  /** Returns the value from this `Success` or throws the exception if this is a `Failure`.
-   */
+  /** Returns the value from this `Success` or throws the exception if this is a `Failure`. */
   def get: T
 
-  /**
-   * Applies the given function `f` if this is a `Success`, otherwise returns `Unit` if this is a `Failure`.
+  /** Applies the given function `f` if this is a `Success`, otherwise returns `Unit` if this is a `Failure`.
    *
-   * ''Note:'' If `f` throws, then this method may throw an exception.
+   *  *Note:* If `f` throws, then this method may throw an exception.
    */
   def foreach[U](f: T => U): Unit
 
-  /**
-   * Returns the given function applied to the value from this `Success` or returns this if this is a `Failure`.
-   */
+  /** Returns the given function applied to the value from this `Success` or returns this if this is a `Failure`. */
   def flatMap[U](f: T => Try[U]): Try[U]
 
-  /**
-   * Maps the given function to the value from this `Success` or returns this if this is a `Failure`.
-   */
+  /** Maps the given function to the value from this `Success` or returns this if this is a `Failure`. */
   def map[U](f: T => U): Try[U]
 
-  /**
-   * Applies the given partial function to the value from this `Success` or returns this if this is a `Failure`.
-   */
+  /** Applies the given partial function to the value from this `Success` or returns this if this is a `Failure`. */
   def collect[U](pf: PartialFunction[T, U]): Try[U]
 
-  /**
-   * Converts this to a `Failure` if the predicate is not satisfied.
-   */
+  /** Converts this to a `Failure` if the predicate is not satisfied. */
   def filter(p: T => Boolean): Try[T]
 
   /** Creates a non-strict filter, which eventually converts this to a `Failure`
@@ -120,8 +106,8 @@ sealed abstract class Try[+T] extends Product with Serializable {
    *        Instead, it restricts the domain of subsequent
    *        `map`, `flatMap`, `foreach`, and `withFilter` operations.
    *
-   * As Try is a one-element collection, this may be a bit overkill,
-   * but it's consistent with withFilter on Option and the other collections.
+   *  As Try is a one-element collection, this may be a bit overkill,
+   *  but it's consistent with withFilter on Option and the other collections.
    *
    *  @param p   the predicate used to test elements.
    *  @return    an object of class `WithFilter`, which supports
@@ -142,32 +128,26 @@ sealed abstract class Try[+T] extends Product with Serializable {
     def withFilter(q: T => Boolean): WithFilter = new WithFilter(x => p(x) && q(x))
   }
 
-  /**
-   * Applies the given function `f` if this is a `Failure`, otherwise returns this if this is a `Success`.
-   * This is like `flatMap` for the exception.
+  /** Applies the given function `f` if this is a `Failure`, otherwise returns this if this is a `Success`.
+   *  This is like `flatMap` for the exception.
    */
   def recoverWith[U >: T](pf: PartialFunction[Throwable, Try[U]]): Try[U]
 
-  /**
-   * Applies the given function `f` if this is a `Failure`, otherwise returns this if this is a `Success`.
-   * This is like map for the exception.
+  /** Applies the given function `f` if this is a `Failure`, otherwise returns this if this is a `Success`.
+   *  This is like map for the exception.
    */
   def recover[U >: T](pf: PartialFunction[Throwable, U]): Try[U]
 
-  /**
-   * Returns `None` if this is a `Failure` or a `Some` containing the value if this is a `Success`.
-   */
+  /** Returns `None` if this is a `Failure` or a `Some` containing the value if this is a `Success`. */
   def toOption: Option[T]
 
-  /**
-   * Transforms a nested `Try`, ie, a `Try` of type `Try[Try[T]]`,
-   * into an un-nested `Try`, ie, a `Try` of type `Try[T]`.
+  /** Transforms a nested `Try`, ie, a `Try` of type `Try[Try[T]]`,
+   *  into an un-nested `Try`, ie, a `Try` of type `Try[T]`.
    */
   def flatten[U](implicit ev: T <:< Try[U]): Try[U]
 
-  /**
-   * Inverts this `Try`. If this is a `Failure`, returns its exception wrapped in a `Success`.
-   * If this is a `Success`, returns a `Failure` containing an `UnsupportedOperationException`.
+  /** Inverts this `Try`. If this is a `Failure`, returns its exception wrapped in a `Success`.
+   *  If this is a `Success`, returns a `Failure` containing an `UnsupportedOperationException`.
    */
   def failed: Try[Throwable]
 
@@ -176,27 +156,24 @@ sealed abstract class Try[+T] extends Product with Serializable {
    */
   def transform[U](s: T => Try[U], f: Throwable => Try[U]): Try[U]
 
-  /**
-   * Returns `Left` with `Throwable` if this is a `Failure`, otherwise returns `Right` with `Success` value.
-   */
+  /** Returns `Left` with `Throwable` if this is a `Failure`, otherwise returns `Right` with `Success` value. */
   def toEither: Either[Throwable, T]
 
-  /**
-   * Applies `fa` if this is a `Failure` or `fb` if this is a `Success`.
-   * If `fb` is initially applied and throws an exception,
-   * then `fa` is applied with this exception.
+  /** Applies `fa` if this is a `Failure` or `fb` if this is a `Success`.
+   *  If `fb` is initially applied and throws an exception,
+   *  then `fa` is applied with this exception.
    *
-   * @example {{{
-   * val result: Try[Int] = Try { string.toInt }
-   * log(result.fold(
+   *  @example ```
+   *  val result: Try[Int] = Try { string.toInt }
+   *  log(result.fold(
    *   ex => "Operation failed with " + ex,
    *   v => "Operation produced value: " + v
-   * ))
-   * }}}
+   *  ))
+   *  ```
    *
-   * @param fa the function to apply if this is a `Failure`
-   * @param fb the function to apply if this is a `Success`
-   * @return the results of applying the function
+   *  @param fa the function to apply if this is a `Failure`
+   *  @param fb the function to apply if this is a `Success`
+   *  @return the results of applying the function
    */
   def fold[U](fa: Throwable => U, fb: T => U): U
 

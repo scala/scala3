@@ -14,6 +14,6 @@ class EmptyPhase extends Phase:
 
   override def isEnabled(using Context) = prev.isEnabled
 
-  override def run(using Context) = ()
+  protected def run(using Context) = ()
 
 end EmptyPhase

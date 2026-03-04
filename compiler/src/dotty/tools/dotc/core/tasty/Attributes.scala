@@ -26,7 +26,7 @@ object Attributes:
     captureChecked: Boolean,
     withPureFuns: Boolean,
     isJava: Boolean,
-    isOutline: Boolean,
+    isOutline: Boolean
   ): Attributes =
     val booleanTags = BitSet.newBuilder
     if scala2StandardLibrary then booleanTags += SCALA2STANDARDLIBRARYattr

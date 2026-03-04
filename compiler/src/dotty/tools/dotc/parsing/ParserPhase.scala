@@ -57,7 +57,7 @@ class Parser extends Phase {
     unitContexts0.map(_.compilationUnit)
   }
 
-  def run(using Context): Unit = unsupported("run")
+  protected def run(using Context): Unit = unsupported("run")
 }
 
 object Parser{

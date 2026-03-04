@@ -33,7 +33,7 @@ import scala.language.`2.13`
  *
  * Example:
  *
- * {{{
+ * ```
  *   class Ann(value: Int, x: Int = 0) extends scala.annotation.ConstantAnnotation
  *   class Test {
  *     def someInt = 0
@@ -41,6 +41,7 @@ import scala.language.`2.13`
  *     @Ann(0) def f = 0                 // Internal representation contains `@Ann(value = 0)`
  *     @Ann(someInt)                     // error: argument needs to be a compile-time constant
  *   }
- * }}}
+ * ```
+ 
  */
 trait ConstantAnnotation extends StaticAnnotation

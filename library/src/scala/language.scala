@@ -18,13 +18,13 @@ import scala.annotation.compileTimeOnly
 
 /**
  *  The `scala.language` object controls the language features available to the programmer, as proposed in the
- *  [[https://docs.google.com/document/d/1nlkvpoIRkx7at1qJEZafJwthZ3GeIklTFhqmXMvTX9Q/edit '''SIP-18 document''']].
+ *  [**SIP-18 document**](https://docs.google.com/document/d/1nlkvpoIRkx7at1qJEZafJwthZ3GeIklTFhqmXMvTX9Q/edit).
  *
  *  Each of these features has to be explicitly imported into the current scope to become available:
- *  {{{
+ *  ```
  *     import language.postfixOps // or language._
  *     List(1, 2, 3) reverse
- *  }}}
+ *  ```
  *
  *  The language features are:
  *   - [[dynamics            `dynamics`]]            enables defining calls rewriting using the [[scala.Dynamic `Dynamic`]] trait
@@ -50,10 +50,10 @@ object language {
    *  Selections of dynamic members of existing subclasses of trait `Dynamic` are unaffected;
    *  they can be used anywhere.
    *
-   *  '''Why introduce the feature?''' To enable flexible DSLs and convenient interfacing
+   *  **Why introduce the feature?** To enable flexible DSLs and convenient interfacing
    *  with dynamic languages.
    *
-   *  '''Why control it?''' Dynamic member selection can undermine static checkability
+   *  **Why control it?** Dynamic member selection can undermine static checkability
    *  of programs. Furthermore, dynamic member selection often relies on reflection,
    *  which is not available on all platforms.
    *
@@ -64,10 +64,10 @@ object language {
   /** Only where this feature is enabled, is postfix operator notation `(expr op)` permitted.
    *  If `postfixOps` is not enabled, an expression using postfix notation is rejected by the compiler.
    *
-   *  '''Why keep the feature?''' Postfix notation is preserved for backward
+   *  **Why keep the feature?** Postfix notation is preserved for backward
    *  compatibility only. Historically, several DSLs written in Scala need the notation.
    *
-   *  '''Why control it?''' Postfix operators interact poorly with semicolon inference.
+   *  **Why control it?** Postfix operators interact poorly with semicolon inference.
    *   Most programmers avoid them for this reason alone. Postfix syntax is
    *   associated with an abuse of infix notation, `a op1 b op2 c op3`,
    *   that can be harder to read than ordinary method invocation with judicious
@@ -87,11 +87,11 @@ object language {
    *  not override any member in `Parents`. To access one of these members, a
    *  reflective call is needed.
    *
-   *  '''Why keep the feature?''' Structural types provide great flexibility because
+   *  **Why keep the feature?** Structural types provide great flexibility because
    *  they avoid the need to define inheritance hierarchies a priori. Besides,
    *  their definition falls out quite naturally from Scala’s concept of type refinement.
    *
-   *  '''Why control it?''' Reflection is not available on all platforms. Popular tools
+   *  **Why control it?** Reflection is not available on all platforms. Popular tools
    *  such as ProGuard have problems dealing with it. Even where reflection is available,
    *  reflective dispatch can lead to surprising performance degradations.
    *
@@ -107,13 +107,13 @@ object language {
    *  or an implicit method that has in its first parameter section a single,
    *  non-implicit parameter. Examples:
    *
-   *  {{{
+   *  ```
    *     implicit def intToString(i: Int): String = s"\$i"
    *     implicit val conv: Int => String = i => s"\$i"
    *     implicit val numerals: List[String] = List("zero", "one", "two", "three")
    *     implicit val strlen: String => Int = _.length
    *     implicit def listToInt[T](xs: List[T])(implicit f: T => Int): Int = xs.map(f).sum
-   *  }}}
+   *  ```
    *
    *  This language feature warns only for implicit conversions introduced by methods.
    *
@@ -123,10 +123,10 @@ object language {
    *  Implicit class definitions, which introduce a conversion to the wrapping class,
    *  also do not warn.
    *
-   *  '''Why keep the feature?''' Implicit conversions are central to many aspects
+   *  **Why keep the feature?** Implicit conversions are central to many aspects
    *  of Scala’s core libraries.
    *
-   *  '''Why control it?''' Implicit conversions are known to cause many pitfalls
+   *  **Why control it?** Implicit conversions are known to cause many pitfalls
    *  if over-used. And there is a tendency to over-use them because they look
    *  very powerful and their effects seem to be easy to understand. Also, in
    *  most situations using implicit parameters leads to a better design than
@@ -140,12 +140,12 @@ object language {
    *  If `higherKinds` is not enabled, a higher-kinded type such as `F[A]`
    *  will trigger a warning from the compiler.
    *
-   *  '''Why keep the feature?''' Higher-kinded types enable the definition of very general
+   *  **Why keep the feature?** Higher-kinded types enable the definition of very general
    *  abstractions such as functor, monad, or arrow. A significant set of advanced
    *  libraries relies on them. Higher-kinded types are also at the core of the
    *  scala-virtualized effort to produce high-performance parallel DSLs through staging.
    *
-   *  '''Why control it?''' Higher kinded types in Scala lead to a Turing-complete
+   *  **Why control it?** Higher kinded types in Scala lead to a Turing-complete
    *  type system, where compiler termination is no longer guaranteed. They tend
    *  to be useful mostly for type-level computation and for highly generic design
    *  patterns. The level of abstraction implied by these design patterns is often
@@ -170,10 +170,10 @@ object language {
    *  Existential types with wildcard type syntax such as `List[?]`,
    *  or `Map[String, ?]` are not affected.
    *
-   *  '''Why keep the feature?''' Existential types are needed to make sense of Java’s wildcard
+   *  **Why keep the feature?** Existential types are needed to make sense of Java’s wildcard
    *  types and raw types and the erased types of run-time values.
    *
-   *  '''Why control it?''' Having complex existential types in a code base usually makes
+   *  **Why control it?** Having complex existential types in a code base usually makes
    *  application code very brittle, with a tendency to produce type errors with
    *  obscure error messages. Therefore, going overboard with existential types
    *  is generally perceived not to be a good idea. Also, complicated existential types
@@ -186,11 +186,11 @@ object language {
   /** The experimental object contains features that are known to have unstable API or
    *  behavior that may change in future releases.
    *
-   *  Experimental features '''may undergo API changes''' in future releases, so production
+   *  Experimental features **may undergo API changes** in future releases, so production
    *  code should not rely on them.
    *
    *  Programmers are encouraged to try out experimental features and
-   *  [[https://github.com/scala/scala3/issues report any bugs or API inconsistencies]]
+   *  [report any bugs or API inconsistencies](https://github.com/scala/scala3/issues)
    *  they encounter so they can be improved in future releases.
    *
    *  @group experimental
@@ -205,12 +205,12 @@ object language {
      *  Macro implementations and macro applications are not governed by this
      *  language feature; they can be used anywhere.
      *
-     *  '''Why introduce the feature?''' Macros promise to make the language more regular,
+     *  **Why introduce the feature?** Macros promise to make the language more regular,
      *  replacing ad-hoc language constructs with a general powerful abstraction
      *  capability that can express them. Macros are also a more disciplined and
      *  powerful replacement for compiler plugins.
      *
-     *  '''Why control it?''' For their very power, macros can lead to code that is hard
+     *  **Why control it?** For their very power, macros can lead to code that is hard
      *  to debug and understand.
      */
     implicit lazy val macros: macros = languageFeature.experimental.macros
@@ -224,21 +224,21 @@ object language {
 
     /** Experimental support for named type arguments.
       *
-      * @see [[https://dotty.epfl.ch/docs/reference/other-new-features/named-typeargs]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/named-typeargs]]
       */
     @compileTimeOnly("`namedTypeArguments` can only be used at compile time in import statements")
     object namedTypeArguments
 
     /** Experimental support for generic number literals.
       *
-      * @see [[https://dotty.epfl.ch/docs/reference/changed-features/numeric-literals]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/changed-features/numeric-literals]]
       */
     @compileTimeOnly("`genericNumberLiterals` can only be used at compile time in import statements")
     object genericNumberLiterals
 
     /** Experimental support for `erased` modifier
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/erased-defs]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/erased-defs]]
      */
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
@@ -258,7 +258,7 @@ object language {
 
     /** Experimental support for typechecked exception capabilities
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/canthrow]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/canthrow]]
      */
     @compileTimeOnly("`saferExceptions` can only be used at compile time in import statements")
     object saferExceptions
@@ -274,21 +274,21 @@ object language {
 
     /** Experimental support for pure function type syntax
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/purefuns]]
      */
     @compileTimeOnly("`pureFunctions` can only be used at compile time in import statements")
     object pureFunctions
 
     /** Experimental support for capture checking; implies support for pureFunctions
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/capture-checking]]
      */
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
 
     /** Experimental support for separation checking; requires captureChecking also to be enabled.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/capture-checking/separation-checking]]
      */
     @compileTimeOnly("`separationChecking` can only be used at compile time in import statements")
     object separationChecking
@@ -296,7 +296,7 @@ object language {
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/into-modifier]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
     @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
@@ -304,7 +304,7 @@ object language {
 
     /** Experimental support for named tuples.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/named-tuples]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
     @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
@@ -316,15 +316,15 @@ object language {
      *   - better syntax and conventions for type classes
      *   - ability to merge exported types in intersections
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/modularity]]
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/typeclasses]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/modularity]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/typeclasses]]
      */
     @compileTimeOnly("`modularity` can only be used at compile time in import statements")
     object modularity
 
     /** Was needed to add support for relaxed imports of extension methods.
       * The language import is no longer needed as this is now a standard feature since SIP was accepted.
-      * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/contextual/extension-methods]]
       */
     @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
     @deprecated("The experimental.relaxedExtensionImports language import is no longer needed since the feature is now standard", since = "3.4")
@@ -340,7 +340,7 @@ object language {
 
     /** Experimental support for quote pattern matching with polymorphic functions
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/quoted-patterns-with-polymorphic-functions]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/quoted-patterns-with-polymorphic-functions]]
      */
     @compileTimeOnly("`quotedPatternsWithPolymorphicFunctions` can only be used at compile time in import statements")
     object quotedPatternsWithPolymorphicFunctions
@@ -372,6 +372,11 @@ object language {
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for safe mode
+     */
+    @compileTimeOnly("`safe` can only be used at compile time in import statements")
+    object safe
   }
 
     /** The deprecated object contains features that are no longer officially suypported in Scala.
@@ -393,12 +398,12 @@ object language {
 
   /** Where imported, auto-tupling is disabled.
     *
-    * '''Why control the feature?''' Auto-tupling can lead to confusing and
+    * **Why control the feature?** Auto-tupling can lead to confusing and
     * brittle code in presence of overloads. In particular, surprising overloads
     * can be selected, and adding new overloads can change which overload is selected
     * in suprising ways.
     *
-    * '''Why allow it?''' Not allowing auto-tupling is difficult to reconcile with
+    * **Why allow it?** Not allowing auto-tupling is difficult to reconcile with
     * operators accepting tuples.
     */
   @compileTimeOnly("`noAutoTupling` can only be used at compile time in import statements")
@@ -406,10 +411,10 @@ object language {
 
   /** Where imported, loose equality using eqAny is disabled.
     *
-    * '''Why allow and control the feature?''' For compatibility and migration reasons,
+    * **Why allow and control the feature?** For compatibility and migration reasons,
     * strict equality is opt-in. See linked documentation for more information.
     *
-    * @see [[https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality]]
+    * @see [[https://nightly.scala-lang.org/docs/reference/contextual/multiversal-equality]]
     */
   @compileTimeOnly("`strictEquality` can only be used at compile time in import statements")
   object strictEquality
@@ -417,14 +422,14 @@ object language {
   /** Where imported, ad hoc extensions of non-open classes in other
    *  compilation units are allowed.
    *
-   *  '''Why control the feature?''' Ad-hoc extensions should usually be avoided
+   *  **Why control the feature?** Ad-hoc extensions should usually be avoided
    *  since they typically cannot rely on an "internal" contract between a class
    *  and its extensions. Only open classes need to specify such a contract.
    *  Ad-hoc extensions might break for future versions of the extended class,
    *  since the extended class is free to change its implementation without
    *  being constrained by an internal contract.
    *
-   *  '''Why allow it?''' An ad-hoc extension can sometimes be necessary,
+   *  **Why allow it?** An ad-hoc extension can sometimes be necessary,
    *  for instance when mocking a class in a testing framework, or to work
    *  around a bug or missing feature in the original class. Nevertheless,
    *  such extensions should be limited in scope and clearly documented.
@@ -436,7 +441,7 @@ object language {
   /** Unsafe Nulls fot Explicit Nulls
     * Inside the "unsafe" scope, `Null` is considered as a subtype of all reference types.
     *
-    * @see [[http://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html]]
+    * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/explicit-nulls.html]]
     */
   @compileTimeOnly("`unsafeNulls` can only be used at compile time in import statements")
   object unsafeNulls

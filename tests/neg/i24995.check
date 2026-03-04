@@ -1,0 +1,24 @@
+-- [E006] Not Found Error: tests/neg/i24995.scala:2:7 ------------------------------------------------------------------
+2 |val x: Mop[Int, Int] = Mop() // error // error
+  |       ^^^
+  |       Not found: type Mop - did you mean Map?
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i24995.scala:2:23 -----------------------------------------------------------------
+2 |val x: Mop[Int, Int] = Mop() // error // error
+  |                       ^^^
+  |                       Not found: Mop - did you mean Map?
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i24995.scala:6:9 ------------------------------------------------------------------
+6 |  val y: Mop[Int, Int] = Mop() // error // error
+  |         ^^^
+  |         Not found: type Mop
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i24995.scala:6:25 -----------------------------------------------------------------
+6 |  val y: Mop[Int, Int] = Mop() // error // error
+  |                         ^^^
+  |                         Not found: Mop
+  |
+  | longer explanation available when compiling with `-explain`

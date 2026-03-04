@@ -4,7 +4,7 @@
    |                  Found:    (w : O.type)
    |                  Required: AnyRef
    |
-   |                  Note that capability c is not included in capture set {}.
+   |                  Note that capability `c` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i24667.scala:11:22 ---------------------------------------
@@ -13,6 +13,7 @@
    |                      Found:    (w : O.type)
    |                      Required: Object^{c}
    |
-   |                      Note that capability O is not included in capture set {c}.
+   |                      Note that capability `O` cannot flow into capture set {c}.
+   |                      Note that object O is a capability because it uses capabilities {c, d}
    |
    | longer explanation available when compiling with `-explain`

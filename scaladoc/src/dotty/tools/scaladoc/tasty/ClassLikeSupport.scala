@@ -127,7 +127,7 @@ trait ClassLikeSupport:
       getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
     )
 
-    val kind = if intrinsicClassDefs.contains(classDef.symbol) then Kind.Class(Nil, Nil) else kindForClasslike(classDef)
+    val kind = if intrinsicClassDefs.contains(classDef.symbol) then bareClasslikeKind(classDef.symbol) else kindForClasslike(classDef)
 
     val baseMember = mkMember(classDef.symbol, kind, selfSignature)(
       modifiers = modifiers,
@@ -297,7 +297,7 @@ trait ClassLikeSupport:
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner
           case tree => tree.symbol
-        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass && !parentSymbol.isHiddenByVisibility
+        if parentSymbol != defn.ObjectClass && !parentSymbol.isHiddenByVisibility
       yield (parentTree, parentSymbol)
 
     def getConstructors: List[Symbol] = c.membersToDocument.collect {
@@ -483,6 +483,8 @@ trait ClassLikeSupport:
       case _ => false
     }
 
+    // Detect capture-set type members (type Cap^), which are represented as
+    // type Cap >: CapSet <: CapSet^{...} in the compiler.
     val isCaptureVar = ccEnabled && typeDef.derivesFromCapSet
 
     val (generics, tpeTree) = typeDef.rhs match
@@ -493,6 +495,11 @@ trait ClassLikeSupport:
     val kind = if symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
 
+    // For capset members, prepend ^ to the signature (the bounds rendering
+    // already elides the CapSet lower/upper defaults, so we just need the caret).
+    val sig = tpeTree.asSignature(classDef, symbol.owner)
+    val sigWithCaret = if isCaptureVar then Plain("^") :: sig else sig
+
     if symbol.flags.is(Flags.Exported)
     then {
       val origin = Some(tpeTree).flatMap {
@@ -500,13 +507,13 @@ trait ClassLikeSupport:
           Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
         case _ => None
       }
-      mkMember(symbol, Kind.Exported(kind), tpeTree.asSignature(classDef, symbol.owner))(
+      mkMember(symbol, Kind.Exported(kind), sigWithCaret)(
         deprecated = symbol.isDeprecated(),
         origin = Origin.ExportedFrom(origin),
         experimental = symbol.isExperimental()
       )
     }
-    else mkMember(symbol, kind, tpeTree.asSignature(classDef, symbol.owner))(deprecated = symbol.isDeprecated())
+    else mkMember(symbol, kind, sigWithCaret)(deprecated = symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     val symbol = valDef.symbol

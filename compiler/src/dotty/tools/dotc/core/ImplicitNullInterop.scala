@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package core
 
+import Annotations.Annotation
 import Contexts.*
 import Flags.*
 import StdNames.nme
@@ -58,13 +59,21 @@ import reporting.*
  */
 object ImplicitNullInterop:
 
+  enum NullMode:
+    case Flexible // Add flexible types
+    case Explicit // Add `| Null`
+    case Skip // Don't nullify
+
+  object NullMode:
+    def Default(using Context): NullMode = if ctx.flexibleTypes then Flexible else Explicit
+
   /** Transforms the type `tp` of a member `sym` that originates from a source without explicit nulls.
    *  `tp` is passed explicitly because the type stored in `sym` might not yet be set when this is called.
    */
   def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type = trace(i"nullifyMember ${sym}, ${tp}"):
     assert(ctx.explicitNulls)
 
-    // Skip `TYPE`, enum values, and modules
+    // Skip `TYPE`, enum values, modules, and special methods like `toString` and `getClass`.
     if isEnumValueDef
       || sym.name == nme.TYPE_
       || sym.name == nme.getClass_
@@ -72,36 +81,58 @@ object ImplicitNullInterop:
       || sym.is(Flags.ModuleVal) then
       return tp
 
-    // Don't nullify result type for `toString`, constructors, and @NotNull methods
-    val skipResultType = sym.isConstructor || hasNotNullAnnot(sym)
-    // Don't nullify Given/implicit parameters
-    val skipCurrentLevel = sym.isOneOf(GivenOrImplicitVal)
+    val currentTypeMode =
+      // Don't nullify Given/implicit parameters
+      if sym.isOneOf(GivenOrImplicitVal) || hasNotNullAnnot(sym) then NullMode.Skip
+      else if hasNullableAnnot(sym) then NullMode.Explicit
+      else NullMode.Default
 
-    val map = new ImplicitNullMap(
+    val resultTypeMode =
+      // Don't nullify result type of constructors
+      if sym.isConstructor then NullMode.Skip
+      else currentTypeMode
+
+    ImplicitNullMap(
       javaDefined = sym.is(JavaDefined),
-      skipResultType = skipResultType,
-      skipCurrentLevel = skipCurrentLevel)
-    map(tp)
+      state = NullMapState(resultTypeMode, currentTypeMode)
+    )(tp)
 
   private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
-    ctx.definitions.NotNullAnnots.exists(nna => sym.unforcedAnnotation(nna).isDefined)
+    defn.NotNullAnnots.exists(sym.unforcedAnnotation(_).isDefined)
+
+  private def isNotNullAnnot(annot: Annotation)(using Context): Boolean =
+    defn.NotNullAnnots.exists(annot.hasSymbol)
+
+  private def hasNullableAnnot(sym: Symbol)(using Context): Boolean =
+    defn.NullableAnnots.exists(sym.unforcedAnnotation(_).isDefined)
+
+  private def isNullableAnnot(annot: Annotation)(using Context): Boolean =
+    defn.NullableAnnots.exists(annot.hasSymbol)
+
+  case class NullMapState(
+    resultTypeMode: NullMode,
+    currentTypeMode: NullMode
+  )
+
+  object NullMapState:
+    def skipCurrentIf(cond: Boolean)(using Context): NullMapState =
+      NullMapState(
+        resultTypeMode = NullMode.Default,
+        currentTypeMode = if cond then NullMode.Skip else NullMode.Default
+      )
 
   /** A type map that implements the nullification function on types. Given a Java-sourced type or a type
    *  coming from Scala code compiled without explicit nulls, this adds `| Null` or `FlexibleType` in the
    *  right places to make nullability explicit in a conservative way (without forcing incomplete symbols).
    *
-   *  @param javaDefined        whether the type is from Java source, we always nullify type param refs from Java
-   *  @param skipResultType     do not nullify the method result type at the outermost level (e.g. for `toString`,
-   *                            constructors, or methods annotated as not-null)
-   *  @param skipCurrentLevel   do not nullify at the current level (used for implicit/Given parameters, varargs, etc.)
+   *  @param javaDefined  whether the type is from Java source; we always nullify type param refs from Java
+   *  @param state        mutable nullification state tracking the current mode for the result type
+   *                      (`resultTypeMode`) and the current nesting level (`currentTypeMode`).
    */
   private class ImplicitNullMap(
       val javaDefined: Boolean,
-      var skipResultType: Boolean = false,
-      var skipCurrentLevel: Boolean = false
+      var state: NullMapState
     )(using Context) extends TypeMap:
-
-    def nullify(tp: Type): Type = if ctx.flexibleTypes then FlexibleType(tp) else OrNull(tp)
 
     /** Should we nullify `tp` at the outermost level?
      *  The symbols are still under construction, so we don't have precise information.
@@ -109,8 +140,8 @@ object ImplicitNullInterop:
      *  because doing so could force incomplete symbols or trigger cycles. Instead, we conservatively
      *  nullify only when we can recognize a concrete reference type or type parameters from Java.
      */
-    def needsNull(tp: Type): Boolean =
-      if skipCurrentLevel || !tp.hasSimpleKind then false
+    private def needsNull(tp: Type): Boolean =
+      if state.currentTypeMode == NullMode.Skip || !tp.hasSimpleKind then false
       else tp.dealias match
         case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
@@ -125,57 +156,83 @@ object ImplicitNullInterop:
           !isValueOrSpecialClass && (javaDefined || tp.symbol.isNullableClassAfterErasure)
         case tp: TypeParamRef =>
           javaDefined
+        case tp: AppliedType =>
+          // We don't nullify varargs (repeated parameters) or tuple type at the top level.
+          // Example: if `setNames` is a Java method with signature `void setNames(String... names)`,
+          // then its Scala signature will be `def setNames(names: (String|Null)*): Unit`.
+          // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
+          // and not a `null` array.
+          tp.tycon match
+            case tycon: TypeRef =>
+              !(!ctx.flexibleTypes && tycon.isRef(defn.RepeatedParamClass) || defn.isTupleClass(tycon.symbol))
+            case _ => true
         case _ => false
 
-    // We don't nullify varargs (repeated parameters) at the top level.
-    // Example: if `setNames` is a Java method with signature `void setNames(String... names)`,
-    // then its Scala signature will be `def setNames(names: (String|Null)*): Unit`.
-    // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
-    // and not a `null` array.
-    def tyconNeedsNull(tp: Type): Boolean =
-      if skipCurrentLevel then false
-      else tp match
-        case tp: TypeRef
-          if !ctx.flexibleTypes && tp.isRef(defn.RepeatedParamClass) => false
-        case tp: TypeRef if defn.isTupleClass(tp.symbol) => false
-        case _ => true
+    def nullify(tp: Type): Type =
+      if !needsNull(tp) then tp
+      else if state.currentTypeMode == NullMode.Flexible then FlexibleType.make(tp)
+      else OrNull(tp)
 
     override def apply(tp: Type): Type = tp match
-      case tp: TypeRef if needsNull(tp) =>
+      case tp: TypeRef =>
         nullify(tp)
-      case tp: TypeParamRef if needsNull(tp) =>
+      case tp: TypeParamRef =>
         nullify(tp)
+      case tp: AnnotatedType =>
+        val savedState = state
+        var isNullAnnot = true
+        val underlyingMode =
+          if isNullableAnnot(tp.annot) then NullMode.Explicit
+          else if isNotNullAnnot(tp.annot) then NullMode.Skip
+          else
+            isNullAnnot = false
+            state.currentTypeMode
+        state = savedState.copy(currentTypeMode = underlyingMode)
+        val parent2 = this(tp.parent)
+        state = savedState
+        if isNullAnnot then parent2
+        else parent2 match
+          case FlexibleType(_, parent2a) =>
+            FlexibleType(derivedAnnotatedType(tp, parent2a, tp.annot))
+          case OrNull(parent2a) =>
+            OrNull(derivedAnnotatedType(tp, parent2a, tp.annot))
+          case _ =>
+            derivedAnnotatedType(tp, parent2, tp.annot)
       case appTp @ AppliedType(tycon, targs) =>
-        val savedSkipCurrentLevel = skipCurrentLevel
-
+        val savedState = state
         // If Java-defined tycon, don't nullify outer level of type args (Java classes are fully nullified)
-        skipCurrentLevel = tp.classSymbol.is(JavaDefined)
+        state = NullMapState.skipCurrentIf(tp.classSymbol.is(JavaDefined))
         val targs2 = targs.map(this)
+        state = savedState
 
-        skipCurrentLevel = savedSkipCurrentLevel
         val appTp2 = derivedAppliedType(appTp, tycon, targs2)
-        if tyconNeedsNull(tycon) && tp.hasSimpleKind then nullify(appTp2) else appTp2
+        nullify(appTp2)
       case ptp: PolyType =>
         derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
       case mtp: MethodType =>
-        val savedSkipCurrentLevel = skipCurrentLevel
+        val savedState = state
 
         // Don't nullify param types for implicit/using sections
-        skipCurrentLevel = mtp.isImplicitMethod
+        state = NullMapState.skipCurrentIf(mtp.isImplicitMethod)
         val paramInfos2 = mtp.paramInfos.map(this)
 
-        skipCurrentLevel = skipResultType
+        state = NullMapState(
+          resultTypeMode = NullMode.Default,
+          currentTypeMode = savedState.resultTypeMode
+        )
         val resType2 = this(mtp.resType)
 
-        skipCurrentLevel = savedSkipCurrentLevel
+        state = savedState
         derivedLambdaType(mtp)(paramInfos2, resType2)
+      case tp: ExprType =>
+        mapOver(tp)
       case tp: TypeAlias =>
         mapOver(tp)
       case tp: TypeBounds =>
         mapOver(tp)
       case tp: AndOrType =>
         // For unions/intersections we recurse into both sides.
-        // If both sides are nullalble, we only add `| Null` once.
+        // If both sides are nullable, we only add `| Null` once.
         // This keeps the result minimal and avoids duplicating `| Null`
         // on both sides and at the outer level.
         (this(tp.tp1), this(tp.tp2)) match
@@ -185,26 +242,21 @@ object ImplicitNullInterop:
             OrNull(derivedAndOrType(tp, t1, t2))
           case (t1, t2) =>
             derivedAndOrType(tp, t1, t2)
-      case tp: ExprType =>
-        mapOver(tp)
-      case tp: AnnotatedType =>
-        // We don't nullify the annotation part.
-        derivedAnnotatedType(tp, this(tp.underlying), tp.annot)
       case tp: RefinedType =>
-        val savedSkipCurrentLevel = skipCurrentLevel
-        val savedSkipResultType = skipResultType
-
         val parent2 = this(tp.parent)
 
-        skipCurrentLevel = false
-        skipResultType = false
+        val savedState = state
+        // We skip nullification for the refined info for simplicity.
+        state = NullMapState(
+          resultTypeMode = NullMode.Skip,
+          currentTypeMode = NullMode.Skip
+        )
         val refinedInfo2 = this(tp.refinedInfo)
+        state = savedState
 
-        skipCurrentLevel = savedSkipCurrentLevel
-        skipResultType = savedSkipResultType
-
+        // If the parent type becomes nullable, then we pop the nullification to the outer level.
         parent2 match
-          case FlexibleType(_, parent2a) if ctx.flexibleTypes =>
+          case FlexibleType(_, parent2a) =>
             FlexibleType(derivedRefinedType(tp, parent2a, refinedInfo2))
           case OrNull(parent2a) =>
             OrNull(derivedRefinedType(tp, parent2a, refinedInfo2))

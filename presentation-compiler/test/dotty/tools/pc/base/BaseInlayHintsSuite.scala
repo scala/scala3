@@ -2,24 +2,24 @@ package dotty.tools.pc.base
 
 import java.net.URI
 
-import scala.meta.internal.jdk.CollectionConverters._
+import scala.language.unsafeNulls
+import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerInlayHintsParams
 import scala.meta.internal.metals.CompilerRangeParams
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TestInlayHints
 
-
-class BaseInlayHintsSuite extends BasePCSuite {
+class BaseInlayHintsSuite extends BasePCSuite:
 
   def check(
       base: String,
       expected: String,
       kind: Option[Int] = None,
-      hintsInPatternMatch: Boolean = false
+      hintsInPatternMatch: Boolean = false,
+      closingLabels: Boolean = false
   ): Unit =
     def pkgWrap(text: String) =
-      if (text.contains("package")) text
+      if text.contains("package") then text
       else s"package test\n$text"
 
     val withPkg = pkgWrap(base)
@@ -39,7 +39,7 @@ class BaseInlayHintsSuite extends BasePCSuite {
       implicitConversions = true,
       namedParameters = true,
       hintsInPatternMatch = hintsInPatternMatch,
-      closingLabels = false
+      closingLabels = closingLabels
     )
 
     val inlayHints = presentationCompiler
@@ -54,7 +54,5 @@ class BaseInlayHintsSuite extends BasePCSuite {
 
     assertNoDiff(
       pkgWrap(expected),
-      obtained,
+      obtained
     )
-
-}

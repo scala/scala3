@@ -2,10 +2,10 @@ package dotty.tools.pc.printer
 
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
+import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Denotations.Denotation
@@ -31,11 +31,12 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.TextEdit
 
-/**
- * A type printer that shortens types by replacing fully qualified names with shortened versions.
+/** A type printer that shortens types by replacing fully qualified names with
+ *  shortened versions.
  *
- * The printer supports symbol renames found in scope and will use the rename if it is available.
- * It also handle custom renames as specified in the `renameConfigMap` parameter.
+ *  The printer supports symbol renames found in scope and will use the rename
+ *  if it is available. It also handle custom renames as specified in the
+ *  `renameConfigMap` parameter.
  */
 class ShortenedTypePrinter(
     symbolSearch: SymbolSearch,
@@ -66,7 +67,7 @@ class ShortenedTypePrinter(
 
   override def nameString(name: Name): String =
     val nameStr = super.nameString(name)
-    if (nameStr.nonEmpty) KeywordWrapper.Scala3Keywords.backtickWrap(nameStr)
+    if nameStr.nonEmpty then KeywordWrapper.Scala3Keywords.backtickWrap(nameStr)
     else nameStr
 
   def getUsedRenames: Map[Symbol, String] =
@@ -91,8 +92,7 @@ class ShortenedTypePrinter(
         Some(tpe(tpw))
       case _ => None
 
-  /**
-   * Returns a list of TextEdits (auto-imports) of the symbols
+  /** Returns a list of TextEdits (auto-imports) of the symbols
    */
   def imports(autoImportsGen: AutoImportsGenerator): List[TextEdit] =
     missingImports
@@ -114,9 +114,9 @@ class ShortenedTypePrinter(
   case class Found(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
   case class Missing(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
 
-  /**
-   *  In shortened type printer, we don't want to omit the prefix unless it is empty package
-   *  All the logic for prefix omitting is implemented in `toTextPrefixOf`
+  /** In shortened type printer, we don't want to omit the prefix unless it is
+   *  empty package All the logic for prefix omitting is implemented in
+   *  `toTextPrefixOf`
    */
   override protected def isOmittablePrefix(sym: Symbol): Boolean =
     isEmptyPrefix(sym)
@@ -134,16 +134,16 @@ class ShortenedTypePrinter(
       val ownerRename = indexedCtx.rename(owner)
       ownerRename.foreach(rename => foundRenames += owner -> rename)
       val currentRenamesSearchResult =
-      ownerRename.map(rename => Found(owner, rename, prefixAfterRename))
+        ownerRename.map(rename => Found(owner, rename, prefixAfterRename))
       lazy val configRenamesSearchResult =
-        renameConfigMap.get(owner).flatMap{rename =>
+        renameConfigMap.get(owner).flatMap { rename =>
           // if the rename is taken, we don't want to use it
           indexedCtx.findSymbolInLocalScope(rename) match
             case Some(symbols) => None
             case None => Some(Missing(owner, rename, prefixAfterRename))
         }
       currentRenamesSearchResult orElse configRenamesSearchResult
-    }.nextOption
+    }.nextOption()
 
   private def isAccessibleStatically(sym: Symbol): Boolean =
     sym.isStatic || // Java static
@@ -183,8 +183,8 @@ class ShortenedTypePrinter(
           case _ if indexedCtx.rename(tp.symbol).isDefined => Text()
           // symbol is missing and is accessible statically, we can import it and add proper prefix
           case Result.Missing if isAccessibleStatically(tp.symbol) =>
-              missingImports += ImportSel.Direct(tp.symbol)
-              Text()
+            missingImports += ImportSel.Direct(tp.symbol)
+            Text()
           // the symbol is in scope, we can omit the prefix
           case Result.InScope => Text()
           // the symbol is in conflict, we have to include prefix to avoid ambiguity
@@ -214,7 +214,7 @@ class ShortenedTypePrinter(
       case _ => toTextRef(tp) ~ ".type"
 
   def tpe(tpe: Type): String =
-    val dealiased = if (tpe.isNamedTupleType) tpe.deepDealiasAndSimplify else tpe
+    val dealiased = if tpe.isNamedTupleType then tpe.deepDealiasAndSimplify else tpe
     toText(dealiased).mkString(defaultWidth)
 
   def hoverSymbol(sym: Symbol, info: Type)(using Context): String =
@@ -251,7 +251,6 @@ class ShortenedTypePrinter(
           if keyOrEmpty.iterator.nonEmpty then List(keyOrEmpty) else Nil
         (implicitKeyword ::: finalKeyword ::: keyword ::: (s"$name:" :: shortTypeString :: Nil))
           .mkString(" ")
-    end match
   end hoverSymbol
 
   def isImportedByDefault(sym: Symbol): Boolean =
@@ -277,15 +276,13 @@ class ShortenedTypePrinter(
         case TypeAlias(t) => " = " + tpe(t.resultType)
         case t => tpe(t.resultType)
     else tpe(info)
-    end if
   end completionSymbol
 
-  /**
-   * Compute method signature for the given (method) symbol.
+  /** Compute method signature for the given (method) symbol.
    *
-   * @return shortened name for types or the type for terms
-   *         e.g. "[A: Ordering](a: A, b: B): collection.mutable.Map[A, B]"
-   *              ": collection.mutable.Map[A, B]" for no-arg method
+   *  @return shortened name for types or the type for terms e.g. "[A:
+   *    Ordering](a: A, b: B): collection.mutable.Map[A, B]" ":
+   *    collection.mutable.Map[A, B]" for no-arg method
    */
   def defaultMethodSignature(
       gsym: Symbol,
@@ -350,7 +347,7 @@ class ShortenedTypePrinter(
     val extLabelss = label(extParams)
 
     val retType = gtpe.finalResultType
-    val simplified = if (retType.typeSymbol.isAliasType) retType else retType.deepDealiasAndSimplify
+    val simplified = if retType.typeSymbol.isAliasType then retType else retType.deepDealiasAndSimplify
     val returnType = tpe(simplified)
     def extensionSignatureString =
       val extensionSignature = paramssString(extLabelss, extParams)
@@ -399,7 +396,6 @@ class ShortenedTypePrinter(
       else additionalMods.mkString(" ") + " " + flagString
     val prefix = if gsym.is(Mutable) then "var" else "val"
     s"${mods}$prefix ${gsym.name.show}: ${tpe(gtpe)}"
-  end defaultValueSignature
 
   /*
    * Check if a method is an extension method and in that case separate the parameters
@@ -445,7 +441,6 @@ class ShortenedTypePrinter(
         filteredParams.take(paramss.length - trailingParamss.length)
       (trailingParamss, leadingParamss)
     else (paramss, Nil)
-    end if
   end splitExtensionParamss
 
   private def paramssString(
@@ -476,9 +471,8 @@ class ShortenedTypePrinter(
       }
   end paramssString
 
-  /**
-   * Construct param (both value params and type params) label string (e.g. "param1: TypeOfParam", "A: Ordering")
-   * for the given parameter's symbol.
+  /** Construct param (both value params and type params) label string (e.g.
+   *  "param1: TypeOfParam", "A: Ordering") for the given parameter's symbol.
    */
   private def paramLabel(
       param: Symbol,
@@ -535,16 +529,16 @@ class ShortenedTypePrinter(
         else if includeDefaultParam == ShortenedTypePrinter.IncludeDefaultParam.ResolveLater && isDefaultParam
         then " = ..."
         else "" // includeDefaultParam == Never or !isDefaultParam
-      val inline = if(param.is(Flags.Inline)) "inline " else ""
+      val inline = if param.is(Flags.Inline) then "inline " else ""
       s"$inline$keywordName: ${paramTypeString}$default"
-    end if
-  end paramLabel
 
-  /**
-   * Create a mapping from type parameter symbol to its context bound string representations.
+  /** Create a mapping from type parameter symbol to its context bound string
+   *  representations.
    *
-   * @param implicitEvidenceParams - implicit evidence params (e.g. evidence$1: Ordering[A])
-   * @return mapping from type param to its context bounds (e.g. Map(A -> List("Ordering")) )
+   *  @param implicitEvidenceParams - implicit evidence params (e.g. evidence$1:
+   *    Ordering[A])
+   *  @return mapping from type param to its context bounds (e.g. Map(A ->
+   *    List("Ordering")) )
    */
   private def constructImplicitEvidencesByTypeParam(
       implicitEvidenceParams: List[Symbol]
@@ -564,7 +558,6 @@ class ShortenedTypePrinter(
         buf += tpe(tycon)
       }
     result.map(kv => (kv._1, kv._2.toList)).toMap
-  end constructImplicitEvidencesByTypeParam
 end ShortenedTypePrinter
 
 object ShortenedTypePrinter:
@@ -573,9 +566,10 @@ object ShortenedTypePrinter:
     /** Include default param at `textDocument/completion` */
     case Include
 
-    /**
-     * Include default param as "..." and populate it later at `completionItem/resolve`
-     * @see https://github.com/scalameta/metals/blob/09d62c2e2f77a63c7d21ffa19971e2bb3fc9ab34/mtags/src/main/scala/scala/meta/internal/pc/ItemResolver.scala#L88-L103
+    /** Include default param as "..." and populate it later at
+     *  `completionItem/resolve`
+     *  @see
+     *    https://github.com/scalameta/metals/blob/09d62c2e2f77a63c7d21ffa19971e2bb3fc9ab34/mtags/src/main/scala/scala/meta/internal/pc/ItemResolver.scala#L88-L103
      */
     case ResolveLater
 

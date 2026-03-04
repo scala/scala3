@@ -4,7 +4,7 @@
   |                      Found:    (C.this.l1 : () ->{C.this.c.io} Unit)
   |                      Required: () -> Unit
   |
-  |                      Note that capability C.this.c.io is not included in capture set {}.
+  |                      Note that capability `C.this.c.io` cannot flow into capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i24335.scala:13:7 -------------------------------------------------------------
@@ -14,4 +14,4 @@
    |       Fields capturing a root capability need to be given an explicit type unless the capability is already
    |       subsumed by the computed capability of the enclosing class.
    |
-   |       where:    ^ refers to a fresh root capability classified as Unscoped in the type of value r
+   |       where:    ^ refers to a root capability classified as Unscoped in the type of value r

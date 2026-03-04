@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg-deep-subtype/i25216.scala:9:14 ------------------------------------------------
+9 |def f(z: Z) = z.v // error
+  |              ^
+  |              Found:    (z : Z)
+  |              Required: Selectable | Dynamic
+  |
+  |              The following import might fix the problem:
+  |
+  |                import scala.reflect.Selectable.reflectiveSelectable
+  |
+  |
+  | longer explanation available when compiling with `-explain`

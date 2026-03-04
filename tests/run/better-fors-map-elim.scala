@@ -42,3 +42,5 @@ object MyOption:
   extension (i: Int) def map[A](f: Int => A): A = ???
 
   val _ = for j <- 42 yield j
+
+  val _ = for x = 42; x <- MyOption(x) yield x

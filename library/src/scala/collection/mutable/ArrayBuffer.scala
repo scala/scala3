@@ -27,7 +27,7 @@ import scala.runtime.PStatics.VM_MaxArraySize
  *  access take constant time (amortized time). Prepends and removes are
  *  linear in the buffer size.
  *
- *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#array-buffers "Scala's Collection Library overview"]]
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#array-buffers)
  *  section on `Array Buffers` for more information.
  *
  *  @tparam A    the type of this arraybuffer's elements.
@@ -123,15 +123,14 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   override def iterableFactory: SeqFactory[ArrayBuffer] = ArrayBuffer
 
   /** Note: This does not actually resize the internal representation.
-    * See clearAndShrink if you want to also resize internally
-    */
+   *  See clearAndShrink if you want to also resize internally
+   */
   def clear(): Unit = reduceToSize(0)
 
-  /**
-    * Clears this buffer and shrinks to @param size (rounding up to the next
-    * natural size)
-    * @param size
-    */
+  /** Clears this buffer and shrinks to @param size (rounding up to the next
+   *  natural size)
+   *  @param size
+   */
   def clearAndShrink(size: Int = ArrayBuffer.DefaultInitialSize): this.type = {
     clear()
     resize(size)
@@ -203,8 +202,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   /** Note: This does not actually resize the internal representation.
-    * See trimToSize if you want to also resize internally
-    */
+   *  See trimToSize if you want to also resize internally
+   */
   def remove(@deprecatedName("n", "2.13.0") index: Int): A = {
     checkWithinBounds(index, index + 1)
     val res = this(index)
@@ -214,8 +213,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   /** Note: This does not actually resize the internal representation.
-    * See trimToSize if you want to also resize internally
-    */
+   *  See trimToSize if you want to also resize internally
+   */
   def remove(@deprecatedName("n", "2.13.0") index: Int, count: Int): Unit =
     if (count > 0) {
       checkWithinBounds(index, index + count)
@@ -245,11 +244,11 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   /** Sorts this $coll in place according to an Ordering.
-    *
-    * @see [[scala.collection.mutable.IndexedSeqOps.sortInPlace]]
-    * @param  ord the ordering to be used to compare elements.
-    * @return modified input $coll sorted according to the ordering `ord`.
-    */
+   *
+   *  @see [[scala.collection.mutable.IndexedSeqOps.sortInPlace]]
+   *  @param  ord the ordering to be used to compare elements.
+   *  @return modified input $coll sorted according to the ordering `ord`.
+   */
   override def sortInPlace[B >: A]()(implicit ord: Ordering[B]): this.type = {
     if (length > 1) {
       mutationCount += 1
@@ -282,14 +281,13 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
     new MutationTracker.CheckedIterator(super.sliding(size = size, step = step), mutationCount)
 }
 
-/**
-  * Factory object for the `ArrayBuffer` class.
-  *
-  * $factoryInfo
-  *
-  * @define coll array buffer
-  * @define Coll `mutable.ArrayBuffer`
-  */
+/** Factory object for the `ArrayBuffer` class.
+ *
+ *  $factoryInfo
+ *
+ *  @define coll array buffer
+ *  @define Coll `mutable.ArrayBuffer`
+ */
 @SerialVersionUID(3L)
 object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   final val DefaultInitialSize = 16
@@ -313,12 +311,11 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
 
   def empty[A]: ArrayBuffer[A] = new ArrayBuffer[A]()
 
-  /**
-   * The increased size for an array-backed collection.
+  /** The increased size for an array-backed collection.
    *
-   * @param arrayLen  the length of the backing array
-   * @param targetLen the minimum length to resize up to
-   * @return
+   *  @param arrayLen  the length of the backing array
+   *  @param targetLen the minimum length to resize up to
+   *  @return
    *   - `-1` if no resizing is needed, else
    *   - `VM_MaxArraySize` if `arrayLen` is too large to be doubled, else
    *   - `max(targetLen, arrayLen * 2, DefaultInitialSize)`.
@@ -344,9 +341,9 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   }
 
   /**
-   * @param arrayLen  the length of the backing array
-   * @param targetLen the length to resize down to, if smaller than `arrayLen`
-   * @return -1 if no resizing is needed, or the size for the new array otherwise
+   *  @param arrayLen  the length of the backing array
+   *  @param targetLen the length to resize down to, if smaller than `arrayLen`
+   *  @return -1 if no resizing is needed, or the size for the new array otherwise
    */
   private def resizeDown(arrayLen: Int, targetLen: Int): Int =
     if (targetLen >= arrayLen) -1 else math.max(targetLen, 0)

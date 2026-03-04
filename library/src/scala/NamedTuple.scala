@@ -21,7 +21,7 @@ object NamedTuple:
   def unapply[N <: Tuple, V <: Tuple](x: NamedTuple[N, V]): Some[V] = Some(x)
 
   /** A named tuple expression will desugar to a call to `build`. For instance,
-   * `(name = "Lyra", age = 23)` will desugar to `build[("name", "age")]()(("Lyra", 23))`.
+   *  `(name = "Lyra", age = 23)` will desugar to `build[("name", "age")]()(("Lyra", 23))`.
    */
   inline def build[N <: Tuple]()[V <: Tuple](x: V): NamedTuple[N, V] = x
 

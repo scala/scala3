@@ -75,7 +75,7 @@ class Splicing extends MacroTransform:
 
   override def phaseName: String = Splicing.name
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if ctx.compilationUnit.needsStaging then
       super.run
 

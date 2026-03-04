@@ -64,16 +64,16 @@ object Platform {
    *  Note that if `elemClass` is a subclass of [[scala.AnyVal]] then the returned value is an Array of the corresponding java primitive type.
    *  For example, the following code `scala.compat.Platform.createArray(classOf[Int], 4)` returns an array of the java primitive type `int`.
    *
-   *  For a [[scala.AnyVal]] array, the values of the array are set to 0 for ''numeric value types'' ([[scala.Double]], [[scala.Float]], [[scala.Long]], [[scala.Int]], [[scala.Char]],
+   *  For a [[scala.AnyVal]] array, the values of the array are set to 0 for *numeric value types* ([[scala.Double]], [[scala.Float]], [[scala.Long]], [[scala.Int]], [[scala.Char]],
    *  [[scala.Short]], and [[scala.Byte]]), and `false` for [[scala.Boolean]]. Creation of an array of type [[scala.Unit]] is not possible.
    *
    *  For subclasses of [[scala.AnyRef]], the values of the array are set to `null`.
    *
    *  The caller must cast the returned value to the correct type.
    *
-   *  @example {{{
+   *  @example ```
    *  val a = scala.compat.Platform.createArray(classOf[Int], 4).asInstanceOf[Array[Int]] // returns Array[Int](0, 0, 0, 0)
-   *  }}}
+   *  ```
    *
    *  @param elemClass the `Class` object of the component type of the array
    *  @param length    the length of the new array.
@@ -105,9 +105,9 @@ object Platform {
    * @throws java.lang.LinkageError if the linkage fails
    * @throws java.lang.ExceptionInInitializerError if the initialization provoked by this method fails
    * @throws java.lang.ClassNotFoundException if the class cannot be located
-   *  @example {{{
+   *  @example ```
    *  val a = scala.compat.Platform.getClassForName("java.lang.Integer")  // returns the Class[_] for java.lang.Integer
-   *  }}}
+   *  ```
    */
   @inline
   @deprecated("Use `java.lang.Class#forName` instead.", since = "2.13.0")

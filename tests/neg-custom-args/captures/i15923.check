@@ -1,16 +1,12 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:21 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15923.scala:12:20 ---------------------------------------
 12 |  val leak = withCap(cap => mkId(cap)) // error
-   |                     ^^^^^^^^^^^^^^^^
-   |Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by value leak.
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Capability `any` outlives its scope: it leaks into outer capture set 's1 of value leak.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (lcap: scala.caps.Capability^) ?->'s2 Cap^'s3 ->'s4 Id[Cap^'s5]^'s6
-   |Required: (lcap²: scala.caps.Capability^) ?-> Cap^{lcap²} => Id[Cap^'s1]^'s7
+   |Found:    Id[Cap^{any}]^'s2
+   |Required: Id[Cap^'s1]^'s3
    |
-   |where:    =>    refers to a root capability associated with the result type of (using lcap²: scala.caps.Capability^): Cap^{lcap²} => Id[Cap^'s1]^'s7
-   |          ^     refers to the universal root capability
-   |          cap   is a root capability associated with the result type of (x$0: Cap^'s3): Id[Cap^'s5]^'s6
-   |          lcap  is a reference to a value parameter
-   |          lcap² is a reference to a value parameter
+   |where:    any is a root capability created in anonymous function of type (using lcap: scala.caps.Capability^): Cap^{lcap} ->'s4 Id[Cap^{any}]^'s5 of parameter parameter lcap² of method $anonfun
    |
    | longer explanation available when compiling with `-explain`

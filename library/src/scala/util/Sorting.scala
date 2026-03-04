@@ -18,24 +18,24 @@ import scala.reflect.ClassTag
 import scala.math.Ordering
 
 /** The `Sorting` object provides convenience wrappers for `java.util.Arrays.sort`.
-  * Methods that defer to `java.util.Arrays.sort` say that they do or under what
-  * conditions that they do.
-  *
-  * `Sorting` also implements a general-purpose quicksort and stable (merge) sort
-  * for those cases where `java.util.Arrays.sort` could only be used at the cost
-  * of a large memory penalty.  If performance rather than memory usage is the
-  * primary concern, one may wish to find alternate strategies to use
-  * `java.util.Arrays.sort` directly e.g. by boxing primitives to use
-  * a custom ordering on them.
-  *
-  * `Sorting` provides methods where you can provide a comparison function, or
-  * can request a sort of items that are [[scala.math.Ordered]] or that
-  * otherwise have an implicit or explicit [[scala.math.Ordering]].
-  *
-  * Note also that high-performance non-default sorts for numeric types
-  * are not provided.  If this is required, it is advisable to investigate
-  * other libraries that cover this use case.
-  */
+ *  Methods that defer to `java.util.Arrays.sort` say that they do or under what
+ *  conditions that they do.
+ *
+ *  `Sorting` also implements a general-purpose quicksort and stable (merge) sort
+ *  for those cases where `java.util.Arrays.sort` could only be used at the cost
+ *  of a large memory penalty.  If performance rather than memory usage is the
+ *  primary concern, one may wish to find alternate strategies to use
+ *  `java.util.Arrays.sort` directly e.g. by boxing primitives to use
+ *  a custom ordering on them.
+ *
+ *  `Sorting` provides methods where you can provide a comparison function, or
+ *  can request a sort of items that are [[scala.math.Ordered]] or that
+ *  otherwise have an implicit or explicit [[scala.math.Ordering]].
+ *
+ *  Note also that high-performance non-default sorts for numeric types
+ *  are not provided.  If this is required, it is advisable to investigate
+ *  other libraries that cover this use case.
+ */
 object Sorting {
   /** Sorts an array of Doubles using `java.util.Arrays.sort`. */
   def quickSort(a: Array[Double]): Unit = java.util.Arrays.sort(a)
@@ -49,9 +49,9 @@ object Sorting {
   private final val qsortThreshold = 16
 
   /** Sorts array `a` with quicksort, using the Ordering on its elements.
-    * This algorithm sorts in place, so no additional memory is used aside from
-    * what might be required to box individual elements during comparison.
-    */
+   *  This algorithm sorts in place, so no additional memory is used aside from
+   *  what might be required to box individual elements during comparison.
+   */
   def quickSort[K: Ordering](a: Array[K]): Unit = {
     // Must have iN >= i0 or math will fail.  Also, i0 >= 0.
     def inner(a: Array[K], i0: Int, iN: Int, ord: Ordering[K]): Unit = {
@@ -252,31 +252,33 @@ object Sorting {
   }
 
   /** Sorts array `a` using the Ordering on its elements, preserving the original ordering where possible.
-    * Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, 0, a.length)`. */
+   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, 0, a.length)`. 
+   */
   @`inline` def stableSort[K: Ordering](a: Array[K]): Unit = stableSort(a, 0, a.length)
 
   /** Sorts array `a` or a part of it using the Ordering on its elements, preserving the original ordering where possible.
-    * Uses `java.util.Arrays.sort` unless `K` is a primitive type.
-    *
-    * @param a The array to sort
-    * @param from The first index in the array to sort
-    * @param until The last index (exclusive) in the array to sort
-    */
+   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @param a The array to sort
+   *  @param from The first index in the array to sort
+   *  @param until The last index (exclusive) in the array to sort
+   */
   def stableSort[K: Ordering](a: Array[K], from: Int, until: Int): Unit = sort(a, from, until, Ordering[K])
 
   /** Sorts array `a` using function `f` that computes the less-than relation for each element.
-    * Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, f, 0, a.length)`. */
+   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, f, 0, a.length)`. 
+   */
   @`inline` def stableSort[K](a: Array[K], f: (K, K) => Boolean): Unit = stableSort(a, f, 0, a.length)
 
   // TODO: make this fast for primitive K (could be specialized if it didn't go through Ordering)
   /** Sorts array `a` or a part of it using function `f` that computes the less-than relation for each element.
-    * Uses `java.util.Arrays.sort` unless `K` is a primitive type.
-    *
-    * @param a The array to sort
-    * @param f A function that computes the less-than relation for each element
-    * @param from The first index in the array to sort
-    * @param until The last index (exclusive) in the array to sort
-    */
+   *  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @param a The array to sort
+   *  @param f A function that computes the less-than relation for each element
+   *  @param from The first index in the array to sort
+   *  @param until The last index (exclusive) in the array to sort
+   */
   def stableSort[K](a: Array[K], f: (K, K) => Boolean, from: Int, until: Int): Unit = sort(a, from, until, Ordering fromLessThan f)
 
   /** A sorted Array, using the Ordering for the elements in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type. */

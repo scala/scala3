@@ -4,7 +4,7 @@
    |                     Found:    (getter : () ->{r.rd} Int)
    |                     Required: () -> Int
    |
-   |                     Note that capability r.rd is not included in capture set {}.
+   |                     Note that capability `r.rd` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/local-mutables.scala:14:22 -------------------------------
@@ -13,23 +13,21 @@
    |                      Found:    (setter : () ->{r} Unit)
    |                      Required: () -> Unit
    |
-   |                      Note that capability r is not included in capture set {}.
+   |                      Note that capability `r` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/local-mutables.scala:22:22 ----------------------------------------------------
 22 |    def set(x: Int) = r.set(x) // error
    |                      ^
-   |                     Read-only method set accesses exclusive capability (r : Ref^);
-   |                     method set should be declared an update method to allow this.
-   |
-   |                     where:    ^ refers to a fresh root capability classified as Unscoped in the type of value r
+   |                      Read-only method set accesses exclusive capability `r`;
+   |                      method set should be declared an update method to allow this.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/local-mutables.scala:35:21 -------------------------------
 35 |  val _: () -> Int = getter // error
    |                     ^^^^^^
    |                     Found:    (getter : () ->{r.rd} Int)
    |                     Required: () -> Int
    |
-   |                     Note that capability r.rd is not included in capture set {}.
+   |                     Note that capability `r.rd` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/local-mutables.scala:39:22 -------------------------------
@@ -38,13 +36,11 @@
    |                      Found:    (setter : () ->{r} Unit)
    |                      Required: () -> Unit
    |
-   |                      Note that capability r is not included in capture set {}.
+   |                      Note that capability `r` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/local-mutables.scala:47:22 ----------------------------------------------------
 47 |    def set(x: Int) = r = x  // error
    |                      ^
-   |                 Read-only method set accesses exclusive capability (r : scala.caps.internal.Var[Int]^);
-   |                 method set should be declared an update method to allow this.
-   |
-   |                 where:    ^ refers to a fresh root capability classified as Unscoped in the type of variable r²
+   |                      Read-only method set accesses exclusive capability `r`;
+   |                      method set should be declared an update method to allow this.

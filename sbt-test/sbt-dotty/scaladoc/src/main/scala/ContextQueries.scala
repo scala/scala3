@@ -5,7 +5,7 @@ import scala.util.Try
 
 /**
   * Context Queries:
-  * - http://dotty.epfl.ch/docs/reference/contextual/query-types.html,
+  * - https://nightly.scala-lang.org/docs/reference/contextual/query-types.html,
   * - https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html
   */
 object ContextQueries /* Formerly known as Implicit Function Types */ {

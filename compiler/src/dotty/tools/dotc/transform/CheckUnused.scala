@@ -15,7 +15,7 @@ import reporting.{CodeAction, Diagnostic, UnusedSymbol}
 import rewrites.Rewrites.ActionPatch
 
 import MegaPhase.MiniPhase
-import typer.{ImportInfo, Typer}
+import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
 import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
 import util.{Property, Spans, SrcPos}, Spans.Span
@@ -35,6 +35,12 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def phaseName: String = s"checkUnused$suffix"
 
   override def description: String = "check for unused elements"
+
+  override def runsAfter = Set:
+    phaseMode match
+    case PhaseMode.Aggregate => TyperPhase.name
+    case PhaseMode.Resolve => Inlining.name
+    case PhaseMode.Report => PatternMatcher.name
 
   override def isEnabled(using Context): Boolean = ctx.settings.WunusedHas.any
 
@@ -498,8 +504,9 @@ end CheckUnused
 object CheckUnused:
 
   enum PhaseMode:
-    case Aggregate
-    case Report
+    case Aggregate // new defs are considered
+    case Resolve   // no new defs, only additional references
+    case Report    // report when done
 
   val refInfosKey = Property.StickyKey[RefInfos]
 
@@ -520,13 +527,15 @@ object CheckUnused:
   /** Tree is an inlined parameter. */
   val InlinedParameter = Property.StickyKey[Unit]
 
-  class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper")
+  def PostTyper() = CheckUnused(PhaseMode.Aggregate, "PostTyper")
 
-  class PostInlining extends CheckUnused(PhaseMode.Report, "PostInlining")
+  def PostInlining() = CheckUnused(PhaseMode.Resolve, "PostInlining")
+
+  def PostPatMat() = CheckUnused(PhaseMode.Report, "PostPatMat")
 
   class RefInfos:
-    val defs = mutable.Set.empty[(Symbol, SrcPos)]    // definitions
-    val pats = mutable.Set.empty[(Symbol, SrcPos)]    // pattern variables
+    val defs = mutable.Set.empty[(Symbol, SrcPos)]    // definitions with tree pos
+    val pats = mutable.Set.empty[(Symbol, SrcPos)]    // pattern variables with tree pos
     val refs = mutable.Set.empty[Symbol]              // references
     val asss = mutable.Set.empty[Symbol]              // targets of assignment
     val skip = mutable.Set.empty[Symbol]              // methods to skip (don't warn about their params)
@@ -534,8 +543,9 @@ object CheckUnused:
     val calls = new IdentityHashMap[Tree, Unit]          // inlined call already seen
     val imps = new IdentityHashMap[Import, Unit]         // imports
     val sels = new IdentityHashMap[ImportSelector, Unit] // matched selectors
-    def register(tree: Tree)(using Context): Unit = if tree.srcPos.isUserCode then
+    def register(tree: Tree)(using Context): Unit =
       tree match
+      case tree if !tree.srcPos.isUserCode =>
       case imp: Import =>
         if inliners == 0
           && languageImport(imp.expr).isEmpty
@@ -550,21 +560,21 @@ object CheckUnused:
         if !tree.name.isInstanceOf[DerivedName] && !tree.name.is(WildcardParamName) then
           if tree.hasAttachment(NoWarn) then
             nowarn.addOne(tree.symbol)
-          pats.addOne((tree.symbol, tree.namePos))
+          pats.addOne(tree.symbol -> tree.namePos)
       case tree: NamedDefTree =>
         if tree.hasAttachment(PatternVar) then
           if !tree.name.isInstanceOf[DerivedName] then
-            pats.addOne((tree.symbol, tree.namePos))
+            pats.addOne(tree.symbol -> tree.namePos)
         else if (tree.symbol ne NoSymbol)
           && !tree.name.isWildcard
           && !tree.symbol.is(ModuleVal) // track only the ModuleClass using the object symbol, with correct namePos
         then
           if tree.hasAttachment(NoWarn) then
             nowarn.addOne(tree.symbol)
-          defs.addOne((tree.symbol.userSymbol, tree.namePos))
+          defs.addOne(tree.symbol.userSymbol -> tree.namePos)
       case _ =>
         if tree.symbol ne NoSymbol then
-          defs.addOne((tree.symbol, tree.srcPos)) // TODO is this a code path
+          defs.addOne(tree.symbol -> tree.srcPos) // TODO is this a code path
 
     var inliners = 0 // depth of inline def (not inlined yet)
 
@@ -598,8 +608,9 @@ object CheckUnused:
       inline def isNone: Boolean = p == NoPrecedence
 
   def reportUnused()(using Context): Unit = if !refInfos.isNullified then
-    for (msg, pos, origin) <- warnings do
-      report.warning(msg, pos, origin)
+    atPhaseBeforeTransforms:
+      for (msg, pos, origin) <- warnings do
+        report.warning(msg, pos, origin)
 
   type MessageInfo = (UnusedSymbol, SrcPos, String) // string is origin or empty
 
@@ -749,24 +760,21 @@ object CheckUnused:
           warnAt(pos)(UnusedSymbol.localDefs)
 
     def checkPatvars() =
-      // convert the one non-synthetic span so all are comparable; filter NoSpan below
-      def uniformPos(sym: Symbol, pos: SrcPos): SrcPos =
-        if pos.span.isSynthetic then pos else pos.sourcePos.withSpan(pos.span.toSynthetic)
       // patvars in for comprehensions share the pos of where the name was introduced
-      val byPos = infos.pats.groupMap(uniformPos(_, _))((sym, pos) => sym)
+      val byPos = infos.pats.groupMap((sym, pos) => sym.srcPos.sourcePos.withSpan(sym.srcPos.span.toSynthetic))(_._1)
       for (pos, syms) <- byPos if pos.span.exists && !syms.exists(_.hasAnnotation(defn.UnusedAnnot)) do
         if !syms.exists(infos.refs(_)) then
           if !syms.exists(v => !v.isLocal && !v.is(Private) || infos.nowarn(v)) then
-            warnAt(pos)(UnusedSymbol.patVars)
+            warnAt(syms.head.namePos)(UnusedSymbol.patVars)
         else if syms.exists(_.is(Mutable)) then // check unassigned var
           val sym = // recover the original
             if syms.size == 1 then syms.head
             else infos.pats.find((s, p) => syms.contains(s) && !p.span.isSynthetic).map(_._1).getOrElse(syms.head)
           if sym.is(Mutable) && !infos.asss(sym) then
             if sym.isLocalToBlock then
-              warnAt(pos)(UnusedSymbol.unsetLocals)
+              warnAt(sym.namePos)(UnusedSymbol.unsetLocals)
             else if sym.is(Private) then
-              warnAt(pos)(UnusedSymbol.unsetPrivates)
+              warnAt(sym.namePos)(UnusedSymbol.unsetPrivates)
 
     def checkImports() =
       import scala.jdk.CollectionConverters.given
@@ -1071,6 +1079,11 @@ object CheckUnused:
     // pick the symbol the user wrote for purposes of tracking
     inline def userSymbol: Symbol=
       if sym.denot.is(ModuleClass) then sym.denot.companionModule else sym
+    // reconstitute a range pos from the symbol's pos, which is its start
+    def namePos: SrcPos =
+      sym.srcPos.sourcePos.withSpan:
+        val span = sym.span
+        Span(span.start, span.start + sym.name.toString.length)
 
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match

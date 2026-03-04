@@ -1,0 +1,5 @@
+[log genBCode] Adding static forwarder for 'method main' from First to 'module class First$'
+[log genBCode] No Main-Class due to multiple entry points:
+  Second
+  First
+[log genBCode] Adding static forwarder for 'method main' from Second to 'module class Second$'

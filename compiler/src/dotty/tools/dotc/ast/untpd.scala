@@ -534,7 +534,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     Select(Select(scalaDot(nme.caps), nme.internal), name)
 
   def captureRoot(using Context): Select =
-    Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
+    Select(scalaDot(nme.caps), nme.any)
 
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     var annot: Tree = scalaAnnotationDot(annotName)

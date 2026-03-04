@@ -22,13 +22,13 @@ import mutable.Builder
 import scala.annotation.{implicitNotFound, nowarn}
 
 /** A class for immutable bitsets.
-  *  $bitsetinfo
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#immutable-bitsets "Scala's Collection Library overview"]]
-  *  section on `Immutable BitSets` for more information.
-  *
-  *  @define Coll `immutable.BitSet`
-  *  @define coll immutable bitset
-  */
+ *  $bitsetinfo
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#immutable-bitsets)
+ *  section on `Immutable BitSets` for more information.
+ *
+ *  @define Coll `immutable.BitSet`
+ *  @define coll immutable bitset
+ */
 sealed abstract class BitSet
   extends AbstractSet[Int]
     with SortedSet[Int]
@@ -65,8 +65,7 @@ sealed abstract class BitSet
     } else this
   }
 
-  /** Updates word at index `idx`; enlarges set if `idx` outside range of set.
-    */
+  /** Updates word at index `idx`; enlarges set if `idx` outside range of set. */
   protected def updateWord(idx: Int, w: Long): BitSet
 
   override def map(f: Int => Int): BitSet = strictOptimizedMap(newSpecificBuilder, f)
@@ -88,11 +87,10 @@ sealed abstract class BitSet
   protected def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
 }
 
-/**
-  * $factoryInfo
-  * @define Coll `immutable.BitSet`
-  * @define coll immutable bitset
-  */
+/** $factoryInfo
+ *  @define Coll `immutable.BitSet`
+ *  @define coll immutable bitset
+ */
 @nowarn("cat=deprecation&msg=Implementation classes of BitSet should not be accessed directly")
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
@@ -123,8 +121,8 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   }
 
   /** A bitset containing all the bits in an array, wrapping the existing
-    *  array without copying.
-    */
+   *  array without copying.
+   */
   def fromBitMaskNoCopy(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty

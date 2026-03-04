@@ -5,7 +5,7 @@ import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 import annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import annotation.tailrec
-import caps.cap
+import caps.any
 import caps.unsafe.{unsafeAssumeSeparate, untrackedCaptures}
 
 import language.experimental.captureChecking
@@ -33,7 +33,7 @@ object CollectionStrawMan5 {
   /** Base trait for instances that can construct a collection from an iterable */
   trait FromIterable {
     type C[X] <: Iterable[X]^
-    def fromIterable[B](it: Iterable[B]^{this, cap}): C[B]^{it}
+    def fromIterable[B](it: Iterable[B]^{this, any}): C[B]^{it}
   }
 
   type FromIterableOf[+CC[X] <: Iterable[X]^] = FromIterable {
@@ -64,7 +64,7 @@ object CollectionStrawMan5 {
 
   trait SeqFactory extends IterableFactory {
     type C[X] <: Seq[X]
-    def fromIterable[B](it: Iterable[B]^{this, cap}): C[B]
+    def fromIterable[B](it: Iterable[B]^{this, any}): C[B]
   }
 
   /** Base trait for strict collections */
@@ -108,7 +108,7 @@ object CollectionStrawMan5 {
        with IterablePolyTransforms[A]
        with IterableMonoTransforms[A] { // sound bcs of VarianceNote
     type Repr = C[A] @uncheckedVariance
-    protected def fromLikeIterable(coll: Iterable[A] @uncheckedVariance ^ {this, cap}): Repr @uncheckedVariance ^{coll} =
+    protected def fromLikeIterable(coll: Iterable[A] @uncheckedVariance ^ {this, any}): Repr @uncheckedVariance ^{coll} =
       fromIterable(coll)
   }
 
@@ -137,7 +137,7 @@ object CollectionStrawMan5 {
     this: IterableMonoTransforms[A]^ =>
     type Repr
     protected def coll: Iterable[A]^{this}
-    protected def fromLikeIterable(coll: Iterable[A] @uncheckedVariance ^ {this, cap}): Repr^{coll}
+    protected def fromLikeIterable(coll: Iterable[A] @uncheckedVariance ^ {this, any}): Repr^{coll}
     def filter(p: A => Boolean): Repr^{this, p} = fromLikeIterable(View.Filter(coll, p))
 
     def partition(p: A => Boolean): (Repr^{this, p}, Repr^{this, p}) = {
@@ -156,7 +156,7 @@ object CollectionStrawMan5 {
     this: IterablePolyTransforms[A]^ =>
     type C[A]
     protected def coll: Iterable[A]^{this}
-    def fromIterable[B](coll: Iterable[B]^{this, cap}): C[B]^{coll}
+    def fromIterable[B](coll: Iterable[B]^{this, any}): C[B]^{coll}
     def map[B](f: A => B): C[B]^{this, f} = fromIterable(View.Map(coll, f))
     def flatMap[B](f: A => IterableOnce[B]^): C[B]^{this, f} = fromIterable(View.FlatMap(coll, f))
     def ++[B >: A](xs: IterableOnce[B]^): C[B]^{this, xs} = fromIterable(View.Concat(coll, xs))
@@ -410,7 +410,7 @@ object CollectionStrawMan5 {
     this: View[A]^ =>
     type C[X] = View[X]^{this}
     override def view: this.type = this
-    override def fromIterable[B](c: Iterable[B]^{this, cap}): View[B]^{this, c} = {
+    override def fromIterable[B](c: Iterable[B]^{this, any}): View[B]^{this, c} = {
       c match {
         case c: View[B] => c
         case _ => View.fromIterator(c.iterator)
@@ -533,7 +533,7 @@ object CollectionStrawMan5 {
       }
       -1
     }
-    def filter(p: A ->{cap, this} Boolean): Iterator[A]^{this, p} = new Iterator[A] {
+    def filter(p: A ->{any, this} Boolean): Iterator[A]^{this, p} = new Iterator[A] {
       @untrackedCaptures private var hd: A = compiletime.uninitialized
       @untrackedCaptures private var hdDefined: Boolean = false
 

@@ -21,31 +21,30 @@ import scala.reflect.ClassTag
 import scala.collection.immutable.Nil
 
 /** A buffer that stores elements in an unrolled linked list.
-  *
-  *  Unrolled linked lists store elements in linked fixed size
-  *  arrays.
-  *
-  *  Unrolled buffers retain locality and low memory overhead
-  *  properties of array buffers, but offer much more efficient
-  *  element addition, since they never reallocate and copy the
-  *  internal array.
-  *
-  *  However, they provide `O(n/m)` complexity random access,
-  *  where `n` is the number of elements, and `m` the size of
-  *  internal array chunks.
-  *
-  *  Ideal to use when:
-  *  - elements are added to the buffer and then all of the
-  *    elements are traversed sequentially
-  *  - two unrolled buffers need to be concatenated (see `concat`)
-  *
-  *  Better than singly linked lists for random access, but
-  *  should still be avoided for such a purpose.
-  *
-  *  @define coll unrolled buffer
-  *  @define Coll `UnrolledBuffer`
-  *
-  */
+ *
+ *  Unrolled linked lists store elements in linked fixed size
+ *  arrays.
+ *
+ *  Unrolled buffers retain locality and low memory overhead
+ *  properties of array buffers, but offer much more efficient
+ *  element addition, since they never reallocate and copy the
+ *  internal array.
+ *
+ *  However, they provide `O(n/m)` complexity random access,
+ *  where `n` is the number of elements, and `m` the size of
+ *  internal array chunks.
+ *
+ *  Ideal to use when:
+ *  - elements are added to the buffer and then all of the
+ *    elements are traversed sequentially
+ *  - two unrolled buffers need to be concatenated (see `concat`)
+ *
+ *  Better than singly linked lists for random access, but
+ *  should still be avoided for such a purpose.
+ *
+ *  @define coll unrolled buffer
+ *  @define Coll `UnrolledBuffer`
+ */
 @SerialVersionUID(3L)
 sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
   extends AbstractBuffer[T]
@@ -94,12 +93,12 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
   def classTagCompanion: UnrolledBuffer.type = UnrolledBuffer
 
   /** Concatenates the target unrolled buffer to this unrolled buffer.
-    *
-    *  The specified buffer `that` is cleared after this operation. This is
-    *  an O(1) operation.
-    *
-    *  @param that    the unrolled buffer whose elements are added to this buffer
-    */
+   *
+   *  The specified buffer `that` is cleared after this operation. This is
+   *  an O(1) operation.
+   *
+   *  @param that    the unrolled buffer whose elements are added to this buffer
+   */
   def concat(that: UnrolledBuffer[T]) = {
     // bind the two together
     if (!lastptr.bind(that.headptr)) lastptr = that.lastPtr
@@ -262,8 +261,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
   private[collection] val unrolledlength = 32
 
-  /** Unrolled buffer node.
-    */
+  /** Unrolled buffer node. */
   class Unrolled[T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T] | Null, val buff: UnrolledBuffer[T] | Null = null) {
     this: Unrolled[T]^{} =>
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)

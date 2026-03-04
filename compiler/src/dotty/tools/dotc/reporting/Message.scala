@@ -5,9 +5,10 @@ package reporting
 import core.*
 import Contexts.*, Decorators.*, Symbols.*, Types.*, Flags.*
 import printing.{RefinedPrinter, MessageLimiter, ErrorMessageLimiter}
-import printing.Texts.Text
+import printing.Texts.{Text, Str}
 import printing.Formatting.hl
 import config.SourceVersion
+import util.SimpleIdentitySet
 import cc.CaptureSet
 import cc.Capabilities.*
 
@@ -42,7 +43,7 @@ object Message:
     else ""
 
   /** A note can produce an added string for an error message */
-  abstract class Note:
+  abstract class Note {
 
   	/** Should the note be shown before the actual message or after?
   	 *  Default is after.
@@ -58,6 +59,9 @@ object Message:
      *  added note.
      */
     def covers(other: Note)(using Context): Boolean = false
+
+    def mentions: SimpleIdentitySet[Capability] = SimpleIdentitySet.empty
+  }
 
   object Note:
     def apply(msg: Context ?=> String) = new Note:
@@ -250,7 +254,7 @@ object Message:
   end Seen
 
   /** Printer to be used when formatting messages */
-  private class Printer(val seen: Seen, _ctx: Context) extends RefinedPrinter(_ctx):
+  private class Printer(val seen: Seen, msg: Message, _ctx: Context) extends RefinedPrinter(_ctx):
 
     /** True if printer should a show source module instead of its module class */
     private def useSourceModule(sym: Symbol): Boolean =
@@ -267,25 +271,37 @@ object Message:
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
 
-    override def toTextCapability(c: Capability): Text = c match
-      case c: RootCapability if seen.isActive => seen.record("cap", isType = false, c)
-      case _ => super.toTextCapability(c)
+    override def toTextCapability(c: Capability): Text =
+      (c, super.toTextCapability(c)) match
+        case (c: RootCapability, Str(s)) if seen.isActive =>
+          seen.record(s, isType = false, c)
+        case (_, txt) =>
+          txt
 
     override def toTextCapturing(parent: Type, refs: GeneralCaptureSet, boxText: Text) = refs match
       case refs: CaptureSet
-      if isUniversalCaptureSet(refs) && !defn.isFunctionType(parent) && !printDebug && seen.isActive =>
+      if isElidableUniversal(refs) && !defn.isFunctionType(parent) && !printDebug && seen.isActive =>
         boxText
         ~ toTextLocal(parent)
         ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
+      case refs: CaptureSet.Var if refs.isIgnored =>
+        toText(parent)
       case _ =>
         super.toTextCapturing(parent, refs, boxText)
 
     override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
       refs match
-        case refs: CaptureSet if isUniversalCaptureSet(refs) && seen.isActive =>
+        case refs: CaptureSet if isElidableUniversal(refs) && seen.isActive =>
           seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
+
+    override def isElidableUniversal(refs: GeneralCaptureSet): Boolean =
+      super.isElidableUniversal(refs) && (refs, msg).match
+        case (refs: CaptureSet, msg: TypeMismatch) =>
+          msg.notes.forall: note =>
+            (refs.elems ** note.mentions).isEmpty
+        case _ => true
 
     override def toText(tp: Type): Text =
       if !tp.exists || tp.isErroneous then seen.nonSensical = true
@@ -300,7 +316,7 @@ object Message:
       super.toText(sym)
   end Printer
 
-end Message
+end Message 
 
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
@@ -415,7 +431,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
         case _: Message.Printer => ctx
         case _ =>
           val seen = Seen(disambiguate)
-          val ctx1 = ctx.fresh.setPrinterFn(Message.Printer(seen, _))
+          val ctx1 = ctx.fresh.setPrinterFn(Message.Printer(seen, this, _))
           if !ctx1.property(MessageLimiter).isDefined then
             ctx1.setProperty(MessageLimiter, ErrorMessageLimiter())
           ctx1
@@ -501,3 +517,15 @@ object NoExplanation {
     if (m.explanation == "") Some(m)
     else None
 }
+
+final class InferUnionWarning(tp: Type)(using Context)
+  extends Message(ErrorMessageID.InferUnionWarningID):
+
+  def kind: MessageKind = MessageKind.Type
+
+  def msg(using Context): String =
+    i"""A type argument was inferred to be union type $tp
+       |This may indicate a programming error.
+       |"""
+
+  def explain(using Context): String = ""

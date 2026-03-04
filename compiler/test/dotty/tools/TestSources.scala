@@ -76,6 +76,12 @@ object TestSources {
   def negBestEffortPicklingExcludelisted: List[String] = loadList(negBestEffortPicklingExcludelistFile)
   def negBestEffortUnpicklingExcludelisted: List[String] = loadList(negBestEffortUnpicklingExcludelistFile)
 
+  // scoverage tests lists
+
+  def scoverageIgnoreExcludelistFile: String = "compiler/test/dotc/scoverage-ignore.excludelist"
+
+  def scoverageIgnoreExcludelisted: List[String] = loadList(scoverageIgnoreExcludelistFile)
+
   // load lists
 
   private def loadList(path: String): List[String] = {

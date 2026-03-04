@@ -645,6 +645,8 @@ object Checking {
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
       val illegal = sym.flags & ClassOnlyFlags
       fail(em"only classes can be ${illegal.flagsString}")
+    if sym.isClass && sym.is(Override) then
+      report.deprecationWarning(OverrideClass(), sym.srcPos)
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -976,9 +978,7 @@ object Checking {
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros
-        || name == Feature.captureChecking
-        || name == Feature.separationChecking
+        name == Feature.scala2macros || Feature.nonViralExperimentalFeatures.contains(name)
       trees.filter {
         case Import(qual, selectors) =>
           languageImport(qual) match
@@ -1192,7 +1192,13 @@ trait Checking {
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
             (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
-              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos).argTypes
+              // Strip NamedArg wrappers since patterns have already been reordered
+              // by adaptPatternArgs during typing. This prevents checkWellFormedTupleElems
+              // from incorrectly flagging the mix of NamedArg and wildcard patterns.
+              val normalizedPats = pats.map:
+                case NamedArg(_, pat) => pat
+                case pat => pat
+              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, normalizedPats, pat.srcPos).argTypes
               pats.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>

@@ -1,17 +1,19 @@
 package dotty.tools.pc.base
 
-import dotty.tools.pc.RawScalaPresentationCompiler
-import dotty.tools.pc.base.TestResources
-import dotty.tools.pc.utils.PcAssertions
-import dotty.tools.pc.utils.TestExtensions.getOffset
-import org.eclipse.lsp4j.Diagnostic
-import org.eclipse.lsp4j.DiagnosticSeverity
-
 import java.net.URI
+
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.EmptyCancelToken
 import scala.meta.pc.CancelToken
 import scala.meta.pc.VirtualFileParams
+
+import dotty.tools.pc.RawScalaPresentationCompiler
+import dotty.tools.pc.base.TestResources
+import dotty.tools.pc.utils.PcAssertions
+import dotty.tools.pc.utils.TestExtensions.getOffset
+
+import org.eclipse.lsp4j.Diagnostic
+import org.eclipse.lsp4j.DiagnosticSeverity
 
 class BaseDiagnosticsSuite extends PcAssertions:
   case class TestDiagnostic(
@@ -30,10 +32,9 @@ class BaseDiagnosticsSuite extends PcAssertions:
   )
 
   case class TestVirtualFileParams(uri: URI, text: String)
-      extends VirtualFileParams {
+      extends VirtualFileParams:
     override def shouldReturnDiagnostics: Boolean = true
     override def token: CancelToken = EmptyCancelToken
-  }
 
   def check(
       text: String,

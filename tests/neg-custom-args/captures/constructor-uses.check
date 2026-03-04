@@ -1,20 +1,24 @@
--- Error: tests/neg-custom-args/captures/constructor-uses.scala:13:4 ---------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/constructor-uses.scala:13:12 ---------------------------
 13 |    val u = f.toString // error
-   |    ^
-   |    Publicly visible constructor C uses external capabilities {A.this.f}.
-   |    These dependencies need to be declared explicitly in a `uses_init ...` clause.
--- Error: tests/neg-custom-args/captures/constructor-uses.scala:17:12 --------------------------------------------------
+   |            ^
+   |            Reference `A.this.f` is not included in the allowed capture set {}
+   |            of the enclosing constructor C in class C.
+   |
+   |            External uses should be declared explicitly with a uses_init clause in class C:
+   |
+   |                uses_init A.this.f
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/constructor-uses.scala:17:12 ---------------------------
 17 |    val v = g.toString // error
    |            ^
-   |            reference (A.this.g : test.File^) is not included in the allowed capture set {A.this.f}
-   |            of the enclosing constructor D in class D
+   |            Reference `A.this.g` is not included in the allowed capture set {A.this.f}
+   |            of the enclosing constructor D in class D.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/constructor-uses.scala:28:21 -----------------------------
 28 |  val _: () -> a.B = f // error
    |                     ^
    |                     Found:    (f : () ->{a.f²} a.B^{})
    |                     Required: () -> a.B
    |
-   |                     Note that capability a.f² is not included in capture set {}.
+   |                     Note that capability `f` cannot flow into capture set {}.
    |
    |                     where:    f  is a value in method test
    |                               f² is a value in class A
@@ -26,6 +30,6 @@
    |                   Found:    (g : () ->{c} C^{})
    |                   Required: () -> C
    |
-   |                   Note that capability c is not included in capture set {}.
+   |                   Note that capability `g` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

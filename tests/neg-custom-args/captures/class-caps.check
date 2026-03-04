@@ -4,7 +4,7 @@
    |                                       Found:    (a: Int, b: Int) ->{Test.this.console} Int
    |                                       Required: (Int, Int) -> Int
    |
-   |                                       Note that capability Test.this.console is not included in capture set {}.
+   |                                       Note that capability `Test.this.console` cannot flow into capture set {}.
    |
 19 |    log(s"adding a ($a) to b ($b)")(using console)
 20 |    a + b
@@ -16,7 +16,7 @@
    |                                      Found:    (a: Int, b: Int) ->{Test1.this.console} Int
    |                                      Required: (Int, Int) -> Int
    |
-   |                                      Note that capability Test1.this.console is not included in capture set {}.
+   |                                      Note that capability `Test1.this.console` cannot flow into capture set {}.
    |
 29 |    log(s"adding a ($a) to b ($b)")(using console)
 30 |    a + b
@@ -28,7 +28,7 @@
    |                                           Found:    (a: Int, b: Int) ->{Test2.console} Int
    |                                           Required: (Int, Int) -> Int
    |
-   |                                           Note that capability Test2.console is not included in capture set {}.
+   |                                           Note that capability `Test2.console` cannot flow into capture set {}.
    |
 38 |    log(s"adding a ($a) to b ($b)")(using console)
 39 |    a + b
