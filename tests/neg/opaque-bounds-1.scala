@@ -1,7 +1,7 @@
-abstract class Test {
+abstract class Test { // error: class Test cannot be instantiated since it has a member Flag with possibly conflicting bounds
   opaque type FlagSet = Int
 
-  opaque type Flag <: FlagSet = String  // error: type String outside bounds  <: Test.this.FlagSet
+  opaque type Flag <: FlagSet = String
 
   object Flag {
     def make(s: String): Flag = s

@@ -3464,7 +3464,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
-      if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
+      if (!cls.is(Trait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
       if cls.isEnum || !cls.isRefinementClass && firstParentTpe.classSymbol.isEnum then
         checkEnum(cdef, cls, firstParent)
