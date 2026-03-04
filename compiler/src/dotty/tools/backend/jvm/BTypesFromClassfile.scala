@@ -18,7 +18,8 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
-import dotty.tools.backend.jvm.BTypes.{InlineInfo, InternalName, MethodInlineInfo}
+import dotty.tools.backend.jvm.BTypes.InternalName
+import dotty.tools.backend.jvm.opt.{InlineInfo, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.{ClassNotFound, NoClassBTypeInfo, OptimizerWarning}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
@@ -150,7 +151,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
     val interfaces = collect(classNode.interfaces.asScala.iterator.map(classBTypeFromParsedClassfile))
 
     (superClass, interfaces, nestedClasses, nestedInfo) match
-      case (Right(sc), Right(is), Right(ncs), Right(ni)) => Right(ClassInfo(sc, is, flags, ncs, ni, InlineInfoSource.Classfile(classNode, moduleNode)))
+      case (Right(sc), Right(is), Right(ncs), Right(ni)) => Right(ClassInfo(sc, is, flags, ncs, ni, ClassInfoSource.Classfile(classNode, moduleNode)))
       case (Left(l), _, _, _) => Left(l)
       case (_, Left(l), _, _) => Left(l)
       case (_, _, Left(l), _) => Left(l)

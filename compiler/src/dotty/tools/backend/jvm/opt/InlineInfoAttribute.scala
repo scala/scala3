@@ -16,7 +16,7 @@ package opt
 
 import scala.collection.mutable
 import scala.tools.asm.*
-import dotty.tools.backend.jvm.BTypes.{InlineInfo, MethodInlineInfo}
+import dotty.tools.backend.jvm.opt.{InlineInfo, MethodInlineInfo}
 import dotty.tools.backend.jvm.BackendReporting.UnknownScalaInlineInfoVersion
 
 /**
@@ -135,7 +135,7 @@ case class InlineInfoAttribute(inlineInfo: InlineInfo) extends Attribute(InlineI
       InlineInfoAttribute(info)
     } else {
       val msg = UnknownScalaInlineInfoVersion(cr.getClassName, version)
-      InlineInfoAttribute(BTypes.EmptyInlineInfo.copy(warning = Some(msg)))
+      InlineInfoAttribute(InlineInfo.empty.copy(warning = Some(msg)))
     }
   }
 }
