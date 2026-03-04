@@ -538,8 +538,12 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
           a.length - 2 == b.length && a(0) == 'L' && a.last == ';' && a.regionMatches(1, b, 0, b.length) ||
           b.length - 2 == a.length && b(0) == 'L' && b.last == ';' && b.regionMatches(1, a, 0, a.length)
       }
-      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ts.ObjectRef.internalName) ||
-        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN).conformsTo(bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)).getOrElse(false)
+      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ts.ObjectRef.internalName) || {
+        val aType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN)
+        val bType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)
+        // TODO instead of getOrElse, we should bubble the warning up...
+        aType.flatMap(a => bType.map(b => a.conformsTo(b))).getOrElse(false)
+      }
     }
 
     // precondition: !isSubType(aDescOrIntN, bDescOrIntN)
@@ -550,8 +554,8 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
           case (aa: ArrayBType, ba: ArrayBType) =>
             impl(aa.elementType, ba.elementType)
           case (act: ClassBType, bct: ClassBType) =>
-            val noItf = act.isInterface.flatMap(aIf => bct.isInterface.map(bIf => !aIf && !bIf)).getOrElse(false)
-            noItf && !bct.conformsTo(act).getOrElse(true)
+            val noItf = !act.isInterface && !bct.isInterface
+            noItf && !bct.conformsTo(act)
           case (_: PrimitiveBType, _: RefBType) | (_: RefBType, _: PrimitiveBType) =>
             true
           case (_: PrimitiveBType, _: PrimitiveBType) =>
@@ -561,9 +565,10 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
             false
         }
       }
-      impl(
-        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN),
-        bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN))
+      val aType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN)
+      val bType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)
+      // TODO instead of getOrElse, we should bubble the warning up...
+      aType.flatMap(a => bType.map(b => impl(a, b))).getOrElse(false)
     }
 
     lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)

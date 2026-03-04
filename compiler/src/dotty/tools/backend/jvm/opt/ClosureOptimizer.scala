@@ -189,9 +189,10 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
         // method as the allocation) should have access too.
         val bodyAccessible: Either[OptimizerWarning, Boolean] = for {
           (bodyMethodNode, declClass) <- byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc): Either[OptimizerWarning, (MethodNode, InternalName)]
-          isAccessible                <- BTypes.memberIsAccessible(bodyMethodNode.access, bTypesFromClassfile.classBTypeFromParsedClassfile(declClass), bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner), ownerClass)
+          declClassBType              <- bTypesFromClassfile.classBTypeFromParsedClassfile(declClass)
+          lambdaOwnerBType            <- bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner)
         } yield {
-          isAccessible
+          BTypes.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
         }
 
         def pos = callGraph.callsites.get(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
@@ -410,18 +411,19 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
     // the method node is needed for building the call graph entry
     val bodyMethod = byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc)
     val sourceFilePath = byteCodeRepository.compilingClasses.get.get(lambdaBodyHandle.getOwner).map(_._2)
-    val callee = bodyMethod.map({
+    val callee = bodyMethod.flatMap({
       case (bodyMethodNode, bodyMethodDeclClass) =>
-        val bodyDeclClassType = bTypesFromClassfile.classBTypeFromParsedClassfile(bodyMethodDeclClass)
-        Callee(
-          callee = bodyMethodNode,
-          calleeDeclarationClass = bodyDeclClassType,
-          isStaticallyResolved = true,
-          sourceFilePath = sourceFilePath,
-          annotatedInline = false,
-          annotatedNoInline = false,
-          samParamTypes = callGraph.samParamTypes(bodyMethodNode, Type.getArgumentTypes(bodyMethodNode.desc), bodyDeclClassType),
-          calleeInfoWarning = None)
+        bTypesFromClassfile.classBTypeFromParsedClassfile(bodyMethodDeclClass).flatMap(bodyDeclClassType =>
+          callGraph.samParamTypes(bodyMethodNode, Type.getArgumentTypes(bodyMethodNode.desc), bodyDeclClassType).map(spts =>
+            Callee(
+              callee = bodyMethodNode,
+              calleeDeclarationClass = bodyDeclClassType,
+              isStaticallyResolved = true,
+              sourceFilePath = sourceFilePath,
+              annotatedInline = false,
+              annotatedNoInline = false,
+              samParamTypes = spts,
+              calleeInfoWarning = None)))
     })
     val argInfos = closureInit.capturedArgInfos ++ originalCallsite.map(cs => cs.argInfos map {
       case (index, info) => (index + numCapturedValues, info)
