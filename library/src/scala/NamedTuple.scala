@@ -3,6 +3,7 @@ import compiletime.ops.boolean.*
 import collection.immutable.{SeqMap, ListMap}
 
 import language.experimental.captureChecking
+import scala.annotation.publicInBinary
 
 object NamedTuple:
 
@@ -139,7 +140,7 @@ end NamedTuple
 
 /** Separate from NamedTuple object so that we can match on the opaque type NamedTuple. */
 object NamedTupleDecomposition:
-  import NamedTuple.*
+  import NamedTuple.{AnyNamedTuple, NamedTuple, Elem, Size, Head, Last, Init, Tail, Take, Drop, Split, Concat, Map, Reverse, Zip}
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
       /** The value (without the name) at index `n` of this tuple. */
     inline def apply(n: Int): Elem[NamedTuple[N, V], n.type] =
@@ -214,12 +215,18 @@ object NamedTupleDecomposition:
      *  Keys are the names of the elements.
      */
     inline def toSeqMap: SeqMap[String, Tuple.Union[V]] =
-      inline compiletime.constValueTuple[N].toList match
-        case names: List[String] =>
-          ListMap.from(names.iterator.zip(
-            x.toTuple.productIterator.asInstanceOf[Iterator[Tuple.Union[V]]]
-          ))
+      inline compiletime.erasedValue[Tuple.Union[N]] match
+        case _: String =>
+          createSeqMap(names = compiletime.constValueTuple[N], values = x.toTuple)
   end extension
+
+  @publicInBinary
+  private[NamedTupleDecomposition]
+  def createSeqMap[N <: Tuple, V <: Tuple](names: N, values: V): SeqMap[String, Tuple.Union[V]] =
+    SeqMap.newBuilder
+      .addAll(names.productIterator.zip(values.productIterator))
+      .result()
+      .asInstanceOf[SeqMap[String, Tuple.Union[V]]]
 
   /** The names of a named tuple, represented as a tuple of literal string values. */
   type Names[X <: AnyNamedTuple] <: Tuple = X match
