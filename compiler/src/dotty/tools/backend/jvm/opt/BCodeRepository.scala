@@ -10,15 +10,16 @@
  * additional information regarding copyright ownership.
  */
 
-package dotty.tools.backend.jvm
+package dotty.tools.backend.jvm.opt
 
-import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import PostProcessorFrontendAccess.Lazy
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
+import dotty.tools.backend.jvm.opt.*
+import dotty.tools.backend.jvm.{BackendUtils, ClassNode1, CoreBTypes, PostProcessorFrontendAccess}
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.em
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*

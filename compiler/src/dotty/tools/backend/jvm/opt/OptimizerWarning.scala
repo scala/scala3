@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.{AsmUtils, BackendReporting}
+import dotty.tools.backend.jvm.BackendReporting
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.CompilerSettings
 import dotty.tools.dotc.util.SourcePosition
 
@@ -127,12 +127,12 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
         s"The method is not final and may be overridden."
       case IllegalAccessInstructions(_, _, _, _, callsiteClass, instructions) =>
         val suffix = if (instructions.lengthCompare(1) > 0) "s" else ""
-        s"The callee $calleeMethodSig contains the instruction$suffix ${instructions.map(AsmUtils.textify).mkString(", ")}" +
+        s"The callee $calleeMethodSig contains the instruction$suffix ${instructions.map(LogUtils.textify).mkString(", ")}" +
           s"\nthat would cause an IllegalAccessError when inlined into class $callsiteClass."
 
       case IllegalAccessCheckFailed(_, _, _, _, callsiteClass, instruction, cause) =>
         s"""|Failed to check if $calleeMethodSig can be safely inlined to $callsiteClass without causing an IllegalAccessError.
-            |Checking failed for instruction ${AsmUtils.textify(instruction)}:
+            |Checking failed for instruction ${LogUtils.textify(instruction)}:
             |$cause"""
 
       case MethodWithHandlerCalledOnNonEmptyStack(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
