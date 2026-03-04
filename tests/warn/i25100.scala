@@ -1,5 +1,4 @@
-//> using option -language:strictEquality
-//> using option -Wunused:all
+//> using options -language:strictEquality -Werror -Wunused:all
 
 case class Foo(value: String)
 case object Bar
@@ -18,3 +17,14 @@ def main(): Unit = {
     case Bar => println("i is a Long")
   }
 }
+
+class StatusCode(val code: Int) extends AnyVal
+val Ok = StatusCode(200)
+
+def amethod =
+  given CanEqual[StatusCode, StatusCode] = CanEqual.derived
+  Ok match
+    case Ok =>
+      "ok"
+    case _ =>
+      "other"
