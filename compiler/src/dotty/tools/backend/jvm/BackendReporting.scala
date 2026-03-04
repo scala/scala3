@@ -106,31 +106,6 @@ object BackendReporting {
 
   def assertionError(message: String): Nothing = throw new AssertionError(message)
 
-  implicit class RightBiasedEither[A, B](val v: Either[A, B]) extends AnyVal {
-    //def withFilter(f: B => Boolean)(implicit empty: A): Either[A, B] = v.filterOrElse(f, empty)
-
-    /** Get the value, fail with an assertion if this is an error. */
-    def get: B = v.fold(a => assertionError(s"$a"), identity)
-
-    /*
-     * Get the right value of an `Either` by throwing a potential error message. Can simplify the
-     * implementation of methods that act on multiple `Either` instances. Instead of flat-mapping,
-     * the first error can be collected as
-     *
-     *     tryEither {
-     *       eitherOne.orThrow .... eitherTwo.orThrow ... eitherThree.orThrow
-     *     }
-     */
-    //def orThrow: B = v.fold(a => throw Invalid(a), identity)
-  }
-
-  //case class Invalid[A](e: A) extends ControlThrowable
-
-  /*
-   * See documentation of orThrow above.
-   */
-  //def tryEither[A, B](op: => Either[A, B]): Either[A, B] = try { op } catch { case Invalid(e) => Left(e.asInstanceOf[A]) }
-
   sealed trait OptimizerWarning {
     def emitWarning(settings: CompilerSettings): Boolean
   }
@@ -222,7 +197,7 @@ object BackendReporting {
 
   final case class MethodInlineInfoIncomplete(declarationClass: InternalName, name: String, descriptor: String, cause: ClassInlineInfoWarning) extends CalleeInfoWarning
   final case class MethodInlineInfoMissing(declarationClass: InternalName, name: String, descriptor: String, cause: Option[ClassInlineInfoWarning]) extends CalleeInfoWarning
-  final case class MethodInlineInfoError(declarationClass: InternalName, name: String, descriptor: String, cause: NoClassBTypeInfo) extends CalleeInfoWarning
+  final case class MethodInlineInfoError(declarationClass: InternalName, name: String, descriptor: String, cause: OptimizerWarning) extends CalleeInfoWarning
 
   sealed trait CannotInlineWarning extends OptimizerWarning {
     def calleeDeclarationClass: InternalName

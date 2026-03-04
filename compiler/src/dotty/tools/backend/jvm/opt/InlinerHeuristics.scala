@@ -55,7 +55,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     compilingMethods.map(methodNode => {
       var requests = Set.empty[InlineRequest]
       callGraph.callsites.get(methodNode).valuesIterator foreach {
-        case callsite @ Callsite(_, _, _, Right(Callee(callee, _, _, _, _, _, _, callsiteWarning)), _, _, _, pos, _, _) =>
+        case callsite @ KnownCallsite(_, _, _, Callee(callee, _, _, _, _, _, _, callsiteWarning), _, _, _, pos, _, _) =>
           inlineRequest(callsite) match {
             case Some(Right(req)) => requests += req
 
@@ -70,9 +70,9 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
               }
           }
 
-        case callsite @ Callsite(ins, _, _, Left(warning), _, _, _, pos, _, _) =>
+        case callsite @ UnknownCallsite(ins, meth, clas, pos, _, warning) =>
           if (warning.emitWarning(ppa.compilerSettings)) {
-            ppa.backendReporting.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", ppa.backendReporting.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
+            ppa.backendReporting.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", ppa.backendReporting.siteString(clas.internalName, meth.name), pos)
           }
       }
       (methodNode, requests)
@@ -92,7 +92,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
       while (rs.nonEmpty && size < limit) {
         val r = rs.head
         rs = rs.tail
-        val callee = r.callsite.callee.get.callee
+        val callee = r.callsite.callee.callee
         val cSize = methodSizes.getOrElse(callee, callee.instructions.size)
         if (size + cSize < limit) {
           res += r
@@ -124,9 +124,9 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
    *
    * @return `Some(message)` if inlining cannot be performed, `None` otherwise
    */
-  private def earlyCanInlineCheck(callsite: Callsite): Option[CannotInlineWarning] = {
+  private def earlyCanInlineCheck(callsite: KnownCallsite): Option[CannotInlineWarning] = {
     import callsite.{callsiteClass, callsiteMethod}
-    val Right(callsiteCallee) = callsite.callee: @unchecked
+    val callsiteCallee = callsite.callee
     import callsiteCallee.{callee, calleeDeclarationClass}
 
     if (isSynchronizedMethod(callee)) {
@@ -154,9 +154,9 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
    *           cannot be inlined in the end, for example if it contains instructions that would
    *           cause an IllegalAccessError in the new class; this is checked in the inliner)
    */
-  def inlineRequest(callsite: Callsite): Option[Either[OptimizerWarning, InlineRequest]] = {
-    def requestIfCanInline(callsite: Callsite, reason: InlineReason): Option[Either[OptimizerWarning, InlineRequest]] = {
-      val callee = callsite.callee.get
+  def inlineRequest(callsite: KnownCallsite): Option[Either[OptimizerWarning, InlineRequest]] = {
+    def requestIfCanInline(callsite: KnownCallsite, reason: InlineReason): Option[Either[OptimizerWarning, InlineRequest]] = {
+      val callee = callsite.callee
       val canInlineFromSource0 = canInlineFromSource(callee.sourceFilePath, callee.calleeDeclarationClass.internalName)
       if (!(callee.isStaticallyResolved && canInlineFromSource0 && !callee.isAbstract && !callee.isSpecialMethod)) {
         if (callsite.isInlineAnnotated && canInlineFromSource0) {
@@ -188,7 +188,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
 
     if (isGeneratedForwarder) None
     else {
-      val callee = callsite.callee.get
+      val callee = callsite.callee
       ppa.compilerSettings.optInlineHeuristics match {
         case "everything" =>
           requestIfCanInline(callsite, AnnotatedInline)
@@ -234,13 +234,13 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
                 val css = callGraph.callsites.get(callee.callee)
                 if (css.sizeIs == 1) css.head._2 else null
               } match {
-                case null => null
-                case traitMethodCallsite =>
-                  val tmCallee = traitMethodCallsite.callee.get
+                case traitMethodCallsite: KnownCallsite =>
+                  val tmCallee = traitMethodCallsite.callee
                   val traitMethodForwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(
                     tmCallee.callee, tmCallee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
                   if (traitMethodForwarderKind > 0) GenericForwarder
                   else null
+                case _ => null
               }
             } else {
               val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
@@ -376,13 +376,13 @@ object InlinerHeuristics {
   }
 }
 
-final case class InlineRequest(callsite: Callsite, reason: InlineReason, logAnyInline: Boolean, inlineEverything: Boolean) {
+final case class InlineRequest(callsite: KnownCallsite, reason: InlineReason, logAnyInline: Boolean, inlineEverything: Boolean) {
   // non-null if `-Yopt-log-inline` is active, it explains why the callsite was selected for inlining
   def logText: String | Null =
     if (logAnyInline) null
     else if (inlineEverything) "-Yopt-inline-heuristics:everything is enabled"
     else {
-      val callee = callsite.callee.get
+      val callee = callsite.callee
       reason match {
         case AnnotatedInline =>
           val what = if (callee.annotatedInline) "callee" else "callsite"
