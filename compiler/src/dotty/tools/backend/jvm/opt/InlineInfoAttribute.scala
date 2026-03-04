@@ -16,8 +16,6 @@ package opt
 
 import scala.collection.mutable
 import scala.tools.asm.*
-import dotty.tools.backend.jvm.opt.{InlineInfo, MethodInlineInfo}
-import dotty.tools.backend.jvm.BackendReporting.UnknownScalaInlineInfoVersion
 
 /**
  * This attribute stores the InlineInfo for a ClassBType as an independent classfile attribute.

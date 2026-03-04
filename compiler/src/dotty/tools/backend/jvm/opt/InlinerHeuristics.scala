@@ -23,7 +23,6 @@ import scala.tools.asm.tree.MethodNode
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting.{CalleeNotFinal, CannotInlineWarning, NoBytecode, OptimizerWarning, StrictfpMismatch, SynchronizedMethod}
 import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
 import PostProcessorFrontendAccess.Lazy
@@ -65,7 +64,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
               }
 
             case None =>
-              if (callsiteWarning.isDefined && callsiteWarning.get.emitWarning(ppa.compilerSettings)) {
+              if (callsiteWarning.exists(_.emitWarning(ppa.compilerSettings))) {
                 ppa.backendReporting.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", ppa.backendReporting.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
               }
           }

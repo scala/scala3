@@ -4,7 +4,6 @@ package jvm
 
 import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
-import BackendReporting.{NoClassBTypeInfo, OptimizerWarning}
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
@@ -77,7 +76,7 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
     frontendAccess.perRunLazy(new ConcurrentHashMap[InternalName, ClassBType])
 
   /** See doc of ClassBType.apply. This is where to use that method from. */
-  def classBType(internalName: InternalName)(init: ClassBType => Either[OptimizerWarning, ClassInfo]): Either[OptimizerWarning, ClassBType] =
+  def classBType[T](internalName: InternalName)(init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] =
     ClassBType(internalName, this, classBTypeCache.get)(init)
 
   /** See doc of ClassBType.apply. This is where to use that method from. Version that cannot fail. */

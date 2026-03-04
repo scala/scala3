@@ -1,7 +1,6 @@
 package dotty.tools.backend.jvm.opt
 
 import scala.jdk.CollectionConverters.*
-import dotty.tools.backend.jvm.BackendReporting.{ClassNotFoundWhenBuildingInlineInfoFromSymbol, NoInlineInfoAttribute}
 import dotty.tools.backend.jvm.*
 
 import dotty.tools.dotc.core.Contexts.*
@@ -44,7 +43,7 @@ import scala.tools.asm.tree.{ClassNode, ModuleNode}
 final case class InlineInfo(isEffectivelyFinal: Boolean,
                             sam: Option[String],
                             methodInfos: collection.SortedMap[(String, String), MethodInlineInfo],
-                            warning: Option[BackendReporting.ClassInlineInfoWarning],
+                            warning: Option[ClassInlineInfoWarning],
                             isAccessible: Boolean) {
   lazy val methodInfosSorted: IndexedSeq[((String, String), MethodInlineInfo)] = {
     val result = new Array[((String, String), MethodInlineInfo)](methodInfos.size)
