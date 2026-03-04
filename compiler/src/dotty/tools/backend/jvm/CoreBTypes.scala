@@ -77,8 +77,12 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
     frontendAccess.perRunLazy(new ConcurrentHashMap[InternalName, ClassBType])
 
   /** See doc of ClassBType.apply. This is where to use that method from. */
-  def classBType[T](internalName: InternalName, t: T)(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType =
-    ClassBType(internalName, t, this, classBTypeCache.get)(init)
+  def classBType(internalName: InternalName)(init: ClassBType => Either[NoClassBTypeInfo, ClassInfo]): Either[NoClassBTypeInfo, ClassBType] =
+    ClassBType(internalName, this, classBTypeCache.get)(init)
+    
+  /** See doc of ClassBType.apply. This is where to use that method from. Version that cannot fail. */
+  def classBType(internalName: InternalName)(init: ClassBType => ClassInfo): ClassBType =
+    ClassBType(internalName, this, classBTypeCache.get)(ct => Right(init(ct))).fold(_ => assert(false), identity)
 
   /** Obtain a previously constructed ClassBType for a given internal name. */
   def classBTypeFromInternalName(internalName: InternalName): Option[ClassBType] =

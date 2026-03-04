@@ -100,7 +100,7 @@ sealed trait BType {
    * promotions (e.g. BYTE to INT). Its operation can be visualized more easily in terms of the
    * Java bytecode type hierarchy.
    */
-  final def conformsTo(other: BType): Either[NoClassBTypeInfo, Boolean] = tryEither(Right({
+  final def conformsTo(other: BType): Boolean = {
     assert(isRef || isPrimitive, s"conformsTo cannot handle $this")
     assert(other.isRef || other.isPrimitive, s"conformsTo cannot handle $other")
 
@@ -112,14 +112,14 @@ sealed trait BType {
             // Array[Short]().isInstanceOf[Array[Int]] is false
             // but Array[String]().isInstanceOf[Array[Object]] is true
             if (component.isPrimitive || otherComponent.isPrimitive) component == otherComponent
-            else component.conformsTo(otherComponent).orThrow
+            else component.conformsTo(otherComponent)
           case _ => false
         }
 
       case classType: ClassBType =>
         // Quick test for Object to make a common case fast
         other.isObjectType || (other match {
-          case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType).orThrow
+          case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType)
           case _ => false
         })
 
@@ -136,7 +136,7 @@ sealed trait BType {
           case _ => false
         })
     }
-  }))
+  }
 
   /**
    * Compute the upper bound of two types.
@@ -780,14 +780,14 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
    *   B.info.nestedInfo.outerClass == A
    *   A.info.memberClasses contains B
    */
-  private var _info: Either[NoClassBTypeInfo, ClassInfo] = null
+  private var _info: ClassInfo | Null = null
 
-  def info: Either[NoClassBTypeInfo, ClassInfo] = {
+  def info: ClassInfo = {
     assert(_info != null, s"ClassBType.info not yet assigned: $this")
-    _info
+    _info.nn
   }
 
-  def info_=(i: Either[NoClassBTypeInfo, ClassInfo]): Unit = {
+  def info_=(i: ClassInfo): Unit = {
     assert(_info == null, s"Cannot set ClassBType.info multiple times: $this")
     _info = i
     checkInfoConsistency()
@@ -809,19 +809,17 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
     def isJLO(t: ClassBType) = t.internalName == "java/lang/Object"
 
     assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
-
-    if info.isRight then
-      assert(
-        if (info.get.superClass.isEmpty) { isJLO(this) || ClassBType.hasNoSuper(internalName) }
-        else if (isInterface.get) isJLO(info.get.superClass.get)
-        else !isJLO(this) && ifInit(info.get.superClass.get)(!_.isInterface.get),
-        s"Invalid superClass in $this: ${info.get.superClass}"
-      )
-      assert(
-        info.get.interfaces.forall(c => ifInit(c)(_.isInterface.get)),
-        s"Invalid interfaces in $this: ${info.get.interfaces}"
-      )
-      assert(info.get.nestedClasses.forall(c => ifInit(c)(_.isNestedClass.get)), info.get.nestedClasses)
+    assert(
+      if (info.superClass.isEmpty) { isJLO(this) || ClassBType.hasNoSuper(internalName) }
+      else if (isInterface) isJLO(info.superClass.get)
+      else !isJLO(this) && ifInit(info.superClass.get)(!_.isInterface),
+      s"Invalid superClass in $this: ${info.superClass}"
+    )
+    assert(
+      info.interfaces.forall(c => ifInit(c)(_.isInterface)),
+      s"Invalid interfaces in $this: ${info.interfaces}"
+    )
+    assert(info.nestedClasses.forall(c => ifInit(c)(_.isNestedClass)), info.nestedClasses)
   }
 
   /**
@@ -829,19 +827,17 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
    */
   def simpleName: String = internalName.split("/").last
 
-  def isInterface: Either[NoClassBTypeInfo, Boolean] = info.map(i => (i.flags & asm.Opcodes.ACC_INTERFACE) != 0)
+  def isInterface: Boolean = (info.flags & asm.Opcodes.ACC_INTERFACE) != 0
 
   /** The super class chain of this type, starting with Object, ending with `this`. */
-  def superClassesChain: Either[NoClassBTypeInfo, List[ClassBType]] = try {
+  def superClassesChain: List[ClassBType] = {
     var res = List(this)
-    var sc = info.orThrow.superClass
+    var sc = info.superClass
     while (sc.nonEmpty) {
       res ::= sc.get
-      sc = sc.get.info.orThrow.superClass
+      sc = sc.get.info.superClass
     }
-    Right(res)
-  } catch {
-    case Invalid(noInfo: NoClassBTypeInfo) => Left(noInfo)
+    res
   }
 
   /**
@@ -855,19 +851,15 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
     }
   }
 
-  def isPublic: Either[NoClassBTypeInfo, Boolean] = info.map(i => (i.flags & asm.Opcodes.ACC_PUBLIC) != 0)
+  def isPublic: Boolean = (info.flags & asm.Opcodes.ACC_PUBLIC) != 0
 
-  def isNestedClass: Either[NoClassBTypeInfo, Boolean] = info.map(_.nestedInfo.isDefined)
+  def isNestedClass: Boolean = info.nestedInfo.isDefined
 
-  def enclosingNestedClassesChain: Either[NoClassBTypeInfo, List[ClassBType]] = {
-    isNestedClass.flatMap(isNested => {
-      // if isNested is true, we know that info.get is defined, and nestedInfo.get is also defined.
-      if (isNested) info.get.nestedInfo.get.enclosingClass.enclosingNestedClassesChain.map(this :: _)
-      else Right(Nil)
-    })
-  }
+  def enclosingNestedClassesChain: List[ClassBType] = info.nestedInfo match
+    case Some(ni) => this :: ni.enclosingClass.enclosingNestedClassesChain
+    case None => Nil
 
-  def innerClassAttributeEntry: Either[NoClassBTypeInfo, Option[InnerClassEntry]] = info.map(i => i.nestedInfo map {
+  def innerClassAttributeEntry: Option[InnerClassEntry] = info.nestedInfo map {
     case NestedInfo(_, outerName, innerName, isStaticNestedClass) =>
       // the static flag in the InnerClass table has a special meaning, see InnerClass comment
       def adjustStatic(flags: Int): Int = (flags & ~Opcodes.ACC_STATIC |
@@ -877,27 +869,25 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
         internalName,
         outerName.orNull,
         innerName.orNull,
-        flags = adjustStatic(i.flags)
+        flags = adjustStatic(info.flags)
       )
-  })
+  }
 
-  def isSubtypeOf(other: ClassBType): Either[NoClassBTypeInfo, Boolean] = try {
-    if (this == other) return Right(true)
-    if (isInterface.orThrow) {
-      if (other == ts.ObjectRef) return Right(true) // interfaces conform to Object
-      if (!other.isInterface.orThrow) return Right(false)   // this is an interface, the other is some class other than object. interfaces cannot extend classes, so the result is false.
+  def isSubtypeOf(other: ClassBType): Boolean = {
+    if (this == other) return true
+    if (isInterface) {
+      if (other == ts.ObjectRef) return true // interfaces conform to Object
+      if (!other.isInterface) return false   // this is an interface, the other is some class other than object. interfaces cannot extend classes, so the result is false.
       // else: this and other are both interfaces. continue to (*)
     } else {
-      val sc = info.orThrow.superClass
-      if (sc.isDefined && sc.get.isSubtypeOf(other).orThrow) return Right(true) // the superclass of this class conforms to other
-      if (!other.isInterface.orThrow) return Right(false) // this and other are both classes, and the superclass of this does not conform
+      val sc = info.superClass
+      if (sc.isDefined && sc.get.isSubtypeOf(other)) return true // the superclass of this class conforms to other
+      if (!other.isInterface) return false // this and other are both classes, and the superclass of this does not conform
       // else: this is a class, the other is an interface. continue to (*)
     }
 
     // (*) check if some interface of this class conforms to other.
-    Right(info.orThrow.interfaces.exists(_.isSubtypeOf(other).orThrow))
-  } catch {
-    case Invalid(noInfo: NoClassBTypeInfo) => Left(noInfo)
+    info.interfaces.exists(_.isSubtypeOf(other))
   }
 
   /**
@@ -907,31 +897,29 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
    *   http://comments.gmane.org/gmane.comp.java.vm.languages/2293
    *   https://issues.scala-lang.org/browse/SI-3872
    */
-  def jvmWiseLUB(other: ClassBType): Either[NoClassBTypeInfo, ClassBType] = {
+  def jvmWiseLUB(other: ClassBType): ClassBType = {
     def isNotNullOrNothing(c: ClassBType) = !c.isNullType && !c.isNothingType
     assert(isNotNullOrNothing(this) && isNotNullOrNothing(other), s"jvmWiseLUB for null or nothing: $this - $other")
 
-    tryEither {
-      val res: ClassBType = (this.isInterface.orThrow, other.isInterface.orThrow) match {
-        case (true, true) =>
-          // exercised by test/files/run/t4761.scala
-          if (other.isSubtypeOf(this).orThrow) this
-          else if (this.isSubtypeOf(other).orThrow) other
-          else ts.ObjectRef
+    val res: ClassBType = (this.isInterface, other.isInterface) match {
+      case (true, true) =>
+        // exercised by test/files/run/t4761.scala
+        if (other.isSubtypeOf(this)) this
+        else if (this.isSubtypeOf(other)) other
+        else ts.ObjectRef
 
-        case (true, false) =>
-          if (other.isSubtypeOf(this).orThrow) this else ts.ObjectRef
+      case (true, false) =>
+        if (other.isSubtypeOf(this)) this else ts.ObjectRef
 
-        case (false, true) =>
-          if (this.isSubtypeOf(other).orThrow) other else ts.ObjectRef
+      case (false, true) =>
+        if (this.isSubtypeOf(other)) other else ts.ObjectRef
 
-        case _ =>
-          firstCommonSuffix(superClassesChain.orThrow, other.superClassesChain.orThrow)
-      }
-
-      assert(isNotNullOrNothing(res), s"jvmWiseLUB computed: $res")
-      Right(res)
+      case _ =>
+        firstCommonSuffix(superClassesChain, other.superClassesChain)
     }
+
+    assert(isNotNullOrNothing(res), s"jvmWiseLUB computed: $res")
+    res
   }
 
   private def firstCommonSuffix(as: List[ClassBType], bs: List[ClassBType]): ClassBType = {
@@ -965,9 +953,10 @@ object ClassBType {
    * @tparam T           The type of the state that will be threaded into the `init` function.
    * @return             The `ClassBType`
    */
-  final def apply[T](internalName: InternalName, t: T, ts: CoreBTypes, cache: ConcurrentHashMap[InternalName, ClassBType])(init: (ClassBType, T) => Either[NoClassBTypeInfo, ClassInfo]): ClassBType = {
+  final def apply[T](internalName: InternalName, ts: CoreBTypes, cache: ConcurrentHashMap[InternalName, ClassBType])
+                    (init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] = {
     val cached = cache.get(internalName)
-    if cached ne null then cached
+    if cached ne null then Right(cached)
     else {
       val newRes = new ClassBType(internalName, ts)
       // synchronized is required to ensure proper initialization of info.
@@ -975,11 +964,12 @@ object ClassBType {
       newRes.synchronized {
         cache.putIfAbsent(internalName, newRes) match {
           case null =>
-            newRes._info = init(newRes, t)
-            newRes.checkInfoConsistency()
-            newRes
-        case old =>
-            old
+            init(newRes).map(ci => {
+              newRes.info = ci
+              newRes
+            })
+          case old =>
+            Right(old)
         }
       }
     }
@@ -1051,11 +1041,11 @@ object BTypes {
    * (A2) C and D are members of the same run-time package
    */
   @tailrec
-  final def classIsAccessible(accessed: BType, from: ClassBType): Either[OptimizerWarning, Boolean] = (accessed: @unchecked) match {
+  final def classIsAccessible(accessed: BType, from: ClassBType): Boolean = (accessed: @unchecked) match {
     // TODO: A2 requires "same run-time package", which seems to be package + classloader (JVMS 5.3.). is the below ok?
-    case c: ClassBType => c.isPublic.map(_ || c.packageInternalName == from.packageInternalName)
+    case c: ClassBType => c.isPublic || c.packageInternalName == from.packageInternalName
     case a: ArrayBType => classIsAccessible(a.elementType, from)
-    case _: PrimitiveBType => Right(true)
+    case _: PrimitiveBType => true
   }
 
   /**
@@ -1093,7 +1083,7 @@ object BTypes {
    *                        available. Once we have a type propagation analysis implemented, we can extract the receiver
    *                        type from there (https://github.com/scala-opt/scala/issues/13).
    */
-  def memberIsAccessible(memberFlags: Int, memberDeclClass: ClassBType, memberRefClass: ClassBType, from: ClassBType): Either[OptimizerWarning, Boolean] = {
+  def memberIsAccessible(memberFlags: Int, memberDeclClass: ClassBType, memberRefClass: ClassBType, from: ClassBType): Boolean = {
     // TODO: B3 requires "same run-time package", which seems to be package + classloader (JVMS 5.3.). is the below ok?
     def samePackageAsDestination = memberDeclClass.packageInternalName == from.packageInternalName
 
@@ -1103,32 +1093,26 @@ object BTypes {
       val key = (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE) & memberFlags
       key match {
         case ACC_PUBLIC => // B1
-          Right(true)
+          true
 
         case ACC_PROTECTED => // B2
           val isStatic = (ACC_STATIC & memberFlags) != 0
-          tryEither {
-            val condB2 = from.isSubtypeOf(memberDeclClass).orThrow && {
-              isStatic || memberRefClass.isSubtypeOf(from).orThrow || from.isSubtypeOf(memberRefClass).orThrow
-            }
-            Right(
-              (condB2 || samePackageAsDestination /* B3 (protected) */) &&
-                (isStatic || targetObjectConformsToDestinationClass) // (P)
-            )
+          val condB2 = from.isSubtypeOf(memberDeclClass) && {
+            isStatic || memberRefClass.isSubtypeOf(from) || from.isSubtypeOf(memberRefClass)
           }
+          (condB2 || samePackageAsDestination /* B3 (protected) */) &&
+            (isStatic || targetObjectConformsToDestinationClass) // (P)
+
 
         case 0 => // B3 (default access)
-          Right(samePackageAsDestination)
+          samePackageAsDestination
 
         case ACC_PRIVATE => // B4
-          Right(memberDeclClass == from)
+          memberDeclClass == from
       }
     }
 
-    classIsAccessible(memberDeclClass, from) match { // B0
-      case Right(true) => memberIsAccessibleImpl
-      case r => r
-    }
+    classIsAccessible(memberDeclClass, from) && memberIsAccessibleImpl // B0
   }
 
   /**
