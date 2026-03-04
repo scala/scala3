@@ -23,7 +23,6 @@ import scala.tools.asm.Type
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
 import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.backend.jvm.AsmUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.analysis.*
@@ -267,7 +266,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
               case Some(inlinedCallsite) =>
                 val callsite = inlinedCallsite.eliminatedCallsite
                 val w = inlinedCallsite.warning.get
-                state.inlineLog.logRollback(callsite, s"Instruction ${AsmUtils.textify(notInlinedIllegalInsn)} would cause an IllegalAccessError, and is not selected for (or failed) inlining", state.outerCallsite(notInlinedIllegalInsn))
+                state.inlineLog.logRollback(callsite, s"Instruction ${LogUtils.textify(notInlinedIllegalInsn)} would cause an IllegalAccessError, and is not selected for (or failed) inlining", state.outerCallsite(notInlinedIllegalInsn))
                 if (w.emitWarning(ppa.compilerSettings))
                   ppa.backendReporting.optimizerWarning(
                     em"${w.toString + inlineChainSuffix(callsite, state.inlineChain(callsite.callsiteInstruction, skipForwarders = true))}",
@@ -739,13 +738,13 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
 
     def calleeDesc = s"$callee.name} of type ${callee.desc} in ${callsiteCallee.calleeDeclarationClass.internalName}"
 
-    def methodMismatch = s"Wrong method node for inlining ${textify(callsite.callsiteInstruction)}: $calleeDesc"
+    def methodMismatch = s"Wrong method node for inlining ${LogUtils.textify(callsite.callsiteInstruction)}: $calleeDesc"
 
     assert(callsite.callsiteInstruction.name == callee.name, methodMismatch)
     assert(callsite.callsiteInstruction.desc == callee.desc, methodMismatch)
     assert(!isConstructor(callee), s"Constructors cannot be inlined: $calleeDesc")
     assert(!BCodeUtils.isAbstractMethod(callee), s"Callee is abstract: $calleeDesc")
-    assert(callsite.callsiteMethod.instructions.contains(callsite.callsiteInstruction), s"Callsite ${textify(callsite.callsiteInstruction)} is not an instruction of ${callsite.callsiteClass}.${callsite.callsiteMethod.name}${callsite.callsiteMethod.desc}")
+    assert(callsite.callsiteMethod.instructions.contains(callsite.callsiteInstruction), s"Callsite ${LogUtils.textify(callsite.callsiteInstruction)} is not an instruction of ${callsite.callsiteClass}.${callsite.callsiteMethod.name}${callsite.callsiteMethod.desc}")
 
     // When an exception is thrown, the stack is cleared before jumping to the handler. When
     // inlining a method that catches an exception, all values that were on the stack before the
@@ -759,7 +758,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
         case INVOKEVIRTUAL | INVOKESPECIAL | INVOKEINTERFACE => 1
         case INVOKESTATIC => 0
         case INVOKEDYNAMIC =>
-          assertionError(s"Unexpected opcode, cannot inline ${textify(callsite.callsiteInstruction)}")
+          assertionError(s"Unexpected opcode, cannot inline ${LogUtils.textify(callsite.callsiteInstruction)}")
       })
       callsite.callsiteStackHeight > expectedArgs
     }
@@ -1245,7 +1244,7 @@ object InlineLog {
           s"${indentString}inlined ${calleeString(r)} (${r.logText}). Before: $sizeBefore ins, after: $sizeAfter ins."
 
         case InlineLogRewrite(closureInit, invocations) =>
-          s"${indentString}rewrote invocations of closure allocated in ${closureInit.ownerClass.internalName}.${closureInit.ownerMethod.name} with body ${closureInit.lambdaMetaFactoryCall.implMethod.getName}: ${invocations.map(AsmUtils.textify).mkString(", ")}"
+          s"${indentString}rewrote invocations of closure allocated in ${closureInit.ownerClass.internalName}.${closureInit.ownerMethod.name} with body ${closureInit.lambdaMetaFactoryCall.implMethod.getName}: ${invocations.map(LogUtils.textify).mkString(", ")}"
 
         case InlineLogFail(r, w) =>
           s"${indentString}failed ${calleeString(r)} (${r.logText}). ${w.toString.replace('\n', ' ')}"

@@ -397,7 +397,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       def runQueue(): Unit = while (queue.nonEmpty) {
         val ProducedValue(prod, size) = queue.dequeue()
 
-        def prodString = s"Producer ${AsmUtils.textify(prod)}@${method.instructions.indexOf(prod)}\n${AsmUtils.textify(method)}"
+        def prodString = s"Producer ${LogUtils.textify(prod)}@${method.instructions.indexOf(prod)}\n${LogUtils.textify(method)}"
         def popAfterProd(): Unit = toInsertAfter(prod) = getPop(size)
 
         (prod.getOpcode: @switch) match {
@@ -570,7 +570,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
   }
 
   private case class ProducedValue(producer: AbstractInsnNode, size: Int) {
-    override def toString = s"<${AsmUtils.textify(producer)}>"
+    override def toString = s"<${LogUtils.textify(producer)}>"
   }
 
   /**
@@ -742,6 +742,6 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
 sealed trait RemovePairDependency
 case class RemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: List[RemovePairDependency]) extends RemovePairDependency {
-  override def toString = s"<${AsmUtils.textify(store)},${AsmUtils.textify(other)}> [$depends]"
+  override def toString = s"<${LogUtils.textify(store)},${LogUtils.textify(other)}> [$depends]"
 }
 case class LabelNotLive(label: LabelNode) extends RemovePairDependency

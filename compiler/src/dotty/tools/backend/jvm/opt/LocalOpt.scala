@@ -213,7 +213,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
       case _ => false
     }
     def traceIfChanged(optName: String): Unit = if (doTrace) {
-      val after = AsmUtils.textify(method)
+      val after = LogUtils.textify(method)
       if (currentTrace != after) {
         println(s"after $optName in ${method.name}")
         println(after)
