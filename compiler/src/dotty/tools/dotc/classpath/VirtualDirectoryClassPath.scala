@@ -38,12 +38,13 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   def asURLs: Seq[URL] = Seq(new URI(dir.name).toURL)
   def asClassPathStrings: Seq[String] = Seq(dir.path)
 
-  def findClassFile(className: String): Option[AbstractFile] = {
+  override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
     val pathSeq = FileUtils.dirPath(className).split(java.io.File.separator)
     val parentDir = lookupPath(dir)(pathSeq.init.toSeq, directory = true)
     if parentDir == null then None
     else
-      Option(lookupPath(parentDir)(pathSeq.last + ".class" :: Nil, directory = false))
+      Option(lookupPath(parentDir)(pathSeq.last + ".class" :: Nil, directory = false),
+        Option.when(findModule)(lookupPath(parentDir)("module-info.class" :: Nil, directory = false)))
   }
 
   private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = files(inPackage)
