@@ -18,6 +18,11 @@ object Result:
       case err: Err[_] => Err(f(err.value))
       case ok: Ok[_] => ok
 
+    /** Replace OK values, propagate Errs */
+    def ifOK[U](u: => U): Result[U, E] = r match
+      case ok: Ok[_] => Ok(u)
+      case err: Err[_] => err
+
     /** Map Ok values, propagate Errs */
     def map[U](f: T => U): Result[U, E] = r match
       case Ok(x) => Ok(f(x))

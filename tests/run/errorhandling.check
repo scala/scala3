@@ -2,3 +2,9 @@ breakTest
 optTest
 resultTest
 Person(Kostas,5)
+Ok(Form(Bob,21))
+Err(List(bob does not start with uppercase letter))
+Err(List(Age 16 is below minimum age 18))
+Err(List(Missing confirmation))
+Err(List(bob does not start with uppercase letter, Age 16 is below minimum age 18, Missing confirmation))
+Err(List(Missing name))
