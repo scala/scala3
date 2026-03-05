@@ -174,7 +174,7 @@ For the last two cases, where a default arg shadows an implicit value, the compi
 Argument for implicit parameter s was supplied using a default argument.
 ```
 
-Class contructors are handled the same way, except that they are inherently mixed,
+Class constructors are handled the same way, except that they are inherently mixed,
 since classes always have an explicit parameter list (which may be empty).
 
 For example,
