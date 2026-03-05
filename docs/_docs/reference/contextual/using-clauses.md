@@ -130,6 +130,74 @@ f(global)(using ctx)(using sym, kind)
 
 But `f(global)(using sym, kind)` would give a type error.
 
+## Explicit `using` Clauses
+
+Missing arguments to an application can be supplied by either implicit search or default arguments.
+
+For an explicit application, with either explicit parameters or implicit parameters supplied with explicit `using`,
+missing arguments are filled in by defaults. Additionally, any remaining implicit parameters are supplied,
+if an implicit value is available.
+
+For an implicit application of context parameters, where arguments were not supplied explicitly, implicit values
+are supplied if they are available, and default arguments used for any that are missing.
+
+In other words, for a context parameter with a default argument, whether an implicit value is supplied
+or the default arg depends on whether the application has explicit `using`.
+
+As an illustration,
+
+```scala
+
+def f(using p: Boolean, i: Int, s: String = "hello, world") = s"p=$p, i=$i, s=$s"
+
+given Boolean = true
+given Int = 42
+given String = "contextual"
+
+f // all args are supplied implicitly from scope, since implicit values are available
+
+f(using p = false, i = 27, s = "explicit") // all args are explicit
+
+f(using s = "partial") // one arg is explicit, others are implicit
+
+f(using i = 27, s = "partial") // only one arg is supplied implicitly
+
+f(using p = false, i = 27) // for explicit using, the missing arg is supplied from the default arg
+
+f(using p = false) // one default arg and one implicit value
+
+```
+
+For the last two cases, where a default arg shadows an implicit value, the compiler warns:
+
+```
+Argument for implicit parameter s was supplied using a default argument.
+```
+
+Class constructors are handled the same way, except that they are inherently mixed,
+since classes always have an explicit parameter list (which may be empty).
+
+For example,
+
+```scala
+
+class C(using p: Boolean, i: Int, s: String = "hello, world"):
+  override def toString = s"p=$p, i=$i, s=$s"
+
+new C // same as new C(summon[Boolean], summon[Int], summon[String])()
+```
+
+Observe that the explicit parameter list is appended to the signature.
+
+```scala
+
+C() // same as new C, where the implicit arguments are inserted before the explicit contructor proxy parens
+C(using p = false, i = 27, s = "explicit") // explicit using, with empty parens supplied as for new C
+C(using s = "partial")() // the trailing parens are required when args are previously inferred
+
+```
+
+(Scala 2 `implicit` parameter lists are always trailing, even for constructors.)
 
 ## Summoning Instances
 
