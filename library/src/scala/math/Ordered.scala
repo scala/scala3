@@ -56,6 +56,8 @@ import scala.language.implicitConversions
  *  provide it yourself either when inheriting or instantiating.
  *
  *  @see [[scala.math.Ordering]], [[scala.math.PartiallyOrdered]]
+ *
+ *  @tparam A the type of the objects that this object can be compared to
  */
 trait Ordered[A] extends Any with java.lang.Comparable[A] {
 
@@ -70,13 +72,22 @@ trait Ordered[A] extends Any with java.lang.Comparable[A] {
    *   - `x == 0` when `this == that`
    *
    *   - `x > 0` when  `this > that`
+   *
+   *  @param that the instance to compare against
+   *  @return an integer whose sign indicates the ordering relation between `this` and `that`
    */
   def compare(that: A): Int
 
-  /** Returns true if `this` is less than `that` */
+  /** Returns true if `this` is less than `that`
+   *
+   *  @param that the instance to compare against
+   */
   def <  (that: A): Boolean = (this compare that) <  0
 
-  /** Returns true if `this` is greater than `that`. */
+  /** Returns true if `this` is greater than `that`.
+   *
+   *  @param that the instance to compare against
+   */
   def >  (that: A): Boolean = (this compare that) >  0
 
   /** Returns true if `this` is less than or equal to `that`. */
@@ -85,12 +96,20 @@ trait Ordered[A] extends Any with java.lang.Comparable[A] {
   /** Returns true if `this` is greater than or equal to `that`. */
   def >= (that: A): Boolean = (this compare that) >= 0
 
-  /** Result of comparing `this` with operand `that`. */
+  /** Result of comparing `this` with operand `that`.
+   *
+   *  @param that the instance to compare against
+   */
   def compareTo(that: A): Int = compare(that)
 }
 
 object Ordered {
-  /** Lens from `Ordering[T]` to `Ordered[T]`. */
+  /** Lens from `Ordering[T]` to `Ordered[T]`.
+   *
+   *  @tparam T the type of the value to be wrapped as `Ordered`
+   *  @param x the value to be converted to an `Ordered` instance
+   *  @param ord the implicit `Ordering` instance used to perform comparisons
+   */
   implicit def orderingToOrdered[T](x: T)(implicit ord: Ordering[T]): Ordered[T] =
     new Ordered[T] { def compare(that: T): Int = ord.compare(x, that) }
 }
