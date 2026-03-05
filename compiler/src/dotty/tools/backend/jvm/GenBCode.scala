@@ -47,13 +47,7 @@ class GenBCode extends Phase { self =>
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then {
-      def extractMainClasses(tree: Tree): List[String] = tree match {
-        case PackageDef(_, stats) => stats.flatMap(extractMainClasses)
-        case td: TypeDef if ctx.platform.hasMainMethod(td.symbol) =>
-          List(td.symbol.fullName.stripModuleClassSuffix.toString)
-        case _ => Nil
-      }
-      _postProcessor = new PostProcessor(extractMainClasses(ctx.compilationUnit.tpdTree), frontendAccess, bTypes)
+      _postProcessor = new PostProcessor(frontendAccess, bTypes)
     }
     _postProcessor.nn
   }

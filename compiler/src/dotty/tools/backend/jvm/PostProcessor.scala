@@ -14,23 +14,11 @@ import scala.tools.asm.tree.ClassNode
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(mainClasses: List[String], frontendAccess: PostProcessorFrontendAccess, ts: CoreBTypes)(using Context) {
+class PostProcessor(frontendAccess: PostProcessorFrontendAccess, ts: CoreBTypes)(using Context) {
 
   private val backendUtils = new BackendUtils(frontendAccess, ts)
   private val classfileWriters = new ClassfileWriters(frontendAccess)
-  private val classfileWriter = {
-    val jarManifestMainClass: Option[String] = frontendAccess.compilerSettings.mainClass.orElse {
-      mainClasses match {
-        case List(name) => Some(name)
-        case es =>
-          if es.isEmpty then frontendAccess.backendReporting.log("No Main-Class designated or discovered.")
-          else frontendAccess.backendReporting.log(s"No Main-Class due to multiple entry points:\n  ${es.mkString("\n  ")}")
-          None
-      }
-    }
-    classfileWriters.ClassfileWriter(jarManifestMainClass)
-  }
-
+  private val classfileWriter = classfileWriters.ClassfileWriter(frontendAccess.compilerSettings.mainClass)
 
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
