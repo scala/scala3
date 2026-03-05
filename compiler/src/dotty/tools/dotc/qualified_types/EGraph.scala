@@ -193,8 +193,11 @@ final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
   private inline def show(enode: ENode): String =
     enode.showNoBreak(using _ctx)
 
-  private inline def trace[T](inline message: String)(inline f: T): T =
-    reporting.trace(message, Printers.qualifiedTypes)(f)(using _ctx)
+  private inline def trace[T](inline message: String, inline force: Boolean = false)(inline f: T): T =
+    if force then
+      reporting.trace.force(message, Printers.qualifiedTypes)(f)(using _ctx)
+    else
+      reporting.trace(message, Printers.qualifiedTypes)(f)(using _ctx)
 
   def equiv(node1: ENode, node2: ENode): Boolean =
     trace(s"equiv ${show(node1)}, ${show(node2)}"):
