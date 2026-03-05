@@ -541,7 +541,6 @@ class DependencyRecorder {
    *  This is backed by a cache which is invalidated when `ctx.owner` changes.
    */
   private def resolveDependencyFromClass(using Context): Symbol = {
-    import dotty.tools.uncheckedNN
     if (lastOwner != ctx.owner) {
       lastOwner = ctx.owner
       val source = nonLocalEnclosingClass

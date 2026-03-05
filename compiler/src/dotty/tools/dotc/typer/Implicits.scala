@@ -2167,12 +2167,10 @@ sealed class TermRefSet(using Context):
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    def handle(sym: TermSymbol | Null, prefixes: Type | List[Type] | Null): Unit =
-      // We cannot use `.nn` here due to inference issue.
-      val prefixes0: Type | List[Type] = prefixes.uncheckedNN
-      prefixes0 match
-        case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
+    def handle(sym: TermSymbol, prefixes: Type | List[Type]): Unit =
+      prefixes match
+        case prefix: Type => f(TermRef(prefix, sym))
+        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym)))
     elems.forEach(handle)
 
   // used only for debugging

@@ -59,7 +59,7 @@ object TestConfiguration {
       Properties.jlineReader,
   ))
 
-  lazy val replWithStagingClasspath = 
+  lazy val replWithStagingClasspath =
     replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   def mkClasspath(classpaths: List[String]): String =
@@ -96,7 +96,7 @@ object TestConfiguration {
     "-Yprint-pos-syms"
   )
   val picklingWithCompilerOptions =
-    picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+    picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
   val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
 

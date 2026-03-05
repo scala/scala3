@@ -178,7 +178,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
         case null                    => addEntryAt(bucket, elem, h, oldHead)
         case _                       =>
           val entryElem = entry.get
-          if entryElem != null && isEqual(elem, entryElem) then entryElem.uncheckedNN
+          if entryElem != null && isEqual(elem, entryElem) then entryElem
           else linkedListLoop(entry.tail)
       }
 
@@ -296,7 +296,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
           assert(entry.get != null, s"$entry had a null value indicated that gc activity was happening during diagnostic validation or that a null value was inserted")
           computedCount += 1
           val cachedHash = entry.hash
-          val realHash = hash(entry.get.uncheckedNN)
+          val realHash = hash(entry.get)
           assert(cachedHash == realHash, s"for $entry cached hash was $cachedHash but should have been $realHash")
           val computedBucket = index(realHash)
           assert(computedBucket == bucket, s"for $entry the computed bucket was $computedBucket but should have been $bucket")
