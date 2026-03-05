@@ -334,8 +334,18 @@ object SymbolLoaders {
             if (packageName.isEmpty) fullName
             else fullName.substring(packageName.length + 1).nn
 
-          enterPackage(root.symbol, name.toTermName,
-            (module, modcls) => new PackageLoader(module, classPath))
+          // If the directory name conflicts with an existing class or object,
+          // verify it actually contains class/tasty files or sub-packages before
+          // treating it as a package. Spurious directories (e.g., created by a
+          // compiler plugin writing non-class files) should not shadow existing
+          // definitions. See #23043.
+          val hasConflict = currentDecls.lookup(name.toTermName) != NoSymbol
+          if !hasConflict
+            || classPath.list(fullName).classesAndSources.nonEmpty
+            || classPath.packages(fullName).nonEmpty
+          then
+            enterPackage(root.symbol, name.toTermName,
+              (module, modcls) => new PackageLoader(module, classPath))
         }
     }
   }
