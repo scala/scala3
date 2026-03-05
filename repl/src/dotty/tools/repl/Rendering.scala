@@ -33,6 +33,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         .apply(value, width = width, height = height, initialOffset = initialOffset)
         .plainText
     try
+      // Temporary fix for https://github.com/scala/scala3/issues/25116
+      // until `pprint` special-cases `LazyList`.
+      // (We cannot use `isInstanceOf[LazyList]` because we're not in the same classloader)
+      if value.getClass.getName == "scala.collection.immutable.LazyList" then return value.toString
       // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
       // however PPrint works by runtime type testing to deconstruct values. This is
       // sensitive to which classloader instantiates the object under test, i.e.
