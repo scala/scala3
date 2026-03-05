@@ -6,8 +6,10 @@
    |
    |    QueryKeyValue.tuple2QueryKeyValue[String, None.type](QueryKey.stringQueryKey,
    |      QueryValue.optionQueryValue[A](
-   |        /* ambiguous: both given instance stringQueryValue in trait QueryValueInstances1 and given instance noneQueryValue in trait QueryValueInstances1 match type QueryValue[A] */
-   |          summon[QueryValue[A]]
+   |        QueryValue.optionQueryValue[A](
+   |          /* ambiguous: both given instance stringQueryValue in trait QueryValueInstances1 and given instance noneQueryValue in trait QueryValueInstances1 match type QueryValue[A] */
+   |            summon[QueryValue[A]]
+   |        )
    |      )
    |    )
    |

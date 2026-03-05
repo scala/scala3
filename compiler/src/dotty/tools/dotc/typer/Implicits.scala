@@ -591,9 +591,10 @@ object Implicits:
       em"${err.refStr(ref)} does not $qualify"
   }
 
-  class DivergingImplicit(ref: TermRef,
+  case class DivergingImplicit(val ref: TermRef,
                           val expectedType: Type,
-                          val argument: Tree) extends SearchFailureType {
+                          val argument: Tree,
+                          val lvl: Int = 0) extends SearchFailureType {
     def msg(using Context): Message =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
@@ -1474,10 +1475,28 @@ trait Implicits:
                 case _ => fail
             end healAmbiguous
 
+            def unrecoverableDivergentImplicit(failure: SearchFailureType): Boolean = {
+              failure match
+                case failure: DivergingImplicit =>
+                  failure.lvl <= 1 && remaining.forall(compareAlternatives(_, cand) <= 0) && {
+                    found match
+                      case found: SearchSuccess =>
+                        compareAlternatives(found, cand) == 0
+                      case _ => true
+                  }
+                case _ => false
+            }
+
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if fail eq ImplicitSearchTooLargeFailure then
                   fail
+                else if (unrecoverableDivergentImplicit(fail.reason))
+                  val div = fail.reason.asInstanceOf[DivergingImplicit]
+                  val newLvl = if(cand.ref == div.ref) div.lvl + 1 else div.lvl
+                  val result = fail.copy(tree = fail.tree.withType(div.copy(lvl = newLvl)))
+                  val newPending = remaining.filterConserve(compareAlternatives(_, cand) < 0)
+                  rank(newPending, result, rfailures)
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
@@ -1566,6 +1585,9 @@ trait Implicits:
        *  will give an ambiguity quickly.
        */
       def compareEligibles(e1: Candidate, e2: Candidate): Int =
+        val previousImplicit = ctx.searchHistory.openSearchPairs.headOption.map(_._1)
+        if previousImplicit.contains(e1) then return -1
+        if previousImplicit.contains(e2) then return 1
         if e1 eq e2 then return 0
         val cmpLevel = e1.level - e2.level
         if cmpLevel != 0 then return -cmpLevel // 1.
