@@ -16,6 +16,7 @@ import util.*
 import scala.annotation.internal.sharable
 import scala.annotation.tailrec
 import scala.collection.mutable
+import quoted.QuotePatterns
 
 import SpaceEngine.*
 
@@ -309,9 +310,33 @@ object SpaceEngine {
    *  @param  pt The scrutinee body type
    */
   def isIrrefutableQuotePattern(pat: QuotePattern, pt: Type)(using Context): Boolean = {
-    if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
+    def isTypeRefWithWildcardBounds(tree: Tree) =
+      val info = tree.symbol.info
+      info match
+        case TypeBounds(lo, hi) => hi.isAny && lo.isNothingType
+        case _ => false
+    def getAppliedType(tree: Type) =
+      tree match
+        case AppliedType(_, actual +: Nil) => actual
+    def toExprType(tree: Type) =
+      AppliedType(defn.QuotedExprClass.typeRef, List(tree))
+
+    if pat.body.isType then
+      if !getAppliedType(pt.widen).etaExpand.isInstanceOf[LambdaType] then
+        pat.bindings match
+          case Nil => pt =:= pat.tpe // constant type: '[T]
+          case binding +: Nil => // generic type variable: '[t]
+            isTypeRefWithWildcardBounds(binding) && isTypeRefWithWildcardBounds(pat.body)
+          case _ => false
+      else false
     else pat.body match
-      case _: SplicePattern | Typed(_: SplicePattern, _) => pat.bindings.isEmpty && pt <:< pat.tpe
+      case _: SplicePattern | Typed(_: SplicePattern, _) | Block(List(TypeDef(_, _: Hole)), _: SplicePattern) =>
+        pat.bindings match
+          case Nil =>
+            pt <:< pat.tpe // expr: '{$x: T}
+          case binding +: Nil => // expr with generic type variable: '{$x: t}
+            isTypeRefWithWildcardBounds(binding) && (toExprType(getAppliedType(pt) & binding.tpe) <:< pat.tpe)
+          case _ => false
       case _ => false
   }
 
@@ -359,7 +384,7 @@ object SpaceEngine {
     case SeqLiteral(pats, _) =>
       projectSeq(pats)
 
-    case UnApply(fun, _, pats) =>
+    case unapp @ UnApply(fun, _, pats) =>
       val fun1 = funPart(fun)
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
@@ -378,7 +403,40 @@ object SpaceEngine {
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+        def unapplyProd() = Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+
+        // Custom logic for '[...] and '{...} quoted patterns.
+        // Since their irrefutability has to be checked against a specific Type,
+        // it's more practical to convert them here into `Typ(...)` (pointing
+        // to that Type) instead of `Prod(...)`.
+        if fun.symbol == defn.QuoteMatching_ExprMatch_unapply
+            || fun.symbol == defn.QuoteMatching_TypeMatch_unapply
+        then
+          val quotePattern = QuotePatterns.decode(unapp)
+          // removes a type variable duplicated by typer
+          // eg. for
+          //   (expr1: Expr[Int]) match
+          //     case '{$expr2: t}
+          // quote pattern type might be retyped as Expr[Int & t]
+          // In that case, we return Expr[Int]
+          // For Expr[t], we would return Expr[_ :< Nothing :> Any]
+          def removeTypeVar(tree: Type) =
+            if quotePattern.bindings.isEmpty then tree
+            else tree match
+              case AppliedType(cons, List(AndType(a, b))) if a == quotePattern.bindings.head.tpe => AppliedType(cons, List(b))
+              case AppliedType(cons, List(AndType(a, b))) if b == quotePattern.bindings.head.tpe => AppliedType(cons, List(a))
+              case AppliedType(cons, List(arg)) if arg == quotePattern.bindings.head.tpe =>
+                AppliedType(cons, List(TypeBounds(defn.NothingType, defn.AnyType)))
+              case _ => tree
+
+          if (isIrrefutableQuotePattern(quotePattern, quotePattern.tpe)) then
+            if quotePattern.body.isType then
+              if quotePattern.bindings.isEmpty then Typ(quotePattern.tpe, decomposed = false)
+              else Typ(defn.QuotedTypeClass.typeRef.appliedTo(TypeBounds(defn.NothingType, defn.AnyType)), decomposed = false)
+            else
+              Typ(removeTypeVar(quotePattern.tpe), decomposed = false)
+          else unapplyProd()
+        else unapplyProd()
 
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
@@ -854,6 +912,8 @@ object SpaceEngine {
       val classSym = tpw.classSymbol
       classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
                                                          // requires an unknown number of changes to make work
+      sel.tpe.widen.isRef(defn.QuotedExprClass) ||
+      sel.tpe.widen.isRef(defn.QuotedTypeClass) ||
       tpw.isInstanceOf[OrType] ||
       (tpw.isInstanceOf[AndType] && {
         val and = tpw.asInstanceOf[AndType]
