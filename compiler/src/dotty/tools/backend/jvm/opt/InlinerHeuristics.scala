@@ -220,39 +220,28 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
             else None
 
           def shouldInlineForwarder = Option {
-            // trait super accessors are excluded here because they contain an `invokespecial` of the default method in the trait.
-            // this instruction would have different semantics if inlined into some other class.
-            // we *do* inline trait super accessors if selected by a different heuristic. in this case, the `invokespecial` is then
-            // inlined in turn (chosen by the same heuristic), or the code is rolled back. but we don't inline them just because
-            // they are forwarders.
-            val isTraitSuperAccessor = BackendUtils.isTraitSuperAccessor(callee.callee, callee.calleeDeclarationClass) ||
-              BackendUtils.isMixinForwarder(callsite.callsiteMethod, callsite.callsiteClass)
-            if (isTraitSuperAccessor) {
-              // inline static trait super accessors if the corresponding trait method is a forwarder or trivial (scala-dev#618)
-              {
-                val css = callGraph.callsites.get(callee.callee)
-                if (css.sizeIs == 1) css.head._2 else null
-              } match {
-                case traitMethodCallsite: KnownCallsite =>
-                  val tmCallee = traitMethodCallsite.callee
-                  val traitMethodForwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(
-                    tmCallee.callee, tmCallee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
-                  if (traitMethodForwarderKind > 0) GenericForwarder
-                  else null
-                case _ => null
-              }
-            } else {
-              val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls = false)
-              if (forwarderKind < 0)
-                null
-              else if (BCodeUtils.isSyntheticMethod(callee.callee) || BackendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
-                SyntheticForwarder
-              else forwarderKind match {
-                case 1 => TrivialMethod
-                case 2 => FactoryMethod
-                case 3 => BoxingForwarder
-                case 4 => GenericForwarder
-              }
+            // In general, we cannot inline calls to methods that contain private calls here.
+            // However (scala-dev#618) we should inline them if they call something that is itself trivial, as it will also be inlined.
+            val calleeCallsites = callGraph.callsites.get(callee.callee)
+            val allowPrivateCalls = calleeCallsites.size == 1 && (calleeCallsites.head match
+              case (_, nestedCallsite: KnownCallsite) =>
+                backendUtils.looksLikeForwarderOrFactoryOrTrivial(
+                  nestedCallsite.callee.callee,
+                  nestedCallsite.callee.calleeDeclarationClass.internalName,
+                  allowPrivateCalls = false
+                ) > 0
+              case _ => false
+            )
+            val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
+            if (forwarderKind < 0)
+              null
+            else if (BCodeUtils.isSyntheticMethod(callee.callee) || BackendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
+              SyntheticForwarder
+            else forwarderKind match {
+              case 1 => TrivialMethod
+              case 2 => FactoryMethod
+              case 3 => BoxingForwarder
+              case 4 => GenericForwarder
             }
           }
 
