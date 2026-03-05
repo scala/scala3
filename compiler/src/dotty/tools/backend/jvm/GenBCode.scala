@@ -46,9 +46,8 @@ class GenBCode extends Phase { self =>
 
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
-    if _postProcessor eq null then {
+    if _postProcessor eq null then
       _postProcessor = new PostProcessor(frontendAccess, bTypes)
-    }
     _postProcessor.nn
   }
 

@@ -85,7 +85,7 @@ object PostProcessorFrontendAccess {
     def backendMaxWorkerQueue: Option[Int]
     def outputOnlyTasty: Boolean
   }
-  
+
   class Impl(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)(using ctx)
