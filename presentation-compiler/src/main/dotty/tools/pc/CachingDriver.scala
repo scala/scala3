@@ -31,6 +31,7 @@ class CachingDriver(override val settings: List[String]) extends InteractiveDriv
 
   private var lastCompiledURI: URI = uninitialized
   private var previousDiags = List.empty[Diagnostic]
+  private val compileUnitsCache = new CompileUnitsCache(5)
 
   private def alreadyCompiled(uri: URI, content: Array[Char]): Boolean =
     compilationUnits.get(uri) match
@@ -43,6 +44,10 @@ class CachingDriver(override val settings: List[String]) extends InteractiveDriv
   override def run(uri: URI, source: SourceFile): List[Diagnostic] =
     if !alreadyCompiled(uri, source.content) then previousDiags = super.run(uri, source)
     lastCompiledURI = uri
+    compileUnitsCache.didGetUnit(uri).foreach(s => close(URI.create(s)))
     previousDiags
+
+  def didChange(uri: URI): Unit =
+    compileUnitsCache.didChange(uri)
 
 end CachingDriver
