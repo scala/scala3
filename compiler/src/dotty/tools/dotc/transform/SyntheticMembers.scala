@@ -492,6 +492,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *        MyEnum.fromOrdinal(this.ordinal)
    *
    *  unless an implementation already exists, otherwise do nothing.
+   *
+   *  For inner (non-static) enums, readResolve is not generated because the
+   *  enclosing companion's $values array may not yet be initialized during
+   *  deserialization, causing fromOrdinal to fail. See #15396.
    */
    def serializableEnumValueMethod(clazz: ClassSymbol)(using Context): List[Tree] =
     if clazz.isEnumValueImplementation
@@ -499,6 +503,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       && clazz.isSerializable
       && !hasReadResolve(clazz)
       && ctx.platform.shouldReceiveJavaSerializationMethods(clazz)
+      && clazz.owner.owner.isStatic
     then
       List(
         DefDef(readResolveDef(clazz),
