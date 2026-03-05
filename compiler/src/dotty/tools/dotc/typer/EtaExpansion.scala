@@ -41,14 +41,17 @@ abstract class Lifter {
     // Mark the type of lifted definitions as inferred
     ValDef(sym, rhs, inferred = true)
 
+  protected def liftedType(expr: Tree)(using Context): Type =
+    // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
+    val tp = expr.tpe.widen.deskolemized
+    if liftedFlags.is(Method) then ExprType(tp) else tp
+
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
-      // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
-      var liftedType = expr.tpe.widen.deskolemized
-      if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span),
+      val tp = liftedType(expr)
+      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, tp, coord = spanCoord(expr.span),
         // Lifted definitions will be added to a local block, so they need to be
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
@@ -219,6 +222,51 @@ object LiftCoverage extends LiftImpure {
 object LiftToDefs extends LiftComplex {
   override def liftedFlags: FlagSet = Method
   override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.DefDef = tpd.DefDef(sym, rhs)
+
+  /* Don't lift by-name parameter args (ExprType) in constructor context to avoid
+   * `this` reference before initialization in super args.
+   *
+   * For example,
+   * {{{
+   * abstract class Foo[T](value: => T, arg1: Int = 1, arg2: Int = 2)
+   * enum Baz { case E1 }
+   * object Baz extends Foo[Baz](Baz.E1, arg2 = 3)
+   * }}}
+   *
+   * If `LiftToDefs` lifts `Baz.E1` to an instance method in the initializer block:
+   * {{{
+   * object Baz extends {
+   *   def defaultValue$1: Baz = Baz.E1   // instance method
+   *   val arg1$1: Int = Foo.$lessinit$greater$default$2[Baz]
+   *   new Foo[Baz](defaultValue$1, arg1$1, arg2 = 3)
+   * }
+   * }}}
+   *
+   * Normally, `HoistSuperArgs` hoists the instance method out of the enclosing class.
+   * However, for by-name parameter arguments, `ElimByName` construct a closure
+   * `new Foo[Baz](() ?=> defaultValue$1`, arg1$1, arg2 = 3)`.
+   * And, `HoistSuperArgs` hoists `() ?=> defaultValue$1` into:
+   *
+   * {{{
+   * object Baz extends {
+   *   def defaultValue$1: Baz = Baz.E1
+   *   val arg1$1: Int = ...
+   *   new Foo[Baz](Baz.Baz$$superArg$1()(defaultValue$1, arg1$1), arg1$1, 3)
+   * }
+   * private static def Baz$$superArg$1()(defaultValue$1: => Baz, arg1$1: Int): () ?=> Baz =
+   *   () => defaultValue$1
+   * }}}
+   * which still requires `this` reference to passing `defaultValue$1` to hoisted static method.
+   *
+   * To avoid double lifting by-name parameter args (and confuse HoistSuperArgs),
+   * we skip lifting by-name param args in constructor context. The expression
+   * stays inline without this reference and `ElimByName` makes it
+   * `new Foo[Baz](() ?=> defaultValue$1, arg1$1, arg2 = 3)`.
+   *
+   * see https://github.com/scala/scala3/issues/24201
+   */
+  override def noLift(expr: tpd.Tree)(using Context): Boolean =
+    super.noLift(expr) || (liftedType(expr).isInstanceOf[ExprType] && ctx.owner.isConstructor)
 }
 
 /** Lifter for eta expansion */
