@@ -1160,7 +1160,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             matchParamsAndResult(paramss, mt1.derivedLambdaType(resType = WildcardType))
               // We get failures in stdlib's JavaCollectionWrappers.scala when we
               // match result types against results of SAM methods. Not clear where
-              // they come from. We work aorund this by not passing down the result
+              // they come from. We work around this by not passing down the result
               // type of a SAM method.
           case _ =>
         case Nil =>
