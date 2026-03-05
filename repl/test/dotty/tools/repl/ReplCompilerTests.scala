@@ -542,6 +542,18 @@ class ReplCompilerTests extends ReplTest:
     run(":he")
     assertTrue(storedOutput().contains("The REPL has several commands available"))
 
+  @Test def `i25116 LazyList printing`: Unit = initially:
+    run:
+      """
+      |lazy val foo = println(23)
+      |foo #:: LazyList.empty
+      |""".stripMargin
+    val expected = List(
+      "lazy val foo: Unit",
+      "val res0: LazyList[Unit] = LazyList(<not computed>)"
+    )
+    assertEquals(expected, lines())
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");

@@ -62,8 +62,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       )
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
-      case ex: ClassNotFoundException => fallback()
-      case ex: NoSuchMethodException  => fallback()
+      // Only use the fallback when not debugging, so we catch problems in unit tests
+      case ex: ClassNotFoundException if !ctx.debug => fallback()
+      case ex: NoSuchMethodException if !ctx.debug => fallback()
   }
 
 
