@@ -57,6 +57,9 @@ final abstract class Boolean private extends AnyVal {
    *  @note This method uses 'short-circuit' evaluation and
    *       behaves as if it was declared as `def ||(x: => Boolean): Boolean`.
    *       If `a` evaluates to `true`, `true` is returned without evaluating `b`.
+   *
+   *  @param x the right-hand operand, only evaluated if `this` is `false`
+   *  @return `true` if at least one operand is `true`, `false` otherwise
    */
   def ||(x: Boolean): Boolean
 
@@ -68,6 +71,9 @@ final abstract class Boolean private extends AnyVal {
    *  @note This method uses 'short-circuit' evaluation and
    *       behaves as if it was declared as `def &&(x: => Boolean): Boolean`.
    *       If `a` evaluates to `false`, `false` is returned without evaluating `b`.
+   *
+   *  @param x the right-hand operand, only evaluated if `this` is `true`
+   *  @return `true` if both operands are `true`, `false` otherwise
    */
   def &&(x: Boolean): Boolean
 
@@ -83,6 +89,9 @@ final abstract class Boolean private extends AnyVal {
    *  - `a` and `b` are `true`.
    *
    *  @note This method evaluates both `a` and `b`, even if the result is already determined after evaluating `a`.
+   *
+   *  @param x the right-hand operand, always evaluated
+   *  @return `true` if at least one operand is `true`, `false` otherwise
    */
   def |(x: Boolean): Boolean
 
@@ -92,6 +101,9 @@ final abstract class Boolean private extends AnyVal {
    *  - `a` and `b` are `true`.
    *
    *  @note This method evaluates both `a` and `b`, even if the result is already determined after evaluating `a`.
+   *
+   *  @param x the right-hand operand, always evaluated
+   *  @return `true` if both operands are `true`, `false` otherwise
    */
   def &(x: Boolean): Boolean
 
@@ -100,6 +112,9 @@ final abstract class Boolean private extends AnyVal {
    *  `a ^ b` returns `true` if and only if
    *  - `a` is `true` and `b` is `false` or
    *  - `a` is `false` and `b` is `true`.
+   *
+   *  @param x the right-hand operand
+   *  @return `true` if the operands evaluate to different values, `false` otherwise
    */
   def ^(x: Boolean): Boolean
 

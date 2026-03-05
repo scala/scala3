@@ -68,19 +68,40 @@ final abstract class Float private extends AnyVal {
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
   def !=(x: Double): Boolean
 
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Byte): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Short): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Char): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Int): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Long): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Float): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Double): Boolean
 
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
@@ -98,19 +119,40 @@ final abstract class Float private extends AnyVal {
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
   def <=(x: Double): Boolean
 
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Byte): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Short): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Char): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Int): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Long): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Float): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Double): Boolean
 
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
@@ -128,79 +170,184 @@ final abstract class Float private extends AnyVal {
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
   def >=(x: Double): Boolean
 
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add
+   */
   def +(x: Byte): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add
+   */
   def +(x: Short): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add
+   */
   def +(x: Char): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add
+   */
   def +(x: Int): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add
+   */
   def +(x: Long): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add
+   */
   def +(x: Float): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add
+   */
   def +(x: Double): Double
 
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract
+   */
   def -(x: Byte): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract
+   */
   def -(x: Short): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract
+   */
   def -(x: Char): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract
+   */
   def -(x: Int): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract
+   */
   def -(x: Long): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract
+   */
   def -(x: Float): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract
+   */
   def -(x: Double): Double
 
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the other factor
+   */
   def *(x: Byte): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the other factor
+   */
   def *(x: Short): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the other factor
+   */
   def *(x: Char): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the other factor
+   */
   def *(x: Int): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the other factor
+   */
   def *(x: Long): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the other factor
+   */
   def *(x: Float): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the other factor
+   */
   def *(x: Double): Double
 
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the divisor
+   */
   def /(x: Byte): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the divisor
+   */
   def /(x: Short): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the divisor
+   */
   def /(x: Char): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the divisor
+   */
   def /(x: Int): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the divisor
+   */
   def /(x: Long): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the divisor
+   */
   def /(x: Float): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the divisor
+   */
   def /(x: Double): Double
 
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Byte): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Short): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Char): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Int): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Long): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Float): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Double): Double
 
   // Provide a more specific return type for Scaladoc
@@ -249,7 +396,10 @@ object Float extends AnyValCompanion {
 
   /** The `String` representation of the `scala.Float` companion object. */
   override def toString() = "object scala.Float"
-  /** Language mandated coercions from `Float` to "wider" types. */
+  /** Language mandated coercions from `Float` to "wider" types.
+   *
+   *  @param x the `Float` value to convert
+   */
   import scala.language.implicitConversions
   implicit def float2double(x: Float): Double = x.toDouble
 }

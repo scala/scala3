@@ -52,6 +52,8 @@ final abstract class Char private extends AnyVal {
    *  ```
    *  6 << 3 == 48 // in binary: 0110 << 3 == 0110000
    *  ```
+   *
+   *  @param x the number of bits to shift left
    */
   def <<(x: Int): Int
   /** Returns this value bit-shifted left by the specified number of bits,
@@ -71,6 +73,8 @@ final abstract class Char private extends AnyVal {
    *  // in binary: 11111111 11111111 11111111 11101011 >>> 3 ==
    *  //            00011111 11111111 11111111 11111101
    *  ```
+   *
+   *  @param x the number of bits to shift right
    */
   def >>>(x: Int): Int
   /** Returns this value bit-shifted right by the specified number of bits,
@@ -92,6 +96,8 @@ final abstract class Char private extends AnyVal {
    *  // in binary: 11111111 11111111 11111111 11101011 >> 3 ==
    *  //            11111111 11111111 11111111 11111101
    *  ```
+   *
+   *  @param x the number of bits to shift right
    */
   def >>(x: Int): Int
   /** Returns this value bit-shifted right by the specified number of bits,
@@ -136,19 +142,40 @@ final abstract class Char private extends AnyVal {
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
   def !=(x: Double): Boolean
 
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Byte): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Short): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Char): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Int): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Long): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Float): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Double): Boolean
 
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
@@ -166,19 +193,40 @@ final abstract class Char private extends AnyVal {
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
   def <=(x: Double): Boolean
 
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Byte): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Short): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Char): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Int): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Long): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Float): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Double): Boolean
 
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
@@ -204,6 +252,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Byte): Int
   /** Returns the bitwise OR of this value and `x`.
@@ -214,6 +264,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Short): Int
   /** Returns the bitwise OR of this value and `x`.
@@ -224,6 +276,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Char): Int
   /** Returns the bitwise OR of this value and `x`.
@@ -234,6 +288,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Int): Int
   /** Returns the bitwise OR of this value and `x`.
@@ -244,6 +300,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Long): Long
 
@@ -255,6 +313,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Byte): Int
   /** Returns the bitwise AND of this value and `x`.
@@ -265,6 +325,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Short): Int
   /** Returns the bitwise AND of this value and `x`.
@@ -275,6 +337,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Char): Int
   /** Returns the bitwise AND of this value and `x`.
@@ -285,6 +349,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Int): Int
   /** Returns the bitwise AND of this value and `x`.
@@ -295,6 +361,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Long): Long
 
@@ -306,6 +374,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Byte): Int
   /** Returns the bitwise XOR of this value and `x`.
@@ -316,6 +386,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Short): Int
   /** Returns the bitwise XOR of this value and `x`.
@@ -326,6 +398,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Char): Int
   /** Returns the bitwise XOR of this value and `x`.
@@ -336,6 +410,8 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Int): Int
   /** Returns the bitwise XOR of this value and `x`.
@@ -346,82 +422,189 @@ final abstract class Char private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Long): Long
 
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Byte): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Short): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Char): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Int): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Long): Long
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Float): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Double): Double
 
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Byte): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Short): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Char): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Int): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Long): Long
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Float): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Double): Double
 
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply with this value
+   */
   def *(x: Byte): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply with this value
+   */
   def *(x: Short): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply with this value
+   */
   def *(x: Char): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply with this value
+   */
   def *(x: Int): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply with this value
+   */
   def *(x: Long): Long
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply with this value
+   */
   def *(x: Float): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply with this value
+   */
   def *(x: Double): Double
 
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Byte): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Short): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Char): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Int): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Long): Long
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Float): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Double): Double
 
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Byte): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Short): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Char): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Int): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Long): Long
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Float): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Double): Double
 
   // Provide a more specific return type for Scaladoc
@@ -458,7 +641,10 @@ object Char extends AnyValCompanion {
 
   /** The `String` representation of the `scala.Char` companion object. */
   override def toString() = "object scala.Char"
-  /** Language mandated coercions from `Char` to "wider" types. */
+  /** Language mandated coercions from `Char` to "wider" types.
+   *
+   *  @param x the `Char` value to convert
+   */
   import scala.language.implicitConversions
   implicit def char2int(x: Char): Int = x.toInt
   implicit def char2long(x: Char): Long = x.toLong
