@@ -1,0 +1,20 @@
+-- Deprecation Warning: tests/warn/deprecated-override.scala:13:15 -----------------------------------------------------
+13 |  override def f = 2  // warn
+   |               ^
+   |               overriding method f in class B of type => Int is deprecated;
+   |                 method f of type => Int should be removed or renamed.
+-- Deprecation Warning: tests/warn/deprecated-override.scala:14:15 -----------------------------------------------------
+14 |  override def g() = println("goodbye, cruel world") // warn
+   |               ^
+   |               overriding method g in class B of type (): Unit is deprecated since now;
+   |                 Please don't.
+-- Deprecation Warning: tests/warn/deprecated-override.scala:20:7 ------------------------------------------------------
+20 |object E extends B, D  // warn
+   |       ^
+   |       overriding method f in class B of type => Int is deprecated;
+   |         method f in trait D of type => Int should be removed or renamed.
+-- Deprecation Warning: tests/warn/deprecated-override.scala:30:15 -----------------------------------------------------
+30 |  override def f = "hello, world" // warn
+   |               ^
+   |               overriding method f in trait X of type => String is deprecated;
+   |                 method f of type => String should be removed or renamed.
