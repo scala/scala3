@@ -100,7 +100,10 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         out.linesIterator.foreach(buf.append)
         nstate
       }
-      (optsLine :: buf.toList).filter(nonBlank)
+      // We run the repl with `-Ydebug` to not use the fallback if there's a class load exception so we can notice these,
+      // but as a consequence we get debug messages; ignore the stale symbol one, whose contents include symbol IDs
+      // that depend on the exact compiler.
+      (optsLine :: buf.toList).filter(nonBlank).filter(!_.startsWith("stale symbol;"))
     }
 
     if FileDiff.matches(actualOutput, expectedOutput) then None
@@ -120,6 +123,6 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-pagewidth", "80" /* TODO: but a lot of tests need fixing to match production behavior "-Ydebug"*/)
+  val commonOptions = Array("-color:never", "-pagewidth", "80", "-Ydebug")
   val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.replClassPath)
   lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.replWithStagingClasspath)

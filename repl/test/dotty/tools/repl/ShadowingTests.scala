@@ -25,7 +25,7 @@ import vulpix.{TestConfiguration, TestFlags}
  *  and running scripted REPL tests with them on the claspath.
  */
 object ShadowingTests:
-  def classpath = TestConfiguration.basicClasspath + File.pathSeparator + shadowDir
+  def classpath = TestConfiguration.replClassPath + File.pathSeparator + shadowDir
   def options = ReplTest.commonOptions ++ Array("-classpath", classpath)
   def shadowDir = dir.toAbsolutePath.toString
 
