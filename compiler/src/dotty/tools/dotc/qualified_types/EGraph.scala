@@ -403,8 +403,11 @@ final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
         val (consts, nonConsts) = decomposeIntProduct(args)
         makeIntProduct(consts, nonConsts)
       case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
-      case Op.IntLessEqual => constFoldBinaryOp[Int, Boolean](op, args, _ <= _)
       case Op.IntGreaterThan => normalizeOp(Op.IntLessThan, args.reverse)
+      // Rewrite a <= b as a < b + 1 and a >= b as b < a + 1
+      case Op.IntLessEqual =>
+        val rhsPlusOne = unique(normalizeOp(Op.IntSum, List(args(1), oneIntNode)))
+        normalizeOp(Op.IntLessThan, List(args(0), rhsPlusOne))
       case Op.IntGreaterEqual => normalizeOp(Op.IntLessEqual, args.reverse)
       case _ =>
         ENode.OpApply(op, args)
