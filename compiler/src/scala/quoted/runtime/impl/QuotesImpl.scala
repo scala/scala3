@@ -579,20 +579,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
-        val nameTermName = original match
-          case original: tpd.Select if original.name.toString == name => original.name
+        original match
+          case original: tpd.Select if original.name.toString == name =>
+            // Name unchanged: preserve original Name object and use tpd.cpy.Select
+            // which correctly handles qualifier type changes via derivedSelect
+            tpd.cpy.Select(original)(qualifier, original.name)
           case _ =>
+            // Name changed: resolve the name and create a fresh Select with proper type
             val simpleName = name.toTermName
-            // If the qualifier type has a member whose name matches by string
-            // but not by identity (e.g. DerivedName vs SimpleName for default getters),
-            // use the member's canonical name to preserve name interning invariants.
-            val member = qualifier.tpe.member(simpleName)
-            if member.exists then simpleName
-            else
-              val unmangled = simpleName.unmangle(NameKinds.Scala2MethodNameKinds)
-              if (unmangled ne simpleName) && qualifier.tpe.member(unmangled).exists then unmangled
-              else simpleName
-        tpd.cpy.Select(original)(qualifier, nameTermName)
+            val resolvedName =
+              val member = qualifier.tpe.member(simpleName)
+              if member.exists then simpleName
+              else
+                val unmangled = simpleName.unmangle(NameKinds.Scala2MethodNameKinds)
+                if (unmangled ne simpleName) && qualifier.tpe.member(unmangled).exists then unmangled
+                else simpleName
+            tpd.Select(qualifier, resolvedName)
       def unapply(x: Select): (Term, String) =
         (x.qualifier, x.name.toString)
     end Select
