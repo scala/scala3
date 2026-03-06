@@ -15,13 +15,13 @@ import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
 
-import scala.collection.mutable
+import scala.collection.mutable, mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
-import scala.collection.mutable.ListBuffer
+import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
 
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
@@ -35,6 +35,7 @@ import dotc.config.Config
 import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
+import util.chaining.*
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -206,16 +207,15 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     flags: TestFlags,
     outDir: JFile
   ) extends TestSource {
+    import SeparateCompilationSource.*
     case class Group(ordinal: Int, compiler: String)
 
-    lazy val compilationGroups: List[(Group, Array[JFile])] =
-      val Compiler = """c([\d\.]+)""".r
-      val Ordinal = """(\d+)""".r
+    lazy val compilationGroups: List[(Group, Array[JFile])] = {
       def groupFor(file: JFile): Group =
         val groupSuffix = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
         val groupSuffixParts = groupSuffix.split("_")
-        val ordinal = groupSuffixParts.collectFirst { case Ordinal(n) => n.toInt }.getOrElse(Int.MinValue)
-        val compiler = groupSuffixParts.collectFirst { case Compiler(c) => c }.getOrElse("")
+        val ordinal = groupSuffixParts.collectFirst { case GroupOrdinal(n) => n.toInt }.getOrElse(Int.MinValue)
+        val compiler = groupSuffixParts.collectFirst { case CompilerVersion(c) => c }.getOrElse("")
         Group(ordinal, compiler)
 
       dir.listFiles
@@ -224,15 +224,29 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         .toList
         .sortBy { (g, _) => (g.ordinal, g.compiler) }
         .map { (g, f) => (g, f.sorted) }
+    }
 
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
 
     def checkFileBasePathCandidates: Array[String] =
       Array(dir.getPath)
   }
+  object SeparateCompilationSource:
+    val CompilerVersion = """c([\d\.]+)""".r
+    val GroupOrdinal = """(\d+)""".r
+    val usingCanonicalJava = javaSpecVersion.startsWith("17")
 
+  /** Skip if there are no sources, such as in a spurious directory,
+   *  or when compiling with a legacy compiler which may not run under this jdk.
+   */
   protected def shouldSkipTestSource(testSource: TestSource): Boolean =
     testSource.sourceFiles.length == 0
+    ||
+    testSource.match
+      case separate: SeparateCompilationSource =>
+        !SeparateCompilationSource.usingCanonicalJava
+        && separate.compilationGroups.exists((group, _) => group.compiler.nonEmpty)
+      case _ => false
 
   protected def shouldReRun(testSource: TestSource): Boolean =
     failedTests.forall(rerun => testSource match {
@@ -494,7 +508,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           throw e
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, targetDir: JFile): TestReporter = {
-      import scala.util.Properties.*
 
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
@@ -1529,6 +1542,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *    target all files are grouped according to the file suffix `_X` where `X`
    *    is a number. These groups are then ordered in ascending order based on
    *    the value of `X` and each group is compiled one after the other.
+   *    A file can request compilation by a legacy compiler via a version suffix:
+   *    `A_1_c3.2.0.scala` in group 1 is compiled by 3.2.0 under canonical JDK 17.
    *
    *  For this function to work as expected, we use the same convention for
    *  directory layout as the old partest. That is:
