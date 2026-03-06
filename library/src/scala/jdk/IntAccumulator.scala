@@ -65,7 +65,10 @@ final class IntAccumulator
     else history = java.util.Arrays.copyOf(history, history.length << 1)
   }
 
-  /** Appends an element to this `IntAccumulator`. */
+  /** Appends an element to this `IntAccumulator`.
+   *
+   *  @param a the `Int` value to append
+   */
   def addOne(a: Int): this.type = {
     totalSize += 1
     if (index+2 >= current.length) expand()
@@ -77,7 +80,10 @@ final class IntAccumulator
   /** Result collection consisting of all elements appended so far. */
   override def result(): IntAccumulator = this
 
-  /** Removes all elements from `that` and appends them to this `IntAccumulator`. */
+  /** Removes all elements from `that` and appends them to this `IntAccumulator`.
+   *
+   *  @param that the `IntAccumulator` to drain elements from; it will be empty after this operation
+   */
   def drain(that: IntAccumulator): Unit = {
     var h = 0
     var prev = 0L
@@ -143,7 +149,10 @@ final class IntAccumulator
     history = IntAccumulator.emptyIntArrayArray
   }
 
-  /** Retrieves the `ix`th element. */
+  /** Retrieves the `ix`th element.
+   *
+   *  @param ix the zero-based index of the element to retrieve, as a `Long`
+   */
   def apply(ix: Long): Int = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt)
     else {
@@ -152,7 +161,10 @@ final class IntAccumulator
     }
   }
 
-  /** Retrieves the `ix`th element, using an `Int` index. */
+  /** Retrieves the `ix`th element, using an `Int` index.
+   *
+   *  @param i the zero-based index of the element to retrieve
+   */
   def apply(i: Int): Int = apply(i.toLong)
 
   def update(idx: Long, elem: Int): Unit = {
@@ -289,6 +301,9 @@ final class IntAccumulator
   /** Copies the elements in this `IntAccumulator` to a specified collection.
    *  Note that the target collection is not specialized.
    *  Usage example: `acc.to(Vector)`
+   *
+   *  @tparam C1 the type of the target collection
+   *  @param factory the factory for building the target collection from `Int` elements
    */
   override def to[C1](factory: Factory[Int, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)
