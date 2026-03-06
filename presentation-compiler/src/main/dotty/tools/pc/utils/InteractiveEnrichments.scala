@@ -121,24 +121,26 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
             )
           else pos
 
-        val pos1 =
-          if pos0.end > 0 && text(pos0.end - 1) == ',' then
-            pos0.withEnd(pos0.end - 1)
-          else pos0
-        val isBackticked =
-          text(pos1.start) == '`' &&
-            pos1.end > 0 &&
-            text(pos1.end - 1) == '`'
-        // when the old name contains backticks, the position is incorrect
-        val isOldNameBackticked = text(pos1.start) != '`' &&
-          pos1.start > 0 &&
-          text(pos1.start - 1) == '`' &&
-          text(pos1.end) == '`'
-        if isBackticked && forRename then
-          (pos1.withStart(pos1.start + 1).withEnd(pos1.end - 1), true)
-        else if isOldNameBackticked then
-          (pos1.withStart(pos1.start - 1).withEnd(pos1.end + 1), false)
-        else (pos1, false)
+        if !pos0.span.isCorrect(text) then (pos, false)
+        else
+          val pos1 =
+            if pos0.end > 0 && text(pos0.end - 1) == ',' then
+              pos0.withEnd(pos0.end - 1)
+            else pos0
+          val isBackticked =
+            text(pos1.start) == '`' &&
+              pos1.end > 0 &&
+              text(pos1.end - 1) == '`'
+          // when the old name contains backticks, the position is incorrect
+          val isOldNameBackticked = text(pos1.start) != '`' &&
+            pos1.start > 0 &&
+            text(pos1.start - 1) == '`' &&
+            text(pos1.end) == '`'
+          if isBackticked && forRename then
+            (pos1.withStart(pos1.start + 1).withEnd(pos1.end - 1), true)
+          else if isOldNameBackticked then
+            (pos1.withStart(pos1.start - 1).withEnd(pos1.end + 1), false)
+          else (pos1, false)
     end adjust
   end extension
 
