@@ -58,21 +58,11 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
   object ClassfileWriter {
     private def getDirectory(dir: String): Path = Paths.get(dir)
 
-    def apply(): ClassfileWriter = {
-      val jarManifestMainClass: Option[String] = compilerSettings.mainClass.orElse {
-        frontendAccess.getEntryPoints match {
-          case List(name) => Some(name)
-          case es =>
-            if es.isEmpty then backendReporting.log("No Main-Class designated or discovered.")
-            else backendReporting.log(s"No Main-Class due to multiple entry points:\n  ${es.mkString("\n  ")}")
-            None
-        }
-      }
-
-      // In Scala 2 depenening on cardinality of distinct output dirs MultiClassWriter could have been used
+    def apply(entryPoint: Option[String]): ClassfileWriter = {
+      // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
       val basicClassWriter = new SingleClassWriter(
-        FileWriter(compilerSettings.outputDirectory, jarManifestMainClass)
+        FileWriter(compilerSettings.outputDirectory, entryPoint)
       )
 
       val withAdditionalFormats =

@@ -14,12 +14,11 @@ import scala.tools.asm.tree.ClassNode
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val ts: CoreBTypes)(using Context) {
+class PostProcessor(frontendAccess: PostProcessorFrontendAccess, ts: CoreBTypes)(using Context) {
 
-  private val backendUtils        = new BackendUtils(frontendAccess, ts)
-  val classfileWriters            = new ClassfileWriters(frontendAccess)
-  val classfileWriter             = classfileWriters.ClassfileWriter()
-
+  private val backendUtils = new BackendUtils(frontendAccess, ts)
+  private val classfileWriters = new ClassfileWriters(frontendAccess)
+  private val classfileWriter = classfileWriters.ClassfileWriter(frontendAccess.compilerSettings.mainClass)
 
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
@@ -99,6 +98,9 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
     classNode.accept(cw)
     cw.toByteArray.nn
   }
+
+  def close(): Unit =
+    classfileWriter.close()
 
   // -----------------------------------------------------------------------------------------
   // finding the least upper bound in agreement with the bytecode verifier (given two internal names handed by ASM)
