@@ -54,15 +54,17 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 
   /** Adds elements to the top of this stack
    *
-   *  @param elem
-   *  @return
+   *  @param elem the element to push onto the stack
+   *  @return the stack with the new element on top
    */
   def push(elem: A): this.type = prepend(elem)
 
   /** Pushes two or more elements onto the stack. The last element
    *  of the sequence will be on top of the new stack.
    *
-   *  @param   elems      the element sequence.
+   *  @param elem1 the first element to push
+   *  @param elem2 the second element to push
+   *  @param elems the remaining elements to push
    *  @return the stack with the new elements on top.
    */
   def push(elem1: A, elem2: A, elems: A*): this.type = {
@@ -85,7 +87,7 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 
   /** Removes the top element from this stack and returns it
    *
-   *  @return
+   *  @return the element removed from the top of the stack
    *  @throws NoSuchElementException when stack is empty
    */
   def pop(): A = removeHead()

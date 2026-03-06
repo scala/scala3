@@ -264,7 +264,10 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     } else
       throw new NoSuchElementException("no element to remove from heap")
 
-  /** Dequeues all elements and returns them in a sequence, in priority order. */
+  /** Dequeues all elements and returns them in a sequence, in priority order.
+   *
+   *  @tparam A1 a supertype of the element type `A`, allowing the result to be typed more broadly
+   */
   def dequeueAll[A1 >: A]: immutable.Seq[A1] = {
     val b = ArrayBuilder.make[Any]
     b.sizeHint(size)
@@ -347,6 +350,8 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   /** Returns a regular queue containing the same elements.
    *
    *  Note: the order of elements is undefined.
+   *
+   *  @return a mutable `Queue` containing all elements of this priority queue
    */
   def toQueue: Queue[A] = new Queue[A] ++= this.iterator
 

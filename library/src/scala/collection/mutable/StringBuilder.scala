@@ -71,11 +71,16 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 
   /** Constructs a string builder with initial characters
    *  equal to characters of `str`.
+   *
+   *  @param str the initial string content of this builder
    */
   def this(str: String) = this(new java.lang.StringBuilder(str))
 
   /** Constructs a string builder initialized with string value `initValue`
    *  and with additional character capacity `initCapacity`.
+   *
+   *  @param initCapacity additional character capacity beyond the length of `initValue`
+   *  @param initValue the initial string content of this builder
    */
   def this(initCapacity: Int, initValue: String) =
     this(new java.lang.StringBuilder(initValue.length + initCapacity).append(initValue))
@@ -101,7 +106,10 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 
   def clear(): Unit = underlying.setLength(0)
 
-  /** Overloaded version of `addAll` that takes a string. */
+  /** Overloaded version of `addAll` that takes a string.
+   *
+   *  @param s the string to append to this builder
+   */
   def addAll(s: String): this.type = { underlying.append(s); this }
 
   /** Alias for `addAll`. */
@@ -447,7 +455,11 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
    */
   def substring(start: Int, end: Int): String = underlying.substring(start, end)
 
-  /** For implementing CharSequence. */
+  /** For implementing CharSequence.
+   *
+   *  @param start the beginning index, inclusive
+   *  @param end the ending index, exclusive
+   */
   def subSequence(start: Int, end: Int): java.lang.CharSequence =
     underlying.substring(start, end)
 

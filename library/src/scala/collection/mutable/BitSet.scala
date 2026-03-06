@@ -34,6 +34,8 @@ import scala.annotation.implicitNotFound
  *  @define orderDependentFold
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
+ *
+ *  @param protected[collection] final var elems the underlying array of `Long` words storing the bits; used directly without copying, so external mutations will affect this bitset
  */
 class BitSet(protected[collection] final var elems: Array[Long])
   extends AbstractSet[Int]
@@ -368,7 +370,10 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   def newBuilder: Builder[Int, BitSet] = new GrowableBuilder(empty)
 
-  /** A bitset containing all the bits in an array. */
+  /** A bitset containing all the bits in an array.
+   *
+   *  @param elems the array of `Long` words representing the bits; a defensive copy is made
+   */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty
@@ -380,6 +385,8 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   /** A bitset containing all the bits in an array, wrapping the existing
    *  array without copying.
+   *
+   *  @param elems the array of `Long` words representing the bits, used directly without copying; the caller must not mutate the array afterward
    */
   def fromBitMaskNoCopy(elems: Array[Long]): BitSet = {
     val len = elems.length

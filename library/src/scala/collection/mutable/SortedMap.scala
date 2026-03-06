@@ -17,7 +17,11 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 import scala.collection.{SortedMapFactory, SortedMapFactoryDefaults}
 
-/** Base type for mutable sorted map collections */
+/** Base type for mutable sorted map collections
+ *
+ *  @tparam K the type of the keys in this sorted map; an implicit `Ordering[K]` is required for most operations
+ *  @tparam V the type of the values associated with the keys
+ */
 trait SortedMap[K, V]
   extends collection.SortedMap[K, V]
     with Map[K, V]

@@ -16,7 +16,10 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 import scala.collection.{IterableFactory, IterableFactoryDefaults, IterableOps}
 
-/** Base trait for mutable sets. */
+/** Base trait for mutable sets.
+ *
+ *  @tparam A the element type of the set
+ */
 trait Set[A]
   extends Iterable[A]
     with collection.Set[A]
@@ -29,6 +32,10 @@ trait Set[A]
 /**
  *  @define coll mutable set
  *  @define Coll `mutable.Set`
+ *
+ *  @tparam A the element type of the set
+ *  @tparam CC the type constructor for the collection (e.g., `Set`)
+ *  @tparam C the concrete collection type
  */
 transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   extends collection.SetOps[A, CC, C]
@@ -119,5 +126,8 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
 object Set extends IterableFactory.Delegate[Set](HashSet)
 
 
-/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the set
+ */
 abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A]
