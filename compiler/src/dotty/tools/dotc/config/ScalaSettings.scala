@@ -153,8 +153,10 @@ private sealed trait VerboseSettings:
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
   val VprofileDetails = IntSetting(VerboseSetting, "Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
-  val VreplMaxPrintElements: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-elements", "Number of elements to be printed before output is truncated.", 1000)
-  val VreplMaxPrintCharacters: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-characters", "Number of characters to be printed before output is truncated.", 50000)
+  @deprecated(message = "No longer supported, Scheduled for removal", since = "3.9.0")
+  val VreplMaxPrintElements: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-elements", "Number of elements to be printed before output is truncated.", 1000, deprecation = Some(Deprecation("Configuring output truncation is no longer supported")))
+  @deprecated(message = "No longer supported, Scheduled for removal", since = "3.9.0")
+  val VreplMaxPrintCharacters: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-characters", "Number of characters to be printed before output is truncated.", 50000, deprecation = Some(Deprecation("Configuring output truncation is no longer supported")))
 
 /** -W "Warnings" settings
  */

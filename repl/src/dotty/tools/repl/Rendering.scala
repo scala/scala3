@@ -27,16 +27,22 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
+  // Temporary fix for https://github.com/scala/scala3/issues/25116
+  // until `pprint` special-cases these.
+  // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
+  private val forcedToStringClasses = Set(
+    "scala.collection.immutable.LazyList",
+    "scala.collection.immutable.LazyListIterable",
+    "scala.collection.mutable.StringBuilder" // not technically needed but quite ugly to print as an iterable of characters
+  )
+
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
     def fallback() =
       pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
         .plainText
     try
-      // Temporary fix for https://github.com/scala/scala3/issues/25116
-      // until `pprint` special-cases `LazyList`.
-      // (We cannot use `isInstanceOf[LazyList]` because we're not in the same classloader)
-      if value.getClass.getName == "scala.collection.immutable.LazyList" then return value.toString
+      if value != null && forcedToStringClasses(value.getClass.getName) then return value.toString
       // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
       // however PPrint works by runtime type testing to deconstruct values. This is
       // sensitive to which classloader instantiates the object under test, i.e.
