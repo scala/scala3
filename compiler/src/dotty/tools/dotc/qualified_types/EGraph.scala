@@ -404,8 +404,8 @@ final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
         makeIntProduct(consts, nonConsts)
       case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
       case Op.IntLessEqual => constFoldBinaryOp[Int, Boolean](op, args, _ <= _)
-      case Op.IntGreaterThan => constFoldBinaryOp[Int, Boolean](op, args, _ > _)
-      case Op.IntGreaterEqual => constFoldBinaryOp[Int, Boolean](op, args, _ >= _)
+      case Op.IntGreaterThan => normalizeOp(Op.IntLessThan, args.reverse)
+      case Op.IntGreaterEqual => normalizeOp(Op.IntLessEqual, args.reverse)
       case _ =>
         ENode.OpApply(op, args)
     res
