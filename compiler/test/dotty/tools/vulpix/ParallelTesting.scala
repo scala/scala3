@@ -34,7 +34,6 @@ import dotc.reporting.Diagnostic
 import dotc.config.Config
 import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
-import dotty.tools.vulpix.TestConfiguration.defaultOptions
 import util.chaining.*
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -233,20 +232,23 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   }
   object SeparateCompilationSource:
     val CompilerVersion = """c([\d\.]+)""".r
+    val HasCompilerVersion = """_c([\d\.]+)""".r.unanchored
     val GroupOrdinal = """(\d+)""".r
-    val usingCanonicalJava = javaSpecVersion.startsWith("17")
 
   /** Skip if there are no sources, such as in a spurious directory,
    *  or when compiling with a legacy compiler which may not run under this jdk.
    */
   protected def shouldSkipTestSource(testSource: TestSource): Boolean =
-    testSource.sourceFiles.length == 0
+    val files = testSource.sourceFiles
+    files.length == 0
     ||
-    testSource.match
-      case separate: SeparateCompilationSource =>
-        !SeparateCompilationSource.usingCanonicalJava
-        && separate.compilationGroups.exists((group, _) => group.compiler.nonEmpty)
-      case _ => false
+      !TestConfiguration.usingBaselineJava
+      &&
+      testSource.match
+        case separate: SeparateCompilationSource =>
+          separate.compilationGroups.exists((group, _) => group.compiler.nonEmpty)
+        case _ =>
+          files.exists(f => SeparateCompilationSource.HasCompilerVersion.matches(f.getName))
 
   protected def shouldReRun(testSource: TestSource): Boolean =
     failedTests.forall(rerun => testSource match {
@@ -267,7 +269,15 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       Try(testSource match {
         case testSource @ JointCompilationSource(name, files, flags, outDir, fromTasty, decompilation) =>
           val reporter = fromTasty match
-            case NotFromTasty => compile(testSource.sourceFiles, flags, outDir)
+            case NotFromTasty =>
+              if testSource.sourceFiles.length == 1 then
+                testSource.sourceFiles(0).getName match
+                  case SeparateCompilationSource.HasCompilerVersion(version) =>
+                    val compiler = version.stripSuffix(".")
+                    compileWithOtherCompiler(compiler, testSource.sourceFiles, flags, outDir)
+                  case _ => compile(testSource.sourceFiles, flags, outDir)
+              else
+                compile(testSource.sourceFiles, flags, outDir)
             case FromTasty => compileFromTasty(flags, outDir)
             case FromBestEffortTasty => compileFromBestEffortTasty(flags, outDir)
             case WithBestEffortTasty(bestEffortDir) => compileWithBestEffortTasty(testSource.sourceFiles, bestEffortDir, flags, outDir)
@@ -636,7 +646,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       addToLast(barLine(start = false))
       diagnostics.reverse
 
-    protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
+    protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter = {
       def artifactClasspath(organizationName: String, moduleName: String) =
         import coursier._
         val dep = Dependency(
@@ -696,6 +706,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         }
 
       reporter
+    }
+    end compileWithOtherCompiler
 
     protected def compileFromBestEffortTasty(flags0: TestFlags, targetDir: JFile): TestReporter = {
       val classes = flattenFiles(targetDir).filter(isBestEffortTastyFile).map(_.toString)
@@ -1431,7 +1443,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
   /** Create out directory for directory `d` */
   def createOutputDirsForDir(d: JFile, sourceDir: JFile, outDir: String): JFile = {
-    val targetDir = new JFile(outDir + s"${sourceDir.getName}/${d.getName}")
+    val targetDir = new JFile(s"${outDir}${sourceDir.getName}/${d.getName}")
     targetDir.mkdirs()
     targetDir
   }
@@ -1439,7 +1451,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   /** Create out directory for `file` */
   private def createOutputDirsForFile(file: JFile, sourceDir: JFile, outDir: String): JFile = {
     val uniqueSubdir = file.getName.substring(0, file.getName.lastIndexOf('.'))
-    val targetDir = new JFile(outDir + s"${sourceDir.getName}${JFile.separatorChar}$uniqueSubdir")
+    val targetDir = new JFile(s"${outDir}${sourceDir.getName}${JFile.separatorChar}$uniqueSubdir")
     targetDir.mkdirs()
     targetDir
   }
@@ -1567,8 +1579,14 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       !isPicklerTest || source.compilationGroups.length == 1
     }
     val targets =
-      files.map(f => JointCompilationSource(testGroup.name, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
-      dirs.map { dir => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)) }.filter(picklerDirFilter)
+      files.map: f =>
+        val out = createOutputDirsForFile(f, sourceDir, outDir)
+        JointCompilationSource(testGroup.name, Array(f), flags, out)
+      ++
+      dirs.map: dir =>
+        val out = createOutputDirsForDir(dir, sourceDir, outDir)
+        SeparateCompilationSource(testGroup.name, dir, flags, out)
+      .filter(picklerDirFilter)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
