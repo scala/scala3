@@ -294,7 +294,7 @@ object Applications {
         case argType :: Nil
         if args.lengthCompare(1) > 0
             && Feature.autoTuplingEnabled
-            && defn.isTupleNType(argType) =>
+            && defn.isTupleNType(argType.normalizedTupleType) =>
           untpd.Tuple(args) :: Nil
         case _ =>
           args
