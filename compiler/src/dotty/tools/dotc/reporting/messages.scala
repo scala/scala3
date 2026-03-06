@@ -9,12 +9,14 @@ import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
 import NameKinds.{WildcardParamName, ContextFunctionParamName}
 import parsing.Scanners.Token
-import parsing.Tokens
+import parsing.Tokens, Tokens.showToken
 import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
-import ast.Trees
+import ast.Trees.*
 import ast.desugar
+import ast.tpd
+import ast.untpd
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
@@ -25,9 +27,6 @@ import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
 import Formatting.{hl, delay}
-import ast.Trees.*
-import ast.untpd
-import ast.tpd
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet
@@ -1256,12 +1255,12 @@ extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
 class ExpectedTokenButFound(expected: Token, found: Token, prefix: String = "", suffix: String = "")(using Context)
 extends SyntaxMsg(ExpectedTokenButFoundID) {
 
-  private def foundText = Tokens.showToken(found)
+  private def foundText = showToken(found)
 
   def msg(using Context) =
     val expectedText =
       if (Tokens.isIdentifier(expected)) "an identifier"
-      else Tokens.showToken(expected)
+      else showToken(expected)
     i"""$prefix$expectedText expected, but $foundText found$suffix"""
 
   def explain(using Context) =
@@ -1963,7 +1962,7 @@ class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(using Context)
 
 class ExpectedTypeBoundOrEquals(found: Token)(using Context)
   extends SyntaxMsg(ExpectedTypeBoundOrEqualsID) {
-  def msg(using Context) = i"${hl("=")}, ${hl(">:")}, or ${hl("<:")} expected, but ${Tokens.showToken(found)} found"
+  def msg(using Context) = i"${hl("=")}, ${hl(">:")}, or ${hl("<:")} expected, but ${showToken(found)} found"
 
   def explain(using Context) =
     i"""Type parameters and abstract types may be constrained by a type bound.
@@ -3150,7 +3149,7 @@ class MissingImplicitArgument(
   def msg(using Context): String =
 
     def formatMsg(shortForm: String)(headline: String = shortForm) = arg match
-      case arg: Trees.SearchFailureIdent[?] =>
+      case arg: SearchFailureIdent[?] =>
         arg.tpe match
           case _: NoMatchingImplicits => headline
           case tpe: SearchFailureType =>
@@ -3887,3 +3886,19 @@ final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
     i"""A private field shadows an inherited field with the same name.
        |This can lead to confusion as the inherited field becomes inaccessible.
        |Consider renaming the private field to avoid the shadowing."""
+
+class AmbiguousTemplateName(tree: NamedDefTree[?])(using Context) extends SyntaxMsg(AmbiguousTemplateNameID):
+  override protected def msg(using Context) = i"name `${tree.name}` should be enclosed in backticks"
+  override protected def explain(using Context): String =
+    "Names with trailing operator characters may fuse with a subsequent colon if not set off by backquotes or spaces."
+
+class IndentationWarning(isLeft: Boolean = false, before: String = "", missing: Token*)(using Context)
+extends SyntaxMsg(IndentationWarningID):
+  override protected def msg(using Context) =
+    s"Line is indented too far to the ${if isLeft then "left" else "right"}, or a ${
+      missing.map(showToken).mkString(" or ")
+    } is missing${
+      if !before.isEmpty then i" before:\n\n$before" else ""
+    }"
+  override protected def explain(using Context): String =
+    "Indentation that does not reflect syntactic nesting may be due to a typo such as missing punctuation."
