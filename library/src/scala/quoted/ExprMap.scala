@@ -4,10 +4,22 @@ import language.experimental.captureChecking
 
 trait ExprMap:
 
-  /** Maps an expression `e` with a type `T`. */
+  /** Maps an expression `e` with a type `T`.
+   *  Requires a given `Type[T]` instance for staging and a `Quotes` instance
+   *  for access to the reflection API.
+   *
+   *  @tparam T the type of the expression being transformed
+   *  @param e the expression to transform
+   */
   def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T]
 
-  /** Maps sub-expressions an expression `e` with a type `T`. */
+  /** Maps the sub-expressions of an expression `e` with type `T`.
+   *  Requires a given `Type[T]` instance for staging and a `Quotes` instance
+   *  for access to the reflection API.
+   *
+   *  @tparam T the type of the expression whose children are transformed
+   *  @param e the expression whose direct sub-expressions will be transformed via `transform`
+   */
   def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     import quotes.reflect.*
     final class MapChildren() {

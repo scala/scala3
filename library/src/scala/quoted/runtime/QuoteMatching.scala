@@ -25,6 +25,8 @@ trait QuoteMatching:
      *    - scala.quoted.runtime.Patterns.patternHole[T]: hole that matches an expression `x` of type `Expr[U]`
      *                                            if `U <:< T` and returns `x` as part of the match.
      *
+     *  @tparam TypeBindings a kind-level list (`KList`) encoding the type variables bound in the pattern during matching
+     *  @tparam Tup the tuple type containing the types of the matched expression holes, where each element is an `Expr[Ti]`
      *  @param scrutinee `Expr[Any]` on which we are pattern matching
      *  @param pattern `Expr[Any]` containing the pattern tree
      *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
@@ -38,6 +40,8 @@ trait QuoteMatching:
     /** Pattern matches an the scrutineeType against the patternType and returns a tuple
      *  with the matched holes if successful.
      *
+     *  @tparam TypeBindings a kind-level list (`KList`) encoding the type variables bound in the pattern during matching
+     *  @tparam Tup the tuple type containing the types of the matched type holes, where each element is a `Type[Ti]`
      *  @param scrutinee `Type[?]` on which we are pattern matching
      *  @param pattern `Type[?]` containing the pattern tree
      *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Type[Ti]``
