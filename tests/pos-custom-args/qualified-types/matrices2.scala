@@ -6,32 +6,45 @@ class CheckedArray(val size: Pos):
   def update(i: Pos with i < size, x: Double): Unit = data(i) = x
 
 object CheckedArray:
-  def ofDim(size: Pos): {arr: CheckedArray with arr.size == size} = CheckedArray(size).runtimeChecked
+  def ofDim(size: Pos): {arr: CheckedArray with arr.size == size} =
+    CheckedArray(size).runtimeChecked
 
-case class Matrix(width: Pos,height: Pos):
-  private val data = CheckedArray.ofDim((width * height).runtimeChecked)
+inline def forRange(from: Pos, to: Pos with to >= from)(body: {i: Pos with from <= i && i < to} => Unit): Unit =
+  var i: Int = from
+  while i < to do
+    body(i.runtimeChecked)
+    i = i + 1
+
+case class Matrix(width: Pos, height: Pos):
+  private val size = width * height
+  private val data = CheckedArray.ofDim(size.runtimeChecked)
+
+  def index(i: Pos with i < height, j: Pos with j < width): {res: Pos with res < data.size} =
+    (i * width + j).runtimeChecked
 
   def apply(i: Pos with i < height, j: Pos with j < width): Double =
-    data((i * width + j).runtimeChecked)
+    data(index(i, j))
+
+  def update(i: Pos with i < height, j: Pos with j < width, x: Double): Unit =
+    data(index(i, j)) = x
 
   def transpose(): {v: Matrix with v.width == height && v.height == width} =
     val transposed = Matrix.ofDim(width = height, height = width)
-    for i <- 0 until height do
-      for j <- 0 until width do
-        transposed.data((j * height + i).runtimeChecked) =
-          data((i * width + j).runtimeChecked)
+    forRange(0, height): i =>
+      forRange(0, width): j =>
+        transposed(j, i) = this(i, j)
     transposed
 
-  def mul(that: Matrix with that.width == height):
-    {v: Matrix with v.width == that.height && v.height == height}
+  def mul(that: Matrix with that.height == width):
+    {v: Matrix with v.width == that.width && v.height == height}
   =
-    val result = Matrix.ofDim(width = that.height, height = height)
-    for i <- 0 until height do
-      for j <- 0 until that.height do
+    val result = Matrix.ofDim(width = that.width, height = height)
+    forRange(0, height): i =>
+      forRange(0, that.width): j =>
         var sum = 0.0
-        for k <- 0 until width do
-          sum = sum + this(i.runtimeChecked, k.runtimeChecked) * that(k.runtimeChecked, j.runtimeChecked)
-        result.data((i * that.height + j).runtimeChecked) = sum
+        forRange(0, width): k =>
+          sum = sum + this(i, k) * that(k, j)
+        result(i, j) = sum
     result
 
 object Matrix:
@@ -45,4 +58,3 @@ object Matrix:
 
   val m1T = m1.transpose()
   m1T.mul(m1)
-
