@@ -511,6 +511,10 @@ object ENode:
               for body <- fromTree(defDef.rhs, newParamSyms, newParamTps)
               yield ENode.Lambda(newParamTps.take(myParamTps.size), myRetTp, body)
             case _ => None
+        case tpd.Block(Nil, expr) =>
+          fromTree(expr, paramSyms, paramTps)
+        case tpd.Inlined(_, Nil, expr) =>
+          fromTree(expr, paramSyms, paramTps)
         case _ =>
           None
 
