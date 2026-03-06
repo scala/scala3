@@ -261,7 +261,10 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
   private[collection] val unrolledlength = 32
 
-  /** Unrolled buffer node. */
+  /** Unrolled buffer node.
+   *
+   *  @tparam T the element type stored in the node's array; requires an implicit `ClassTag` for array creation
+   */
   class Unrolled[T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T] | Null, val buff: UnrolledBuffer[T] | Null = null) {
     this: Unrolled[T]^{} =>
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)

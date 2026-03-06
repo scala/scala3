@@ -23,6 +23,9 @@ import language.experimental.captureChecking
  *
  *  @define Coll `GrowingBuilder`
  *  @define coll growing builder
+ *
+ *  @tparam Elem the type of elements that can be added to the builder
+ *  @tparam To the type of the resulting growable collection, which must be a subtype of `Growable[Elem]`
  */
 class GrowableBuilder[Elem, To <: Growable[Elem]](protected val elems: To)
   extends Builder[Elem, To] {

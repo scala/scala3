@@ -17,7 +17,10 @@ import scala.language.`2.13`
 
 import scala.scalajs.js
 
-/** A `Buffer` is a growable and shrinkable `Seq`. */
+/** A `Buffer` is a growable and shrinkable `Seq`.
+ *
+ *  @tparam A the type of elements contained in this buffer
+ */
 trait Buffer[A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
