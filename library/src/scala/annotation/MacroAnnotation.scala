@@ -214,9 +214,10 @@ trait MacroAnnotation extends StaticAnnotation:
    *    override def hashCode(): Int = hash$macro$1
    *  ```
    *
-   *  @param Quotes     Implicit instance of Quotes used for tree reflection
-   *  @param definition Tree that will be transformed
-   *  @param companion  Tree for the companion class or module if the definition is respectively a module or a class
+   *  @param Quotes     the implicit `Quotes` context providing access to the reflection API
+   *  @param definition the annotated definition to be transformed
+   *  @param companion  the companion object definition if `definition` is a class, or the companion class definition if `definition` is an object; `None` if no companion exists
+   *  @return a non-empty list of definitions: the transformed `definition` (which must reuse the original symbol) followed by any additional new definitions
    *
    *  @syntax markdown
    */

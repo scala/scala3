@@ -59,6 +59,8 @@ trait Manifest[T] extends ClassManifest[T] with Equals {
   }
   /** Note: testing for erasure here is important, as it is many times
    *  faster than <:< and rules out most comparisons.
+   *
+   *  @param that the object to compare for equality
    */
   override def equals(that: Any): Boolean = that match {
     case m: Manifest[_] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
@@ -99,7 +101,11 @@ object Manifest {
   val Null: Manifest[scala.Null] = ManifestFactory.Null
   val Nothing: Manifest[scala.Nothing] = ManifestFactory.Nothing
 
-  /** Manifest for the singleton type `value.type`. */
+  /** Manifest for the singleton type `value.type`.
+   *
+   *  @tparam T the type to manifest, constrained to `AnyRef` subtypes
+   *  @param value the singleton instance for which to create a manifest
+   */
   def singleType[T <: AnyRef](value: AnyRef): Manifest[T] =
     ManifestFactory.singleType[T](value)
 
@@ -109,18 +115,31 @@ object Manifest {
    *       it's called from ScalaRunTime.boxArray itself. If we
    *       pass varargs as arrays into this, we get an infinitely recursive call
    *       to boxArray. (Besides, having a separate case is more efficient)
+   *
+   *  @tparam T the type to manifest
+   *  @param clazz the runtime `Class` representing the erased type `T`
    */
   def classType[T](clazz: Predef.Class[_]): Manifest[T] =
     ManifestFactory.classType[T](clazz)
 
   /** Manifest for the class type `clazz`, where `clazz` is
    *  a top-level or static class and args are its type arguments. 
+   *
+   *  @tparam T the type to manifest
+   *  @param clazz the runtime `Class` representing the erased type `T`
+   *  @param arg1 the manifest for the first type argument
+   *  @param args the manifests for the remaining type arguments
    */
   def classType[T](clazz: Predef.Class[T], arg1: Manifest[_], args: Manifest[_]*): Manifest[T] =
     ManifestFactory.classType[T](clazz, arg1, args: _*)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
    *  a class with non-package prefix type `prefix` and type arguments `args`.
+   *
+   *  @tparam T the type to manifest
+   *  @param prefix the manifest for the enclosing type (non-package prefix)
+   *  @param clazz the runtime `Class` representing the erased type `T`
+   *  @param args the manifests for the type arguments
    */
   def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     ManifestFactory.classType[T](prefix, clazz, args: _*)
@@ -131,15 +150,30 @@ object Manifest {
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
    *  strictly necessary as it could be obtained by reflection. It was
    *  added so that erasure can be calculated without reflection. 
+   *
+   *  @tparam T the type to manifest
+   *  @param prefix the manifest for the type in which this abstract type is a member
+   *  @param name the name of the abstract type member
+   *  @param upperBound the `Class` representing the erasure of the abstract type's upper bound
+   *  @param args the manifests for the type arguments
    */
   def abstractType[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     ManifestFactory.abstractType[T](prefix, name, upperBound, args: _*)
 
-  /** Manifest for the unknown type `_ >: L <: U` in an existential. */
+  /** Manifest for the unknown type `_ >: L <: U` in an existential.
+   *
+   *  @tparam T the type to manifest
+   *  @param lowerBound the manifest for the wildcard's lower bound `L`
+   *  @param upperBound the manifest for the wildcard's upper bound `U`
+   */
   def wildcardType[T](lowerBound: Manifest[_], upperBound: Manifest[_]): Manifest[T] =
     ManifestFactory.wildcardType[T](lowerBound, upperBound)
 
-  /** Manifest for the intersection type `parents_0 with ... with parents_n`. */
+  /** Manifest for the intersection type `parents_0 with ... with parents_n`.
+   *
+   *  @tparam T the type to manifest
+   *  @param parents the manifests for each type in the intersection
+   */
   def intersectionType[T](parents: Manifest[_]*): Manifest[T] =
     ManifestFactory.intersectionType[T](parents: _*)
 
@@ -376,7 +410,11 @@ object ManifestFactory {
     override lazy val toString = value.toString + ".type"
   }
 
-  /** Manifest for the singleton type `value.type`. */
+  /** Manifest for the singleton type `value.type`.
+   *
+   *  @tparam T the type to manifest, constrained to `AnyRef` subtypes
+   *  @param value the singleton instance for which to create a manifest
+   */
   def singleType[T <: AnyRef](value: AnyRef): Manifest[T] =
     new SingletonTypeManifest[T](value)
 
@@ -386,18 +424,31 @@ object ManifestFactory {
    *       it's called from ScalaRunTime.boxArray itself. If we
    *       pass varargs as arrays into this, we get an infinitely recursive call
    *       to boxArray. (Besides, having a separate case is more efficient)
+   *
+   *  @tparam T the type to manifest
+   *  @param clazz the runtime `Class` representing the erased type `T`
    */
   def classType[T](clazz: Predef.Class[_]): Manifest[T] =
     new ClassTypeManifest[T](None, clazz, Nil)
 
   /** Manifest for the class type `clazz`, where `clazz` is
    *  a top-level or static class and args are its type arguments. 
+   *
+   *  @tparam T the type to manifest
+   *  @param clazz the runtime `Class` representing the erased type `T`
+   *  @param arg1 the manifest for the first type argument
+   *  @param args the manifests for the remaining type arguments
    */
   def classType[T](clazz: Predef.Class[T], arg1: Manifest[_], args: Manifest[_]*): Manifest[T] =
     new ClassTypeManifest[T](None, clazz, arg1 :: args.toList)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
    *  a class with non-package prefix type `prefix` and type arguments `args`.
+   *
+   *  @tparam T the type to manifest
+   *  @param prefix the manifest for the enclosing type (non-package prefix)
+   *  @param clazz the runtime `Class` representing the erased type `T`
+   *  @param args the manifests for the type arguments
    */
   def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     new ClassTypeManifest[T](Some(prefix), clazz, args.toList)
@@ -436,6 +487,12 @@ object ManifestFactory {
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
    *  strictly necessary as it could be obtained by reflection. It was
    *  added so that erasure can be calculated without reflection. 
+   *
+   *  @tparam T the type to manifest
+   *  @param prefix the manifest for the type in which this abstract type is a member
+   *  @param name the name of the abstract type member
+   *  @param upperBound the `Class` representing the erasure of the abstract type's upper bound
+   *  @param args the manifests for the type arguments
    */
   def abstractType[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     new AbstractTypeManifest[T](prefix, name, upperBound, args)
@@ -449,7 +506,12 @@ object ManifestFactory {
         (if (upperBound eq Nothing) "" else " <: "+upperBound)
   }
 
-  /** Manifest for the unknown type `_ >: L <: U` in an existential. */
+  /** Manifest for the unknown type `_ >: L <: U` in an existential.
+   *
+   *  @tparam T the type to manifest
+   *  @param lowerBound the manifest for the wildcard's lower bound `L`
+   *  @param upperBound the manifest for the wildcard's upper bound `U`
+   */
   def wildcardType[T](lowerBound: Manifest[_], upperBound: Manifest[_]): Manifest[T] =
     new WildcardManifest[T](lowerBound, upperBound)
 
@@ -461,7 +523,11 @@ object ManifestFactory {
     override def toString = parents.mkString(" with ")
   }
 
-  /** Manifest for the intersection type `parents_0 with ... with parents_n`. */
+  /** Manifest for the intersection type `parents_0 with ... with parents_n`.
+   *
+   *  @tparam T the type to manifest
+   *  @param parents the manifests for each type in the intersection
+   */
   def intersectionType[T](parents: Manifest[_]*): Manifest[T] =
     new IntersectionTypeManifest[T](parents.toArray)
 }
