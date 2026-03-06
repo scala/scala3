@@ -1,6 +1,7 @@
 def f(x: Int): Int = ???
 def id[T](x: T): T = x
 def opaqueSize[T](l: List[T]): Int = ???
+class Box(val size: Int)
 
 def test: Unit =
   val x: Int = ???
@@ -35,3 +36,21 @@ def test: Unit =
   summon[{v: Int with x <= y} <:< {v: Int with x < y + 1}]
   summon[{v: Int with 0 <= v} <:< {v: Int with v >= 0}]
   summon[{v: Int with v >= 0} <:< {v: Int with 0 <= v}]
+
+  // Transitivity of <
+  summon[{v: Int with x < y && y < z} <:< {v: Int with x < z}]
+  // Chained transitivity: a < b, b < c, c < d => a < d
+  summon[{v: Int with x < y && y < z && z < v} <:< {v: Int with x < v}]
+  // Transitivity across separate pairs: a < b, c < d, b < c => a < d
+  summon[{v: Int with x < y && z < v && y < z} <:< {v: Int with x < v}]
+  // Transitivity with constants
+  summon[{v: Int with v < 5 && 5 < x} <:< {v: Int with v < x}]
+  // Transitivity with function calls
+  summon[{v: Int with v < f(x) && f(x) < y} <:< {v: Int with v < y}]
+  summon[{v: Int with x < id(y) && id(y) < z} <:< {v: Int with x < z}]
+  // Transitivity with paths
+  val b: Box = ???
+  summon[{v: Int with v < b.size && b.size < x} <:< {v: Int with v < x}]
+  // Reflexive/cyclic cases don't loop
+  summon[{v: Int with x < x} <:< {v: Int with x < x}]
+  summon[{v: Int with x < y && y < x} <:< {v: Int with x < x}]

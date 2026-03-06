@@ -96,6 +96,12 @@ final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
    */
   private val worklist = mutable.Queue.empty[ENode]
 
+  /** `intStrictUpperBounds(a)` contains all `b` such that `a < b` is known true. */
+  private val intStrictUpperBounds: EqHashMap[ENode, mutable.Set[ENode]] = EqHashMap()
+
+  /** `intStrictLowerBounds(b)` contains all `a` such that `a < b` is known true. */
+  private val intStrictLowerBounds: EqHashMap[ENode, mutable.Set[ENode]] = EqHashMap()
+
   val trueNode: ENode.Atom = constant(true)
   val falseNode: ENode.Atom = constant(false)
   val zeroIntNode: ENode.Atom = constant(0)
@@ -234,6 +240,8 @@ final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
           args.foreach(merge(_, falseNode))
         case ENode.OpApply(Op.Equal, args) if newRepr eq trueNode =>
           merge(args(0), args(1))
+        case ENode.OpApply(Op.IntLessThan, List(a, b)) if newRepr eq trueNode =>
+          propagateIntLessThan(a, b)
         case _ =>
           ()
 
@@ -241,6 +249,22 @@ final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
       trace(s"enqueue ${oldusages.map(show).mkString(", ")}"):
         worklist.enqueueAll(oldusages)
         ()
+
+  /** When `a < b` becomes true, propagate transitivity:
+   *  - For each `c` where `b < c` is known: merge `a < c` with true
+   *  - For each `d` where `d < a` is known: merge `d < b` with true
+   */
+  private def propagateIntLessThan(a: ENode, b: ENode): Unit =
+    val aRepr = representant(a)
+    val bRepr = representant(b)
+    intStrictUpperBounds.getOrElseUpdate(aRepr, mutable.Set.empty) += bRepr
+    intStrictLowerBounds.getOrElseUpdate(bRepr, mutable.Set.empty) += aRepr
+    for c <- intStrictUpperBounds.getOrElse(bRepr, mutable.Set.empty) do
+      val ltNode = unique(normalizeOp(Op.IntLessThan, List(aRepr, c)))
+      merge(ltNode, trueNode)
+    for d <- intStrictLowerBounds.getOrElse(aRepr, mutable.Set.empty) do
+      val ltNode = unique(normalizeOp(Op.IntLessThan, List(d, bRepr)))
+      merge(ltNode, trueNode)
 
   private def order(a: ENode, b: ENode): (ENode, ENode) =
     if a.contains(b) then
