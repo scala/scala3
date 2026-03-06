@@ -217,6 +217,7 @@ object SymbolLoaders {
         enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (None, Some(src)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] no class or tasty, picked up source file for " + src.path)
+        println(s"Entering toplevels from source: ${src} ${nameOf(classRep)} ${owner.fullName}")
         enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (Some(bin), _) =>
         val completer =

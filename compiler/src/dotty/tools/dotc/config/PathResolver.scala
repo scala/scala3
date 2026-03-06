@@ -172,7 +172,7 @@ import PathResolver.{Defaults, ppcp}
 class PathResolver(using c: Context) {
   import c.base.settings
 
-  private val classPathFactory = new ClassPathFactory
+  protected val classPathFactory = new ClassPathFactory
 
   private def cmdLineOrElse(name: String, alt: String) =
     commandLineFor(name) match {
