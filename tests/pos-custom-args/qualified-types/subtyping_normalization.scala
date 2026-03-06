@@ -27,3 +27,11 @@ def test: Unit =
   summon[{v: Int with v == id(x + 1)}        <:< {v: Int with v == id(x + 1)}]
 
   summon[{v: List[Int] with opaqueSize(v) == 2 * x} <:< {v: List[Int] with opaqueSize(v) == x + x}]
+
+  // Comparison normalization: >= to <=, > to <, <= to <
+  summon[{v: Int with x >= y} <:< {v: Int with y <= x}]
+  summon[{v: Int with x >= y} <:< {v: Int with y < x + 1}]
+  summon[{v: Int with x > y}  <:< {v: Int with y < x}]
+  summon[{v: Int with x <= y} <:< {v: Int with x < y + 1}]
+  summon[{v: Int with 0 <= v} <:< {v: Int with v >= 0}]
+  summon[{v: Int with v >= 0} <:< {v: Int with 0 <= v}]
