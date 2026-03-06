@@ -313,7 +313,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
       val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
       val matchExpr = Match(that, List(matchingCase, defaultCase))
-      if (isDerivedValueClass(clazz)) matchExpr
+      if (isDerivedValueClass(clazz) || clazz.isValhallaValueClass) matchExpr
       else {
         val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
         eqCompare `or` matchExpr

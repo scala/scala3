@@ -3887,3 +3887,27 @@ final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
     i"""A private field shadows an inherited field with the same name.
        |This can lead to confusion as the inherited field becomes inaccessible.
        |Consider renaming the private field to avoid the shadowing."""
+
+final class ValueClassCannotExtendIdentityClass(valueClass: Symbol, parent: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendIdentityClassID) {
+  def msg(using Context) = i"""A Valhalla value class cannot extend Identity Class ($parent)}"""
+  def explain(using Context) = ""
+}
+
+final class ValueClassMustNotExtendTraitWithMutableField(parentClass: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassMustNotExtendTraitWithMutableFieldID) {
+  def msg(using Context) = i"""A Valhalla value class/trait cannot extend $parentClass with mutable field ($field)"""
+  def explain(using Context) = ""
+}
+
+final class IncorrectValueClassDeclaration(isClass: Boolean)(using Context)
+  extends SyntaxMsg(IncorrectValueClassDeclarationID) {
+  def msg(using Context) = i"""Incorrect Valhalla value class declaration: Valhalla ${if isClass then "value classes" else "traits"} must extend ${if isClass then "AnyVal" else "Any"}."""
+  def explain(using Context) = "Valhalla Value Classes and Traits need to extend AnyVal or Any respectively."
+}
+
+final class ValhallaTraitsMayNotHaveSelfTypesWithVars(selfTypeSym: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(ValhallaTraitsMayNotHaveSelfTypesWithVarsID) {
+  def msg(using Context) = i"""A Valhalla trait may not have a self type ($selfTypeSym) with mutable field ($field)."""
+  def explain(using Context) = ""
+}
