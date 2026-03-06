@@ -92,7 +92,7 @@ function attachAllListeners() {
         expanderChild !== null
       ) {
         expanderChild.onclick = function (e) {
-          if (!$(e.target).is("a") && e.fromSnippet !== true) {
+          if (!e.target.tagName === "A" && e.fromSnippet !== true) {
             this.parentElement.classList.toggle("expand");
             this.children[0].classList.toggle("expanded");
             this.querySelector(".show-content").classList.toggle("expand");
@@ -127,7 +127,7 @@ function attachAllListeners() {
   var memberLists = document.getElementsByClassName("tab");
   if (memberLists) {
     for (i = 0; i < memberLists.length; i++) {
-      if ($(memberLists[i].children[0].children[0]).is("button")) {
+      if (memberLists[i].children[0].children[0].tagName === "BUTTON") {
         memberLists[i].children[0].onclick = function (e) {
           this.classList.toggle("expand");
           this.children[0].classList.toggle("expand");
@@ -177,7 +177,9 @@ function attachAllListeners() {
       }
       e.preventDefault();
       e.stopPropagation();
-      $.get(href, function (data) {
+      fetch(href, { method: 'GET' })
+      .then((response) => response.text())
+      .then(function (data) {
         const oldLoc = getRawLoc();
         if (window.history.state === null) {
           window.history.replaceState(savePageState(document), "");
@@ -558,7 +560,8 @@ var transform;
 
 function showGraph() {
   document.getElementById("inheritance-diagram").classList.add("shown");
-  if ($("svg#graph").children().length == 0) {
+  const graph = document.querySelector("svg#graph");
+  if (graph != null && graph.children().length == 0) {
     var dotNode = document.querySelector("#dot");
 
     if (dotNode) {
