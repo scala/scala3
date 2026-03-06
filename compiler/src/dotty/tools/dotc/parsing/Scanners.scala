@@ -655,8 +655,14 @@ object Scanners {
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
                     insert(OUTDENT, offset)
-                else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
-                  report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
+                else
+                  val checkable = r match
+                    case _: InBraces => true
+                    case InParens(LPAREN, _) => true
+                    case _ => false
+                  if checkable && !closingRegionTokens.contains(token) then
+                    report.warning(s"Line is indented too far to the left, or a ${showToken(r.closedBy)} is missing",
+                      sourcePos())
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
@@ -769,7 +775,14 @@ object Scanners {
             case _ => false
           currentRegion match
             case r: Indented if isEnclosedInParens(r.outer) =>
-              insert(OUTDENT, offset)
+              // For region prefix COLONeol, only OUTDENT if COMMA at EOL
+              if r.prefix == COLONeol then
+                val lookahead = LookaheadScanner()
+                lookahead.nextToken()
+                if lookahead.isAfterLineEnd then
+                  insert(OUTDENT, offset)
+              else
+                insert(OUTDENT, offset)
             case _ =>
               peekAhead()
               if isAfterLineEnd
