@@ -78,7 +78,7 @@ class ReplCompilerTests extends ReplTest:
       assertEquals(1, summon[State].imports.size)
       run("""mutable.Map("one" -> 1)""")
       assertEquals(
-        "val res0: mutable.Map[String, Int] = HashMap(one -> 1)",
+        """val res0: mutable.Map[String, Int] = HashMap("one" -> 1)""",
         storedOutput().trim
       )
     }
@@ -541,6 +541,18 @@ class ReplCompilerTests extends ReplTest:
   @Test def `i24142 abbreviated commands still work`: Unit = initially:
     run(":he")
     assertTrue(storedOutput().contains("The REPL has several commands available"))
+
+  @Test def `i25116 LazyList printing`: Unit = initially:
+    run:
+      """
+      |lazy val foo = println(23)
+      |foo #:: LazyList.empty
+      |""".stripMargin
+    val expected = List(
+      "lazy val foo: Unit",
+      "val res0: LazyList[Unit] = LazyList(<not computed>)"
+    )
+    assertEquals(expected, lines())
 
 object ReplCompilerTests:
 

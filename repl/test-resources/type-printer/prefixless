@@ -1,10 +1,10 @@
 scala> List(1,2,3)
 val res0: List[Int] = List(1, 2, 3)
 scala> Map("foo" -> 1)
-val res1: Map[String, Int] = Map(foo -> 1)
+val res1: Map[String, Int] = Map("foo" -> 1)
 scala> Seq('a','b')
-val res2: Seq[Char] = List(a, b)
+val res2: Seq[Char] = List('a', 'b')
 scala> Set(4, 5)
 val res3: Set[Int] = Set(4, 5)
 scala> Iterator(1)
-val res4: Iterator[Int] = <iterator>
+val res4: Iterator[Int] = non-empty iterator
