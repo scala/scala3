@@ -14,7 +14,9 @@ final class JSR223Tests:
 
   @Test def filetests: Unit =
     given TestGroup = TestGroup("runWithCompiler")
-    compileFilesInDir("test-resources/jsr223", TestConfiguration.withReplOptions)
+    // We want this test to run with the REPL inside the classpath so it can access the script engine,
+    // and by default Vulpix only gives a restricted class path, so pass the full one
+    compileFilesInDir("test-resources/jsr223", TestConfiguration.defaultOptions.withRunClasspath(System.getProperty("java.class.path")))
       .checkRuns()
   end filetests
 

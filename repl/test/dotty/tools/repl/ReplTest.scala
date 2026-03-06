@@ -100,7 +100,10 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         out.linesIterator.foreach(buf.append)
         nstate
       }
-      (optsLine :: buf.toList).filter(nonBlank)
+      // We run the repl with `-Ydebug` to not use the fallback if there's a class load exception so we can notice these,
+      // but as a consequence we get debug messages; ignore the stale symbol one, whose contents include symbol IDs
+      // that depend on the exact compiler.
+      (optsLine :: buf.toList).filter(nonBlank).filter(!_.startsWith("stale symbol;"))
     }
 
     if FileDiff.matches(actualOutput, expectedOutput) then None
@@ -120,6 +123,17 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-pagewidth", "80" /* TODO: but a lot of tests need fixing to match production behavior "-Ydebug"*/)
-  val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.replClassPath)
-  lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.replWithStagingClasspath)
+  // Because we test REPL features like completion,
+  // we don't want other test stuff to get in the way,
+  // e.g., "Pred" should complete to "Predef" and not "PredefTest" just because some dependency has a test named like that
+  private val classpath =
+    System.getProperty("java.class.path")
+      .split(JFile.pathSeparator)
+      .filter(!_.contains("test-classes"))
+      .mkString(JFile.pathSeparator)
+
+  def createOptions(extraClasspath: String*): Array[String] =
+    Array("-color:never", "-pagewidth", "80", "-Ydebug",
+          "-classpath", classpath + JFile.pathSeparator + extraClasspath.mkString(JFile.pathSeparator))
+
+  val defaultOptions: Array[String] = createOptions()
