@@ -948,6 +948,7 @@ object Contexts {
       // In non-interactive mode, always create a fresh platform to preserve original behavior.
       if _platform == null || !ctx.mode.is(Mode.Interactive) then
         _platform = newPlatform
+      platform.init()
       definitions.init()
     }
 

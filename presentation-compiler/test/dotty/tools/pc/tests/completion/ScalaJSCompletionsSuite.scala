@@ -53,4 +53,20 @@ class ScalaJSCompletionsSuite extends BaseCompletionSuite {
         |onbeforeunload: scala.scalajs.js.Function1[BeforeUnloadEvent, ?]
         |""".stripMargin
     )
+
+  @Test def union =
+    check(
+      """
+        |
+        |import org.scalajs.dom
+        |import org.scalajs.dom.WebSocket
+        |
+        |object ChatApp:
+        |  val foo: String | Unit = "blah"
+        |  foo@@
+        |""".stripMargin,
+      """
+        |foo: String | Unit
+        |""".stripMargin
+    )
 }
