@@ -123,6 +123,17 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-pagewidth", "80", "-Ydebug")
-  val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.replClassPath)
-  lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.replWithStagingClasspath)
+  // Because we test REPL features like completion,
+  // we don't want other test stuff to get in the way,
+  // e.g., "Pred" should complete to "Predef" and not "PredefTest" just because some dependency has a test named like that
+  private val classpath =
+    System.getProperty("java.class.path")
+      .split(JFile.pathSeparator)
+      .filter(!_.contains("test-classes"))
+      .mkString(JFile.pathSeparator)
+
+  def createOptions(extraClasspath: String*): Array[String] =
+    Array("-color:never", "-pagewidth", "80", "-Ydebug",
+          "-classpath", classpath + JFile.pathSeparator + extraClasspath.mkString(JFile.pathSeparator))
+
+  val defaultOptions: Array[String] = createOptions()
