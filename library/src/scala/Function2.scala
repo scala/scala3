@@ -34,6 +34,9 @@ import scala.language.`2.13`
  */
 trait Function2[@specialized(Specializable.Args) -T1, @specialized(Specializable.Args) -T2, @specialized(Specializable.Return) +R] extends AnyRef {
   /** Applies the body of this function to the arguments.
+   *
+   *  @param v1 the first argument of type `T1`
+   *  @param v2 the second argument of type `T2`
    *  @return   the result of function application.
    */
   def apply(v1: T1, v2: T2): R

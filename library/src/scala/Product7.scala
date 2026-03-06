@@ -21,7 +21,16 @@ object Product7 {
     Some(x)
 }
 
-/** Product7 is a Cartesian product of 7 components. */
+/** Product7 is a Cartesian product of 7 components.
+ *
+ *  @tparam T1 the type of the 1st element
+ *  @tparam T2 the type of the 2nd element
+ *  @tparam T3 the type of the 3rd element
+ *  @tparam T4 the type of the 4th element
+ *  @tparam T5 the type of the 5th element
+ *  @tparam T6 the type of the 6th element
+ *  @tparam T7 the type of the 7th element
+ */
 trait Product7[+T1, +T2, +T3, +T4, +T5, +T6, +T7] extends Any with Product {
   /** The arity of this product.
    *  @return 7

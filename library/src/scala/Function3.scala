@@ -16,9 +16,19 @@ package scala
 
 import scala.language.`2.13`
 
-/** A function of 3 parameters. */
+/** A function of 3 parameters.
+ *
+ *  @tparam T1 the type of the first argument
+ *  @tparam T2 the type of the second argument
+ *  @tparam T3 the type of the third argument
+ *  @tparam R the return type of the function
+ */
 trait Function3[-T1, -T2, -T3, +R] extends AnyRef {
   /** Applies the body of this function to the arguments.
+   *
+   *  @param v1 the first argument
+   *  @param v2 the second argument
+   *  @param v3 the third argument
    *  @return   the result of function application.
    */
   def apply(v1: T1, v2: T2, v3: T3): R

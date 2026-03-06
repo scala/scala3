@@ -21,7 +21,13 @@ object Product4 {
     Some(x)
 }
 
-/** Product4 is a Cartesian product of 4 components. */
+/** Product4 is a Cartesian product of 4 components.
+ *
+ *  @tparam T1 the type of the 1st element
+ *  @tparam T2 the type of the 2nd element
+ *  @tparam T3 the type of the 3rd element
+ *  @tparam T4 the type of the 4th element
+ */
 trait Product4[+T1, +T2, +T3, +T4] extends Any with Product {
   /** The arity of this product.
    *  @return 4
