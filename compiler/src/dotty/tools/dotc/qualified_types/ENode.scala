@@ -425,8 +425,8 @@ object ENode:
         case Not => nme.Not
         case And => nme.And
         case Or => nme.Or
-        case IntLessThan => nme.Le
-        case IntLessEqual => nme.Lt
+        case IntLessThan => nme.Lt
+        case IntLessEqual => nme.Le
         case IntGreaterThan => nme.Gt
         case IntGreaterEqual => nme.Ge
 
