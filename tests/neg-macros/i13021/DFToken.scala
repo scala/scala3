@@ -11,4 +11,4 @@ object DFToken:
 
 def getWidth[W <: Int](token: DFBits.Token[W]): Int = token.width
 def getData[W <: Int](token: DFBits.Token[W]): Int =
-  token.data //error here
+  token.data // error

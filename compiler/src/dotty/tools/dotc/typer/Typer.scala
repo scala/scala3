@@ -785,7 +785,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       report.error(StableIdentPattern(tree1, pt), tree1.srcPos)
     tree1
 
-  def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
+  private def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
     val selName = tree0.name
     val tree = cpy.Select(tree0)(qual, selName)
     val superAccess = qual.isInstanceOf[Super]
@@ -816,33 +816,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
         // but that is done only after we search for extension methods or conversions.
         typedSelectWithAdapt(tree, pt, qual)
-      else EmptyTree
-
-    // Otherwise, heal member selection on an opaque reference,
-    // reusing the logic in TypeComparer.
-    def tryLiftToThis() =
-      val wtp = qual.tpe.widen
-      val liftedTp = comparing(_.liftToThis(wtp))
-      if liftedTp ne wtp then
-        val qual1 = qual.cast(liftedTp)
-        val tree1 = cpy.Select(tree0)(qual1, selName)
-        val rawType1 = selectionType(tree1, qual1)
-        val adapted = tryType(tree1, qual1, rawType1)
-        if !adapted.isEmpty && sourceVersion == `3.6-migration` then
-          val adaptedOld = tryExt(tree, qual)
-          if !adaptedOld.isEmpty then
-            val symOld = adaptedOld.symbol
-            val underlying = liftedTp match
-              case tp: TypeProxy => i" ${tp.translucentSuperType}"
-              case _ => ""
-            report.migrationWarning(
-              em"""Previously this selected the extension ${symOld}${symOld.showExtendedLocation}
-                  |Now it selects $selName on the opaque type's underlying type$underlying
-                  |
-                  |You can change this back by selecting $adaptedOld
-                  |Or by defining the extension method outside of the opaque type's scope.
-                  |""", tree0)
-        adapted
       else EmptyTree
 
     // Otherwise, try to expand a named tuple selection
@@ -964,7 +937,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tryType(tree, qual, rawType)
       .orElse(trySimplifyApply())
       .orElse(tryInstantiateTypeVar())
-      .orElse(tryLiftToThis())
       .orElse(tryNamedTupleSelection())
       .orElse(trySmallGenericTuple(qual, withCast = true))
       .orElse(tryExt(tree, qual))

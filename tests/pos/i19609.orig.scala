@@ -8,5 +8,5 @@ object o {
     t.length // OK
 
   def test2(t: o.T): Int =
-    t.length // Error: value length is not a member of Playground.o.T
+    t.length // OK
 }

@@ -288,7 +288,7 @@ object Types extends TypeUtils {
       def loop(tp: Type): Boolean = try tp match
         case tp: TypeRef =>
           val sym = tp.symbol
-          if (sym.isClass) sym.derivesFrom(cls, defaultIfUnknown) else loop(tp.superType)
+          if sym.isClass then sym.derivesFrom(cls, defaultIfUnknown) else loop(tp.translucentSuperType)
         case tp: AppliedType =>
           tp.superType.derivesFrom(cls)
         case tp: MatchType =>
@@ -827,10 +827,12 @@ object Types extends TypeUtils {
             case tp1 => tp1
           })
         case tp: TypeRef =>
-          tp.denot match {
+          if tp.symbol.isOpaqueAlias then
+            val lifted = TypeComparer.liftToThis(tp)
+            if lifted ne tp then go(lifted) else go(tp.denot.info)
+          else tp.denot match
             case d: ClassDenotation => d.findMember(name, pre, required, excluded)
             case d => go(d.info)
-          }
         case tp: AppliedType =>
           tp.tycon match {
             case tc: TypeRef =>
