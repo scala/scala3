@@ -1,0 +1,15 @@
+[[syntax trees at end of                     typer]] // tests/printing/i24321.scala
+package <empty> {
+  final lazy module val i24321$package: i24321$package = new i24321$package()
+  final module class i24321$package() extends Object() {
+    this: i24321$package.type =>
+    inline val BOOL_CONST: (true : Boolean) = true
+    inline val CHAR_CONST: ('A' : Char) = 'A'
+    inline val INT_CONST: (100000 : Int) = 100000
+    inline val LONG_CONST: (100000L : Long) = 100000L
+    inline val FLOAT_CONST: (3.14f : Float) = 3.14f
+    inline val DOUBLE_CONST: (3.14159d : Double) = 3.14159d
+    inline val STRING_CONST: ("Hello, Scala 3!" : String) = "Hello, Scala 3!"
+  }
+}
+
