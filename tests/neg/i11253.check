@@ -1,0 +1,26 @@
+-- Error: tests/neg/i11253.scala:5:5 -----------------------------------------------------------------------------------
+5 |enum E1(val t: String) extends Enum[T], T { case X extends E1("xxx") } // error
+  |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |enum class E1 extends Enum[T], but E1 is not a subtype of T
+-- Error: tests/neg/i11253.scala:9:5 -----------------------------------------------------------------------------------
+9 |enum E2 extends Enum[Nothing] { case X } // error
+  |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |enum class E2 extends Enum[Nothing], but E2 is not a subtype of Nothing
+-- Error: tests/neg/i11253.scala:11:5 ----------------------------------------------------------------------------------
+11 |enum E3[A](val inner: A) extends Enum[E3[Int]] { // error
+   |^
+   |enum class E3 extends Enum[E3[Int]], but E3[A] is not a subtype of E3[Int]
+   |
+12 |  case X extends E3[String]("hello")
+13 |}
+-- Error: tests/neg/i11253.scala:21:5 ----------------------------------------------------------------------------------
+21 |enum E7 extends UBad { case X } // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |enum class E7 extends Enum[UBad], but E7 is not a subtype of UBad
+-- [E134] Type Error: tests/neg/i11253.scala:23:5 ----------------------------------------------------------------------
+23 |enum E8 extends U[E7] { case X } // error
+   |     ^
+   |     None of the overloaded alternatives of constructor Enum in class Enum with types
+   |      [E <: Enum[E]](x$0: String, x$1: Int): Enum[E]
+   |      [E <: Enum[E]](): Enum[E]
+   |     match type arguments [E7] and arguments ()
