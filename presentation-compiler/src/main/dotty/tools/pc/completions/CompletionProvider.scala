@@ -9,11 +9,13 @@ import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
 import scala.meta.pc.reports.ReportContext
+import scala.util.control.NonFatal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.CyclicReference
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.DerivedName
 import dotty.tools.dotc.core.Phases
@@ -224,9 +226,13 @@ class CompletionProvider(
     // to recalculate the description
     // related issue https://github.com/lampepfl/scala3/issues/11941
     lazy val kind: CompletionItemKind = underlyingCompletion.completionItemKind
-    val description = underlyingCompletion.description(printer)
+    val description =
+      try underlyingCompletion.description(printer)
+      catch case NonFatal(_) => underlyingCompletion.label
     val label =
-      if config.isDetailIncludedInLabel then completion.labelWithDescription(printer)
+      if config.isDetailIncludedInLabel then
+        try completion.labelWithDescription(printer)
+        catch case NonFatal(_) => completion.label
       else completion.label
     val ident = underlyingCompletion.insertText.getOrElse(underlyingCompletion.label)
     lazy val isInStringInterpolation =
