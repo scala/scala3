@@ -180,4 +180,6 @@ jobs:
 
           To check the validation use dedicated test suite:
           scala test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+
+          See ./docs/.ai/skill/add-error-code-docs.md for local skill for adding new error code docs.
           EOF
