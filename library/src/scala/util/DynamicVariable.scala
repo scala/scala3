@@ -38,6 +38,9 @@ import java.lang.InheritableThreadLocal
  *  of the stack of bindings from the parent thread, and
  *  from then on the bindings for the new thread
  *  are independent of those for the original thread.
+ *
+ *  @tparam T the type of the dynamic variable's value
+ *  @param init the initial value of the variable, inherited by new threads
  */
 class DynamicVariable[T](init: T) {
   private val tl = new InheritableThreadLocal[T] {
@@ -50,8 +53,9 @@ class DynamicVariable[T](init: T) {
   /** Sets the value of the variable while executing the specified
    *  thunk.
    *
-   *  @param newval The value to which to set the variable
-   *  @param thunk The code to evaluate under the new setting
+   *  @tparam S the result type of the thunk
+   *  @param newval the value to which to set the variable
+   *  @param thunk the code to evaluate under the new setting
    */
   def withValue[S](newval: T)(thunk: => S): S = {
     val oldval = value

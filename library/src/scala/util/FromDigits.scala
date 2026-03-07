@@ -5,7 +5,10 @@ import annotation.internal.sharable
 
 import language.experimental.captureChecking
 
-/** A type class for types that admit numeric literals. */
+/** A type class for types that admit numeric literals.
+ *
+ *  @tparam T the numeric type that digit strings can be converted to
+ */
 trait FromDigits[T] {
 
   /** Converts `digits` string to value of type `T`
@@ -13,6 +16,8 @@ trait FromDigits[T] {
    *  - sign `+` or `-`
    *  - sequence of digits between 0 and 9
    *
+   *  @param digits the string representation of the numeric literal to convert
+   *  @return the value of type `T` represented by the digit string
    *  @throws FromDigits.MalformedNumber if digit string is not legal for the given type
    *  @throws FromDigits.NumberTooLarge  if value of result does not fit into `T`'s range
    *  @throws FromDigits.NumberTooSmall  in case of numeric underflow (e.g. a non-zero
@@ -25,41 +30,60 @@ object FromDigits {
 
   /** A subclass of `FromDigits` that also allows to convert whole number literals
    *  with a radix other than 10
+   *
+   *  @tparam T the numeric type that digit strings with arbitrary radix can be converted to
    */
   trait WithRadix[T] extends FromDigits[T] {
     def fromDigits(digits: String): T = fromDigits(digits, 10)
 
     /** Converts digits string with given radix to number of type `T`.
      *  E.g. if radix is 16, digits `a..f` and `A..F` are also allowed.
+     *
+     *  @param digits the string representation of the numeric literal to convert
+     *  @param radix the base for the number system (e.g. 10 for decimal, 16 for hexadecimal)
      */
     def fromDigits(digits: String, radix: Int): T
   }
 
   /** A subclass of `FromDigits` that also allows to convert number
    *  literals containing a decimal point ".".
+   *
+   *  @tparam T the numeric type that digit strings with decimal points can be converted to
    */
   trait Decimal[T] extends FromDigits[T]
 
   /** A subclass of `FromDigits`that allows also to convert number
    *  literals containing a decimal point "." or an
    *  exponent `('e' | 'E')['+' | '-']digit digit*`.
+   *
+   *  @tparam T the numeric type that floating-point digit strings can be converted to
    */
   trait Floating[T] extends Decimal[T]
 
   /** The base type for exceptions that can be thrown from
    *  `fromDigits` conversions
+   *
+   *  @param msg the detail message describing the conversion error
    */
   abstract class FromDigitsException(msg: String) extends NumberFormatException(msg)
 
-  /** Thrown if value of result does not fit into result type's range. */
+  /** Thrown if value of result does not fit into result type's range.
+   *
+   *  @param msg the detail message describing the overflow error
+   */
   class NumberTooLarge(msg: String = "number too large") extends FromDigitsException(msg)
 
   /** Thrown in case of numeric underflow (e.g. a non-zero
    *  floating point literal that produces a zero value)
+   *
+   *  @param msg the detail message describing the underflow error
    */
   class NumberTooSmall(msg: String = "number too small") extends FromDigitsException(msg)
 
-  /** Thrown if digit string is not legal for the given type. */
+  /** Thrown if digit string is not legal for the given type.
+   *
+   *  @param msg the detail message describing the format error
+   */
   class MalformedNumber(msg: String = "malformed number literal") extends FromDigitsException(msg)
 
   /** Converts digits and radix to integer value (either int or Long)
@@ -67,6 +91,10 @@ object FromDigits {
    *  Note: We cannot use java.lang.Integer.valueOf or java.lang.Long.valueOf
    *  since these do not handle unsigned hex numbers greater than the maximal value
    *  correctly.
+   *
+   *  @param digits the string representation of the numeric literal to convert
+   *  @param radix the base for the number system (e.g. 10 for decimal, 16 for hexadecimal)
+   *  @param limit the upper bound for positive values of the result type (e.g. `Int.MaxValue` or `Long.MaxValue`)
    */
   private def integerFromDigits(digits: String, radix: Int, limit: Long): Long = {
     var value: Long = 0

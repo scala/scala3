@@ -38,42 +38,72 @@ object Source {
     val iter = iterable.iterator
   } withReset(() => fromIterable(iterable))
 
-  /** Creates a Source instance from a single character. */
+  /** Creates a Source instance from a single character.
+   *
+   *  @param c the character to use as the source content
+   */
   def fromChar(c: Char): Source = fromIterable(Array(c))
 
-  /** creates Source from array of characters, with empty description. */
+  /** creates Source from array of characters, with empty description.
+   *
+   *  @param chars the array of characters to use as the source content
+   */
   def fromChars(chars: Array[Char]): Source = fromIterable(chars)
 
-  /** creates Source from a String, with no description. */
+  /** creates Source from a String, with no description.
+   *
+   *  @param s the string to use as the source content
+   */
   def fromString(s: String): Source = fromIterable(s)
 
   /** creates Source from file with given name, setting its description to
    *  filename.
+   *
+   *  @param name the name of the file to read
+   *  @param codec the implicit codec used for character encoding
    */
   def fromFile(name: String)(implicit codec: Codec): BufferedSource =
     fromFile(new JFile(name))(using codec)
 
   /** creates Source from file with given name, using given encoding, setting
    *  its description to filename.
+   *
+   *  @param name the name of the file to read
+   *  @param enc the name of the character encoding to use
    */
   def fromFile(name: String, enc: String): BufferedSource =
     fromFile(name)(using Codec(enc))
 
-  /** creates `source` from file with given file `URI`. */
+  /** creates `source` from file with given file `URI`.
+   *
+   *  @param uri the file URI to read from
+   *  @param codec the implicit codec used for character encoding
+   */
   def fromFile(uri: URI)(implicit codec: Codec): BufferedSource =
     fromFile(new JFile(uri))(using codec)
 
-  /** creates Source from file with given file: URI */
+  /** creates Source from file with given file: URI
+   *
+   *  @param uri the file URI to read from
+   *  @param enc the name of the character encoding to use
+   */
   def fromFile(uri: URI, enc: String): BufferedSource =
     fromFile(uri)(using Codec(enc))
 
   /** creates Source from file, using default character encoding, setting its
    *  description to filename.
+   *
+   *  @param file the file to read from
+   *  @param codec the implicit codec used for character encoding
    */
   def fromFile(file: JFile)(implicit codec: Codec): BufferedSource =
     fromFile(file, Source.DefaultBufSize)(using codec)
 
-  /** same as fromFile(file, enc, Source.DefaultBufSize) */
+  /** same as fromFile(file, enc, Source.DefaultBufSize)
+   *
+   *  @param file the file to read from
+   *  @param enc the name of the character encoding to use
+   */
   def fromFile(file: JFile, enc: String): BufferedSource =
     fromFile(file)(using Codec(enc))
 
@@ -83,6 +113,10 @@ object Source {
   /** Creates Source from `file`, using given character encoding, setting
    *  its description to filename. Input is buffered in a buffer of size
    *  `bufferSize`.
+   *
+   *  @param file the file to read from
+   *  @param bufferSize the size of the input buffer, in characters
+   *  @param codec the implicit codec used for character encoding
    */
   def fromFile(file: JFile, bufferSize: Int)(implicit codec: Codec): BufferedSource = {
     val inputStream = new FileInputStream(file)
@@ -98,6 +132,8 @@ object Source {
   /** Creates a `Source` from array of bytes, decoding
    *  the bytes according to codec.
    *
+   *  @param bytes the array of bytes to decode into characters
+   *  @param codec the implicit codec used for character encoding
    *  @return      the created `Source` instance.
    */
   def fromBytes(bytes: Array[Byte])(implicit codec: Codec): Source =
@@ -113,23 +149,43 @@ object Source {
   def fromRawBytes(bytes: Array[Byte]): Source =
     fromString(new String(bytes, Codec.ISO8859.charSet))
 
-  /** creates `Source` from file with given file: URI */
+  /** creates `Source` from file with given file: URI
+   *
+   *  @param uri the file URI to read from
+   *  @param codec the implicit codec used for character encoding
+   */
   def fromURI(uri: URI)(implicit codec: Codec): BufferedSource =
     fromFile(new JFile(uri))(using codec)
 
-  /** same as fromURL(new URL(s))(Codec(enc)) */
+  /** same as fromURL(new URL(s))(Codec(enc))
+   *
+   *  @param s the URL string to read from
+   *  @param enc the name of the character encoding to use
+   */
   def fromURL(s: String, enc: String): BufferedSource =
     fromURL(s)(using Codec(enc))
 
-  /** same as fromURL(new URL(s)) */
+  /** same as fromURL(new URL(s))
+   *
+   *  @param s the URL string to read from
+   *  @param codec the implicit codec used for character encoding
+   */
   def fromURL(s: String)(implicit codec: Codec): BufferedSource =
     fromURL(new URI(s).toURL)(using codec)
 
-  /** same as fromInputStream(url.openStream())(Codec(enc)) */
+  /** same as fromInputStream(url.openStream())(Codec(enc))
+   *
+   *  @param url the URL to read from
+   *  @param enc the name of the character encoding to use
+   */
   def fromURL(url: URL, enc: String): BufferedSource =
     fromURL(url)(using Codec(enc))
 
-  /** same as fromInputStream(url.openStream())(codec) */
+  /** same as fromInputStream(url.openStream())(codec)
+   *
+   *  @param url the URL to read from
+   *  @param codec the implicit codec used for character encoding
+   */
   def fromURL(url: URL)(implicit codec: Codec): BufferedSource =
     fromInputStream(url.openStream())(using codec)
 
@@ -347,7 +403,10 @@ abstract class Source extends Iterator[Char] with Closeable {
     descr = text
     this
   }
-  /** Change or disable the positioner. */
+  /** Change or disable the positioner.
+   *
+   *  @param on whether to enable (`true`) or disable (`false`) position tracking
+   */
   def withPositioning(on: Boolean): this.type = {
     positioner = if (on) RelaxedPositioner else NoPositioner
     this

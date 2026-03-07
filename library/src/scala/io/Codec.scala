@@ -30,7 +30,10 @@ import scala.language.implicitConversions
 // MacRoman vs. UTF-8: see https://groups.google.com/d/msg/jruby-developers/-qtwRhoE1WM/whSPVpTNV28J
 // -Dfile.encoding: see https://bugs.java.com/view_bug.do?bug_id=4375816
 
-/** A class for character encoding/decoding preferences. */
+/** A class for character encoding/decoding preferences.
+ *
+ *  @param charSet the character set used for encoding and decoding operations
+ */
 class Codec(val charSet: Charset) {
   type Configure[T] = (T => T, Boolean)
   type Handler      = CharacterCodingException => Int

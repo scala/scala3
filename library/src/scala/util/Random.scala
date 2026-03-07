@@ -21,10 +21,16 @@ import scala.collection.immutable.LazyList
 import scala.language.implicitConversions
 
 class Random(val self: java.util.Random) extends AnyRef with Serializable {
-  /** Creates a new random number generator using a single long seed. */
+  /** Creates a new random number generator using a single long seed.
+   *
+   *  @param seed the initial seed for the random number generator
+   */
   def this(seed: Long) = this(new java.util.Random(seed))
 
-  /** Creates a new random number generator using a single integer seed. */
+  /** Creates a new random number generator using a single integer seed.
+   *
+   *  @param seed the initial seed for the random number generator
+   */
   def this(seed: Int) = this(seed.toLong)
 
   /** Creates a new random number generator. */
@@ -37,10 +43,15 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
 
   /** Generates random bytes and places them into a user-supplied byte
    *  array.
+   *
+   *  @param bytes the byte array to fill with random bytes
    */
   def nextBytes(bytes: Array[Byte]): Unit = { self.nextBytes(bytes) }
   
-  /** Generates `n` random bytes and returns them in a new array. */
+  /** Generates `n` random bytes and returns them in a new array.
+   *
+   *  @param n the number of random bytes to generate
+   */
   def nextBytes(n: Int): Array[Byte] = {
     val bytes = new Array[Byte](0 max n)
     self.nextBytes(bytes)
@@ -54,6 +65,9 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
 
   /** Returns the next pseudorandom, uniformly distributed double value
    *  between min (inclusive) and max (exclusive) from this random number generator's sequence.
+   *
+   *  @param minInclusive the lower bound (inclusive) of the range
+   *  @param maxExclusive the upper bound (exclusive) of the range, must be greater than `minInclusive`
    */
   def between(minInclusive: Double, maxExclusive: Double): Double = {
     require(minInclusive < maxExclusive, "Invalid bounds")
@@ -70,6 +84,9 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
 
   /** Returns the next pseudorandom, uniformly distributed float value
    *  between min (inclusive) and max (exclusive) from this random number generator's sequence.
+   *
+   *  @param minInclusive the lower bound (inclusive) of the range
+   *  @param maxExclusive the upper bound (exclusive) of the range, must be greater than `minInclusive`
    */
   def between(minInclusive: Float, maxExclusive: Float): Float = {
     require(minInclusive < maxExclusive, "Invalid bounds")
@@ -93,12 +110,17 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
   /** Returns a pseudorandom, uniformly distributed int value between 0
    *  (inclusive) and the specified value (exclusive), drawn from this
    *  random number generator's sequence.
+   *
+   *  @param n the exclusive upper bound for the returned value (0 is the inclusive lower bound), must be positive
    */
   def nextInt(n: Int): Int = self.nextInt(n)
 
   /** Returns a pseudorandom, uniformly distributed int value between min
    *  (inclusive) and the specified value max (exclusive), drawn from this
    *  random number generator's sequence.
+   *
+   *  @param minInclusive the lower bound (inclusive) of the range
+   *  @param maxExclusive the upper bound (exclusive) of the range, must be greater than `minInclusive`
    */
   def between(minInclusive: Int, maxExclusive: Int): Int = {
     require(minInclusive < maxExclusive, "Invalid bounds")
@@ -128,6 +150,8 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
   /** Returns a pseudorandom, uniformly distributed long value between 0
    *  (inclusive) and the specified value (exclusive), drawn from this
    *  random number generator's sequence.
+   *
+   *  @param n the exclusive upper bound for the returned value (0 is the inclusive lower bound), must be positive
    */
   def nextLong(n: Long): Long = {
     require(n > 0, "n must be positive")
@@ -159,6 +183,9 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
   /** Returns a pseudorandom, uniformly distributed long value between min
    *  (inclusive) and the specified value max (exclusive), drawn from this
    *  random number generator's sequence.
+   *
+   *  @param minInclusive the lower bound (inclusive) of the range
+   *  @param maxExclusive the upper bound (exclusive) of the range, must be greater than `minInclusive`
    */
   def between(minInclusive: Long, maxExclusive: Long): Long = {
     require(minInclusive < maxExclusive, "Invalid bounds")
@@ -187,7 +214,7 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
    *  intended for generating test data.
    *
    *  @param  length    the desired length of the String
-   *  @return           the String
+   *  @return           a randomly generated String of the specified length
    */
   def nextString(length: Int): String = {
     def safeChar(): Char = {
@@ -221,6 +248,10 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
 
   /** Returns a new collection of the same type in a randomly chosen order.
    *
+   *  @tparam T the element type of the collection
+   *  @tparam C the type of the collection returned, determined by the implicit `BuildFrom`
+   *  @param xs the collection to shuffle
+   *  @param bf the implicit `BuildFrom` instance used to build the result collection
    *  @return         the shuffled collection
    */
   def shuffle[T, C](xs: IterableOnce[T])(implicit bf: BuildFrom[xs.type, T, C]): C = {

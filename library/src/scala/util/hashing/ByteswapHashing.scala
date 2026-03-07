@@ -15,7 +15,10 @@ package util.hashing
 
 import scala.language.`2.13`
 
-/** A fast multiplicative hash by Phil Bagwell. */
+/** A fast multiplicative hash by Phil Bagwell.
+ *
+ *  @tparam T the type of values to be hashed
+ */
 final class ByteswapHashing[T] extends Hashing[T] {
 
   def hash(v: T) = byteswap32(v.##)
@@ -29,7 +32,11 @@ object ByteswapHashing {
     def hash(v: T) = byteswap32(h.hash(v))
   }
 
-  /** Composes another `Hashing` with the Byteswap hash. */
+  /** Composes another `Hashing` with the Byteswap hash.
+   *
+   *  @tparam T the type of values to be hashed
+   *  @param h the hashing instance whose result is passed through byteswap hashing
+   */
   def chain[T](h: Hashing[T]): Hashing[T] = new Chained(h)
 
 }
