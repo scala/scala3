@@ -172,7 +172,7 @@ jobs:
           cat << EOF >> $GITHUB_STEP_SUMMARY
           Snippets validation for error codes failed
 
-          If you've modified messages of positions of error codes, you mighyt need to update the expected outputs, to do it run: following command:
+          If you've modified messages of positions of error codes, you might need to update the expected outputs, to do it run: following command:
           scala -S ${{ env.SCALA_VERSION }} project/scripts/checkErrorCodeSnippets.scala --with-compiler --main-class=updateAllErrorCodeOutputs
 
           Single error code validation can be performed using:

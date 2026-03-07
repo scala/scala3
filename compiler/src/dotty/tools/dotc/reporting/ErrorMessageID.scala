@@ -3,7 +3,7 @@ package dotty.tools.dotc.reporting
 //////////////////////////////////////////////////////////////////////////
 // IMPORTANT                                                            //
 // Only add new IDs at end of the enumeration list and never remove IDs //
-  // When adding a new ID, also update the reference documentation at     //
+// When adding a new ID, also update the reference documentation at     //
 // docs/_docs/reference/error-codes/                                    //
 //////////////////////////////////////////////////////////////////////////
 

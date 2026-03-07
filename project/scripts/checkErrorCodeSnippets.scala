@@ -4,7 +4,6 @@
 //> using toolkit default
 //> using option -Wunused:all
 //> using mainClass checkErrorCodeSnippets
-// scalafmt: { maxColumn = 120 }
 
 /** Non-reproducible error codes that cannot be triggered with pure Scala 3 source code.
   *

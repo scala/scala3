@@ -1,5 +1,4 @@
 //> using file checkErrorCodeSnippets.scala
-// scalafmt: { maxColumn = 120 }
 
 import scala.util.matching.Regex
 import dotty.tools.dotc.reporting.ErrorMessageID
