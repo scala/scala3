@@ -29,6 +29,7 @@ class SnippetCompiler(
     val currentCtx =
       val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
       rootCtx.setSetting(rootCtx.settings.experimental, true)
+      rootCtx.setSetting(rootCtx.settings.YsnippetCompiler, true)
       rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
       rootCtx.setSetting(rootCtx.settings.XcookComments, true)
       rootCtx.setSetting(rootCtx.settings.XreadComments, true)
