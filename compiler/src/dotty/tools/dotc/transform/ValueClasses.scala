@@ -44,4 +44,9 @@ object ValueClasses {
   /** The unboxed type that underlies a derived value class */
   def underlyingOfValueClass(sym: ClassSymbol)(using Context): Type =
     valueClassUnbox(sym).info.resultType
+
+  /** The unboxed type that underlies a derived value class as seen from as seen from tpe*/
+  def underlyingOfValueClass(sym: ClassSymbol, tpe: Type)(using Context): Type =
+    valueClassUnbox(sym).info.resultType.asSeenFrom(tpe, sym)
+  
 }
