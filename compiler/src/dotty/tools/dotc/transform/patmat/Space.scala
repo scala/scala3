@@ -1011,9 +1011,11 @@ object SpaceEngine {
   end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
-    inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))
-                .withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
-      if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+    inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
+      if exhaustivityCheckable(m.selector) then
+        inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
+          checkExhaustivity(m)
+        }
       if reachabilityCheckable(m.selector) then checkReachability(m)
     }
 }
