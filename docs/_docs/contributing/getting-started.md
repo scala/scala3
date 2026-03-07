@@ -25,7 +25,7 @@ never a bad idea to check.
 
 - [git] is essential for managing the Scala 3 code, and contributing to GitHub,
   where the code is hosted.
-- A Java Virtual Machine (JDK 8 or higher), required for running the build tool.
+- A Java Virtual Machine (JDK 8 or higher), required for running the build tool. Do note, however, that the continuous integration test suite is run on JDK 17.
     - There are multiple ways to get and manage different Java versions. Some
       popular options are:
         - [SDKMAN!](https://sdkman.io/)
