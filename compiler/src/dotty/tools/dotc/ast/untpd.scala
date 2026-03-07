@@ -156,6 +156,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   case class CapturesAndResult(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
+  /** `{ x: parent with qualifier }` if `paramName == Some(x)`,
+   *  `parent with qualifier` otherwise.
+   *
+   *  Only relevant under `qualifiedTypes`.
+   */
+  case class QualifiedTypeTree(parent: Tree, paramName: Option[TermName], qualifier: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
+
   /** A type tree appearing somewhere in the untyped DefDef of a lambda, it will be typed using `tpFun`.
    *
    *  @param isResult  Is this the result type of the lambda? This is handled specially in `Namer#valOrDefDefSig`.
@@ -466,7 +473,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def New(tpt: Tree, argss: List[List[Tree]])(using Context): Tree =
     ensureApplied(argss.foldLeft(makeNew(tpt))(Apply(_, _)))
 
-  /** A new expression with constrictor and possibly type arguments. See
+  /** A new expression with constructor and possibly type arguments. See
    *  `New(tpt, argss)` for details.
    */
   def makeNew(tpt: Tree)(using Context): Tree = {
@@ -745,6 +752,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: CapturesAndResult if (refs eq tree.refs) && (parent eq tree.parent) => tree
       case _ => finalize(tree, untpd.CapturesAndResult(refs, parent))
 
+    def QualifiedTypeTree(tree: Tree)(parent: Tree, paramName: Option[TermName], qualifier: Tree)(using Context): Tree = tree match
+      case tree: QualifiedTypeTree if (parent eq tree.parent) && (paramName eq tree.paramName) && (qualifier eq tree.qualifier) => tree
+      case _ => finalize(tree, untpd.QualifiedTypeTree(parent, paramName, qualifier)(using tree.source))
+
     def TypedSplice(tree: Tree)(splice: tpd.Tree)(using Context): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice)(using ctx))
@@ -808,6 +819,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.MacroTree(tree)(transform(expr))
       case CapturesAndResult(refs, parent) =>
         cpy.CapturesAndResult(tree)(transform(refs), transform(parent))
+      case QualifiedTypeTree(parent, paramName, qualifier) =>
+        cpy.QualifiedTypeTree(tree)(transform(parent), paramName, transform(qualifier))
       case _ =>
         super.transformMoreCases(tree)
     }
@@ -867,6 +880,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, expr)
       case CapturesAndResult(refs, parent) =>
         this(this(x, refs), parent)
+      case QualifiedTypeTree(parent, paramName, qualifier) =>
+        this(this(x, parent), qualifier)
       case _ =>
         super.foldMoreCases(x, tree)
     }

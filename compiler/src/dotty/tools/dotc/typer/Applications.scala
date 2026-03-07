@@ -333,7 +333,14 @@ object Applications {
   end UnapplyArgs
 
   def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
-    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
+    if (defs != null && defs.nonEmpty)
+      val stats = defs.toList
+      val avoided = TypeOps.avoid(tree.tpe, stats.map(_.symbol))
+      val expr =
+        if (avoided ne tree.tpe) && avoided.isValueType then tree.cast(TypeTree(avoided, inferred = true))
+        else tree
+      tpd.Block(stats, expr)
+    else tree
 
   /** Optionally, if `sym` is a symbol created by `resolveMapped`, i.e. representing
    *  a mapped alternative, the original prefix of the alternative and the number of
@@ -563,7 +570,8 @@ trait Applications extends Compatibility {
      */
     protected def normalizedFun: Tree
 
-    protected def typeOfArg(arg: Arg): Type
+    /** The type of the given typed argument. */
+    protected def typeOfArg(arg: TypedArg): Type
 
     /** If constructing trees, pull out all parts of the function
      *  which are not idempotent into separate prefix definitions
@@ -819,14 +827,15 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            addArg(typedArg(arg, formal), formal)
+            val argTyped = typedArg(arg, formal)
+            addArg(argTyped, formal)
             if methodType.looksParamDependent
                   // need to handle also false dependencies since we generate TypeTrees from
                   // formal parameters in makeVarArg. These are not de-aliased, so they might contain
                   // stray parameter references. Test case is i23266.scala.
-                && typeOfArg(arg).exists
+                && typeOfArg(argTyped).exists
                   // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
             else formals1
 
           def missingArg(n: Int): Unit =
@@ -1093,9 +1102,11 @@ trait Applications extends Compatibility {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
+    protected var liftedDefs: mutable.ListBuffer[Tree] | Null = null
     private var myNormalizedFun: Tree = fun
     init()
+
+    def typeOfArg(arg: tpd.Tree): Type = arg.tpe
 
     def addArg(arg: Tree, formal: Type): Unit =
       val typedArg = adapt(arg, formal.widenExpr)
@@ -1248,9 +1259,29 @@ trait Applications extends Compatibility {
     app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto,
     resultType: Type)(using Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
-    def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
+
+    import qualified_types.QualifiedTypes.containsQualifier
+
+    /** Whether this method has qualified-type dependencies requiring
+     *  unstable arguments to be lifted to val defs.
+     */
+    private lazy val liftQualifiedArgs: Boolean = methType match
+      case mt: MethodType =>
+        (mt.isResultDependent || mt.looksParamDependent)
+        && (containsQualifier(mt.resultType)
+            || mt.paramInfos.exists(containsQualifier))
+      case _ => false
+
+    /** Type an argument, lifting it to a val def if its type is not stable
+     *  and the method has qualified-type dependencies. */
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg =
+      val typed = proto.typedArg(arg, formal)
+      if liftQualifiedArgs && !typed.tpe.isStable then
+        if liftedDefs == null then liftedDefs = new mutable.ListBuffer[Tree]
+        LiftUnstable.lift(liftedDefs.nn, typed)
+      else
+        typed
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
@@ -1260,7 +1291,6 @@ trait Applications extends Compatibility {
   extends TypedApply(app, fun, methRef, args, resultType, applyKind) {
     def typedArg(arg: Tree, formal: Type): TypedArg = arg
     def treeToArg(arg: Tree): Tree = arg
-    def typeOfArg(arg: Tree): Type = arg.tpe
   }
 
   /** If `app` is a `this(...)` constructor call, the this-call argument context,
