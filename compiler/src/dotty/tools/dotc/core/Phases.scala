@@ -139,7 +139,7 @@ object Phases {
      *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
     final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
-
+      myRecheckPhaseIds = 0L
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
       phasess.foreach(p => p match {
