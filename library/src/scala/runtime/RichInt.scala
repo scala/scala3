@@ -56,33 +56,33 @@ final class RichInt(val self: Int) extends AnyVal with ScalaNumberProxy[Int] wit
   type ResultWithoutStep = Range
 
   /**
-   *  @param end The final bound of the range to make.
-   *  @return A [[scala.collection.immutable.Range]] from `this` up to but
-   *         not including `end`.
+   *  @param end the final bound of the range to make (exclusive)
+   *  @return a [[scala.collection.immutable.Range]] from `this` up to but
+   *         not including `end`
    */
   def until(end: Int): Range = Range(self, end)
 
   /**
-   *  @param end The final bound of the range to make.
-   *  @param step The number to increase by for each step of the range.
-   *  @return A [[scala.collection.immutable.Range]] from `this` up to but
-   *         not including `end`.
+   *  @param end the final bound of the range to make (exclusive)
+   *  @param step the increment value of the range
+   *  @return a [[scala.collection.immutable.Range]] from `this` up to but
+   *         not including `end`
    */
   def until(end: Int, step: Int): Range = Range(self, end, step)
 
-  /** Like `until`, but includes the last index. */
-  /**
-   *  @param end The final bound of the range to make.
-   *  @return A [[scala.collection.immutable.Range]] from `**this**` up to
-   *         and including `end`.
+  /** Like `until`, but includes the last index.
+   *
+   *  @param end the final bound of the range to make (inclusive)
+   *  @return a [[scala.collection.immutable.Range.Inclusive]] from `this` up to
+   *         and including `end`
    */
   def to(end: Int): Range.Inclusive = Range.inclusive(self, end)
 
   /**
-   *  @param end The final bound of the range to make.
-   *  @param step The number to increase by for each step of the range.
-   *  @return A [[scala.collection.immutable.Range]] from `**this**` up to
-   *         and including `end`.
+   *  @param end the final bound of the range to make (inclusive)
+   *  @param step the increment value of the range
+   *  @return a [[scala.collection.immutable.Range.Inclusive]] from `this` up to
+   *         and including `end`
    */
   def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(self, end, step)
 }

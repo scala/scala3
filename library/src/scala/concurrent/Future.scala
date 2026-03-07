@@ -103,6 +103,8 @@ import scala.concurrent.impl.Promise.DefaultPromise
  *  in a batch within a single `execute()` and it may run
  *  `execute()` either immediately or asynchronously.
  *  Completion of the `Future` must *happen-before* the invocation of the callback.
+ *
+ *  @tparam T the type of the value contained in this `Future`
  */
 trait Future[+T] extends Awaitable[T] {
 
@@ -122,6 +124,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam U    only used to accept any return type of the given callback function
    *  @param f     the function to be executed when this `Future` completes
+   *  @param executor the `ExecutionContext` on which the callback will be executed
    *  @group Callbacks
    */
   def onComplete[U](f: Try[T] => U)(implicit executor: ExecutionContext): Unit
@@ -179,6 +182,7 @@ trait Future[+T] extends Awaitable[T] {
    *  @tparam U     only used to accept any return type of the given callback function
    *  @param f      the function which will be executed if this `Future` completes with a result,
    *               the return value of `f` will be discarded.
+   *  @param executor the `ExecutionContext` on which the callback will be executed
    *  @group Callbacks
    */
   def foreach[U](f: T => U)(implicit executor: ExecutionContext): Unit = onComplete { _ foreach f }
@@ -191,6 +195,7 @@ trait Future[+T] extends Awaitable[T] {
    *  @tparam S  the type of the returned `Future`
    *  @param  s  function that transforms a successful result of the receiver into a successful result of the returned future
    *  @param  f  function that transforms a failure of the receiver into a failure of the returned future
+   *  @param executor the `ExecutionContext` on which the transformation will be executed
    *  @return    a `Future` that will be completed with the transformed value
    *  @group Transformations
    */
@@ -207,6 +212,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam S  the type of the returned `Future`
    *  @param  f  function that transforms the result of this future
+   *  @param executor the `ExecutionContext` on which the transformation will be executed
    *  @return    a `Future` that will be completed with the transformed value
    *  @group Transformations
    */
@@ -218,6 +224,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam S  the type of the returned `Future`
    *  @param  f  function that transforms the result of this future
+   *  @param executor the `ExecutionContext` on which the transformation will be executed
    *  @return    a `Future` that will be completed with the transformed value
    *  @group Transformations
    */
@@ -242,6 +249,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam S  the type of the returned `Future`
    *  @param f   the function which will be applied to the successful result of this `Future`
+   *  @param executor the `ExecutionContext` on which the function will be executed
    *  @return    a `Future` which will be completed with the result of the application of the function
    *  @group Transformations
    */
@@ -256,6 +264,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam S  the type of the returned `Future`
    *  @param f   the function which will be applied to the successful result of this `Future`
+   *  @param executor the `ExecutionContext` on which the function will be executed
    *  @return    a `Future` which will be completed with the result of the application of the function
    *  @group Transformations
    */
@@ -269,6 +278,7 @@ trait Future[+T] extends Awaitable[T] {
    *  to `flatMap(identity)`.
    *
    *  @tparam S  the type of the returned `Future`
+   *  @param ev evidence that `T` is itself a `Future[S]`
    *  @group Transformations
    */
   def flatten[S](implicit ev: T <:< Future[S]): Future[S] = flatMap(ev)(using parasitic)
@@ -290,6 +300,7 @@ trait Future[+T] extends Awaitable[T] {
    *  ```
    *
    *  @param p   the predicate to apply to the successful result of this `Future`
+   *  @param executor the `ExecutionContext` on which the callback will be executed
    *  @return    a `Future` which will hold the successful result of this `Future` if it matches the predicate or a `NoSuchElementException`
    *  @group Transformations
    */
@@ -304,6 +315,9 @@ trait Future[+T] extends Awaitable[T] {
 
   /** Used by for-comprehensions.
    *  @group Transformations
+   *
+   *  @param p the predicate to apply to the successful result of this `Future`
+   *  @param executor the `ExecutionContext` on which the predicate will be executed
    */
   final def withFilter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = filter(p)(using executor)
 
@@ -329,6 +343,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam S    the type of the returned `Future`
    *  @param pf    the `PartialFunction` to apply to the successful result of this `Future`
+   *  @param executor the `ExecutionContext` on which the `PartialFunction` will be executed
    *  @return      a `Future` holding the result of application of the `PartialFunction` or a `NoSuchElementException`
    *  @group Transformations
    */
@@ -354,6 +369,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam U    the type of the returned `Future`
    *  @param pf    the `PartialFunction` to apply if this `Future` fails
+   *  @param executor the `ExecutionContext` on which the callback will be executed
    *  @return      a `Future` with the successful value of this `Future` or the result of the `PartialFunction`
    *  @group Transformations
    */
@@ -375,6 +391,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam U    the type of the returned `Future`
    *  @param pf    the `PartialFunction` to apply if this `Future` fails
+   *  @param executor the `ExecutionContext` on which the `PartialFunction` will be executed
    *  @return      a `Future` with the successful value of this `Future` or the outcome of the `Future` returned by the `PartialFunction`
    *  @group Transformations
    */
@@ -505,6 +522,7 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  @tparam U     only used to accept any return type of the given `PartialFunction`
    *  @param pf     a `PartialFunction` which will be conditionally applied to the outcome of this `Future`
+   *  @param executor the `ExecutionContext` on which the callback will be executed
    *  @return       a `Future` which will be completed with the exact same outcome as this `Future` but after the `PartialFunction` has been executed.
    *  @group Callbacks
    */
@@ -726,6 +744,7 @@ object Future {
    *
    *  @tparam T        the type of the value in the future
    *  @param futures   the `IterableOnce` of Futures in which to find the first completed
+   *  @param executor the `ExecutionContext` on which the futures' completion handlers will be executed
    *  @return          the `Future` holding the result of the future that is first to be completed
    */
   final def firstCompletedOf[T](futures: IterableOnce[Future[T]])(implicit executor: ExecutionContext): Future[T] = {
@@ -765,6 +784,7 @@ object Future {
    *  @tparam T        the type of the value in the future
    *  @param futures   the `scala.collection.immutable.Iterable` of Futures to search
    *  @param p         the predicate which indicates if it's a match
+   *  @param executor the `ExecutionContext` on which the futures' completion handlers will be executed
    *  @return          the `Future` holding the optional result of the search
    */
   final def find[T](futures: scala.collection.immutable.Iterable[Future[T]])(p: T => Boolean)(implicit executor: ExecutionContext): Future[Option[T]] = {
