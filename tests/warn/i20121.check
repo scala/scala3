@@ -1,0 +1,4 @@
+-- [E030] Match case Unreachable Warning: tests/warn/i20121.scala:8:7 --------------------------------------------------
+8 |  case CC_B(_) => 0 // warn: unreachable
+  |       ^^^^^^^
+  |       Unreachable case
