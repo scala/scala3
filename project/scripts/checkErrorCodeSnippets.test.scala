@@ -233,7 +233,7 @@ class ErrorCodeSnippetsTest extends munit.FunSuite:
                  |Diff (- documented, + actual):
                  |$diff
                  |
-                 |Update expected output with: scala project/scripts/checkErrorCodeSnippets.scala --with-compiler -- $mdFile --update-output
+                 |Update expected output with: scala -S ${scala.util.Properties.versionNumberString} project/scripts/checkErrorCodeSnippets.scala --with-compiler -- $mdFile --update-output
                  |""".stripMargin
             )
       }

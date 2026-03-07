@@ -1,5 +1,5 @@
-//> using scala 3.8.0-RC3
-//> using dep org.scala-lang::scala3-compiler:3.8.0-RC3
+//> using scala 3.8.2
+//> using dep org.scala-lang::scala3-compiler:3.8.2
 //> using dep com.vladsch.flexmark:flexmark-all:0.64.8
 //> using toolkit default
 //> using option -Wunused:all
