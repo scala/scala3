@@ -3936,16 +3936,16 @@ object Parsers {
         case Some(prefix) =>
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
-            if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
-              val desc =
-                if ctx.mode.is(Mode.Interactive) then
-                  "not allowed in the REPL"
-                else "only allowed at the toplevel"
-              val hint =
-                if ctx.mode.is(Mode.Interactive) then
-                  f"\nTo use this language feature, include the flag `-language:$prefix.$imported` when starting the REPL"
-                else ""
-              syntaxError(em"this language import is $desc$hint", id.span)
+            if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost
+              && !Feature.enabledBySetting(QualifiedName(prefix, imported.asTermName))
+            then
+              if ctx.settings.YsnippetCompiler.value then
+                syntaxError(em"""this language import is not allowed in a snippet
+                                |To allow it, pass `-language:$prefix.$imported` to the snippet compiler""", id.span)
+              else if ctx.mode.is(Mode.Interactive) then
+                syntaxError(em"this language import is not allowed in the REPL", id.span)
+              else
+                syntaxError(em"this language import is only allowed at the toplevel", id.span)
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(em"source version import is only allowed at the toplevel", id.span)

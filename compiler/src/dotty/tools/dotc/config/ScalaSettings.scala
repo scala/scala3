@@ -525,5 +525,7 @@ private sealed trait YSettings:
   // Deprecated: Scheduled for removal
   @deprecated(message = "Scheduled for removal.", since = "3.5.0")
   val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles", deprecation = Deprecation.removed())
+
+  val YsnippetCompiler: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysnippet-compiler", "Indicate that compilation is done by the snippet compiler (internal).")
 end YSettings
 

@@ -493,22 +493,14 @@ class ReplCompilerTests extends ReplTest:
     assertTrue(all.exists(_.trim().startsWith("|  Illegal start of statement: this modifier is not allowed here")))
 
   @Test def `i16250a`: Unit = initially:
-    val hints = List(
-      "this language import is not allowed in the REPL",
-      "To use this language feature, include the flag `-language:experimental.captureChecking` when starting the REPL"
-    )
     run("import language.experimental.captureChecking")
     val all = lines()
-    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+    assertTrue(all.exists(_.contains("this language import is not allowed in the REPL")))
 
   @Test def `i16250b`: Unit = initially:
-    val hints = List(
-      "this language import is not allowed in the REPL",
-      "To use this language feature, include the flag `-language:experimental.pureFunctions` when starting the REPL"
-    )
     run("import language.experimental.pureFunctions")
     val all = lines()
-    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+    assertTrue(all.exists(_.contains("this language import is not allowed in the REPL")))
 
   @Test def `i22844 regression colon eol`: Unit = initially:
     run:
@@ -565,6 +557,20 @@ object ReplCompilerTests:
     assertEquals(expected0, actual0)
 
 end ReplCompilerTests
+
+// i16250: these need separate classes because they require custom -language: options.
+// See also i16250a and i16250b above which test the error case (no flag).
+class ReplCaptureCheckingTests extends ReplTest(ReplTest.defaultOptions :+ "-language:experimental.captureChecking"):
+  @Test def `i16250 cc import with flag` = initially {
+    run("import language.experimental.captureChecking")
+    assertEquals("", storedOutput().trim)
+  }
+
+class ReplPureFunctionsTests extends ReplTest(ReplTest.defaultOptions :+ "-language:experimental.pureFunctions"):
+  @Test def `i16250 pureFunctions import with flag` = initially {
+    run("import language.experimental.pureFunctions")
+    assertEquals("", storedOutput().trim)
+  }
 
 class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Vprint:typer"):
   @Test def i9111 = initially {
@@ -646,3 +652,4 @@ class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-experime
         s"Output: '$output' did not contain expected definition: ${defn}",
         normalizedOutput.contains(normalizedDefn)
       )
+
