@@ -1347,6 +1347,9 @@ object Build {
       autoScalaLibrary := false,
       // Configure the nonbootstrapped compiler
       bootstrappedScalaInstanceSettings,
+      // Disable documentation generation for this project, it results in errors when compiling code snippets
+      // It was also empty before, see https://repo1.maven.org/maven2/org/scala-js/scalajs-scalalib_2.13/2.13.18+1.20.2/ javadoc artifacts
+      Compile / doc / sources := Seq.empty,
       // See https://stackoverflow.com/a/51416386
       pomPostProcess := { (node: XmlNode) =>
         new RuleTransformer(new RewriteRule {
