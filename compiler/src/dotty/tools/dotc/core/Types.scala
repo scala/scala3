@@ -229,6 +229,7 @@ object Types extends TypeUtils {
 
     def isAny(using Context): Boolean     = isRef(defn.AnyClass, skipRefined = false)
     def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
+    def isAnyVal(using Context): Boolean  = isRef(defn.AnyValClass, skipRefined = false)
     def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
     def isTopType(using Context): Boolean = dealias match
