@@ -651,7 +651,7 @@ trait ImplicitRunInfo:
     || sym.is(Deferred, butNot = Param)
     || sym.info.isMatchAlias
 
-  private def computeIScope(rootTp: Type): OfTypeImplicits =
+  private def computeIScope(rootTp: Type)(using Context): OfTypeImplicits =
 
     object collectParts extends TypeTraverser:
 
@@ -721,7 +721,7 @@ trait ImplicitRunInfo:
       end iscopeRefs
 
       def addCompanion(pre: Type, companion: Symbol) =
-        if companion.exists && !companion.isAbsent() then
+        if companion.exists && !companion.isAbsent() && companion.isAccessibleFrom(pre) then
           companions += TermRef(pre, companion)
 
       def addCompanions(t: Type) = implicitScopeCache.lookup(t) match
