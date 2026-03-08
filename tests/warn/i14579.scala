@@ -4,7 +4,7 @@ trait A {
   private trait X2 extends X
   sealed trait X3 extends X
 
-  def f(x: X) = x match {
+  def f(x: X) = x match { // warn
     case _: X1 => 0
   }
 }
