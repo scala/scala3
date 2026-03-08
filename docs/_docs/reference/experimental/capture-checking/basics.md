@@ -7,6 +7,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 ## Introduction
 
 ```scala sc-hidden sc-name:cc-context
+import language.experimental.captureChecking
 import caps.*
 ```
 

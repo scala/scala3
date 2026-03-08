@@ -12,7 +12,11 @@ Full Scala 3 has elements that are incompatible with capability safety, such as 
 
 To distinguish between these two usage modes, there is a safe language subset that can be specified with a command-line option or a language import:
 ```scala sc:nocompile
-  import language.experimental.safe
+import language.experimental.safe
+```
+
+```scala sc-hidden sc-name:safe-context
+import language.experimental.safe
 ```
 
 It makes sense for agentic tooling to subject all compilations of agent-generated code to be compiled in _safe mode_ using this language import. Safe mode imposes the following restrictions:
@@ -38,6 +42,7 @@ is done, the library module can be made available for use by safe code.
 This scheme is supported by a new `@assumeSafe` annotation, available in
 module `caps`.
 Modules tagged with this annotation are assumed to be callable from  agent-generated code. `@assumeSafe` comes with none of the restrictions that `safe` implies. Instead it is the obligation of the programmer to verify that the module is indeed safe. For instance caching a function results could be implemented like this:
+<!-- FIXME: the below is rejected by the compiler! -->
 ```scala sc:nocompile
 import caps.unsafe.untrackedCaptures
 import caps.assumeSafe
