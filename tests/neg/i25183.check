@@ -1,0 +1,8 @@
+-- [E120] Naming Error: tests/neg/i25183.scala:1:26 --------------------------------------------------------------------
+1 |class Counter(private var count: Int): // error
+  |                          ^
+  |                          Conflicting definitions:
+  |                          def count_=(newCount: Int): Unit in class Counter at line 2 and
+  |                          private var count_=(x$0: Int): Unit in class Counter
+  |
+  | longer explanation available when compiling with `-explain`
