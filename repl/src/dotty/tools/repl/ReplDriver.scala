@@ -304,6 +304,30 @@ class ReplDriver(settings: Array[String],
     state.copy(context = run.runContext)
   }
 
+  /** Add a language feature to rootCtx so subsequent parses and compilations see it. */
+  private def enableLanguageFeature(feature: String): Unit =
+    val summary = rootCtx.settings.processArguments(List(s"-language:$feature"), true, rootCtx.settingsState)
+    rootCtx = rootCtx.fresh.setSettings(summary.sstate)
+
+  /** Global language features that affect parsing and must be propagated to rootCtx (i16250). */
+  private val globalLanguageFeatures = Set(
+    "experimental.captureChecking", "experimental.pureFunctions",
+    "experimental.separationChecking", "experimental.safe")
+
+  /** Detect global language imports in parsed trees and enable them as settings (i16250). */
+  private def propagateLanguageImports(trees: List[untpd.Tree]): Unit =
+    for tree <- trees do
+      tree match
+        case untpd.Import(expr, selectors) =>
+          untpd.languageImport(expr) match
+            case Some(prefix) =>
+              for case untpd.ImportSelector(untpd.Ident(imported), untpd.EmptyTree, _) <- selectors do
+                val qual = if prefix.isEmpty then imported.toString else s"$prefix.$imported"
+                if globalLanguageFeatures.contains(qual) then
+                  enableLanguageFeature(qual)
+            case _ =>
+        case _ =>
+
   private def stripBackTicks(label: String) =
     if label.startsWith("`") && label.endsWith("`") then
       label.drop(1).dropRight(1)
@@ -382,7 +406,16 @@ class ReplDriver(settings: Array[String],
       .fold(
         displayErrors,
         {
-          case (unit: CompilationUnit, newState: State) =>
+          case (unit: CompilationUnit, newState0: State) =>
+            // Propagate global language imports to rootCtx so subsequent parses see them (i16250).
+            // We check the parsed trees rather than the compilation unit flags because the REPL
+            // parses in a separate step that uses a temporary compilation unit.
+            propagateLanguageImports(parsed.trees)
+            // Update the state's context settings to match rootCtx so subsequent parsing sees them
+            val newState =
+              if newState0.context.settingsState ne rootCtx.settingsState then
+                newState0.copy(context = newState0.context.fresh.setSettings(rootCtx.settingsState))
+              else newState0
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
             val newImports = extractTopLevelImports(newState.context)
             var allImports = newState.imports

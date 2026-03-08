@@ -492,23 +492,53 @@ class ReplCompilerTests extends ReplTest:
     assertTrue(all.head.startsWith("-- [E103] Syntax Error"))
     assertTrue(all.exists(_.trim().startsWith("|  Illegal start of statement: this modifier is not allowed here")))
 
-  @Test def `i16250a`: Unit = initially:
-    val hints = List(
-      "this language import is not allowed in the REPL",
-      "To use this language feature, include the flag `-language:experimental.captureChecking` when starting the REPL"
-    )
-    run("import language.experimental.captureChecking")
-    val all = lines()
-    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+  @Test def `i16250a`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Verify capture checking syntax is accepted in subsequent inputs
+      run("def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x")
+      assertEquals(
+        "def foo[C >: caps.CapSet <: caps.CapSet^](x: AnyRef^{C}): AnyRef^{x}",
+        storedOutput().trim)
 
-  @Test def `i16250b`: Unit = initially:
-    val hints = List(
-      "this language import is not allowed in the REPL",
-      "To use this language feature, include the flag `-language:experimental.pureFunctions` when starting the REPL"
-    )
-    run("import language.experimental.pureFunctions")
-    val all = lines()
-    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+  @Test def `i16250b`: Unit =
+    initially:
+      run("import language.experimental.pureFunctions")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Pure function arrow syntax requires pureFunctions
+      run("val f: Int -> Int = (x: Int) => x + 1")
+      assertTrue(storedOutput().trim.startsWith("val f: Int -> Int = Lambda$"))
+
+  @Test def `i16250c`: Unit =
+    initially:
+      run("import language.experimental.separationChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // separationChecking implies captureChecking
+      run("def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x")
+      assertEquals(
+        "def foo[C >: caps.CapSet <: caps.CapSet^](x: AnyRef^{C}): AnyRef^{x}",
+        storedOutput().trim)
+
+  @Test def `i16250d`: Unit =
+    initially:
+      run("import language.experimental.safe")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // safe implies captureChecking
+      run("def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x")
+      assertEquals(
+        "def foo[C >: caps.CapSet <: caps.CapSet^](x: AnyRef^{C}): AnyRef^{x}",
+        storedOutput().trim)
+
+  @Test def `i16250 nested global language imports error`: Unit = initially:
+    for feature <- List("captureChecking", "pureFunctions", "separationChecking", "safe") do
+      run(s"def test = { import language.experimental.$feature; 1 }")
+      assertTrue(s"expected toplevel error for $feature",
+        storedOutput().contains("this language import is only allowed at the toplevel"))
 
   @Test def `i22844 regression colon eol`: Unit = initially:
     run:
