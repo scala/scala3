@@ -1577,28 +1577,34 @@ trait Implicits:
       /** A relation that influences the order in which eligible implicits are tried.
        *
        *  We prefer (in order of importance)
-       *   1. more deeply nested definitions
-       *   2. definitions with fewer implicit parameters
-       *   3. definitions whose owner has more parents (see `compareBaseClassesLength`)
-       *  The reason for (2) is that we want to fail fast if the search type
+       *   1. previous candidates in search history
+       *   2. more deeply nested definitions
+       *   3. definitions with fewer implicit parameters
+       *   4. definitions whose owner has more parents (see `compareBaseClassesLength`)
+       *  The reason for (1) is that we want to fail fast in case of diverging implicit search. 
+       *  The reason for (3) is that we want to fail fast if the search type
        *  is underconstrained. So we look for "small" goals first, because that
        *  will give an ambiguity quickly.
        */
       def compareEligibles(e1: Candidate, e2: Candidate): Int =
-        val previousImplicit = ctx.searchHistory.openSearchPairs.headOption.map(_._1)
-        if previousImplicit.contains(e1) then return -1
-        if previousImplicit.contains(e2) then return 1
         if e1 eq e2 then return 0
+        ctx.searchHistory match
+          case OpenSearch(previous, _, _) => // 1.
+            if e1 == previous then 
+              return -1
+            else if e2 == previous then
+              return 1
+          case _ =>
         val cmpLevel = e1.level - e2.level
-        if cmpLevel != 0 then return -cmpLevel // 1.
+        if cmpLevel != 0 then return -cmpLevel // 2.
         val sym1 = e1.ref.symbol
         val sym2 = e2.ref.symbol
         val arity1 = sym1.info.firstParamTypes.length
         val arity2 = sym2.info.firstParamTypes.length
         val cmpArity = arity1 - arity2
-        if cmpArity != 0 then return cmpArity // 2.
+        if cmpArity != 0 then return cmpArity // 3.
         val cmpBcs = compareBaseClassesLength(sym1.owner, sym2.owner)
-        -cmpBcs // 3.
+        -cmpBcs // 4.
 
       /** Check if `ord` respects the contract of `Ordering`.
        *
