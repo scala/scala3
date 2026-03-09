@@ -118,7 +118,7 @@ object Typer {
    *  apply of a function class?
    */
   private[typer] def isSyntheticApply(tree: tpd.Tree): Boolean = tree match {
-    case tree: tpd.Select => tree.hasAttachment(InsertedApply)
+    case _: (tpd.Select | tpd.Apply) => tree.hasAttachment(InsertedApply)
     case TypeApply(fn, targs) => isSyntheticApply(fn) && targs.forall(_.isInstanceOf[tpd.InferredTypeTree])
     case _ => false
   }

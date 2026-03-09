@@ -5,7 +5,7 @@ object Module {
     case 1 => Any *: Fill[0]
   }
   extension[N <: Int] (f: Fun[N])
-    def apply: Fill[N] => Any = ???
+    def apply(): Fill[N] => Any = ???
 
-  Fun[1]()(???)
+  Fun[1]()()(???)
 }
