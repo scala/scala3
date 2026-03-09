@@ -99,21 +99,41 @@ jobs:
       - name: Install html-proofer
         run: gem install html-proofer
 
-     # Full tree except /api/scala/** (we check for top-level classes, but not sudirectories, eg. collections)
-     # api/scala has 2k+ files with lots of references and links (more than 60k references) taking too long to validate
+     # Full tree except api/scala/** (top-level api/*.html only; 60k+ refs in subdirs)
+     # ignore-urls: slash-delimited = regex (required to match all blob/... URLs); plain string = exact match only
+     # ignore-files: regexes for paths to skip (api/scala subdirs; blog posts before 2022-01-01)
       - name: Validate documentation links
         run: |
-          htmlproofer scaladoc-output/scala3 \
+          IGNORE_URLS='/^http:\/\/localhost:8080\//'
+          # Font hosts (root URL returns 404; protocol-relative flagged by htmlproofer)
+          IGNORE_URLS="${IGNORE_URLS},/fonts.gstatic.com/"
+          IGNORE_URLS="${IGNORE_URLS},/fonts.googleapis.com/"
+          IGNORE_URLS="${IGNORE_URLS},/dottydoc.css/"
+          # Leads to rate limiting errors
+          IGNORE_URLS="${IGNORE_URLS},/github.com/"
+          # External sites that return 403/404 or change paths (redirects, moved pages)
+          IGNORE_URLS="${IGNORE_URLS},/dl.acm.org/"
+          # nightlyOf links to potentially not yet exisitng pages
+          IGNORE_URLS="${IGNORE_URLS},/docs.scala-lang.org\/scala3\/reference\//"
+
+          # Takes to much time (~30 minutes) to validate all subdirs in api/scala, only package scala is checked instead.
+          IGNORE_FILES='/api\/scala\/[^/]+\//'
+          # Cannot guarantee a stablity of links for old blog posts
+          IGNORE_FILES="${IGNORE_FILES},/blog\/(201[5-9]|202[0-4])\//"
+          IGNORE_FILES="${IGNORE_FILES},/release-notes-0.1.2.html/"
+          IGNORE_FILES="${IGNORE_FILES},/docs\/release-notes\//"
+          IGNORE_FILES="${IGNORE_FILES},/release-notes-0.1.2.html/"
+
+          htmlproofer scaladoc/output/scala3 \
             --checks "Links" \
             --allow-hash-href \
             --allow-missing-href \
-            --disable-external \
             --no-check-external-hash \
             --no-check-internal-hash \
             --no-enforce-https \
-            --ignore-urls '/^http:\/\/localhost:8080\//' \
-            --ignore-urls '/^https:\/\/github\.com\/scala\/scala3\//' \
-            --ignore-files '/api\/scala\/[^/]+\//'
+            --ignore-urls "$IGNORE_URLS" \
+            --ignore-files "$IGNORE_FILES" \
+            --log-level :debug
 
 
   stdlib-sourcelinks-test:

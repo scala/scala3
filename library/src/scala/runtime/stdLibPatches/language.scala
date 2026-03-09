@@ -75,7 +75,7 @@ private[scala] object language:
     /** Adds support for clause interleaving:
       * Methods can now have as many type clauses as they like, this allows to have type bounds depend on terms: `def f(x: Int)[A <: x.type]: A`
       *
-      * @see [[https://github.com/scala/improvement-proposals/blob/main/content/clause-interleaving.md]]
+      * @see [[https://docs.scala-lang.org/sips/47.html]]
       */
     @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
     @deprecated("`clauseInterleaving` is now standard, no language import is needed", since = "3.6")
@@ -105,7 +105,7 @@ private[scala] object language:
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/into-modifier]]
+     *  @see [[https://docs.scala-lang.org/scala3/reference/experimental/into-modifier.html]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
     @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
@@ -113,7 +113,7 @@ private[scala] object language:
 
     /** Experimental support for named tuples.
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/named-tuples]]
+     *  @see [[https://docs.scala-lang.org/scala3/reference/experimental/named-tuples.html]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
     @deprecated("The experimental.namedTuples language import is no longer needed since the feature is now standard", since = "3.7")
@@ -245,7 +245,7 @@ private[scala] object language:
   /** Unsafe Nulls fot Explicit Nulls
     * Inside the "unsafe" scope, `Null` is considered as a subtype of all reference types.
     *
-    * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/explicit-nulls.html]]
+    * @see [[https://nightly.scala-lang.org/docs/reference/experimental/explicit-nulls.html]]
     */
   @compileTimeOnly("`unsafeNulls` can only be used at compile time in import statements")
   object unsafeNulls

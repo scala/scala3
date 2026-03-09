@@ -38,7 +38,7 @@ Ugh! No wonder checked exceptions in Java are not very popular.
 
 ## Monadic Effects
 
-So the dilemma is that exceptions are easy to use only as long as we forget static type checking. This has caused many people working with Scala to abandon exceptions altogether and to use an error monad like [`Either`](https://scala-lang.org/api/3.x/scala/util/Either.html) instead. This can work in many situations but is not without its downsides either. It makes code a lot more complicated and harder to refactor. It means one is quickly confronted with the problem how to work with several monads. In general, dealing with one monad at a time in Scala is straightforward but dealing with several monads together is much less pleasant since monads don't compose. A great number of techniques have been proposed, implemented, and promoted to deal with this, from monad transformers, to free monads, to tagless final. But none of these techniques is universally liked;  each introduces a complicated DSL that's hard to understand for non-experts, introduces runtime overheads, and makes debugging difficult. In the end, quite a few developers prefer to work instead with a single "super-monad" like [`ZIO`](https://zio.dev/version-1.x/datatypes/core/zio) that has error propagation built in alongside other aspects. This one-size fits all approach can work very nicely, even though (or is it because?) it represents an all-encompassing framework.
+So the dilemma is that exceptions are easy to use only as long as we forget static type checking. This has caused many people working with Scala to abandon exceptions altogether and to use an error monad like [`Either`](https://scala-lang.org/api/3.x/scala/util/Either.html) instead. This can work in many situations but is not without its downsides either. It makes code a lot more complicated and harder to refactor. It means one is quickly confronted with the problem how to work with several monads. In general, dealing with one monad at a time in Scala is straightforward but dealing with several monads together is much less pleasant since monads don't compose. A great number of techniques have been proposed, implemented, and promoted to deal with this, from monad transformers, to free monads, to tagless final. But none of these techniques is universally liked;  each introduces a complicated DSL that's hard to understand for non-experts, introduces runtime overheads, and makes debugging difficult. In the end, quite a few developers prefer to work instead with a single "super-monad" like [`ZIO`](https://zio.dev/overview/summary#zio) that has error propagation built in alongside other aspects. This one-size fits all approach can work very nicely, even though (or is it because?) it represents an all-encompassing framework.
 
 However, a programming language is not a framework; it has to cater also for those applications that do not fit the framework's use cases. So there's still a strong motivation for getting exception checking right.
 
@@ -124,7 +124,7 @@ catch ...
 Note that the right-hand side of the synthesized given is `compiletime.erasedValue`. This is OK since
 this given is erased; it will not be executed at runtime.
 
-**Note 1:** The [`saferExceptions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$saferExceptions$.html) feature is designed to work only with checked exceptions. An exception type is _checked_ if it is a subtype of
+**Note 1:** The [`saferExceptions`](https://scala-lang.org/api/3.x/scala/language$$experimental$$saferExceptions$.html) feature is designed to work only with checked exceptions. An exception type is _checked_ if it is a subtype of
 `Exception` but not of `RuntimeException`. The signature of `CanThrow` still admits `RuntimeException`s since `RuntimeException` is a proper subtype of its bound, `Exception`. But no capabilities will be generated for `RuntimeException`s. Furthermore, `throws` clauses
 also may not refer to `RuntimeException`s.
 
@@ -204,7 +204,7 @@ So the takeaway is that the effects as capabilities model naturally provides for
 
 ## Gradual Typing Via Imports
 
-Another advantage is that the model allows a gradual migration from current unchecked exceptions to safer exceptions. Imagine for a moment that [`experimental.saferExceptions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$saferExceptions$.html) is turned on everywhere. There would be lots of code that breaks since functions have not yet been properly annotated with `throws`. But it's easy to create an escape hatch that lets us ignore the breakages for a while: simply add the import
+Another advantage is that the model allows a gradual migration from current unchecked exceptions to safer exceptions. Imagine for a moment that [`experimental.saferExceptions`](https://scala-lang.org/api/3.x/scala/language$$experimental$$saferExceptions$.html) is turned on everywhere. There would be lots of code that breaks since functions have not yet been properly annotated with `throws`. But it's easy to create an escape hatch that lets us ignore the breakages for a while: simply add the import
 ```scala
 import scala.unsafeExceptions.canThrowAny
 ```
