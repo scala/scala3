@@ -1119,6 +1119,7 @@ class Definitions {
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
+  @tu lazy val SafeModeAnnot = requiredClass("scala.caps.internal.safeMode")
   @tu lazy val PublicInBinaryAnnot: ClassSymbol = requiredClass("scala.annotation.publicInBinary")
   @tu lazy val WitnessNamesAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WitnessNames")
   @tu lazy val StableNullAnnot: ClassSymbol = requiredClass("scala.annotation.stableNull")
@@ -1500,6 +1501,11 @@ class Definitions {
   @tu lazy val topClasses: Set[Symbol] = Set(AnyClass, MatchableClass, ObjectClass, AnyValClass)
 
   @tu lazy val untestableClasses: Set[Symbol] = Set(NothingClass, NullClass, SingletonClass)
+
+  /** Annotations which do not need to be pickled since they are reconstituted automatically
+   *  when unpickling.
+   */
+  @tu lazy val unpicklableAnnotations: Set[Symbol] = Set(BodyAnnot, SafeModeAnnot)
 
   /** Base classes that are assumed to be pure for the purposes of capture checking.
    *  Every class inheriting from a pure baseclass is pure.

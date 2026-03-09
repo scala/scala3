@@ -786,6 +786,8 @@ class TreeUnpickler(reader: TastyReader,
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
       }
+      if attributes.isSafeMode then
+        annotFns = (owner => Annotation(defn.SafeModeAnnot, owner.span)) :: annotFns
       (flags, annotFns.reverse, privateWithin)
     }
 

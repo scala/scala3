@@ -296,7 +296,8 @@ class Pickler extends Phase {
         captureChecked = Feature.ccEnabled,
         withPureFuns = Feature.pureFunsEnabled,
         isJava = isJavaAttr,
-        isOutline = isOutline
+        isOutline = isOutline,
+        isSafeMode = unit.safeMode || unit.assumeSafeMode
       )
 
       val pickler = new TastyPickler(cls, isBestEffortTasty = isBestEffort)

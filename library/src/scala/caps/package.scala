@@ -173,6 +173,11 @@ object internal:
    */
   final class inferred extends annotation.StaticAnnotation
 
+  /** An annotation to mark a toplevel-class as coming from a compilation
+   *  unit compiled with safe or assumeSafe language imports.
+   */
+  final class safeMode extends annotation.StaticAnnotation
+
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
    *  info from the parent type, so no intersection needs to be formed.

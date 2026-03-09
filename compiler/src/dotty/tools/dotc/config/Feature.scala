@@ -41,11 +41,19 @@ object Feature:
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
+  val safe = experimental("safe")
+  val assumeSafe = experimental("assumeSafe")
 
+  val nonViralExperimentalFeatures: Set[TermName] =
+    Set(captureChecking, separationChecking, safe, assumeSafe)
+
+  /** Experimental language imports that imply that the importing unit
+   *  is experimental.
+   */
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
-      .filterNot(sym => sym == captureChecking || sym == separationChecking) // TODO is this correct?
+      .filterNot(nonViralExperimentalFeatures.contains(_))
 
   val values = List(
     (nme.help, "Display all available features"),
@@ -73,6 +81,8 @@ object Feature:
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
+    (safe, "Require safe mode"),
+    (assumeSafe, "Assume safe mode without compiler checks")
   )
 
   // legacy language features from Scala 2 that are no longer supported.
@@ -140,10 +150,23 @@ object Feature:
     || ctx.compilationUnit.knowsPureFuns
     || ccEnabled
 
-  /** Is captureChecking enabled for this compilation unit? */
+  /** Is capture checking enabled for this compilation unit? */
   def ccEnabled(using Context) =
     enabledBySetting(captureChecking)
+    || enabledBySetting(separationChecking)
+    || enabledBySetting(safe)
     || ctx.originalCompilationUnit.needsCaptureChecking
+
+  /** Is separation checking enabled for this compilation unit? */
+  def sepChecksEnabled(using Context) =
+    enabledBySetting(separationChecking)
+    || enabledBySetting(safe)
+    || ctx.originalCompilationUnit.needsSeparationChecking
+
+  /** Is safe mode set for this compilation unit? */
+  def safeEnabled(using Context) =
+    enabledBySetting(safe)
+    || ctx.originalCompilationUnit.safeMode
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -230,17 +253,29 @@ object Feature:
    *  @return true iff import that was handled
    */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
-    val fullFeatureName = QualifiedName(prefix, imported.asTermName)
-    if fullFeatureName == pureFunctions then
-      ctx.compilationUnit.knowsPureFuns = true
-      if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
-      true
-    else if fullFeatureName == captureChecking then
-      ctx.compilationUnit.needsCaptureChecking = true
-      if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
-      true
-    else
-      false
+    QualifiedName(prefix, imported.asTermName) match
+      case `pureFunctions` =>
+        ctx.compilationUnit.knowsPureFuns = true
+        if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
+        true
+      case `captureChecking` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `separationChecking` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        ctx.compilationUnit.needsSeparationChecking = true
+        true
+      case `safe` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        ctx.compilationUnit.needsSeparationChecking = true
+        ctx.compilationUnit.safeMode = true
+        true
+      case `assumeSafe` =>
+        ctx.compilationUnit.assumeSafeMode = true
+        true
+      case _ =>
+        false
 
   def isPreviewEnabled(using Context): Boolean =
     ctx.settings.preview.value

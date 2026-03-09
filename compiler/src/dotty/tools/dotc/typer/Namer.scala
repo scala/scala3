@@ -907,7 +907,7 @@ class Namer { typer: Typer =>
       case _ =>
     }
 
-    private def addInlineInfo(sym: Symbol) = original match {
+    private def addInlineInfo(sym: Symbol): Unit = original match {
       case original: untpd.DefDef if sym.isInlineMethod =>
         def rhsToInline(using Context): tpd.Tree =
           if !original.symbol.exists && !hasDefinedSymbol(original) then
@@ -919,6 +919,12 @@ class Namer { typer: Typer =>
         PrepareInlineable.registerInlineInfo(sym, rhsToInline)(using localContext(sym))
       case _ =>
     }
+
+    private def addSafeMode(sym: Symbol): Unit =
+      if sym.isClass
+          && (ctx.compilationUnit.safeMode || ctx.compilationUnit.assumeSafeMode)
+      then
+        sym.addAnnotation(Annotation(defn.SafeModeAnnot, sym.span))
 
     /** Invalidate `denot` by overwriting its info with `NoType` if
      *  `denot` is a compiler generated case class method that clashes
@@ -1010,6 +1016,7 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
       addAnnotations(sym)
       addInlineInfo(sym)
+      addSafeMode(sym)
       denot.info = knownTypeSig `orElse` typeSig(sym)
       invalidateIfClashingSynthetic(denot)
       normalizeFlags(denot)
