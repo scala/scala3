@@ -12,6 +12,7 @@ import scala.meta as m
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
@@ -88,6 +89,11 @@ final class InferredTypeProvider(
       sourceText.substring(0, nameEnd).nn +
         sourceText.substring(tptEnd + 1, sourceText.length())
 
+    def widenJavaEnumSingleton(tpe: Type)(using Context): Type = tpe match
+      case tp: TermRef if tp.termSymbol.isAllOf(JavaEnum) =>
+        tp.widen
+      case _ => tpe
+
     def optDealias(tpe: Type): Type =
       def isInScope(tpe: Type): Boolean =
         tpe match
@@ -99,8 +105,9 @@ final class InferredTypeProvider(
           case AppliedType(tycon, args) =>
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
-      if isInScope(tpe) then tpe
-      else tpe.deepDealiasAndSimplify
+      val widened = widenJavaEnumSingleton(tpe)
+      if isInScope(widened) then widened
+      else widened.deepDealiasAndSimplify
 
     val printer = ShortenedTypePrinter(
       symbolSearch,
