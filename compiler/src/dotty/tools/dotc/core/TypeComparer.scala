@@ -3947,16 +3947,14 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
     def matchMissingCaptures(spec: MatchTypeCaseSpec.MissingCaptures): MatchResult =
       MatchResult.Stuck
 
-    case class MatchTypeNoCasesKey(pos: String, msg: String)
-
-    def recur(remaining: List[MatchTypeCaseSpec], seen: mutable.Set[MatchTypeNoCasesKey]): Type = remaining match
+    def recur(remaining: List[MatchTypeCaseSpec]): Type = remaining match
       case (cas: MatchTypeCaseSpec.LegacyPatMat) :: _ if sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
         val errorText = MatchTypeTrace.illegalPatternText(scrut, cas)
         ErrorType(reporting.MatchTypeLegacyPattern(errorText))
       case cas :: remaining1 =>
         matchCase(cas) match
           case MatchResult.Disjoint =>
-            recur(remaining1, seen)
+            recur(remaining1)
           case MatchResult.Stuck =>
             MatchTypeTrace.stuck(scrut, cas, remaining1)
             NoType
@@ -3978,15 +3976,13 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
       case Nil =>
         val noCasesText = MatchTypeTrace.noMatchesText(scrut, cases)
         val pos = ctx.source.atSpan(ctx.owner.span)
-        if !scrut.isInstanceOf[TypeVar] then
-          val key = MatchTypeNoCasesKey(pos.toString, noCasesText)
-          if seen.add(key) then
-            report.warning(reporting.MatchTypeNoCases(noCasesText), pos)
+        if pos.exists && ctx.mode.is(Mode.ReadPositions) && ctx.owner.isTerm && !scrut.isInstanceOf[TypeVar] then
+          report.warning(reporting.MatchTypeNoCases(noCasesText), pos)
 
         MatchTypeTrace.noMatches(scrut, cases)
         NoType
 
-    inFrozenConstraint(recur(cases, mutable.HashSet.empty))
+    inFrozenConstraint(recur(cases))
   }
 }
 
