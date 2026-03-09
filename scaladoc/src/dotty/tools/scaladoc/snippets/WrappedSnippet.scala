@@ -3,6 +3,7 @@ package snippets
 
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import dotty.tools.dotc.config.Feature
 
 case class WrappedSnippet(snippet: String, outerLineOffset: Int, outerColumnOffset: Int, innerLineOffset: Int, innerColumnOffset: Int)
 
@@ -12,7 +13,8 @@ object WrappedSnippet:
 
   /** Matches import lines for global language features that must be at the toplevel. */
   private val globalLanguageImport =
-    raw"import\s+language\s*\.\s*experimental\s*\.\s*(captureChecking|pureFunctions|separationChecking|safe)\b".r.unanchored
+    val names = Feature.globalLanguageImports.map(_.toString.stripPrefix("experimental."))
+    raw"import\s+language\s*\.\s*experimental\s*\.\s*(${names.mkString("|")})\b".r.unanchored
 
   private def isGlobalLanguageImport(line: String): Boolean =
     globalLanguageImport.matches(line.trim)

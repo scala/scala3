@@ -32,7 +32,7 @@ import dotc.reporting.Diagnostic
 import dotc.util.Spans.Span
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
-import dotc.config.CompilerCommand
+import dotc.config.{CompilerCommand, Feature}
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
 import dotty.tools.repl.ScalaClassLoader.*
 
@@ -309,23 +309,18 @@ class ReplDriver(settings: Array[String],
     val summary = rootCtx.settings.processArguments(List(s"-language:$feature"), true, rootCtx.settingsState)
     rootCtx = rootCtx.fresh.setSettings(summary.sstate)
 
-  /** Global language features that affect parsing and must be propagated to rootCtx (i16250). */
-  private val globalLanguageFeatures = Set(
-    "experimental.captureChecking", "experimental.pureFunctions",
-    "experimental.separationChecking", "experimental.safe")
-
-  /** Detect global language imports in parsed trees and enable them as settings (i16250). */
+  /** Detect global language imports in parsed trees and enable them in rootCtx
+   *  so subsequent parses and compilations see them (i16250).
+   */
   private def propagateLanguageImports(trees: List[untpd.Tree]): Unit =
-    for tree <- trees do
-      tree match
-        case untpd.Import(expr, selectors) =>
-          untpd.languageImport(expr) match
-            case Some(prefix) =>
-              for case untpd.ImportSelector(untpd.Ident(imported), untpd.EmptyTree, _) <- selectors do
-                val qual = if prefix.isEmpty then imported.toString else s"$prefix.$imported"
-                if globalLanguageFeatures.contains(qual) then
-                  enableLanguageFeature(qual)
-            case _ =>
+    import dotc.core.NameKinds.QualifiedName
+    for case untpd.Import(expr, selectors) <- trees do
+      untpd.languageImport(expr) match
+        case Some(prefix) =>
+          for case untpd.ImportSelector(untpd.Ident(imported), untpd.EmptyTree, _) <- selectors do
+            val qual = QualifiedName(prefix, imported.asTermName)
+            if Feature.globalLanguageImports.contains(qual) then
+              enableLanguageFeature(qual.toString)
         case _ =>
 
   private def stripBackTicks(label: String) =
