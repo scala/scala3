@@ -1,8 +1,12 @@
--- Error: tests/neg/ycheck-termination-class.scala:9:6 -----------------------------------------------------------------
-9 |  def classLoop(r: ClassNode): Int = // error
-  |      ^
-  |      classLoop has an argument with a type that is mutable or has overridden unapply
--- Error: tests/neg/ycheck-termination-class.scala:13:6 ----------------------------------------------------------------
-13 |  def sumStd(l: List[Int]): Int = // error
-   |      ^
-   |      sumStd has an argument with a type that is mutable or has overridden unapply
+-- Error: tests/neg/ycheck-termination-class.scala:10:17 ---------------------------------------------------------------
+10 |    1 + classLoop(r.next) // error
+   |        ^^^^^^^^^^^^^^^^^
+   |        classLoop may not terminate due to (mutually) recursive call.
+-- Warning: tests/neg/ycheck-termination-class.scala:16:16 -------------------------------------------------------------
+16 |      case x :: xs => x + sumStd(xs) // error
+   |                ^
+   |                Argument of type :: decreases but the type is not well-founded.
+-- Error: tests/neg/ycheck-termination-class.scala:16:32 ---------------------------------------------------------------
+16 |      case x :: xs => x + sumStd(xs) // error
+   |                          ^^^^^^^^^^
+   |                          sumStd may not terminate due to (mutually) recursive call.

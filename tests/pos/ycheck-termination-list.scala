@@ -15,6 +15,13 @@ class C {
     }
 
   @terminates
+  def reverse[A](l: MyList[A], acc: MyList[A]): MyList[A] =
+    l match {
+      case MyNil => acc
+      case MyCons(head, tail) => reverse(tail, MyCons(head, acc))
+    }
+
+  @terminates
   def merge(l1: MyList[Int], l2: MyList[Int]): MyList[Int] =
     l1 match {
       case MyNil => l2

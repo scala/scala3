@@ -1,8 +1,4 @@
--- Error: tests/neg/ycheck-termination-loop.scala:10:32 ----------------------------------------------------------------
-10 |      case Some(v) => 1 + addOne(x) // error
-   |                          ^^^^^^^^^
-   |                          Recursive call to addOne may not terminate
--- Error: tests/neg/ycheck-termination-loop.scala:19:8 -----------------------------------------------------------------
-19 |    loop(MyCons(0, l)) // error
+-- Error: tests/neg/ycheck-termination-loop.scala:12:8 -----------------------------------------------------------------
+12 |    loop(MyCons(0, l)) // error
    |    ^^^^^^^^^^^^^^^^^^
-   |    Recursive call to loop may not terminate
+   |    loop may not terminate due to (mutually) recursive call.
