@@ -13,7 +13,7 @@ We distinguish two kinds of accesses: full access that allows state changes and 
 A common kind of stateful capabilities represent mutable variables that can be read and written.
 These mutable data structures are expressed with the marker trait `caps.Mutable`.
 For instance, consider a simple reference cell:
-```scala
+```scala sc:nocompile
 import caps.Mutable
 
 class Ref[T](init: T) extends Mutable:

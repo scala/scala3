@@ -7,6 +7,10 @@
    |             Note that capability `LazyCons.this.xs` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazylist-global.scala:30:4 ----------------------------------------------------
+30 |val cap1: Cap = CC() // error
+   |    ^
+   |    fields `cap1`, `cap2`, `cap3` with `any` in their types need to be put in an object that extends Capability
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist-global.scala:39:29 ------------------------------
 39 |  val ref1c: LazyList[Int] = ref1 // error
    |                             ^^^^

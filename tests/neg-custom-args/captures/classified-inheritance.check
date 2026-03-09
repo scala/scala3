@@ -1,8 +1,18 @@
 -- Error: tests/neg-custom-args/captures/classified-inheritance.scala:5:6 ----------------------------------------------
-5 |class C2 extends caps.Control, caps.Unscoped // error
+5 |class C2 extends caps.Control, caps.Unscoped // error // error
   |      ^
   |      class C2 inherits two unrelated classifier traits: trait Unscoped and trait Control
 -- Error: tests/neg-custom-args/captures/classified-inheritance.scala:10:6 ---------------------------------------------
-10 |class C3 extends Matrix, Async // error
+10 |class C3 extends Matrix, Async // error // error
    |      ^
    |      class C3 inherits two unrelated classifier traits: trait Control and trait Unscoped
+-- Error: tests/neg-custom-args/captures/classified-inheritance.scala:5:22 ---------------------------------------------
+5 |class C2 extends caps.Control, caps.Unscoped // error // error
+  |                 ^^^^^^^^^^^^
+  |                illegal inheritance: class C2 which extends `Stateful` is not allowed to also extend trait Control
+  |                since trait Control is an exclusive capability but does not extend `Stateful`.
+-- Error: tests/neg-custom-args/captures/classified-inheritance.scala:10:25 --------------------------------------------
+10 |class C3 extends Matrix, Async // error // error
+   |                         ^^^^^
+   |                illegal inheritance: class C3 which extends `Stateful` is not allowed to also extend trait Async
+   |                since trait Async is an exclusive capability but does not extend `Stateful`.

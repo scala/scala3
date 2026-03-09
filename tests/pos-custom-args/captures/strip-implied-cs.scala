@@ -8,7 +8,7 @@ trait State[A] extends SharedCapability:
 def get[A]: State[A] ?-> A          = s ?=> s.get
 def set[A](a: A): State[A] ?-> Unit = s ?=> s.set(a)
 
-trait Rand extends SharedCapability:
+trait Rand:
   def range(min: Int, max: Int): Int
 
 object Rand:

@@ -14,7 +14,7 @@ package test1:
   trait Foo:
     val thunks: Collection[() => Unit] // that's fine
 
-  object FooImpl1 extends Foo:
+  object FooImpl1 extends Foo, ExclusiveCapability:
     val thunks: Collection[() => Unit] = Collection.empty // was error, now ok
     val thunks2: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok
     val thunks3: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok
@@ -30,7 +30,7 @@ package test2:
   trait Foo:
     val thunks: Collection[() => Unit] // that's fine
 
-  object FooImpl1 extends Foo:
+  object FooImpl1 extends Foo, ExclusiveCapability:
     val thunks: Collection[() => Unit] = Collection.empty // was error, now ok
     val thunks2: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok
     val thunks3: Collection[() => Unit] = Collection.empty[() => Unit] // was error, now ok

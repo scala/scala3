@@ -199,7 +199,29 @@ class C(x: () => Unit) uses out, io:
 
 A `uses` clause must be given if a class that is visible in other compilation units captures external capabilities. This is to support separate compilation where we need to know the capture set of `C(...)` without analyzing the internals of `C`.
 
-### Captures due to Class Initialization
+If `C` extends `Capability` then we always add an `any` to the capture set of `new C`.
+
+```scala sc:nocompile
+class C extends Capability {}
+val c = C() // `c` has type `C^`
+```
+
+An `any` also gets added if the class has fields that capture `any`:
+
+```scala sc:nocompile
+class C:
+  val x: D^ = D()
+val c = C() // `c` has type `C^`
+```
+
+If a class `C` with fields that capture `any` is visible in other compilation units,
+it must extend `Capability`. This makes sure we add the proper capture set to `new C`
+under separate compilation without having to scan its fields.
+
+## Captures of
+
+
+## Captures due to Class Initialization
 
 The previous section described what capabilities get captured by the value of a class instance creation expression. But this is not the only relevant capture set linked with `new`. It's also important to know which capabilities are accessed when a class is initialized.
 

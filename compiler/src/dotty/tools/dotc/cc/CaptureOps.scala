@@ -633,6 +633,11 @@ extension (cls: ClassSymbol) {
     (impliedSet, fields)
   }
 
+  def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =
+    if cls.derivesFrom(defn.Caps_Capability)
+    then LocalCap(Origin.NewInstance(core, Nil)).singletonCaptureSet
+    else cls.capturesImpliedByFields(core).refs
+
   /** Map locals set with an as-seen-from relative to the prefix path of the created class
    *  reference `core` if that prefix is non-trivial.
    */

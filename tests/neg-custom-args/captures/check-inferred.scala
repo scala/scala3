@@ -1,6 +1,6 @@
 package test
 import caps.Mutable
-import caps.any
+import caps.{any, SharedCapability, ExclusiveCapability}
 import caps.unsafe.untrackedCaptures
 
 class Ref extends Mutable:
@@ -8,7 +8,7 @@ class Ref extends Mutable:
   def get: Int = x
   update def put(y: Int): Unit = x = y
 
-class Counter:
+class Counter extends ExclusiveCapability:
   private val count = Ref()
   private val altCount: Ref^ = Ref() // ok
 
@@ -32,19 +32,22 @@ def test() =
     val decr = () =>
       count.put(count.get - 1)
 
-class A:
+class A: // error
   val x: A^{any.only[caps.Control]} = ???
   private val y = ??? : A^{any.only[caps.Control]}  // ok
 
-class B:
+class B extends caps.Control: // error
   val x: A^ = ???
   private val y = ??? : A^{any.only[caps.Control]}  // ok
 
-class C:
+class C: // error
   val x: A^{any.only[caps.Control]} = ???
-  private val y = ??? : A^    // error
+  private val y = ??? : A^ // error
 
-class D:
+class D extends caps.ExclusiveCapability:
   val x: A^{any.only[caps.Control]} = ???
-  private val y = ??? : (() => A^{any.only[caps.Unscoped]})  // error
+  private val y = ??? : (() => A^{any.only[caps.Unscoped]})
+
+class E:
+  private val y = ??? : A^ // error
 

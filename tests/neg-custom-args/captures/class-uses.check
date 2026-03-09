@@ -1,14 +1,37 @@
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/class-uses.scala:17:22 ---------------------------------
 17 |      Console.println(g.toString) // error
    |                      ^
-   |                      Reference `A.this.g` is not included in the allowed capture set {A.this.f}
+   |                      Reference `A.this.g` is not included in the allowed capture set {A.this.f, test.Console}
    |                      of the enclosing class B in class A.
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/class-uses.scala:21:22 ---------------------------------
 21 |      Console.println(f.toString) // error
    |                      ^
-   |                      Reference `A.this.f` is not included in the allowed capture set {}
+   |                      Reference `A.this.f` is not included in the allowed capture set {test.Console}
    |                      of the enclosing class C in class A.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/class-uses.scala:33:6 ----------------------------------
+33 |      Console.println("") // error
+   |      ^^^^^^^
+   |      Reference `test.Console` is not included in the allowed capture set {}
+   |      of the enclosing class B in class A0.
    |
-   |                      External uses should be declared explicitly with a uses clause in class C:
+   |      External uses should be declared explicitly with a uses clause in class B:
    |
-   |                          uses A.this.f
+   |          uses test.Console
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/class-uses.scala:43:6 ----------------------------------
+43 |      Console.println("") // error
+   |      ^^^^^^^
+   |      Reference `test.Console` is not included in the allowed capture set {}
+   |      of the enclosing class A1 in package test.
+   |
+   |      External uses should be declared explicitly with a uses clause in class A1:
+   |
+   |          uses test.Console
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-uses.scala:27:21 -----------------------------------
+27 |  val _: a.B^{a.f} = b // error
+   |                     ^
+   |                     Found:    (b : a.B^{a.f, test.Console})
+   |                     Required: a.B^{a.f}
+   |
+   |                     Note that capability `b` cannot flow into capture set {a.f}.
+   |
+   | longer explanation available when compiling with `-explain`
