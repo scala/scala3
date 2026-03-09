@@ -33,6 +33,13 @@ abstract class Lifter {
   /** The corresponding lifter for pass-by-name arguments */
   protected def exprLifter: Lifter = NoLift
 
+  private def lifterFor(paramType: Type): Lifter =
+    if paramType.isInstanceOf[ExprType] then exprLifter else this
+
+  /** Returns true if the argument would be lifted for the given parameter type. */
+  def wouldLift(arg: tpd.Tree, paramType: Type)(using Context): Boolean =
+    !paramType.hasAnnotation(defn.InlineParamAnnot) && !lifterFor(paramType).noLift(arg)
+
   /** The flags of a lifted definition */
   protected def liftedFlags: FlagSet = EmptyFlags
 
@@ -92,8 +99,7 @@ abstract class Lifter {
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map: (arg, name, tp) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
-            val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
-            lifter.liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
+            lifterFor(tp).liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }
