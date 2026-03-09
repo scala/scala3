@@ -364,6 +364,7 @@ class ReplDriver(settings: Array[String],
         state
 
       case parsed: Parsed if parsed.trees.nonEmpty =>
+        propagateLanguageImports(parsed.trees)
         compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
@@ -406,16 +407,7 @@ class ReplDriver(settings: Array[String],
       .fold(
         displayErrors,
         {
-          case (unit: CompilationUnit, newState0: State) =>
-            // Propagate global language imports to rootCtx so subsequent parses see them (i16250).
-            // We check the parsed trees rather than the compilation unit flags because the REPL
-            // parses in a separate step that uses a temporary compilation unit.
-            propagateLanguageImports(parsed.trees)
-            // Update the state's context settings to match rootCtx so subsequent parsing sees them
-            val newState =
-              if newState0.context.settingsState ne rootCtx.settingsState then
-                newState0.copy(context = newState0.context.fresh.setSettings(rootCtx.settingsState))
-              else newState0
+          case (unit: CompilationUnit, newState: State) =>
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
             val newImports = extractTopLevelImports(newState.context)
             var allImports = newState.imports
