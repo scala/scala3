@@ -6,14 +6,14 @@ class C {
   class ClassNode(val next: ClassNode)
 
   @terminates
-  def classLoop(r: ClassNode): Int = // error
-    1 + classLoop(r.next)
+  def classLoop(r: ClassNode): Int =
+    1 + classLoop(r.next) // error
 
   @terminates
-  def sumStd(l: List[Int]): Int = // error
+  def sumStd(l: List[Int]): Int =
     l match {
       case Nil => 0
-      case x :: xs => x + sumStd(xs)
+      case x :: xs => x + sumStd(xs) // error
     }
 
 }

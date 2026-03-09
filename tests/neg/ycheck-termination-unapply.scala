@@ -10,10 +10,10 @@ class C {
   }
 
   @terminates
-  def caseLoop(n: Node): Int = // error
-    n match {
+  def caseLoop(n: Node): Int =
+    n match { // warning
       case Node(v, next) =>
-        v + caseLoop(next)
+        v + caseLoop(next) // error
     }
 
 }
