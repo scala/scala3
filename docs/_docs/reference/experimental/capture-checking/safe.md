@@ -42,7 +42,6 @@ is done, the library module can be made available for use by safe code.
 This scheme is supported by a new `@assumeSafe` annotation, available in
 module `caps`.
 Modules tagged with this annotation are assumed to be callable from  agent-generated code. `@assumeSafe` comes with none of the restrictions that `safe` implies. Instead it is the obligation of the programmer to verify that the module is indeed safe. For instance caching a function results could be implemented like this:
-<!-- FIXME: the below is rejected by the compiler! -->
 ```scala sc:nocompile
 import caps.unsafe.untrackedCaptures
 import caps.assumeSafe

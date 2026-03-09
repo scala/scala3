@@ -13,7 +13,7 @@ import dotc.config.CommandLineParser.tokenize
 import dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotc.core.Contexts.*
 import dotc.core.Decorators.*
-import dotc.core.Phases.{unfusedPhases, typerPhase}
+import dotc.core.Phases.{unfusedPhases, typerPhase, checkCapturesPhase}
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags.*
 import dotc.core.Mode
@@ -442,7 +442,7 @@ class ReplDriver(settings: Array[String],
   private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(using state: State): (State, Seq[Diagnostic]) = {
     given Context = state.context
 
-    def resAndUnit(denot: Denotation) = {
+    def resAndUnit(denot: Denotation)(using Context) = {
       import scala.util.{Success, Try}
       val sym = denot.symbol
       val name = sym.name.show
@@ -453,7 +453,7 @@ class ReplDriver(settings: Array[String],
       name.startsWith(str.REPL_RES_PREFIX) && hasValidNumber && sym.info == defn.UnitType
     }
 
-    def extractAndFormatMembers(symbol: Symbol): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
+    def extractAndFormatMembers(symbol: Symbol)(using Context): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
@@ -504,13 +504,17 @@ class ReplDriver(settings: Array[String],
     def isSyntheticCompanion(sym: Symbol) =
       sym.is(Module) && sym.is(Synthetic)
 
-    def typeDefs(sym: Symbol): Seq[Diagnostic] = sym.info.memberClasses
+    def typeDefs(sym: Symbol)(using Context): Seq[Diagnostic] = sym.info.memberClasses
       .collect {
         case x if !isSyntheticCompanion(x.symbol) && !x.symbol.name.isReplWrapperName =>
           rendering.renderTypeDef(x)
       }
 
-    atPhase(typerPhase.next) {
+    val renderPhase =
+      if Feature.ccEnabledSomewhere && checkCapturesPhase.exists
+      then checkCapturesPhase
+      else typerPhase.next
+    atPhase(renderPhase) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)

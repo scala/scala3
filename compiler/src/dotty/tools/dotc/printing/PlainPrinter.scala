@@ -329,7 +329,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
               ~ Str("R").provided(printDebug)
             else toText(tpe)
           case annot: CaptureAnnotation =>
-            toTextLocal(tpe) ~ "^" ~ toText(annot)
+            val boxText: Text = Str("box ") `provided` annot.boxed && ccVerbose
+            toTextCapturing(tpe, annot.refs, boxText)
           case _ if defn.SilentAnnots.contains(annot.symbol) && !printDebug =>
             toText(tpe)
           case _ =>
@@ -567,6 +568,25 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (tparamStr, bounds.derivedTypeBounds(loRhs, hiRhs))
   end decomposeLambdas
 
+  /** Is this a capture variable's bounds? i.e. lo and hi are both CapSet-based. */
+  private def isCaptureVarBounds(lo: Type, hi: Type): Boolean =
+    lo.derivesFrom(defn.Caps_CapSet) && (hi match
+      case CapturingType(parent, _) => parent.derivesFrom(defn.Caps_CapSet)
+      case hi => hi.derivesFrom(defn.Caps_CapSet))
+
+  /** Print capture variable bounds using `^` syntax.
+   *  Plain CapSet lower bound and universal upper bound are elided.
+   */
+  private def toTextCaptureVarBounds(lo: Type, hi: Type): Text =
+    val loText = lo match
+      case CapturingType(_, refs) => " >: " ~ toTextCaptureSet(refs)
+      case _ => Text() // plain CapSet = trivial lower bound
+    val hiText = hi match
+      case CapturingType(_, refs) if isElidableUniversal(refs) => Text() // trivial upper bound
+      case CapturingType(_, refs) => " <: " ~ toTextCaptureSet(refs)
+      case _ => Text()
+    Str("^") ~ loText ~ hiText
+
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled {
     homogenize(tp) match {
@@ -575,6 +595,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val binder = rhs match
           case tp: AliasingBounds =>
             " = " ~ toText(tp.alias)
+          case TypeBounds(lo, hi) if !printDebug && Feature.ccEnabledSomewhere && isCaptureVarBounds(lo, hi) =>
+            toTextCaptureVarBounds(lo, hi)
           case TypeBounds(lo, hi) =>
             (if lo.isExactlyNothing then Text() else " >: " ~ toText(lo))
             ~ (if hi.isExactlyAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
