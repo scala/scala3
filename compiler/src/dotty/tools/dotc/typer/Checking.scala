@@ -938,9 +938,7 @@ object Checking {
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros
-        || name == Feature.captureChecking
-        || name == Feature.separationChecking
+        name == Feature.scala2macros || Feature.nonViralExperimentalFeatures.contains(name)
       trees.filter {
         case Import(qual, selectors) =>
           languageImport(qual) match

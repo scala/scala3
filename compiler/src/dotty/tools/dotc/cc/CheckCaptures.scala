@@ -266,6 +266,11 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
+  override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+    if Feature.ccEnabledSomewhere then
+      SafeRefs.init()(using ctx.withPhase(thisPhase))
+    super.runOn(units)
+
   override def run(using Context): Unit =
     if Feature.ccEnabled then
       super.run
@@ -311,9 +316,6 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** The set of symbols that were rechecked via a completer */
     private val completed = new mutable.HashSet[Symbol]
-
-    /** Set on recheckClassDef since there we see all language imports */
-    private var sepChecksEnabled = false
 
     private var needAnotherRun = false
 
@@ -777,6 +779,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // charged for the prefix `p` in `p.x`.
         markFree(sym.info.captureSet, tree)
 
+      SafeRefs.checkSafe(tree, pt)
       mapResultRoots(super.recheckIdent(tree, pt), tree.symbol)
     }
 
@@ -833,6 +836,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             disambiguate(denot1).meet(disambiguate(denot2), qualType)
           }
         case _ => denot
+
+      SafeRefs.checkSafe(tree, pt)
 
       // Don't allow update methods to be called unless the qualifier captures
       // an exclusive reference.
@@ -1134,18 +1139,23 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - don't allow `any` to appear covariantly in type arguments
      *   - special handling of `contains[A, B]` calls
      */
-    override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
+    override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type = {
       val meth = tree.fun match
         case fun @ Select(qual, nme.apply) => qual.symbol.orElse(fun.symbol)
         case fun => fun.symbol
       def methDescr = if meth.exists then i"$meth's type " else ""
+
+      if meth == defn.Any_asInstanceOf && Feature.safeEnabled then
+        report.error(em"Cannot use asInstanceOf in safe mode", tree.srcPos)
+
       markFreeTypeArgs(tree.fun, meth, tree.args)
+
       val funType = super.recheckTypeApply(tree, pt)
       val res = resultToAny(funType, Origin.ResultInstance(funType, meth))
       includeCallCaptures(tree.symbol, res, tree)
       checkContains(tree)
       res
-    end recheckTypeApply
+    }
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
      *  capability and assert that `{r} <: CS`.
@@ -1301,6 +1311,10 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context) =
       super.seqLiteralElemProto(tree, pt, declared).boxed
 
+    override def recheckNew(tree: New, pt: Type)(using Context): Type =
+      SafeRefs.checkSafe(tree, pt)
+      super.recheckNew(tree, pt)
+
     /** Recheck val and var definitions:
      *   - disallow `any` in the type of mutable vars.
      *   - for externally visible definitions: check that their inferred type
@@ -1312,6 +1326,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val savedEnv = curEnv
       val runInConstructor = !sym.isOneOf(Param | ParamAccessor | Lazy | NonMember)
       try
+        SafeRefs.checkSafeAnnots(sym)
         if sym.is(Mutable) then
           if !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
             val addendum = setup.capturedBy.get(sym) match
@@ -1402,6 +1417,13 @@ class CheckCaptures extends Recheck, SymTransformer:
               ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
+
+        SafeRefs.checkSafeAnnots(sym)
+        for params <- tree.paramss; param <- params do
+          SafeRefs.checkSafeAnnots(param.symbol)
+          param match
+            case param: ValDef => SafeRefs.checkSafeAnnotsInType(param.tpt)
+            case param: TypeDef => SafeRefs.checkSafeAnnotsInType(param.rhs)
 
         checkNoUnboxedReaches(tree)
 
@@ -1551,7 +1573,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      same check is already done in the TypeApply.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
-      if Feature.enabled(Feature.separationChecking) then sepChecksEnabled = true
       val localSet = capturedVars(cls)
 
       // (1) Capture set of a class includes the capture sets of its parents
@@ -1596,6 +1617,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
 
+        SafeRefs.checkSafeAnnots(cls)
+
         super.recheckClassDef(tree, impl, cls)
       finally
         if cls.is(ModuleClass) then
@@ -1634,6 +1657,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           "\nThis is often caused by a locally generated exception capability leaking as part of its result.",
           tree.srcPos)
       tp
+
+    override def recheckTypeTree(tree: TypeTree)(using Context): Type =
+      SafeRefs.checkSafeAnnotsInType(tree)
+      super.recheckTypeTree(tree)
 
     /* Currently not needed, since capture checking takes place after ElimByName.
      * Keep around in case we need to get back to it
@@ -2424,7 +2451,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
       checkEscapingReachUses()
-      if sepChecksEnabled then
+      if Feature.sepChecksEnabled then
         for (tree, cs, env) <- useInfos do
           usedSet(tree) = tree.markedFree ++ cs
         ccState.inSepCheck:

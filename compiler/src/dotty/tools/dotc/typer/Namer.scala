@@ -907,7 +907,7 @@ class Namer { typer: Typer =>
       case _ =>
     }
 
-    private def addInlineInfo(sym: Symbol) = original match {
+    private def addInlineInfo(sym: Symbol): Unit = original match {
       case original: untpd.DefDef if sym.isInlineMethod =>
         def rhsToInline(using Context): tpd.Tree =
           if !original.symbol.exists && !hasDefinedSymbol(original) then
@@ -1733,7 +1733,7 @@ class Namer { typer: Typer =>
        *
        *  so that an implicit `I` can be passed to `B`. See i7613.scala for more examples.
        */
-      def addUsingTraits(parents: List[Type]): List[Type] =
+      def addUsingTraits(parents: List[Type]): List[Type] = {
         lazy val existing = parents.map(_.classSymbol).toSet
         def recur(parents: List[Type]): List[Type] = parents match
           case parent :: parents1 =>
@@ -1752,7 +1752,11 @@ class Namer { typer: Typer =>
           case nil =>
             Nil
         if cls.isRealClass then recur(parents) else parents
-      end addUsingTraits
+      }
+
+      def addAssumeSafe(sym: Symbol): Unit =
+        if ctx.compilationUnit.safeMode && sym.isClass && sym.isStatic then
+          sym.addAnnotation(Annotation(defn.AssumeSafeAnnot, sym.span))
 
       completeConstructor(denot)
       denot.info = tempInfo.nn
@@ -1790,6 +1794,7 @@ class Namer { typer: Typer =>
       addConstructorProxies(cls)
       if processExports(using localCtx) then
         addConstructorProxies(cls)
+      addAssumeSafe(cls)
       cleanup()
     }
   }

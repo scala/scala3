@@ -230,6 +230,8 @@ class Definitions {
   @tu lazy val JavaPackageClass: ClassSymbol = JavaPackageVal.moduleClass.asClass
   @tu lazy val JavaLangPackageVal: TermSymbol = requiredPackage(jnme.JavaLang)
   @tu lazy val JavaLangPackageClass: ClassSymbol = JavaLangPackageVal.moduleClass.asClass
+  @tu lazy val ScalaCollectionPackageClas: ClassSymbol = requiredPackage("scala.collection").moduleClass.asClass
+  @tu lazy val ScalaCollectionImmutablePackageClas: ClassSymbol = requiredPackage("scala.collection.immutable").moduleClass.asClass
 
   // fundamental modules
   @tu lazy val SysPackage : Symbol = requiredModule("scala.sys.package")
@@ -1061,7 +1063,6 @@ class Definitions {
   @tu lazy val DeprecatedInheritanceAnnot: ClassSymbol = requiredClass("scala.deprecatedInheritance")
   @tu lazy val ImplicitAmbiguousAnnot: ClassSymbol = requiredClass("scala.annotation.implicitAmbiguous")
   @tu lazy val ImplicitNotFoundAnnot: ClassSymbol = requiredClass("scala.annotation.implicitNotFound")
-  @tu lazy val InferredDepFunAnnot: ClassSymbol = requiredClass("scala.caps.internal.inferredDepFun")
   @tu lazy val InlineParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.InlineParam")
   @tu lazy val ErasedParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ErasedParam")
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
@@ -1097,6 +1098,8 @@ class Definitions {
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.unsafe.untrackedCaptures")
   @tu lazy val UseAnnot: ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val ReserveAnnot: ClassSymbol = requiredClass("scala.caps.reserve")
+  @tu lazy val AssumeSafeAnnot: ClassSymbol = requiredClass("scala.caps.assumeSafe")
+  @tu lazy val RejectSafeAnnot: ClassSymbol = requiredClass("scala.caps.rejectSafe")
   @tu lazy val ConsumeAnnot: ClassSymbol = requiredClass("scala.caps.internal.consume")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
@@ -1113,7 +1116,6 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
-  @tu lazy val RootCapabilityAnnot = requiredClass("scala.caps.internal.rootCapability")
   @tu lazy val InferredAnnot = requiredClass("scala.caps.internal.inferred")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
   @tu lazy val OnlyCapabilityAnnot = requiredClass("scala.annotation.internal.onlyCapability")
@@ -1502,6 +1504,11 @@ class Definitions {
   @tu lazy val topClasses: Set[Symbol] = Set(AnyClass, MatchableClass, ObjectClass, AnyValClass)
 
   @tu lazy val untestableClasses: Set[Symbol] = Set(NothingClass, NullClass, SingletonClass)
+
+  /** Annotations which do not need to be pickled since they are reconstituted automatically
+   *  when unpickling.
+   */
+  @tu lazy val unpicklableAnnotations: Set[Symbol] = Set(BodyAnnot)
 
   /** Base classes that are assumed to be pure for the purposes of capture checking.
    *  Every class inheriting from a pure baseclass is pure.
@@ -2034,7 +2041,7 @@ class Definitions {
     Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
     Caps_Shared, RequiresCapabilityAnnot,
     Caps_any, Caps_cap, Caps_fresh, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
-    ConsumeAnnot, UseAnnot, ReserveAnnot,
+    ConsumeAnnot, UseAnnot, ReserveAnnot, AssumeSafeAnnot, RejectSafeAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)

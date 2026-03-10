@@ -38,7 +38,6 @@ import scala.annotation.compileTimeOnly
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features
  *  @groupprio experimental 10
-
  */
 object language {
 
@@ -373,6 +372,11 @@ object language {
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for safe mode
+     */
+    @compileTimeOnly("`safe` can only be used at compile time in import statements")
+    object safe
   }
 
     /** The deprecated object contains features that are no longer officially suypported in Scala.
