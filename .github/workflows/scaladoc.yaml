@@ -60,6 +60,12 @@ jobs:
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
+      - name: Upload scaladoc output
+        uses: actions/upload-artifact@v7
+        with:
+          name: scaladoc-output
+          path: scaladoc/output/scala3
+
   validate-docs:
     runs-on: ubuntu-latest
     steps:
@@ -71,6 +77,47 @@ jobs:
 
       - name: Validate docs sidebars
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
+
+  validate-generated-docs:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download scaladoc output
+        uses: actions/download-artifact@v5
+        with:
+          name: scaladoc-output
+          path: ./scaladoc-output/
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install html-proofer
+        run: gem install html-proofer
+
+      - name: Check if docs/ was modified
+        id: docs-changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if git diff --name-only "$BASE" HEAD | grep -q '^docs/'; then
+            echo "modified=true" >> $GITHUB_OUTPUT
+          else
+            echo "modified=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate documentation links
+        run: ./project/scripts/validateScaladocLinks.sh scaladoc-output --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
+
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest
