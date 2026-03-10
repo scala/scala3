@@ -978,6 +978,9 @@ object Contexts {
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(using Context): SymbolLoader = platform.rootLoader(root)
 
+    /** Qualified types stats, initialized in `initialize()`. */
+    var qualifiedTypesStats: qualified_types.QualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = false)
+
     /** The standard definitions */
     val definitions: Definitions = new Definitions
 
@@ -998,6 +1001,7 @@ object Contexts {
       // See `Context.handleRecursive` for an explanation of these values
       recursiveOperations = Array.fill[RecursiveOperation](ctx.settings.XmaxFuel.value)(RecursiveOperation.blank())
       recursiveDepth = if ctx.settings.XnoEnrichErrorMessages.value then Int.MinValue else 0
+      qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
       definitions.init()
     }
 
