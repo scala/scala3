@@ -37,7 +37,7 @@ class EGraphTest extends QualifiedTypesTest:
       val body = testTree.rhs.asInstanceOf[tpd.Block]
       val fromTree = getValDef(body.stats, "from").rhs
       val toTree = getValDef(body.stats, "to").rhs
-      val egraph = EGraph(ctx, checksEnabled = true)
+      val egraph = EGraph(ctx)
       val from = ENode.fromTree(fromTree).get.normalizeTypes()
       val to = ENode.fromTree(toTree).get.normalizeTypes()
       val fromCanonical = egraph.canonicalize(from)

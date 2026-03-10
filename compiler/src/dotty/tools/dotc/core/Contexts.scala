@@ -932,6 +932,9 @@ object Contexts {
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(using Context): SymbolLoader = platform.rootLoader(root)
 
+    /** Qualified types stats, initialized in `initialize()`. */
+    var qualifiedTypesStats: qualified_types.QualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = false)
+
     /** The standard definitions */
     val definitions: Definitions = new Definitions
 
@@ -948,6 +951,7 @@ object Contexts {
       // In non-interactive mode, always create a fresh platform to preserve original behavior.
       if _platform == null || !ctx.mode.is(Mode.Interactive) then
         _platform = newPlatform
+      qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
       definitions.init()
     }
 
