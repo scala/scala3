@@ -4087,8 +4087,9 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
     }
 
   override def qualifierSolver() =
-    val traceIndented0 = [T] => (message: String) => traceIndented[T](message)
-    qualified_types.ExplainingQualifierSolver(traceIndented0)(using comparerContext)
+    new qualified_types.ExplainingQualifierSolver(using comparerContext):
+      override def traceIndented[T](str: => String)(op: => T): T =
+        ExplainingTypeComparer.this.traceIndented(str)(op)
 
   def lastTrace(header: String): String = header + { try b.toString finally b.clear() }
 }

@@ -156,7 +156,7 @@ class CompilationTests {
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
-      compileFilesInDir("tests/neg-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes")),
+      compileFilesInDir("tests/neg-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Ycheck-qualified-types")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
       compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Werror")),
       compileList("duplicate source", List(
