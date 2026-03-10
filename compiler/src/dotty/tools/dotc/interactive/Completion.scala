@@ -319,8 +319,10 @@ object Completion:
       Completion(name.show, description(denot), List(denot.symbol))
 
   def description(denot: SingleDenotation)(using Context): String =
-    if denot.isType then denot.symbol.showFullName
-    else denot.info.widenTermRefExpr.show
+    try
+      if denot.isType then denot.symbol.showFullName
+      else denot.info.widenTermRefExpr.show
+    catch case NonFatal(_) => denot.symbol.name.toString
 
   def isInNewContext(untpdPath: List[untpd.Tree]): Boolean =
     untpdPath match
