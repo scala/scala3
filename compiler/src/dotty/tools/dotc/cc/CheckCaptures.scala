@@ -983,9 +983,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         var allCaptures: CaptureSet = initCs ++ cls.capturesImpliedByFields(core).refs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
-          val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
+          val getter = cls.refiningGetterNamed(getterName)
           if !getter.is(Private) && getter.hasTrackedParts then
-            refined = refined.refinedOverride(getterName, argType.unboxed)
+            if !getter.is(Tracked) then
+              refined = refined.refinedOverride(getterName, argType.unboxed)
               // We can assume unboxed since the use set contributed by field selection is also the capture set
               // So unboxing will not add anything to the use sets.
               // This trick is also the principal reason why we can't make refineConstructorInstance
