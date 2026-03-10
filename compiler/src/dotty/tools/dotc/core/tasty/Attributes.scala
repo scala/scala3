@@ -15,7 +15,6 @@ class Attributes private[tasty](
   def withPureFuns: Boolean = booleanTags(WITHPUREFUNSattr)
   def isJava: Boolean = booleanTags(JAVAattr)
   def isOutline: Boolean = booleanTags(OUTLINEattr)
-  def isSafeMode: Boolean = booleanTags(SAFEMODEattr)
   def sourceFile: Option[String] = stringTagValues.find(_._1 == SOURCEFILEattr).map(_._2)
 }
 
@@ -27,8 +26,7 @@ object Attributes:
     captureChecked: Boolean,
     withPureFuns: Boolean,
     isJava: Boolean,
-    isOutline: Boolean,
-    isSafeMode: Boolean
+    isOutline: Boolean
   ): Attributes =
     val booleanTags = BitSet.newBuilder
     if scala2StandardLibrary then booleanTags += SCALA2STANDARDLIBRARYattr
@@ -37,7 +35,6 @@ object Attributes:
     if withPureFuns then booleanTags += WITHPUREFUNSattr
     if isJava then booleanTags += JAVAattr
     if isOutline then booleanTags += OUTLINEattr
-    if isSafeMode then booleanTags += SAFEMODEattr
 
     val stringTagValues = List.newBuilder[(Int, String)]
     stringTagValues += SOURCEFILEattr -> sourceFile
