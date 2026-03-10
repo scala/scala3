@@ -46,7 +46,7 @@ import scala.collection.mutable.HashMap
 @assumeSafe
 class Memoized[A, B](f: A -> B) {
 
-  @untrackedCaptures
+  @untrackedCaptures   // allowed since we are not in safe mode
   private val cached = HashMap[A, B]()
 
   def apply(x: A) = cached.getOrElseUpdate(x, f(x))
@@ -63,7 +63,8 @@ object CheckedMailer {
 
   def sendMail(email: Email) =
     if userPrompt(s"OK to send email?\n\n$email") then
-      Mailer.send(email)
+      Mailer.send(email) // allowed even if Mailer is not @assumeSafe
+                         // since we are not in safe mode
 }
 ```
 There's also the `@rejectSafe` annotation in `caps`, which can be seen to be a dual to `@assumeSafe`. It renders selected members of assumed safe components inaccessible in safe mode.
