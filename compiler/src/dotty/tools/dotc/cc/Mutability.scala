@@ -104,8 +104,14 @@ object Mutability:
         if tp.derivesFrom(defn.Caps_Stateful)
         then ctx.owner.inExclusivePartOf(tp.cls)
         else Exclusivity.OK
-      case tp @ TermRef(prefix: Capability, _) =>
-        prefix.exclusivityInContext(required).andAlso(tp.exclusivity(required))
+      case tp: TermRef =>
+        tp.info match
+          case tp1: SingletonType => tp1.exclusivityInContext(required)
+          case _ =>
+            val preEx = tp.prefix match
+              case prefix: Capability => prefix.exclusivityInContext(required)
+              case _ => Exclusivity.OK
+            preEx.andAlso(tp.exclusivity(required))
       case _ =>
         tp.exclusivity(required)
 
