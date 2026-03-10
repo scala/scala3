@@ -209,44 +209,46 @@ enum ENode extends Showable:
     nodeString + edgesString.mkString
 
   def mapTypes(f: Type => Type)(using Context): ENode =
-    this match
-      case Atom(tp) =>
-        val mappedTp = f(tp)
-        if mappedTp eq tp then
+    ctx.base.qualifiedTypesStats.record("ENode.mapTypes"):
+      this match
+        case Atom(tp) =>
+          val mappedTp = f(tp)
+          if mappedTp eq tp then
+            this
+          else
+            mappedTp match
+              case mappedTp: SingletonType => Atom(mappedTp)
+              case _ => Atom(SkolemType(mappedTp))
+        case Constructor(constr) =>
           this
-        else
-          mappedTp match
-            case mappedTp: SingletonType => Atom(mappedTp)
-            case _ => Atom(SkolemType(mappedTp))
-      case Constructor(constr) =>
-        this
-      case node @ Select(qual, member) =>
-        node.derived(qual.mapTypes(f), member)
-      case node @ Apply(fn, args) =>
-        node.derived(fn.mapTypes(f), args.mapConserve(_.mapTypes(f)))
-      case node @ OpApply(op, args) =>
-        node.derived(op, args.mapConserve(_.mapTypes(f)))
-      case node @ TypeApply(fn, args) =>
-        node.derived(fn.mapTypes(f), args.mapConserve(f))
-      case node @ Lambda(paramTps, retTp, body) =>
-        node.derived(paramTps.mapConserve(f), f(retTp), body.mapTypes(f))
+        case node @ Select(qual, member) =>
+          node.derived(qual.mapTypes(f), member)
+        case node @ Apply(fn, args) =>
+          node.derived(fn.mapTypes(f), args.mapConserve(_.mapTypes(f)))
+        case node @ OpApply(op, args) =>
+          node.derived(op, args.mapConserve(_.mapTypes(f)))
+        case node @ TypeApply(fn, args) =>
+          node.derived(fn.mapTypes(f), args.mapConserve(f))
+        case node @ Lambda(paramTps, retTp, body) =>
+          node.derived(paramTps.mapConserve(f), f(retTp), body.mapTypes(f))
 
   def foreachType(f: Type => Unit)(using Context): Unit =
-    this match
-      case Atom(tp) => f(tp)
-      case Constructor(_) => ()
-      case Select(qual, _) => qual.foreachType(f)
-      case Apply(fn, args) =>
-        fn.foreachType(f)
-        args.foreach(_.foreachType(f))
-      case OpApply(_, args) => args.foreach(_.foreachType(f))
-      case TypeApply(fn, args) =>
-        fn.foreachType(f)
-        args.foreach(f)
-      case Lambda(paramTps, retTp, body) =>
-        paramTps.foreach(f)
-        f(retTp)
-        body.foreachType(f)
+    ctx.base.qualifiedTypesStats.record("ENode.foreachType"):
+      this match
+        case Atom(tp) => f(tp)
+        case Constructor(_) => ()
+        case Select(qual, _) => qual.foreachType(f)
+        case Apply(fn, args) =>
+          fn.foreachType(f)
+          args.foreach(_.foreachType(f))
+        case OpApply(_, args) => args.foreach(_.foreachType(f))
+        case TypeApply(fn, args) =>
+          fn.foreachType(f)
+          args.foreach(f)
+        case Lambda(paramTps, retTp, body) =>
+          paramTps.foreach(f)
+          f(retTp)
+          body.foreachType(f)
 
   def normalizeTypes()(using Context): ENode =
     trace(i"normalizeTypes($this)", Printers.qualifiedTypes):
@@ -324,64 +326,65 @@ enum ENode extends Showable:
     def mapType(tp: Type): Type = SubstEParamsMap(0, paramRefs)(tp)
 
     trace(i"ENode.toTree $this, paramRefs: $paramRefs", Printers.qualifiedTypes):
-      this match
-        case Atom(tp) =>
-          mapType(tp) match
-            case tp1: TermParamRef => untpd.Ident(tp1.paramName).withType(tp1)
-            case tp: SkolemType => tpd.ref(defn.Predef_undefined).withType(tp)
-            case tp1 => tpd.singleton(tp1)
-        case Constructor(sym) =>
-          val tycon = sym.owner.asClass.classDenot.classInfo.selfType
-          tpd.New(tycon).select(TermRef(tycon, sym))
-        case Select(qual, member) =>
-          qual.toTree(paramRefs).select(member)
-        case Apply(fn, args) =>
-          tpd.Apply(fn.toTree(paramRefs), args.map(_.toTree(paramRefs)))
-        case OpApply(op, args) =>
-          def unaryOp(symbol: Symbol): tpd.Tree =
-            require(args.length == 1)
-            args(0).toTree(paramRefs).select(symbol).appliedToNone
-          def binaryOp(symbol: Symbol): tpd.Tree =
-            require(args.length == 2)
-            args(0).toTree(paramRefs).select(symbol).appliedTo(args(1).toTree(paramRefs))
-          op match
-            case Op.IntSum =>
-              args.map(_.toTree(paramRefs)).reduceLeft(_.select(defn.Int_+).appliedTo(_))
-            case Op.IntMinus =>
-              binaryOp(defn.Int_-)
-            case Op.IntProduct =>
-              args.map(_.toTree(paramRefs)).reduceLeft(_.select(defn.Int_*).appliedTo(_))
-            case Op.LongSum =>
-              ???
-            case Op.LongMinus =>
-              ???
-            case Op.LongProduct =>
-              ???
-            case Op.Equal =>
-              args(0).toTree(paramRefs).equal(args(1).toTree(paramRefs))
-            case Op.NotEqual =>
-              val lhs = args(0).toTree(paramRefs)
-              val rhs = args(1).toTree(paramRefs)
-              tpd.applyOverloaded(lhs, nme.NE, rhs :: Nil, Nil, defn.BooleanType)
-            case Op.Not => unaryOp(defn.Boolean_!)
-            case Op.And => binaryOp(defn.Boolean_&&)
-            case Op.Or => binaryOp(defn.Boolean_||)
-            case Op.IntLessThan => binaryOp(defn.Int_<)
-            case Op.IntLessEqual => binaryOp(defn.Int_<=)
-            case Op.IntGreaterThan => binaryOp(defn.Int_>)
-            case Op.IntGreaterEqual => binaryOp(defn.Int_>=)
-        case TypeApply(fn, args) =>
-          tpd.TypeApply(fn.toTree(paramRefs), args.map(tp => tpd.TypeTree(mapType(tp), false)))
-        case Lambda(paramTps, retTp, body) =>
-          val myParamNames = paramTps.zipWithIndex.map((tp, i) => termName("param" + (paramRefs.size + i)))
-          def computeParamTypes(mt: MethodType) =
-            val reversedParamRefs = mt.paramRefs.reverse
-            paramTps.zipWithIndex.map((tp, i) => SubstEParamsMap(0, reversedParamRefs.take(i) ::: paramRefs)(tp))
-          val mt = MethodType(myParamNames)(computeParamTypes, _ => retTp)
-          tpd.Lambda(mt, myParamRefTrees =>
-            val myParamRefs = myParamRefTrees.map(_.tpe).reverse
-            body.toTree(myParamRefs ::: paramRefs)
-          )
+      ctx.base.qualifiedTypesStats.record("ENode.toTree"):
+        this match
+          case Atom(tp) =>
+            mapType(tp) match
+              case tp1: TermParamRef => untpd.Ident(tp1.paramName).withType(tp1)
+              case tp: SkolemType => tpd.ref(defn.Predef_undefined).withType(tp)
+              case tp1 => tpd.singleton(tp1)
+          case Constructor(sym) =>
+            val tycon = sym.owner.asClass.classDenot.classInfo.selfType
+            tpd.New(tycon).select(TermRef(tycon, sym))
+          case Select(qual, member) =>
+            qual.toTree(paramRefs).select(member)
+          case Apply(fn, args) =>
+            tpd.Apply(fn.toTree(paramRefs), args.map(_.toTree(paramRefs)))
+          case OpApply(op, args) =>
+            def unaryOp(symbol: Symbol): tpd.Tree =
+              require(args.length == 1)
+              args(0).toTree(paramRefs).select(symbol).appliedToNone
+            def binaryOp(symbol: Symbol): tpd.Tree =
+              require(args.length == 2)
+              args(0).toTree(paramRefs).select(symbol).appliedTo(args(1).toTree(paramRefs))
+            op match
+              case Op.IntSum =>
+                args.map(_.toTree(paramRefs)).reduceLeft(_.select(defn.Int_+).appliedTo(_))
+              case Op.IntMinus =>
+                binaryOp(defn.Int_-)
+              case Op.IntProduct =>
+                args.map(_.toTree(paramRefs)).reduceLeft(_.select(defn.Int_*).appliedTo(_))
+              case Op.LongSum =>
+                ???
+              case Op.LongMinus =>
+                ???
+              case Op.LongProduct =>
+                ???
+              case Op.Equal =>
+                args(0).toTree(paramRefs).equal(args(1).toTree(paramRefs))
+              case Op.NotEqual =>
+                val lhs = args(0).toTree(paramRefs)
+                val rhs = args(1).toTree(paramRefs)
+                tpd.applyOverloaded(lhs, nme.NE, rhs :: Nil, Nil, defn.BooleanType)
+              case Op.Not => unaryOp(defn.Boolean_!)
+              case Op.And => binaryOp(defn.Boolean_&&)
+              case Op.Or => binaryOp(defn.Boolean_||)
+              case Op.IntLessThan => binaryOp(defn.Int_<)
+              case Op.IntLessEqual => binaryOp(defn.Int_<=)
+              case Op.IntGreaterThan => binaryOp(defn.Int_>)
+              case Op.IntGreaterEqual => binaryOp(defn.Int_>=)
+          case TypeApply(fn, args) =>
+            tpd.TypeApply(fn.toTree(paramRefs), args.map(tp => tpd.TypeTree(mapType(tp), false)))
+          case Lambda(paramTps, retTp, body) =>
+            val myParamNames = paramTps.zipWithIndex.map((tp, i) => termName("param" + (paramRefs.size + i)))
+            def computeParamTypes(mt: MethodType) =
+              val reversedParamRefs = mt.paramRefs.reverse
+              paramTps.zipWithIndex.map((tp, i) => SubstEParamsMap(0, reversedParamRefs.take(i) ::: paramRefs)(tp))
+            val mt = MethodType(myParamNames)(computeParamTypes, _ => retTp)
+            tpd.Lambda(mt, myParamRefTrees =>
+              val myParamRefs = myParamRefTrees.map(_.tpe).reverse
+              body.toTree(myParamRefs ::: paramRefs)
+              )
 
 object ENode:
   private def isEmptyPrefix(tp: Type): Boolean =
@@ -458,65 +461,66 @@ object ENode:
       || sym.name == nme.EQ && lhsClass.exists && hasCaseClassEquals(lhsClass)
 
     trace(s"ENode.fromTree $tree", Printers.qualifiedTypes):
-      tree match
-        case tpd.Literal(_) | tpd.Ident(_) | tpd.This(_)
-            if tree.tpe.isInstanceOf[SingletonType] && tpd.isIdempotentExpr(tree) =>
-          Some(Atom(substParamRefs(tree.tpe, paramSyms, paramTps).asInstanceOf[SingletonType]))
-        case tpd.Literal(Constant(null)) => // null does not have a SingletonType
-          Some(Atom(ConstantType(Constant(null))))
-        case tpd.Select(tpd.New(_), nme.CONSTRUCTOR) =>
-          constructorNode(tree.symbol)
-        case tree: tpd.Select if isCaseClassApply(tree.symbol) =>
-          constructorNode(tree.symbol.owner.linkedClass.primaryConstructor)
-        case tpd.Select(qual, name) =>
-          for qualNode <- fromTree(qual, paramSyms, paramTps) yield Select(qualNode, tree.symbol)
-        case BinaryOp(lhs, sym, rhs) if isValidEqual(sym, lhs, rhs) => binaryOpNode(ENode.Op.Equal, lhs, rhs)
-        case BinaryOp(lhs, d.Int_!= | d.Boolean_!=, rhs) => binaryOpNode(ENode.Op.NotEqual, lhs, rhs)
-        case UnaryOp(d.Boolean_!, arg) => unaryOpNode(ENode.Op.Not, arg)
-        case BinaryOp(lhs, d.Boolean_&&, rhs) => binaryOpNode(ENode.Op.And, lhs, rhs)
-        case BinaryOp(lhs, d.Boolean_||, rhs) => binaryOpNode(ENode.Op.Or, lhs, rhs)
-        case BinaryOp(lhs, d.Int_+, rhs) => binaryOpNode(ENode.Op.IntSum, lhs, rhs)
-        case BinaryOp(lhs, d.Int_-, rhs) => binaryOpNode(ENode.Op.IntMinus, lhs, rhs)
-        case BinaryOp(lhs, d.Int_*, rhs) => binaryOpNode(ENode.Op.IntProduct, lhs, rhs)
-        case BinaryOp(lhs, d.Int_<, rhs) => binaryOpNode(ENode.Op.IntLessThan, lhs, rhs)
-        case BinaryOp(lhs, d.Int_<=, rhs) => binaryOpNode(ENode.Op.IntLessEqual, lhs, rhs)
-        case BinaryOp(lhs, d.Int_>, rhs) => binaryOpNode(ENode.Op.IntGreaterThan, lhs, rhs)
-        case BinaryOp(lhs, d.Int_>=, rhs) => binaryOpNode(ENode.Op.IntGreaterEqual, lhs, rhs)
-        case tpd.Apply(fun, args) =>
-          for
-            funNode <- fromTree(fun, paramSyms, paramTps)
-            argsNodes <- args.map(fromTree(_, paramSyms, paramTps)).sequence
-          yield ENode.Apply(funNode, argsNodes)
-        // Strip asInstanceOf/$asInstanceOf casts: they don't change the
-        // runtime value, and encoding them would introduce types that are
-        // not properly hash-consed, breaking EGraph identity invariants.
-        case tpd.TypeApply(tpd.Select(qual, _), _)
-            if tree.symbol == defn.Any_asInstanceOf || tree.symbol == defn.Any_typeCast =>
-          fromTree(qual, paramSyms, paramTps)
-        case tpd.TypeApply(fun, args) =>
-          for funNode <- fromTree(fun, paramSyms, paramTps)
-          yield ENode.TypeApply(funNode, args.map(tp => substParamRefs(tp.tpe, paramSyms, paramTps)))
-        case tpd.closureDef(defDef) =>
-          defDef.symbol.info.dealias match
-            case mt: MethodType =>
-              assert(defDef.termParamss.size == 1, "closure is expected to have a single parameter list")
-              var newParamSyms: List[Symbol] = paramSyms
-              var newParamTps: List[Type] = paramTps
-              val myParamSyms: List[Symbol] = defDef.termParamss.head.map(_.symbol)
-              val myParamTps: List[Type] = mt.paramInfos
-              for (myParamSym, myParamTp) <- myParamSyms.zip(myParamTps) do
-                newParamTps = substParamRefs(myParamTp, newParamSyms, newParamTps) :: newParamTps
-                newParamSyms = myParamSym :: newParamSyms
-              val myRetTp = substParamRefs(mt.resType, newParamSyms, newParamTps)
-              for body <- fromTree(defDef.rhs, newParamSyms, newParamTps)
-              yield ENode.Lambda(newParamTps.take(myParamTps.size), myRetTp, body)
-            case _ => None
-        case tpd.Block(Nil, expr) =>
-          fromTree(expr, paramSyms, paramTps)
-        case tpd.Inlined(_, Nil, expr) =>
-          fromTree(expr, paramSyms, paramTps)
-        case _ =>
-          None
+      ctx.base.qualifiedTypesStats.record("ENode.fromTree"):
+        tree match
+          case tpd.Literal(_) | tpd.Ident(_) | tpd.This(_)
+              if tree.tpe.isInstanceOf[SingletonType] && tpd.isIdempotentExpr(tree) =>
+            Some(Atom(substParamRefs(tree.tpe, paramSyms, paramTps).asInstanceOf[SingletonType]))
+          case tpd.Literal(Constant(null)) => // null does not have a SingletonType
+            Some(Atom(ConstantType(Constant(null))))
+          case tpd.Select(tpd.New(_), nme.CONSTRUCTOR) =>
+            constructorNode(tree.symbol)
+          case tree: tpd.Select if isCaseClassApply(tree.symbol) =>
+            constructorNode(tree.symbol.owner.linkedClass.primaryConstructor)
+          case tpd.Select(qual, name) =>
+            for qualNode <- fromTree(qual, paramSyms, paramTps) yield Select(qualNode, tree.symbol)
+          case BinaryOp(lhs, sym, rhs) if isValidEqual(sym, lhs, rhs) => binaryOpNode(ENode.Op.Equal, lhs, rhs)
+          case BinaryOp(lhs, d.Int_!= | d.Boolean_!=, rhs) => binaryOpNode(ENode.Op.NotEqual, lhs, rhs)
+          case UnaryOp(d.Boolean_!, arg) => unaryOpNode(ENode.Op.Not, arg)
+          case BinaryOp(lhs, d.Boolean_&&, rhs) => binaryOpNode(ENode.Op.And, lhs, rhs)
+          case BinaryOp(lhs, d.Boolean_||, rhs) => binaryOpNode(ENode.Op.Or, lhs, rhs)
+          case BinaryOp(lhs, d.Int_+, rhs) => binaryOpNode(ENode.Op.IntSum, lhs, rhs)
+          case BinaryOp(lhs, d.Int_-, rhs) => binaryOpNode(ENode.Op.IntMinus, lhs, rhs)
+          case BinaryOp(lhs, d.Int_*, rhs) => binaryOpNode(ENode.Op.IntProduct, lhs, rhs)
+          case BinaryOp(lhs, d.Int_<, rhs) => binaryOpNode(ENode.Op.IntLessThan, lhs, rhs)
+          case BinaryOp(lhs, d.Int_<=, rhs) => binaryOpNode(ENode.Op.IntLessEqual, lhs, rhs)
+          case BinaryOp(lhs, d.Int_>, rhs) => binaryOpNode(ENode.Op.IntGreaterThan, lhs, rhs)
+          case BinaryOp(lhs, d.Int_>=, rhs) => binaryOpNode(ENode.Op.IntGreaterEqual, lhs, rhs)
+          case tpd.Apply(fun, args) =>
+            for
+              funNode <- fromTree(fun, paramSyms, paramTps)
+              argsNodes <- args.map(fromTree(_, paramSyms, paramTps)).sequence
+            yield ENode.Apply(funNode, argsNodes)
+          // Strip asInstanceOf/$asInstanceOf casts: they don't change the
+          // runtime value, and encoding them would introduce types that are
+          // not properly hash-consed, breaking EGraph identity invariants.
+          case tpd.TypeApply(tpd.Select(qual, _), _)
+              if tree.symbol == defn.Any_asInstanceOf || tree.symbol == defn.Any_typeCast =>
+            fromTree(qual, paramSyms, paramTps)
+          case tpd.TypeApply(fun, args) =>
+            for funNode <- fromTree(fun, paramSyms, paramTps)
+            yield ENode.TypeApply(funNode, args.map(tp => substParamRefs(tp.tpe, paramSyms, paramTps)))
+          case tpd.closureDef(defDef) =>
+            defDef.symbol.info.dealias match
+              case mt: MethodType =>
+                assert(defDef.termParamss.size == 1, "closure is expected to have a single parameter list")
+                var newParamSyms: List[Symbol] = paramSyms
+                var newParamTps: List[Type] = paramTps
+                val myParamSyms: List[Symbol] = defDef.termParamss.head.map(_.symbol)
+                val myParamTps: List[Type] = mt.paramInfos
+                for (myParamSym, myParamTp) <- myParamSyms.zip(myParamTps) do
+                  newParamTps = substParamRefs(myParamTp, newParamSyms, newParamTps) :: newParamTps
+                  newParamSyms = myParamSym :: newParamSyms
+                val myRetTp = substParamRefs(mt.resType, newParamSyms, newParamTps)
+                for body <- fromTree(defDef.rhs, newParamSyms, newParamTps)
+                yield ENode.Lambda(newParamTps.take(myParamTps.size), myRetTp, body)
+              case _ => None
+          case tpd.Block(Nil, expr) =>
+            fromTree(expr, paramSyms, paramTps)
+          case tpd.Inlined(_, Nil, expr) =>
+            fromTree(expr, paramSyms, paramTps)
+          case _ =>
+            None
 
   private def constructorNode(constr: Symbol)(using Context): Option[ENode.Constructor] =
     val clazz = constr.owner
