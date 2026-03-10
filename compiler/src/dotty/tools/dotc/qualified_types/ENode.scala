@@ -122,9 +122,11 @@ enum ENode extends Showable:
           s"($paramsString): ${printTp(retTp)} => ${rec(body)}"
 
 
-  override def toText(p: Printer): Text = toText(p, false)
+  override def toText(p: Printer): Text =
+    p.printerContext.base.qualifiedTypesStats.record("ENode.toText"):
+      toText(p, false)
 
-  def toText(p: Printer, printAddresses: Boolean): Text =
+  private def toText(p: Printer, printAddresses: Boolean): Text =
     given Context = p.printerContext
 
     def withAddress(obj: Any, text: Text): Text =
@@ -210,49 +212,56 @@ enum ENode extends Showable:
 
   def mapTypes(f: Type => Type)(using Context): ENode =
     ctx.base.qualifiedTypesStats.record("ENode.mapTypes"):
-      this match
-        case Atom(tp) =>
-          val mappedTp = f(tp)
-          if mappedTp eq tp then
-            this
-          else
-            mappedTp match
-              case mappedTp: SingletonType => Atom(mappedTp)
-              case _ => Atom(SkolemType(mappedTp))
-        case Constructor(constr) =>
+      mapTypesRec(f)
+
+  private def mapTypesRec(f: Type => Type)(using Context): ENode =
+    this match
+      case Atom(tp) =>
+        val mappedTp = f(tp)
+        if mappedTp eq tp then
           this
-        case node @ Select(qual, member) =>
-          node.derived(qual.mapTypes(f), member)
-        case node @ Apply(fn, args) =>
-          node.derived(fn.mapTypes(f), args.mapConserve(_.mapTypes(f)))
-        case node @ OpApply(op, args) =>
-          node.derived(op, args.mapConserve(_.mapTypes(f)))
-        case node @ TypeApply(fn, args) =>
-          node.derived(fn.mapTypes(f), args.mapConserve(f))
-        case node @ Lambda(paramTps, retTp, body) =>
-          node.derived(paramTps.mapConserve(f), f(retTp), body.mapTypes(f))
+        else
+          mappedTp match
+            case mappedTp: SingletonType => Atom(mappedTp)
+            case _ => Atom(SkolemType(mappedTp))
+      case Constructor(constr) =>
+        this
+      case node @ Select(qual, member) =>
+        node.derived(qual.mapTypesRec(f), member)
+      case node @ Apply(fn, args) =>
+        node.derived(fn.mapTypesRec(f), args.mapConserve(_.mapTypesRec(f)))
+      case node @ OpApply(op, args) =>
+        node.derived(op, args.mapConserve(_.mapTypesRec(f)))
+      case node @ TypeApply(fn, args) =>
+        node.derived(fn.mapTypesRec(f), args.mapConserve(f))
+      case node @ Lambda(paramTps, retTp, body) =>
+        node.derived(paramTps.mapConserve(f), f(retTp), body.mapTypesRec(f))
 
   def foreachType(f: Type => Unit)(using Context): Unit =
     ctx.base.qualifiedTypesStats.record("ENode.foreachType"):
-      this match
-        case Atom(tp) => f(tp)
-        case Constructor(_) => ()
-        case Select(qual, _) => qual.foreachType(f)
-        case Apply(fn, args) =>
-          fn.foreachType(f)
-          args.foreach(_.foreachType(f))
-        case OpApply(_, args) => args.foreach(_.foreachType(f))
-        case TypeApply(fn, args) =>
-          fn.foreachType(f)
-          args.foreach(f)
-        case Lambda(paramTps, retTp, body) =>
-          paramTps.foreach(f)
-          f(retTp)
-          body.foreachType(f)
+      foreachTypeRec(f)
+
+  private def foreachTypeRec(f: Type => Unit)(using Context): Unit =
+    this match
+      case Atom(tp) => f(tp)
+      case Constructor(_) => ()
+      case Select(qual, _) => qual.foreachTypeRec(f)
+      case Apply(fn, args) =>
+        fn.foreachTypeRec(f)
+        args.foreach(_.foreachTypeRec(f))
+      case OpApply(_, args) => args.foreach(_.foreachTypeRec(f))
+      case TypeApply(fn, args) =>
+        fn.foreachTypeRec(f)
+        args.foreach(f)
+      case Lambda(paramTps, retTp, body) =>
+        paramTps.foreach(f)
+        f(retTp)
+        body.foreachTypeRec(f)
 
   def normalizeTypes()(using Context): ENode =
     trace(i"normalizeTypes($this)", Printers.qualifiedTypes):
-      mapTypes(NormalizeMap())
+      ctx.base.qualifiedTypesStats.record("ENode.normalizeTypes"):
+        mapTypes(NormalizeMap())
 
   private class NormalizeMap(using Context) extends TypeMap:
     def apply(tp: Type): Type =
