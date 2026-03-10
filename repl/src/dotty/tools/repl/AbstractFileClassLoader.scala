@@ -77,7 +77,7 @@ class AbstractFileClassLoader(root: AbstractFile, parent: ClassLoader, interrupt
     if loaded != null then return loaded
 
     name match {
-      // Don't instrument JDK classes or StopRepl. These are often restricted to load from a single classloader
+      // Don't instrument JDK classes. These are often restricted to load from a single classloader
       // due to the JDK module system, and so instrumenting them and loading the modified copy of the class
       // results in runtime exceptions
       case s"java.$_" => super.loadClass(name)

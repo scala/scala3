@@ -15,10 +15,10 @@ final class ScriptedTests extends ReplTest:
         dotty.Properties.testsFilter.isEmpty || dotty.Properties.testsFilter.exists(path.contains)
   end scripts
 
-  @Test def replTests = scripts("test-resources/repl").foreach(testFile)
+  @Test def replTests = testFiles(scripts("test-resources/repl"))
 
-  @Test def replMacrosTests = scripts("test-resources/repl-macros").foreach(testFile)
+  @Test def replMacrosTests = testFiles(scripts("test-resources/repl-macros"))
 
-  @Test def typePrinterTests = scripts("test-resources/type-printer").foreach(testFile)
+  @Test def typePrinterTests = testFiles(scripts("test-resources/type-printer"))
 
 object ScriptedTests

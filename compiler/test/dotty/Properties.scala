@@ -96,6 +96,15 @@ object Properties {
   /** jline-reader jar */
   def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
 
+  /** pprint jar */
+  def pprint: String = sys.props("dotty.tests.classes.pprint")
+
+  /** fansi jar */
+  def fansi: String = sys.props("dotty.tests.classes.fansi")
+
+  /** fansi jar */
+  def sourcecode: String = sys.props("dotty.tests.classes.sourcecode")
+
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
 
