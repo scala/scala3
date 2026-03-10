@@ -579,11 +579,13 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     start.setRun(this: @unchecked)
   }
 
-  private var myCtx: Context | Null = rootContext(using ictx)
+  private var myCtx: Context | Null = null
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
-  assert(runContext.runId <= Periods.MaxPossibleRunId)
+  given runContext[Dummy_so_its_a_def]: Context =
+    if myCtx eq null then myCtx = rootContext(using ictx)
+    assert(myCtx.nn.runId <= Periods.MaxPossibleRunId)
+    myCtx.nn
 }
 
 object Run {

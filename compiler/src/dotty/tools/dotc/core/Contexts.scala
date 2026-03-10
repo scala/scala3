@@ -1055,7 +1055,7 @@ object Contexts {
     private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
-    private[core] var nextDenotTransformerId: Array[Int] = uninitialized
+    private[core] var nextDenotTransformerId: Array[Periods.PhaseId] = uninitialized
 
     private[core] var denotTransformers: Array[DenotTransformer] = uninitialized
 

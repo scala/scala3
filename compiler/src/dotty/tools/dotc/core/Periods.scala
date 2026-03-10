@@ -24,7 +24,7 @@ object Periods {
   /** Are all base types in the current period guaranteed to be the same as in period `p`? */
   def currentHasSameBaseTypesAs(p: Period)(using Context): Boolean =
     val period = ctx.period
-    period.code == p.code ||
+    period == p ||
     period.runId == p.runId &&
       unfusedPhases(period.phaseId).sameBaseTypesStartId ==
       unfusedPhases(p.phaseId).sameBaseTypesStartId
@@ -37,9 +37,8 @@ object Periods {
    *     last phase id:        7 bits
    *     #phases before last:  7 bits
    *
-   *     // Dmitry: sign == 0 isn't actually always true, in some cases phaseId == -1 is used for shifts, that easily creates code < 0
    */
-  class Period(val code: Int) extends AnyVal with Showable {
+  class Period private[Periods] (private val code: Int) extends AnyVal with Showable {
 
     /** The run identifier of this period. */
     def runId: RunId = code >>> (PhaseWidth * 2)
@@ -52,7 +51,7 @@ object Periods {
       (code >>> PhaseWidth) & PhaseMask
 
     /** The first phase of this period */
-    def firstPhaseId: Int = lastPhaseId - (code & PhaseMask)
+    def firstPhaseId: PhaseId = lastPhaseId - (code & PhaseMask)
 
     def containsPhaseId(id: PhaseId): Boolean = firstPhaseId <= id && id <= lastPhaseId
 
@@ -76,7 +75,7 @@ object Periods {
       //  iff r1 == r2 & l1 >= l2 && l1 - d1 <= l2 - d2
       //  q.e.d
       val lastDiff = (code - that.code) >>> PhaseWidth
-      lastDiff + (that.code & PhaseMask ) <= (this.code & PhaseMask)
+      lastDiff + (that.code & PhaseMask) <= (this.code & PhaseMask)
     }
 
     /** Does this period overlap with given period? */
@@ -101,25 +100,31 @@ object Periods {
           this.firstPhaseId min that.firstPhaseId,
           this.lastPhaseId max that.lastPhaseId)
 
+    inline def <(that: Period): Boolean =
+      this.code < that.code
+
+    inline def >(that: Period): Boolean =
+      this.code > that.code
+
     def toText(p: Printer): Text =
       inContext(p.printerContext):
         this match
-          case Nowhere                           => "Nowhere"
-          case InitialPeriod                     => "InitialPeriod"
-          case InvalidPeriod                     => "InvalidPeriod"
-          case Period(NoRunId, 0, PhaseMask)     => s"Period(NoRunId.all)"
-          case Period(runId, 0, PhaseMask)       => s"Period($runId.all)"
-          case Period(runId, p1, pn) if p1 == pn => s"Period($runId.$p1(${ctx.base.phases(p1)}))"
-          case Period(runId, p1, pn)             => s"Period($runId.$p1(${ctx.base.phases(p1)})-$pn(${ctx.base.phases(pn)}))"
+          case Nowhere                                           => "Nowhere"
+          case InitialPeriod                                     => "InitialPeriod"
+          case InvalidPeriod                                     => "InvalidPeriod"
+          case Period(NoRunId, FirstPhaseId, MaxPossiblePhaseId) => s"Period(NoRunId.all)"
+          case Period(runId, FirstPhaseId, MaxPossiblePhaseId)   => s"Period($runId.all)"
+          case Period(runId, p1, pn) if p1 == pn                 => s"Period($runId.$p1(${ctx.base.phases(p1)}))"
+          case Period(runId, p1, pn)                             => s"Period($runId.$p1(${ctx.base.phases(p1)})-$pn(${ctx.base.phases(pn)}))"
 
     override def toString: String = this match
-      case Nowhere                           => "Nowhere"
-      case InitialPeriod                     => "InitialPeriod"
-      case InvalidPeriod                     => "InvalidPeriod"
-      case Period(NoRunId, 0, PhaseMask)     => s"Period(NoRunId.all)"
-      case Period(runId, 0, PhaseMask)       => s"Period($runId.all)"
-      case Period(runId, p1, pn) if p1 == pn => s"Period($runId.$p1)"
-      case Period(runId, p1, pn)             => s"Period($runId.$p1-$pn)"
+      case Nowhere                                           => "Nowhere"
+      case InitialPeriod                                     => "InitialPeriod"
+      case InvalidPeriod                                     => "InvalidPeriod"
+      case Period(NoRunId, FirstPhaseId, MaxPossiblePhaseId) => s"Period(NoRunId.all)"
+      case Period(runId, FirstPhaseId, MaxPossiblePhaseId)   => s"Period($runId.all)"
+      case Period(runId, p1, pn) if p1 == pn                 => s"Period($runId.$p1)"
+      case Period(runId, p1, pn)                             => s"Period($runId.$p1-$pn)"
 
     def ==(that: Period): Boolean = this.code == that.code
     def !=(that: Period): Boolean = this.code != that.code
@@ -137,7 +142,7 @@ object Periods {
 
     /** The interval consisting of all periods of given run id */
     def allInRun(rid: RunId): Period =
-      apply(rid, 0, PhaseMask)
+      apply(rid, FirstPhaseId, MaxPossiblePhaseId)
 
     def unapply(p: Period): Extractor = new Extractor(p.code)
 
@@ -150,13 +155,6 @@ object Periods {
       def _3 = p.lastPhaseId
     }
   }
-
-  inline val NowhereCode = 0
-  final val Nowhere: Period = new Period(NowhereCode)
-
-  final val InitialPeriod: Period = Period(InitialRunId, FirstPhaseId)
-
-  final val InvalidPeriod: Period = Period(NoRunId, NoPhaseId)
 
   /** An ordinal number for compiler runs. First run has number 1. */
   type RunId = Int
@@ -172,6 +170,11 @@ object Periods {
 
   /** The number of bits needed to encode a phase identifier. */
   inline val PhaseWidth = 7
-  inline val PhaseMask = (1 << PhaseWidth) - 1
+  private inline val PhaseMask = (1 << PhaseWidth) - 1
   inline val MaxPossiblePhaseId = PhaseMask
+
+  private inline val NowhereCode = 0
+  final val Nowhere: Period = new Period(NowhereCode)
+  final val InitialPeriod: Period = Period(InitialRunId, FirstPhaseId)
+  final val InvalidPeriod: Period = Period(NoRunId, NoPhaseId)
 }

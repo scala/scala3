@@ -8,7 +8,7 @@ import util.{SimpleIdentitySet, EqHashMap}
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
-import Periods.{NoRunId, RunWidth}
+import Periods.{NoRunId, RunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.{Refs, emptyRefs, VarState}
@@ -48,7 +48,7 @@ import collection.immutable
  */
 object Capabilities:
   opaque type Validity = Int
-  def validId(runId: Int, iterId: Int): Validity =
+  def validId(runId: RunId, iterId: Int): Validity =
     runId + (iterId << RunWidth)
   def currentId(using Context): Validity = validId(ctx.runId, ccState.iterationId)
   val invalid: Validity = validId(NoRunId, 0)
