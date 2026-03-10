@@ -168,6 +168,7 @@ object Build {
   val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
   val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
   val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
+  val ideTestsScalaJSClasspath = taskKey[Seq[File]]("Scala.js dependency classpath to use in IDE tests")
 
   val fetchScalaJSSource = taskKey[File]("Fetch the sources of Scala.js")
 
@@ -2038,10 +2039,20 @@ object Build {
         val dottyLib = (`scala-library-bootstrapped` / Compile / classDirectory).value
         testCasesLib :: dottyLib :: Nil
       },
+      ideTestsScalaJSClasspath := {
+        val externalJSCommonDeps = (`scaladoc-js-common`  / Compile / externalDependencyClasspath).value
+        println(externalJSCommonDeps)
+        val scalaJSCommonDom = findArtifact(externalJSCommonDeps, "scalajs-dom_sjs1_3")
+        val externalJSDeps = (`scala-library-sjs` / Compile / externalDependencyClasspath).value
+        val scalaJSLibrary = findArtifact(externalJSDeps, "scalajs-library_2.13")
+        val scalaJSJavalib = findArtifact(externalJSDeps, "scalajs-javalib")
+        val scalaJSScalalib = (`scala-library-sjs` / Compile / packageBin).value
+        scalaJSLibrary :: scalaJSJavalib :: scalaJSScalalib :: scalaJSCommonDom :: Nil
+      },
       Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
       Compile / buildInfoKeys := Seq(scalaVersion),
       Test / buildInfoPackage := "dotty.tools.pc.tests.buildinfo",
-      Test / buildInfoKeys := Seq(scalaVersion, ideTestsDependencyClasspath)
+      Test / buildInfoKeys := Seq(scalaVersion, ideTestsDependencyClasspath, ideTestsScalaJSClasspath)
     ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
       BuildInfoPlugin.buildInfoDefaultSettings
