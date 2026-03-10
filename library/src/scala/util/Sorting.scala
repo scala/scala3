@@ -37,13 +37,22 @@ import scala.math.Ordering
  *  other libraries that cover this use case.
  */
 object Sorting {
-  /** Sorts an array of Doubles using `java.util.Arrays.sort`. */
+  /** Sorts an array of Doubles using `java.util.Arrays.sort`.
+   *
+   *  @param a the array of `Double`s to sort in place
+   */
   def quickSort(a: Array[Double]): Unit = java.util.Arrays.sort(a)
 
-  /** Sorts an array of Ints using `java.util.Arrays.sort`. */
+  /** Sorts an array of Ints using `java.util.Arrays.sort`.
+   *
+   *  @param a the array of `Int`s to sort in place
+   */
   def quickSort(a: Array[Int]): Unit    = java.util.Arrays.sort(a)
 
-  /** Sorts an array of Floats using `java.util.Arrays.sort`. */
+  /** Sorts an array of Floats using `java.util.Arrays.sort`.
+   *
+   *  @param a the array of `Float`s to sort in place
+   */
   def quickSort(a: Array[Float]): Unit  = java.util.Arrays.sort(a)
 
   private final val qsortThreshold = 16
@@ -51,6 +60,9 @@ object Sorting {
   /** Sorts array `a` with quicksort, using the Ordering on its elements.
    *  This algorithm sorts in place, so no additional memory is used aside from
    *  what might be required to box individual elements during comparison.
+   *
+   *  @tparam K the element type of the array, which must have an `Ordering`
+   *  @param a the array to sort in place
    */
   def quickSort[K: Ordering](a: Array[K]): Unit = {
     // Must have iN >= i0 or math will fail.  Also, i0 >= 0.
@@ -253,20 +265,28 @@ object Sorting {
 
   /** Sorts array `a` using the Ordering on its elements, preserving the original ordering where possible.
    *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, 0, a.length)`. 
+   *
+   *  @tparam K the element type of the array, which must have an `Ordering`
+   *  @param a the array to sort in place
    */
   @`inline` def stableSort[K: Ordering](a: Array[K]): Unit = stableSort(a, 0, a.length)
 
   /** Sorts array `a` or a part of it using the Ordering on its elements, preserving the original ordering where possible.
    *  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
    *
-   *  @param a The array to sort
-   *  @param from The first index in the array to sort
-   *  @param until The last index (exclusive) in the array to sort
+   *  @tparam K the element type of the array, which must have an `Ordering`
+   *  @param a the array to sort in place
+   *  @param from the first index in the array to sort
+   *  @param until the last index (exclusive) in the array to sort
    */
   def stableSort[K: Ordering](a: Array[K], from: Int, until: Int): Unit = sort(a, from, until, Ordering[K])
 
   /** Sorts array `a` using function `f` that computes the less-than relation for each element.
    *  Uses `java.util.Arrays.sort` unless `K` is a primitive type. This is the same as `stableSort(a, f, 0, a.length)`. 
+   *
+   *  @tparam K the element type of the array
+   *  @param a the array to sort in place
+   *  @param f a function that returns `true` if its first argument is less than its second
    */
   @`inline` def stableSort[K](a: Array[K], f: (K, K) => Boolean): Unit = stableSort(a, f, 0, a.length)
 
@@ -274,14 +294,19 @@ object Sorting {
   /** Sorts array `a` or a part of it using function `f` that computes the less-than relation for each element.
    *  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
    *
-   *  @param a The array to sort
-   *  @param f A function that computes the less-than relation for each element
-   *  @param from The first index in the array to sort
-   *  @param until The last index (exclusive) in the array to sort
+   *  @tparam K the element type of the array
+   *  @param a the array to sort in place
+   *  @param f a function that returns `true` if its first argument is less than its second
+   *  @param from the first index in the array to sort
+   *  @param until the last index (exclusive) in the array to sort
    */
   def stableSort[K](a: Array[K], f: (K, K) => Boolean, from: Int, until: Int): Unit = sort(a, from, until, Ordering fromLessThan f)
 
-  /** A sorted Array, using the Ordering for the elements in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type. */
+  /** A sorted Array, using the Ordering for the elements in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @tparam K the element type, which must have a `ClassTag` and an `Ordering`
+   *  @param a the sequence of elements to sort
+   */
   def stableSort[K: ClassTag: Ordering](a: scala.collection.Seq[K]): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering[K])
@@ -289,14 +314,25 @@ object Sorting {
   }
 
   // TODO: make this fast for primitive K (could be specialized if it didn't go through Ordering)
-  /** A sorted Array, given a function `f` that computes the less-than relation for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type. */
+  /** A sorted Array, given a function `f` that computes the less-than relation for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @tparam K the element type, which must have a `ClassTag`
+   *  @param a the sequence of elements to sort
+   *  @param f a function that returns `true` if its first argument is less than its second
+   */
   def stableSort[K: ClassTag](a: scala.collection.Seq[K], f: (K, K) => Boolean): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering fromLessThan f)
     ret
   }
 
-  /** A sorted Array, given an extraction function `f` that returns an ordered key for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type. */
+  /** A sorted Array, given an extraction function `f` that returns an ordered key for each item in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
+   *
+   *  @tparam K the element type, which must have a `ClassTag`
+   *  @tparam M the key type returned by the extraction function, which must have an `Ordering`
+   *  @param a the sequence of elements to sort
+   *  @param f a function that extracts a comparable key from each element
+   */
   def stableSort[K: ClassTag, M: Ordering](a: scala.collection.Seq[K], f: K => M): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering[M] on f)

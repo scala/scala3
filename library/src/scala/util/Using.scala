@@ -143,6 +143,10 @@ object Using {
    *
    *  $suppressionBehavior
    *
+   *  @tparam R the type of the resource
+   *  @tparam A the return type of the operation
+   *  @param resource the resource to be used and then released
+   *  @param f the operation to perform using the resource
    *  @return a [[Try]] containing an exception if one or more were thrown,
    *         or the result of the operation if no exceptions were thrown
    */
@@ -183,6 +187,9 @@ object Using {
     /** Registers the specified resource with this manager, so that
      *  the resource is released when the manager is closed, and then
      *  returns the (unmodified) resource.
+     *
+     *  @tparam R the type of the resource, which must have a `Releasable` instance
+     *  @param resource the resource to register with this manager
      */
     def apply[R: Releasable](resource: R): resource.type = {
       acquire(resource)
@@ -191,6 +198,9 @@ object Using {
 
     /** Registers the specified resource with this manager, so that
      *  the resource is released when the manager is closed.
+     *
+     *  @tparam R the type of the resource, which must have a `Releasable` instance
+     *  @param resource the resource to register, must be non-null
      */
     def acquire[R: Releasable](resource: R): Unit = {
       if (resource == null) throw new NullPointerException("null resource")
@@ -285,8 +295,9 @@ object Using {
    *
    *  @tparam R the type of the resource
    *  @tparam A the return type of the operation
-   *  @param resource the resource
+   *  @param resource the resource to be used and then released
    *  @param body     the operation to perform with the resource
+   *  @param releasable the implicit `Releasable` instance used to release the resource
    *  @return the result of the operation, if neither the operation nor
    *         releasing the resource throws
    */
@@ -319,8 +330,8 @@ object Using {
    *  @tparam R1 the type of the first resource
    *  @tparam R2 the type of the second resource
    *  @tparam A  the return type of the operation
-   *  @param resource1 the first resource
-   *  @param resource2 the second resource
+   *  @param resource1 the first resource (eagerly evaluated)
+   *  @param resource2 the second resource (by-name, evaluated after the first is acquired)
    *  @param body      the operation to perform using the resources
    *  @return the result of the operation, if neither the operation nor
    *         releasing the resources throws
@@ -418,7 +429,10 @@ object Using {
    *  @tparam R the type of the resource
    */
   trait Releasable[-R] {
-    /** Releases the specified resource. */
+    /** Releases the specified resource.
+     *
+     *  @param resource the resource to release
+     */
     def release(resource: R): Unit
   }
 

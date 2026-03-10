@@ -48,14 +48,24 @@ import annotation.tailrec
  */
 object TailCalls {
 
-  /** This class represents a tailcalling computation. */
+  /** This class represents a tailcalling computation.
+   *
+   *  @tparam A the result type of the computation
+   */
   sealed abstract class TailRec[+A] {
 
-    /** Continue the computation with `f`. */
+    /** Continue the computation with `f`.
+     *
+     *  @tparam B the result type of the mapped computation
+     *  @param f the function to apply to the result, transforming `A` to `B`
+     */
     final def map[B](f: A => B): TailRec[B] = flatMap(a => Call(() => Done(f(a))))
 
     /** Continue the computation with `f` and merge the trampolining
      *  of this computation with that of `f`. 
+     *
+     *  @tparam B the result type of the continuation
+     *  @param f the function to apply to the result, returning a new tailcalling computation
      */
     final def flatMap[B](f: A => TailRec[B]): TailRec[B] = this match {
       case Done(a)         => Call(() => f(a))
@@ -89,27 +99,43 @@ object TailCalls {
     }
   }
 
-  /** Internal class representing a tailcall. */
+  /** Internal class representing a tailcall.
+   *
+   *  @tparam A the result type of the computation
+   *  @param rest a thunk that computes the next step of the tailcalling computation
+   */
   protected case class Call[A](rest: () => TailRec[A]) extends TailRec[A]
 
   /** Internal class representing the final result returned from a tailcalling
    *  computation. 
+   *
+   *  @tparam A the result type of the computation
+   *  @param value the final result of the tailcalling computation
    */
   protected case class Done[A](value: A) extends TailRec[A]
 
   /** Internal class representing a continuation with function A => TailRec[B].
    *  It is needed for the flatMap to be implemented. 
+   *
+   *  @tparam A the intermediate result type
+   *  @tparam B the final result type of the continuation
+   *  @param a the first computation to evaluate
+   *  @param f the continuation function to apply to the result of `a`
    */
   protected case class Cont[A, B](a: TailRec[A], f: A => TailRec[B]) extends TailRec[B]
 
   /** Perform a tailcall.
+   *
+   *  @tparam A the result type of the tailcalling computation
    *  @param rest  the expression to be evaluated in the tailcall
    *  @return a `TailRec` object representing the expression `rest`
    */
   def tailcall[A](rest: => TailRec[A]): TailRec[A] = Call(() => rest)
 
   /** Returns the final result from a tailcalling computation.
-   *  @param  `result` the result value
+   *
+   *  @tparam A the result type of the computation
+   *  @param result the value to wrap as a completed computation
    *  @return a `TailRec` object representing a computation which immediately
    *          returns `result`
    */
