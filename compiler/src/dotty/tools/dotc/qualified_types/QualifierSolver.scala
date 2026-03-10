@@ -14,15 +14,16 @@ class QualifierSolver(using Context):
 
   def implies(node1: ENode.Lambda, node2: ENode.Lambda): Boolean =
     trace(i"implie ${node1.showNoBreak}  -->  ${node2.showNoBreak}", Printers.qualifiedTypes):
-      require(node1.paramTps.length == 1)
-      require(node2.paramTps.length == 1)
-      val node1Inst = node1.normalizeTypes().asInstanceOf[ENode.Lambda]
-      val node2Inst = node2.normalizeTypes().asInstanceOf[ENode.Lambda]
-      val paramTp1 = node1Inst.paramTps.head
-      val paramTp2 = node2Inst.paramTps.head
-      if paramTp1 frozen_<:< paramTp2 then impliesCommonParams(node1Inst, node2Inst, node1Inst)
-      else if paramTp2 frozen_<:< paramTp1 then impliesCommonParams(node1Inst, node2Inst, node2Inst)
-      else false
+      ctx.base.qualifiedTypesStats.record("QualifierSolver.implies"):
+        require(node1.paramTps.length == 1)
+        require(node2.paramTps.length == 1)
+        val node1Inst = node1.normalizeTypes().asInstanceOf[ENode.Lambda]
+        val node2Inst = node2.normalizeTypes().asInstanceOf[ENode.Lambda]
+        val paramTp1 = node1Inst.paramTps.head
+        val paramTp2 = node2Inst.paramTps.head
+        if paramTp1 frozen_<:< paramTp2 then impliesCommonParams(node1Inst, node2Inst, node1Inst)
+        else if paramTp2 frozen_<:< paramTp1 then impliesCommonParams(node1Inst, node2Inst, node2Inst)
+        else false
 
   private def impliesCommonParams(node1: ENode.Lambda, node2: ENode.Lambda, mostPreciseNode: ENode.Lambda): Boolean =
     val paramRefs = mostPreciseNode.paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(i, tp))
@@ -34,24 +35,25 @@ class QualifierSolver(using Context):
         return impliesRec(lhs, node2) && impliesRec(rhs, node2)
       case _ => ()
 
-    val assumptions = ENode.assumptions(node1) ++ ENode.assumptions(node2)
-    val node1WithAssumptions = assumptions.foldLeft(node1)((acc, a) => OpApply(Op.And, List(acc, a.normalizeTypes())))
-    impliesLeaf(EGraph(ctx), node1WithAssumptions, node2)
+    ctx.base.qualifiedTypesStats.record("QualifiedTypes.impliesRec"):
+      val assumptions = ENode.assumptions(node1) ++ ENode.assumptions(node2) ++ List(node1)
+      val egraph = EGraph(ctx)
+      impliesLeaf(egraph, assumptions.map(a => egraph.canonicalize(a.normalizeTypes())), egraph.canonicalize(node2.normalizeTypes()))
 
-  protected def impliesLeaf(egraph: EGraph, enode1: ENode, enode2: ENode): Boolean =
-    val node1Canonical = egraph.canonicalize(enode1)
-    val node2Canonical = egraph.canonicalize(enode2)
-    trace(i"impliesLeaf ${node1Canonical.showNoBreak}  -->  ${node2Canonical.showNoBreak}", Printers.qualifiedTypes):
-      egraph.assertInvariants()
-      egraph.merge(node1Canonical, egraph.trueNode)
-      egraph.repair()
-      egraph.equiv(node2Canonical, egraph.trueNode)
+  protected def impliesLeaf(egraph: EGraph, assumptions: List[ENode], goal: ENode): Boolean =
+    trace(i"impliesLeaf ${assumptions.map(_.showNoBreak).mkString(", ")}  -->  ${goal.showNoBreak}", Printers.qualifiedTypes):
+      ctx.base.qualifiedTypesStats.record("QualifiedTypes.impliesLeaf"):
+        egraph.assertInvariants()
+        for assumption <- assumptions do
+          egraph.merge(assumption, egraph.trueNode)
+        egraph.repair()
+        egraph.equiv(goal, egraph.trueNode)
 
-final class ExplainingQualifierSolver(
-  traceIndented: [T] => (String) => (=> T) => T)(using Context) extends QualifierSolver:
+abstract class ExplainingQualifierSolver(using Context) extends QualifierSolver:
+  def traceIndented[T](message: => String)(op: => T): T
 
-  override protected def impliesLeaf(egraph: EGraph, enode1: ENode, enode2: ENode): Boolean =
-    traceIndented(s"${enode1.showNoBreak}  -->  ${enode2.showNoBreak}"):
-      val res = super.impliesLeaf(egraph, enode1, enode2)
+  override protected def impliesLeaf(egraph: EGraph, assumptions: List[ENode], goal: ENode): Boolean =
+    traceIndented(i"implies ${assumptions.map(_.showNoBreak).mkString(", ")}  -->  ${goal.showNoBreak}"):
+      val res = super.impliesLeaf(egraph, assumptions, goal)
       //if !res then println(egraph.debugString())
       res
