@@ -17,6 +17,7 @@ abstract class QualifiedTypesTest extends DottyTest:
     fc.setSetting(fc.settings.XnoEnrichErrorMessages, true)
     fc.setSetting(fc.settings.color, "never")
     fc.setSetting(fc.settings.language, List("experimental.qualifiedTypes").asInstanceOf)
+    fc.setSetting(fc.settings.YcheckQualifiedTypes, true)
 
   def checkCompileExpr(statsString: String)(assertion: List[tpd.Tree] => Context ?=> Unit): Unit =
     checkCompile("typer", s"object Test { $statsString }"): (pkg, context) =>

@@ -60,7 +60,10 @@ import dotty.tools.dotc.config.Printers
 import annotation.threadUnsafe as tu
 import reflect.ClassTag
 
-final class EGraph(_ctx: Context, checksEnabled: Boolean = true):
+final class EGraph(_ctx: Context):
+  private val checksEnabled: Boolean =
+    given Context = _ctx
+    _ctx.settings.YcheckQualifiedTypes.value
 
   /** Cache for unique E-Nodes
    *

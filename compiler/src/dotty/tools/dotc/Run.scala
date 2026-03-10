@@ -568,6 +568,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def printSummary(): Unit = {
     printMaxConstraint()
     printMaxPath()
+    val qtStats = runContext.base.qualifiedTypesStats.show()
+    if qtStats.nonEmpty then println(qtStats)
     val r = runContext.reporter
     if !r.errorsReported then
       profile.printSummary()
