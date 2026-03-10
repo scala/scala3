@@ -148,11 +148,15 @@ object Feature:
     || ctx.compilationUnit.knowsPureFuns
     || ccEnabled
 
-  /** Is capture checking enabled for this compilation unit? */
-  def ccEnabled(using Context) =
+  /** Is capture checking enabled by a command-line setting? */
+  def ccEnabledBySetting(using Context): Boolean =
     enabledBySetting(captureChecking)
     || enabledBySetting(separationChecking)
     || enabledBySetting(safe)
+
+  /** Is capture checking enabled for this compilation unit? */
+  def ccEnabled(using Context) =
+    ccEnabledBySetting
     || ctx.originalCompilationUnit.needsCaptureChecking
 
   /** Is separation checking enabled for this compilation unit? */
@@ -174,7 +178,7 @@ object Feature:
   /** Is captureChecking enabled for any of the currently compiled compilation units? */
   def ccEnabledSomewhere(using Context) =
     if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
-    else enabledBySetting(captureChecking)
+    else ccEnabled
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)

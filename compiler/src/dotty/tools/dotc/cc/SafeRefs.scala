@@ -121,6 +121,7 @@ object SafeRefs {
         && !checkLater
         && sym.isStatic // if it's not static it is local, a parameter, or comes from another symbol,
                         // which has been checked
+        && !sym.is(Package)
         && !isSafe(sym)
     then
       fail(sym, "it is neither compiled in safe mode nor tagged with @assumedSafe", tree.srcPos)

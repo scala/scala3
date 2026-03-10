@@ -1755,7 +1755,7 @@ class Namer { typer: Typer =>
       }
 
       def addAssumeSafe(sym: Symbol): Unit =
-        if ctx.compilationUnit.safeMode && sym.isClass && sym.isStatic then
+        if Feature.safeEnabled && sym.isClass && sym.isStatic then
           sym.addAnnotation(Annotation(defn.AssumeSafeAnnot, sym.span))
 
       completeConstructor(denot)
