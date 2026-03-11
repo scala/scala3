@@ -3266,37 +3266,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = cdef: @unchecked
     val parents = impl.parents
-
-    // Parent-call by-name helper defs are appended to the current class/module body
-    // instead of being kept as constructor-local defs.
-    //
-    // Examples (issue #24201 shape):
-    //   enabled (top-level owner is package):
-    //     abstract class Foo[T](defaultValue: => T, arg1: Int = 1, arg2: Int = 2)
-    //     enum Baz:
-    //       case E1, E2
-    //     object Baz extends Foo[Baz](Baz.E1, arg2 = 3)
-    //     // or: object X extends C(j = X.k)
-    //
-    //   disabled (owner is class/term):
-    //     class Outer:
-    //       object Inner extends Foo[Int](1, arg2 = 3)
-    //
-    //     def f() =
-    //       class Local extends Foo[Int](1, arg2 = 3)
-    //
-    // Restrict to top-level classes/objects so helper defs stay as class members.
-    // This guarantees `outerLiftedDefs` is empty and avoids producing typed Thickets.
-    val canAttachByNameLiftedDefsToEnclosingOwner = cls.owner.is(Package) || cls.owner.isClass
-    val byNameLiftedDefsForEnclosingOwner = new mutable.ListBuffer[tpd.DefDef]
-    // Collect helper defs emitted while typing parent constructor calls.
-    def withByNameLiftedDefsForEnclosingOwner(ctx: Context) =
-      if canAttachByNameLiftedDefsToEnclosingOwner then
-        ctx.withProperty(
-          LiftToDefs.ByNameLiftedDefsForEnclosingOwner,
-          Some(byNameLiftedDefsForEnclosingOwner))
-      else ctx // no property => LiftToDefs stays on the default local-def lifting path
-    val superCtx = withByNameLiftedDefsForEnclosingOwner(ctx.superCallContext)
+    val superCtx = ctx.superCallContext
     val seenParents = mutable.Set[Symbol]()
 
     def typedParent(tree: untpd.Tree): Tree =
@@ -3500,15 +3470,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val typedBody =
+      val body1 =
         implementDeferredGivens(
           addParentRefinements(
             addAccessorDefs(cls,
               typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)))
-      // By-name lifted defs for the enclosing owner are enabled only for top-level
-      // classes/objects, so all collected helper defs are owned by `cls` and can be
-      // appended directly to the class body.
-      val body1 = typedBody ++ byNameLiftedDefsForEnclosingOwner
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
