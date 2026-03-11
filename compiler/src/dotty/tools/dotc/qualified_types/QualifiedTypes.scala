@@ -42,6 +42,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.trace
 
 object QualifiedTypes:
+
   /** Does the type `tp1` imply the qualifier `qualifier2`?
    *
    *  Used by [[dotty.tools.dotc.core.TypeComparer]] to compare qualified types.
