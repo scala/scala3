@@ -20,7 +20,7 @@ def range(from: Int, until: Int with from < until): {r: RRange with r == RRange(
   RRange(from, until)
 
 @main def checkedArrayTest(): Unit =
-  val a : {a: CheckedArray with a.size == 10} = CheckedArray.ofDim(10)
-  val r : {r: RRange with r == RRange(0,10)} = range(0,10)
+  val a = CheckedArray.ofDim(10)
+  val r = range(0, 10)
   for i <- r do
     a(i) = i
