@@ -55,28 +55,11 @@ object Periods {
 
     def containsPhaseId(id: PhaseId): Boolean = firstPhaseId <= id && id <= lastPhaseId
 
-    /** Does this period contain given period? */
-    def contains(that: Period): Boolean = {
-      // Let    this = (r1, l1, d1), that = (r2, l2, d2)
-      // where  r = runid, l = last phase, d = duration - 1
-      // Then seen as intervals:
-      //
-      //  this = r1 / (l1 - d1) .. l1
-      //  that = r2 / (l2 - d2) .. l2
-      //
-      // Let's compute:
-      //
-      //  lastDiff = X * 2^5 + (l1 - l2) mod 2^5
-      //             where X >= 0, X == 0 iff r1 == r2 & l1 - l2 >= 0
-      //  result = lastDiff + d2 <= d1
-      //  We have:
-      //      lastDiff + d2 <= d1
-      //  iff X == 0 && l1 - l2 >= 0 && l1 - l2 + d2 <= d1
-      //  iff r1 == r2 & l1 >= l2 && l1 - d1 <= l2 - d2
-      //  q.e.d
-      val lastDiff = (code - that.code) >>> PhaseWidth
-      lastDiff + (that.code & PhaseMask) <= (this.code & PhaseMask)
-    }
+    /** Does this period contain the given period? */
+    def contains(that: Period): Boolean =
+      this.runId == that.runId &&
+        this.firstPhaseId <= that.firstPhaseId &&
+        that.lastPhaseId <= this.lastPhaseId
 
     /** Does this period overlap with given period? */
     def overlaps(that: Period): Boolean =
