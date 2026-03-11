@@ -54,16 +54,7 @@ object JSRun:
         ""
       case Some(stream) =>
         try
-          val result = new java.io.ByteArrayOutputStream()
-          val buffer = new Array[Byte](1024)
-          while ({
-            val len = stream.read(buffer)
-            len >= 0 && {
-              result.write(buffer, 0, len)
-              true
-            }
-          }) ()
-          new String(result.toByteArray(), StandardCharsets.UTF_8)
+          new String(stream.readAllBytes(), StandardCharsets.UTF_8)
         finally
           stream.close()
   end readStreamFully
