@@ -1,0 +1,8 @@
+strict c runs
+strict b runs
+consume b=10 c=20
+byName sees 1
+byName sees 1
+a1=1
+a2=1
+result=32

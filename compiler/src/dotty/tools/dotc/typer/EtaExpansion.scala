@@ -10,6 +10,7 @@ import Flags.*
 import Symbols.*
 import Names.*
 import NameKinds.UniqueName
+import Decorators.*
 import util.Spans.*
 import util.Property
 import collection.mutable
@@ -38,7 +39,7 @@ abstract class Lifter {
 
   /** Returns true if the argument would be lifted for the given parameter type. */
   def wouldLift(arg: tpd.Tree, paramType: Type)(using Context): Boolean =
-    !paramType.hasAnnotation(defn.InlineParamAnnot) && !lifterFor(paramType).noLift(arg)
+    !paramType.hasAnnotation(defn.InlineParamAnnot) && lifterFor(paramType).emitsLocalDef(arg)
 
   /** The flags of a lifted definition */
   protected def liftedFlags: FlagSet = EmptyFlags
@@ -48,23 +49,32 @@ abstract class Lifter {
     // Mark the type of lifted definitions as inferred
     ValDef(sym, rhs, inferred = true)
 
+  protected def liftedType(expr: Tree)(using Context): Type =
+    // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
+    val tp = expr.tpe.widen.deskolemized
+    if liftedFlags.is(Method) then ExprType(tp) else tp
+
+  /** Returns true if lifting `expr` adds a local definition to the `defs` buffer. */
+  protected def emitsLocalDef(expr: Tree)(using Context): Boolean =
+    !noLift(expr)
+
+  protected def liftInto(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName)(using Context): Tree = {
+    val name = UniqueName.fresh(prefix)
+    val tp = liftedType(expr)
+    val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, tp, coord = spanCoord(expr.span),
+      // Lifted definitions will be added to a local block, so they need to be
+      // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
+      nestingLevel = ctx.nestingLevel + 1)
+    defs += liftedDef(lifted, expr)
+      .withSpan(expr.span)
+      .changeNonLocalOwners(lifted)
+      .setDefTree
+    ref(lifted.termRef).withSpan(expr.span.focus)
+  }
+
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
-    if (noLift(expr)) expr
-    else {
-      val name = UniqueName.fresh(prefix)
-      // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
-      var liftedType = expr.tpe.widen.deskolemized
-      if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span),
-        // Lifted definitions will be added to a local block, so they need to be
-        // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
-        nestingLevel = ctx.nestingLevel + 1)
-      defs += liftedDef(lifted, expr)
-        .withSpan(expr.span)
-        .changeNonLocalOwners(lifted)
-        .setDefTree
-      ref(lifted.termRef).withSpan(expr.span.focus)
-    }
+    if (!emitsLocalDef(expr)) expr
+    else liftInto(defs, expr, prefix)
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
    *
@@ -223,8 +233,163 @@ object LiftCoverage extends LiftImpure {
 
 /** Lift all impure or complex arguments to `def`s */
 object LiftToDefs extends LiftComplex {
+  // DefDefs created for parent-call by-name arguments are attached later by Typer
+  // instead of being emitted into the local block that `liftInto` normally fills.
+  private[typer] val ByNameLiftedDefsForEnclosingOwner =
+    new Property.Key[mutable.ListBuffer[tpd.DefDef]]
+
   override def liftedFlags: FlagSet = Method
   override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.DefDef = tpd.DefDef(sym, rhs)
+
+  override protected def emitsLocalDef(expr: tpd.Tree)(using Context): Boolean =
+    if isConstructorByNameLift(expr) then false
+    else super.emitsLocalDef(expr)
+
+  override protected def liftInto(defs: mutable.ListBuffer[tpd.Tree], expr: tpd.Tree, prefix: TermName)(using Context): tpd.Tree =
+    /* When the current owner is a constructor and lifting `expr` yields an `ExprType`,
+     * for example, `Foo[Baz](Baz.E1, arg2 = 3)` in:
+     * {{{
+     *   abstract class Foo[T](value: => T, arg1: Int = 1, arg2: Int = 2)
+     *   enum Baz { case E1 }
+     *   object Baz extends Foo[Baz](Baz.E1, arg2 = 3)
+     * }}}
+     *
+     * if we lift `Baz.E1` to a local def, we would generate an instance method owned by
+     * the constructor, and the constructor would reference `this`, which is invalid
+     * because the instance has not been initialized yet.
+     *
+     * {{{
+     * object Baz extends {
+     *   def defaultValue$1: Baz = Baz.E1 // instance method
+     *   val arg1$1: Int = Foo.$lessinit$greater$default$2[Baz]
+     *   new Foo[Baz](defaultValue$1, arg1$1, arg2 = 3)
+     * }
+     * }}}
+     *
+     * Instead, for top-level classes/objects, we create a synthetic private helper
+     * method on the enclosing class/object itself (using `JavaStatic` when needed),
+     * and Typer attaches that method to the class body later. Conceptually, we
+     * produce something like:
+     *
+     * {{{
+     * object Baz extends Foo[Baz](Baz.defaultValue$1, Foo.$lessinit$greater$default$2[Baz], arg2 = 3) {
+     *   private static def defaultValue$1: Baz = Baz.E1
+     * }
+     * }}}
+     *
+     * The parent call then refers to that helper instead of to a constructor-local
+     * method.
+     *
+     * See https://github.com/scala/scala3/issues/24201
+     */
+    if (!isConstructorByNameLift(expr)) {
+      super.liftInto(defs, expr, prefix)
+    } else if (capturesCurrentThis(expr)) {
+      expr
+    } else {
+      val strictLifted = defs.toList.collect {
+        case stat if stat.symbol.exists && !stat.symbol.info.isInstanceOf[ExprType] => stat.symbol
+      }
+      // Reject trees that still mention constructor locals. (is that semantically okay?)
+      if (capturesConstructorContext(expr, strictLifted)) {
+        report.error(
+          em"super constructor by-name argument cannot reference constructor parameters or previously lifted arguments",
+          expr.srcPos)
+        expr
+      } else {
+        import tpd.TreeOps
+        val constr = ctx.owner
+        val cls = constr.owner.asClass
+        // Place the helper either as a class static method or in the enclosing scope,
+        // instead of the current owner.
+        val (staticFlag, helperOwner) =
+          if cls.owner.is(Package) then (JavaStatic, cls)
+          else (EmptyFlags, cls.owner)
+
+        // def <fresh>(...): ExprType = <expr>
+        val helper = newSymbol(
+          owner = helperOwner,
+          name = UniqueName.fresh(if prefix == EmptyTermName then cls.name.toTermName else prefix),
+          flags = Synthetic | Private | Method | staticFlag,
+          info = liftedType(expr),
+          coord = spanCoord(expr.span)
+        ).entered.asTerm
+
+        // Queue this DefDef so Typer can attach it to the class body / enclosing scope.
+        val helperDef = tpd.DefDef(helper, expr.changeOwner(constr, helper))
+          .withSpan(expr.span)
+          .setDefTree
+        ctx.property(ByNameLiftedDefsForEnclosingOwner).get += helperDef
+
+        tpd.ref(helper.termRef).withSpan(expr.span.focus)
+      }
+    }
+
+  /** Returns true if:
+   *  - current owner is a constructor
+   *  - lifting `expr` yields an `ExprType`
+   *
+   *  For example:
+   *  {{{
+   *    abstract class Foo(a: => Int, b: Int = 0)
+   *    class Bar extends Foo(a = 1)
+   *  }}}
+   *
+   *  To avoid the issue https://github.com/scala/scala3/issues/24201
+   *
+   *  While typing the `Foo(a = 1)`, this method returns true for `a = 1`.
+   */
+  private def isConstructorByNameLift(expr: tpd.Tree)(using Context): Boolean =
+    ctx.owner.isConstructor
+      && liftedType(expr).isInstanceOf[ExprType]
+      && ctx.property(ByNameLiftedDefsForEnclosingOwner).nonEmpty
+
+  /** Returns true if the tree contains a reference to the current instance. */
+  private def capturesCurrentThis(tree: tpd.Tree)(using Context): Boolean = {
+    import tpd.TreeOps
+
+    val cls = ctx.owner.owner.asClass
+
+    def usesCurrentThis(tp: Type): Boolean = tp match
+      case tp: ThisType => tp.cls == cls
+      case tp: TermRef  => usesCurrentThis(tp.prefix)
+      case _            => false
+
+    tree.existsSubTree {
+      case _: tpd.This => true
+      case tree: tpd.RefTree => usesCurrentThis(tree.tpe)
+      case _ => false
+    }
+  }
+
+  /** Returns true if the tree refers to constructor params/accessors or to strict args
+   * that were already lifted into the current local block.
+   */
+  private def capturesConstructorContext(tree: tpd.Tree, strictLifted: List[Symbol])(using Context): Boolean = {
+    import tpd.TreeOps
+
+    val constr = ctx.owner
+    val cls = constr.owner.asClass
+
+    def isCaptured(sym: Symbol): Boolean =
+      val owner = sym.maybeOwner
+      ((owner == cls || owner == constr) && sym.isParamOrAccessor)
+        || strictLifted.contains(sym)
+
+    def usesCaptured(tp: Type): Boolean =
+      tp.existsPart(
+        {
+          case tp: NamedType => isCaptured(tp.symbol)
+          case _ => false
+        },
+        forceLazy = false)
+
+    usesCaptured(tree.tpe) || tree.existsSubTree {
+      case subtree: tpd.RefTree => isCaptured(subtree.symbol) || usesCaptured(subtree.tpe)
+      case subtree => usesCaptured(subtree.tpe)
+    }
+  }
+
 }
 
 /** Lifter for eta expansion */
