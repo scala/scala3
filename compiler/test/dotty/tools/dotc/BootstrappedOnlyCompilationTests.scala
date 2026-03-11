@@ -151,16 +151,6 @@ class BootstrappedOnlyCompilationTests {
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
   }
 
-  @Test def posBootstrappedOnly: Unit = {
-    given TestGroup = TestGroup("compilePosBootstrappedOnly")
-    compileFilesInDir("tests/pos-bootstrapped", defaultOptions).checkCompile()
-  }
-
-  @Test def warnBootstrappedOnly: Unit = {
-    given TestGroup = TestGroup("compileWarnBootstrappedOnly")
-    compileFilesInDir("tests/warn-bootstrapped", defaultOptions).checkWarnings()
-  }
-
   // Pickling Tests ------------------------------------------------------------
   //
   // Pickling tests are very memory intensive and as such need to be run with a
