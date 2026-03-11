@@ -32,10 +32,10 @@ object Periods {
   /** A period is a contiguous sequence of phase ids in some run.
    *  It is coded as follows:
    *
-   *     sign, always 0        1 bit
-   *     runid                17 bits
-   *     last phase id:        7 bits
-   *     #phases before last:  7 bits
+   *     sign, always 0:  1 bit
+   *     run id:          17 bits
+   *     last phase id:   7 bits
+   *     first phase id:  7 bits
    *
    */
   class Period private[Periods] (private val code: Int) extends AnyVal with Showable {
@@ -44,14 +44,13 @@ object Periods {
     def runId: RunId = code >>> (PhaseWidth * 2)
 
     /** The phase identifier of this single-phase period. */
-    def phaseId: PhaseId = (code >>> PhaseWidth) & PhaseMask
+    def phaseId: PhaseId = firstPhaseId
 
     /** The last phase of this period */
-    def lastPhaseId: PhaseId =
-      (code >>> PhaseWidth) & PhaseMask
+    def lastPhaseId: PhaseId = (code >>> PhaseWidth) & PhaseMask
 
     /** The first phase of this period */
-    def firstPhaseId: PhaseId = lastPhaseId - (code & PhaseMask)
+    def firstPhaseId: PhaseId = code & PhaseMask
 
     def containsPhaseId(id: PhaseId): Boolean = firstPhaseId <= id && id <= lastPhaseId
 
@@ -84,10 +83,10 @@ object Periods {
           this.lastPhaseId max that.lastPhaseId)
 
     inline def <(that: Period): Boolean =
-      this.code < that.code
+      this.runId < that.runId || (this.runId == that.runId && this.lastPhaseId < that.firstPhaseId)
 
     inline def >(that: Period): Boolean =
-      this.code > that.code
+      this.runId > that.runId || (this.runId == that.runId && this.firstPhaseId > that.lastPhaseId)
 
     def toText(p: Printer): Text =
       inContext(p.printerContext):
@@ -117,11 +116,11 @@ object Periods {
 
     /** The single-phase period consisting of given run id and phase id */
     def apply(rid: RunId, pid: PhaseId): Period =
-      new Period(((rid << PhaseWidth) | pid) << PhaseWidth)
+      new Period((((rid << PhaseWidth) | pid) << PhaseWidth) | pid)
 
     /** The period consisting of given run id, and lo/hi phase ids */
     def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period =
-      new Period(((rid << PhaseWidth) | hiPid) << PhaseWidth | (hiPid - loPid))
+      new Period((((rid << PhaseWidth) | hiPid) << PhaseWidth) | loPid)
 
     /** The interval consisting of all periods of given run id */
     def allInRun(rid: RunId): Period =
