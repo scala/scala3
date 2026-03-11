@@ -3631,7 +3631,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
-    var annotCtx = ctx.addMode(Mode.InAnnotation)
+    var annotCtx: Context = ctx.fresh.addMode(Mode.InAnnotation)
     if tree.annot.hasAttachment(untpd.RetainsAnnot) then
       annotCtx = annotCtx.addMode(Mode.InCaptureSet)
     val annot0 = typedExpr(tree.annot)(using annotCtx)

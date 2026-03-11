@@ -27,7 +27,7 @@ import config.{Feature, MigrationVersion, SourceVersion}
 import util.Property
 import util.chaining.tap
 
-import collection.mutable
+import collection.{mutable, immutable}
 import config.Printers.{overload, typr, unapp}
 import inlines.Inlines
 import TypeApplications.*
@@ -555,6 +555,11 @@ trait Applications extends Compatibility {
      */
     protected def makeVarArg(n: Int, elemFormal: Type): Unit
 
+    /** Lift `arg` to a val def if it is unstable and referred to from a
+     *  qualified type in another parameter or the result type. No-op by default.
+     */
+    protected def maybeLiftQualifiedArg(arg: TypedArg, n: Int): TypedArg = arg
+
     /** If all `args` have primitive numeric types, make sure it's the same one */
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
@@ -827,7 +832,7 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            val argTyped = typedArg(arg, formal)
+            val argTyped = maybeLiftQualifiedArg(typedArg(arg, formal), n)
             addArg(argTyped, formal)
             if methodType.looksParamDependent
                   // need to handle also false dependencies since we generate TypeTrees from
@@ -1261,27 +1266,58 @@ trait Applications extends Compatibility {
   extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
 
-    import qualified_types.QualifiedTypes.containsQualifier
+    import qualified_types.{QualifiedType, QualifiedTypes}
 
-    /** Whether this method has qualified-type dependencies requiring
-     *  unstable arguments to be lifted to val defs.
-     */
-    private lazy val liftQualifiedArgs: Boolean = methType match
-      case mt: MethodType =>
-        (mt.isResultDependent || mt.looksParamDependent)
-        && (containsQualifier(mt.resultType)
-            || mt.paramInfos.exists(containsQualifier))
-      case _ => false
-
-    /** Type an argument, lifting it to a val def if its type is not stable
-     *  and the method has qualified-type dependencies. */
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg =
-      val typed = proto.typedArg(arg, formal)
-      if liftQualifiedArgs && !typed.tpe.isStable then
+      proto.typedArg(arg, formal)
+
+    /** The set of parameter indices whose arguments need to be lifted to val
+     *  defs because they are referred to (via TermParamRef) from a qualifier
+     *  in another parameter type or the result type, or because their own
+     *  type contains a qualifier (self-referencing case).
+     *  Empty when qualified types are not enabled.
+     */
+    private lazy val qualifiedArgsToLift: immutable.BitSet =
+      methType match
+        case mt: MethodType if Feature.qualifiedTypesEnabled =>
+          val refs = new mutable.BitSet
+          // Collect TermParamRefs that appear inside qualifiers.
+          def collectFromType(tp: Type): Unit =
+            tp.foreachPart:
+              case QualifiedType(_, qualifier) =>
+                qualifier.foreachType: tp =>
+                  tp.foreachPart:
+                    case TermParamRef(`mt`, n) => refs += n
+                    case _ =>
+              case _ => ()
+          for (info, i) <- mt.paramInfos.zipWithIndex do
+            // If a param's own type has a qualifier, it needs to be stable.
+            if QualifiedTypes.containsQualifier(info) then
+              refs += i
+            collectFromType(info)
+          // Only inspect the immediate result type; nested MethodType/PolyType
+          // results belong to subsequent parameter lists and will be handled
+          // by their own ApplyToUntyped instance.
+          if !mt.resultType.isInstanceOf[LambdaType] then
+            collectFromType(mt.resultType)
+          refs.toImmutable
+        case _ =>
+          immutable.BitSet.empty
+
+    override protected def maybeLiftQualifiedArg(arg: Tree, n: Int): Tree =
+      if qualifiedArgsToLift.contains(n) && !isInAnnotationDeep then
         if liftedDefs == null then liftedDefs = new mutable.ListBuffer[Tree]
-        LiftUnstable.lift(liftedDefs.nn, typed)
+        LiftUnstable.lift(liftedDefs.nn, arg)
       else
-        typed
+        arg
+
+    /** Check if any enclosing context has `Mode.InAnnotation` set. This is
+     *  needed because `FunProto.typedArg` retracts `InAnnotation`, so the
+     *  current context may not have it even when we are inside an annotation.
+     */
+    private def isInAnnotationDeep(using ctx: Context): Boolean =
+      ctx != null && (ctx.mode.is(Mode.InAnnotation)
+      || (ctx.outer ne ctx) && isInAnnotationDeep(using ctx.outer))
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
