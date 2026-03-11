@@ -274,6 +274,7 @@ object Scanners {
     /** We need one token lookahead and one token history
      */
     val next = newTokenData
+    val nextNext = newTokenData
     private val prev = newTokenData
 
     /** The current region. This is initially an Indented region with zero indentation width. */
@@ -389,7 +390,11 @@ object Scanners {
         if token == ERROR then adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
       else
         this.copyFrom(next)
-        next.token = EMPTY
+        if nextNext.token == EMPTY then
+          next.token = EMPTY
+        else
+          next.copyFrom(nextNext)
+          nextNext.token = EMPTY
 
     /** Produce next token, filling TokenData fields of Scanner.
      */
@@ -407,13 +412,17 @@ object Scanners {
       if debugTokenStream && (showLookAheadOnDebug || !isInstanceOf[LookaheadScanner]) then
         print(s"[$show${if isInstanceOf[LookaheadScanner] then "(LA)" else ""}]")
 
-    /** Insert `token` at assumed `offset` in front of current one. */
-    def insert(token: Token, offset: Int) = {
-      assert(next.token == EMPTY, next)
+    def pushToNext() =
+      if next.token != EMPTY then
+        assert(nextNext.token == EMPTY, nextNext)
+        nextNext.copyFrom(next)
       next.copyFrom(this)
+
+    /** Insert `token` at assumed `offset` in front of current one. */
+    def insert(token: Token, offset: Int) =
+      pushToNext()
       this.offset = offset
       this.token = token
-    }
 
     /** A leading symbolic or backquoted identifier is treated as an infix operator if
       *   - it does not follow a blank line, and
@@ -716,6 +725,11 @@ object Scanners {
           offset = next.offset
           token = INDENT
 
+    def isEnclosedInParens(r: Region): Boolean = r match
+      case r: Indented => isEnclosedInParens(r.outer)
+      case _: InParens => true
+      case _ => false
+
     /** Insert an <outdent> token if next token closes an indentation region.
      *  Exception: continue if indentation region belongs to a `match` and next token is `case`.
      */
@@ -735,7 +749,7 @@ object Scanners {
       if token == END && !isEndMarker then token = IDENTIFIER
 
     def reset() =
-      next.copyFrom(this)
+      pushToNext()
       this.copyFrom(prev)
 
     def closeIndented() = currentRegion match
@@ -763,10 +777,6 @@ object Scanners {
           peekAhead()
           if (token != ELSE) reset()
         case COMMA =>
-          def isEnclosedInParens(r: Region): Boolean = r match
-            case r: Indented => isEnclosedInParens(r.outer)
-            case _: InParens => true
-            case _ => false
           currentRegion match
             case r: Indented if isEnclosedInParens(r.outer) =>
               insert(OUTDENT, offset)
