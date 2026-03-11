@@ -767,12 +767,9 @@ object Scanners {
           peekAhead()
           if (token != ELSE) reset()
         case COMMA =>
-          if closingParens.contains(currentRegion.closedBy) then
+          if closingParens.contains(currentRegion.closedBy) && currentRegion.commasExpected then
             peekAhead()
-            if isAfterLineEnd
-                && currentRegion.commasExpected
-                && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
-            then
+            if isAfterLineEnd && closingParens.contains(token) then
               // encountered a trailing comma
               // reset only the lastOffset
               // so that the tree's span is correct
