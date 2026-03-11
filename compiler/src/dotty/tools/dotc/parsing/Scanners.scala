@@ -717,16 +717,23 @@ object Scanners {
           token = INDENT
 
     /** Insert an <outdent> token if next token closes an indentation region.
-     *  Exception: continue if indentation region belongs to a `match` and next token is `case`.
+     *  or next token is a comma and we expect a comma in an outer region.
+     *  Exception: continue if indentation region belongs to a `match` or `catch1
+     *  and next token is `case`.
      */
     def observeOutdented(): Unit = currentRegion match
-      case r: Indented
-      if !r.isOutermost
-         && closingRegionTokens.contains(token)
-         && !(token == CASE && r.prefix == MATCH)
-         && next.token == EMPTY  // can be violated for ill-formed programs, e.g. neg/i12605.scala
-      =>
-        insert(OUTDENT, offset)
+      case r: Indented if !r.isOutermost =>
+        if closingRegionTokens.contains(token)
+            && !(token == CASE && r.prefix == MATCH)
+            && next.token == EMPTY
+          ||
+            token == COMMA
+            && r.outer.commasExpectedInEnclosing
+            && next.token == EMPTY
+        then
+          //if next.token != EMPTY then
+          //  println(i"NOT inserting outdent in front of $this, ${next.token}, ${r.prefix}")
+          insert(OUTDENT, offset)
       case _ =>
 
     def peekAhead() =
@@ -763,25 +770,18 @@ object Scanners {
           peekAhead()
           if (token != ELSE) reset()
         case COMMA =>
-          def isEnclosedInParens(r: Region): Boolean = r match
-            case r: Indented => isEnclosedInParens(r.outer)
-            case _: InParens => true
-            case _ => false
-          currentRegion match
-            case r: Indented if isEnclosedInParens(r.outer) =>
-              insert(OUTDENT, offset)
-            case _ =>
-              peekAhead()
-              if isAfterLineEnd
-                 && currentRegion.commasExpected
-                 && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
-              then
-                // encountered a trailing comma
-                // reset only the lastOffset
-                // so that the tree's span is correct
-                lastOffset = prev.lastOffset
-              else
-                reset()
+          if closingParens.contains(currentRegion.closedBy) then
+            peekAhead()
+            if isAfterLineEnd
+                && currentRegion.commasExpected
+                && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
+            then
+              // encountered a trailing comma
+              // reset only the lastOffset
+              // so that the tree's span is correct
+              lastOffset = prev.lastOffset
+            else
+              reset()
         case ARROW =>
           currentRegion match
           case r: Indented if r.outer.isInstanceOf[InCase] =>
@@ -1669,6 +1669,11 @@ object Scanners {
       res
 
     def commasExpected = myCommasExpected
+
+    def commasExpectedInEnclosing: Boolean =
+      commasExpected || this.match
+        case r: Indented => r.outer.commasExpectedInEnclosing
+        case _ => false
 
     def toList: List[Region] =
       this :: (if outer == null then Nil else outer.toList)
