@@ -1176,6 +1176,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected override def annotText(sym: Symbol): Text =
     if sym == defn.ConsumeAnnot then "consume" else super.annotText(sym)
 
+  protected override def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
+    if sym == defn.ConsumeAnnot then keywordText("consume ").provided(tp.hasAnnotation(sym))
+    else super.specialAnnotText(sym, tp)
+
   protected def modText(mods: untpd.Modifiers, sym: Symbol, kw: String, isType: Boolean): Text = { // DD
     val suppressKw = if (enclDefIsClass) mods.isAllOf(LocalParam) else mods.is(Param)
     var flagMask =

@@ -2003,10 +2003,7 @@ object Build {
             .add(SnippetCompiler(List(
               s"${docs.getAbsolutePath}/_docs/reference/new-types=compile",
               s"${docs.getAbsolutePath}/_docs/reference/enums=compile",
-              s"$ccDocs=compile|-language:experimental.captureChecking",
-              s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-              s"$ccDocs/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-              s"$ccDocs/safe=compile|-language:experimental.safe",
+              s"$ccDocs=compile",
             )))
         }
 
@@ -2965,10 +2962,7 @@ object ScaladocConfigs {
         snippetCompilerTargets(s"$stdlib/src") ++ List(
         "docs/_docs/reference/new-types=compile",
         "docs/_docs/reference/enums=compile",
-        "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
-        "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-        "docs/_docs/reference/experimental/capture-checking/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-        "docs/_docs/reference/experimental/capture-checking/safe=compile|-language:experimental.safe",
+        "docs/_docs/reference/experimental/capture-checking=compile",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))

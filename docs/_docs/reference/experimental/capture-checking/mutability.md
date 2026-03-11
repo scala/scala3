@@ -4,6 +4,11 @@ title: "Stateful Capabilities"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/mutability.html
 ---
 
+```scala sc-hidden sc-name:mut-context
+import language.experimental.captureChecking
+import language.experimental.separationChecking
+```
+
 ## Introduction
 
 An important class of effects represents accesses to mutable variables and mutable data structures. This is intimately tied with the concept of _program state_. Stateful capabilities are capabilities that allow to consult and change the program state.
@@ -13,7 +18,7 @@ We distinguish two kinds of accesses: full access that allows state changes and 
 A common kind of stateful capabilities represent mutable variables that can be read and written.
 These mutable data structures are expressed with the marker trait `caps.Mutable`.
 For instance, consider a simple reference cell:
-```scala
+```scala sc-compile-with:mut-context
 import caps.Mutable
 
 class Ref[T](init: T) extends Mutable:
@@ -46,7 +51,7 @@ These classes typically contain mutable variables and/or _update methods_.
 Update methods are declared using a new soft modifier `update`.
 
 **Example:**
-```scala
+```scala sc-compile-with:mut-context
 //{
 import caps.*
 //}
