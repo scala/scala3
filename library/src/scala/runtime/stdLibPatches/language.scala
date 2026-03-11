@@ -90,14 +90,14 @@ private[scala] object language:
 
     /** Experimental support for capture checking; implies support for pureFunctions
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/cc]]
+     *  @see [[https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/index.html]]
      */
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
 
     /** Experimental support for separation checking; requires captureChecking also to be enabled.
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/cc]]
+     *  @see [[https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/index.html]]
      */
     @compileTimeOnly("`separationChecking` can only be used at compile time in import statements")
     object separationChecking
