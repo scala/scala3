@@ -922,8 +922,11 @@ object OnlyCapability:
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
-      ann.tree.tpe.argTypes.head.classSymbol match
-        case cls: ClassSymbol => Some((parent, cls))
+      ann.tree.tpe.argTypes.head.dealias match
+        case tp: TypeRef if tp.symbol.isClass =>
+          tp.symbol match
+            case cls: ClassSymbol => Some((parent, cls))
+            case _ => None
         case _ => None
     case _ => None
 end OnlyCapability
