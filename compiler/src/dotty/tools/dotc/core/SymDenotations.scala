@@ -2967,8 +2967,8 @@ object SymDenotations {
     def isValidAt(phase: Phase)(using Context) =
       checkedPeriod == ctx.period ||
         createdAt.runId == ctx.runId &&
-        createdAt.phaseId < unfusedPhases.length &&
-        sameGroup(unfusedPhases(createdAt.phaseId), phase) &&
+        createdAt.firstPhaseId < unfusedPhases.length &&
+        sameGroup(unfusedPhases(createdAt.firstPhaseId), phase) &&
         { checkedPeriod = ctx.period; true }
   }
 

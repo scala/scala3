@@ -355,7 +355,7 @@ object Contexts {
 
     final def phase: Phase = base.phases(period.firstPhaseId)
     final def runId = period.runId
-    final def phaseId = period.phaseId
+    final def phaseId = period.firstPhaseId
 
     final def lastPhaseId = base.phases.length - 1
 

@@ -26,8 +26,8 @@ object Periods {
     val period = ctx.period
     period == p ||
     period.runId == p.runId &&
-      unfusedPhases(period.phaseId).sameBaseTypesStartId ==
-      unfusedPhases(p.phaseId).sameBaseTypesStartId
+      unfusedPhases(period.firstPhaseId).sameBaseTypesStartId ==
+      unfusedPhases(p.firstPhaseId).sameBaseTypesStartId
 
   /** A period is a contiguous sequence of phase ids in some run.
    *  It is coded as follows:
@@ -42,9 +42,6 @@ object Periods {
 
     /** The run identifier of this period. */
     def runId: RunId = code >>> (PhaseWidth * 2)
-
-    /** The phase identifier of this single-phase period. */
-    def phaseId: PhaseId = firstPhaseId
 
     /** The last phase of this period */
     def lastPhaseId: PhaseId = (code >>> PhaseWidth) & PhaseMask
