@@ -54,9 +54,12 @@ object Periods {
 
     /** Does this period contain the given period? */
     def contains(that: Period): Boolean =
-      this.runId == that.runId &&
-        this.firstPhaseId <= that.firstPhaseId &&
-        that.lastPhaseId <= this.lastPhaseId
+      // We want to check (run1 == run2) & (last1 >= last2) & (first1 <= first2).
+      // We can do the first two comparisons in one by checking if subtracting code1 from code2 leads to all-zeroes
+      // in the sign + run ID bits. If (run1 > run2) or (run2 < run1) or (run1 == run2 and last1 < last2),
+      // then (code1 - code2) is either large enough to have some run ID bits set, or negative so the sign bit is set.
+      ((this.code - that.code) & (-1 << (PhaseWidth * 2))) == 0 &&
+        this.firstPhaseId <= that.firstPhaseId
 
     /** Does this period overlap with given period? */
     def overlaps(that: Period): Boolean =
