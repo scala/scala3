@@ -283,6 +283,8 @@ object Tokens extends TokensCommon {
 
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
+  final val acceptOutdentTokens = BitSet(RBRACE, RPAREN, RBRACKET) | statCtdTokens
+
   final val canStartIndentTokens: BitSet =
     statCtdTokens | BitSet(COLONeol, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
 
@@ -300,8 +302,6 @@ object Tokens extends TokensCommon {
   final val canStartCaptureSetContentsTokens = BitSet(IDENTIFIER, BACKQUOTED_IDENT, THIS, RBRACE)
 
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
-
-  final val regionPrefixesAcceptingCase = BitSet(MATCH, CATCH, COLONeol)
 
   final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix)
     // Note: update, consume and erased are missing here since they are only modifiers under some import

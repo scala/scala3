@@ -718,16 +718,13 @@ object Scanners {
 
     /** Insert an <outdent> token if next token closes an indentation region.
      *  or next token is a comma and we expect a comma in an outer region.
-     *  Exception: don't insert outdent in front of case if indentation region
-     *  accepts case
+     *  Exception: don't insert <outdent> in front of case.
      */
     def observeOutdented(): Unit = currentRegion match
       case r: Indented
       if !r.isOutermost
-          && (closingRegionTokens.contains(token)
-              && !(token == CASE && regionPrefixesAcceptingCase.contains(r.prefix))
-              ||
-              token == COMMA && r.outer.commasExpectedInEnclosing)
+          && (acceptOutdentTokens.contains(token)
+              || token == COMMA && r.outer.commasExpectedInEnclosing)
           && next.token == EMPTY
         =>
           insert(OUTDENT, offset)
