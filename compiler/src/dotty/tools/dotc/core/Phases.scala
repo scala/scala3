@@ -49,7 +49,7 @@ object Phases {
 
     def recordRecheckPhase(phase: Recheck): Unit =
       val id = phase.id
-      assert(id < 64, s"Recheck phase with id $id outside permissible range 0..63")
+      assert(id < 64, s"Recheck phase with id $id outside range 0..63, cannot use Long bits encoding")
       myRecheckPhaseIds |= (1L << id)
 
     object SomePhase extends Phase {
