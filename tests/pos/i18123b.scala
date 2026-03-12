@@ -22,4 +22,4 @@ def classItem: P[RegexTree] = ???
 def charClassIntersection: P[CharClassIntersection] = ???
 
 def x =
-  (charClassIntersection.rep() | classItem.rep()) // error
+  (charClassIntersection.rep() | classItem.rep())
