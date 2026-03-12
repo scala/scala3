@@ -3937,15 +3937,7 @@ object Parsers {
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
             if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
-              val desc =
-                if ctx.mode.is(Mode.Interactive) then
-                  "not allowed in the REPL"
-                else "only allowed at the toplevel"
-              val hint =
-                if ctx.mode.is(Mode.Interactive) then
-                  f"\nTo use this language feature, include the flag `-language:$prefix.$imported` when starting the REPL"
-                else ""
-              syntaxError(em"this language import is $desc$hint", id.span)
+              syntaxError(em"this language import is only allowed at the toplevel", id.span)
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(em"source version import is only allowed at the toplevel", id.span)
@@ -5023,7 +5015,7 @@ object Parsers {
       while
         var empty = false
         if (in.token == IMPORT)
-          stats ++= importClause()
+          stats ++= importClause(outermost = outermost && ctx.mode.is(Mode.Interactive))
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then

@@ -248,10 +248,17 @@ object Feature:
   def isExperimentalEnabledByImport(using Context): Boolean =
     experimentalAutoEnableFeatures.exists(enabledByImport)
 
-  /** Handle language import `import language.<prefix>.<imported>` if it is one
-   *  of the global imports `pureFunctions` or `captureChecking`. In this case
-   *  make the compilation unit's and current run's fields accordingly.
-   *  @return true iff import that was handled
+  /** Global language imports that affect parsing and must be handled specially.
+   *  These need per-compilation-unit flags (set in `handleGlobalLanguageImport`)
+   *  and also require propagation to rootCtx in the REPL and hoisting in the
+   *  snippet compiler so they take effect across inputs (i16250).
+   */
+  val globalLanguageImports: Set[TermName] =
+    Set(pureFunctions, captureChecking, separationChecking, safe)
+
+  /** Handle a global language import `import language.<prefix>.<imported>`.
+   *  Sets the compilation unit's and current run's fields accordingly.
+   *  @return true iff the import was handled
    */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
     QualifiedName(prefix, imported.asTermName) match
