@@ -6470,6 +6470,12 @@ object Types extends TypeUtils {
         case CapturingType(parent, refs) =>
           mapCapturingType(tp, parent, refs, variance)
 
+        case tp @ AnnotatedType(underlying, annot: QualifiedAnnotation) =>
+          // Types in qualified annotations must be treated as invariant to
+          // ensure proper approximation (e.g., skolemization of non-singleton
+          // prefixes in asSeenFrom).
+          derivedAnnotatedType(tp, this(underlying), atVariance(0)(annot.mapWith(this)))
+
         case tp @ AnnotatedType(underlying, annot) =>
           derivedAnnotatedType(tp, this(underlying), annot.mapWith(this))
 

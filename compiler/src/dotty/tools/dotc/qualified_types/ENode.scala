@@ -29,6 +29,7 @@ import dotty.tools.dotc.core.Types.{
   NamedType,
   NoPrefix,
   ParamRef,
+  Range,
   SingletonType,
   SkolemType,
   TermParamRef,
@@ -144,7 +145,7 @@ enum ENode extends Showable:
         case Atom(tp) =>
           p.toTextRef(tp)
         case Constructor(constr) =>
-          "new" ~ p.toText(constr.lastKnownDenotation.owner)
+          "new " ~ p.toText(constr.lastKnownDenotation.owner.name)
         case Select(qual, member) =>
           qual.toText(p) ~ "." ~ p.toText(member.name)
         case Apply(fn, args) =>
@@ -214,10 +215,30 @@ enum ENode extends Showable:
     ctx.base.qualifiedTypesStats.record("ENode.mapTypes"):
       mapTypesRec(f)
 
+  /** Ensure all prefixes in a TermRef chain are valid (singleton) types.
+   *  Non-singleton prefixes are wrapped in a SkolemType.
+   */
+  private def ensureValidPrefixes(tp: Type)(using Context): Type = tp match
+    case tp: TermRef =>
+      val pre = tp.prefix
+      val pre1 = ensureValidPrefixes(pre)
+      val pre2 = pre1 match
+        case _: SingletonType | _: NoPrefix.type => pre1
+        case _ => SkolemType(pre1)
+      if pre2 eq pre then tp
+      else TermRef(pre2, tp.designator)
+    case _ => tp
+
   private def mapTypesRec(f: Type => Type)(using Context): ENode =
     this match
       case Atom(tp) =>
-        val mappedTp = f(tp)
+        val mappedTp0 =
+          f(tp) match
+            case Range(lo, hi) => lo
+            case mappedTp0 => mappedTp0
+        val mappedTp = ensureValidPrefixes(mappedTp0)
+
+
         if mappedTp eq tp then
           this
         else
@@ -272,9 +293,8 @@ enum ENode extends Showable:
           val dealiased = tp.dealiasKeepAnnotsAndOpaques
           if dealiased ne tp then
             apply(dealiased)
-          else if tp.symbol.isStatic then
-            if tp.isInstanceOf[TermRef] then tp.symbol.termRef
-            else tp.symbol.typeRef
+          else if tp.symbol.isStatic || ((tp.prefix eq NoPrefix) && tp.symbol.owner.isClass) then
+            tp.symbol.namedType
           else
             derivedSelect(tp, apply(tp.prefix))
         case _ =>
@@ -331,6 +351,21 @@ enum ENode extends Showable:
   // Conversion from E-Nodes to Trees
   // -----------------------------------
 
+  /** Like `tpd.singleton`, but produces a placeholder tree for types with
+   *  skolem prefixes (which cannot be represented as real trees). This is
+   *  fine because these trees only appear inside `@qualified` annotations
+   *  where only the type matters.
+   */
+  private def singletonOrPlaceholder(tp: Type)(using Context): tpd.Tree =
+    def hasSkolemPrefix(tp: Type): Boolean = tp match
+      case tp: SkolemType => true
+      case tp: TermRef => hasSkolemPrefix(tp.prefix)
+      case _ => false
+    tp.dealias match
+      case tp: SkolemType => tpd.ref(defn.Predef_undefined).withType(tp)
+      case tp: TermRef if hasSkolemPrefix(tp) => tpd.ref(defn.Predef_undefined).withType(tp)
+      case tp => tpd.singleton(tp)
+
   def toTree(paramRefs: List[Type] = Nil)(using Context): tpd.Tree =
     def mapType(tp: Type): Type = SubstEParamsMap(0, paramRefs)(tp)
 
@@ -340,8 +375,7 @@ enum ENode extends Showable:
           case Atom(tp) =>
             mapType(tp) match
               case tp1: TermParamRef => untpd.Ident(tp1.paramName).withType(tp1)
-              case tp: SkolemType => tpd.ref(defn.Predef_undefined).withType(tp)
-              case tp1 => tpd.singleton(tp1)
+              case tp1 => singletonOrPlaceholder(tp1)
           case Constructor(sym) =>
             val tycon = sym.owner.asClass.classDenot.classInfo.selfType
             tpd.New(tycon).select(TermRef(tycon, sym))
