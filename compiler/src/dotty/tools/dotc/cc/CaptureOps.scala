@@ -645,6 +645,9 @@ extension (cls: ClassSymbol) {
           case TypeRef(prefix: ThisType, _) if prefix.cls == cls => locals
           case TypeRef(prefix, _) => locals.map(AsSeenFromMap(prefix, cls.owner))
           case _ => locals
+
+  def refiningGetterNamed(name: Name)(using Context): Symbol =
+    cls.info.decls.lookup(name).suchThat(_.isRefiningParamAccessor).symbol
 }
 
 extension (sym: Symbol) {

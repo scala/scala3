@@ -40,6 +40,9 @@ object CheckCaptures:
   val name: String = "cc"
   val description: String = "capture checking"
 
+  /** An attachment to prevent widening of arguments to tracked parameters */
+  val NoWiden: Property.Key[Unit] = Property.Key()
+
   enum EnvKind derives CanEqual:
     case Regular        // normal case
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
@@ -829,6 +832,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       //   - the selection is either a trackable capture reference or a pure type, or
       //   - if the selection is of a parameterless method capturing a ResultCap
       if noWiden(selType, pt)
+          || tree.hasAttachment(NoWiden)
           || qualType.isBoxedCapturing
           || selType.isBoxedCapturing
           || selWiden.isBoxedCapturing
@@ -885,6 +889,11 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  TODO: Maybe not charge deep capture sets for consume?
      */
     protected override def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
+      val meth = app.fun.symbol
+      if meth.isPrimaryConstructor
+          && meth.owner.asClass.refiningGetterNamed(pref.paramName).is(Tracked)
+      then
+        arg.putAttachment(NoWiden, ())
       val instantiatedFormal = globalCapToLocal(formal, Origin.Formal(pref, app))
       val argType = recheck(arg, instantiatedFormal)
         .showing(i"recheck arg $arg vs $instantiatedFormal = $result", capt)
@@ -983,9 +992,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         var allCaptures: CaptureSet = initCs ++ cls.capturesImpliedByFields(core).refs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
-          val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
+          val getter = cls.refiningGetterNamed(getterName)
           if !getter.is(Private) && getter.hasTrackedParts then
-            refined = refined.refinedOverride(getterName, argType.unboxed)
+            if !getter.is(Tracked) then
+              refined = refined.refinedOverride(getterName, argType.unboxed)
               // We can assume unboxed since the use set contributed by field selection is also the capture set
               // So unboxing will not add anything to the use sets.
               // This trick is also the principal reason why we can't make refineConstructorInstance
@@ -1979,7 +1989,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - do box adaptation
      */
     def adapt(actual: Type, expected: Type, tree: Tree)(using Context): Type =
-      if noWiden(actual, expected) then
+      if noWiden(actual, expected) || tree.removeAttachment(NoWiden).isDefined then
         expected match
           case expected @ CapturingType(_, _) if expected.isBoxed =>
             // actual is a singleton type and expected is of the form box x.type^cs.
