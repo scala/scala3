@@ -62,6 +62,7 @@ i24039.scala
 i24553.scala
 i25000.scala
 i25000b.scala
+i25460.scala
 i3598.scala
 i5039.scala
 i7034.scala
@@ -75,6 +76,8 @@ infersingle.scala
 interop-unsound-src
 java-collectors.scala
 large2.scala
+lazyVals_c3.0.0.scala
+lazyVals_c3.1.0.scala
 match-single-sub-case.scala
 match-sub-cases.scala
 match-sub-sub-cases.scala
@@ -92,4 +95,3 @@ sub-cases-exhaustivity.scala
 t10594.scala
 tailrec.scala
 traitParams.scala
-i25460.scala
