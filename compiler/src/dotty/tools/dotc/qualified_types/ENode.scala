@@ -608,7 +608,7 @@ object ENode:
   def assumptions(node: ENode)(using Context): List[ENode] =
     trace(i"assumptions($node)", Printers.qualifiedTypes):
       node match
-        case n: Atom => termAssumptions(n.tp) ++ typeAssumptions(n.tp)
+        case n: Atom => typeAssumptions(n.tp)
         case n: Constructor => Nil
         case n: Select => assumptions(n.qual)
         case n: Apply => assumptions(n.fn) ++ n.args.flatMap(assumptions)
@@ -620,14 +620,12 @@ object ENode:
     trace(i"termAssumptions($tp)", Printers.qualifiedTypes):
       tp match
         case tp: TermRef =>
-          tp.symbol.info match
-            case _ =>
-              tp.symbol.defTree match
-                case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>
-                  fromTree(valDef.rhs) match
-                    case Some(treeNode) => OpApply(ENode.Op.Equal, List(treeNode, Atom(tp))) :: assumptions(treeNode)
-                    case None => Nil
-                case _ => Nil
+          tp.symbol.defTree match
+            case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>
+              fromTree(valDef.rhs) match
+                case Some(treeNode) => OpApply(ENode.Op.Equal, List(treeNode, Atom(tp))) :: assumptions(treeNode)
+                case None => Nil
+            case _ => Nil
         case _ => Nil
 
   private def typeAssumptions(rootTp: SingletonType)(using Context): List[ENode] =
@@ -641,7 +639,7 @@ object ENode:
     def rec(tp: Type): List[ENode] =
       tp match
         case QualifiedType(parent, qualifier) => qualifier.body.substEParamRefs(0, List(rootTp)) :: assumptions(qualifier.body) ::: rec(parent)
-        case tp: SingletonType => selfify(tp) ::: recPrefix(tp) ::: rec(tp.underlying)
+        case tp: SingletonType => termAssumptions(tp) ::: selfify(tp) ::: recPrefix(tp) ::: rec(tp.underlying)
         case tp: TypeProxy => rec(tp.underlying)
         case AndType(tp1, tp2) => rec(tp1) ++ rec(tp2)
         case _ => Nil
