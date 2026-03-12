@@ -22,4 +22,4 @@ scala> Option[Int](2) match { case Some(x) => x }
   | longer explanation available when compiling with `-explain`
 scala>:silent
 scala> 1 + 2
-val res2: Int = 3
+val res3: Int = 3

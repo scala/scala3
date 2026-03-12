@@ -21,8 +21,6 @@ import dotc.util.{ParsedComment, Property, SourceFile}
 import dotc.{CompilationUnit, Compiler, Run}
 import dotc.util.chaining.*
 
-import results.*
-
 import scala.collection.mutable
 
 /** This subclass of `Compiler` is adapted for use in the REPL.
@@ -81,7 +79,7 @@ class ReplCompiler extends Compiler:
     import untpd.*
     PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
 
-  final def compile(parsed: Parsed)(using state: State): Result[(CompilationUnit, State)] =
+  final def compile(parsed: Parsed)(using state: State): Either[(List[Diagnostic], State), (CompilationUnit, State)] =
     assert(!parsed.trees.isEmpty)
 
     given Context = state.context
@@ -93,11 +91,11 @@ class ReplCompiler extends Compiler:
     ctx.run.nn.printSummary() // "2 errors found"
 
     val newState = unit.tpdTree.getAttachment(ReplCompiler.ReplState).get
-    if !ctx.reporter.hasErrors then (unit, newState).result
-    else ctx.reporter.removeBufferedMessages.errors
+    if !ctx.reporter.hasErrors then Right(unit, newState)
+    else Left(ctx.reporter.removeBufferedMessages, newState)
   end compile
 
-  final def typeOf(expr: String)(using state: State): Result[String] =
+  final def typeOf(expr: String)(using state: State): Either[List[Diagnostic], String] =
     typeCheck(expr).map { (_, tpdTree) =>
       given Context = state.context
       tpdTree.rhs match {
@@ -110,7 +108,7 @@ class ReplCompiler extends Compiler:
       }
     }
 
-  def docOf(expr: String)(using state: State): Result[String] = inContext(state.context) {
+  def docOf(expr: String)(using state: State): Either[List[Diagnostic], String] = inContext(state.context) {
 
     /** Extract the "selected" symbol from `tree`.
      *
@@ -157,9 +155,9 @@ class ReplCompiler extends Compiler:
     }
   }
 
-  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Result[(untpd.ValDef, tpd.ValDef)] = {
+  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Either[List[Diagnostic], (untpd.ValDef, tpd.ValDef)] = {
 
-    def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Result[untpd.PackageDef] = {
+    def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Either[List[Diagnostic], untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd.*
 
@@ -173,41 +171,40 @@ class ReplCompiler extends Compiler:
 
       ParseResult(sourceFile) match {
         case Parsed(_, trees, _) =>
-          wrap(trees).result
+          Right(wrap(trees))
         case SyntaxErrors(_, reported, trees) =>
-          if (errorsAllowed) wrap(trees).result
-          else reported.errors
-        case _ => List(
+          if (errorsAllowed) Right(wrap(trees))
+          else Left(reported)
+        case _ => Left(List(
           new Diagnostic.Error(
             s"Couldn't parse '$expr' to valid scala",
             sourceFile.atSpan(Span(0, expr.length))
           )
-        ).errors
+        ))
       }
     }
 
-    def error[Tree <: untpd.Tree](sourceFile: SourceFile): Result[Tree] =
-      List(new Diagnostic.Error(s"Invalid scala expression",
-        sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
+    def error[Tree <: untpd.Tree](sourceFile: SourceFile): Either[List[Diagnostic], Tree] =
+      Left(List(new Diagnostic.Error(s"Invalid scala expression", sourceFile.atSpan(Span(0, sourceFile.content.length)))))
 
-    def unwrappedTypeTree(tree: tpd.Tree, sourceFile0: SourceFile)(using Context): Result[tpd.ValDef] = {
+    def unwrappedTypeTree(tree: tpd.Tree, sourceFile0: SourceFile)(using Context): Either[List[Diagnostic], tpd.ValDef] = {
       import tpd.*
       tree match {
         case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
           tmpl.body
-              .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
+              .collectFirst { case dd: ValDef if dd.name.show == "expr" => Right(dd) }
               .getOrElse(error[tpd.ValDef](sourceFile0))
         case _ =>
           error[tpd.ValDef](sourceFile0)
       }
     }
 
-    def unwrappedUntypedTree(tree: untpd.Tree, sourceFile0: SourceFile)(using Context): Result[untpd.ValDef] =
+    def unwrappedUntypedTree(tree: untpd.Tree, sourceFile0: SourceFile)(using Context): Either[List[Diagnostic], untpd.ValDef] =
       import untpd.*
       tree match {
         case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
           tmpl.body
-              .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
+              .collectFirst { case dd: ValDef if dd.name.show == "expr" => Right(dd) }
               .getOrElse(error[untpd.ValDef](sourceFile0))
         case _ =>
           error[untpd.ValDef](sourceFile0)
@@ -229,7 +226,7 @@ class ReplCompiler extends Compiler:
             untpdTree <- unwrappedUntypedTree(unit.untpdTree, src)
           yield untpdTree -> tpdTree
         else
-          ctx.reporter.removeBufferedMessages.errors
+          Left(ctx.reporter.removeBufferedMessages)
       }
     }
   }
