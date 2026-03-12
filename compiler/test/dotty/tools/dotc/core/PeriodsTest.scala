@@ -34,7 +34,7 @@ class PeriodsTest:
     assertTrue(Period(1, 2, 7).overlaps(Period(1, 6, 9)))
 
   @Test def overlapsNonOverlappingIsFalse() =
-    assertTrue(Period(1, 2, 5).overlaps(Period(1, 6, 9)))
+    assertFalse(Period(1, 2, 5).overlaps(Period(1, 6, 9)))
 
   @Test def overlapsDifferentRunIsFalse() =
-    assertTrue(Period(1, 2, 7).overlaps(Period(2, 6, 9)))
+    assertFalse(Period(1, 2, 7).overlaps(Period(2, 6, 9)))
