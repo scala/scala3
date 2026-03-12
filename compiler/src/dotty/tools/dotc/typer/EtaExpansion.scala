@@ -180,9 +180,31 @@ object LiftImpure extends LiftImpure
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
-  override def exprLifter: Lifter = NoLift
+  override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
+
+/** Lift by-name arguments with local symbol definitions to `def`s.
+ *  This avoids duplicating local symbols when the same argument tree is reused
+ *  in a default getter call.
+ */
+object LiftToDefs extends LiftComplex {
+  import tpd.*
+
+  protected override def liftedFlags: FlagSet = Method
+
+  protected override def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): DefDef =
+    DefDef(sym, rhs)
+
+  private def hasLocalSymbolDefs(expr: Tree)(using Context): Boolean =
+    expr.existsSubTree {
+      case _: MemberDef | _: Bind => true
+      case _ => false
+    }
+
+  override def noLift(expr: Tree)(using Context): Boolean =
+    ctx.owner.isClassConstructor || !hasLocalSymbolDefs(expr)
+}
 
 /** Lift impure + lift the prefixes */
 object LiftCoverage extends LiftImpure {
