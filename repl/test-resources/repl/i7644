@@ -13,5 +13,5 @@ scala> class T extends CanEqual
   |       Cannot extend sealed trait CanEqual in a different source file
   |
   | longer explanation available when compiling with `-explain`
-2 warnings found
 1 error found
+

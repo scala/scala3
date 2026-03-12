@@ -100,10 +100,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         out.linesIterator.foreach(buf.append)
         nstate
       }
-      // We run the repl with `-Ydebug` to not use the fallback if there's a class load exception so we can notice these,
-      // but as a consequence we get debug messages; ignore the stale symbol one, whose contents include symbol IDs
-      // that depend on the exact compiler.
-      (optsLine :: buf.toList).filter(nonBlank).filter(!_.startsWith("stale symbol;"))
+      (optsLine :: buf.toList).filter(nonBlank)
     }
 
     if FileDiff.matches(actualOutput, expectedOutput) then None
