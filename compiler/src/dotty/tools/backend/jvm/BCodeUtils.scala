@@ -506,7 +506,7 @@ object BCodeUtils {
         && !sym.isOneOf(AbstractOrTrait)
         // Bridges can be final, but final bridges confuse some frameworks
         && !sym.is(Bridge), ACC_FINAL)
-      .addFlagIf(sym.isStaticMember, ACC_STATIC)
+      .addFlagIf(sym.isStaticMember && !sym.isClass, ACC_STATIC)
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
       .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
