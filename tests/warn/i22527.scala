@@ -57,8 +57,8 @@ def k(xs: List[Int], y: Int, z: Int) =
             x
           + y
             + z,
-          y, // NO warn
-          z, // NO warn
+          y, // warn
+          z, // warn
           )
     )
 
@@ -69,13 +69,13 @@ object `arrow eol`:
   def test =
     f(
       g(_ + 1),
-  42 // NO warn
+  42 // warn
     )
   def test2 =
     f(
       g:
         x =>
           x + 1,
-k: // NO warn
+k: // warn
         42
     )
