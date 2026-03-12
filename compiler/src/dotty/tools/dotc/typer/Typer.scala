@@ -3485,15 +3485,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         checkEnum(cdef, cls, firstParent)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
-      val reportDynamicInheritance =
-        ctx.phase.isTyper &&
-        cdef1.symbol.ne(defn.DynamicClass) &&
-        cdef1.tpe.derivesFrom(defn.DynamicClass) &&
-        !Feature.dynamicsEnabled
-      if (reportDynamicInheritance) {
-        val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.srcPos)
-      }
+      val checkDynamicInheritance =
+        ctx.phase.isTyper && cdef1.symbol.ne(defn.DynamicClass) && cdef1.tpe.derivesFrom(defn.DynamicClass)
+      if checkDynamicInheritance then
+        if Feature.safeEnabled then
+          report.error(i"Extensions of type scala.Dynamic are not allowed in safe mode.", cls.srcPos)
+        else if !Feature.dynamicsEnabled then
+          val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
+          report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.srcPos)
 
       checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)
 

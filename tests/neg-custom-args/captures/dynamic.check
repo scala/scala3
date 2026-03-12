@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/dynamic.scala:4:6 -------------------------------------------------------------
+4 |class User(map: Map[String, Any]) extends Dynamic { // error
+  |      ^
+  |      Extensions of type scala.Dynamic are not allowed in safe mode.
