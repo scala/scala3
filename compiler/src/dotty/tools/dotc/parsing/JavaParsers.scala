@@ -460,11 +460,11 @@ object JavaParsers {
       }
     }
 
-    def modifiers(inInterface: Boolean): Modifiers = {
+    def modifiers(inInterface: Boolean, annots0: List[Tree] = Nil): Modifiers = {
       var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
-      var annots = new ListBuffer[Tree]
+      var annots = ListBuffer.from[Tree](annots0)
       def addAnnot(tpt: Tree) =
         annots += atSpan(in.offset) {
           in.nextToken()
@@ -1104,19 +1104,23 @@ object JavaParsers {
       }
     }
 
-    /** CompilationUnit ::= [package QualId semi] TopStatSeq
+    /** CompilationUnit ::= {Annotation} [package QualId semi] {Import} {TypeDecl}
       */
     def compilationUnit(): Tree = {
-      val start = in.offset
+      val buf = ListBuffer.empty[Tree]
+      var start = in.offset
+      val leadingAnnots = if (in.token == AT) annotations() else Nil
       val pkg: RefTree =
-        if (in.token == AT || in.token == PACKAGE) {
-          annotations()
+        if in.token == PACKAGE then
+          if leadingAnnots.nonEmpty then
+            start = in.offset
           accept(PACKAGE)
           val pkg = qualId()
           accept(SEMI)
           pkg
-        }
         else
+          if leadingAnnots.nonEmpty then
+            buf ++= typeDecl(start, modifiers(inInterface = false, annots0 = leadingAnnots))
           Ident(nme.EMPTY_PACKAGE)
       thisPackageName = convertToTypeName(pkg) match {
         case Some(t)  => t.name.toTypeName
@@ -1129,9 +1133,9 @@ object JavaParsers {
           val ts = termDecl(start, mods, CLASS)
           if (ts.nonEmpty) compact = true
           Nil
-      val buf = new ListBuffer[Tree]
-      while (in.token == IMPORT)
-        buf ++= importDecl()
+      if buf.isEmpty then
+        while (in.token == IMPORT)
+          buf ++= importDecl()
       while (in.token != EOF && in.token != RBRACE) {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {
