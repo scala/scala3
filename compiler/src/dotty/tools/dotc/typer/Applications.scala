@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core.*
-import ast.{Trees, tpd, untpd, desugar}
+import ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition}
 import Contexts.*
@@ -429,13 +429,25 @@ object Applications {
   /** Splice new method reference `meth` into existing application `app` */
   private def spliceMeth(meth: Tree, app: Tree)(using Context): Tree = app match {
     case Apply(fn, args) =>
+      def duplicateByNameArg(arg: Tree, formal: Type): Tree =
+        if formal.isByName then
+          // Default getter calls reuse earlier by-name argument trees. Force a copy
+          // of local symbols even when owner and types stay the same, otherwise the
+          // original and duplicated trees would share the same local definitions.
+          new TreeTypeMap(oldOwners = ctx.owner :: Nil, newOwners = ctx.owner :: Nil).transform(arg)
+        else arg
+
+      val args1 = fn.tpe.widen match
+        case mt: MethodType => args.zipWithConserve(mt.paramInfos)(duplicateByNameArg)
+        case _ => args
+
       // Constructors written with a leading implicit parameter list are normalized
       // to have one leading non-implicit parameter list. See NamerOps.normalizeIfConstructor.
       // However, a default getter for the implicit parameter will not reflect the augmented signature.
       // If leading empty args is detected for this case, but the default arg getter isNullaryMethod,
       // then the empty args are supplied as usual: $lessinit$greater$default$1()
       //
-      if args == Nil
+      if args1 == Nil
          && !fn.isInstanceOf[Apply]
          && app.tpe.isImplicitMethod
          && fn.symbol.isConstructor
@@ -443,7 +455,7 @@ object Applications {
       then
         meth
       else
-        spliceMeth(meth, fn).appliedToArgs(args)
+        spliceMeth(meth, fn).appliedToArgs(args1)
     case TypeApply(fn, targs) =>
       // Note: It is important that the type arguments `targs` are passed in new trees
       // instead of being spliced in literally. Otherwise, a type argument to a default
