@@ -143,8 +143,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   /**
    * Visit the class node and collect all referenced nested classes.
    */
-  def collectNestedClasses(classNode: ClassNode): (List[ClassBType], List[ClassBType]) = {
-    // type InternalName = String
+  def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
     val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
       def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
         ts.classBTypeFromInternalName(internalName).head.info.nestedClasses
@@ -159,7 +158,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
       }
     }
     c.visit(classNode)
-    (c.declaredInnerClasses.toList, c.referredInnerClasses.toList)
+    (c.declaredInnerClasses, c.referredInnerClasses)
   }
 
   /*
@@ -174,7 +173,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
    *
    * can-multi-thread
    */
-  final def addInnerClasses(jclass: asm.ClassVisitor, declaredInnerClasses: List[ClassBType], refedInnerClasses: List[ClassBType]): Unit = {
+  final def addInnerClasses(jclass: asm.ClassVisitor, declaredInnerClasses: Iterable[ClassBType], refedInnerClasses: Iterable[ClassBType]): Unit = {
     // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
     val allNestedClasses = new mutable.TreeSet[ClassBType]()(using Ordering.by(_.internalName))
     allNestedClasses ++= declaredInnerClasses
