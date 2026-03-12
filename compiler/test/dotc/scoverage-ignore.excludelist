@@ -28,10 +28,13 @@ i20053b.scala
 i2146.scala
 i23179.scala
 i23489.scala
+i25460.scala
 i5039.scala
 i8623.scala
 i8900a3.scala
 i9228.scala
+lazyVals_c3.0.0.scala
+lazyVals_c3.1.0.scala
 minicheck.scala
 minicheck-toplevel.scala
 mt-scrutinee-widen3.scala
@@ -41,4 +44,3 @@ skolems2.scala
 spurious-overload.scala
 tailrec.scala
 traitParams.scala
-i25460.scala
