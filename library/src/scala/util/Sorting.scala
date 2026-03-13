@@ -13,6 +13,8 @@
 package scala
 package util
 
+// Context bounds cannot carry a capture set
+// import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.reflect.ClassTag
 import scala.math.Ordering
