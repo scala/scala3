@@ -14,6 +14,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 object Product1 {

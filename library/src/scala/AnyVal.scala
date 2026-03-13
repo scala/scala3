@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** `AnyVal` is the root class of all *value types*, which describe values

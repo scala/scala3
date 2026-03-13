@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A marker trait that enables dynamic invocations. Instances `x` of this
