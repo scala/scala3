@@ -262,5 +262,6 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       """|Found documentation for scala/Some#
          |Some[A](value: A)
          |        ^^^^^^^^
+         |  @param value the contained value
          |""".stripMargin
     )

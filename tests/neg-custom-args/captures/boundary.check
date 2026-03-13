@@ -17,8 +17,8 @@
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from boundary.scala:72
-72 |    val local = Label[T]()
+   |This location contains code that was inlined from boundary.scala:86
+86 |    val local = Label[T]()
    |                ^^^^^^^^^^
     --------------------------------------------------------------------------------------------------------------------
    |
@@ -57,8 +57,8 @@
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from boundary.scala:74
-74 |    catch case ex: Break[T] @unchecked =>
+   |This location contains code that was inlined from boundary.scala:88
+88 |    catch case ex: Break[T] @unchecked =>
    |                   ^
     --------------------------------------------------------------------------------------------------------------------
    |
