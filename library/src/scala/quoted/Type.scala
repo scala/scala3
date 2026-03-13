@@ -4,7 +4,10 @@ import language.experimental.captureChecking
 
 import scala.annotation.{compileTimeOnly, experimental}
 
-/** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}`. */
+/** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}`.
+ *
+ *  @tparam T the type or type constructor being represented
+ */
 abstract class Type[T <: AnyKind] private[scala]:
   /** The type represented by `Type`. */
   type Underlying = T
@@ -13,7 +16,12 @@ end Type
 /** Methods to interact with the current `Type[T]` in scope. */
 object Type:
 
-  /** Shows a source code like representation of this type without syntax highlight. */
+  /** Shows a source code like representation of this type without syntax highlight.
+   *
+   *  @tparam T the type or type constructor to show
+   *  @param Type the implicit type representation of `T`
+   *  @param Quotes the implicit quotation context
+   */
   def show[T <: AnyKind](using Type[T])(using Quotes): String =
     import quotes.reflect.*
     TypeTree.of[T].show
@@ -43,6 +51,11 @@ object Type:
    *  }
    *  //}
    *  ```
+   *
+   *  @tparam T the singleton constant type to extract the value from
+   *  @param Type the implicit type representation of `T`
+   *  @param Quotes the implicit quotation context
+   *  @return `Some` with the constant value if `T` is a singleton constant type, `None` otherwise
    */
   def valueOfConstant[T](using Type[T])(using Quotes): Option[T] =
     ValueOf.unapply(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
@@ -67,6 +80,11 @@ object Type:
    *  }
    *  //}
    *  ```
+   *
+   *  @tparam T the tuple type of singleton constant types to extract values from
+   *  @param Type the implicit type representation of `T`
+   *  @param Quotes the implicit quotation context
+   *  @return `Some` with the tuple of constant values if all elements are singleton constant types, `None` otherwise
    */
   def valueOfTuple[T <: Tuple](using Type[T])(using Quotes): Option[T] =
     valueOfTuple(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
