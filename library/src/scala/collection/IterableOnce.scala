@@ -45,6 +45,8 @@ import IterableOnce.elemsToCopyToArray
  *
  *  @define coll collection
  *  @define ccoll $coll
+ *
+ *  @tparam A the element type of the collection
  */
 trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
 
@@ -53,6 +55,8 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
    *  If an `IterableOnce` object is in fact an [[scala.collection.Iterator]], this method always returns itself,
    *  in its current state, but if it is an [[scala.collection.Iterable]], this method always returns a new
    *  [[scala.collection.Iterator]].
+   *
+   *  @return an iterator over all elements of this $coll
    */
   def iterator: Iterator[A]^{this}
 
@@ -75,6 +79,8 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
    *  [[scala.collection.Stepper.EfficientSplit]], the converters in [[scala.jdk.StreamConverters]]
    *  allow creating parallel streams, whereas bare `Stepper`s can be converted only to sequential
    *  streams.
+   *
+   *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
    */
   def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S^{this} = {
     import convert.impl._
@@ -288,7 +294,11 @@ object IterableOnce {
     math.max(0, total)
   }
 
-  /** Calls `copyToArray` on the given collection, regardless of whether or not it is an `Iterable`. */
+  /** Calls `copyToArray` on the given collection, regardless of whether or not it is an `Iterable`.
+   *
+   *  @tparam A the element type of the source collection
+   *  @tparam B the element type of the destination array, a supertype of `A`
+   */
   @inline private[collection] def copyElemsToArray[A, B >: A](elems: IterableOnce[A]^,
                                                               xs: Array[B],
                                                               start: Int = 0,
@@ -332,6 +342,9 @@ object IterableOnce {
  *              The order of applications of the operator is unspecified and may be nondeterministic.
  *  @define exactlyOnce
  *              Each element appears exactly once in the computation.
+ *
+ *  @tparam A the element type of the collection
+ *  @tparam CC the type constructor for the collection's "same element type" results (e.g., `List` for `List[Int]`)
  */
 transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
@@ -626,6 +639,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
 
   /** Applies `f` to each element for its side effects.
    *  Note: `U` parameter needed to help scalac's type inference.
+   *
+   *  @tparam U the return type of `f`; the value is discarded, but the type parameter aids type inference
+   *  @param f the function to apply to each element for its side effects
    */
   def foreach[U](f: A => U): Unit = {
     val it = iterator
@@ -1264,6 +1280,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $mayNotTerminateInf
    *  $orderDependent
    *
+   *  @tparam B the result type of the partial function
    *  @param pf   the partial function
    *  @return     an option value containing pf applied to the first
    *              value for which it is defined, or `None` if none exists.
@@ -1457,6 +1474,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *      xs.to(ArrayBuffer)
    *      xs.to(BitSet) // for xs: Iterable[Int]
    *  ```
+   *
+   *  @tparam C1 the target collection type
+   *  @param factory the factory for the target collection type
+   *  @return a new collection of type `C1` containing all elements of this $coll
    */
   def to[C1](factory: Factory[A, C1]): C1^{this} = factory.fromSpecific(this)
 
@@ -1479,7 +1500,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  @tparam K The key type for the resulting map.
    *  @tparam V The value type for the resulting map.
-   *  @param ev An implicit coercion from `A` to `[K, V]`.
+   *  @param ev an implicit evidence that `A` is a subtype of `(K, V)`
    *  @return This $coll as a `Map[K, V]`.
    */
   def toMap[K, V](implicit ev: A <:< (K, V)): immutable.Map[K, V] =

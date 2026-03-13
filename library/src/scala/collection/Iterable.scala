@@ -66,6 +66,8 @@ trait Iterable[+A] extends IterableOnce[A]
    *  published, but provides the exclusive access needed by
    *  `scala.runtime.ScalaRunTime.stringOf` (and a few tests in
    *  the test suite).
+   *
+   *  @return the class name of this collection, as returned by `className`
    */
   private[scala] final def collectionClassName: String = className
 
@@ -113,6 +115,7 @@ trait Iterable[+A] extends IterableOnce[A]
  *            with a different type of element `B` (e.g. `map`) return a `CC[B]`.
  *  @tparam C  type of the collection (e.g. `List[Int]`, `String`, `BitSet`). Operations returning a collection
  *            with the same type of element (e.g. `drop`, `filter`) return a `C`.
+ *  @tparam A the element type of the collection
  *
  *  @define Coll Iterable
  *  @define coll iterable collection
@@ -175,6 +178,9 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *       might be unsound. However, as long as it is called with an
    *       `Iterable[A]` obtained from `this` collection (as it is the case in the
    *       implementations of operations where we use a `View[A]`), it is safe.
+   *
+   *  @param coll the source collection to convert
+   *  @return a new collection of type `C` containing the elements of `coll`
    */
   protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): C^{coll}
 
@@ -183,6 +189,8 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @note When implementing a custom collection type and refining `CC` to the new type, this
    *       method needs to be overridden to return a factory for the new type (the compiler will
    *       issue an error otherwise).
+   *
+   *  @return the companion factory object for this collection type
    */
   def iterableFactory: IterableFactory[CC]
 
@@ -300,6 +308,8 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  this.sizeIs >= size    // this.sizeCompare(size) >= 0
    *  this.sizeIs > size     // this.sizeCompare(size) > 0
    *  ```
+   *
+   *  @return a wrapper that allows size comparisons using operators such as `<`, `<=`, `==`, `!=`, `>=`, and `>`
    */
   @inline final def sizeIs: IterableOps.SizeCompareOps^{this} = new IterableOps.SizeCompareOps(caps.unsafe.unsafeAssumePure(this) /* see comment in SizeCompareOps*/)
 
@@ -427,6 +437,9 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  The default implementation provided here needs to traverse the collection twice.
    *  Strict collections have an overridden version of `partition` in `StrictOptimizedIterableOps`,
    *  which requires only a single traversal.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair of ${coll}s: the first containing all elements that satisfy `p`, the second containing those that do not
    */
   def partition(p: A => Boolean): (C^{this, p}, C^{this, p}) = {
     val first = new View.Filter(this, p, isFlipped = false)
@@ -589,6 +602,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @tparam B the type of values returned by the transformation function
    *  @param key the discriminator function
    *  @param f the element transformation function
+   *  @return a map associating each key `k` produced by `key` with a $coll of values produced by applying `f` to elements that map to `k`
    */
   def groupMap[K, B](key: A => K)(f: A => B): immutable.Map[K, CC[B]] = {
     val m = mutable.Map.empty[K, Builder[B, CC[B]]]
@@ -619,6 +633,12 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  ```
    *
    *  $willForceEvaluation
+   *
+   *  @tparam K the type of keys returned by the discriminator function
+   *  @tparam B the type of values returned by the transformation function
+   *  @param key the discriminator function
+   *  @param f the element transformation function
+   *  @param reduce the reduction function used to combine values mapped to the same key
    */
   def groupMapReduce[K, B](key: A => K)(f: A => B)(reduce: (B, B) => B): immutable.Map[K, B] = {
     val m = mutable.Map.empty[K, B]
@@ -730,7 +750,11 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     }
   }
 
-  /** Alias for `concat`. */
+  /** Alias for `concat`.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param suffix the iterable to append to this $coll
+   */
   @inline final def ++ [B >: A](suffix: IterableOnce[B]^): CC[B]^{this, suffix} = concat(suffix)
 
   /** Returns a $ccoll formed from this $coll and another iterable collection
@@ -754,6 +778,8 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  If one of the two collections is shorter than the other,
    *  placeholder elements are used to extend the shorter collection to the length of the longer.
    *
+   *  @tparam A1 the type of the first element in each result pair (supertype of `A`)
+   *  @tparam B the type of the second element in each result pair
    *  @param that     the iterable providing the second half of each result pair
    *  @param thisElem the element to be used to fill up the result if this $coll is shorter than `that`.
    *  @param thatElem the element to be used to fill up the result if `that` is shorter than this $coll.
@@ -871,7 +897,10 @@ object IterableOps {
     // is pending/pos-custom-args/captures/SizeCompareOps-redux.scala.
     // Without the `^`s, the `sizeIs` method needs an unsafeAssumePure.
 
-    /** Tests if the size of the collection is less than some value. */
+    /** Tests if the size of the collection is less than some value.
+     *
+     *  @param size the value to compare the collection size against
+     */
     @inline def <(size: Int): Boolean = it.sizeCompare(size) < 0
     /** Tests if the size of the collection is less than or equal to some value. */
     @inline def <=(size: Int): Boolean = it.sizeCompare(size) <= 0
@@ -881,7 +910,10 @@ object IterableOps {
     @inline def !=(size: Int): Boolean = it.sizeCompare(size) != 0
     /** Tests if the size of the collection is greater than or equal to some value. */
     @inline def >=(size: Int): Boolean = it.sizeCompare(size) >= 0
-    /** Tests if the size of the collection is greater than some value. */
+    /** Tests if the size of the collection is greater than some value.
+     *
+     *  @param size the value to compare the collection size against
+     */
     @inline def >(size: Int): Boolean = it.sizeCompare(size) > 0
   }
 
@@ -937,7 +969,10 @@ object Iterable extends IterableFactory.Delegate[Iterable](immutable.Iterable) {
   }
 }
 
-/** Explicit instantiation of the `Iterable` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Iterable` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the collection
+ */
 abstract class AbstractIterable[+A] extends Iterable[A]
 
 /** This trait provides default implementations for the factory methods `fromSpecific` and
@@ -946,6 +981,9 @@ abstract class AbstractIterable[+A] extends Iterable[A]
  *
  *  The default implementations in this trait can be used in the common case when `CC[A]` is the
  *  same as `C`.
+ *
+ *  @tparam A the element type of the collection
+ *  @tparam CC the type constructor of the collection
  */
 trait IterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]]] extends IterableOps[A, CC, CC[A @uncheckedVariance]] {
   protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll} = iterableFactory.from(coll)
@@ -962,6 +1000,9 @@ trait IterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]]] extends I
  *
  *  The default implementations in this trait can be used in the common case when `CC[A]` is the
  *  same as `C`.
+ *
+ *  @tparam A the element type of the collection
+ *  @tparam CC the type constructor of the collection
  */
 trait EvidenceIterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]], Ev[_]] extends IterableOps[A, CC, CC[A @uncheckedVariance]] {
   protected def evidenceIterableFactory: EvidenceIterableFactory[CC, Ev]
@@ -982,6 +1023,9 @@ trait EvidenceIterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]], E
  *
  *  The default implementations in this trait can be used in the common case when `CC[A]` is the
  *  same as `C`.
+ *
+ *  @tparam A the element type of the sorted set
+ *  @tparam CC the type constructor of the sorted set
  */
 trait SortedSetFactoryDefaults[+A,
     +CC[X] <: SortedSet[X] & SortedSetOps[X, CC, CC[X]],
@@ -1008,6 +1052,10 @@ trait SortedSetFactoryDefaults[+A,
  *
  *  The default implementations in this trait can be used in the common case when `CC[A]` is the
  *  same as `C`.
+ *
+ *  @tparam K the type of keys in the map
+ *  @tparam V the type of values in the map
+ *  @tparam CC the type constructor of the map
  */
 trait MapFactoryDefaults[K, +V,
     +CC[x, y] <: IterableOps[(x, y), Iterable, Iterable[(x, y)]],
@@ -1036,6 +1084,10 @@ trait MapFactoryDefaults[K, +V,
  *
  *  The default implementations in this trait can be used in the common case when `CC[A]` is the
  *  same as `C`.
+ *
+ *  @tparam K the type of keys in the sorted map
+ *  @tparam V the type of values in the sorted map
+ *  @tparam CC the type constructor of the sorted map
  */
 trait SortedMapFactoryDefaults[K, +V,
     +CC[x, y] <:  Map[x, y] & SortedMapOps[x, y, CC, CC[x, y]] & UnsortedCC[x, y],

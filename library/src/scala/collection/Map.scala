@@ -21,7 +21,11 @@ import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.StringBuilder
 import scala.util.hashing.MurmurHash3
 
-/** Base Map type. */
+/** Base Map type.
+ *
+ *  @tparam K the type of keys in this map
+ *  @tparam V the type of values associated with keys in this map
+ */
 trait Map[K, +V]
   extends Iterable[(K, V)]
     with MapOps[K, V, Map, Map[K, V]]
@@ -60,8 +64,8 @@ trait Map[K, +V]
    *  ```
    *
    *
-   *  @param o The map to which this map is compared
-   *  @return `true` if the two maps are equal according to the description
+   *  @param o the object to compare this map with for equality
+   *  @return `true` if `o` is a `Map` with the same size and identical key-value mappings
    */
   override def equals(o: Any): Boolean =
     (this eq o.asInstanceOf[AnyRef]) || (o match {
@@ -107,7 +111,10 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
 
   override def view: MapView[K, V]^{this} = new MapView.Id(this)
 
-  /** Returns a [[Stepper]] for the keys of this map. See method [[stepper]]. */
+  /** Returns a [[Stepper]] for the keys of this map. See method [[stepper]].
+   *
+   *  @tparam S the type of `Stepper` to use, determined by the implicit `StepperShape`
+   */
   def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S = {
     import convert.impl._
     val s = shape.shape match {
@@ -119,7 +126,10 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
     s.asInstanceOf[S]
   }
 
-  /** Returns a [[Stepper]] for the values of this map. See method [[stepper]]. */
+  /** Returns a [[Stepper]] for the values of this map. See method [[stepper]].
+   *
+   *  @tparam S the type of `Stepper` to use, determined by the implicit `StepperShape`
+   */
   def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S = {
     import convert.impl._
     val s = shape.shape match {
@@ -133,6 +143,10 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
 
   /** Similar to `fromIterable`, but returns a Map collection type.
    *  Note that the return type is now `CC[K2, V2]`.
+   *
+   *  @tparam K2 the key type of the returned map
+   *  @tparam V2 the value type of the returned map
+   *  @param it the iterable of key-value pairs to convert into a map
    */
   @`inline` protected final def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]^): CC[K2, V2]^{it} = mapFactory.from(it)
 
@@ -141,6 +155,8 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    *  @note When implementing a custom collection type and refining `CC` to the new type, this
    *       method needs to be overridden to return a factory for the new type (the compiler will
    *       issue an error otherwise).
+   *
+   *  @return the `MapFactory` companion object for this map type
    */
   def mapFactory: MapFactory[CC]
 
@@ -271,6 +287,9 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
 
   /** Applies `f` to each key/value pair for its side effects
    *  Note: [U] parameter needed to help scalac's type inference.
+   *
+   *  @tparam U the result type of the function `f`; not used in the method result but aids type inference
+   *  @param f the function to apply to each key-value pair
    */
   def foreachEntry[U](f: (K, V) => U): Unit = {
     val it = iterator
@@ -303,6 +322,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    *  but it may be overridden by subclasses.
    *
    *  @param key the given key value for which a binding is missing.
+   *  @return the value associated with the given key when it is not found in the map
    *  @throws NoSuchElementException if no default value is defined
    */
   @throws[NoSuchElementException]
@@ -331,6 +351,8 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
 
   /** Builds a new map by applying a function to all elements of this $coll.
    *
+   *  @tparam K2 the key type of the returned map
+   *  @tparam V2 the value type of the returned map
    *  @param f      the function to apply to each element.
    *  @return       a new $coll resulting from applying the given function
    *                `f` to each element of this $coll and collecting the results.
@@ -353,6 +375,8 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   /** Builds a new map by applying a function to all elements of this $coll
    *  and using the elements of the resulting collections.
    *
+   *  @tparam K2 the key type of the returned map
+   *  @tparam V2 the value type of the returned map
    *  @param f      the function to apply to each element.
    *  @return       a new $coll resulting from applying the given collection-valued function
    *                `f` to each element of this $coll and concatenating the results.
@@ -363,6 +387,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    *  right hand operand. The element type of the $coll is the most specific superclass encompassing
    *  the element types of the two operands.
    *
+   *  @tparam V2 the value type of the returned map, a supertype of `V`
    *  @param suffix   the iterable to append.
    *  @return       a new $coll which contains all elements
    *                of this $coll followed by all elements of `suffix`.
@@ -374,7 +399,11 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
 
   // Not final because subclasses refine the result type, e.g. in SortedMap, the result type is
   // SortedMap's CC, while Map's CC is fixed to Map
-  /** Alias for `concat`. */
+  /** Alias for `concat`.
+   *
+   *  @tparam V2 the value type of the returned map, a supertype of `V`
+   *  @param xs the key-value pairs to append
+   */
   /*@`inline` final*/ def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): CC[K, V2]^{this, xs} = concat(xs)
 
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type =
@@ -428,7 +457,12 @@ object MapOps {
   }
 
 
-  /** The implementation class of the set returned by `keySet`, for pure maps. */
+  /** The implementation class of the set returned by `keySet`, for pure maps.
+   *
+   *  @tparam K the key type of the underlying map
+   *  @tparam V the value type of the underlying map
+   *  @tparam CC the type constructor of the underlying map
+   */
   private[collection] class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
     def iterator: Iterator[K] = mp.keysIterator
     def diff(that: Set[K]): Set[K] = LazyKeySet.this.fromSpecific(this.view.filterNot(that))
@@ -438,7 +472,12 @@ object MapOps {
     override def isEmpty: Boolean = mp.isEmpty
   }
 
-  /** The implementation class of the set returned by `keySet`, for impure maps (i.e. views). */
+  /** The implementation class of the set returned by `keySet`, for impure maps (i.e. views).
+   *
+   *  @tparam K the key type of the underlying map
+   *  @tparam V the value type of the underlying map
+   *  @tparam CC the type constructor of the underlying map
+   */
   private[collection] class StrictKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](@annotation.constructorOnly mp: MapOps[K, V, CC, C]^) extends AbstractSet[K] with DefaultSerializable {
     val allKeys = mp.keysIterator.to(mutable.LinkedHashSet)
     def iterator: Iterator[K] = allKeys.iterator
@@ -460,5 +499,9 @@ object Map extends MapFactory.Delegate[Map](immutable.Map) {
   private val DefaultSentinelFn: () -> AnyRef = () => DefaultSentinel
 }
 
-/** Explicit instantiation of the `Map` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Map` trait to reduce class file size in subclasses.
+ *
+ *  @tparam K the type of keys in this map
+ *  @tparam V the type of values associated with keys in this map
+ */
 abstract class AbstractMap[K, +V] extends AbstractIterable[(K, V)] with Map[K, V]

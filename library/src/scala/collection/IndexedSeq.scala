@@ -21,7 +21,10 @@ import scala.collection.Searching.{Found, InsertionPoint, SearchResult}
 import scala.collection.Stepper.EfficientSplit
 import scala.math.Ordering
 
-/** Base trait for indexed sequences that have efficient `apply` and `length`. */
+/** Base trait for indexed sequences that have efficient `apply` and `length`.
+ *
+ *  @tparam A the element type of the indexed sequence
+ */
 trait IndexedSeq[+A] extends Seq[A]
   with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
   with IterableFactoryDefaults[A, IndexedSeq] {
@@ -34,7 +37,12 @@ trait IndexedSeq[+A] extends Seq[A]
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](immutable.IndexedSeq)
 
-/** Base trait for indexed Seq operations. */
+/** Base trait for indexed Seq operations.
+ *
+ *  @tparam A the element type of the sequence
+ *  @tparam CC the type constructor for the resulting collection (e.g., `IndexedSeq`)
+ *  @tparam C the type of the concrete collection
+ */
 transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self: IndexedSeqOps[A, CC, C]^ =>
 
   def iterator: Iterator[A]^{this} = view.iterator
@@ -155,7 +163,11 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
   }
 }
 
-/** A fast sliding iterator for IndexedSeqs which uses the underlying `slice` operation. */
+/** A fast sliding iterator for IndexedSeqs which uses the underlying `slice` operation.
+ *
+ *  @tparam A the element type of the sequence
+ *  @tparam CC the type constructor for the resulting collection (e.g., `IndexedSeq`)
+ */
 private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, CC, C]^, size: Int, step: Int)
   extends AbstractIterator[C^{s}] {
   // CC note: seems like the compiler cannot figure out that this class <: Iterator[C^{s}],

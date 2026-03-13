@@ -21,6 +21,9 @@ import scala.collection.Stepper.EfficientSplit
 
 /** An implicit StepperShape instance is used in the [[IterableOnce.stepper]] to return a possibly
  *  specialized Stepper `S` according to the element type `T`.
+ *
+ *  @tparam T the element type of the collection (may be a primitive or reference type)
+ *  @tparam S the type of `Stepper` to use, possibly specialized for primitive types
  */
 sealed trait StepperShape[-T, S <: Stepper[?]] { self =>
   /** Returns the Int constant (as defined in the `StepperShape` companion object) for this `StepperShape`. */
@@ -28,11 +31,15 @@ sealed trait StepperShape[-T, S <: Stepper[?]] { self =>
 
   /** Creates an unboxing primitive sequential Stepper from a boxed `AnyStepper`.
    *  This is an identity operation for reference shapes. 
+   *
+   *  @param st the boxed `AnyStepper` to convert into a possibly specialized stepper
    */
   def seqUnbox(st: AnyStepper[T]^): S^{st}
 
   /** Creates an unboxing primitive parallel (i.e. `with EfficientSplit`) Stepper from a boxed `AnyStepper`.
    *  This is an identity operation for reference shapes. 
+   *
+   *  @param st the boxed `AnyStepper` with `EfficientSplit` capability to convert into a possibly specialized stepper
    */
   def parUnbox(st: (AnyStepper[T] & EfficientSplit)^): (S & EfficientSplit)^{st}
 }
