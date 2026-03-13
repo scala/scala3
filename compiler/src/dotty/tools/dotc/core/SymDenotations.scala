@@ -2125,7 +2125,7 @@ object SymDenotations {
       if (proceedWithEnter(sym, mscope)) {
         enterNoReplace(sym, mscope)
         val nxt = this.nextInRun
-        if (nxt.validFor.code > this.validFor.code)
+        if (nxt.validFor > this.validFor)
           this.nextInRun.asSymDenotation.asClass.enter(sym)
       }
     }
@@ -2967,10 +2967,10 @@ object SymDenotations {
     }
 
     def isValidAt(phase: Phase)(using Context) =
-      checkedPeriod.code == ctx.period.code ||
+      checkedPeriod == ctx.period ||
         createdAt.runId == ctx.runId &&
-        createdAt.phaseId < unfusedPhases.length &&
-        sameGroup(unfusedPhases(createdAt.phaseId), phase) &&
+        createdAt.firstPhaseId < unfusedPhases.length &&
+        sameGroup(unfusedPhases(createdAt.firstPhaseId), phase) &&
         { checkedPeriod = ctx.period; true }
   }
 

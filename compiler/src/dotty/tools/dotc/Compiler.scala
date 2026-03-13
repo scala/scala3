@@ -153,11 +153,11 @@ class Compiler {
     List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 
-  // TODO: Initially 0, so that the first nextRunId call would return InitialRunId == 1
-  // Changing the initial runId from 1 to 0 makes the scala2-library-bootstrap fail to compile,
+  // TODO: Initially InitialRunId - 1, so that the first nextRunId call would return InitialRunId
+  // Setting the initial runId to InitialRunId - 1 makes the scala2-library-bootstrap fail to compile,
   // when the underlying issue is fixed, please update dotc.profiler.RealProfiler.chromeTrace logic
-  private var runId: Int = 1
-  def nextRunId: Int = {
+  private var runId: Periods.RunId = Periods.InitialRunId
+  def nextRunId: Periods.RunId = {
     runId += 1; runId
   }
 
