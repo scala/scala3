@@ -243,6 +243,10 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case InferUnionWarningID // errorNumber: 225
   case TypeParameterShadowsTypeID // errorNumber: 226
   case PrivateShadowsTypeID // errorNumber: 227
+  case ValueClassCannotExtendIdentityClassID // errorNumber: 228
+  case ValueClassMustNotExtendTraitWithMutableFieldID // errorNumber: 229
+  case IncorrectValueClassDeclarationID // errorNumber: 230
+  case ValhallaTraitsMayNotHaveSelfTypesWithVarsID // errorNumber: 231
 
   def errorNumber = ordinal - 1
 

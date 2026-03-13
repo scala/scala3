@@ -27,7 +27,7 @@ import dotty.tools.dotc.util.SourcePosition
  */
 class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(using Context) {
 
-  lazy val classfileVersion: Int = BackendUtils.classfileVersionMap(ppa.compilerSettings.target.toInt)
+  lazy val classfileVersion: Int = if compilerSettings.experimental then (71 + asm.Opcodes.V_PREVIEW) else BackendUtils.classfileVersionMap(ppa.compilerSettings.target.toInt)
 
   lazy val extraProc: Int = {
     import GenBCodeOps.addFlagIf
