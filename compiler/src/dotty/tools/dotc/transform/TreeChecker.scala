@@ -25,6 +25,7 @@ import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 import cc.RetainingAnnotation
+import util.chaining.*
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -512,12 +513,12 @@ object TreeChecker {
       checkNotRepeated(super.typedSelect(tree, pt))
     }
 
-    override def typedThis(tree: untpd.This)(using Context): Tree = {
-      val res = super.typedThis(tree)
-      val cls = res.symbol
-      assert(cls.isStaticOwner || ctx.owner.isContainedIn(cls), i"error while typing $tree, ${ctx.owner} is not contained in $cls")
-      res
-    }
+    override def typedThis(tree: untpd.This)(using Context): Tree =
+      super.typedThis(tree)
+        .tap: res =>
+          val cls = res.symbol
+          val ok = cls.isStaticOwner || ctx.owner.isContainedIn(cls)
+          assert(ok, i"error while typing $tree, ${ctx.owner} is not contained in $cls")
 
     override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
       assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")

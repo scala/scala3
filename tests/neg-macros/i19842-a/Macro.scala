@@ -12,7 +12,7 @@ object Macros {
     val modSym: Symbol = Symbol.newModule(
       Symbol.spliceOwner,
       name,
-      Flags.Implicit,
+      Flags.Given,
       Flags.EmptyFlags,
       _ => List(TypeRepr.of[Object], TypeRepr.of[Serializer[T]]),
       _ => Nil,
@@ -20,7 +20,18 @@ object Macros {
     )
 
     val (modValDef: ValDef, modClassDef: ClassDef) =
-      ClassDef.module(modSym, List(TypeTree.of[Serializer[T]]), Nil)
+      def bye: (ValDef, ClassDef) = ???
+      try {
+        ClassDef.module(modSym, List(TypeTree.of[Serializer[T]]), Nil)
+        assert(false, "Expected AssertionError")
+      }
+      catch {
+        case ae: AssertionError
+          if ae.getMessage.contains("Parents of class symbol differs from the parents in the tree")
+        =>
+          throw RuntimeException(ae.getMessage)
+      }
+      bye
 
     Block(List(modValDef, modClassDef), Ref(modSym)).asExprOf[Serializer[T]]
   }
