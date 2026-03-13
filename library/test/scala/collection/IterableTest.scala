@@ -94,6 +94,80 @@ class IterableTest {
     check(unknown, unknown)
   }
 
+  @Test
+  def sizeIsInt(): Unit = {
+    val seq = Seq(1, 2, 3)
+
+    assertFalse(seq.sizeIs < 2)
+    assertFalse(seq.sizeIs < 3)
+    assert(seq.sizeIs < 4)
+
+    assertFalse(seq.sizeIs <= 2)
+    assert(seq.sizeIs <= 3)
+    assert(seq.sizeIs <= 4)
+
+    assertFalse(seq.sizeIs == 2)
+    assert(seq.sizeIs == 3)
+    assertFalse(seq.sizeIs == 4)
+
+    assert(seq.sizeIs != 2)
+    assertFalse(seq.sizeIs != 3)
+    assert(seq.sizeIs != 4)
+
+    assert(seq.sizeIs >= 2)
+    assert(seq.sizeIs >= 3)
+    assertFalse(seq.sizeIs >= 4)
+
+    assert(seq.sizeIs > 2)
+    assertFalse(seq.sizeIs > 3)
+    assertFalse(seq.sizeIs > 4)
+  }
+
+  @Test
+  def sizeIsIterable(): Unit = {
+    def check[I1[X] <: Iterable[X], I2[X] <: Iterable[X]]
+    (f1: IterableFactory[I1], f2: IterableFactory[I2]): Unit = {
+      val it = f1(1, 2, 3)
+
+      val t2 = f2(1, 2)
+      val t3 = f2(1, 2, 3)
+      val t4 = f2(1, 2, 3, 4)
+
+      assertFalse(it.sizeIs < t2)
+      assertFalse(it.sizeIs < t3)
+      assert(it.sizeIs < t4)
+
+      assertFalse(it.sizeIs <= t2)
+      assert(it.sizeIs <= t3)
+      assert(it.sizeIs <= t4)
+
+      assertFalse(it.sizeIs == t2)
+      assert(it.sizeIs == t3)
+      assertFalse(it.sizeIs == t4)
+
+      assert(it.sizeIs != t2)
+      assertFalse(it.sizeIs != t3)
+      assert(it.sizeIs != t4)
+
+      assert(it.sizeIs >= t2)
+      assert(it.sizeIs >= t3)
+      assertFalse(it.sizeIs >= t4)
+
+      assert(it.sizeIs > t2)
+      assertFalse(it.sizeIs > t3)
+      assertFalse(it.sizeIs > t4)
+    }
+
+    // factories for `Seq`s with known and unknown size
+    val known: IterableFactory[IndexedSeq] = Vector
+    val unknown: IterableFactory[LinearSeq] = List
+
+    check(known, known)
+    check(known, unknown)
+    check(unknown, known)
+    check(unknown, unknown)
+  }
+
   @Test def copyToArray(): Unit = {
     def check(a: Array[Int], copyToArray: Array[Int] => Int)(n: Int)(start: Int, end: Int) = {
 
