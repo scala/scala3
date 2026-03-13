@@ -13,6 +13,7 @@
 package scala
 package io
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** ANSI escape codes providing control over text formatting and color on supporting text terminals.
