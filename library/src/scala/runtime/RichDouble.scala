@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 final class RichDouble(val self: Double) extends AnyVal with FractionalProxy[Double] {

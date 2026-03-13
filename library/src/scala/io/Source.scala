@@ -17,6 +17,7 @@ import scala.collection.{AbstractIterator, BufferedIterator}
 import java.io.{Closeable, FileInputStream, FileNotFoundException, InputStream, PrintStream, File => JFile}
 import java.net.{URI, URL}
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.nowarn
 
@@ -146,8 +147,8 @@ object Source {
   def createBufferedSource(
     inputStream: InputStream,
     bufferSize: Int = DefaultBufSize,
-    reset: (() => Source) | Null = null,
-    close: (() => Unit) | Null = null
+    reset: (() -> Source) | Null = null,
+    close: (() -> Unit) | Null = null
   )(implicit codec: Codec): BufferedSource = {
     // workaround for default arguments being unable to refer to other parameters
     val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(using codec) else reset
@@ -192,7 +193,7 @@ object Source {
  */
 abstract class Source extends Iterator[Char] with Closeable {
   /** The actual iterator. */
-  protected val iter: Iterator[Char]
+  protected val iter: Iterator[Char]^{this}
 
   // ------ public values
 
@@ -203,10 +204,10 @@ abstract class Source extends Iterator[Char] with Closeable {
 
   private def lineNum(line: Int): String = (getLines() drop (line - 1) take 1).mkString
 
-  class LineIterator extends AbstractIterator[String] with Iterator[String] {
+  class LineIterator extends AbstractIterator[String] with Iterator[String] uses Source.this.iter {
     private val sb = new StringBuilder
 
-    lazy val iter: BufferedIterator[Char] = Source.this.iter.buffered
+    lazy val iter: BufferedIterator[Char]^{Source.this.iter} = Source.this.iter.buffered
     def isNewline(ch: Char): Boolean = ch == '\r' || ch == '\n'
     def getc(): Boolean = iter.hasNext && {
       val ch = iter.next()
@@ -234,7 +235,7 @@ abstract class Source extends Iterator[Char] with Closeable {
    *  It will treat any of \r\n, \r, or \n as a line separator (longest match) - if
    *  you need more refined behavior you can subclass Source#LineIterator directly.
    */
-  def getLines(): Iterator[String] = new LineIterator()
+  def getLines(): Iterator[String]^{this} = new LineIterator()
 
   /** Returns `**true**` if this source has more characters. */
   def hasNext: Boolean = iter.hasNext
@@ -243,7 +244,7 @@ abstract class Source extends Iterator[Char] with Closeable {
   def next(): Char = positioner.next()
 
   @nowarn("cat=deprecation")
-  class Positioner(encoder: Position) {
+  class Positioner(encoder: Position) uses Source.this.iter uses_init Source.this {
     def this() = this(RelaxedPosition)
     /** the last character returned by next. */
     var ch: Char = compiletime.uninitialized
@@ -280,8 +281,8 @@ abstract class Source extends Iterator[Char] with Closeable {
   object RelaxedPosition extends Position {
     def checkInput(line: Int, column: Int): Unit = ()
   }
-  object RelaxedPositioner extends Positioner(RelaxedPosition) { }
-  object NoPositioner extends Positioner(Position) {
+  object RelaxedPositioner extends Positioner(RelaxedPosition) uses Source.this { }
+  object NoPositioner extends Positioner(Position) uses Source.this {
     override def next(): Char = iter.next()
   }
   def ch: Char = positioner.ch
@@ -330,16 +331,16 @@ abstract class Source extends Iterator[Char] with Closeable {
   }
 
   @annotation.stableNull
-  private var resetFunction: (() => Source) | Null = null
+  private var resetFunction: (() -> Source) | Null = null
   @annotation.stableNull
-  private var closeFunction: (() => Unit) | Null = null
-  private var positioner: Positioner = RelaxedPositioner
+  private var closeFunction: (() -> Unit) | Null = null
+  private var positioner: Positioner^{this} = RelaxedPositioner
 
-  def withReset(f: (() => Source) | Null): this.type = {
+  def withReset(f: (() -> Source) | Null): this.type = {
     resetFunction = f
     this
   }
-  def withClose(f: (() => Unit) | Null): this.type = {
+  def withClose(f: (() -> Unit) | Null): this.type = {
     closeFunction = f
     this
   }

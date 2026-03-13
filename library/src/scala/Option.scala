@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 object Option {
@@ -351,7 +352,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
   /** Necessary to keep $option from being implicitly converted to
    *  [[scala.collection.Iterable]] in `for` comprehensions.
    */
-  @inline final def withFilter(p: A => Boolean): WithFilter = new WithFilter(p)
+  @inline final def withFilter(p: A -> Boolean): WithFilter = new WithFilter(p)
 
   /** We need a whole WithFilter class to honor the "doesn't create a new
    *  collection" contract even though it seems unlikely to matter much in a
@@ -361,7 +362,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
     def map[B](f: A => B): Option[B] = self filter p map f
     def flatMap[B](f: A => Option[B]): Option[B] = self filter p flatMap f
     def foreach[U](f: A => U): Unit = self filter p foreach f
-    def withFilter(q: A => Boolean): WithFilter = new WithFilter(x => p(x) && q(x))
+    def withFilter(q: A => Boolean): WithFilter^{this, q} = new WithFilter(x => p(x) && q(x))
   }
 
   /** Tests whether the option contains a given value as an element.
@@ -460,7 +461,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @return the result of applying `pf` to this $option's
    *  value (if possible), or $none.
    */
-  @inline final def collect[B](pf: PartialFunction[A, B]): Option[B] =
+  @inline final def collect[B](pf: PartialFunction[A, B]^): Option[B] =
     if (!isEmpty) pf.lift(this.get) else None
 
   /** Returns this $option if it is nonempty,

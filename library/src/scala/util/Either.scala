@@ -13,6 +13,7 @@
 package scala
 package util
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** Represents a value of one of two possible types (a disjoint union).

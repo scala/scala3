@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 final class RichByte(val self: Byte) extends AnyVal with ScalaWholeNumberProxy[Byte] {

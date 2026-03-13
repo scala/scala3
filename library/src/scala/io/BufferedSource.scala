@@ -12,6 +12,7 @@
 
 package scala.io
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.io.{ InputStream, BufferedReader, InputStreamReader, PushbackReader }
 import Source.DefaultBufSize
@@ -37,7 +38,7 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
     bufferedReader()
   }
 
-  override val iter = (
+  override val iter: Iterator[Char]^{this} = (
     Iterator
     continually (codec wrap charReader.read())
     takeWhile (_ != -1)

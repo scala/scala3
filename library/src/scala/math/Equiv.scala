@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.util.Comparator
 import scala.annotation.migration
@@ -59,10 +60,10 @@ object Equiv extends LowPriorityEquiv {
   def fromComparator[T](cmp: Comparator[T]): Equiv[T] = {
     (x, y) => cmp.compare(x, y) == 0
   }
-  def fromFunction[T](cmp: (T, T) => Boolean): Equiv[T] = {
+  def fromFunction[T](cmp: (T, T) => Boolean): Equiv[T]^{cmp} = {
     (x, y) => cmp(x, y)
   }
-  def by[T, S: Equiv](f: T => S): Equiv[T] =
+  def by[T, S: Equiv](f: T => S): Equiv[T]^{f} =
     ((x, y) => implicitly[Equiv[S]].equiv(f(x), f(y)))
 
   @inline def apply[T: Equiv]: Equiv[T] = implicitly[Equiv[T]]
@@ -72,7 +73,7 @@ object Equiv extends LowPriorityEquiv {
   private final val optionSeed   = 43
   private final val iterableSeed = 47
 
-  private final class IterableEquiv[CC[X] <: Iterable[X], T](private val eqv: Equiv[T]) extends Equiv[CC[T]] {
+  private final class IterableEquiv[CC[X] <: Iterable[X], T](private val eqv: Equiv[T]^) extends Equiv[CC[T]] {
     def equiv(x: CC[T], y: CC[T]): Boolean = {
       val xe = x.iterator
       val ye = y.iterator
@@ -96,10 +97,10 @@ object Equiv extends LowPriorityEquiv {
     /** Not in the standard scope due to the potential for divergence:
      *  For instance `implicitly[Equiv[Any]]` diverges in its presence.
      */
-    implicit def seqEquiv[CC[X] <: scala.collection.Seq[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
+    implicit def seqEquiv[CC[X] <: scala.collection.Seq[X], T](implicit eqv: Equiv[T]^): Equiv[CC[T]]^{eqv} =
       new IterableEquiv[CC, T](eqv)
 
-    implicit def sortedSetEquiv[CC[X] <: scala.collection.SortedSet[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
+    implicit def sortedSetEquiv[CC[X] <: scala.collection.SortedSet[X], T](implicit eqv: Equiv[T]^): Equiv[CC[T]]^{eqv} =
       new IterableEquiv[CC, T](eqv)
   }
 
@@ -246,7 +247,7 @@ object Equiv extends LowPriorityEquiv {
   implicit def Option[T](implicit eqv: Equiv[T]): Equiv[Option[T]] =
     new OptionEquiv[T](eqv)
 
-  private final class OptionEquiv[T](private val eqv: Equiv[T]) extends Equiv[Option[T]] {
+  private final class OptionEquiv[T](private val eqv: Equiv[T]^) extends Equiv[Option[T]] {
     def equiv(x: Option[T], y: Option[T]): Boolean = (x, y) match {
       case (None, None)       => true
       case (Some(x), Some(y)) => eqv.equiv(x, y)
@@ -261,11 +262,11 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = eqv.hashCode() * optionSeed
   }
 
-  implicit def Tuple2[T1, T2](implicit eqv1: Equiv[T1], eqv2: Equiv[T2]): Equiv[(T1, T2)] =
+  implicit def Tuple2[T1, T2](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^): Equiv[(T1, T2)]^{eqv1, eqv2} =
     new Tuple2Equiv(eqv1, eqv2)
 
-  private final class Tuple2Equiv[T1, T2](private val eqv1: Equiv[T1],
-                                                private val eqv2: Equiv[T2]) extends Equiv[(T1, T2)] {
+  private final class Tuple2Equiv[T1, T2](private val eqv1: Equiv[T1]^,
+                                                private val eqv2: Equiv[T2]^) extends Equiv[(T1, T2)] {
     def equiv(x: (T1, T2), y: (T1, T2)): Boolean =
       eqv1.equiv(x._1, y._1) &&
       eqv2.equiv(x._2, y._2)
@@ -280,12 +281,12 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = (eqv1, eqv2).hashCode()
   }
 
-  implicit def Tuple3[T1, T2, T3](implicit eqv1: Equiv[T1], eqv2: Equiv[T2], eqv3: Equiv[T3]) : Equiv[(T1, T2, T3)] =
+  implicit def Tuple3[T1, T2, T3](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^, eqv3: Equiv[T3]^) : Equiv[(T1, T2, T3)]^{eqv1, eqv2, eqv3} =
     new Tuple3Equiv(eqv1, eqv2, eqv3)
 
-  private final class Tuple3Equiv[T1, T2, T3](private val eqv1: Equiv[T1],
-                                                    private val eqv2: Equiv[T2],
-                                                    private val eqv3: Equiv[T3]) extends Equiv[(T1, T2, T3)] {
+  private final class Tuple3Equiv[T1, T2, T3](private val eqv1: Equiv[T1]^,
+                                                    private val eqv2: Equiv[T2]^,
+                                                    private val eqv3: Equiv[T3]^) extends Equiv[(T1, T2, T3)] {
     def equiv(x: (T1, T2, T3), y: (T1, T2, T3)): Boolean =
       eqv1.equiv(x._1, y._1) &&
       eqv2.equiv(x._2, y._2) &&
@@ -302,13 +303,13 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = (eqv1, eqv2, eqv3).hashCode()
   }
 
-  implicit def Tuple4[T1, T2, T3, T4](implicit eqv1: Equiv[T1], eqv2: Equiv[T2], eqv3: Equiv[T3], eqv4: Equiv[T4]) : Equiv[(T1, T2, T3, T4)] =
+  implicit def Tuple4[T1, T2, T3, T4](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^, eqv3: Equiv[T3]^, eqv4: Equiv[T4]^) : Equiv[(T1, T2, T3, T4)]^{eqv1,eqv2,eqv3,eqv4} =
     new Tuple4Equiv(eqv1, eqv2, eqv3, eqv4)
 
-  private final class Tuple4Equiv[T1, T2, T3, T4](private val eqv1: Equiv[T1],
-                                                        private val eqv2: Equiv[T2],
-                                                        private val eqv3: Equiv[T3],
-                                                        private val eqv4: Equiv[T4])
+  private final class Tuple4Equiv[T1, T2, T3, T4](private val eqv1: Equiv[T1]^,
+                                                        private val eqv2: Equiv[T2]^,
+                                                        private val eqv3: Equiv[T3]^,
+                                                        private val eqv4: Equiv[T4]^)
     extends Equiv[(T1, T2, T3, T4)] {
     def equiv(x: (T1, T2, T3, T4), y: (T1, T2, T3, T4)): Boolean =
       eqv1.equiv(x._1, y._1) &&
@@ -328,14 +329,14 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = (eqv1, eqv2, eqv3, eqv4).hashCode()
   }
 
-  implicit def Tuple5[T1, T2, T3, T4, T5](implicit eqv1: Equiv[T1], eqv2: Equiv[T2], eqv3: Equiv[T3], eqv4: Equiv[T4], eqv5: Equiv[T5]): Equiv[(T1, T2, T3, T4, T5)] =
+  implicit def Tuple5[T1, T2, T3, T4, T5](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^, eqv3: Equiv[T3]^, eqv4: Equiv[T4]^, eqv5: Equiv[T5]^): Equiv[(T1, T2, T3, T4, T5)]^{eqv1,eqv2,eqv3,eqv4,eqv5} =
     new Tuple5Equiv(eqv1, eqv2, eqv3, eqv4, eqv5)
 
-  private final class Tuple5Equiv[T1, T2, T3, T4, T5](private val eqv1: Equiv[T1],
-                                                            private val eqv2: Equiv[T2],
-                                                            private val eqv3: Equiv[T3],
-                                                            private val eqv4: Equiv[T4],
-                                                            private val eqv5: Equiv[T5])
+  private final class Tuple5Equiv[T1, T2, T3, T4, T5](private val eqv1: Equiv[T1]^,
+                                                            private val eqv2: Equiv[T2]^,
+                                                            private val eqv3: Equiv[T3]^,
+                                                            private val eqv4: Equiv[T4]^,
+                                                            private val eqv5: Equiv[T5]^)
     extends Equiv[(T1, T2, T3, T4, T5)] {
     def equiv(x: (T1, T2, T3, T4, T5), y: (T1, T2, T3, T4, T5)): Boolean =
       eqv1.equiv(x._1, y._1) &&
@@ -357,15 +358,15 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = (eqv1, eqv2, eqv3, eqv4, eqv5).hashCode()
   }
 
-  implicit def Tuple6[T1, T2, T3, T4, T5, T6](implicit eqv1: Equiv[T1], eqv2: Equiv[T2], eqv3: Equiv[T3], eqv4: Equiv[T4], eqv5: Equiv[T5], eqv6: Equiv[T6]): Equiv[(T1, T2, T3, T4, T5, T6)] =
+  implicit def Tuple6[T1, T2, T3, T4, T5, T6](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^, eqv3: Equiv[T3]^, eqv4: Equiv[T4]^, eqv5: Equiv[T5]^, eqv6: Equiv[T6]^): Equiv[(T1, T2, T3, T4, T5, T6)]^{eqv1,eqv2,eqv3,eqv4,eqv5,eqv6} =
     new Tuple6Equiv(eqv1, eqv2, eqv3, eqv4, eqv5, eqv6)
 
-  private final class Tuple6Equiv[T1, T2, T3, T4, T5, T6](private val eqv1: Equiv[T1],
-                                                                private val eqv2: Equiv[T2],
-                                                                private val eqv3: Equiv[T3],
-                                                                private val eqv4: Equiv[T4],
-                                                                private val eqv5: Equiv[T5],
-                                                                private val eqv6: Equiv[T6])
+  private final class Tuple6Equiv[T1, T2, T3, T4, T5, T6](private val eqv1: Equiv[T1]^,
+                                                                private val eqv2: Equiv[T2]^,
+                                                                private val eqv3: Equiv[T3]^,
+                                                                private val eqv4: Equiv[T4]^,
+                                                                private val eqv5: Equiv[T5]^,
+                                                                private val eqv6: Equiv[T6]^)
     extends Equiv[(T1, T2, T3, T4, T5, T6)] {
     def equiv(x: (T1, T2, T3, T4, T5, T6), y: (T1, T2, T3, T4, T5, T6)): Boolean =
       eqv1.equiv(x._1, y._1) &&
@@ -389,16 +390,16 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = (eqv1, eqv2, eqv3, eqv4, eqv5, eqv6).hashCode()
   }
 
-  implicit def Tuple7[T1, T2, T3, T4, T5, T6, T7](implicit eqv1: Equiv[T1], eqv2: Equiv[T2], eqv3: Equiv[T3], eqv4: Equiv[T4], eqv5: Equiv[T5], eqv6: Equiv[T6], eqv7: Equiv[T7]): Equiv[(T1, T2, T3, T4, T5, T6, T7)] =
+  implicit def Tuple7[T1, T2, T3, T4, T5, T6, T7](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^, eqv3: Equiv[T3]^, eqv4: Equiv[T4]^, eqv5: Equiv[T5]^, eqv6: Equiv[T6]^, eqv7: Equiv[T7]^): Equiv[(T1, T2, T3, T4, T5, T6, T7)]^{eqv1,eqv2,eqv3,eqv4,eqv5,eqv6,eqv7} =
     new Tuple7Equiv(eqv1, eqv2, eqv3, eqv4, eqv5, eqv6, eqv7)
 
-  private final class Tuple7Equiv[T1, T2, T3, T4, T5, T6, T7](private val eqv1: Equiv[T1],
-                                                                    private val eqv2: Equiv[T2],
-                                                                    private val eqv3: Equiv[T3],
-                                                                    private val eqv4: Equiv[T4],
-                                                                    private val eqv5: Equiv[T5],
-                                                                    private val eqv6: Equiv[T6],
-                                                                    private val eqv7: Equiv[T7])
+  private final class Tuple7Equiv[T1, T2, T3, T4, T5, T6, T7](private val eqv1: Equiv[T1]^,
+                                                                    private val eqv2: Equiv[T2]^,
+                                                                    private val eqv3: Equiv[T3]^,
+                                                                    private val eqv4: Equiv[T4]^,
+                                                                    private val eqv5: Equiv[T5]^,
+                                                                    private val eqv6: Equiv[T6]^,
+                                                                    private val eqv7: Equiv[T7]^)
     extends Equiv[(T1, T2, T3, T4, T5, T6, T7)] {
     def equiv(x: (T1, T2, T3, T4, T5, T6, T7), y: (T1, T2, T3, T4, T5, T6, T7)): Boolean =
       eqv1.equiv(x._1, y._1) &&
@@ -424,17 +425,17 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = (eqv1, eqv2, eqv3, eqv4, eqv5, eqv6, eqv7).hashCode()
   }
 
-  implicit def Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](implicit eqv1: Equiv[T1], eqv2: Equiv[T2], eqv3: Equiv[T3], eqv4: Equiv[T4], eqv5: Equiv[T5], eqv6: Equiv[T6], eqv7: Equiv[T7], eqv8: Equiv[T8]): Equiv[(T1, T2, T3, T4, T5, T6, T7, T8)] =
+  implicit def Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^, eqv3: Equiv[T3]^, eqv4: Equiv[T4]^, eqv5: Equiv[T5]^, eqv6: Equiv[T6]^, eqv7: Equiv[T7]^, eqv8: Equiv[T8]^): Equiv[(T1, T2, T3, T4, T5, T6, T7, T8)]^{eqv1,eqv2,eqv3,eqv4,eqv5,eqv6,eqv7,eqv8} =
     new Tuple8Equiv(eqv1, eqv2, eqv3, eqv4, eqv5, eqv6, eqv7, eqv8)
 
-  private final class Tuple8Equiv[T1, T2, T3, T4, T5, T6, T7, T8](private val eqv1: Equiv[T1],
-                                                                        private val eqv2: Equiv[T2],
-                                                                        private val eqv3: Equiv[T3],
-                                                                        private val eqv4: Equiv[T4],
-                                                                        private val eqv5: Equiv[T5],
-                                                                        private val eqv6: Equiv[T6],
-                                                                        private val eqv7: Equiv[T7],
-                                                                        private val eqv8: Equiv[T8])
+  private final class Tuple8Equiv[T1, T2, T3, T4, T5, T6, T7, T8](private val eqv1: Equiv[T1]^,
+                                                                        private val eqv2: Equiv[T2]^,
+                                                                        private val eqv3: Equiv[T3]^,
+                                                                        private val eqv4: Equiv[T4]^,
+                                                                        private val eqv5: Equiv[T5]^,
+                                                                        private val eqv6: Equiv[T6]^,
+                                                                        private val eqv7: Equiv[T7]^,
+                                                                        private val eqv8: Equiv[T8]^)
     extends Equiv[(T1, T2, T3, T4, T5, T6, T7, T8)] {
     def equiv(x: (T1, T2, T3, T4, T5, T6, T7, T8), y: (T1, T2, T3, T4, T5, T6, T7, T8)): Boolean =
       eqv1.equiv(x._1, y._1) &&
@@ -462,18 +463,18 @@ object Equiv extends LowPriorityEquiv {
     override def hashCode(): Int = (eqv1, eqv2, eqv3, eqv4, eqv5, eqv6, eqv7, eqv8).hashCode()
   }
 
-  implicit def Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](implicit eqv1: Equiv[T1], eqv2: Equiv[T2], eqv3: Equiv[T3], eqv4: Equiv[T4], eqv5: Equiv[T5], eqv6: Equiv[T6], eqv7: Equiv[T7], eqv8 : Equiv[T8], eqv9: Equiv[T9]): Equiv[(T1, T2, T3, T4, T5, T6, T7, T8, T9)] =
+  implicit def Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](implicit eqv1: Equiv[T1]^, eqv2: Equiv[T2]^, eqv3: Equiv[T3]^, eqv4: Equiv[T4]^, eqv5: Equiv[T5]^, eqv6: Equiv[T6]^, eqv7: Equiv[T7]^, eqv8 : Equiv[T8]^, eqv9: Equiv[T9]^): Equiv[(T1, T2, T3, T4, T5, T6, T7, T8, T9)]^{eqv1,eqv2,eqv3,eqv4,eqv5,eqv6,eqv7,eqv8,eqv9} =
     new Tuple9Equiv(eqv1, eqv2, eqv3, eqv4, eqv5, eqv6, eqv7, eqv8, eqv9)
 
-  private final class Tuple9Equiv[T1, T2, T3, T4, T5, T6, T7, T8, T9](private val eqv1: Equiv[T1],
-                                                                            private val eqv2: Equiv[T2],
-                                                                            private val eqv3: Equiv[T3],
-                                                                            private val eqv4: Equiv[T4],
-                                                                            private val eqv5: Equiv[T5],
-                                                                            private val eqv6: Equiv[T6],
-                                                                            private val eqv7: Equiv[T7],
-                                                                            private val eqv8: Equiv[T8],
-                                                                            private val eqv9: Equiv[T9])
+  private final class Tuple9Equiv[T1, T2, T3, T4, T5, T6, T7, T8, T9](private val eqv1: Equiv[T1]^,
+                                                                            private val eqv2: Equiv[T2]^,
+                                                                            private val eqv3: Equiv[T3]^,
+                                                                            private val eqv4: Equiv[T4]^,
+                                                                            private val eqv5: Equiv[T5]^,
+                                                                            private val eqv6: Equiv[T6]^,
+                                                                            private val eqv7: Equiv[T7]^,
+                                                                            private val eqv8: Equiv[T8]^,
+                                                                            private val eqv9: Equiv[T9]^)
     extends Equiv[(T1, T2, T3, T4, T5, T6, T7, T8, T9)] {
     def equiv(x: (T1, T2, T3, T4, T5, T6, T7, T8, T9), y: (T1, T2, T3, T4, T5, T6, T7, T8, T9)): Boolean =
       eqv1.equiv(x._1, y._1) &&

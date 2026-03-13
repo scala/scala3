@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.language.implicitConversions
 
@@ -91,6 +92,6 @@ trait Ordered[A] extends Any with java.lang.Comparable[A] {
 
 object Ordered {
   /** Lens from `Ordering[T]` to `Ordered[T]`. */
-  implicit def orderingToOrdered[T](x: T)(implicit ord: Ordering[T]): Ordered[T] =
+  implicit def orderingToOrdered[T](x: T)(implicit ord: Ordering[T]^): Ordered[T]^{ord} =
     new Ordered[T] { def compare(that: T): Int = ord.compare(x, that) }
 }

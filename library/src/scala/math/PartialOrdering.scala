@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A trait for representing partial orderings.  It is important to
@@ -41,7 +42,7 @@ import scala.language.`2.13`
  */
 
 trait PartialOrdering[T] extends Equiv[T] {
-  outer =>
+  outer: PartialOrdering[T]^ =>
 
   /** Result of comparing `x` with operand `y`.
    *  Returns `None` if operands are not comparable.
@@ -71,7 +72,7 @@ trait PartialOrdering[T] extends Equiv[T] {
   /** Returns `**true**` iff `x` is equivalent to `y` in the ordering. */
   def equiv(x: T, y: T): Boolean = lteq(x,y) && lteq(y,x)
 
-  def reverse : PartialOrdering[T] = new PartialOrdering[T] {
+  def reverse : PartialOrdering[T]^{this} = new PartialOrdering[T] {
     override def reverse = outer
     def tryCompare(x: T, y: T) = outer.tryCompare(y, x)
     def lteq(x: T, y: T) = outer.lteq(y, x)
@@ -83,5 +84,5 @@ trait PartialOrdering[T] extends Equiv[T] {
 }
 
 object PartialOrdering {
-  @inline def apply[T](implicit ev: PartialOrdering[T]): PartialOrdering[T] = ev
+  @inline def apply[T](implicit ev: PartialOrdering[T]^): PartialOrdering[T]^{ev} = ev
 }

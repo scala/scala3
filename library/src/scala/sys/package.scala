@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
@@ -71,6 +72,7 @@ package object sys {
     s
   }
 
+  // CC note: shutdown hooks capture until the end of the program, so they must be pure.
   /** Registers a shutdown hook to be run when the VM exits.
    *  The hook is automatically registered: the returned value can be ignored,
    *  but is available in case the Thread requires further modification.
@@ -82,7 +84,7 @@ package object sys {
    *  @return   the   Thread which will run the shutdown hook.
    *  @see      [[scala.sys.ShutdownHookThread]]
    */
-  def addShutdownHook(body: => Unit): ShutdownHookThread = ShutdownHookThread(body)
+  def addShutdownHook(body: -> Unit): ShutdownHookThread = ShutdownHookThread(body)
 
   /** Returns all active thread in the current thread's thread group and subgroups.
    *

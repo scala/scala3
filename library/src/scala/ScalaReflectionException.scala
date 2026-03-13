@@ -1,5 +1,6 @@
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** An exception that indicates an error during Scala reflection. */

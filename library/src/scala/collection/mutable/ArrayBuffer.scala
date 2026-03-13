@@ -249,7 +249,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
    *  @param  ord the ordering to be used to compare elements.
    *  @return modified input $coll sorted according to the ordering `ord`.
    */
-  override def sortInPlace[B >: A]()(implicit ord: Ordering[B]): this.type = {
+  override def sortInPlace[B >: A]()(implicit ord: Ordering[B]^): this.type = {
     if (length > 1) {
       mutationCount += 1
       scala.util.Sorting.stableSort(array.asInstanceOf[Array[B]], 0, length)

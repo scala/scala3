@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.implicitNotFound
 
@@ -113,8 +114,8 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
     substituteCo[Id](f)
   }
 
-  override def compose[C](r: C => From): C => To = {
-    type G[+T] = C => T
+  override def compose[C](r: C => From): C ->{r} To = {
+    type G[+T] = C ->{r} T
     substituteCo[G](r)
   }
   /** If `From <: To` and `C <: From`, then `C <: To` (subtyping is transitive). */
@@ -122,8 +123,8 @@ sealed abstract class <:<[-From, +To] extends (From => To) with Serializable {
     type G[+T] = C <:< T
     substituteCo[G](r)
   }
-  override def andThen[C](r: To => C): From => C = {
-    type G[-T] = T => C
+  override def andThen[C](r: To => C): From ->{r} C = {
+    type G[-T] = T ->{r} C
     substituteContra[G](r)
   }
   /** If `From <: To` and `To <: C`, then `From <: C` (subtyping is transitive). */
@@ -152,10 +153,10 @@ object <:< {
     override def substituteContra[F[_]](ff: F[Any]) = ff
     override def apply(x: Any) = x
     override def flip: Any =:= Any = this
-    override def compose[C](r: C =>  Any) = r
+    override def compose[C](r: C =>  Any): C ->{r} Any = r
     override def compose[C](r: C <:< Any) = r
     override def compose[C](r: C =:= Any) = r
-    override def andThen[C](r: Any =>  C) = r
+    override def andThen[C](r: Any =>  C): Any ->{r} C = r
     override def andThen[C](r: Any <:< C) = r
     override def andThen[C](r: Any =:= C) = r
     override def liftCo    [F[_]] = asInstanceOf[F[Any] =:= F[Any]]

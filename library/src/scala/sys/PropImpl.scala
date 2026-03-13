@@ -13,6 +13,7 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.mutable
 
@@ -47,5 +48,5 @@ private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends P
 }
 
 private[sys] abstract class CreatorImpl[+T](f: String => T) extends Prop.Creator[T] {
-  def apply(key: String): Prop[T] = new PropImpl[T](key, f)
+  def apply(key: String): Prop[T]^{f} = new PropImpl[T](key, f)
 }

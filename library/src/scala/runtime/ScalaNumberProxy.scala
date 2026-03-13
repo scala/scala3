@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.immutable
 import scala.math.ScalaNumericAnyConversions
@@ -69,7 +70,7 @@ trait FractionalProxy[T] extends Any with ScalaNumberProxy[T] {
 
 @nowarn("cat=deprecation")
 trait OrderedProxy[T] extends Any with Ordered[T] with Proxy.Typed[T] {
-  protected def ord: Ordering[T]
+  protected def ord: Ordering[T]^
 
   def compare(y: T) = ord.compare(self, y)
 }
