@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i19687c.scala:9:2 ---------------------------------------------
+9 |  w match // warn
+  |  ^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: A1(_)
+  |
+  | longer explanation available when compiling with `-explain`

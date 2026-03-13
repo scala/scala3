@@ -51,6 +51,9 @@ import SpaceEngine.*
 /** A key to be used in a context property that caches the results of isSubspace checks */
 private val IsSubspaceCacheKey = new Property.Key[mutable.HashMap[(Space, Space), Boolean]]
 
+/** A key to track which case classes are currently being expanded in simplify, to prevent infinite recursion */
+private val ExpandingCaseClassesKey = new Property.Key[mutable.Set[Symbol]]
+
 /** space definition */
 sealed trait Space extends Showable:
 
@@ -134,9 +137,38 @@ object SpaceEngine {
       else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case typ: Typ =>
       if decompose(typ).isEmpty then Empty
-      else space
+      else
+        val cls = typ.tp.classSymbol
+        ctx.property(ExpandingCaseClassesKey) match
+          case Some(expanding)
+            if cls.is(CaseClass) && !cls.isOneOf(AbstractOrTrait) && !expanding.contains(cls) =>
+            expanding += cls
+            try
+              expandCaseClass(typ.tp) match
+                case null => space
+                case prod => if prod.simplify == Empty then Empty else space
+            finally expanding -= cls
+          case _ => space
     case _ => space
   })
+
+  /** Try to expand a case class type into a Prod space with its field types.
+   *  Returns null if the expansion is not possible (no companion, custom unapply, etc). */
+  private def expandCaseClass(tp: Type)(using Context): Prod | Null =
+    val cls = tp.classSymbol
+    val companion = cls.companionModule
+    if !companion.exists then return null
+    val companionRef = companion.termRef
+    val unapplyDenot = companionRef.member(nme.unapply)
+    if !unapplyDenot.exists
+      || unapplyDenot.hasAltWith(!_.symbol.is(Synthetic))
+      || companionRef.member(nme.unapplySeq).exists
+    then return null
+    val fun = TermRef(companionRef, nme.unapply, unapplyDenot)
+    val arity = productArity(tp)
+    if arity <= 0 then return null
+    val sig = signature(fun, tp, arity)
+    Prod(tp, fun, sig.map(Typ(_, false)))
 
   /** Remove a space if it's a subspace of remaining spaces
    *
@@ -980,7 +1012,10 @@ object SpaceEngine {
 
   def checkMatch(m: Match)(using Context): Unit =
     inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
-      if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+      if exhaustivityCheckable(m.selector) then
+        inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
+          checkExhaustivity(m)
+        }
       if reachabilityCheckable(m.selector) then checkReachability(m)
     }
 }
