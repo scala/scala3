@@ -7,11 +7,14 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import Symbols.*
+import dotty.tools.dotc.ast.Trees.PackageDef
+import dotty.tools.dotc.ast.tpd.{Tree, TypeDef}
+import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
 import dotty.tools.io.*
+
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import java.util.concurrent.TimeoutException
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.Await
 
@@ -23,10 +26,6 @@ class GenBCode extends Phase { self =>
 
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  private val entryPoints = new mutable.HashSet[String]()
-  def registerEntryPoint(s: String): Unit = entryPoints += s
-
-
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
@@ -34,7 +33,7 @@ class GenBCode extends Phase { self =>
       val context = ctx match
         case fc: FreshContext => fc
         case ctx => ctx.fresh
-      _frontendAccess = PostProcessorFrontendAccess.Impl(entryPoints)(context)
+      _frontendAccess = PostProcessorFrontendAccess.Impl(context)
     _frontendAccess.nn
   }
 
@@ -58,20 +57,20 @@ class GenBCode extends Phase { self =>
       _backendUtils = BackendUtils(frontendAccess, bTypes)
     _backendUtils.nn
   }
-  
-  private var _codeGen: CodeGen | Null = null
-  def codeGen(using Context): CodeGen = {
-    if _codeGen eq null then
-      val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(backendUtils, dottyPrimitives, frontendAccess, bTypes)
-    _codeGen.nn
-  }
 
   private var _generatedClassHandler: GeneratedClassHandler | Null = null
   def generatedClassHandler(using Context): GeneratedClassHandler = {
     if _generatedClassHandler eq null then
-      _generatedClassHandler = GeneratedClassHandler(postProcessor)
+      _generatedClassHandler = GeneratedClassHandler(postProcessor, frontendAccess)
     _generatedClassHandler.nn
+  }
+
+  private var _codeGen: CodeGen | Null = null
+  def codeGen(using Context): CodeGen = {
+    if _codeGen eq null then
+      val dottyPrimitives = new DottyPrimitives(ctx)
+      _codeGen = new CodeGen(generatedClassHandler, backendUtils, dottyPrimitives, frontendAccess, bTypes)
+    _codeGen.nn
   }
 
   protected def run(using Context): Unit =
@@ -114,7 +113,7 @@ class GenBCode extends Phase { self =>
           case _ => ()
         }
       if _postProcessor ne null then
-        postProcessor.classfileWriter.close()
+        postProcessor.close()
       generatedClassHandler.close()
   }
 }
