@@ -1,4 +1,4 @@
--- [E007] Type Mismatch Error: tests/neg/into-inferred.scala:33:32 -----------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/into-inferred.scala:33:44 -----------------------------------------------------
 33 |  val l1: List[into[Keyword]] = l :+ "then" :+ "else"  // error
    |                                ^^^^^^^^^^^^^^^^^^^^^
    |                                Found:    List[Conversion.into[Keyword] | String]

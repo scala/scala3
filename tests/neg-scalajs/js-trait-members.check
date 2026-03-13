@@ -22,7 +22,7 @@
 12 |  var c2: Int = 5 // error
    |  ^^^^^^^^^^^^^^^
    |  Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
--- Error: tests/neg-scalajs/js-trait-members.scala:14:24 ---------------------------------------------------------------
+-- Error: tests/neg-scalajs/js-trait-members.scala:14:26 ---------------------------------------------------------------
 14 |  def d1(x: Int): Int = x + 1 // error
    |                        ^^^^^
    |                        In non-native JS traits, defs with parentheses must be abstract.
