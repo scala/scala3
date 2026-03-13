@@ -2015,6 +2015,7 @@ object Parsers {
     def typeBlockStat(): Tree =
       val mods = defAnnotsMods(BitSet())
       val tdef = typeDefOrDcl(in.offset, in.skipToken(mods))
+      in.observeOutdented()
       if in.token == SEMI then in.nextToken()
       if in.isNewLine then in.nextToken()
       tdef
@@ -3290,6 +3291,7 @@ object Parsers {
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
         val t = rejectWildcardType(typ())
+        in.observeOutdented()
         if in.token == SEMI then in.nextToken()
         newLinesOptWhenFollowedBy(CASE)
         t
