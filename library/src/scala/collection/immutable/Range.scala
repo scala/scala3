@@ -566,7 +566,7 @@ sealed abstract class Range(
     }
   }
 
-  override def sorted[B >: Int](implicit ord: Ordering[B]): IndexedSeq[Int] =
+  override def sorted[B >: Int](implicit ord: Ordering[B]^): IndexedSeq[Int] =
     if (ord eq Ordering.Int) {
       if (step > 0) {
         this

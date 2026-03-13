@@ -259,7 +259,7 @@ sealed abstract class ArraySeq[+A]
 
   override protected final def applyPreferredMaxLength: Int = Int.MaxValue
 
-  override def sorted[B >: A](implicit ord: Ordering[B]): ArraySeq[A] =
+  override def sorted[B >: A](implicit ord: Ordering[B]^): ArraySeq[A] =
     if(unsafeArray.length <= 1) this
     else {
       val a = Array.copyAs[AnyRef](unsafeArray, length)
@@ -339,7 +339,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
           that.unsafeArray.asInstanceOf[Array[AnyRef]])
       case _ => super.equals(that)
     }
-    override def sorted[B >: T](implicit ord: Ordering[B]): ArraySeq.ofRef[T] = {
+    override def sorted[B >: T](implicit ord: Ordering[B]^): ArraySeq.ofRef[T] = {
       if(unsafeArray.length <= 1) this
       else {
         val a = unsafeArray.clone()
@@ -367,7 +367,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       case that: ofByte => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
     }
-    override def sorted[B >: Byte](implicit ord: Ordering[B]): ArraySeq[Byte] =
+    override def sorted[B >: Byte](implicit ord: Ordering[B]^): ArraySeq[Byte] =
       if(length <= 1) this
       else if(ord eq Ordering.Byte) {
         val a = unsafeArray.clone()
@@ -409,7 +409,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       case that: ofShort => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
     }
-    override def sorted[B >: Short](implicit ord: Ordering[B]): ArraySeq[Short] =
+    override def sorted[B >: Short](implicit ord: Ordering[B]^): ArraySeq[Short] =
       if(length <= 1) this
       else if(ord eq Ordering.Short) {
         val a = unsafeArray.clone()
@@ -451,7 +451,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       case that: ofChar => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
     }
-    override def sorted[B >: Char](implicit ord: Ordering[B]): ArraySeq[Char] =
+    override def sorted[B >: Char](implicit ord: Ordering[B]^): ArraySeq[Char] =
       if(length <= 1) this
       else if(ord eq Ordering.Char) {
         val a = unsafeArray.clone()
@@ -496,7 +496,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       case that: ofInt => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
     }
-    override def sorted[B >: Int](implicit ord: Ordering[B]): ArraySeq[Int] =
+    override def sorted[B >: Int](implicit ord: Ordering[B]^): ArraySeq[Int] =
       if(length <= 1) this
       else if(ord eq Ordering.Int) {
         val a = unsafeArray.clone()
@@ -538,7 +538,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       case that: ofLong => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
     }
-    override def sorted[B >: Long](implicit ord: Ordering[B]): ArraySeq[Long] =
+    override def sorted[B >: Long](implicit ord: Ordering[B]^): ArraySeq[Long] =
       if(length <= 1) this
       else if(ord eq Ordering.Long) {
         val a = unsafeArray.clone()
@@ -664,7 +664,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
       case that: ofBoolean => Arrays.equals(unsafeArray, that.unsafeArray)
       case _ => super.equals(that)
     }
-    override def sorted[B >: Boolean](implicit ord: Ordering[B]): ArraySeq[Boolean] =
+    override def sorted[B >: Boolean](implicit ord: Ordering[B]^): ArraySeq[Boolean] =
       if(length <= 1) this
       else if(ord eq Ordering.Boolean) {
         val a = unsafeArray.clone()

@@ -89,10 +89,10 @@ sealed abstract class ArraySeq[T]
       super.equals(other)
   }
 
-  override def sorted[B >: T](implicit ord: Ordering[B]): ArraySeq[T] =
+  override def sorted[B >: T](implicit ord: Ordering[B]^): ArraySeq[T] =
     ArraySeq.make(array.sorted(using ord.asInstanceOf[Ordering[Any]])).asInstanceOf[ArraySeq[T]]
 
-  override def sortInPlace[B >: T]()(implicit ord: Ordering[B]): this.type = {
+  override def sortInPlace[B >: T]()(implicit ord: Ordering[B]^): this.type = {
     if (length > 1) scala.util.Sorting.stableSort(array.asInstanceOf[Array[B]])
     this
   }

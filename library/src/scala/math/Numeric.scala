@@ -13,13 +13,14 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.StringParsers
 import scala.language.implicitConversions
 import scala.util.Try
 
 object Numeric {
-  @inline def apply[T](implicit num: Numeric[T]): Numeric[T] = num
+  @inline def apply[T](implicit num: Numeric[T]^): Numeric[T]^{num} = num
 
   trait ExtraImplicits {
     /** These implicits create conversions from a value for which an implicit Numeric
@@ -245,7 +246,7 @@ trait Numeric[T] extends Ordering[T] {
     else if (gt(x, zero)) one
     else zero
 
-  class NumericOps(lhs: T) {
+  class NumericOps(lhs: T) uses Numeric.this {
     def +(rhs: T) = plus(lhs, rhs)
     def -(rhs: T) = minus(lhs, rhs)
     def *(rhs: T) = times(lhs, rhs)
@@ -258,5 +259,5 @@ trait Numeric[T] extends Ordering[T] {
     def toFloat: Float = Numeric.this.toFloat(lhs)
     def toDouble: Double = Numeric.this.toDouble(lhs)
   }
-  implicit def mkNumericOps(lhs: T): NumericOps = new NumericOps(lhs)
+  implicit def mkNumericOps(lhs: T): NumericOps^{this} = new NumericOps(lhs)
 }

@@ -720,7 +720,10 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  @return     a $coll consisting of the elements of this $coll
    *              sorted according to the ordering `ord`.
    */
-  def sorted[B >: A](implicit ord: Ordering[B]): C^{this} = {
+  def sorted[B >: A](implicit ord: Ordering[B]^): C^{this, ord} = sortedImpl
+
+  // The actual sort implementation. `sorted` needs a more lenient capture set because of lazy seqs.
+  private[collection] def sortedImpl[B >: A](implicit ord: Ordering[B]^): C^{this} = {
     val len = this.length
     val b = newSpecificBuilder
     if (len == 1) b += head
@@ -757,7 +760,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *    List("Bobby", "Bob", "John", "Steve", "Tom")
    *  ```
    */
-  def sortWith(lt: (A, A) => Boolean): C^{this} = sorted(using Ordering.fromLessThan(lt))
+  def sortWith(lt: (A, A) => Boolean): C^{this, lt} = sorted(using Ordering.fromLessThan(lt))
 
   /** Sorts this $coll according to the Ordering which results from transforming
    *  an implicitly given Ordering with a transformation function.
@@ -784,7 +787,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *    res0: Array[String] = Array(The, dog, fox, the, lazy, over, brown, quick, jumped)
    *  ```
    */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C^{this} = sorted(using ord.on(f))
+  def sortBy[B](f: A => B)(implicit ord: Ordering[B]^): C^{this, f, ord} = sorted(using ord.on(f))
 
   /** Produces the range of all indices of this sequence.
    *  $willForceEvaluation
