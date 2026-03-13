@@ -363,8 +363,7 @@ class ReplDriver(settings: Array[String],
         compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
-        displayErrors(errs)
-        state
+        displayErrors(errs, state)
 
       case cmd: Command =>
         interpretCommand(cmd)
@@ -644,7 +643,7 @@ class ReplDriver(settings: Array[String],
         case "" => out.println(s":type <expression>")
         case _  =>
           compiler.typeOf(expr)(using newRun(state)).fold(
-            displayErrors,
+            errs => displayErrors(errs, state),
             res => out.println(res)  // result has some highlights
           )
       }
@@ -655,7 +654,7 @@ class ReplDriver(settings: Array[String],
         case "" => out.println(s":doc <expression>")
         case _  =>
           compiler.docOf(expr)(using newRun(state)).fold(
-            displayErrors,
+            errs => displayErrors(errs, state),
             res => out.println(res)
           )
       }
@@ -704,8 +703,8 @@ class ReplDriver(settings: Array[String],
   }
 
   /** shows all errors nicely formatted */
-  private def displayErrors(errs: Seq[Diagnostic])(using state: State): State = {
-    errs.foreach(printDiagnostic)
+  private def displayErrors(errs: Seq[Diagnostic], state: State): State = {
+    errs.foreach(printDiagnostic(_)(using state))
     state
   }
 

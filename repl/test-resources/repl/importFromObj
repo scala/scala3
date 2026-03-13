@@ -14,7 +14,7 @@ scala> buf += xs
   | longer explanation available when compiling with `-explain`
 1 error found
 scala> buf ++= xs
-val res0: mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
+val res1: mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> import util.foobar
 -- [E008] Not Found Error: -----------------------------------------------------
 1 | import util.foobar

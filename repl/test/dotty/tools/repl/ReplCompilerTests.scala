@@ -342,7 +342,7 @@ class ReplCompilerTests extends ReplTest:
     state
   } andThen {
     run("a")   // `a` should retain its original binding
-    assertEquals("val res0: Int = 1234", storedOutput().trim)
+    assertEquals("val res2: Int = 1234", storedOutput().trim)
   }
 
   @Test def i4416_imports = initially {

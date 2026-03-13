@@ -120,6 +120,6 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-pagewidth", "80" /* TODO: but a lot of tests need fixing to match production behavior "-Ydebug"*/)
+  val commonOptions = Array("-color:never", "-pagewidth", "80", "-Ydebug")
   val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.replClassPath)
   lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.replWithStagingClasspath)
