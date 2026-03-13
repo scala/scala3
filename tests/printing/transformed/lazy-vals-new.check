@@ -19,7 +19,7 @@ package <empty> {
         classOf[Object {...}], "x$lzy1", classOf[Object])
     private def writeReplace(): Object =
       new scala.runtime.ModuleSerializationProxy(classOf[A])
-    @volatile private lazy var x$lzy1: Object = null
+    @volatile private lazy var x$lzy1: Object = null.asInstanceOf[Object]
     lazy def x(): Int =
       {
         val result: Object = A.x$lzy1
