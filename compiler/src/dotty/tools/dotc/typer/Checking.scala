@@ -1415,6 +1415,29 @@ trait Checking {
         case Apply(fn, _) => checkLegalConstructorCall(fn, call, "")
         case _ =>
       }
+
+      // Check that super call arguments don't contain `new` expressions
+      // accessing protected constructors. The super call itself is allowed
+      // (via isConstructorAccessOK in isProtectedAccessOK), but nested `new`
+      // expressions in its arguments should not benefit from that exception.
+      // Since ctx.owner here is the class (not the constructor),
+      // isConstructorAccessOK is automatically false, giving the correct check.
+      def collectArgs(tree: Tree): List[Tree] = tree match
+        case Apply(fn, args) => args ++ collectArgs(fn)
+        case TypeApply(fn, _) => collectArgs(fn)
+        case _ => Nil
+      for arg <- collectArgs(call) do
+        arg.foreachSubTree:
+          case sel @ tpd.Select(nw: tpd.New, nme.CONSTRUCTOR) =>
+            val constrSym = sel.symbol
+            if constrSym.is(Protected)
+              && !constrSym.isAccessibleFrom(nw.tpe, superAccess = false)
+            then
+              report.error(
+                em"""${constrSym} cannot be accessed as a member of ${nw.tpe} from ${caller}.
+                    |  protected ${constrSym} can only be accessed from ${caller} or one of its subclasses.""",
+                nw.srcPos)
+          case _ =>
     }
 
   /** Check that `tpt` does not define a higher-kinded type */

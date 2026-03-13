@@ -947,7 +947,7 @@ object SymDenotations {
         if !cls.exists then
           pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner)
         else {
-          val isConstructorAccessOK = isConstructor && ctx.owner.isConstructor
+          val isConstructorAccessOK = isConstructor && ctx.owner.isPrimaryConstructor
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
           isType || pre.derivesFrom(cls) || isConstructorAccessOK || owner.is(ModuleClass)
