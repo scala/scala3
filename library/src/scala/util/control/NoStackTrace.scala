@@ -13,6 +13,7 @@
 package scala
 package util.control
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A trait for exceptions which, for efficiency reasons, do not
