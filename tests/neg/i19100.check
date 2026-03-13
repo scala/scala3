@@ -1,15 +1,15 @@
--- Error: tests/neg/i19100.scala:4:3 -----------------------------------------------------------------------------------
+-- Error: tests/neg/i19100.scala:4:2 -----------------------------------------------------------------------------------
 4 |  <foo/> match // error
-  |   ^^^^^
+  |  ^^^^^
   |   XML literals are no longer supported.
   |   See https://docs.scala-lang.org/scala3/reference/dropped-features/xml.html
--- Error: tests/neg/i19100.scala:5:10 ----------------------------------------------------------------------------------
+-- Error: tests/neg/i19100.scala:5:9 ----------------------------------------------------------------------------------
 5 |    case <foo/> => 1 // error
-  |          ^^^^^
+  |         ^^^^^
   |          XML literals are no longer supported.
   |          See https://docs.scala-lang.org/scala3/reference/dropped-features/xml.html
--- Error: tests/neg/i19100.scala:6:3 -----------------------------------------------------------------------------------
+-- Error: tests/neg/i19100.scala:6:2 -----------------------------------------------------------------------------------
 6 |  <bar></bar> // error
-  |   ^^^^^^^^^^
+  |  ^^^^^^^^^^
   |   XML literals are no longer supported.
   |   See https://docs.scala-lang.org/scala3/reference/dropped-features/xml.html
