@@ -14,7 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
-import language.experimental.captureChecking
+// import language.experimental.captureChecking
 
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
@@ -97,7 +97,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     if(target > table.length) growTable(target)
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
     sizeHint(xs)
 
     (xs: @unchecked) match {
@@ -188,7 +188,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     }
   }
 
-  override def subtractAll(xs: IterableOnce[K]^): this.type = {
+  override def subtractAll(xs: IterableOnce[K]): this.type = {
     if (size == 0) {
       return this
     }
@@ -603,7 +603,7 @@ object HashMap extends MapFactory[HashMap] {
 
   def empty[K, V]: HashMap[K, V] = new HashMap[K, V]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]^): HashMap[K, V] = {
+  def from[K, V](it: collection.IterableOnce[(K, V)]): HashMap[K, V] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new HashMap[K, V](cap, defaultLoadFactor).addAll(it)
@@ -624,7 +624,7 @@ object HashMap extends MapFactory[HashMap] {
 
   @SerialVersionUID(3L)
   private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double) extends Factory[(K, V), HashMap[K, V]], Serializable {
-    def fromSpecific(it: IterableOnce[(K, V)]^): HashMap[K, V] = new HashMap[K, V](tableLength, loadFactor).addAll(it)
+    def fromSpecific(it: IterableOnce[(K, V)]): HashMap[K, V] = new HashMap[K, V](tableLength, loadFactor).addAll(it)
     def newBuilder: Builder[(K, V), HashMap[K, V]] = HashMap.newBuilder(tableLength, loadFactor)
   }
 

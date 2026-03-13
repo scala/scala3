@@ -730,7 +730,9 @@ object Contexts {
       importInfo.mentionsFeature(nme.unsafeNulls) match
         case Some(true) =>
           setMode(this.mode &~ Mode.SafeNulls)
-        case Some(false) =>
+        case _ =>
+      importInfo.mentionsFeature(nme.safeNulls) match
+        case Some(true) =>
           setMode(this.mode | Mode.SafeNulls)
         case _ =>
       updateStore(importInfoLoc, importInfo)
