@@ -18,7 +18,11 @@ import language.experimental.captureChecking
 
 import scala.language.`2.13`
 
-/** Base type of mutable Maps. */
+/** Base type of mutable Maps.
+ *
+ *  @tparam K the type of keys in the map
+ *  @tparam V the type of values associated with keys
+ */
 trait Map[K, V]
   extends Iterable[(K, V)]
     with collection.Map[K, V]
@@ -65,6 +69,11 @@ trait Map[K, V]
 /**
  *  @define coll mutable map
  *  @define Coll `mutable.Map`
+ *
+ *  @tparam K the type of keys in the map
+ *  @tparam V the type of values associated with keys
+ *  @tparam CC the higher-kinded type constructor for map operations returning the same collection type
+ *  @tparam C the concrete type of the map collection
  */
 transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
@@ -267,5 +276,9 @@ object Map extends MapFactory.Delegate[Map](HashMap) {
 
 }
 
-/** Explicit instantiation of the `Map` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Map` trait to reduce class file size in subclasses.
+ *
+ *  @tparam K the type of keys in the map
+ *  @tparam V the type of values associated with keys
+ */
 abstract class AbstractMap[K, V] extends scala.collection.AbstractMap[K, V] with Map[K, V]

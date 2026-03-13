@@ -22,6 +22,8 @@ import scala.annotation.tailrec
  *
  *  @define coll shrinkable collection
  *  @define Coll `Shrinkable`
+ *
+ *  @tparam A the type of elements that can be removed from this collection
  */
 trait Shrinkable[-A] {
 

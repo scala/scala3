@@ -121,6 +121,10 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
    *  boxed, the resulting instance is an [[ArraySeq.ofRef]]. Writing
    *  `ArraySeq.make(a.asInstanceOf[Array[Int]])` does not work, it throws a `ClassCastException`
    *  at runtime.
+   *
+   *  @tparam T the element type of the array
+   *  @param x the array to wrap
+   *  @return an `ArraySeq` wrapping the given array using the appropriate primitive specialization, or `null` if `x` is `null`
    */
   def make[T](x: Array[T]): ArraySeq[T] = ((x: @unchecked) match {
     case null              => null
