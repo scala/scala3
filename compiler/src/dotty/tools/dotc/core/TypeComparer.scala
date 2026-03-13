@@ -873,26 +873,29 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           try
             if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
               recur(tp1, parent2)
-            else
-              // The singletonOK branch is because we sometimes have a larger capture set in a singleton
-              // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
-              // the type of a closure (in one of the variants we are considering). In that case the
-              // capture set of `f.type` is `{x}` but the capture set of the underlying type is `{}`.
-              // So without the `singletonOK` test, a singleton might not be a subtype of its underlying type.
-              // Eamples where this arises is capt-capibility.scala and function-combinators.scala
-              val singletonOK = tp1 match
-                case tp1: SingletonType
-                if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate) =>
-                  recur(tp1.widen, tp2)
-                case _ =>
-                  false
-              singletonOK
-              || compareCaptures(tp1, refs1, tp2, refs2)
-                  && (recur(tp1.widen.stripCapturing, parent2)
-                     || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
-                        // this alternative is needed in case the right hand side is a
-                        // capturing type that contains the lhs as an alternative of a union type.
-                    )
+            else parent2 match
+              case AndType(p1, p2) =>
+                recur(tp1, p1.capturing(refs2)) && recur(tp1, p2.capturing(refs2))
+              case _ =>
+                // The singletonOK branch is because we sometimes have a larger capture set in a singleton
+                // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
+                // the type of a closure (in one of the variants we are considering). In that case the
+                // capture set of `f.type` is `{x}` but the capture set of the underlying type is `{}`.
+                // So without the `singletonOK` test, a singleton might not be a subtype of its underlying type.
+                // Examples where this arises is capt-capibility.scala and function-combinators.scala
+                val singletonOK = tp1 match
+                  case tp1: SingletonType
+                  if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate) =>
+                    recur(tp1.widen, tp2)
+                  case _ =>
+                    false
+                singletonOK
+                || compareCaptures(tp1, refs1, tp2, refs2)
+                    && (recur(tp1.widen.stripCapturing, parent2)
+                      || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
+                          // this alternative is needed in case the right hand side is a
+                          // capturing type that contains the lhs as an alternative of a union type.
+                      )
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
