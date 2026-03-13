@@ -12,7 +12,8 @@ case class SnippetCompilationResult(
   wrappedSnippet: WrappedSnippet,
   isSuccessful: Boolean,
   result: Option[AbstractFile],
-  messages: Seq[SnippetCompilerMessage]
+  messages: Seq[SnippetCompilerMessage],
+  scalacOptions: Seq[String] = Seq.empty
 ):
   def reportMessages()(using CompilerContext) = messages.foreach {
     case SnippetCompilerMessage(posOpt, msg, level) =>

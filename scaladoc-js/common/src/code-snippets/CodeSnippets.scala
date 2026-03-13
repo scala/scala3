@@ -128,7 +128,16 @@ class CodeSnippets:
         document.body.appendChild(popup)
         document.body.addEventListener("click", handler)
 
-        scastie.Embedded(popup.querySelector("pre"), scastieConfig)
+        val config = Option(snippet.getAttribute("data-scalac-opts")).filter(_.nonEmpty) match
+          case Some(opts) =>
+            val scalacOpts = opts.split(",").map(o => s""""$o"""").mkString(", ")
+            js.Dynamic.literal(
+              sbtConfig = s"${scastieConfiguration}\nscalacOptions ++= Seq($scalacOpts)",
+              targetType = "scala3"
+            )
+          case None => scastieConfig
+
+        scastie.Embedded(popup.querySelector("pre"), config)
 
         popup.querySelector("li.btn.run-button").asInstanceOf[html.Element].click()
 

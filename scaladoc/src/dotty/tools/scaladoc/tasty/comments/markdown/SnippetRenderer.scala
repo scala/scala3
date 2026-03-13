@@ -137,12 +137,13 @@ object SnippetRenderer:
     div(cls := "snippet-label")(name)
   ).toString
 
-  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], success: Boolean): String =
+  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], success: Boolean, scalacOptions: Seq[String] = Seq.empty): String =
     val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).andThen(reindexLines).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
     val isRunnable = success
     val attrs = Seq(
-      Option.when(isRunnable)(Attr("runnable") := "")
+      Option.when(isRunnable)(Attr("runnable") := ""),
+      Option.when(scalacOptions.nonEmpty)(Attr("data-scalac-opts") := scalacOptions.mkString(","))
     ).flatten
     div(cls := "snippet mono-small-block", Attr("scala-snippet") := "", attrs)(
       pre(
@@ -157,7 +158,8 @@ object SnippetRenderer:
       node.name,
       node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
       node.compilationResult.toSeq.flatMap(_.messages),
-      node.compilationResult.fold(false)(_.isSuccessful)
+      node.compilationResult.fold(false)(_.isSuccessful),
+      node.compilationResult.toSeq.flatMap(_.scalacOptions)
     )
 
   def renderSnippet(content: String, language: Option[String] = None): String =

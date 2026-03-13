@@ -124,5 +124,5 @@ class SnippetCompiler(
       additionalMessages(wrappedSnippet, arg, sourceFile, context)
 
     val t = Option.when(!context.reporter.hasErrors)(target)
-    SnippetCompilationResult(wrappedSnippet, isSuccessful(arg, context), t, messages)
+    SnippetCompilationResult(wrappedSnippet, isSuccessful(arg, context), t, messages, arg.scalacOptions)
   }
