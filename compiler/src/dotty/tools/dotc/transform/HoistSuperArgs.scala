@@ -58,6 +58,9 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
    */
   class Hoister(cls: Symbol)(using Context) {
     val superArgDefs: mutable.ListBuffer[DefDef] = new mutable.ListBuffer
+    // Track defs whose RHS was hoisted to a static method call.
+    // We'll inline these calls in hoisted method bodies to avoid capturing `this` in closures.
+    val inlinedDefs: mutable.Map[Symbol, Tree] = mutable.Map()
 
     /** If argument is complex, hoist it out into its own method and refer to the
      *  method instead.
@@ -109,7 +112,11 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       /** Type of a reference implies that it needs to be hoisted */
       def refNeedsHoist(tp: Type): Boolean = tp match {
         case tp: ThisType => !tp.cls.isStaticOwner && !cls.isContainedIn(tp.cls)
-        case tp: TermRef  => refNeedsHoist(tp.prefix)
+        case tp: TermRef  =>
+          // If the term refers to the class being constructed (e.g., accessing Baz.E1
+          // in the super call of object Baz), we need to hoist because the object
+          // isn't initialized yet.
+          tp.symbol == cls || tp.symbol == cls.companionModule || refNeedsHoist(tp.prefix)
         case _            => false
       }
 
@@ -131,8 +138,9 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       }
 
       // begin hoistSuperArg
+      val shouldHoist = arg.existsSubTree(needsHoist)
       arg match {
-        case _ if arg.existsSubTree(needsHoist) =>
+        case _ if shouldHoist =>
           val superMeth = newSuperArgMethod(arg.tpe)
           val superArgDef = DefDef(superMeth, prefss => {
             val paramSyms = prefss.flatten.map(pref =>
@@ -151,6 +159,9 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
                 }
               },
               treeMap = {
+                case tree: RefTree if inlinedDefs.contains(tree.symbol) =>
+                  // Inline the hoisted static method call to avoid capturing `this`
+                  inlinedDefs(tree.symbol)
                 case tree: RefTree if needsRewire(tree.tpe) =>
                   cpy.Ident(tree)(tree.name).withType(tree.tpe)
                 case tree =>
@@ -181,22 +192,41 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
     }
 
     /** Hoist complex arguments in super call out of the class. */
-    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: mutable.ListBuffer[Symbol]): Tree = superCall match
+    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: mutable.ListBuffer[Symbol]): Tree =
+      superCall match
       case Block(defs, expr) if !expr.symbol.owner.is(Scala2x) =>
         // MO: The guard avoids the crash for #16351.
         // It would be good to dig deeper, but I won't have the time myself to do it.
-        cpy.Block(superCall)(
-          stats = defs.mapconserve {
-            case vdef: ValDef =>
-              try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList))
-              finally lifted += vdef.symbol
-            case ddef: DefDef =>
-              try cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef, lifted.toList))
-              finally lifted += ddef.symbol
-            case stat =>
-              stat
-          },
-          expr = hoistSuperArgsFromCall(expr, cdef, lifted))
+
+        val newDefs = defs.mapconserve {
+          case vdef: ValDef =>
+            val hoistedRhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList)
+            if hoistedRhs ne vdef.rhs then
+              // RHS was hoisted, track for inlining in hoisted method bodies.
+              // Don't add to lifted since we'll inline the hoisted call directly.
+              inlinedDefs(vdef.symbol) = hoistedRhs
+            else
+              lifted += vdef.symbol
+            cpy.ValDef(vdef)(rhs = hoistedRhs)
+          case ddef: DefDef =>
+            val hoistedRhs = hoistSuperArg(ddef.rhs, cdef, lifted.toList)
+            if hoistedRhs ne ddef.rhs then
+              // RHS was hoisted, track for inlining in hoisted method bodies.
+              // Don't add to lifted since we'll inline the hoisted call directly.
+              inlinedDefs(ddef.symbol) = hoistedRhs
+            else
+              lifted += ddef.symbol
+            cpy.DefDef(ddef)(rhs = hoistedRhs)
+          case stat =>
+            stat
+        }
+
+        // Process the expression (Apply) - inlining will happen inside hoistSuperArg
+        val processedExpr = hoistSuperArgsFromCall(expr, cdef, lifted)
+
+        // Keep all defs (even inlined ones need to stay for symbol consistency)
+        // but they won't be called since references have been inlined
+        cpy.Block(superCall)(stats = newDefs, expr = processedExpr)
       case Apply(fn, args) =>
         cpy.Apply(superCall)(
           hoistSuperArgsFromCall(fn, cdef, lifted),
