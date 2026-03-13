@@ -13,6 +13,7 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A minimal Thread wrapper to enhance shutdown hooks.  It knows
@@ -33,7 +34,8 @@ object ShutdownHookThread {
    *
    *  @param body the code to execute when the JVM shuts down
    */
-  def apply(body: => Unit): ShutdownHookThread = {
+  def apply(body: -> Unit): ShutdownHookThread = {
+    // CC note: shutdown hooks capture until the end of the program, so they have to be pure.
     val t = new ShutdownHookThread(() => body, hookName())
     Runtime.getRuntime.addShutdownHook(t)
     t
