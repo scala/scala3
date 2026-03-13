@@ -21,7 +21,14 @@ object Product5 {
     Some(x)
 }
 
-/** Product5 is a Cartesian product of 5 components. */
+/** Product5 is a Cartesian product of 5 components.
+ *
+ *  @tparam T1 the type of the 1st element
+ *  @tparam T2 the type of the 2nd element
+ *  @tparam T3 the type of the 3rd element
+ *  @tparam T4 the type of the 4th element
+ *  @tparam T5 the type of the 5th element
+ */
 trait Product5[+T1, +T2, +T3, +T4, +T5] extends Any with Product {
   /** The arity of this product.
    *  @return 5

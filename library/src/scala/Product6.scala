@@ -21,7 +21,15 @@ object Product6 {
     Some(x)
 }
 
-/** Product6 is a Cartesian product of 6 components. */
+/** Product6 is a Cartesian product of 6 components.
+ *
+ *  @tparam T1 the type of the 1st element
+ *  @tparam T2 the type of the 2nd element
+ *  @tparam T3 the type of the 3rd element
+ *  @tparam T4 the type of the 4th element
+ *  @tparam T5 the type of the 5th element
+ *  @tparam T6 the type of the 6th element
+ */
 trait Product6[+T1, +T2, +T3, +T4, +T5, +T6] extends Any with Product {
   /** The arity of this product.
    *  @return 6

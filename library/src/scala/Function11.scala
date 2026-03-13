@@ -16,9 +16,35 @@ package scala
 
 import scala.language.`2.13`
 
-/** A function of 11 parameters. */
+/** A function of 11 parameters.
+ *
+ *  @tparam T1 the type of the first parameter of this function
+ *  @tparam T2 the type of the second parameter of this function
+ *  @tparam T3 the type of the third parameter of this function
+ *  @tparam T4 the type of the fourth parameter of this function
+ *  @tparam T5 the type of the fifth parameter of this function
+ *  @tparam T6 the type of the sixth parameter of this function
+ *  @tparam T7 the type of the seventh parameter of this function
+ *  @tparam T8 the type of the eighth parameter of this function
+ *  @tparam T9 the type of the ninth parameter of this function
+ *  @tparam T10 the type of the tenth parameter of this function
+ *  @tparam T11 the type of the eleventh parameter of this function
+ *  @tparam R the return type of this function
+ */
 trait Function11[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, +R] extends AnyRef {
   /** Applies the body of this function to the arguments.
+   *
+   *  @param v1 the value of the first parameter
+   *  @param v2 the value of the second parameter
+   *  @param v3 the value of the third parameter
+   *  @param v4 the value of the fourth parameter
+   *  @param v5 the value of the fifth parameter
+   *  @param v6 the value of the sixth parameter
+   *  @param v7 the value of the seventh parameter
+   *  @param v8 the value of the eighth parameter
+   *  @param v9 the value of the ninth parameter
+   *  @param v10 the value of the tenth parameter
+   *  @param v11 the value of the eleventh parameter
    *  @return   the result of function application.
    */
   def apply(v1: T1, v2: T2, v3: T3, v4: T4, v5: T5, v6: T6, v7: T7, v8: T8, v9: T9, v10: T10, v11: T11): R
