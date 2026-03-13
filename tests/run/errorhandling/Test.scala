@@ -54,7 +54,7 @@ def sumRoots(xs: List[String]) = // inferred: Result[Double, String]
     val ys = parseDoubles(xs).mapErr(_.toString).?  // direct jump
     ys.reduce((x, y) => x + trySqrt(y).?)           // need exception to propagate `Err`
 
-def resultTest() =
+def resultTest() = {
   println("resultTest")
   def assertFail(value: Any, s: String) = value match
     case Err(msg: String) => assert(msg.contains(s))
@@ -62,17 +62,48 @@ def resultTest() =
   assertFail(sumRoots(List("1", "-2", "4")), "cannot take sqrt of negative")
   assertFail(sumRoots(List()), "list is empty")
   assertFail(sumRoots(List("1", "3ab")), "NumberFormatException")
+
   val xs = sumRoots(List("1", "-2", "4")) *: sumRoots(List()) *: sumRoots(List("1", "3ab")) *: Result.empty
   xs match
     case Err(msgs) => assert(msgs.length == 3)
     case _ => assert(false)
+
   val ys = sumRoots(List("1", "2", "4")) *: sumRoots(List("1")) *: sumRoots(List("2")) *: Result.empty
   ys match
     case Ok((a, b, c)) => // ok
     case _ => assert(false)
+}
+
+def validateTest() = {
+  import Validator.validate
+  case class Form(name: String, age: Int)
+
+  def validatedForm(name: String, age: Int, confirmed: Boolean): Result[Form, List[String]] =
+    validate[String]: v =>
+        v.ensure(!name.isEmpty, "Missing name", abort = true)
+        v.ensure(name.head.isUpper, s"${name} does not start with uppercase letter")
+        v.ensure(age >= 18, s"Age ${age} is below minimum age 18")
+        v.ensure(confirmed, "Missing confirmation")
+      .ifOK:
+        Form(name, age)
+
+  val p1 = validatedForm("Bob", 21, true)
+  val p2 = validatedForm("bob", 21, true)
+  val p3 = validatedForm("Bob", 16, true)
+  val p4 = validatedForm("Bob", 21, false)
+  val p5 = validatedForm("bob", 16, false)
+  val p6 = validatedForm("", 16, false)
+  println(p1)
+  println(p2)
+  println(p3)
+  println(p4)
+  println(p5)
+  println(p6)
+}
 
 @main def Test =
   breakTest()
   optTest()
   resultTest()
   parseCsvIgnoreErrors()
+  validateTest()
