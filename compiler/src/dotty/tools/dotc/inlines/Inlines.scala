@@ -607,12 +607,11 @@ object Inlines:
         TreeTypeMap(
           typeMap = new TypeMap:
             override def stopAt = StopAt.Package
-            def apply(t: Type) = mapOver {
+            def apply(t: Type) =
               t match
                 case ThisType(tref @ TypeRef(prefix, _)) if tref.symbol.flags.is(Module) && !owners.contains(tref.symbol) =>
                   TermRef(apply(prefix), tref.symbol.companionModule)
                 case _ => mapOver(t)
-            }
         ).typeMap(tpe)
 
       if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
