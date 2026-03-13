@@ -117,6 +117,9 @@ trait CapSet extends Any
 
 /** A type constraint expressing that the capture set `C` needs to contain
  *  the capability `R`
+ *
+ *  @tparam C the capture set that must contain the capability `R`
+ *  @tparam R the singleton type of the capability that must be present in `C`
  */
 @experimental
 sealed trait Contains[+C >: CapSet <: CapSet @retainsCap, R <: Singleton]
@@ -199,10 +202,15 @@ object internal:
    *  user-accessible compiletime.erasedValue, this version is assumed
    *  to be a pure expression, hence capability safe. The compiler generates this
    *  version only where it is known that a value can be generated.
+   *
+   *  @tparam T the type of the erased value to produce
    */
   def erasedValue[T]: T = ???
 
-  /** A trait for capabilities representing usage of mutable vars in capture sets. */
+  /** A trait for capabilities representing usage of mutable vars in capture sets.
+   *
+   *  @tparam T the type of the mutable variable's value
+   */
   trait Var[T] extends Mutable:
     def get: T
     update def set(x: T): Unit
@@ -254,16 +262,24 @@ object unsafe:
      */
     def unsafeAssumePure: T = x
 
-  /** A wrapper around code for which separation checks are suppressed. */
+  /** A wrapper around code for which separation checks are suppressed.
+   *
+   *  @param op the code block to execute without separation checking; returned as-is
+   */
   def unsafeAssumeSeparate(op: Any): op.type = op
 
-  /** A wrapper around code for which uses go unrecorded. */
+  /** A wrapper around code for which uses go unrecorded.
+   *
+   *  @param op the code block to execute without recording capability uses; returned as-is
+   */
   def unsafeDiscardUses(op: Any): op.type = op
 
   /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed
    *  to be a pure expression, hence capability safe. But there is no proof
    *  of realizability, hence it is unsafe.
+   *
+   *  @tparam T the type of the erased value to produce (no realizability guarantee, hence unsafe)
    */
   def unsafeErasedValue[T]: T = ???
 

@@ -152,7 +152,10 @@ abstract class Enumeration (initial: Int) extends Serializable {
    */
   final def maxId = topId
 
-  /** The value of this enumeration with given id `x`. */
+  /** The value of this enumeration with given id `x`.
+   *
+   *  @param x the integer id of the desired value; throws `NoSuchElementException` if no value with this id exists
+   */
   final def apply(x: Int): Value = vmap(x)
 
   /** Returns a `Value` from this `Enumeration` whose name matches
@@ -245,7 +248,10 @@ abstract class Enumeration (initial: Int) extends Serializable {
     }
     override def hashCode(): Int = id.##
 
-    /** Creates a ValueSet which contains this value and another one. */
+    /** Creates a ValueSet which contains this value and another one.
+     *
+     *  @param v the other value to include in the set
+     */
     def + (v: Value): ValueSet = ValueSet(this, v)
   }
 
@@ -345,6 +351,8 @@ abstract class Enumeration (initial: Int) extends Serializable {
     val empty: ValueSet = new ValueSet(immutable.BitSet.empty)
     /** A value set containing all the values for the zero-adjusted ids
      *  corresponding to the bits in an array 
+     *
+     *  @param elems an array of `Long` values encoding the bit mask of zero-adjusted value ids
      */
     def fromBitMask(elems: Array[Long]): ValueSet = new ValueSet(immutable.BitSet.fromBitMask(elems))
     /** A builder object for value sets. */

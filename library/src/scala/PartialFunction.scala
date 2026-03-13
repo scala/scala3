@@ -108,11 +108,17 @@ import scala.util.boundary.break
  *  @define applyOrElseOrElse Note that calling [[isDefinedAt]] on the resulting partial function
  *                           may apply the first partial function and execute its side effect.
  *                           For efficiency, it is recommended to call [[applyOrElse]] instead of [[isDefinedAt]] or [[apply]].
+ *
+ *  @tparam A the argument type of this partial function
+ *  @tparam B the result type of this partial function
  */
 trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A, B]^ =>
   import PartialFunction._
 
-  /** Tries to extract a `B` from an `A` in a pattern matching expression. */
+  /** Tries to extract a `B` from an `A` in a pattern matching expression.
+   *
+   *  @param a the value to match against this partial function
+   */
   def unapply(a: A): Option[B] = lift(a)
 
   /** Returns an extractor object with a `unapplySeq` method, which extracts each element of a sequence data.
@@ -125,6 +131,8 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *               println(s"\$c0, \$c1, \$c2") // Output: f, b, b
    *           }
    *           ```
+   *
+   *  @return an extractor object that uses `unapplySeq` to extract each element of a sequence matching this partial function
    */
   def elementWise: ElementWiseExtractor[A, B]^{this} = new ElementWiseExtractor[A, B](this)
 
@@ -220,6 +228,8 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *  double `isDefinedAt` evaluation. This may result in better performance
    *  and more predictable behavior w.r.t. side effects.
    *
+   *  @tparam A1 the argument type of the fallback function (a subtype of `A`)
+   *  @tparam B1 the result type of the fallback function (a supertype of `B`)
    *  @param  x       the function argument
    *  @param default  the fallback function
    *  @return   the result of this function or fallback function application.
@@ -237,6 +247,7 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *  Using `runWith` avoids double evaluation of pattern matchers and guards for partial function literals.
    *  @see `applyOrElse`.
    *
+   *  @tparam U the result type of the action function (ignored, since the action is executed for its side effects only)
    *  @param   action  the action function
    *  @return  a function which maps arguments `x` to `isDefinedAt(x)`. The resulting function
    *           runs `action(this(x))` where `this` is defined.
@@ -271,7 +282,13 @@ object PartialFunction {
     }
   }
 
-  /** Composite function produced by `PartialFunction#orElse` method */
+  /** Composite function produced by `PartialFunction#orElse` method
+   *
+   *  @tparam A the argument type of the composite function
+   *  @tparam B the result type of the composite function
+   *  @param f1 the primary partial function, applied first
+   *  @param f2 the fallback partial function, applied when `f1` is not defined
+   */
   private class OrElse[-A, +B] (f1: PartialFunction[A, B]^, f2: PartialFunction[A, B]^)
     extends scala.runtime.AbstractPartialFunction[A, B] with Serializable {
     def isDefinedAt(x: A) = f1.isDefinedAt(x) || f2.isDefinedAt(x)
@@ -290,7 +307,14 @@ object PartialFunction {
       new OrElse[A, C] (f1 andThen k, f2 andThen k)
   }
 
-  /** Composite function produced by `PartialFunction#andThen` method */
+  /** Composite function produced by `PartialFunction#andThen` method
+   *
+   *  @tparam A the argument type of the partial function
+   *  @tparam B the intermediate result type
+   *  @tparam C the final result type after transformation
+   *  @param pf the partial function to apply first
+   *  @param k the transformation function applied to results of `pf`
+   */
   private class AndThen[-A, B, +C] (pf: PartialFunction[A, B]^, k: B => C) extends PartialFunction[A, C] with Serializable {
     def isDefinedAt(x: A) = pf.isDefinedAt(x)
 
@@ -302,7 +326,14 @@ object PartialFunction {
     }
   }
 
-  /** Composite function produced by `PartialFunction#andThen` method */
+  /** Composite function produced by `PartialFunction#andThen` method
+   *
+   *  @tparam A the argument type of the composite partial function
+   *  @tparam B the intermediate result type
+   *  @tparam C the final result type after transformation
+   *  @param pf the first partial function to apply
+   *  @param k the transformation partial function applied to results of `pf`
+   */
   private class Combined[-A, B, +C] (pf: PartialFunction[A, B]^, k: PartialFunction[B, C]^) extends PartialFunction[A, C] with Serializable {
     def isDefinedAt(x: A): Boolean = {
       val b: B = pf.applyOrElse(x, checkFallback[B])
@@ -368,6 +399,8 @@ object PartialFunction {
 
   /** Converts an ordinary function to a partial function. Note that calling `isDefinedAt(x)` on
    *   this partial function will return `true` for every `x`.
+   *  @tparam A the argument type of the function
+   *  @tparam B the result type of the function
    *  @param  f  an ordinary function
    *  @return    a partial function which delegates to the ordinary function `f`
    */
@@ -386,6 +419,9 @@ object PartialFunction {
 
   /** The partial function with empty domain.
    *  Any attempt to invoke empty partial function leads to throwing [[scala.MatchError]] exception.
+   *
+   *  @tparam A the argument type of the partial function
+   *  @tparam B the result type of the partial function
    */
   def empty[A, B] : PartialFunction[A, B] = empty_pf
 
@@ -394,6 +430,7 @@ object PartialFunction {
    *
    *  It behaves like a `case _ => false` were added to the partial function.
    *
+   *  @tparam A the type of the value to test
    *  @param  x   the value to test
    *  @param  pf  the partial function
    *  @return true, iff `x` is in the domain of `pf` and `pf(x) == true`.
@@ -403,8 +440,10 @@ object PartialFunction {
   /** Applies the function to the given value if defined, and returns the result
    *  in a `Some`; otherwise, returns `None`.
    *
+   *  @tparam A the type of the value to test
+   *  @tparam B the result type of the partial function
    *  @param  x     the value to test
-   *  @param  pf    the PartialFunction[T, U]
+   *  @param  pf    the partial function to apply
    *  @return `Some(pf(x))` if `pf isDefinedAt x`, `None` otherwise.
    */
   def condOpt[A, B](x: A)(pf: PartialFunction[A, B]^): Option[B] = {

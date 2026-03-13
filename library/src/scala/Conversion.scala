@@ -23,11 +23,17 @@ import annotation.internal.preview
  *
  *  The `Conversion` class can also be used to convert explicitly, using
  *  the `convert` extension method.
+ *
+ *  @tparam T the input type of the conversion (contravariant)
+ *  @tparam U the output type of the conversion (covariant)
  */
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
   self =>
-    /** Converts value `x` of type `T` to type `U`. */
+    /** Converts value `x` of type `T` to type `U`.
+     *
+     *  @param x the value of type `T` to convert to type `U`
+     */
     def apply(x: T): U
 
     extension (x: T)

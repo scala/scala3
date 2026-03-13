@@ -19,5 +19,7 @@ import language.experimental.captureChecking
  *  appears before the one for `B`.
  *
  *  TODO: This should be `Child[T <: AnyKind]`
+ *
+ *  @tparam T a reference to the child class or object that extends the annotated sealed class, typically a `TypeRef` to the child's class symbol
  */
 class Child[T] extends Annotation
