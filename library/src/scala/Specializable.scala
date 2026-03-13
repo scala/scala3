@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A common supertype for companions of specializable types.
