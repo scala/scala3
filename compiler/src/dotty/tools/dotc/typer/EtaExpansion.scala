@@ -180,7 +180,6 @@ object LiftImpure extends LiftImpure
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
-  override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
 
@@ -219,12 +218,6 @@ object LiftCoverage extends LiftImpure {
     val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
     tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
   }
-}
-
-/** Lift all impure or complex arguments to `def`s */
-object LiftToDefs extends LiftComplex {
-  override def liftedFlags: FlagSet = Method
-  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.DefDef = tpd.DefDef(sym, rhs)
 }
 
 /** Lifter for eta expansion */
