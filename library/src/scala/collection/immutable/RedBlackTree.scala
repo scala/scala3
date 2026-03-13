@@ -15,7 +15,7 @@ package collection
 package immutable
 
 import scala.language.`2.13`
-import language.experimental.captureChecking
+// import language.experimental.captureChecking
 
 import scala.annotation.meta.{getter, setter}
 import scala.annotation.tailrec
@@ -70,7 +70,7 @@ private[collection] object RedBlackTree {
       } else tree.black
     }
     /** Creates a new balanced tree where `newLeft` replaces `tree.left`.
-     *  tree and newLeft are never null 
+     *  tree and newLeft are never null
      *
      *  @tparam A1 the key type of the tree
      *  @tparam B the original value type of the tree
@@ -121,7 +121,7 @@ private[collection] object RedBlackTree {
       }
     }
     /** Creates a new balanced tree where `newRight` replaces `tree.right`.
-     *  tree and newRight are never null 
+     *  tree and newRight are never null
      *
      *  @tparam A1 the key type of the tree
      *  @tparam B the original value type of the tree
@@ -711,12 +711,12 @@ private[collection] object RedBlackTree {
     private[RedBlackTree] def black: Tree[A, B] = {
       //assertNotMutable(this)
       if (isBlack) this
-      else new Tree(_key, _value, _left, _right, _count ^ colourBit)
+      else new Tree(_key, _value, _left, _right, _count)
     }
     private[RedBlackTree] def red: Tree[A, B] = {
       //assertNotMutable(this)
       if (isRed) this
-      else new Tree(_key, _value, _left, _right, _count ^ colourBit)
+      else new Tree(_key, _value, _left, _right, _count)
     }
     private[RedBlackTree] def withKV[B1 >: B](newKey: A, newValue: B1): Tree[A, B1] = {
       //assertNotMutable(this)
@@ -996,7 +996,7 @@ private[collection] object RedBlackTree {
    *  @param size the number of keys to consume from the iterator
    *  @return a balanced red-black tree containing the consumed keys, or `null` if `size` is zero
    */
-  def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] | Null = {
+  def fromOrderedKeys[A](xs: Iterator[A], size: Int): Tree[A, Null] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, Null] | Null = size match {
       case 0 => null
@@ -1019,7 +1019,7 @@ private[collection] object RedBlackTree {
    *  @param size the number of entries to consume from the iterator
    *  @return a balanced red-black tree containing the consumed entries, or `null` if `size` is zero
    */
-  def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] | Null = {
+  def fromOrderedEntries[A, B](xs: Iterator[(A, B)], size: Int): Tree[A, B] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, B] | Null = size match {
       case 0 => null
