@@ -19,6 +19,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
 
+import dotty.tools.dotc.transform.MacroAnnotations.getMacroAnnotation
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile, FileExtension}
@@ -184,6 +185,10 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
         rec.addClassDependency(parent.tpe.classSymbol, depContext)
     }
 
+  private def addMacroAnnotationDependency(tree: Tree)(using Context): Unit =
+    tree.symbol.getMacroAnnotation.foreach: annot =>
+      addMemberRefDependency(annot.symbol.requiredMethod("transform"))
+
   private def depContextOf(cls: Symbol)(using Context): DependencyContext =
     if cls.isLocal then LocalDependencyByInheritance
     else DependencyByInheritance
@@ -238,7 +243,8 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
         addInheritanceDependencies(t)
       case t: Template =>
         addInheritanceDependencies(t)
-      case _ => ()
+      case _ =>
+        addMacroAnnotationDependency(tree)
 
   /**Reused EqHashSet, safe to use as each TypeDependencyTraverser is used atomically
    * Avoid cycles by remembering both the types (testcase:
