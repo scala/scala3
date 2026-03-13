@@ -497,6 +497,9 @@ case class ScalaPresentationCompiler(
       EmptyCancelToken
     ) { access =>
       val driver = access.compiler()
+      driver match
+        case cd: CachingDriver => cd.didChange(params.uri())
+        case _ =>
       DiagnosticProvider(driver, params).diagnostics().asJava
     }(params.toQueryContext)
 
