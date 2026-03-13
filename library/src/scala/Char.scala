@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** `Char`, a 16-bit unsigned integer (equivalent to Java's `char` primitive type) is a

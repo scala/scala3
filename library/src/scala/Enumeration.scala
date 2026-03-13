@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 import scala.collection.{SpecificIterableFactory, StrictOptimizedIterableOps, View, immutable, mutable}
@@ -87,7 +88,7 @@ import scala.util.matching.Regex
  *                 identifies values at run-time.
  */
 @SerialVersionUID(8476000850333817230L)
-abstract class Enumeration (initial: Int) extends Serializable {
+abstract class Enumeration (initial: Int) extends Serializable, caps.Pure {
   thisenum =>
 
   def this() = this(0)
@@ -229,7 +230,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** The type of the enumerated values. */
   @SerialVersionUID(7091335633555234129L)
-  abstract class Value extends Ordered[Value] with Serializable {
+  abstract class Value extends Ordered[Value] with Serializable with caps.Pure {
     /** The id and bit location of this enumeration value. */
     def id: Int
     /** A marker so we can tell whose values belong to whom come reflective-naming time. */
@@ -316,7 +317,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
      */
     def toBitMask: Array[Long] = nnIds.toBitMask
 
-    override protected def fromSpecific(coll: IterableOnce[Value]): ValueSet = ValueSet.fromSpecific(coll)
+    override protected def fromSpecific(coll: IterableOnce[Value]^): ValueSet = ValueSet.fromSpecific(coll)
     override protected def newSpecificBuilder = ValueSet.newBuilder
 
     def map(f: Value => Value): ValueSet = fromSpecific(new View.Map(this, f))
@@ -325,11 +326,11 @@ abstract class Enumeration (initial: Int) extends Serializable {
     // necessary for disambiguation:
     override def map[B](f: Value => B)(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].map[B](f)
-    override def flatMap[B](f: Value => IterableOnce[B])(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
+    override def flatMap[B](f: Value => IterableOnce[B]^)(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].flatMap[B](f)
-    override def zip[B](that: IterableOnce[B])(implicit @implicitNotFound(ValueSet.zipOrdMsg) ev: Ordering[(Value, B)]): immutable.SortedSet[(Value, B)] =
+    override def zip[B](that: IterableOnce[B]^)(implicit @implicitNotFound(ValueSet.zipOrdMsg) ev: Ordering[(Value, B)]): immutable.SortedSet[(Value, B)] =
       super[SortedSet].zip[B](that)
-    override def collect[B](pf: PartialFunction[Value, B])(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
+    override def collect[B](pf: PartialFunction[Value, B]^)(implicit @implicitNotFound(ValueSet.ordMsg) ev: Ordering[B]): immutable.SortedSet[B] =
       super[SortedSet].collect[B](pf)
 
     @transient private[Enumeration] lazy val byName: Map[String, Value] = iterator.map( v => v.toString -> v).toMap
@@ -354,7 +355,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
       def clear() = b.clear()
       def result() = new ValueSet(b.toImmutable)
     }
-    def fromSpecific(it: IterableOnce[Value]): ValueSet =
+    def fromSpecific(it: IterableOnce[Value]^): ValueSet =
       newBuilder.addAll(it).result()
   }
 }

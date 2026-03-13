@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** Base trait for all products, which in the standard library include at
@@ -37,7 +38,7 @@ transparent trait Product extends Any with Equals {
   /** An iterator over all the elements of this product.
    *  @return     in the default implementation, an `Iterator[Any]`
    */
-  def productIterator: Iterator[Any] = new scala.collection.AbstractIterator[Any] {
+  def productIterator: Iterator[Any]^{this} = new scala.collection.AbstractIterator[Any] {
     private var c: Int = 0
     private val cmax = productArity
     def hasNext: Boolean = c < cmax
@@ -65,7 +66,7 @@ transparent trait Product extends Any with Equals {
 
   /** An iterator over the names of all the elements of this product.
    */
-  def productElementNames: Iterator[String] = new scala.collection.AbstractIterator[String] {
+  def productElementNames: Iterator[String]^{this} = new scala.collection.AbstractIterator[String] {
     private var c: Int = 0
     private val cmax = productArity
     def hasNext: Boolean = c < cmax

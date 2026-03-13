@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** `Long`, a 64-bit signed integer (equivalent to Java's `long` primitive type) is a

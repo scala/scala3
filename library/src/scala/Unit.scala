@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** `Unit` is a subtype of [[scala.AnyVal]]. There is only one value of type
