@@ -13,6 +13,7 @@
 package scala
 package util
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.io.{IOException, PrintWriter}
 import java.util.jar.Attributes.{Name => AttributeName}
