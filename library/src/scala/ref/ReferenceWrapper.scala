@@ -12,11 +12,12 @@
 
 package scala.ref
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.nowarn
 
 @nowarn("cat=deprecation")
-trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
+trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy with caps.Pure {
   val underlying: java.lang.ref.Reference[? <: T]
   override def get = Option(underlying.get)
   def apply() = {
