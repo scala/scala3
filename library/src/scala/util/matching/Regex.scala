@@ -335,6 +335,9 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
    *
    *  Otherwise, this Regex is applied to the previously matched input,
    *  and the result of that match is used.
+   *
+   *  @param m the `Match` to extract groups from
+   *  @return the matched groups, or `None` if the match was unsuccessful
    */
   def unapplySeq(m: Match): Option[List[String | Null]] =
     if (m.matched == null) None
@@ -655,6 +658,8 @@ object Regex {
 
     /** The index of the first matched character in group `i`,
      *  or -1 if nothing was matched for that group.
+     *
+     *  @param i the index of the capturing group
      */
     def start(i: Int): Int
 
@@ -663,6 +668,8 @@ object Regex {
 
     /** The index following the last matched character in group `i`,
      *  or -1 if nothing was matched for that group.
+     *
+     *  @param i the index of the capturing group
      */
     def end(i: Int): Int
 
@@ -673,6 +680,8 @@ object Regex {
 
     /** The matched string in group `i`,
      *  or `null` if nothing was matched.
+     *
+     *  @param i the index of the capturing group
      */
     def group(i: Int): String | Null =
       if (start(i) >= 0) source.subSequence(start(i), end(i)).toString
@@ -690,6 +699,8 @@ object Regex {
 
     /** The char sequence before first character of match in group `i`,
      *  or `null` if nothing was matched for that group.
+     *
+     *  @param i the index of the capturing group
      */
     def before(i: Int): CharSequence | Null =
       if (start(i) >= 0) source.subSequence(0, start(i))
@@ -704,6 +715,8 @@ object Regex {
 
     /** The char sequence after last character of match in group `i`,
      *  or `null` if nothing was matched for that group.
+     *
+     *  @param i the index of the capturing group
      */
     def after(i: Int): CharSequence | Null =
       if (end(i) >= 0) source.subSequence(end(i), source.length)
@@ -739,7 +752,11 @@ object Regex {
     override def toString(): String = matched.nn
   }
 
-  /** Provides information about a successful match. */
+  /** Provides information about a successful match.
+   *
+   *  @param source the source character sequence that was matched against
+   *  @param matcher the underlying `Matcher` that performed the match
+   */
   class Match(val source: CharSequence,
               protected[matching] val matcher: Matcher,
               _groupNames: Seq[String]) extends MatchData {
@@ -761,10 +778,16 @@ object Regex {
     private lazy val ends: Array[Int] =
       Array.tabulate(groupCount + 1) { matcher.end }
 
-    /** The index of the first matched character in group `i`. */
+    /** The index of the first matched character in group `i`.
+     *
+     *  @param i the index of the capturing group
+     */
     def start(i: Int): Int = starts(i)
 
-    /** The index following the last matched character in group `i`. */
+    /** The index following the last matched character in group `i`.
+     *
+     *  @param i the index of the capturing group
+     */
     def end(i: Int): Int = ends(i)
 
     /** The match itself with matcher-dependent lazy vals forced,
@@ -818,6 +841,10 @@ object Regex {
    *  [[java.lang.IllegalStateException]].
    *
    *  @see [[java.util.regex.Matcher]]
+   *
+   *  @param source the character sequence being matched against
+   *  @param regex the `Regex` whose pattern is used for matching
+   *  @param _groupNames the names of the capturing groups, if any
    */
   class MatchIterator(val source: CharSequence, val regex: Regex, private[Regex] val _groupNames: Seq[String])
   extends AbstractIterator[String] with MatchData { self =>
@@ -871,13 +898,19 @@ object Regex {
     /** The index of the first matched character. */
     def start: Int = { ensure() ; matcher.start }
 
-    /** The index of the first matched character in group `i`. */
+    /** The index of the first matched character in group `i`.
+     *
+     *  @param i the index of the capturing group
+     */
     def start(i: Int): Int = { ensure() ; matcher.start(i) }
 
     /** The index of the last matched character. */
     def end: Int = { ensure() ; matcher.end }
 
-    /** The index following the last matched character in group `i`. */
+    /** The index following the last matched character in group `i`.
+     *
+     *  @param i the index of the capturing group
+     */
     def end(i: Int): Int = { ensure() ; matcher.end(i) }
 
     /** The number of subgroups. */
@@ -921,6 +954,9 @@ object Regex {
    *  ```
    *  List("US\$", "CAN\$").map(Regex.quote).mkString("|").r
    *  ```
+   *
+   *  @param text the string to quote as a literal pattern
+   *  @return a regex pattern string that matches `text` literally
    */
   def quote(text: String): String = Pattern.quote(text)
 

@@ -35,11 +35,16 @@ object boundary:
    *
    *  Note that it is **capability unsafe** to access `label` from a `Break`.
    *  This field will be marked private in a future release.
+   *
+   *  @tparam T the type of the value carried by this `Break` exception
    */
   final class Break[T] private[boundary](val label: Label[T]^{}, val value: T)
   extends RuntimeException(
     /*message*/ null, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false):
-    /** Compares the given [[Label]] to the one this [[Break]] was constructed with. */
+    /** Compares the given [[Label]] to the one this [[Break]] was constructed with.
+     *
+     *  @param other the `Label` to compare against this `Break`'s label
+     */
     def isSameLabelAs(other: Label[T]) = label eq other
 
   object Break:
@@ -54,12 +59,18 @@ object boundary:
 
   /** Abort current computation and instead return `value` as the value of
    *  the enclosing `boundary` call that created `label`.
+   *
+   *  @tparam T the type of the value to return from the enclosing `boundary`
+   *  @param value the value to return from the enclosing `boundary` call
+   *  @param label the label identifying the target `boundary` to exit
    */
   def break[T](value: T)(using label: Label[T]): Nothing =
     throw Break(label, value)
 
   /** Abort current computation and instead continue after the `boundary` call that
    *  created `label`.
+   *
+   *  @param label the label identifying the target `boundary` to exit
    */
   def break()(using label: Label[Unit]): Nothing =
     throw Break(label, ())
@@ -67,6 +78,9 @@ object boundary:
   /** Run `body` with freshly generated label as implicit argument. Catch any
    *  breaks associated with that label and return their results instead of
    *  `body`'s result.
+   *
+   *  @tparam T the result type of the boundary block
+   *  @param body the computation to execute, which receives a fresh `Label[T]` as a context parameter
    */
   inline def apply[T](inline body: Label[T] ?=> T): T =
     val local = Label[T]()

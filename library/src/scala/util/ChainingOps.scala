@@ -20,7 +20,11 @@ trait ChainingSyntax {
   @inline implicit final def scalaUtilChainingOps[A](a: A): ChainingOps[A] = new ChainingOps(a)
 }
 
-/** Adds chaining methods `tap` and `pipe` to every type. */
+/** Adds chaining methods `tap` and `pipe` to every type.
+ *
+ *  @tparam A the type of the wrapped value
+ *  @param self the value to enrich with chaining operations
+ */
 final class ChainingOps[A](private val self: A) extends AnyVal {
   /** Applies `f` to the value for its side effects, and returns the original value.
    *

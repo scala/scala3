@@ -60,6 +60,8 @@ import scala.util.control.NonFatal
  *  Serious system errors, on the other hand, will be thrown.
  *
  *  *Note:*: all Try combinators will catch exceptions and return failure unless otherwise specified in the documentation.
+ *
+ *  @tparam T the type of the value computed by the `Try`
  */
 sealed abstract class Try[+T] extends Product with Serializable {
 
@@ -72,10 +74,18 @@ sealed abstract class Try[+T] extends Product with Serializable {
   /** Returns the value from this `Success` or the given `default` argument if this is a `Failure`.
    *
    *  *Note:*: This will throw an exception if it is not a success and default throws an exception.
+   *
+   *  @tparam U the type of the returned value, a supertype of `T`
+   *  @param default the default value to return if this is a `Failure`
+   *  @return the value if this is a `Success`, otherwise `default`
    */
   def getOrElse[U >: T](default: => U): U
 
-  /** Returns this `Try` if it's a `Success` or the given `default` argument if this is a `Failure`. */
+  /** Returns this `Try` if it's a `Success` or the given `default` argument if this is a `Failure`.
+   *
+   *  @tparam U the type of the value in the returned `Try`, a supertype of `T`
+   *  @param default the fallback `Try` to return if this is a `Failure` (evaluated lazily)
+   */
   def orElse[U >: T](default: => Try[U]): Try[U]
 
   /** Returns the value from this `Success` or throws the exception if this is a `Failure`. */
@@ -84,19 +94,37 @@ sealed abstract class Try[+T] extends Product with Serializable {
   /** Applies the given function `f` if this is a `Success`, otherwise returns `Unit` if this is a `Failure`.
    *
    *  *Note:* If `f` throws, then this method may throw an exception.
+   *
+   *  @tparam U the (discarded) result type of the function `f`
+   *  @param f the function to apply to the value if this is a `Success`
    */
   def foreach[U](f: T => U): Unit
 
-  /** Returns the given function applied to the value from this `Success` or returns this if this is a `Failure`. */
+  /** Returns the given function applied to the value from this `Success` or returns this if this is a `Failure`.
+   *
+   *  @tparam U the type of the value in the resulting `Try`
+   *  @param f the function to apply to the value if this is a `Success`
+   */
   def flatMap[U](f: T => Try[U]): Try[U]
 
-  /** Maps the given function to the value from this `Success` or returns this if this is a `Failure`. */
+  /** Maps the given function to the value from this `Success` or returns this if this is a `Failure`.
+   *
+   *  @tparam U the type of the mapped value
+   *  @param f the function to apply to the value if this is a `Success`
+   */
   def map[U](f: T => U): Try[U]
 
-  /** Applies the given partial function to the value from this `Success` or returns this if this is a `Failure`. */
+  /** Applies the given partial function to the value from this `Success` or returns this if this is a `Failure`.
+   *
+   *  @tparam U the type of the value returned by the partial function
+   *  @param pf the partial function to apply to the value if this is a `Success`
+   */
   def collect[U](pf: PartialFunction[T, U]): Try[U]
 
-  /** Converts this to a `Failure` if the predicate is not satisfied. */
+  /** Converts this to a `Failure` if the predicate is not satisfied.
+   *
+   *  @param p the predicate to test the value against
+   */
   def filter(p: T => Boolean): Try[T]
 
   /** Creates a non-strict filter, which eventually converts this to a `Failure`
@@ -120,6 +148,8 @@ sealed abstract class Try[+T] extends Product with Serializable {
   /** We need a whole WithFilter class to honor the "doesn't create a new
    *  collection" contract even though it seems unlikely to matter much in a
    *  collection with max size 1.
+   *
+   *  @param p the predicate used to test elements
    */
   final class WithFilter(p: T => Boolean) {
     def map[U](f:     T => U): Try[U]           = Try.this filter p map f
@@ -130,11 +160,17 @@ sealed abstract class Try[+T] extends Product with Serializable {
 
   /** Applies the given function `f` if this is a `Failure`, otherwise returns this if this is a `Success`.
    *  This is like `flatMap` for the exception.
+   *
+   *  @tparam U the type of the value in the resulting `Try`, a supertype of `T`
+   *  @param pf the partial function to apply if this is a `Failure`
    */
   def recoverWith[U >: T](pf: PartialFunction[Throwable, Try[U]]): Try[U]
 
   /** Applies the given function `f` if this is a `Failure`, otherwise returns this if this is a `Success`.
    *  This is like map for the exception.
+   *
+   *  @tparam U the type of the value in the resulting `Try`, a supertype of `T`
+   *  @param pf the partial function to apply if this is a `Failure`
    */
   def recover[U >: T](pf: PartialFunction[Throwable, U]): Try[U]
 
@@ -143,6 +179,9 @@ sealed abstract class Try[+T] extends Product with Serializable {
 
   /** Transforms a nested `Try`, ie, a `Try` of type `Try[Try[T]]`,
    *  into an un-nested `Try`, ie, a `Try` of type `Try[T]`.
+   *
+   *  @tparam U the type of the value in the inner `Try`
+   *  @param ev evidence that `T` is itself a `Try[U]`
    */
   def flatten[U](implicit ev: T <:< Try[U]): Try[U]
 
@@ -153,6 +192,10 @@ sealed abstract class Try[+T] extends Product with Serializable {
 
   /** Completes this `Try` by applying the function `f` to this if this is of type `Failure`, or conversely, by applying
    *  `s` if this is a `Success`.
+   *
+   *  @tparam U the type of the value in the resulting `Try`
+   *  @param s the function to apply if this is a `Success`
+   *  @param f the function to apply if this is a `Failure`
    */
   def transform[U](s: T => Try[U], f: Throwable => Try[U]): Try[U]
 
@@ -174,6 +217,8 @@ sealed abstract class Try[+T] extends Product with Serializable {
    *  @param fa the function to apply if this is a `Failure`
    *  @param fb the function to apply if this is a `Success`
    *  @return the results of applying the function
+   *
+   *  @tparam U the type of the result
    */
   def fold[U](fa: Throwable => U, fb: T => U): U
 
@@ -187,6 +232,7 @@ object Try {
    *  Any non-fatal exception is caught and results in a `Failure`
    *  that holds the exception.
    *
+   *  @tparam T the type of the value to be computed
    *  @param r the result value to compute
    *  @return the result of evaluating the value, as a `Success` or `Failure`
    */

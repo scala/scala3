@@ -41,6 +41,9 @@ object NonFatal {
     case _: VirtualMachineError | _: ThreadDeath | _: InterruptedException | _: LinkageError | _: ControlThrowable => false
     case _ => true
   }
-  /** Returns `Some`(t) if `NonFatal`(t) == true, otherwise `None` */
+  /** Returns `Some`(t) if `NonFatal`(t) == true, otherwise `None`
+   *
+   *  @param t the `Throwable` to test for being non-fatal
+   */
   def unapply(t: Throwable): Option[Throwable] = if (apply(t)) Some(t) else None
 }

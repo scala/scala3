@@ -74,6 +74,8 @@ class Breaks {
   /** A block from which one can exit with a `break`. The `break` may be
    *  executed further down in the call stack provided that it is called on the
    *  exact same instance of `Breaks`.
+   *
+   *  @param op the computation to execute, which may call `break` to exit early
    */
   def breakable(op: => Unit): Unit =
     try op catch { case ex: BreakControl if ex eq breakException => }
@@ -92,6 +94,10 @@ class Breaks {
    *   Vector.empty
    *  }
    *  ```
+   *
+   *  @tparam T the result type of the computation
+   *  @param op the computation to evaluate, which may call `break` to abort
+   *  @return a `TryBlock` whose `catchBreak` method provides the fallback value if `break` is invoked
    */
   def tryBreakable[T](op: => T): TryBlock[T] =
     new TryBlock[T] {

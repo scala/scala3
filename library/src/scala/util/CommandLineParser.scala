@@ -12,6 +12,11 @@ object CommandLineParser {
   class ParseError(val idx: Int, val msg: String) extends Exception
 
   /** Parses command line argument `s`, which has index `n`, as a value of type `T`.
+   *
+   *  @tparam T the target type to parse the string into
+   *  @param str the command line argument string to parse
+   *  @param n the zero-based index of the argument, used for error reporting
+   *  @param fs the type class instance (usually provided implicitly) that converts a string to type `T`
    *  @throws ParseError if argument cannot be converted to type `T`.
    */
   def parseString[T](str: String, n: Int)(using fs: FromString[T]^): T = {
@@ -22,6 +27,11 @@ object CommandLineParser {
   }
 
   /** Parses `n`'th argument in `args` (counting from 0) as a value of type `T`.
+   *
+   *  @tparam T the target type to parse the argument into
+   *  @param args the command line arguments array
+   *  @param n the zero-based index of the argument to parse
+   *  @param fs the type class instance that converts a string to type `T`
    *  @throws ParseError if argument does not exist or cannot be converted to type `T`.
    */
   def parseArgument[T](args: Array[String], n: Int)(using fs: FromString[T]^): T =
@@ -29,13 +39,21 @@ object CommandLineParser {
     else throw ParseError(n, "more arguments expected")
 
   /** Parses all arguments from `n`'th one (counting from 0) as a list of values of type `T`.
+   *
+   *  @tparam T the target type to parse each argument into
+   *  @param args the command line arguments array
+   *  @param n the zero-based index of the first remaining argument to parse
+   *  @param fs the type class instance that converts a string to type `T`
    *  @throws ParseError if some of the arguments cannot be converted to type `T`.
    */
   def parseRemainingArguments[T](args: Array[String], n: Int)(using fs: FromString[T]^): List[T] =
     if n < args.length then parseString(args(n), n) :: parseRemainingArguments(args, n + 1)
     else Nil
 
-  /** Prints error message explaining given ParserError. */
+  /** Prints error message explaining given ParserError.
+   *
+   *  @param err the parse error to display
+   */
   def showError(err: ParseError): Unit = {
     val where =
       if err.idx == 0 then ""
@@ -45,7 +63,10 @@ object CommandLineParser {
   }
 
   trait FromString[T] {
-    /** Can throw java.lang.IllegalArgumentException. */
+    /** Can throw java.lang.IllegalArgumentException.
+     *
+     *  @param s the string to convert to type `T`
+     */
     def fromString(s: String): T
 
     def fromStringOption(s: String): Option[T] =
