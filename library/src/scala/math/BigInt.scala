@@ -64,6 +64,8 @@ object BigInt {
 
   /** Translates a byte array containing the two's-complement binary
    *  representation of a BigInt into a BigInt.
+   *
+   *  @param x the two's-complement big-endian binary representation of a `BigInt`
    */
   def apply(x: Array[Byte]): BigInt =
     apply(new BigInteger(x))
@@ -74,33 +76,50 @@ object BigInt {
    *                   for positive).
    *  @param  magnitude big-endian binary representation of the magnitude of
    *                   the number.
+   *  @return the `BigInt` with the specified sign and magnitude
    */
   def apply(signum: Int, magnitude: Array[Byte]): BigInt =
     apply(new BigInteger(signum, magnitude))
 
   /** Constructs a randomly generated positive BigInt that is probably prime,
    *  with the specified bitLength.
+   *
+   *  @param bitlength the bit length of the generated probable prime `BigInt`
+   *  @param certainty a measure of the uncertainty that the caller is willing to tolerate: the probability of primality exceeds `(1 - 1/2 ^ certainty)`
+   *  @param rnd the source of randomness used to generate the candidate
    */
   def apply(bitlength: Int, certainty: Int, rnd: scala.util.Random): BigInt =
     apply(new BigInteger(bitlength, certainty, rnd.self))
 
   /** Constructs a randomly generated BigInt, uniformly distributed over the
    *  range `0` to `(2 ^ numBits - 1)`, inclusive.
+   *
+   *  @param numbits the number of random bits used to generate the `BigInt`
+   *  @param rnd the source of randomness used for the generation
    */
   def apply(numbits: Int, rnd: scala.util.Random): BigInt =
     apply(new BigInteger(numbits, rnd.self))
 
-  /** Translates the decimal String representation of a BigInt into a BigInt. */
+  /** Translates the decimal String representation of a BigInt into a BigInt.
+   *
+   *  @param x the decimal string representation of the `BigInt`
+   */
   def apply(x: String): BigInt =
     apply(new BigInteger(x))
 
   /** Translates the string representation of a `BigInt` in the
    *  specified `radix` into a BigInt.
+   *
+   *  @param x the string representation of the `BigInt` in the specified radix
+   *  @param radix the radix to use when parsing `x`
    */
   def apply(x: String, radix: Int): BigInt =
     apply(new BigInteger(x, radix))
 
-  /** Translates a `java.math.BigInteger` into a BigInt. */
+  /** Translates a `java.math.BigInteger` into a BigInt.
+   *
+   *  @param x the `java.math.BigInteger` value to convert
+   */
   def apply(x: BigInteger): BigInt = {
     if (x.bitLength <= 63) {
       val l = x.longValue
@@ -108,14 +127,24 @@ object BigInt {
     } else new BigInt(x, Long.MinValue)
   }
 
-  /** Returns a positive BigInt that is probably prime, with the specified bitLength. */
+  /** Returns a positive BigInt that is probably prime, with the specified bitLength.
+   *
+   *  @param bitLength the bit length of the returned probable prime `BigInt`
+   *  @param rnd the source of randomness used to generate the candidate
+   */
   def probablePrime(bitLength: Int, rnd: scala.util.Random): BigInt =
     apply(BigInteger.probablePrime(bitLength, rnd.self))
 
-  /** Implicit conversion from `Int` to `BigInt`. */
+  /** Implicit conversion from `Int` to `BigInt`.
+   *
+   *  @param i the `Int` value to convert
+   */
   implicit def int2bigInt(i: Int): BigInt = apply(i)
 
-  /** Implicit conversion from `Long` to `BigInt`. */
+  /** Implicit conversion from `Long` to `BigInt`.
+   *
+   *  @param l the `Long` value to convert
+   */
   implicit def long2bigInt(l: Long): BigInt = apply(l)
 
   // For the following function, both the parameter and the return type are non-nullable.
@@ -123,7 +152,10 @@ object BigInt {
   // We intentionally keep this signature to discourage passing nulls implicitly while
   // preserving the previous behavior for backward compatibility.
 
-  /** Implicit conversion from `java.math.BigInteger` to `scala.BigInt`. */
+  /** Implicit conversion from `java.math.BigInteger` to `scala.BigInt`.
+   *
+   *  @param x the `java.math.BigInteger` value to convert
+   */
   implicit def javaBigInteger2bigInt(x: BigInteger): BigInt = mapNull(x, apply(x))
 
   // this method is adapted from Google Guava's version at
@@ -132,7 +164,11 @@ object BigInt {
   //   * Copyright (C) 2011 The Guava Authors
   //   *
   //   * Licensed under the Apache License, Version 2.0 (the "License")
-  /** Returns the greatest common divisor of a and b. Returns 0 if a == 0 && b == 0. */
+  /** Returns the greatest common divisor of a and b. Returns 0 if a == 0 && b == 0.
+   *
+   *  @param a the first non-negative operand
+   *  @param b the second non-negative operand
+   */
   private def longGcd(a: Long, b: Long): Long = {
     // both a and b must be >= 0
     if (a == 0) { // 0 % b == 0, so b divides a, but the converse doesn't hold.
@@ -201,7 +237,10 @@ final class BigInt private (
   //
   // Additionally, we know that if this.isValidLong is true, then _long is the encoded value.
 
-  /** Public constructor present for compatibility. Use the BigInt.apply companion object method instead. */
+  /** Public constructor present for compatibility. Use the BigInt.apply companion object method instead.
+   *
+   *  @param bigInteger the `java.math.BigInteger` value to wrap
+   */
   def this(bigInteger: BigInteger) = this(
     bigInteger, // even if it is a short BigInteger, we cache the instance
     if (bigInteger.bitLength <= 63)
@@ -282,14 +321,20 @@ final class BigInt private (
   def isWhole: Boolean = true
   def underlying: BigInteger = bigInteger
 
-  /** Compares this BigInt with the specified BigInt for equality. */
+  /** Compares this BigInt with the specified BigInt for equality.
+   *
+   *  @param that the `BigInt` to compare against
+   */
   def equals(that: BigInt): Boolean =
     if (this.longEncoding)
       that.longEncoding && (this._long == that._long)
     else
       !that.longEncoding && (this._bigInteger == that._bigInteger)
 
-  /** Compares this BigInt with the specified BigInt */
+  /** Compares this BigInt with the specified BigInt
+   *
+   *  @param that the `BigInt` to compare against
+   */
   def compare(that: BigInt): Int =
     if (this.longEncoding) {
       if (that.longEncoding) java.lang.Long.compare(this._long, that._long) else -that._bigInteger.nn.signum()
@@ -297,7 +342,10 @@ final class BigInt private (
       if (that.longEncoding) _bigInteger.nn.signum() else this._bigInteger.nn.compareTo(that._bigInteger)
     }
 
-  /** Addition of BigInts */
+  /** Addition of BigInts
+   *
+   *  @param that the value to add to this `BigInt`
+   */
   def +(that: BigInt): BigInt = {
     if (this.longEncoding && that.longEncoding) { // fast path
       val x = this._long
@@ -308,7 +356,10 @@ final class BigInt private (
     BigInt(this.bigInteger.add(that.bigInteger))
   }
 
-  /** Subtraction of BigInts */
+  /** Subtraction of BigInts
+   *
+   *  @param that the value to subtract from this `BigInt`
+   */
   def -(that: BigInt): BigInt = {
     if (this.longEncoding && that.longEncoding) { // fast path
       val x = this._long
@@ -319,7 +370,10 @@ final class BigInt private (
     BigInt(this.bigInteger.subtract(that.bigInteger))
   }
 
-  /** Multiplication of BigInts */
+  /** Multiplication of BigInts
+   *
+   *  @param that the value to multiply with this `BigInt`
+   */
   def *(that: BigInt): BigInt = {
     if (this.longEncoding && that.longEncoding) { // fast path
       val x = this._long
@@ -332,7 +386,10 @@ final class BigInt private (
     BigInt(this.bigInteger.multiply(that.bigInteger))
   }
 
-  /** Division of BigInts */
+  /** Division of BigInts
+   *
+   *  @param that the divisor
+   */
   def /(that: BigInt): BigInt =
   // in the fast path, note that the original code avoided storing -Long.MinValue in a long:
   //    if (this._long != Long.MinValue || that._long != -1) return BigInt(this._long / that._long)
@@ -340,13 +397,19 @@ final class BigInt private (
     if (this.longEncoding && that.longEncoding) BigInt(this._long / that._long)
     else BigInt(this.bigInteger.divide(that.bigInteger))
 
-  /** Remainder of BigInts */
+  /** Remainder of BigInts
+   *
+   *  @param that the divisor
+   */
   def %(that: BigInt): BigInt =
   // see / for the original logic regarding Long.MinValue
     if (this.longEncoding && that.longEncoding) BigInt(this._long % that._long)
     else BigInt(this.bigInteger.remainder(that.bigInteger))
 
-  /** Returns a pair of two BigInts containing (this / that) and (this % that). */
+  /** Returns a pair of two BigInts containing (this / that) and (this % that).
+   *
+   *  @param that the divisor
+   */
   def /%(that: BigInt): (BigInt, BigInt) =
     if (this.longEncoding && that.longEncoding) {
       val x = this._long
@@ -358,11 +421,17 @@ final class BigInt private (
       (BigInt(dr(0)), BigInt(dr(1)))
     }
 
-  /** Leftshift of BigInt */
+  /** Leftshift of BigInt
+   *
+   *  @param n the number of bits to shift left
+   */
   def <<(n: Int): BigInt =
     if (longEncoding && n <= 0) (this >> (-n)) else BigInt(this.bigInteger.shiftLeft(n))
 
-  /** (Signed) rightshift of BigInt */
+  /** (Signed) rightshift of BigInt
+   *
+   *  @param n the number of bits to shift right
+   */
   def >>(n: Int): BigInt =
     if (longEncoding && n >= 0) {
       if (n < 64) BigInt(_long >> n)
@@ -370,31 +439,46 @@ final class BigInt private (
       else BigInt(0) // for _long >= 0
     } else BigInt(this.bigInteger.shiftRight(n))
 
-  /** Bitwise and of BigInts */
+  /** Bitwise and of BigInts
+   *
+   *  @param that the value to AND with this `BigInt`
+   */
   def &(that: BigInt): BigInt =
     if (this.longEncoding && that.longEncoding)
       BigInt(this._long & that._long)
     else BigInt(this.bigInteger.and(that.bigInteger))
 
-  /** Bitwise or of BigInts */
+  /** Bitwise or of BigInts
+   *
+   *  @param that the value to OR with this `BigInt`
+   */
   def |(that: BigInt): BigInt =
     if (this.longEncoding && that.longEncoding)
       BigInt(this._long | that._long)
     else BigInt(this.bigInteger.or(that.bigInteger))
 
-  /** Bitwise exclusive-or of BigInts */
+  /** Bitwise exclusive-or of BigInts
+   *
+   *  @param that the value to XOR with this `BigInt`
+   */
   def ^(that: BigInt): BigInt =
     if (this.longEncoding && that.longEncoding)
       BigInt(this._long ^ that._long)
     else BigInt(this.bigInteger.xor(that.bigInteger))
 
-  /** Bitwise and-not of BigInts. Returns a BigInt whose value is (this & ~that). */
+  /** Bitwise and-not of BigInts. Returns a BigInt whose value is (this & ~that).
+   *
+   *  @param that the value whose complement is ANDed with this `BigInt`
+   */
   def &~(that: BigInt): BigInt =
     if (this.longEncoding && that.longEncoding)
       BigInt(this._long & ~that._long)
     else BigInt(this.bigInteger.andNot(that.bigInteger))
 
-  /** Returns the greatest common divisor of abs(this) and abs(that) */
+  /** Returns the greatest common divisor of abs(this) and abs(that)
+   *
+   *  @param that the other value for computing the greatest common divisor
+   */
   def gcd(that: BigInt): BigInt =
     if (this.longEncoding) {
       if (this._long == 0) return that.abs
@@ -427,23 +511,38 @@ final class BigInt private (
       if (res >= 0) BigInt(res) else BigInt(res + that._long)
     } else BigInt(this.bigInteger.mod(that.bigInteger))
 
-  /** Returns the minimum of this and that */
+  /** Returns the minimum of this and that
+   *
+   *  @param that the value to compare with this `BigInt`
+   */
   def min(that: BigInt): BigInt =
     if (this <= that) this else that
 
-  /** Returns the maximum of this and that */
+  /** Returns the maximum of this and that
+   *
+   *  @param that the value to compare with this `BigInt`
+   */
   def max(that: BigInt): BigInt =
     if (this >= that) this else that
 
-  /** Returns a BigInt whose value is (<tt>this</tt> raised to the power of <tt>exp</tt>). */
+  /** Returns a BigInt whose value is (<tt>this</tt> raised to the power of <tt>exp</tt>).
+   *
+   *  @param exp the exponent, must be non-negative
+   */
   def pow(exp: Int): BigInt = BigInt(this.bigInteger.pow(exp))
 
   /** Returns a BigInt whose value is
    *  (<tt>this</tt> raised to the power of <tt>exp</tt> modulo <tt>m</tt>).
+   *
+   *  @param exp the exponent
+   *  @param m the modulus, must be positive
    */
   def modPow(exp: BigInt, m: BigInt): BigInt = BigInt(this.bigInteger.modPow(exp.bigInteger, m.bigInteger))
 
-  /** Returns a BigInt whose value is (the inverse of <tt>this</tt> modulo <tt>m</tt>). */
+  /** Returns a BigInt whose value is (the inverse of <tt>this</tt> modulo <tt>m</tt>).
+   *
+   *  @param m the modulus, must be positive
+   */
   def modInverse(m: BigInt): BigInt = BigInt(this.bigInteger.modInverse(m.bigInteger))
 
   /** Returns a BigInt whose value is the negation of this BigInt */
@@ -471,7 +570,10 @@ final class BigInt private (
     // it is equal to -(this + 1)
     if (longEncoding && _long != Long.MaxValue) BigInt(-(_long + 1)) else BigInt(this.bigInteger.not())
 
-  /** Returns true if and only if the designated bit is set. */
+  /** Returns true if and only if the designated bit is set.
+   *
+   *  @param n the zero-based index of the bit to test
+   */
   def testBit(n: Int): Boolean =
     if (longEncoding && n >= 0) {
       if (n <= 63)
@@ -480,15 +582,24 @@ final class BigInt private (
         _long < 0 // give the sign bit
     } else this.bigInteger.testBit(n)
 
-  /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit set. */
+  /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit set.
+   *
+   *  @param n the zero-based index of the bit to set
+   */
   def setBit(n: Int): BigInt  = // note that we do not operate on the Long sign bit #63
     if (longEncoding && n <= 62 && n >= 0) BigInt(_long | (1L << n)) else BigInt(this.bigInteger.setBit(n))
 
-  /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit cleared. */
+  /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit cleared.
+   *
+   *  @param n the zero-based index of the bit to clear
+   */
   def clearBit(n: Int): BigInt  = // note that we do not operate on the Long sign bit #63
     if (longEncoding && n <= 62 && n >= 0) BigInt(_long & ~(1L << n)) else BigInt(this.bigInteger.clearBit(n))
 
-  /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit flipped. */
+  /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit flipped.
+   *
+   *  @param n the zero-based index of the bit to flip
+   */
   def flipBit(n: Int): BigInt  = // note that we do not operate on the Long sign bit #63
     if (longEncoding && n <= 62 && n >= 0) BigInt(_long ^ (1L << n)) else BigInt(this.bigInteger.flipBit(n))
 
@@ -586,17 +697,24 @@ final class BigInt private (
    *
    *  @param end    the end value of the range (exclusive)
    *  @param step   the distance between elements (defaults to 1)
-   *  @return       the range
+   *  @return       the exclusive `NumericRange` from this to `end`
    */
   def until(end: BigInt, step: BigInt = BigInt(1)): NumericRange.Exclusive[BigInt] = Range.BigInt(this, end, step)
 
-  /** Like until, but inclusive of the end value. */
+  /** Like until, but inclusive of the end value.
+   *
+   *  @param end the end value of the range (inclusive)
+   *  @param step the distance between elements (defaults to 1)
+   */
   def to(end: BigInt, step: BigInt = BigInt(1)): NumericRange.Inclusive[BigInt] = Range.BigInt.inclusive(this, end, step)
 
   /** Returns the decimal String representation of this BigInt. */
   override def toString(): String = if (longEncoding) _long.toString() else _bigInteger.toString()
 
-  /** Returns the String representation in the specified radix of this BigInt. */
+  /** Returns the String representation in the specified radix of this BigInt.
+   *
+   *  @param radix the radix to use in the string representation
+   */
   def toString(radix: Int): String = this.bigInteger.toString(radix)
 
   /** Returns a byte array containing the two's-complement representation of

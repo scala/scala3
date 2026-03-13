@@ -105,17 +105,41 @@ package object math {
    */
   def random(): Double = java.lang.Math.random()
 
-  /**  @group trig */
+  /**
+   *  @group trig
+   *
+   *  @param x the angle, in radians
+   */
   def sin(x: Double): Double = java.lang.Math.sin(x)
-  /**  @group trig */
+  /**
+   *  @group trig
+   *
+   *  @param x the angle, in radians
+   */
   def cos(x: Double): Double = java.lang.Math.cos(x)
-  /**  @group trig */
+  /**
+   *  @group trig
+   *
+   *  @param x the angle, in radians
+   */
   def tan(x: Double): Double = java.lang.Math.tan(x)
-  /**  @group trig */
+  /**
+   *  @group trig
+   *
+   *  @param x the value whose arc sine is to be returned
+   */
   def asin(x: Double): Double = java.lang.Math.asin(x)
-  /**  @group trig */
+  /**
+   *  @group trig
+   *
+   *  @param x the value whose arc cosine is to be returned
+   */
   def acos(x: Double): Double = java.lang.Math.acos(x)
-  /**  @group trig */
+  /**
+   *  @group trig
+   *
+   *  @param x the value whose arc tangent is to be returned
+   */
   def atan(x: Double): Double = java.lang.Math.atan(x)
 
   /** Converts an angle measured in degrees to an approximately equivalent
@@ -138,8 +162,8 @@ package object math {
 
   /** Converts rectangular coordinates `(x, y)` to polar `(r, theta)`.
    *
-   *  @param  x the ordinate coordinate
-   *  @param  y the abscissa coordinate
+   *  @param  y the ordinate coordinate
+   *  @param  x the abscissa coordinate
    *  @return the *theta* component of the point `(r, theta)` in polar
    *          coordinates that corresponds to the point `(x, y)` in
    *          Cartesian coordinates.
@@ -154,6 +178,10 @@ package object math {
    *  coordinates that corresponds to the point `(x, y)` in
    *  Cartesian coordinates.
    *  @group polar-coords
+   *
+   *  @param x the x coordinate value
+   *  @param y the y coordinate value
+   *  @return sqrt(`x`² + `y`²) without intermediate overflow or underflow
    */
   def hypot(x: Double, y: Double): Double = java.lang.Math.hypot(x, y)
 
@@ -161,9 +189,17 @@ package object math {
   // rounding functions
   // -----------------------------------------------------------------------
 
-  /** @group rounding */
+  /**
+   *  @group rounding
+   *
+   *  @param x the value to be rounded up
+   */
   def ceil(x: Double): Double  = java.lang.Math.ceil(x)
-  /** @group rounding */
+  /**
+   *  @group rounding
+   *
+   *  @param x the value to be rounded down
+   */
   def floor(x: Double): Double = java.lang.Math.floor(x)
 
   /** Returns the `Double` value that is closest in value to the
@@ -195,93 +231,227 @@ package object math {
   /** Returns the closest `Long` to the argument.
    *
    *  @param  x a floating-point value to be rounded to a `Long`.
-   *  @return the value of the argument rounded to the nearest`long` value.
+   *  @return the value of the argument rounded to the nearest `Long` value.
    *  @group rounding
    */
   def round(x: Double): Long = java.lang.Math.round(x)
 
-  /** @group abs */
+  /**
+   *  @group abs
+   *
+   *  @param x the value whose absolute value is to be determined
+   */
   def abs(x: Int): Int       = java.lang.Math.abs(x)
-  /** @group abs */
+  /**
+   *  @group abs
+   *
+   *  @param x the value whose absolute value is to be determined
+   */
   def abs(x: Long): Long     = java.lang.Math.abs(x)
-  /** @group abs */
+  /**
+   *  @group abs
+   *
+   *  @param x the value whose absolute value is to be determined
+   */
   def abs(x: Float): Float   = java.lang.Math.abs(x)
-  /** @group abs */
+  /**
+   *  @group abs
+   *
+   *  @param x the value whose absolute value is to be determined
+   */
   def abs(x: Double): Double = java.lang.Math.abs(x)
 
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def max(x: Int, y: Int): Int          = java.lang.Math.max(x, y)
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def max(x: Long, y: Long): Long       = java.lang.Math.max(x, y)
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def max(x: Float, y: Float): Float    = java.lang.Math.max(x, y)
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def max(x: Double, y: Double): Double = java.lang.Math.max(x, y)
 
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def min(x: Int, y: Int): Int          = java.lang.Math.min(x, y)
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def min(x: Long, y: Long): Long       = java.lang.Math.min(x, y)
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def min(x: Float, y: Float): Float    = java.lang.Math.min(x, y)
-  /** @group minmax */
+  /**
+   *  @group minmax
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def min(x: Double, y: Double): Double = java.lang.Math.min(x, y)
 
   /**
    *  @group signs
    *  @note Forwards to [[java.lang.Integer]]
+   *
+   *  @param x the value whose signum is to be computed
    */
   def signum(x: Int): Int       = java.lang.Integer.signum(x)
   /**
    *  @group signs
    *  @note Forwards to [[java.lang.Long]]
+   *
+   *  @param x the value whose signum is to be computed
    */
   def signum(x: Long): Long     = java.lang.Long.signum(x)
-  /** @group signs */
+  /**
+   *  @group signs
+   *
+   *  @param x the value whose signum is to be computed
+   */
   def signum(x: Float): Float   = java.lang.Math.signum(x)
-  /** @group signs */
+  /**
+   *  @group signs
+   *
+   *  @param x the value whose signum is to be computed
+   */
   def signum(x: Double): Double = java.lang.Math.signum(x)
 
-  /** @group modquo */
+  /**
+   *  @group modquo
+   *
+   *  @param x the dividend
+   *  @param y the divisor
+   */
   def floorDiv(x: Int, y: Int): Int = java.lang.Math.floorDiv(x, y)
 
-  /** @group modquo */
+  /**
+   *  @group modquo
+   *
+   *  @param x the dividend
+   *  @param y the divisor
+   */
   def floorDiv(x: Long, y: Long): Long = java.lang.Math.floorDiv(x, y)
 
-  /** @group modquo */
+  /**
+   *  @group modquo
+   *
+   *  @param x the dividend
+   *  @param y the divisor
+   */
   def floorMod(x: Int, y: Int): Int = java.lang.Math.floorMod(x, y)
 
-  /** @group modquo */
+  /**
+   *  @group modquo
+   *
+   *  @param x the dividend
+   *  @param y the divisor
+   */
   def floorMod(x: Long, y: Long): Long = java.lang.Math.floorMod(x, y)
 
-  /** @group signs */
+  /**
+   *  @group signs
+   *
+   *  @param magnitude the value providing the magnitude of the result
+   *  @param sign the value providing the sign of the result
+   */
   def copySign(magnitude: Double, sign: Double): Double = java.lang.Math.copySign(magnitude, sign)
 
-  /** @group signs */
+  /**
+   *  @group signs
+   *
+   *  @param magnitude the value providing the magnitude of the result
+   *  @param sign the value providing the sign of the result
+   */
   def copySign(magnitude: Float, sign: Float): Float = java.lang.Math.copySign(magnitude, sign)
 
-  /** @group adjacent-float */
+  /**
+   *  @group adjacent-float
+   *
+   *  @param start the starting floating-point value
+   *  @param direction the value indicating which of `start`'s neighbors should be returned
+   */
   def nextAfter(start: Double, direction: Double): Double = java.lang.Math.nextAfter(start, direction)
 
-  /** @group adjacent-float */
+  /**
+   *  @group adjacent-float
+   *
+   *  @param start the starting floating-point value
+   *  @param direction the value indicating which of `start`'s neighbors should be returned
+   */
   def nextAfter(start: Float, direction: Double): Float = java.lang.Math.nextAfter(start, direction)
 
-  /** @group adjacent-float */
+  /**
+   *  @group adjacent-float
+   *
+   *  @param d the starting floating-point value
+   */
   def nextUp(d: Double): Double = java.lang.Math.nextUp(d)
 
-  /** @group adjacent-float */
+  /**
+   *  @group adjacent-float
+   *
+   *  @param f the starting floating-point value
+   */
   def nextUp(f: Float): Float = java.lang.Math.nextUp(f)
 
-  /** @group adjacent-float */
+  /**
+   *  @group adjacent-float
+   *
+   *  @param d the starting floating-point value
+   */
   def nextDown(d: Double): Double = java.lang.Math.nextDown(d)
 
-  /** @group adjacent-float */
+  /**
+   *  @group adjacent-float
+   *
+   *  @param f the starting floating-point value
+   */
   def nextDown(f: Float): Float = java.lang.Math.nextDown(f)
 
-  /** @group scaling */
+  /**
+   *  @group scaling
+   *
+   *  @param d the value to be scaled by a power of two
+   *  @param scaleFactor the power of 2 used to scale `d`
+   */
   def scalb(d: Double, scaleFactor: Int): Double = java.lang.Math.scalb(d, scaleFactor)
 
-  /** @group scaling */
+  /**
+   *  @group scaling
+   *
+   *  @param f the value to be scaled by a power of two
+   *  @param scaleFactor the power of 2 used to scale `f`
+   */
   def scalb(f: Float, scaleFactor: Int): Float = java.lang.Math.scalb(f, scaleFactor)
 
   // -----------------------------------------------------------------------
@@ -321,7 +491,7 @@ package object math {
   /** Returns Euler's number `e` raised to the power of a `Double` value.
    *
    *  @param  x the exponent to raise `e` to.
-   *  @return the value `e^a^`, where `e` is the base of the natural
+   *  @return the value `e^x^`, where `e` is the base of the natural
    *          logarithms.
    *  @group explog
    */
@@ -329,13 +499,23 @@ package object math {
 
   /** Returns `exp(x) - 1`.
    *  @group explog
+   *
+   *  @param x the exponent to raise `e` to in the computation of `e`^`x`^ - 1
    */
   def expm1(x: Double): Double = java.lang.Math.expm1(x)
 
-  /** @group explog */
+  /**
+   *  @group explog
+   *
+   *  @param f the `Float` value whose unbiased exponent is to be extracted
+   */
   def getExponent(f: Float): Int = java.lang.Math.getExponent(f)
 
-  /** @group explog */
+  /**
+   *  @group explog
+   *
+   *  @param d the `Double` value whose unbiased exponent is to be extracted
+   */
   def getExponent(d: Double): Int = java.lang.Math.getExponent(d)
 
   // -----------------------------------------------------------------------
@@ -345,18 +525,22 @@ package object math {
   /** Returns the natural logarithm of a `Double` value.
    *
    *  @param  x the number to take the natural logarithm of
-   *  @return the value `logₑ(x)` where `e` is Eulers number
+   *  @return the value `logₑ(x)` where `e` is Euler's number
    *  @group explog
    */
   def log(x: Double): Double = java.lang.Math.log(x)
 
   /** Returns the natural logarithm of the sum of the given `Double` value and 1.
    *  @group explog
+   *
+   *  @param x the value for which to compute `ln(1 + x)`
    */
   def log1p(x: Double): Double = java.lang.Math.log1p(x)
 
   /** Returns the base 10 logarithm of the given `Double` value.
    *  @group explog
+   *
+   *  @param x the value whose base 10 logarithm is to be computed
    */
   def log10(x: Double): Double = java.lang.Math.log10(x)
 
@@ -366,16 +550,22 @@ package object math {
 
   /** Returns the hyperbolic sine of the given `Double` value.
    *  @group hyperbolic
+   *
+   *  @param x the value whose hyperbolic sine is to be returned
    */
   def sinh(x: Double): Double = java.lang.Math.sinh(x)
 
   /** Returns the hyperbolic cosine of the given `Double` value.
    *  @group hyperbolic
+   *
+   *  @param x the value whose hyperbolic cosine is to be returned
    */
   def cosh(x: Double): Double = java.lang.Math.cosh(x)
 
   /** Returns the hyperbolic tangent of the given `Double` value.
    *  @group hyperbolic
+   *
+   *  @param x the value whose hyperbolic tangent is to be returned
    */
   def tanh(x: Double):Double = java.lang.Math.tanh(x)
 
@@ -385,58 +575,125 @@ package object math {
 
   /** Returns the size of an ulp of the given `Double` value.
    *  @group ulp
+   *
+   *  @param x the `Double` value whose ulp is to be returned
    */
   def ulp(x: Double): Double = java.lang.Math.ulp(x)
 
   /** Returns the size of an ulp of the given `Float` value.
    *  @group ulp
+   *
+   *  @param x the `Float` value whose ulp is to be returned
    */
   def ulp(x: Float): Float = java.lang.Math.ulp(x)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the dividend value
+   *  @param y the divisor value
+   */
   def IEEEremainder(x: Double, y: Double): Double = java.lang.Math.IEEEremainder(x, y)
 
   // -----------------------------------------------------------------------
   // exact functions
   // -----------------------------------------------------------------------
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the first addend
+   *  @param y the second addend
+   */
   def addExact(x: Int, y: Int): Int = java.lang.Math.addExact(x, y)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the first addend
+   *  @param y the second addend
+   */
   def addExact(x: Long, y: Long): Long = java.lang.Math.addExact(x, y)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the minuend
+   *  @param y the subtrahend
+   */
   def subtractExact(x: Int, y: Int): Int = java.lang.Math.subtractExact(x, y)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the minuend
+   *  @param y the subtrahend
+   */
   def subtractExact(x: Long, y: Long): Long = java.lang.Math.subtractExact(x, y)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the first factor
+   *  @param y the second factor
+   */
   def multiplyExact(x: Int, y: Int): Int = java.lang.Math.multiplyExact(x, y)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the first factor
+   *  @param y the second factor
+   */
   def multiplyExact(x: Long, y: Long): Long = java.lang.Math.multiplyExact(x, y)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the value to be incremented
+   */
   def incrementExact(x: Int): Int = java.lang.Math.incrementExact(x)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the value to be incremented
+   */
   def incrementExact(x: Long) =  java.lang.Math.incrementExact(x)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the value to be decremented
+   */
   def decrementExact(x: Int) =  java.lang.Math.decrementExact(x)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the value to be decremented
+   */
   def decrementExact(x: Long) =  java.lang.Math.decrementExact(x)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the value to be negated
+   */
   def negateExact(x: Int) =  java.lang.Math.negateExact(x)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the value to be negated
+   */
   def negateExact(x: Long) =  java.lang.Math.negateExact(x)
 
-  /** @group exact */
+  /**
+   *  @group exact
+   *
+   *  @param x the `Long` value to convert to an `Int`
+   */
   def toIntExact(x: Long): Int = java.lang.Math.toIntExact(x)
 
 }

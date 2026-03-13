@@ -30,10 +30,16 @@ import scala.annotation.migration
  *    1. symmetric: `equiv(x, y) == equiv(y, x)` for any `x` and `y` of type `T`.
  *    1. transitive: if `equiv(x, y) == true` and `equiv(y, z) == true`, then
  *       `equiv(x, z) == true` for any `x`, `y`, and `z` of type `T`.
+ *
+ *  @tparam T the type of values being compared for equivalence
  */
 
 trait Equiv[T] extends Any with Serializable {
-  /** Returns `true` iff `x` is equivalent to `y`. */
+  /** Returns `true` iff `x` is equivalent to `y`.
+   *
+   *  @param x the first value to compare
+   *  @param y the second value to compare
+   */
   def equiv(x: T, y: T): Boolean
 }
 
@@ -95,10 +101,16 @@ object Equiv extends LowPriorityEquiv {
   trait ExtraImplicits {
     /** Not in the standard scope due to the potential for divergence:
      *  For instance `implicitly[Equiv[Any]]` diverges in its presence.
+     *
+     *  @tparam CC the collection type constructor, a subtype of `Seq` (e.g., `List`, `Vector`)
+     *  @tparam T the element type of the collection
      */
     implicit def seqEquiv[CC[X] <: scala.collection.Seq[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
 
+    /** @tparam CC the collection type constructor, a subtype of `SortedSet`
+     *  @tparam T the element type of the collection
+     */
     implicit def sortedSetEquiv[CC[X] <: scala.collection.SortedSet[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
   }
