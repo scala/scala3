@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** `Double`, a 64-bit IEEE-754 floating point number (equivalent to Java's `double` primitive type) is a
