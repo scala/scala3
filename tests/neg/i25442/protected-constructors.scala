@@ -6,6 +6,9 @@ class A protected (x: Int)
 class B(a: A) extends A(a.hashCode)
 class C extends B(new A(1)) // error
 
+class D protected (x: Any)
+class E extends D(new D(1)) // error
+
 // Mixed visibility constructors
 class F protected (x: Int) {
   def this() = this(0) // public secondary

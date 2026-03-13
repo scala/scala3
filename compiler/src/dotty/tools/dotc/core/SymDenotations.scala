@@ -942,19 +942,16 @@ object SymDenotations {
       }
 
       /** Is protected access to target symbol permitted? */
-      def isProtectedAccessOK: Boolean =
+      def isProtectedAccessOK: Boolean = {
         val cls = owner.enclosingSubClass
         if !cls.exists then
           pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner)
-        else {
-          val isConstructorAccessOK =
-            isConstructor && ctx.owner.isPrimaryConstructor
-            && cls.info.parents.exists(_.classSymbol == owner)
+        else
+          def isConstructorAccessOK = isConstructor && ctx.isSuperCallContext
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
           isType || pre.derivesFrom(cls) || isConstructorAccessOK || owner.is(ModuleClass)
-        }
-      end isProtectedAccessOK
+      }
 
       if pre eq NoPrefix then true
       else if isAbsent() then false
