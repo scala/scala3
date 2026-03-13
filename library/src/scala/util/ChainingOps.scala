@@ -13,6 +13,7 @@
 package scala
 package util
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.language.implicitConversions
 

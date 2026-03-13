@@ -14,6 +14,7 @@ package scala
 package util
 package control
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.tailrec
 import scala.reflect.{ClassTag, classTag}
@@ -154,7 +155,7 @@ import scala.language.implicitConversions
 object Exception {
   type Catcher[+T] = PartialFunction[Throwable, T]
 
-  def mkCatcher[Ex <: Throwable: ClassTag, T](isDef: Ex => Boolean, f: Ex => T): PartialFunction[Throwable, T] = new Catcher[T] {
+  def mkCatcher[Ex <: Throwable: ClassTag, T](isDef: Ex => Boolean, f: Ex => T): PartialFunction[Throwable, T]^{isDef, f} = new Catcher[T] {
     private def downcast(x: Throwable): Option[Ex] =
       if (classTag[Ex].runtimeClass.isAssignableFrom(x.getClass)) Some(x.asInstanceOf[Ex])
       else None
@@ -163,9 +164,9 @@ object Exception {
     def apply(x: Throwable): T = f(downcast(x).get)
   }
 
-  def mkThrowableCatcher[T](isDef: Throwable => Boolean, f: Throwable => T): PartialFunction[Throwable, T] = mkCatcher[Throwable, T](isDef, f)
+  def mkThrowableCatcher[T](isDef: Throwable => Boolean, f: Throwable => T): PartialFunction[Throwable, T]^{isDef, f} = mkCatcher[Throwable, T](isDef, f)
 
-  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]): Catcher[T] =
+  implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]^): Catcher[T]^{pf} =
     mkCatcher(pf.isDefinedAt, pf.apply)
 
   /** !!! Not at all sure of every factor which goes into this,
@@ -212,7 +213,7 @@ object Exception {
    *  @group logic-container
    */
   class Catch[+T](
-    val pf: Catcher[T],
+    val pf: Catcher[T]^,
     val fin: Option[Finally] = None,
     val rethrow: Throwable => Boolean = shouldRethrow)
   extends Described {
@@ -220,8 +221,8 @@ object Exception {
     protected val name = "Catch"
 
     /** Creates a new Catch with additional exception handling logic. */
-    def or[U >: T](pf2: Catcher[U]): Catch[U] = new Catch(pf orElse pf2, fin, rethrow)
-    def or[U >: T](other: Catch[U]): Catch[U] = or(other.pf)
+    def or[U >: T](pf2: Catcher[U]^): Catch[U]^{this, pf2} = new Catch(pf orElse pf2, fin, rethrow)
+    def or[U >: T](other: Catch[U]^): Catch[U]^{this, other} = or(other.pf)
 
     /** Applies this catch logic to the supplied body. */
     def apply[U >: T](body: => U): U =
@@ -235,7 +236,7 @@ object Exception {
     /** Creates a new Catch container from this object and the supplied finally body.
      *  @param body The additional logic to apply after all existing finally bodies
      */
-    def andFinally(body: => Unit): Catch[T] = {
+    def andFinally(body: => Unit): Catch[T]^{this, body} = {
       val appendedFin = fin map(_ and body) getOrElse new Finally(body)
       new Catch(pf, Some(appendedFin), rethrow)
     }
@@ -259,7 +260,7 @@ object Exception {
     /** Creates a `Catch` object with the same `isDefinedAt` logic as this one,
      *  but with the supplied `apply` method replacing the current one. 
      */
-    def withApply[U](f: Throwable => U): Catch[U] = {
+    def withApply[U](f: Throwable => U): Catch[U]^{this, f} = {
       val pf2 = new Catcher[U] {
         def isDefinedAt(x: Throwable): Boolean = pf isDefinedAt x
         def apply(x: Throwable): U = f(x)
@@ -268,9 +269,9 @@ object Exception {
     }
 
     /** Convenience methods. */
-    def toOption: Catch[Option[T]] = withApply(_ => None)
-    def toEither: Catch[Either[Throwable, T]] = withApply(Left(_))
-    def toTry: Catch[scala.util.Try[T]] = withApply(x => Failure(x))
+    def toOption: Catch[Option[T]]^{this} = withApply(_ => None)
+    def toEither: Catch[Either[Throwable, T]]^{this} = withApply(Left(_))
+    def toTry: Catch[scala.util.Try[T]]^{this} = withApply(x => Failure(x))
   }
 
   final val nothingCatcher: Catcher[Nothing]  = mkThrowableCatcher(_ => false, throw _)
@@ -330,7 +331,7 @@ object Exception {
   /** Creates a `Catch` object which maps all the supplied exceptions to the given value.
    *  @group composition-catch
    */
-  def failAsValue[T](exceptions: Class[?]*)(value: => T): Catch[T] =
+  def failAsValue[T](exceptions: Class[?]*)(value: => T): Catch[T]^{value} =
     catching(exceptions*) withApply (_ => value)
 
   class By[T,R](f: T => R) {
@@ -345,15 +346,15 @@ object Exception {
    *  ```
    *  @group dsl
    */
-  def handling[T](exceptions: Class[?]*): By[Throwable => T, Catch[T]] = {
-    def fun(f: Throwable => T): Catch[T] = catching(exceptions*) withApply f
-    new By[Throwable => T, Catch[T]](fun)
+  def handling[T](exceptions: Class[?]*): By[Throwable -> T, Catch[T]] = { /* CC note: By is invariant. :( */
+    def fun(f: Throwable -> T): Catch[T] = catching(exceptions*) withApply f
+    new By[Throwable -> T, Catch[T]](fun)
   }
 
   /** Returns a `Catch` object with no catch logic and the argument as the finally logic.
    *  @group composition-finally
    */
-  def ultimately[T](body: => Unit): Catch[T] = noCatch andFinally body
+  def ultimately[T](body: => Unit): Catch[T]^{body} = noCatch andFinally body
 
   /** Creates a `Catch` object which unwraps any of the supplied exceptions.
    *  @group composition-catch

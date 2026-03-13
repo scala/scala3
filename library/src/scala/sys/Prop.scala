@@ -13,6 +13,7 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** A lightweight interface wrapping a property contained in some
@@ -79,7 +80,7 @@ object Prop {
   @annotation.implicitNotFound("No implicit property creator available for type ${T}.")
   trait Creator[+T] {
     /** Creates a Prop[T] of this type based on the given key. */
-    def apply(key: String): Prop[T]
+    def apply(key: String): Prop[T]^{this}
   }
 
   implicit object FileProp extends CreatorImpl[java.io.File](s => new java.io.File(s))
