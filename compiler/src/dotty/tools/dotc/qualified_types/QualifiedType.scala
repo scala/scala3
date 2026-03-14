@@ -3,8 +3,8 @@ package dotty.tools.dotc.qualified_types
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
-import dotty.tools.dotc.core.Types.{AnnotatedType, Type, ErrorType}
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Types.{AnnotatedType, ErrorType, Type}
 import dotty.tools.dotc.typer.ErrorReporting.errorType
 
 /** A qualified type is internally represented as a type annotated with a

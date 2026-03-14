@@ -8,7 +8,8 @@ final class QualifiedTypesStats(val enabled: Boolean):
   inline def record[T](event: String, inline msg: => String = "")(inline op: => T): T =
     if enabled then
       val start = System.nanoTime()
-      try op finally
+      try op
+      finally
         events += ((event, (System.nanoTime() - start, msg)))
     else op
 
