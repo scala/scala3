@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg/inline-val-out-of-bounds.scala:1:21 -------------------------------------------
+1 |inline val a: Byte = 500 // error
+  |                     ^^^
+  |                     Found:    (500 : Int)
+  |                     Required: Byte
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/inline-val-out-of-bounds.scala:2:20 ----------------------------------------------------------------
+2 |inline val b: Int = 8589934592 // error
+  |                    ^^^^^^^^^^
+  |                    number too large
