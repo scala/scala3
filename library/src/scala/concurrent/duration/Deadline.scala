@@ -29,31 +29,49 @@ import scala.language.`2.13`
  *  seconds).
  */
 case class Deadline private (time: FiniteDuration) extends Ordered[Deadline] {
-  /** Returns a deadline advanced (i.e., moved into the future) by the given duration. */
+  /** Returns a deadline advanced (i.e., moved into the future) by the given duration.
+   *
+   *  @param other the duration by which to advance this deadline
+   */
   def +(other: FiniteDuration): Deadline = copy(time = time + other)
-  /** Returns a deadline moved backwards (i.e., towards the past) by the given duration. */
+  /** Returns a deadline moved backwards (i.e., towards the past) by the given duration.
+   *
+   *  @param other the duration by which to move this deadline backwards
+   */
   def -(other: FiniteDuration): Deadline = copy(time = time - other)
-  /** Calculates time difference between this and the other deadline, where the result is directed (i.e., may be negative). */
+  /** Calculates time difference between this and the other deadline, where the result is directed (i.e., may be negative).
+   *
+   *  @param other the deadline to subtract from this deadline, yielding a directed duration
+   */
   def -(other: Deadline): FiniteDuration = time - other.time
   /** Calculates time difference between this duration and now; the result is negative if the deadline has passed.
    *
    *  ***Note that on some systems this operation is costly because it entails a system call.***
    *  Checks `System.nanoTime` for your platform.
+   *
+   *  @return the duration remaining until this deadline, negative if the deadline has passed
    */
   def timeLeft: FiniteDuration = this - Deadline.now
   /** Determine whether the deadline still lies in the future at the point where this method is called.
    *
    *  ***Note that on some systems this operation is costly because it entails a system call.***
    *  Checks `System.nanoTime` for your platform.
+   *
+   *  @return `true` if the deadline has not yet passed, `false` otherwise
    */
   def hasTimeLeft(): Boolean = !isOverdue()
   /** Determine whether the deadline lies in the past at the point where this method is called.
    *
    *  ***Note that on some systems this operation is costly because it entails a system call.***
    *  Checks `System.nanoTime` for your platform.
+   *
+   *  @return `true` if the deadline has passed, `false` otherwise
    */
   def isOverdue(): Boolean = (time.toNanos - System.nanoTime()) < 0
-  /** The natural ordering for deadline is determined by the natural order of the underlying (finite) duration. */
+  /** The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.
+   *
+   *  @param other the deadline to compare against
+   */
   def compare(other: Deadline): Int = time compare other.time
 }
 

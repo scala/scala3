@@ -33,6 +33,8 @@ import scala.util.{ Try, Success, Failure }
  *
  *  @define nonDeterministic
  *  Note: Using this method may result in non-deterministic concurrent programs.
+ *
+ *  @tparam T the type of the value held by this promise and its associated future
  */
 trait Promise[T] {
   /** Future containing the value of this promise. */
@@ -49,7 +51,8 @@ trait Promise[T] {
 
   /** Completes the promise with either an exception or a value.
    *
-   *  @param result     Either the value or the exception to complete the promise with.
+   *  @param result     either the value or the exception to complete the promise with
+   *  @return this promise
    *
    *  $promiseCompletion
    */
@@ -60,12 +63,14 @@ trait Promise[T] {
    *
    *  $nonDeterministic
    *
+   *  @param result either the value or the exception to complete the promise with
    *  @return    If the promise has already been completed returns `false`, or `true` otherwise.
    */
   def tryComplete(result: Try[T]): Boolean
 
   /** Completes this promise with the specified future, once that future is completed.
    *
+   *  @param other the future whose result will be used to complete this promise
    *  @return   This promise
    */
    def completeWith(other: Future[T]): this.type = {
@@ -84,7 +89,8 @@ trait Promise[T] {
 
   /** Completes the promise with a value.
    *
-   *  @param value The value to complete the promise with.
+   *  @param value the value to complete the promise with
+   *  @return this promise
    *
    *  $promiseCompletion
    */
@@ -94,13 +100,15 @@ trait Promise[T] {
    *
    *  $nonDeterministic
    *
+   *  @param value the value to complete the promise with
    *  @return    If the promise has already been completed returns `false`, or `true` otherwise.
    */
   def trySuccess(value: T): Boolean = tryComplete(Success(value))
 
   /** Completes the promise with an exception.
    *
-   *  @param cause    The throwable to complete the promise with.
+   *  @param cause    the throwable to complete the promise with
+   *  @return this promise
    *
    *  $allowedThrowables
    *
@@ -112,6 +120,7 @@ trait Promise[T] {
    *
    *  $nonDeterministic
    *
+   *  @param cause the throwable to complete the promise with
    *  @return    If the promise has already been completed returns `false`, or `true` otherwise.
    */
   def tryFailure(cause: Throwable): Boolean = tryComplete(Failure(cause))
@@ -128,6 +137,7 @@ object Promise {
   /** Creates an already completed Promise with the specified exception.
    *
    *  @tparam T       the type of the value in the promise
+   *  @param exception the throwable to fail the promise with
    *  @return         the newly created `Promise` instance
    */
   final def failed[T](exception: Throwable): Promise[T] = fromTry(Failure(exception))
@@ -135,6 +145,7 @@ object Promise {
   /** Creates an already completed Promise with the specified result.
    *
    *  @tparam T       the type of the value in the promise
+   *  @param result the successful value to complete the promise with
    *  @return         the newly created `Promise` instance
    */
   final def successful[T](result: T): Promise[T] = fromTry(Success(result))
@@ -142,6 +153,7 @@ object Promise {
   /** Creates an already completed Promise with the specified result or exception.
    *
    *  @tparam T       the type of the value in the promise
+   *  @param result the `Try` value (success or failure) to complete the promise with
    *  @return         the newly created `Promise` instance
    */
   final def fromTry[T](result: Try[T]): Promise[T] = new impl.Promise.DefaultPromise[T](result)

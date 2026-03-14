@@ -242,6 +242,8 @@ private[process] trait ProcessImpl {
 
   /** A thin wrapper around a java.lang.Process.  `ioThreads` are the Threads created to do I/O.
    *  The implementation of `exitValue` waits until these threads die before returning.
+   *
+   *  @param action the by-name computation whose result will be used as the exit value
    */
   private[process] class DummyProcess(action: => Int) extends Process {
     private val (thread, value) = Future(action)
@@ -260,6 +262,10 @@ private[process] trait ProcessImpl {
    *
    *  The implementation of `exitValue` interrupts `inputThread`
    *  and then waits until all I/O threads die before returning.
+   *
+   *  @param p the underlying `java.lang.Process` being wrapped
+   *  @param inputThread the thread writing to the process's stdin, or null if stdin was inherited
+   *  @param outputThreads the threads reading from the process's stdout and stderr streams
    */
   private[process] class SimpleProcess(p: JProcess, inputThread: Thread | Null, outputThreads: List[Thread]) extends Process {
     override def isAlive() = p.isAlive()
