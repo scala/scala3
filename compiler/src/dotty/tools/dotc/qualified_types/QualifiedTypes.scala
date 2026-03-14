@@ -37,9 +37,9 @@ import dotty.tools.dotc.core.Types.{
   Type,
   TypeProxy
 }
-import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.trace
+import dotty.tools.dotc.util.SrcPos
 
 object QualifiedTypes:
 
@@ -113,16 +113,16 @@ object QualifiedTypes:
               if selfifiedTp <:< pt then tree.cast(selfifiedTp) else EmptyTree
             case None =>
               EmptyTree
-      else
-        EmptyTree
+    else
+      EmptyTree
 
   def containsQualifier(tp: Type)(using Context): Boolean =
     tp match
       case QualifiedType(_, _) => true
-      case tp: TypeProxy       => containsQualifier(tp.underlying)
-      case AndType(tp1, tp2)   => containsQualifier(tp1) || containsQualifier(tp2)
-      case OrType(tp1, tp2)    => containsQualifier(tp1) || containsQualifier(tp2)
-      case _                   => false
+      case tp: TypeProxy => containsQualifier(tp.underlying)
+      case AndType(tp1, tp2) => containsQualifier(tp1) || containsQualifier(tp2)
+      case OrType(tp1, tp2) => containsQualifier(tp1) || containsQualifier(tp2)
+      case _ => false
 
   def checkContainsSkolem(tp: Type, pos: SrcPos)(using Context): Boolean =
     var res = true
