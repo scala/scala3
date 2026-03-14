@@ -1,8 +1,7 @@
 package dotty.tools.dotc.qualified_types
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.ListBuffer
+import scala.reflect.ClassTag
 
 import dotty.tools.dotc.ast.tpd.{
   closureDef,
@@ -26,9 +25,6 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Contexts.ctx
 import dotty.tools.dotc.core.Decorators.i
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Hashable.Binders
-import dotty.tools.dotc.core.Names.Designator
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Types.{
@@ -51,19 +47,13 @@ import dotty.tools.dotc.core.Types.{
 }
 import dotty.tools.dotc.core.Uniques
 import dotty.tools.dotc.qualified_types.ENode.Op
+import dotty.tools.dotc.reporting
 import dotty.tools.dotc.transform.TreeExtractors.BinaryOp
 import dotty.tools.dotc.util.{EqHashMap, HashMap}
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.reporting
-import dotty.tools.dotc.config.Printers
-
-import annotation.threadUnsafe as tu
-import reflect.ClassTag
 
 final class EGraph(_ctx: Context):
-  private val checksEnabled: Boolean =
-    given Context = _ctx
-    _ctx.settings.YcheckQualifiedTypes.value
+  private val checksEnabled: Boolean = _ctx.settings.YcheckQualifiedTypes.value(using _ctx)
 
   /** Cache for unique E-Nodes
    *
@@ -72,7 +62,6 @@ final class EGraph(_ctx: Context):
    *  Invariant: If a node is in this map, then its children also are.
    */
   private val index: HashMap[ENode, ENode] = HashMap()
-
 
   private val idOf: EqHashMap[ENode, Int] = EqHashMap()
 
@@ -195,9 +184,10 @@ final class EGraph(_ctx: Context):
       .groupBy(representant)
       .toList
       .sortBy((repr, members) => repr.showNoBreak)
-      .map((repr, members) => repr.showNoBreak + ": " + members.filter(_ ne repr).map(_.showNoBreak).sorted.mkString("{", ", ", "}"))
+      .map((repr, members) =>
+        repr.showNoBreak + ": " + members.filter(_ ne repr).map(_.showNoBreak).sorted.mkString("{", ", ", "}")
+      )
       .mkString("", "\n", "\n")
-
 
   private inline def show(enode: ENode): String =
     enode.showNoBreak(using _ctx)
@@ -270,39 +260,40 @@ final class EGraph(_ctx: Context):
       merge(ltNode, trueNode)
 
   private def order(a: ENode, b: ENode): (ENode, ENode) =
-    if a.contains(b) then
-      (b, a)
-    else if b.contains(a) then
-      (a, b)
-    else
-      (a, b) match
-        case (ENode.Atom(_: ConstantType), _) => (a, b)
-        case (_, ENode.Atom(_: ConstantType)) => (b, a)
-        case (_: ENode.OpApply, _) => (a, b)
-        case (_, _: ENode.OpApply) => (b, a)
-        case (_: ENode.Constructor, _) => (a, b)
-        case (_, _: ENode.Constructor) => (b, a)
-        case (_: ENode.Select, _) => (a, b)
-        case (_, _: ENode.Select) => (b, a)
-        case (a: ENode.Apply, b: ENode.Apply) =>
-          // Prefer Apply nodes wrapping a Constructor, so that
-          // normalizeSelect can reduce field accesses during repair.
-          if getAppliedConstructor(a).isDefined then (a, b)
-          else if getAppliedConstructor(b).isDefined then (b, a)
-          else (a, b)
-        case (_: ENode.Apply, _) => (a, b)
-        case (_, _: ENode.Apply) => (b, a)
-        case (a: ENode.TypeApply, b: ENode.TypeApply) =>
-          // Prefer Apply nodes wrapping a Constructor, so that
-          // normalizeSelect can reduce field accesses during repair.
-          if getAppliedConstructor(a).isDefined then (a, b)
-          else if getAppliedConstructor(b).isDefined then (b, a)
-          else (a, b)
-        case (_: ENode.TypeApply, _) => (a, b)
-        case (_, _: ENode.TypeApply) => (b, a)
-        case (_: ENode.Atom, _) => (a, b)
-        case (_, _: ENode.Atom) => (b, a)
-        case _ => (a, b)
+    _ctx.base.qualifiedTypesStats.record("EGraph.order"):
+      if a.contains(b) then
+        (b, a)
+      else if b.contains(a) then
+        (a, b)
+      else
+        (a, b) match
+          case (ENode.Atom(_: ConstantType), _) => (a, b)
+          case (_, ENode.Atom(_: ConstantType)) => (b, a)
+          case (_: ENode.OpApply, _) => (a, b)
+          case (_, _: ENode.OpApply) => (b, a)
+          case (_: ENode.Constructor, _) => (a, b)
+          case (_, _: ENode.Constructor) => (b, a)
+          case (_: ENode.Select, _) => (a, b)
+          case (_, _: ENode.Select) => (b, a)
+          case (a: ENode.Apply, b: ENode.Apply) =>
+            // Prefer Apply nodes wrapping a Constructor, so that
+            // normalizeSelect can reduce field accesses during repair.
+            if getAppliedConstructor(a).isDefined then (a, b)
+            else if getAppliedConstructor(b).isDefined then (b, a)
+            else (a, b)
+          case (_: ENode.Apply, _) => (a, b)
+          case (_, _: ENode.Apply) => (b, a)
+          case (a: ENode.TypeApply, b: ENode.TypeApply) =>
+            // Prefer Apply nodes wrapping a Constructor, so that
+            // normalizeSelect can reduce field accesses during repair.
+            if getAppliedConstructor(a).isDefined then (a, b)
+            else if getAppliedConstructor(b).isDefined then (b, a)
+            else (a, b)
+          case (_: ENode.TypeApply, _) => (a, b)
+          case (_, _: ENode.TypeApply) => (b, a)
+          case (_: ENode.Atom, _) => (a, b)
+          case (_, _: ENode.Atom) => (b, a)
+          case _ => (a, b)
 
   def repair(): Unit =
     var i = 0
@@ -482,7 +473,7 @@ final class EGraph(_ctx: Context):
       nonConsts match
         case Nil =>
           constNode
-        //case List(ENode.OpApply(Op.IntSum, summands)) =>
+        // case List(ENode.OpApply(Op.IntSum, summands)) =>
         //  ENode.OpApply(
         //    Op.IntSum,
         //    summands.map(summand => unique(makeIntProduct(const, List(summand))))

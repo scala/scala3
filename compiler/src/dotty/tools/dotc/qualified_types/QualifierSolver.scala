@@ -1,19 +1,19 @@
 package dotty.tools.dotc.qualified_types
 
-import ENode.{Lambda, OpApply, Op}
-
 import dotty.tools.dotc.config.Printers
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
-import dotty.tools.dotc.core.Symbols.defn
-import dotty.tools.dotc.core.Types.{Type, TypeVar, TypeMap}
 import dotty.tools.dotc.core.Decorators.i
+import dotty.tools.dotc.core.Symbols.defn
+import dotty.tools.dotc.core.Types.{Type, TypeMap, TypeVar}
 import dotty.tools.dotc.printing.Showable
 import dotty.tools.dotc.reporting.trace
+
+import ENode.{Lambda, Op, OpApply}
 
 class QualifierSolver(using Context):
 
   def implies(node1: ENode.Lambda, node2: ENode.Lambda): Boolean =
-    trace(i"implie ${node1.showNoBreak}  -->  ${node2.showNoBreak}", Printers.qualifiedTypes):
+    trace(i"implies ${node1.showNoBreak}  -->  ${node2.showNoBreak}", Printers.qualifiedTypes):
       ctx.base.qualifiedTypesStats.record("QualifierSolver.implies"):
         require(node1.paramTps.length == 1)
         require(node2.paramTps.length == 1)
@@ -38,10 +38,17 @@ class QualifierSolver(using Context):
     ctx.base.qualifiedTypesStats.record("QualifiedTypes.impliesRec"):
       val assumptions = ENode.assumptions(node1) ++ ENode.assumptions(node2) ++ List(node1)
       val egraph = EGraph(ctx)
-      impliesLeaf(egraph, assumptions.map(a => egraph.canonicalize(a.normalizeTypes())), egraph.canonicalize(node2.normalizeTypes()))
+      impliesLeaf(
+        egraph,
+        assumptions.map(a => egraph.canonicalize(a.normalizeTypes())),
+        egraph.canonicalize(node2.normalizeTypes())
+      )
 
   protected def impliesLeaf(egraph: EGraph, assumptions: List[ENode], goal: ENode): Boolean =
-    trace(i"impliesLeaf ${assumptions.map(_.showNoBreak).mkString(", ")}  -->  ${goal.showNoBreak}", Printers.qualifiedTypes):
+    trace(
+      i"impliesLeaf ${assumptions.map(_.showNoBreak).mkString(", ")}  -->  ${goal.showNoBreak}",
+      Printers.qualifiedTypes
+    ):
       ctx.base.qualifiedTypesStats.record("QualifiedTypes.impliesLeaf"):
         egraph.assertInvariants()
         for assumption <- assumptions do
@@ -55,5 +62,5 @@ abstract class ExplainingQualifierSolver(using Context) extends QualifierSolver:
   override protected def impliesLeaf(egraph: EGraph, assumptions: List[ENode], goal: ENode): Boolean =
     traceIndented(i"implies ${assumptions.map(_.showNoBreak).mkString(", ")}  -->  ${goal.showNoBreak}"):
       val res = super.impliesLeaf(egraph, assumptions, goal)
-      //if !res then println(egraph.debugString())
+      // if !res then println(egraph.debugString())
       res
