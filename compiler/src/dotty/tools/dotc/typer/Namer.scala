@@ -7,7 +7,7 @@ import ast.*
 import Trees.*, StdNames.*, Scopes.*, Denotations.*, NamerOps.*, ContextOps.*
 import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*
 import Decorators.*, Comments.{_, given}
-import NameKinds.DefaultGetterName
+import NameKinds.{DefaultGetterName, ModuleClassName}
 import ast.desugar, ast.desugar.*
 import ProtoTypes.*
 import util.Spans.*
@@ -15,7 +15,7 @@ import util.Property
 import collection.mutable, mutable.ListBuffer
 import tpd.tpes
 import Variances.alwaysInvariant
-import config.{Config, Feature}
+import config.{Config, Feature, MigrationVersion}
 import config.Printers.typr
 import inlines.{Inlines, PrepareInlineable}
 import parsing.JavaParsers.JavaParser
@@ -28,6 +28,7 @@ import TypeErasure.erasure
 import reporting.*
 import config.Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
+import rewrites.Rewrites.patch
 
 import scala.compiletime.uninitialized
 
@@ -179,6 +180,20 @@ class Namer { typer: Typer =>
     if conflictsDetected then name.freshened else name
   end checkNoConflict
 
+  def checkDefName(name: Name, tree: Tree)(using Context): Unit =
+    val isModule = name.is(ModuleClassName)
+    if isModule || !name.toTermName.isInstanceOf[DerivedName] then
+      val simple = name.toSimpleName
+      val max = if isModule then simple.length - 1 else simple.length
+      val last = simple.lastIndexOf('$', start = max - 1)
+      if last >= 0 then
+        val start = tree.span.point
+        val errPos = tree.srcPos.sourcePos.withSpan(Span(start, start + max, start))
+        if MigrationVersion.IdentifierDollars.needsPatch then
+          patch(errPos.sourcePos.source, errPos.span.startPos, "`")
+          patch(errPos.sourcePos.source, errPos.span.endPos, "`")
+        report.errorOrMigrationWarning(IllegalIdentifier(name), errPos, MigrationVersion.IdentifierDollars)
+
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -252,6 +267,12 @@ class Namer { typer: Typer =>
         if Feature.shouldBehaveAsScala2 then
           flags |= Scala2x
         val name = checkNoConflict(tree.name, tree.span).asTypeName
+        if name == tree.name
+        && !isBackquoted(tree)
+        && !tree.span.isSynthetic
+        && !flags.is(Synthetic)
+        then
+          checkDefName(name, tree)
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -261,6 +282,15 @@ class Namer { typer: Typer =>
       case tree: MemberDef =>
         var flags = checkFlags(tree.mods.flags)
         val name = checkNoConflict(tree.name, tree.span)
+        if name == tree.name
+        && !isBackquoted(tree)
+        && !tree.span.isSynthetic
+        && !flags.is(Synthetic)
+        && !(flags.is(Param) && ctx.owner.is(Synthetic))
+        && !flags.is(Accessor)
+        && !flags.is(CaseAccessor) // check only the param
+        then
+          checkDefName(name, tree)
         tree match
           case tree: ValOrDefDef =>
             if tree.isInstanceOf[ValDef] && !flags.is(Param) && name.endsWith("_=") then
@@ -343,7 +373,10 @@ class Namer { typer: Typer =>
         report.error(PkgDuplicateSymbol(existingType), pid.srcPos)
         newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
       }
-      else newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
+      else
+        val pname = pid.name.asTermName
+        checkDefName(pname, pid)
+        newCompletePackageSymbol(pkgOwner, pname).entered
     }
   }
 
