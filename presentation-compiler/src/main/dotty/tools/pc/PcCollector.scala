@@ -14,6 +14,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ExtMethods
 import dotty.tools.dotc.ast.untpd.ImportSelector
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
@@ -182,6 +183,41 @@ trait PcCollector[T]:
           ) { case (set, tree) =>
             traverser(set, tree)
           }
+
+        /** Named tuple field access such as:
+         *  ```
+         *  val x: (name: String) = ???
+         *  x.<<name>>
+         *  ```
+         *  Named tuple selections are desugared to `NamedTuple.apply[N, V](qual)(idx)`,
+         */
+        case app @ Apply(
+              Apply(TypeApply(fun, List(t1, t2)), List(qual)),
+              List(Literal(Constant(i: Int)))
+            )
+            if fun.symbol.exists && fun.symbol.name == nme.apply
+              && fun.symbol.owner.exists
+              && fun.symbol.owner == defn.NamedTupleModule.moduleClass
+              && app.span.isCorrect =>
+          def getIndex(t: Tree): Option[Type] =
+            t.tpe.dealias match
+              case AppliedType(_, args) => args.get(i)
+              case _ => None
+          val fieldNameOpt = getIndex(t1) match
+            case Some(c: ConstantType) => Some(termName(c.value.stringValue))
+            case _ => None
+          val fieldType = getIndex(t2).getOrElse(NoType)
+          val fieldOccurrence = fieldNameOpt match
+            case Some(fieldName) =>
+              val fieldSpan = Span(app.span.point, app.span.end, app.span.point)
+              if fieldSpan.isCorrect then
+                val sym = newSymbol(NoSymbol, fieldName: Name, Flags.EmptyFlags, fieldType)
+                Set(collect(app, pos.withSpan(fieldSpan), Some(sym)))
+              else Set.empty
+            case None => Set.empty
+          val traverser =
+            new PcCollector.DeepFolderWithParent[Set[T]](collectNamesWithParent)
+          traverser(occurrences ++ fieldOccurrence, qual)
 
         /* Named parameters don't have symbol so we need to check the owner
          *  ```
