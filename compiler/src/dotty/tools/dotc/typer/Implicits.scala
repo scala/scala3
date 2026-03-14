@@ -591,9 +591,10 @@ object Implicits:
       em"${err.refStr(ref)} does not $qualify"
   }
 
-  class DivergingImplicit(ref: TermRef,
-                          val expectedType: Type,
-                          val argument: Tree) extends SearchFailureType {
+  case class DivergingImplicit(ref: TermRef,
+                               expectedType: Type,
+                               argument: Tree,
+                               reason: OpenSearch) extends SearchFailureType {
     def msg(using Context): Message =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
@@ -1295,31 +1296,32 @@ trait Implicits:
       * a diverging search
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
-      if checkDivergence(cand) then
-        SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument), span)
-      else if searchTooLarge() then
-        ImplicitSearchTooLargeFailure
-      else
-        val history = ctx.searchHistory.nest(cand, pt)
-        val typingCtx =
-          searchContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
-        val alreadyStoppedInlining = ctx.base.stopInlining
-        val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
-        result match
-          case res: SearchSuccess =>
-            ctx.searchHistory.defineBynameImplicit(wideProto, res)
-          case _ =>
-            if !alreadyStoppedInlining && ctx.base.stopInlining then
-              // a call overflowed as part of the expansion when typing the implicit
-              ctx.base.stopInlining = false
-            // Since the search failed, the local typerstate will be discarded
-            // without being committed, but type variables local to that state
-            // might still appear in an error message, so we run `gc()` here to
-            // make sure we don't forget their instantiation. This leads to more
-            // precise error messages in tests/neg/missing-implicit3.check and
-            // tests/neg/implicitSearch.check
-            typingCtx.typerState.gc()
-            result
+      checkDivergence(cand) match
+        case Some(prev) =>
+          SearchFailure(DivergingImplicit(cand.ref, wideProto, argument, prev), span)
+        case _ if searchTooLarge() =>
+          ImplicitSearchTooLargeFailure
+        case _ =>
+          val history = ctx.searchHistory.nest(cand, pt)
+          val typingCtx =
+            searchContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
+          val alreadyStoppedInlining = ctx.base.stopInlining
+          val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
+          result match
+            case res: SearchSuccess =>
+              ctx.searchHistory.defineBynameImplicit(wideProto, res)
+            case _ =>
+              if !alreadyStoppedInlining && ctx.base.stopInlining then
+                // a call overflowed as part of the expansion when typing the implicit
+                ctx.base.stopInlining = false
+              // Since the search failed, the local typerstate will be discarded
+              // without being committed, but type variables local to that state
+              // might still appear in an error message, so we run `gc()` here to
+              // make sure we don't forget their instantiation. This leads to more
+              // precise error messages in tests/neg/missing-implicit3.check and
+              // tests/neg/implicitSearch.check
+              typingCtx.typerState.gc()
+              result
 
     /** Search a list of eligible implicit references */
     private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
@@ -1474,10 +1476,30 @@ trait Implicits:
                 case _ => fail
             end healAmbiguous
 
+            /** In the case of diverging implicit search, search stack unwinds to
+             *  the candidate that led to this error.
+             */
+            def needUnwindSearchStack(failure: SearchFailureType): Boolean = {
+              failure match
+                case failure: DivergingImplicit =>
+                  failure.reason.index <= ctx.searchHistory.index
+                    && remaining.forall(compareAlternatives(_, cand) <= 0)
+                    && {
+                      found match
+                        case found: SearchSuccess =>
+                          compareAlternatives(found, cand) == 0
+                        case _ => true
+                    }
+                case _ => false
+            }
+
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if fail eq ImplicitSearchTooLargeFailure then
                   fail
+                else if (needUnwindSearchStack(fail.reason))
+                  val newPending = remaining.filterConserve(compareAlternatives(_, cand) < 0)
+                  rank(newPending, fail, rfailures)
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
@@ -1558,25 +1580,34 @@ trait Implicits:
       /** A relation that influences the order in which eligible implicits are tried.
        *
        *  We prefer (in order of importance)
-       *   1. more deeply nested definitions
-       *   2. definitions with fewer implicit parameters
-       *   3. definitions whose owner has more parents (see `compareBaseClassesLength`)
-       *  The reason for (2) is that we want to fail fast if the search type
+       *   1. previous candidates in search history
+       *   2. more deeply nested definitions
+       *   3. definitions with fewer implicit parameters
+       *   4. definitions whose owner has more parents (see `compareBaseClassesLength`)
+       *  The reason for (1) is that we want to fail fast in case of diverging implicit search. 
+       *  The reason for (3) is that we want to fail fast if the search type
        *  is underconstrained. So we look for "small" goals first, because that
        *  will give an ambiguity quickly.
        */
       def compareEligibles(e1: Candidate, e2: Candidate): Int =
         if e1 eq e2 then return 0
+        ctx.searchHistory match
+          case OpenSearch(previous, _, _) => // 1.
+            if e1.ref eq previous.ref then
+              return -1
+            else if e2.ref eq previous.ref then
+              return 1
+          case _ =>
         val cmpLevel = e1.level - e2.level
-        if cmpLevel != 0 then return -cmpLevel // 1.
+        if cmpLevel != 0 then return -cmpLevel // 2.
         val sym1 = e1.ref.symbol
         val sym2 = e2.ref.symbol
         val arity1 = sym1.info.firstParamTypes.length
         val arity2 = sym2.info.firstParamTypes.length
         val cmpArity = arity1 - arity2
-        if cmpArity != 0 then return cmpArity // 2.
+        if cmpArity != 0 then return cmpArity // 3.
         val cmpBcs = compareBaseClassesLength(sym1.owner, sym2.owner)
-        -cmpBcs // 3.
+        -cmpBcs // 4.
 
       /** Check if `ord` respects the contract of `Ordering`.
        *
@@ -1835,9 +1866,9 @@ trait Implicits:
     * implicit search.
     *
     * @param cand The candidate implicit to be explored.
-    * @result     True if this candidate/pt are divergent, false otherwise.
+    * @result     Some(reason) if this candidate/pt are divergent, None otherwise.
     */
-    def checkDivergence(cand: Candidate): Boolean =
+    def checkDivergence(cand: Candidate): Option[OpenSearch] =
       // For full details of the algorithm see the SIP:
       //   https://docs.scala-lang.org/sips/byname-implicits.html
       Stats.record("checkDivergence")
@@ -1852,22 +1883,22 @@ trait Implicits:
       // as we ascend the chain of open implicits to the outermost search context.
 
       @tailrec
-      def loop(history: SearchHistory, belowByname: Boolean): Boolean =
+      def loop(history: SearchHistory, belowByname: Boolean): Option[OpenSearch] =
         history match
           case prev @ OpenSearch(cand1, tp, outer) =>
             if cand1.ref eq cand.ref then
               lazy val wildTp = wildApprox(tp.widenExpr)
               if belowByname && (wildTp <:< wildPt) then
                 fullyDefinedType(tp, "by-name implicit parameter", srcPos)
-                false
+                None
               else if prev.typeSize > ptSize || prev.coveringSet != ptCoveringSet then
                 loop(outer, tp.isByName || belowByname)
               else
-                prev.typeSize < ptSize
-                || wildTp =:= wildPt
-                || loop(outer, tp.isByName || belowByname)
+                if prev.typeSize < ptSize || wildTp =:= wildPt then
+                  Some(prev)
+                else loop(outer, tp.isByName || belowByname)
             else loop(outer, tp.isByName || belowByname)
-          case _ => false
+          case _ => None
 
       loop(ctx.searchHistory, pt.isByName)
     end checkDivergence
@@ -1932,6 +1963,7 @@ abstract class SearchHistory:
   val root: SearchRoot
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
+  val index: Int
   def openSearchPairs: List[(Candidate, Type)]
 
   /**
@@ -1959,6 +1991,7 @@ end SearchHistory
 case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Context) extends SearchHistory:
   val root = outer.root
   val byname = outer.byname || pt.isByName
+  val index = outer.index + 1
   def openSearchPairs = (cand, pt) :: outer.openSearchPairs
 
   // The typeSize and coveringSet of the current search.
@@ -1977,6 +2010,7 @@ end OpenSearch
 final class SearchRoot extends SearchHistory:
   val root = this
   val byname = false
+  val index = 0
   def openSearchPairs = Nil
 
   /** How many expressions were constructed so far in the current toplevel implicit search?
