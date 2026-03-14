@@ -114,6 +114,8 @@ enum ENode extends Showable:
         s"${rec(qual)}.${printDesignator(member)}"
       case Apply(fn, args) =>
         s"${rec(fn)}(${args.map(rec).mkString(", ")})"
+      case OpApply(Op.IfThenElse, List(cond, thenp, elsep)) =>
+        s"(if ${rec(cond)} then ${rec(thenp)} else ${rec(elsep)})"
       case OpApply(op, args) =>
         s"(${args.map(rec).mkString(" " + op.operatorName().toString() + " ")})"
       case TypeApply(fn, args) =>
@@ -152,6 +154,9 @@ enum ENode extends Showable:
         case OpApply(op, args) =>
           assert(args.nonEmpty)
           op match
+            case Op.IfThenElse =>
+              assert(args.length == 3)
+              "if " ~ p.atPrec(GlobalPrec)(args(0).toText(p)) ~ " then " ~ p.atPrec(GlobalPrec)(args(1).toText(p)) ~ " else " ~ p.atPrec(GlobalPrec)(args(2).toText(p))
             // All operators with arity >= 2
             case Op.IntSum | Op.IntMinus | Op.IntProduct |
                 Op.IntLessThan | Op.IntLessEqual | Op.IntGreaterThan | Op.IntGreaterEqual |
@@ -424,6 +429,9 @@ enum ENode extends Showable:
               case Op.IntLessEqual => binaryOp(defn.Int_<=)
               case Op.IntGreaterThan => binaryOp(defn.Int_>)
               case Op.IntGreaterEqual => binaryOp(defn.Int_>=)
+              case Op.IfThenElse =>
+                require(args.length == 3)
+                tpd.If(args(0).toTree(paramRefs), args(1).toTree(paramRefs), args(2).toTree(paramRefs))
           case TypeApply(fn, args) =>
             tpd.TypeApply(fn.toTree(paramRefs), args.map(tp => tpd.TypeTree(mapType(tp), false)))
           case Lambda(paramTps, retTp, body) =>
@@ -466,6 +474,7 @@ object ENode:
     case IntLessEqual
     case IntGreaterThan
     case IntGreaterEqual
+    case IfThenElse
 
     def operatorName(): Name =
       this match
@@ -484,6 +493,7 @@ object ENode:
         case IntLessEqual => nme.Le
         case IntGreaterThan => nme.Gt
         case IntGreaterEqual => nme.Ge
+        case IfThenElse => termName("if")
 
   // -----------------------------------
   // Conversion from Trees to E-Nodes
@@ -538,6 +548,12 @@ object ENode:
           case BinaryOp(lhs, d.Int_<=, rhs) => binaryOpNode(ENode.Op.IntLessEqual, lhs, rhs)
           case BinaryOp(lhs, d.Int_>, rhs) => binaryOpNode(ENode.Op.IntGreaterThan, lhs, rhs)
           case BinaryOp(lhs, d.Int_>=, rhs) => binaryOpNode(ENode.Op.IntGreaterEqual, lhs, rhs)
+          case tpd.If(cond, thenp, elsep) =>
+            for
+              condNode  <- fromTree(cond, paramSyms, paramTps)
+              thenpNode <- fromTree(thenp, paramSyms, paramTps)
+              elsepNode <- fromTree(elsep, paramSyms, paramTps)
+            yield OpApply(ENode.Op.IfThenElse, List(condNode, thenpNode, elsepNode))
           case tpd.Apply(fun, args) =>
             for
               funNode   <- fromTree(fun, paramSyms, paramTps)
