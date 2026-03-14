@@ -63,7 +63,10 @@ final class LongAccumulator
     else history = java.util.Arrays.copyOf(history, history.length << 1)
   }
 
-  /** Appends an element to this `LongAccumulator`. */
+  /** Appends an element to this `LongAccumulator`.
+   *
+   *  @param a the `Long` value to append
+   */
   def addOne(a: Long): this.type = {
     totalSize += 1
     if (index+1 >= current.length) expand()
@@ -75,7 +78,10 @@ final class LongAccumulator
   /** Result collection consisting of all elements appended so far. */
   override def result(): LongAccumulator = this
 
-  /** Removes all elements from `that` and appends them to this `LongAccumulator`. */
+  /** Removes all elements from `that` and appends them to this `LongAccumulator`.
+   *
+   *  @param that the `LongAccumulator` to drain elements from; it will be empty after this operation
+   */
   def drain(that: LongAccumulator): Unit = {
     var h = 0
     var prev = 0L
@@ -138,7 +144,10 @@ final class LongAccumulator
     history = LongAccumulator.emptyLongArrayArray
   }
 
-  /** Retrieves the `ix`th element. */
+  /** Retrieves the `ix`th element.
+   *
+   *  @param ix the zero-based index of the element to retrieve
+   */
   def apply(ix: Long): Long = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt)
     else {
@@ -147,7 +156,10 @@ final class LongAccumulator
     }
   }
 
-  /** Retrieves the `ix`th element, using an `Int` index. */
+  /** Retrieves the `ix`th element, using an `Int` index.
+   *
+   *  @param i the zero-based index of the element to retrieve
+   */
   def apply(i: Int): Long = apply(i.toLong)
 
   def update(idx: Long, elem: Long): Unit = {
@@ -284,6 +296,9 @@ final class LongAccumulator
   /** Copies the elements in this `LongAccumulator` to a specified collection.
    *  Note that the target collection is not specialized.
    *  Usage example: `acc.to(Vector)`
+   *
+   *  @tparam C1 the result type of the target collection
+   *  @param factory the factory for the target collection type
    */
   override def to[C1](factory: Factory[Long, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)
