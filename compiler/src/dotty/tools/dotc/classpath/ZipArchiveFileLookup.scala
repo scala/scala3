@@ -46,7 +46,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
     for {
       dirEntry <- findDirEntry(inPackage)
       entry <- Option(dirEntry.lookupName(name, directory = false))
-      if isRequiredFileType(entry)
+      // no "if isRequiredFileType(entry)" check, we know exactly what we want
     }
     yield createFileEntry(entry)
 

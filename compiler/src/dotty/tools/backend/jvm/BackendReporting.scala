@@ -13,14 +13,11 @@
 package dotty.tools
 package backend.jvm
 
-import scala.tools.asm.tree.{AbstractInsnNode, MethodNode}
+import scala.tools.asm.tree.MethodNode
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.CompilerSettings
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
-
-import scala.util.control.ControlThrowable
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition, SrcPos}
 import dotty.tools.io.FileWriters.{BufferingReporter, Report}
 
@@ -105,47 +102,4 @@ object BackendReporting {
   }
 
   def assertionError(message: String): Nothing = throw new AssertionError(message)
-
-  implicit class RightBiasedEither[A, B](val v: Either[A, B]) extends AnyVal {
-    def withFilter(f: B => Boolean)(implicit empty: A): Either[A, B] = v.filterOrElse(f, empty)
-
-    /** Get the value, fail with an assertion if this is an error. */
-    def get: B = v.fold(a => assertionError(s"$a"), identity)
-
-    /**
-     * Get the right value of an `Either` by throwing a potential error message. Can simplify the
-     * implementation of methods that act on multiple `Either` instances. Instead of flat-mapping,
-     * the first error can be collected as
-     *
-     *     tryEither {
-     *       eitherOne.orThrow .... eitherTwo.orThrow ... eitherThree.orThrow
-     *     }
-     */
-    def orThrow: B = v.fold(a => throw Invalid(a), identity)
-  }
-
-  case class Invalid[A](e: A) extends ControlThrowable
-
-  /**
-   * See documentation of orThrow above.
-   */
-  def tryEither[A, B](op: => Either[A, B]): Either[A, B] = try { op } catch { case Invalid(e) => Left(e.asInstanceOf[A]) }
-
-  sealed trait OptimizerWarning {
-    def emitWarning(settings: CompilerSettings): Boolean
-  }
-
-  object OptimizerWarning {
-    // Method withFilter in RightBiasedEither requires an implicit empty value. Taking the value here
-    // in scope allows for-comprehensions that desugar into withFilter calls (for example when using a
-    // tuple de-constructor).
-    implicit val emptyOptimizerWarning: OptimizerWarning = new OptimizerWarning {
-      def emitWarning(settings: CompilerSettings): Boolean = false
-    }
-  }
-
-  // TODO will be implemented along with optimizer -- depends on new compiler settings, etc.
-  sealed trait NoClassBTypeInfo extends OptimizerWarning {
-    def emitWarning(settings: CompilerSettings): Boolean = false 
-  }
 }
