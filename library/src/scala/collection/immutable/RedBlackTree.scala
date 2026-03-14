@@ -669,12 +669,12 @@ private[collection] object RedBlackTree {
     private[RedBlackTree] def black: Tree[A, B] = {
       //assertNotMutable(this)
       if (isBlack) this
-      else new Tree(_key, _value, _left, _right, _count)
+      else new Tree(_key, _value, _left, _right, _count ^ colourBit)
     }
     private[RedBlackTree] def red: Tree[A, B] = {
       //assertNotMutable(this)
       if (isRed) this
-      else new Tree(_key, _value, _left, _right, _count)
+      else new Tree(_key, _value, _left, _right, _count ^ colourBit)
     }
     private[RedBlackTree] def withKV[B1 >: B](newKey: A, newValue: B1): Tree[A, B1] = {
       //assertNotMutable(this)

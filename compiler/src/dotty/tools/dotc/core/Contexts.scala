@@ -484,13 +484,13 @@ object Contexts {
       fresh.setSetting(ctx.settings.color, "never")
 
     /** Is the explicit nulls option set? */
-    def explicitNulls: Boolean = true
+    def explicitNulls: Boolean = !base.settings.YnoExplicitNulls.value
 
     /** Is the flexible types option set? */
-    def flexibleTypes: Boolean = !base.settings.YnoFlexibleTypes.value
+    def flexibleTypes: Boolean = explicitNulls && !base.settings.YnoFlexibleTypes.value
 
     /** Is the flexify tasty option set? */
-    def flexifyTasty: Boolean = base.settings.YflexifyTasty.value
+    def flexifyTasty: Boolean = explicitNulls && base.settings.YflexifyTasty.value
 
     /** Is the best-effort option set? */
     def isBestEffort: Boolean = base.settings.YbestEffort.value
@@ -732,7 +732,7 @@ object Contexts {
           setMode(this.mode &~ Mode.SafeNulls)
         case _ =>
       importInfo.mentionsFeature(nme.safeNulls) match
-        case Some(true) =>
+        case Some(true) if explicitNulls =>
           setMode(this.mode | Mode.SafeNulls)
         case _ =>
       updateStore(importInfoLoc, importInfo)

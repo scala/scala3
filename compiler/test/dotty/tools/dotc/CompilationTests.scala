@@ -238,7 +238,7 @@ class CompilationTests {
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions `and` "-language:unsafeNulls" `and` "-Yno-flexible-types"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", defaultOptions `and` "-Yno-flexible-types"),
     ))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
 

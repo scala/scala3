@@ -570,8 +570,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(ctx.typerState.fresh(ctx.reporter))
-    // if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
-    //   start = start.addMode(Mode.SafeNulls)
+    if ctx.settings.YexplicitNulls.value || Feature.enabledBySetting(nme.safeNulls) then
+      start = start.addMode(Mode.SafeNulls)
     ctx.initialize()(using start) // re-initialize the base context with start
 
     // `this` must be unchecked for safe initialization because by being passed to setRun during
