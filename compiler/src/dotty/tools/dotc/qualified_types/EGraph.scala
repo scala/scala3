@@ -277,22 +277,18 @@ final class EGraph(_ctx: Context):
           case (_, _: ENode.OpApply) => (b, a)
           case (_: ENode.Constructor, _) => (a, b)
           case (_, _: ENode.Constructor) => (b, a)
+          // Prefer Apply/TypeApply nodes wrapping a Constructor, so that
+          // normalizeSelect can reduce field accesses during repair.
+          case (a, _) if getAppliedConstructor(a).isDefined => (a, b)
+          case (_, b) if getAppliedConstructor(b).isDefined => (b, a)
+          // Prefer Lambda nodes, so that lambda.apply resolution and
+          // beta reduction can fire during repair.
+          case (_: ENode.Lambda, _) => (a, b)
+          case (_, _: ENode.Lambda) => (b, a)
           case (_: ENode.Select, _) => (a, b)
           case (_, _: ENode.Select) => (b, a)
-          case (a: ENode.Apply, b: ENode.Apply) =>
-            // Prefer Apply nodes wrapping a Constructor, so that
-            // normalizeSelect can reduce field accesses during repair.
-            if getAppliedConstructor(a).isDefined then (a, b)
-            else if getAppliedConstructor(b).isDefined then (b, a)
-            else (a, b)
           case (_: ENode.Apply, _) => (a, b)
           case (_, _: ENode.Apply) => (b, a)
-          case (a: ENode.TypeApply, b: ENode.TypeApply) =>
-            // Prefer Apply nodes wrapping a Constructor, so that
-            // normalizeSelect can reduce field accesses during repair.
-            if getAppliedConstructor(a).isDefined then (a, b)
-            else if getAppliedConstructor(b).isDefined then (b, a)
-            else (a, b)
           case (_: ENode.TypeApply, _) => (a, b)
           case (_, _: ENode.TypeApply) => (b, a)
           case (_: ENode.Atom, _) => (a, b)
@@ -369,7 +365,7 @@ final class EGraph(_ctx: Context):
           case ENode.Select(qual, member) =>
             normalizeSelect(recur(qual), member)
           case ENode.Apply(fn, args) =>
-            ENode.Apply(recur(fn), args.map(recur))
+            betaReduce(recur(fn), args.map(recur))
           case ENode.OpApply(op, args) =>
             normalizeOp(op, args.map(recur))
           case ENode.TypeApply(fn, args) =>
@@ -379,17 +375,21 @@ final class EGraph(_ctx: Context):
       ))
 
   private def normalizeSelect(qual: ENode, member: Symbol): ENode =
-    getAppliedConstructor(qual) match
-      case Some(constr) =>
-        val memberIndex = constr.fields.indexOf(member)
-        if memberIndex >= 0 then
-          val args = getTermArguments(qual)
-          assert(args.size == constr.fields.size)
-          args(memberIndex)
-        else
+    // Lambda.apply is the identity: selecting `apply` on a lambda yields the lambda itself.
+    if member.name(using _ctx) == nme.apply && qual.isInstanceOf[ENode.Lambda] then
+      qual
+    else
+      getAppliedConstructor(qual) match
+        case Some(constr) =>
+          val memberIndex = constr.fields.indexOf(member)
+          if memberIndex >= 0 then
+            val args = getTermArguments(qual)
+            assert(args.size == constr.fields.size)
+            args(memberIndex)
+          else
+            ENode.Select(qual, member)
+        case None =>
           ENode.Select(qual, member)
-      case None =>
-        ENode.Select(qual, member)
 
   private def getAppliedConstructor(node: ENode): Option[ENode.Constructor] =
     node match
@@ -403,6 +403,43 @@ final class EGraph(_ctx: Context):
       case ENode.Apply(fn, args) => getTermArguments(fn) ::: args
       case ENode.TypeApply(fn, args) => getTermArguments(fn)
       case _ => Nil
+
+  /** Beta-reduce `Apply(fn, args)` if `fn` is a Lambda, otherwise return
+   *  a plain Apply node.
+   */
+  private def betaReduce(fn: ENode, args: List[ENode]): ENode =
+    fn match
+      case ENode.Lambda(paramTps, _, body) if args.length == paramTps.length =>
+        // Lambda paramTps are in reverse (de Bruijn) order: index 0 = last
+        // source parameter. Reverse args so that ENodeParamRef(i) maps to
+        // the correct Apply argument.
+        val reversedArgs = args.reverse
+        def subst(node: ENode): ENode =
+          canonicalize(
+            node match
+              case ENode.Atom(ref: ENodeParamRef) if ref.index >= 0 && ref.index < reversedArgs.length =>
+                reversedArgs(ref.index)
+              case ENode.Atom(_) => node
+              case ENode.Constructor(_) => node
+              case ENode.Select(qual, member) =>
+                val qual1 = subst(qual)
+                if qual1 eq qual then node else normalizeSelect(qual1, member)
+              case ENode.Apply(fn, fArgs) =>
+                betaReduce(subst(fn), fArgs.map(subst))
+              case ENode.OpApply(op, oArgs) =>
+                normalizeOp(op, oArgs.map(subst))
+              case ENode.TypeApply(fn, tArgs) =>
+                val fn1 = subst(fn)
+                if fn1 eq fn then node else ENode.TypeApply(fn1, tArgs)
+              case ENode.Lambda(innerParamTps, retTp, innerBody) =>
+                // Shift: inner lambda binds its own params, so refs to outer
+                // params have indices >= innerParamTps.length in the inner body.
+                // We only substitute refs at depth 0, so skip inner lambdas.
+                node
+          )
+        subst(body)
+      case _ =>
+        ENode.Apply(fn, args)
 
   private def normalizeOp(op: ENode.Op, args: List[ENode]): ENode =
     val res = op match
