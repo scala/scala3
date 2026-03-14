@@ -153,7 +153,8 @@ Positions (145 bytes, starting from <elided base index>):
   source paths:
      0: 23 [<elided source file name>]
 
-Attributes (4 bytes, starting from <elided base index>):
+Attributes (5 bytes, starting from <elided base index>):
+  EXPLICITNULLSattr
   JAVAattr
   OUTLINEattr
   SOURCEFILEattr 23 [<elided source file name>]
