@@ -561,7 +561,8 @@ private sealed trait YSettings:
   val YmagicOffsetHeader: Setting[String] = StringSetting(ForkSetting, "Ymagic-offset-header", "header", "Specify the magic header comment that marks the start of the actual code in generated wrapper scripts. Example: -Ymagic-offset-header:SOURCE_CODE_START. Then, in the source, the magic comment `///SOURCE_CODE_START:<ORIGINAL_FILE_PATH>` marks the start of user code. The comment should be suffixed by `:<ORIGINAL_FILE_PATH>` to indicate the original file.", "")
 
   // Experimental language features
-  val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
+  val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Since explicit nulls is enabled by default, this flage now enables safe nulls for explicit-nulls", deprecation = Deprecation.renamed("-language:safeNulls"))
+  val YnoExplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-explicit-nulls", "Make reference types implictly nullable.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
   val YflexifyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yflexify-tasty", "Apply flexification to Scala code compiled without -Yexplicit-nulls, when reading from tasty.")
   val YsafeInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
