@@ -26,13 +26,16 @@ final class QualifiedTypesStats(val enabled: Boolean):
         val minNs = times.head
         val maxNs = times.last
         val maxMsg = sortedEntries.maxBy(_._1)._2
-        val medianNs =
-          if count % 2 == 1 then times(count / 2)
-          else (times(count / 2 - 1) + times(count / 2)) / 2
-        (name, count, totalNs, minNs, maxNs, maxMsg, medianNs)
+        def percentile(p: Int): Long =
+          val idx = math.min((count.toLong * p / 100).toInt, count - 1)
+          times(idx)
+        val medianNs = percentile(50)
+        val p75Ns = percentile(75)
+        val p99Ns = percentile(99)
+        (name, count, totalNs, minNs, medianNs, p75Ns, p99Ns, maxNs, maxMsg)
       val sb = StringBuilder()
       sb ++= "# Qualified types stats\n"
-      sb ++= f"${"event"}%-40s ${"count"}%8s ${"total ms"}%10s ${"min ms"}%10s ${"median ms"}%10s ${"max ms"}%10s  ${"max msg"}%s\n"
-      for (name, count, totalNs, minNs, maxNs, maxMsg, medianNs) <- grouped.toList.sortBy(-_._3) do
-        sb ++= f"$name%-40s $count%8d ${nsToMs(totalNs)}%10.0f ${nsToMs(minNs)}%10.3f ${nsToMs(medianNs)}%10.3f ${nsToMs(maxNs)}%10.3f  $maxMsg\n"
+      sb ++= f"${"event"}%-40s ${"count"}%8s ${"total ms"}%10s ${"min ms"}%10s ${"median ms"}%10s ${"p75 ms"}%10s ${"p99 ms"}%10s ${"max ms"}%10s  ${"max msg"}%s\n"
+      for (name, count, totalNs, minNs, medianNs, p75Ns, p99Ns, maxNs, maxMsg) <- grouped.toList.sortBy(-_._3) do
+        sb ++= f"$name%-40s $count%8d ${nsToMs(totalNs)}%10.0f ${nsToMs(minNs)}%10.3f ${nsToMs(medianNs)}%10.3f ${nsToMs(p75Ns)}%10.3f ${nsToMs(p99Ns)}%10.3f ${nsToMs(maxNs)}%10.3f  $maxMsg\n"
       sb.result()
