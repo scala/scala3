@@ -1,7 +1,0 @@
--- [E007] Type Mismatch Error: tests/neg/i21239.orig.scala:32:8 --------------------------------------------------------
-32 |        get // error
-   |        ^^^
-   |        Found:    AnyRef
-   |        Required: V
-   |
-   | longer explanation available when compiling with `-explain`
