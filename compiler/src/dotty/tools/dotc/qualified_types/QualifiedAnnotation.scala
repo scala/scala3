@@ -19,7 +19,7 @@ case class QualifiedAnnotation(qualifier: ENode.Lambda) extends Annotation:
 
   override def derivedAnnotation(tree: Tree)(using Context): Annotation = ???
 
-  private def derivedAnnotation(qualifier: ENode.Lambda)(using Context): Annotation =
+  def derivedAnnotation(qualifier: ENode.Lambda)(using Context): Annotation =
     if qualifier eq this.qualifier then this
     else QualifiedAnnotation(qualifier)
 
