@@ -20,6 +20,7 @@ import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{
   AndType,
+  AnnotatedType,
   AppliedType,
   CachedProxyType,
   ClassInfo,
@@ -322,6 +323,12 @@ enum ENode extends Showable:
     override def apply(tp: Type): Type =
       tp match
         case ENodeParamRef(i, _) if i >= from && i < from + to.length => to(i - from)
+        case tp @ AnnotatedType(parent, annot @ QualifiedAnnotation(qualifier)) =>
+          // Use substEParamRefs on the qualifier lambda to properly shift
+          // de Bruijn indices and avoid substituting bound variables.
+          val parent1 = apply(parent)
+          val qualifier1 = qualifier.substEParamRefs(from, to).asInstanceOf[ENode.Lambda]
+          tp.derivedAnnotatedType(parent1, annot.derivedAnnotation(qualifier1))
         case _ => mapOver(tp)
 
   def foreach(f: ENode => Unit): Unit =
