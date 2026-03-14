@@ -2,13 +2,13 @@ package dotty.tools.dotc.qualified_types
 
 import dotty.tools.dotc.ast.tpd.Tree
 import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Decorators.i
 import dotty.tools.dotc.core.Symbols.defn
-import dotty.tools.dotc.core.Types.{TermLambda, TermParamRef, Type, ConstantType, TypeMap}
+import dotty.tools.dotc.core.Types.{ConstantType, TermLambda, TermParamRef, Type, TypeMap}
 import dotty.tools.dotc.printing.Printer
 import dotty.tools.dotc.printing.Texts.{Text, given}
-import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.report
 
 case class QualifiedAnnotation(qualifier: ENode.Lambda) extends Annotation:
