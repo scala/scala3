@@ -8,7 +8,7 @@ given Boolean is Value:
       // Note: Scala's `Boolean` has value semantics already.
       self
 
-    def eq(other: Boolean): Boolean =
+    infix def eq(other: Boolean): Boolean =
       self == other
 
     def hashInto(hasher: Hasher): Hasher =
@@ -22,7 +22,7 @@ given Int is Value:
       // Note: Scala's `Int` has value semantics already.
       self
 
-    def eq(other: Int): Boolean =
+    infix def eq(other: Int): Boolean =
       self == other
 
     def hashInto(hasher: Hasher): Hasher =
@@ -35,7 +35,7 @@ given Int is Comparable:
     def copy(): Int =
       self
 
-    def eq(other: Int): Boolean =
+    infix def eq(other: Int): Boolean =
       self == other
 
     def hashInto(hasher: Hasher): Hasher =

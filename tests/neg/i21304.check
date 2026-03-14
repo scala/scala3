@@ -1,0 +1,23 @@
+-- [E007] Type Mismatch Error: tests/neg/i21304.scala:5:6 --------------------------------------------------------------
+5 |  foo(10) // error
+  |      ^^
+  |      Found:    (10 : Int)
+  |      Required: AnyRef | Null
+  |      Note that implicit conversions were not tried because the result of an implicit conversion
+  |      must be more specific than AnyRef | Null
+  |
+  |      One of the following imports might fix the problem:
+  |
+  |        import scala.math.BigDecimal.int2bigDecimal
+  |        import scala.math.BigInt.int2bigInt
+  |        import scala.math.Numeric.IntIsIntegral.mkNumericOps
+  |        import scala.math.Numeric.IntIsIntegral.mkOrderingOps
+  |        import scala.math.Ordering.Int.mkOrderingOps
+  |        import scala.math.Integral.Implicits.infixIntegralOps
+  |        import scala.math.Ordered.orderingToOrdered
+  |        import scala.math.Ordering.Implicits.infixOrderingOps
+  |        import scala.math.Numeric.Implicits.infixNumericOps
+  |        import scala.reflect.Selectable.reflectiveSelectable
+  |
+  |
+  | longer explanation available when compiling with `-explain`
