@@ -1089,6 +1089,21 @@ trait Implicits:
       val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
 
+  // Deprecation warning if the implicit `result` is defined in a non-accessible object
+  private def warnIfImplicitFromInaccessibleCompanion(result: SearchSuccess, span: Span)(using Context): Unit =
+    val ref = result.ref
+    val owner = ref.symbol.owner
+    if owner.is(Module) then
+      val companion = owner.sourceModule
+      if companion.isOneOf(Private | Protected) then ref.prefix match
+        case companionRef: TermRef =>
+          val pre = companionRef.prefix
+          if !companion.isAccessibleFrom(pre) then
+            report.deprecationWarning(
+              em"Usage of implicit ${ref.symbol} defined in $companion, which is not accessible here. In Scala 3.10, this implicit will no longer be found.",
+              ctx.source.atSpan(span))
+        case _ =>
+
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
    *  @param argument        If an implicit conversion is searched, the argument to which
@@ -1138,6 +1153,7 @@ trait Implicits:
               ctx.gadtState.restore(result.gstate)
             implicits.println(i"success: $result")
             implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
+            warnIfImplicitFromInaccessibleCompanion(result, span)
             result
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
