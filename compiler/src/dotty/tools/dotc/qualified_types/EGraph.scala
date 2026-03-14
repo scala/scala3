@@ -439,6 +439,13 @@ final class EGraph(_ctx: Context):
         val rhsPlusOne = unique(normalizeOp(Op.IntSum, List(args(1), oneIntNode)))
         normalizeOp(Op.IntLessThan, List(args(0), rhsPlusOne))
       case Op.IntGreaterEqual => normalizeOp(Op.IntLessEqual, args.reverse)
+      case Op.IfThenElse =>
+        assert(args.size == 3, s"Expected 3 arguments for if-then-else, got $args")
+        val List(cond, thenp, elsep) = args: @unchecked
+        if cond eq trueNode then thenp
+        else if cond eq falseNode then elsep
+        else if thenp eq elsep then thenp
+        else ENode.OpApply(op, args)
       case _ =>
         ENode.OpApply(op, args)
     res
