@@ -21,3 +21,11 @@ case class Refined[T](p: T => Boolean):
 
 val r: Refined[Int] with (r == Refined[Int](x => x == 42)) = Refined[Int](x => x == 42)
 val w: {res: Int with res == 42} = r.get
+
+// Nested lambda: outer param referenced inside inner lambda body
+case class Outer[T](p: T => T => Boolean):
+  def check(a: T, b: T): {res: Boolean with res == p(a)(b)} = ???
+
+val outer: Outer[Int] with (outer == Outer[Int](x => y => x < y)) =
+  Outer[Int](x => y => x < y)
+val nested: {res: Boolean with res == (1 < 2)} = outer.check(1, 2)

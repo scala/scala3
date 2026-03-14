@@ -414,28 +414,29 @@ final class EGraph(_ctx: Context):
         // source parameter. Reverse args so that ENodeParamRef(i) maps to
         // the correct Apply argument.
         val reversedArgs = args.reverse
-        def subst(node: ENode): ENode =
+        // depth tracks how many inner-lambda params are in scope,
+        // so that outer ENodeParamRef indices are shifted accordingly.
+        def subst(node: ENode, depth: Int = 0): ENode =
           canonicalize(
             node match
-              case ENode.Atom(ref: ENodeParamRef) if ref.index >= 0 && ref.index < reversedArgs.length =>
-                reversedArgs(ref.index)
+              case ENode.Atom(ref: ENodeParamRef) if ref.index >= depth && ref.index - depth < reversedArgs.length =>
+                reversedArgs(ref.index - depth)
               case ENode.Atom(_) => node
               case ENode.Constructor(_) => node
               case ENode.Select(qual, member) =>
-                val qual1 = subst(qual)
+                val qual1 = subst(qual, depth)
                 if qual1 eq qual then node else normalizeSelect(qual1, member)
               case ENode.Apply(fn, fArgs) =>
-                betaReduce(subst(fn), fArgs.map(subst))
+                betaReduce(subst(fn, depth), fArgs.map(subst(_, depth)))
               case ENode.OpApply(op, oArgs) =>
-                normalizeOp(op, oArgs.map(subst))
+                normalizeOp(op, oArgs.map(subst(_, depth)))
               case ENode.TypeApply(fn, tArgs) =>
-                val fn1 = subst(fn)
+                val fn1 = subst(fn, depth)
                 if fn1 eq fn then node else ENode.TypeApply(fn1, tArgs)
               case ENode.Lambda(innerParamTps, retTp, innerBody) =>
-                // Shift: inner lambda binds its own params, so refs to outer
-                // params have indices >= innerParamTps.length in the inner body.
-                // We only substitute refs at depth 0, so skip inner lambdas.
-                node
+                val innerBody1 = subst(innerBody, depth + innerParamTps.length)
+                if innerBody1 eq innerBody then node
+                else ENode.Lambda(innerParamTps, retTp, innerBody1)
           )
         subst(body)
       case _ =>
