@@ -1,9 +1,9 @@
-package dotty.tools.scaladoc
-package tasty.comments
+package dotty.tools.scaladoc.tasty.comments
+
+import java.util.regex.Matcher
+import Regexes._
 
 object Cleaner {
-  import Regexes._
-  import java.util.regex.Matcher
 
   /** Prepares the comment for pre-parsing: removes documentation markers and
     * extra whitespace, removes dangerous HTML and Javadoc tags, and splits it
@@ -11,19 +11,19 @@ object Cleaner {
     */
   def clean(comment: String): List[String] = {
     def cleanLine(line: String): String = {
-      // Remove trailing whitespaces
-      TrailingWhitespace.replaceAllIn(line, "") match {
+      line match {
         case CleanCommentLine(ctl: String) => ctl
+        // This match can actually never happen, because CleanCommentLine always matches
         case tl => tl
       }
     }
     val strippedComment = comment.trim.stripPrefix("/*").stripSuffix("*/")
-    val safeComment = DangerousTags.replaceAllIn(strippedComment, { htmlReplacement(_) })
-    val javadoclessComment = JavadocTags.replaceAllIn(safeComment, { javadocReplacement(_) })
+    val safeComment = DangerousTags.replaceAllIn(strippedComment, htmlReplacement)
+    val javadoclessComment = JavadocTags.replaceAllIn(safeComment, javadocReplacement)
     val markedTagComment =
       SafeTags.replaceAllIn(javadoclessComment, { mtch =>
         Matcher.quoteReplacement(s"$safeTagMarker${mtch.matched}$safeTagMarker")
       })
-    markedTagComment.linesIterator.toList map (cleanLine)
+    markedTagComment.linesIterator.toList.map(cleanLine)
   }
 }

@@ -4,13 +4,11 @@ package tasty.comments
 import scala.util.matching.Regex
 
 object Regexes {
-  val TrailingWhitespace = """\s+$""".r
-
   /** The body of a line, dropping the (optional) start star-marker,
     * one leading whitespace and all trailing whitespace
     */
   val CleanCommentLine =
-    new Regex("""(?:\s*\*\s?\s?)?(.*)""")
+    new Regex("""(?:\s*\*\s?)?(.*?)\s*""")
 
   /** Dangerous HTML tags that should be replaced by something safer,
     * such as wiki syntax, or that should be dropped
