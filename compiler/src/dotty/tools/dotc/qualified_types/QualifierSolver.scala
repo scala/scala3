@@ -26,7 +26,11 @@ class QualifierSolver(using Context):
         else false
 
   private def impliesCommonParams(node1: ENode.Lambda, node2: ENode.Lambda, mostPreciseNode: ENode.Lambda): Boolean =
-    val paramRefs = mostPreciseNode.paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(i, tp))
+    // "Open" both lambdas by substituting their bound variables with fresh
+    // free variables (negative-index ENodeParamRefs), akin to the opening
+    // operation in locally-nameless representations. This ensures the shared
+    // free variables are never confused with bound variables in nested lambdas.
+    val paramRefs = mostPreciseNode.paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(-i - 1, tp))
     impliesRec(node1.body.substEParamRefs(0, paramRefs), node2.body.substEParamRefs(0, paramRefs))
 
   private def impliesRec(node1: ENode, node2: ENode): Boolean =
