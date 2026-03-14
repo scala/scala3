@@ -1,16 +1,11 @@
 package dotty.tools.dotc.qualified_types
-import dotty.tools.dotc.core.Types.{
-  SingletonType,
-  CachedProxyType,
-  Type
-}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Hashable.Binders
-
+import dotty.tools.dotc.core.Types.{CachedProxyType, SingletonType, Type}
 
 /** Reference to the argument of an [[ENode.Lambda]].
  *
- *  @param index 
+ *  @param index
  *    Debruijn index of the argument, starting from 0
  *  @param underyling
  *    Underlying type of the argument
