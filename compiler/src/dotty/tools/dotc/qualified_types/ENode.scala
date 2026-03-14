@@ -661,7 +661,7 @@ object ENode:
         case n: Atom => typeAssumptions(n.tp)
         case n: Constructor => Nil
         case n: Select => assumptions(n.qual)
-        case n: Apply => assumptions(n.fn) ++ n.args.flatMap(assumptions)
+        case n: Apply => resultTypeAssumptions(n) ++ assumptions(n.fn) ++ n.args.flatMap(assumptions)
         case n: OpApply => n.args.flatMap(assumptions)
         case n: TypeApply => assumptions(n.fn)
         case n: Lambda => Nil
@@ -696,6 +696,51 @@ object ENode:
         case _ => Nil
     trace(i"typeAssumptions($rootTp)", Printers.qualifiedTypes):
       rec(rootTp)
+
+  /** For an Apply node, extract assumptions from the function's return type qualifier.
+   *  If the function has a qualified return type like `{res: T with qualifier(res)}`,
+   *  substitute method params with actual args and the result self-ref with the Apply node.
+   *  Only handles simple (non-curried, non-generic) methods.
+   */
+  private def resultTypeAssumptions(applyNode: Apply)(using Context): List[ENode] =
+    val fnSym = applyNode.fn match
+      case Atom(tp: TermRef) => tp.symbol
+      case Select(_, member) => member
+      case _ => return Nil
+
+    fnSym.info match
+      case mt: MethodType =>
+        mt.resultType match
+          case QualifiedType(_, qualifier) =>
+            val args = applyNode.args
+            if args.length != mt.paramInfos.length then return Nil
+            def substBody(node: ENode): ENode =
+              node match
+                case Atom(tp: TermParamRef) if tp.binder eq mt =>
+                  args(tp.paramNum)
+                case Atom(ref: ENodeParamRef) if ref.index == 0 =>
+                  applyNode
+                case Atom(_) => node
+                case Constructor(_) => node
+                case node @ Select(qual, member) =>
+                  val qual1 = substBody(qual)
+                  if qual1 eq qual then node else Select(qual1, member)
+                case node @ Apply(fn, fArgs) =>
+                  val fn1 = substBody(fn)
+                  val fArgs1 = fArgs.mapConserve(substBody)
+                  if (fn1 eq fn) && (fArgs1 eq fArgs) then node else Apply(fn1, fArgs1)
+                case node @ OpApply(op, oArgs) =>
+                  val oArgs1 = oArgs.mapConserve(substBody)
+                  if oArgs1 eq oArgs then node else OpApply(op, oArgs1)
+                case node @ TypeApply(fn, tArgs) =>
+                  val fn1 = substBody(fn)
+                  if fn1 eq fn then node else TypeApply(fn1, tArgs)
+                case node @ Lambda(paramTps, retTp, body) =>
+                  val body1 = substBody(body)
+                  if body1 eq body then node else Lambda(paramTps, retTp, body1)
+            List(substBody(qualifier.body))
+          case _ => Nil
+      case _ => Nil
 
   // -----------------------------------
   // Utils
