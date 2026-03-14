@@ -1575,6 +1575,19 @@ trait Checking {
           report.error(em"the ordinal method of enum $cls can not be defined by the user", decl.srcPos)
         else
           report.error(em"enum $cls can not inherit the concrete ordinal method of ${decl.owner}", cdef.srcPos)
+    def checkJavaEnumTypeArg(using Context) =
+      val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
+      if javaEnumBase.exists then
+        javaEnumBase.argInfos match
+          case typeArg :: Nil =>
+            val clsRef =
+              if cls.typeParams.isEmpty then cls.typeRef
+              else cls.typeRef.appliedTo(cls.typeParams.map(_.typeRef))
+            if typeArg.classSymbol != cls || !(clsRef <:< typeArg) then
+              report.error(
+                em"enum $cls extends ${javaEnumBase}, but $clsRef is not a subtype of $typeArg",
+                cdef.srcPos)
+          case _ =>
     def isEnumAnonCls =
       cls.isAnonymousClass
       && cls.owner.isTerm
@@ -1583,6 +1596,8 @@ trait Checking {
     val isJavaEnum = cls.derivesFrom(defn.JavaEnumClass)
     if isJavaEnum && cdef.mods.isEnumClass && !cls.isStatic then
       report.error(em"An enum extending java.lang.Enum must be declared in a static scope", cdef.srcPos)
+    if isJavaEnum && cdef.mods.isEnumClass then
+      checkJavaEnumTypeArg
     if !isEnumAnonCls then
       if cdef.mods.isEnumCase then
         if isJavaEnum then
