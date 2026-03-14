@@ -5,10 +5,15 @@ import dotty.tools.dotc.core.Types.{CachedProxyType, SingletonType, Type}
 
 /** Reference to the argument of an [[ENode.Lambda]].
  *
- *  @param index
- *    Debruijn index of the argument, starting from 0
- *  @param underyling
- *    Underlying type of the argument
+ *  Non-negative indices are de Bruijn indices bound by enclosing
+ *  [[ENode.Lambda]] nodes (0 = innermost). Negative indices represent free
+ *  variables, introduced when "opening" (similarly to "opening" in the context
+ *  of the locally-nameless representation) a lambda during implication
+ *  checking.
+ *
+ *  @param index De Bruijn index (>= 0) for bound variables, or a negative value
+ *    for free variables
+ *  @param underlying Underlying type of the argument
  */
 final case class ENodeParamRef(index: Int, underlying: Type) extends CachedProxyType, SingletonType:
   override def underlying(using Context): Type = underlying
