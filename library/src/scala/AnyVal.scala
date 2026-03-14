@@ -55,6 +55,4 @@ import scala.language.`2.13`
  * still must allocate a value class instance at runtime. These limitations and circumstances are
  * explained in greater detail in the [Value Classes and Universal Traits](https://docs.scala-lang.org/overviews/core/value-classes.html).
  */
-transparent abstract class AnyVal extends Any, Matchable {
-  def getClass(): Class[? <: AnyVal] = null.asInstanceOf[Class[? <: AnyVal]]
-}
+transparent abstract class AnyVal extends Any, Matchable
