@@ -49,7 +49,6 @@ import dotty.tools.dotc.printing.Texts.{Text, given}
 import dotty.tools.dotc.qualified_types.ENode.Op
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.transform.TreeExtractors.{BinaryOp, UnaryOp}
-import dotty.tools.dotc.util.Spans.Span
 
 enum ENode extends Showable:
   import ENode.*
@@ -106,22 +105,21 @@ enum ENode extends Showable:
         case _ => d.toString
 
     this match
-        case Atom(tp) =>
-          printTp(tp)
-        case Constructor(constr) =>
-          s"new ${printDesignator(constr.lastKnownDenotation.owner)}"
-        case Select(qual, member) =>
-          s"${rec(qual)}.${printDesignator(member)}"
-        case Apply(fn, args) =>
-          s"${rec(fn)}(${args.map(rec).mkString(", ")})"
-        case OpApply(op, args) =>
-          s"(${args.map(rec).mkString(" " + op.operatorName().toString() + " ")})"
-        case TypeApply(fn, args) =>
-          s"${rec(fn)}[${args.map(printTp).mkString(", ")}]"
-        case Lambda(paramTps, retTp, body) =>
-          val paramsString = paramTps.map(p => "_: " + printTp(p)).mkString(", ")
-          s"($paramsString): ${printTp(retTp)} => ${rec(body)}"
-
+      case Atom(tp) =>
+        printTp(tp)
+      case Constructor(constr) =>
+        s"new ${printDesignator(constr.lastKnownDenotation.owner)}"
+      case Select(qual, member) =>
+        s"${rec(qual)}.${printDesignator(member)}"
+      case Apply(fn, args) =>
+        s"${rec(fn)}(${args.map(rec).mkString(", ")})"
+      case OpApply(op, args) =>
+        s"(${args.map(rec).mkString(" " + op.operatorName().toString() + " ")})"
+      case TypeApply(fn, args) =>
+        s"${rec(fn)}[${args.map(printTp).mkString(", ")}]"
+      case Lambda(paramTps, retTp, body) =>
+        val paramsString = paramTps.map(p => "_: " + printTp(p)).mkString(", ")
+        s"($paramsString): ${printTp(retTp)} => ${rec(body)}"
 
   override def toText(p: Printer): Text =
     p.printerContext.base.qualifiedTypesStats.record("ENode.toText"):
@@ -238,7 +236,6 @@ enum ENode extends Showable:
             case mappedTp0 => mappedTp0
         val mappedTp = ensureValidPrefixes(mappedTp0)
 
-
         if mappedTp eq tp then
           this
         else
@@ -315,7 +312,11 @@ enum ENode extends Showable:
       case node @ TypeApply(fn, args) =>
         node.derived(fn.substEParamRefs(from, to), args.mapConserve(SubstEParamsMap(from, to)))
       case node @ Lambda(paramTps, retTp, body) =>
-        node.derived(paramTps.mapConserve(SubstEParamsMap(from, to)), SubstEParamsMap(from, to)(retTp), body.substEParamRefs(from + paramTps.length, to))
+        node.derived(
+          paramTps.mapConserve(SubstEParamsMap(from, to)),
+          SubstEParamsMap(from, to)(retTp),
+          body.substEParamRefs(from + paramTps.length, to)
+        )
 
   private class SubstEParamsMap(from: Int, to: List[Type])(using Context) extends TypeMap:
     override def apply(tp: Type): Type =
@@ -424,10 +425,12 @@ enum ENode extends Showable:
               val reversedParamRefs = mt.paramRefs.reverse
               paramTps.zipWithIndex.map((tp, i) => SubstEParamsMap(0, reversedParamRefs.take(i) ::: paramRefs)(tp))
             val mt = MethodType(myParamNames)(computeParamTypes, _ => retTp)
-            tpd.Lambda(mt, myParamRefTrees =>
-              val myParamRefs = myParamRefTrees.map(_.tpe).reverse
-              body.toTree(myParamRefs ::: paramRefs)
-              )
+            tpd.Lambda(
+              mt,
+              myParamRefTrees =>
+                val myParamRefs = myParamRefTrees.map(_.tpe).reverse
+                body.toTree(myParamRefs ::: paramRefs)
+            )
 
 object ENode:
   private def isEmptyPrefix(tp: Type): Boolean =
@@ -439,7 +442,6 @@ object ENode:
           case d: Symbol => d.lastKnownDenotation.name.toTermName == nme.EMPTY_PACKAGE
           case _ => false
       case _ => false
-
 
   enum Op:
     case IntSum
@@ -531,7 +533,7 @@ object ENode:
           case BinaryOp(lhs, d.Int_>=, rhs) => binaryOpNode(ENode.Op.IntGreaterEqual, lhs, rhs)
           case tpd.Apply(fun, args) =>
             for
-              funNode <- fromTree(fun, paramSyms, paramTps)
+              funNode   <- fromTree(fun, paramSyms, paramTps)
               argsNodes <- args.map(fromTree(_, paramSyms, paramTps)).sequence
             yield ENode.Apply(funNode, argsNodes)
           // Strip asInstanceOf/$asInstanceOf casts: they don't change the
@@ -638,7 +640,8 @@ object ENode:
         case _ => Nil
     def rec(tp: Type): List[ENode] =
       tp match
-        case QualifiedType(parent, qualifier) => qualifier.body.substEParamRefs(0, List(rootTp)) :: assumptions(qualifier.body) ::: rec(parent)
+        case QualifiedType(parent, qualifier) =>
+          qualifier.body.substEParamRefs(0, List(rootTp)) :: assumptions(qualifier.body) ::: rec(parent)
         case tp: SingletonType => termAssumptions(tp) ::: selfify(tp) ::: recPrefix(tp) ::: rec(tp.underlying)
         case tp: TypeProxy => rec(tp.underlying)
         case AndType(tp1, tp2) => rec(tp1) ++ rec(tp2)
