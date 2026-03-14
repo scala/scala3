@@ -156,7 +156,9 @@ enum ENode extends Showable:
           op match
             case Op.IfThenElse =>
               assert(args.length == 3)
-              "if " ~ p.atPrec(GlobalPrec)(args(0).toText(p)) ~ " then " ~ p.atPrec(GlobalPrec)(args(1).toText(p)) ~ " else " ~ p.atPrec(GlobalPrec)(args(2).toText(p))
+              "if " ~ p.atPrec(GlobalPrec)(args(0).toText(p)) ~ " then " ~ p.atPrec(GlobalPrec)(
+                args(1).toText(p)
+              ) ~ " else " ~ p.atPrec(GlobalPrec)(args(2).toText(p))
             // All operators with arity >= 2
             case Op.IntSum | Op.IntMinus | Op.IntProduct |
                 Op.IntLessThan | Op.IntLessEqual | Op.IntGreaterThan | Op.IntGreaterEqual |
@@ -502,18 +504,22 @@ object ENode:
   def fromTree(
       tree: tpd.Tree,
       paramSyms: List[Symbol] = Nil,
-      paramTps: List[Type] = Nil
+      paramTps: List[Type] = Nil,
+      valBindings: Map[Symbol, ENode] = Map.empty
   )(using Context): Option[ENode] =
     val d = defn // Need a stable path to match on `defn` members
 
+    def rec(tree: tpd.Tree, valBindings: Map[Symbol, ENode] = valBindings): Option[ENode] =
+      fromTree(tree, paramSyms, paramTps, valBindings)
+
     def binaryOpNode(op: ENode.Op, lhs: tpd.Tree, rhs: tpd.Tree): Option[ENode] =
       for
-        lhsNode <- fromTree(lhs, paramSyms, paramTps)
-        rhsNode <- fromTree(rhs, paramSyms, paramTps)
+        lhsNode <- rec(lhs)
+        rhsNode <- rec(rhs)
       yield OpApply(op, List(lhsNode, rhsNode))
 
     def unaryOpNode(op: ENode.Op, arg: tpd.Tree): Option[ENode] =
-      for argNode <- fromTree(arg, paramSyms, paramTps) yield OpApply(op, List(argNode))
+      for argNode <- rec(arg) yield OpApply(op, List(argNode))
 
     def isValidEqual(sym: Symbol, lhs: tpd.Tree, rhs: tpd.Tree): Boolean =
       def lhsClass = lhs.tpe.classSymbol
@@ -525,6 +531,8 @@ object ENode:
     trace(s"ENode.fromTree $tree", Printers.qualifiedTypes):
       ctx.base.qualifiedTypesStats.record("ENode.fromTree"):
         tree match
+          case tpd.Ident(_) if valBindings.contains(tree.symbol) =>
+            Some(valBindings(tree.symbol))
           case tpd.Literal(_) | tpd.Ident(_) | tpd.This(_)
               if tree.tpe.isInstanceOf[SingletonType] && tpd.isIdempotentExpr(tree) =>
             Some(Atom(substParamRefs(tree.tpe, paramSyms, paramTps).asInstanceOf[SingletonType]))
@@ -535,7 +543,7 @@ object ENode:
           case tree: tpd.Select if isCaseClassApply(tree.symbol) =>
             constructorNode(tree.symbol.owner.linkedClass.primaryConstructor)
           case tpd.Select(qual, name) =>
-            for qualNode <- fromTree(qual, paramSyms, paramTps) yield Select(qualNode, tree.symbol)
+            for qualNode <- rec(qual) yield Select(qualNode, tree.symbol)
           case BinaryOp(lhs, sym, rhs) if isValidEqual(sym, lhs, rhs) => binaryOpNode(ENode.Op.Equal, lhs, rhs)
           case BinaryOp(lhs, d.Int_!= | d.Boolean_!=, rhs) => binaryOpNode(ENode.Op.NotEqual, lhs, rhs)
           case UnaryOp(d.Boolean_!, arg) => unaryOpNode(ENode.Op.Not, arg)
@@ -550,23 +558,23 @@ object ENode:
           case BinaryOp(lhs, d.Int_>=, rhs) => binaryOpNode(ENode.Op.IntGreaterEqual, lhs, rhs)
           case tpd.If(cond, thenp, elsep) =>
             for
-              condNode  <- fromTree(cond, paramSyms, paramTps)
-              thenpNode <- fromTree(thenp, paramSyms, paramTps)
-              elsepNode <- fromTree(elsep, paramSyms, paramTps)
+              condNode  <- rec(cond)
+              thenpNode <- rec(thenp)
+              elsepNode <- rec(elsep)
             yield OpApply(ENode.Op.IfThenElse, List(condNode, thenpNode, elsepNode))
           case tpd.Apply(fun, args) =>
             for
-              funNode   <- fromTree(fun, paramSyms, paramTps)
-              argsNodes <- args.map(fromTree(_, paramSyms, paramTps)).sequence
+              funNode   <- rec(fun)
+              argsNodes <- args.map(rec(_)).sequence
             yield ENode.Apply(funNode, argsNodes)
           // Strip asInstanceOf/$asInstanceOf casts: they don't change the
           // runtime value, and encoding them would introduce types that are
           // not properly hash-consed, breaking EGraph identity invariants.
           case tpd.TypeApply(tpd.Select(qual, _), _)
               if tree.symbol == defn.Any_asInstanceOf || tree.symbol == defn.Any_typeCast =>
-            fromTree(qual, paramSyms, paramTps)
+            rec(qual)
           case tpd.TypeApply(fun, args) =>
-            for funNode <- fromTree(fun, paramSyms, paramTps)
+            for funNode <- rec(fun)
             yield ENode.TypeApply(funNode, args.map(tp => substParamRefs(tp.tpe, paramSyms, paramTps)))
           case tpd.closureDef(defDef) =>
             defDef.symbol.info.dealias match
@@ -580,13 +588,30 @@ object ENode:
                   newParamTps = substParamRefs(myParamTp, newParamSyms, newParamTps) :: newParamTps
                   newParamSyms = myParamSym :: newParamSyms
                 val myRetTp = substParamRefs(mt.resType, newParamSyms, newParamTps)
-                for body <- fromTree(defDef.rhs, newParamSyms, newParamTps)
+                for body <- fromTree(defDef.rhs, newParamSyms, newParamTps, valBindings)
                 yield ENode.Lambda(newParamTps.take(myParamTps.size), myRetTp, body)
               case _ => None
-          case tpd.Block(Nil, expr) =>
-            fromTree(expr, paramSyms, paramTps)
+          case tpd.Block(stats, expr) =>
+            // Process val defs, collecting bindings for those whose RHS can be
+            // converted to ENodes. When an Ident references a bound val, we
+            // return its ENode directly.
+            //
+            // FIXEME: types embedded in the tree (e.g., TypeApply args) may
+            // still contain TermRefs to inlined vals.
+            var bindings = valBindings
+            var ok = true
+            for stat <- stats if ok do
+              stat match
+                case vdef: tpd.ValDef =>
+                  fromTree(vdef.rhs, paramSyms, paramTps, bindings) match
+                    case Some(node) => bindings = bindings.updated(vdef.symbol, node)
+                    case None => ok = false
+                case _ =>
+                  ok = false
+            if ok then rec(expr, valBindings ++ bindings)
+            else None
           case tpd.Inlined(_, Nil, expr) =>
-            fromTree(expr, paramSyms, paramTps)
+            rec(expr)
           case _ =>
             None
 
