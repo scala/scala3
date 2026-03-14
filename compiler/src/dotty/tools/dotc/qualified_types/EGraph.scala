@@ -270,7 +270,7 @@ final class EGraph(_ctx: Context):
       else if b.contains(a) then
         (a, b)
       else
-        (a, b) match
+        (a, b): @unchecked match
           case (ENode.Atom(_: ConstantType), _) => (a, b)
           case (_, ENode.Atom(_: ConstantType)) => (b, a)
           case (_: ENode.OpApply, _) => (a, b)
@@ -306,8 +306,8 @@ final class EGraph(_ctx: Context):
           trace(s"repair ${show(headCanonical)}, ${show(headRepr)}"):
             merge(headCanonical, headRepr)
         i += 1
-        if i > 100 then
-          throw new RuntimeException("EGraph.repair: too many iterations, possible infinite loop")
+        if i > 1000 then
+          throw new RuntimeException(s"EGraph.repair: too many iterations ($i), possible infinite loop")
 
     assertInvariants()
 
@@ -467,9 +467,10 @@ final class EGraph(_ctx: Context):
         assert(args.size == 1, s"Expected 1 argument for negation, got $args")
         if args(0) eq trueNode then falseNode
         else if args(0) eq falseNode then trueNode
-        else args(0) match
-          case ENode.OpApply(Op.Not, List(inner)) => inner
-          case _ => ENode.OpApply(op, args)
+        else
+          args(0) match
+            case ENode.OpApply(Op.Not, List(inner)) => inner
+            case _ => ENode.OpApply(op, args)
       case Op.IntSum =>
         val (const, nonConsts) = decomposeIntSum(args)
         makeIntSum(const, nonConsts)

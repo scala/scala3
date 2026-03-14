@@ -21,11 +21,11 @@ def fibMemoized(n: Int): {res: Int with res == fib(n)} =
     case Some(res) =>
       res
     case None =>
-      val res =
+      val res: Int with (res == fib(n)) =
         if n == 0 then 0
         else if n == 1 then 1
         else fibMemoized(n - 1) + fibMemoized(n - 2)
-      cache.put(n, res.runtimeChecked)
-      res.runtimeChecked
+      cache.put(n, res)
+      res
 
 @main def main = ()
