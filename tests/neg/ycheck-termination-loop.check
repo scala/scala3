@@ -1,0 +1,4 @@
+-- Error: tests/neg/ycheck-termination-loop.scala:12:8 -----------------------------------------------------------------
+12 |    loop(MyCons(0, l)) // error
+   |    ^^^^^^^^^^^^^^^^^^
+   |    loop may not terminate due to (mutually) recursive call.

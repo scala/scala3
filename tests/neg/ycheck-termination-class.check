@@ -1,0 +1,12 @@
+-- Error: tests/neg/ycheck-termination-class.scala:10:17 ---------------------------------------------------------------
+10 |    1 + classLoop(r.next) // error
+   |        ^^^^^^^^^^^^^^^^^
+   |        classLoop may not terminate due to (mutually) recursive call.
+-- Warning: tests/neg/ycheck-termination-class.scala:16:16 -------------------------------------------------------------
+16 |      case x :: xs => x + sumStd(xs) // error
+   |                ^
+   |                Argument of type :: decreases but the type is not well-founded.
+-- Error: tests/neg/ycheck-termination-class.scala:16:32 ---------------------------------------------------------------
+16 |      case x :: xs => x + sumStd(xs) // error
+   |                          ^^^^^^^^^^
+   |                          sumStd may not terminate due to (mutually) recursive call.

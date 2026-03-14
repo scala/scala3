@@ -1,0 +1,4 @@
+-- Error: tests/neg/ycheck-termination-ping-pong.scala:15:35 -----------------------------------------------------------
+15 |        case Succ(_) => isEvenWrong(n) // error
+   |                        ^^^^^^^^^^^^^^
+   |                        isEvenWrong may not terminate due to (mutually) recursive call.
