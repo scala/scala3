@@ -233,6 +233,10 @@ final class EGraph(_ctx: Context):
           args.foreach(merge(_, falseNode))
         case ENode.OpApply(Op.Equal, args) if newRepr eq trueNode =>
           merge(args(0), args(1))
+        case ENode.OpApply(Op.Not, List(arg)) if newRepr eq trueNode =>
+          merge(arg, falseNode)
+        case ENode.OpApply(Op.Not, List(arg)) if newRepr eq falseNode =>
+          merge(arg, trueNode)
         case ENode.OpApply(Op.IntLessThan, List(a, b)) if newRepr eq trueNode =>
           propagateIntLessThan(a, b)
         case _ =>
@@ -406,7 +410,9 @@ final class EGraph(_ctx: Context):
         assert(args.size == 2, s"Expected 2 arguments for equality, got $args")
         if args(0) eq args(1) then
           trueNode
-        else ENode.OpApply(op, args.sortBy(idOf.apply))
+        else
+          val sorted = args.sortBy(idOf.apply)
+          constFoldBinaryOp[Any, Boolean](op, sorted, _ == _)
       case Op.And =>
         assert(args.size == 2, s"Expected 2 arguments for conjunction, got $args")
         if (args(0) eq falseNode) || (args(1) eq falseNode) then falseNode
@@ -419,6 +425,13 @@ final class EGraph(_ctx: Context):
         else if args(0) eq falseNode then args(1)
         else if args(1) eq falseNode then args(0)
         else ENode.OpApply(op, args)
+      case Op.Not =>
+        assert(args.size == 1, s"Expected 1 argument for negation, got $args")
+        if args(0) eq trueNode then falseNode
+        else if args(0) eq falseNode then trueNode
+        else args(0) match
+          case ENode.OpApply(Op.Not, List(inner)) => inner
+          case _ => ENode.OpApply(op, args)
       case Op.IntSum =>
         val (const, nonConsts) = decomposeIntSum(args)
         makeIntSum(const, nonConsts)
