@@ -45,9 +45,10 @@ object Inferencing {
     try
       if isFullyDefined(tp, ForceDegree.all) then tp
       else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos")
-    catch case ex: RecursionOverflow =>
-      report.error(ex, pos)
-      UnspecifiedErrorType
+    catch
+      case ex: (RecursionOverflow | MatchTypeDivergence) =>
+        report.error(ex, pos)
+        UnspecifiedErrorType
 
   /** Instantiate selected type variables `tvars` in type `tp` in a special mode:
    *   1. If a type variable is constrained from below (i.e. constraint bound != given lower bound)
