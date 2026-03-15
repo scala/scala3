@@ -15,7 +15,7 @@ package collection
 package immutable
 
 import scala.language.`2.13`
-import language.experimental.captureChecking
+// import language.experimental.captureChecking
 
 import scala.annotation.meta.{getter, setter}
 import scala.annotation.tailrec
@@ -70,7 +70,7 @@ private[collection] object RedBlackTree {
       } else tree.black
     }
     /** Creates a new balanced tree where `newLeft` replaces `tree.left`.
-     *  tree and newLeft are never null 
+     *  tree and newLeft are never null
      */
     protected final def mutableBalanceLeft[A1, B, B1 >: B](tree: Tree[A1, B], newLeft: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
@@ -114,7 +114,7 @@ private[collection] object RedBlackTree {
       }
     }
     /** Creates a new balanced tree where `newRight` replaces `tree.right`.
-     *  tree and newRight are never null 
+     *  tree and newRight are never null
      */
     protected final def mutableBalanceRight[A1, B, B1 >: B](tree: Tree[A1, B], newRight: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
@@ -937,7 +937,7 @@ private[collection] object RedBlackTree {
   }
 
   /** Builds a Tree suitable for a TreeSet from an ordered sequence of keys. */
-  def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] | Null = {
+  def fromOrderedKeys[A](xs: Iterator[A], size: Int): Tree[A, Null] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, Null] | Null = size match {
       case 0 => null
@@ -953,7 +953,7 @@ private[collection] object RedBlackTree {
   }
 
   /** Builds a Tree suitable for a TreeMap from an ordered sequence of key/value pairs. */
-  def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] | Null = {
+  def fromOrderedEntries[A, B](xs: Iterator[(A, B)], size: Int): Tree[A, B] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, B] | Null = size match {
       case 0 => null
