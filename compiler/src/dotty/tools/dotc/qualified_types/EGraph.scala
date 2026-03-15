@@ -284,8 +284,20 @@ final class EGraph(_ctx: Context):
         case (_, _: ENode.Constructor) => (b, a)
         case (_: ENode.Select, _) => (a, b)
         case (_, _: ENode.Select) => (b, a)
+        case (a: ENode.Apply, b: ENode.Apply) =>
+          // Prefer Apply nodes wrapping a Constructor, so that
+          // normalizeSelect can reduce field accesses during repair.
+          if getAppliedConstructor(a).isDefined then (a, b)
+          else if getAppliedConstructor(b).isDefined then (b, a)
+          else (a, b)
         case (_: ENode.Apply, _) => (a, b)
         case (_, _: ENode.Apply) => (b, a)
+        case (a: ENode.TypeApply, b: ENode.TypeApply) =>
+          // Prefer Apply nodes wrapping a Constructor, so that
+          // normalizeSelect can reduce field accesses during repair.
+          if getAppliedConstructor(a).isDefined then (a, b)
+          else if getAppliedConstructor(b).isDefined then (b, a)
+          else (a, b)
         case (_: ENode.TypeApply, _) => (a, b)
         case (_, _: ENode.TypeApply) => (b, a)
         case (_: ENode.Atom, _) => (a, b)
