@@ -290,6 +290,18 @@ object Message:
       else
         super.enodeLambdaParamName(paramIndex, paramTp)
 
+    override def toTextQualifiedType(parent: Type, qualifier: qualified_types.ENode.Lambda): Text =
+      if seen.isActive then
+        val paramTps = qualifier.paramTps
+        enodeLambdaDepth += paramTps.length
+        try
+          val binderName = enodeLambdaParamName(0, paramTps.head)
+          "{" ~ binderName ~ ": " ~ toText(parent) ~ " with " ~ qualifier.body.toText(this) ~ "}"
+        finally
+          enodeLambdaDepth -= paramTps.length
+      else
+        super.toTextQualifiedType(parent, qualifier)
+
     override def toTextCapability(c: Capability): Text =
       (c, super.toTextCapability(c)) match
         case (c: RootCapability, Str(s)) if seen.isActive =>
