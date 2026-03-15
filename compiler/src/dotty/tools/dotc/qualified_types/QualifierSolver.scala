@@ -40,7 +40,9 @@ class QualifierSolver(using Context):
       case _ => ()
 
     ctx.base.qualifiedTypesStats.record("QualifiedTypes.impliesRec"):
-      val assumptions = ENode.assumptions(node1) ++ ENode.assumptions(node2) ++ List(node1)
+      val contextFacts = QualifierContext.facts
+      val contextAssumptions = contextFacts.flatMap(_.toENode)
+      val assumptions = ENode.assumptions(node1) ++ ENode.assumptions(node2) ++ contextAssumptions ++ List(node1)
       val egraph = EGraph(ctx)
       impliesLeaf(
         egraph,
