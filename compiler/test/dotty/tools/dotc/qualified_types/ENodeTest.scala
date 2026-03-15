@@ -13,20 +13,20 @@ class ENodeTest extends QualifiedTypesTest:
     checkCompileExpr(s"val v = $exprString"): stats =>
       val tree1: tpd.Tree = getValDef(stats, "v").rhs
       val enode: ENode = ENode.fromTree(tree1).get
-      assertStringEquals(resultString, enode.show)
+      assertStringEquals(resultString, enode.showNoBreak)
       val tree2: tpd.Tree = enode.toTree()
       assertStringEquals(tree1.show, tree2.show)
 
   @Test def testFromToTree1() =
     checkFromToTree(
       "(param0: Int) => param0",
-      "(_: Int) => eparam0"
+      "(_: Int) => eparam(0)"
     )
 
   @Test def testFromToTree2() =
     checkFromToTree(
       "(param0: Int) => param0 + 1",
-      "(_: Int) => eparam0 + 1"
+      "(_: Int) => eparam(0) + 1"
     )
 
   @Test def testFromToTree3() =
@@ -34,7 +34,7 @@ class ENodeTest extends QualifiedTypesTest:
     // normalization. This is only done when adding E-Nodes to an E-Graph.
     checkFromToTree(
       "(param0: Int) => param0 + 1 + 1",
-      "(_: Int) => eparam0 + 1 + 1"
+      "(_: Int) => eparam(0) + 1 + 1"
     )
 
   @Test def testFromToTree4() =
@@ -42,7 +42,7 @@ class ENodeTest extends QualifiedTypesTest:
       "(param0: Int) => (param1: Int) => param0 + param1",
       // In De Bruijn notation the outermost parameter is param1 and the
       // innermost param0
-      "(_: Int) => (_: Int) => eparam1 + eparam0"
+      "(_: Int) => (_: Int) => eparam(1) + eparam(0)"
     )
 
   @Test def testFromToTree5() =
@@ -50,11 +50,11 @@ class ENodeTest extends QualifiedTypesTest:
       "(param0: Int, param1: Int) => param0 + param1",
       // Same for paramter lists with multiple parameters: the outermost
       // parameter is param1 and the innermost param0
-      "(_: Int, _: Int) => eparam1 + eparam0"
+      "(_: Int, _: Int) => eparam(1) + eparam(0)"
     )
 
   @Test def testFromToTree6() =
     checkFromToTree(
       "(param0: Int, param1: Int) => (param2: Int, param3: Int) => param0 + param1 + param2 + param3",
-      "(_: Int, _: Int) => (_: Int, _: Int) => eparam3 + eparam2 + eparam1 + eparam0"
+      "(_: Int, _: Int) => (_: Int, _: Int) => eparam(3) + eparam(2) + eparam(1) + eparam(0)"
     )
