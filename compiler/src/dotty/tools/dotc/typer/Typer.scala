@@ -48,7 +48,7 @@ import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
 import cc.{CheckCaptures, isRetainsLike}
-import qualified_types.{QualifiedTypes, QualifiedType}
+import qualified_types.{QualifiedTypes, QualifiedType, QualifierContext}
 import config.Config
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
@@ -1634,26 +1634,37 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
 
+    /** The context to type the `then` branch */
+    def thenContext(using Context): Context =
+      cond1.nullableContextIf(true)(
+        using QualifierContext.trueContext(cond1))
+
+    /** The context to type the `else` branch */
+    def elseContext(using Context): Context =
+      cond1.nullableContextIf(false)(
+        using QualifierContext.falseContext(cond1))
+
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+        val thenp1 = typed(tree.thenp, branchPt)(using thenContext)
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
-          val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
-          val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
-          thenp0 :: elsep0 :: Nil
+          val thenp0 = typed(tree.thenp, branchPt)(using thenContext)
+          val thenp0adapted =  QualifierContext.adaptBranch(thenp0, branchPt)
+          val elsep0 = typed(tree.elsep, branchPt)(using elseContext)
+          val elsep0adapted = QualifierContext.adaptBranch(elsep0, branchPt)
+          thenp0adapted :: elsep0adapted :: Nil
         }: @unchecked
 
         val resType = thenp1.tpe | elsep1.tpe
         val thenp2 :: elsep2 :: Nil =
-          (thenp1 :: elsep1 :: Nil) map { t =>
+          (thenp1 :: elsep1 :: Nil).map { t =>
             // Adapt each branch to ensure that their types conforms to the
             //   type assigned to the if tree by inserting GADT casts.
             gadtAdaptBranch(t, resType)
           }: @unchecked
-
         cpy.If(tree)(cond1, thenp2, elsep2).withType(resType)
 
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
@@ -2327,7 +2338,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     cases.mapconserve { cas =>
       given Context = caseCtx
       val case1 = typedCase(cas, sel, wideSelType, pt)
-      caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+      caseCtx = Nullables.afterPatternContext(sel, case1.pat)(using
+        QualifierContext.afterCaseContext(sel, case1.pat))
       if ctx.explicitNulls && !alreadyStripped && Nullables.matchesNull(case1) then
         wideSelType = wideSelType.stripNull()
         alreadyStripped = true
@@ -2404,7 +2416,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
-        using gadtCtx.fresh.setNewScope))
+        using QualifierContext.caseContext(sel, pat1)(
+          using gadtCtx.fresh.setNewScope)))
   }
 
   def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {
@@ -4039,7 +4052,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case none =>
             val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
               else ctx.withNotNullInfos(initialNotNullInfos)
-            typed(mdef)(using newCtx) match {
+            val typedMdef = typed(mdef)(using newCtx)
+            typedMdef match
               case mdef1: DefDef
               if mdef1.symbol.is(Inline, butNot = Deferred) && !Inlines.bodyToInline(mdef1.symbol).isEmpty =>
                 buf ++= inlineExpansion(mdef1)
@@ -4052,8 +4066,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // clashing synthetic case methods are converted to empty trees, drop them here
               case mdef1 =>
                 buf += mdef1
-            }
-            traverse(rest)
+            traverse(rest)(using QualifierContext.afterMemberContext(typedMdef))
         }
       case Thicket(stats) :: rest =>
         traverse(stats ::: rest)
