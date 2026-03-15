@@ -1,0 +1,51 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/qualified-types/enode_paramref_display.scala:5:37 -----------------
+5 |  val v1: {v: Int with v == x + 1} = x + 2 // error
+  |                                     ^^^^^
+  |                                     Found:    Int
+  |                                     Required: Int with x == x² + 1
+  |
+  |                                     where:    x  is a lambda parameter of type Int
+  |                                               x² is a value in method test
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/qualified-types/enode_paramref_display.scala:8:53 -----------------
+8 |  val v2: {l: List[Int] with l.forall(e => e > x)} = ??? : {l: List[Int] with l.nonEmpty && l.forall(e => e > x + 1)} // error
+  |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                                         Found:    List[Int] with x.nonEmpty && x.forall((x²: Int) => x² > x³ + 1)
+  |                                         Required: List[Int] with x.forall((x²: Int) => x² > x³)
+  |
+  |                                         where:    x  is a lambda parameter of type List[Int]
+  |                                                   x² is a lambda parameter of type Int
+  |                                                   x³ is a value in method test
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/qualified-types/enode_paramref_display.scala:12:37 ----------------
+12 |  val v3: {v: Int with v == id(x)} = x + 1 // error
+   |                                     ^^^^^
+   |                                     Found:    Int
+   |                                     Required: Int with x == id(x²)
+   |
+   |                                     where:    x  is a lambda parameter of type Int
+   |                                               x² is a value in method test
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/qualified-types/enode_paramref_display.scala:16:60 ----------------
+16 |  val v4: {v: Int with toBool((a: Int, b: Int) => a < b)} = ??? : {v: Int with toBool((a: Int, b: Int) => a > b)} // error
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   Found:    Int with toBool[(Int, Int) => Boolean]((x: Int, x²: Int) => x² > x)
+   |                                   Required: Int with toBool[(Int, Int) => Boolean]((x: Int, x²: Int) => x² < x)
+   |
+   |                                   where:    x  is a lambda parameter of type Int
+   |                                             x² is a lambda parameter of type Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/qualified-types/enode_paramref_display.scala:19:67 ----------------
+19 |  val v5: {l: List[Int] with l.nonEmpty && l.forall(e => e > 0)} = ??? : {l: List[Int] with l.forall(e => e > 1)} // error
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                            Found:    List[Int] with x.forall((x²: Int) => x² > 1)
+   |                                            Required: List[Int] with x.nonEmpty && x.forall((x²: Int) => x² > 0)
+   |
+   |                                            where:    x  is a lambda parameter of type List[Int]
+   |                                                      x² is a lambda parameter of type Int
+   |
+   | longer explanation available when compiling with `-explain`
