@@ -1,4 +1,4 @@
-//> using options -Yexplicit-nulls -Yno-flexible-types
+//> using options -Yno-flexible-types
 
 // Previously failed because the scrutinee under
 // unsafeNulls/explicit-nulls/no-flexible-types
