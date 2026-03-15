@@ -717,12 +717,16 @@ object ENode:
    *  Only handles simple (non-curried, non-generic) methods.
    */
   private def resultTypeAssumptions(applyNode: Apply)(using Context): List[ENode] =
-    val fnSym = applyNode.fn match
-      case Atom(tp: TermRef) => tp.symbol
-      case Select(_, member) => member
+    val fnInfo = applyNode.fn match
+      case Atom(tp: TermRef) => tp.symbol.info
+      case Select(Atom(qualTp), member) =>
+        // Resolve through the receiver type to pick up overrides
+        // (see tests/pos-custom-args/qualified-types/bijection.scala).
+        qualTp.member(member.name).info
+      case Select(_, member) => member.info
       case _ => return Nil
 
-    fnSym.info match
+    fnInfo match
       case mt: MethodType =>
         mt.resultType match
           case QualifiedType(_, qualifier) =>
