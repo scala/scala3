@@ -633,6 +633,7 @@ class Definitions {
     @tu lazy val Int_-  : Symbol = IntClass.requiredMethod(nme.MINUS, List(IntType))
     @tu lazy val Int_+  : Symbol = IntClass.requiredMethod(nme.PLUS, List(IntType))
     @tu lazy val Int_/  : Symbol = IntClass.requiredMethod(nme.DIV, List(IntType))
+    @tu lazy val Int_%  : Symbol = IntClass.requiredMethod(nme.MOD, List(IntType))
     @tu lazy val Int_*  : Symbol = IntClass.requiredMethod(nme.MUL, List(IntType))
     @tu lazy val Int_== : Symbol = IntClass.requiredMethod(nme.EQ, List(IntType))
     @tu lazy val Int_!= : Symbol = IntClass.requiredMethod(nme.NE, List(IntType))
