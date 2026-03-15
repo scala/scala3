@@ -78,7 +78,12 @@ object Message:
       case None => false
   end Disambiguation
 
-  private type Recorded = Symbol | ParamRef | SkolemType | RootCapability
+  /** An ENodeParamRef together with its binding level (depth - index),
+   *  which uniquely identifies the lambda parameter it refers to.
+   */
+  private case class ENodeParamRefEntry(ref: qualified_types.ENodeParamRef, bindingLevel: Int)
+
+  private type Recorded = Symbol | ParamRef | SkolemType | RootCapability | ENodeParamRefEntry
 
   private case class SeenKey(str: String, isType: Boolean)
 
@@ -139,6 +144,8 @@ object Message:
             case (cur: ParamRef, existing: ParamRef) =>
               (cur.paramName eq existing.paramName)
               && cur.binder.paramNames == existing.binder.paramNames
+            case (cur: ENodeParamRefEntry, existing: ENodeParamRefEntry) =>
+              cur.bindingLevel == existing.bindingLevel
             case _ =>
               false
 
@@ -208,6 +215,8 @@ object Message:
             else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
             else "is"
           s"$relation ${ref.descr}"
+        case ENodeParamRefEntry(ref, _) =>
+          s"is a lambda parameter of type ${ref.underlying.show}"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -219,6 +228,7 @@ object Message:
         case skolem: SkolemType  => true
         case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
         case ref: Capability     => ref.isTerminalCapability
+        case _: ENodeParamRefEntry => true
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -269,7 +279,28 @@ object Message:
 
     override def toTextRef(tp: SingletonType): Text = tp match
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
+      case tp: qualified_types.ENodeParamRef if seen.isActive =>
+        seen.record("x", isType = false, ENodeParamRefEntry(tp, enodeLambdaDepth - tp.index))
       case _ => super.toTextRef(tp)
+
+    override def enodeLambdaParamName(paramIndex: Int, paramTp: Type): Text =
+      if seen.isActive then
+        val entry = ENodeParamRefEntry(qualified_types.ENodeParamRef(paramIndex, paramTp), enodeLambdaDepth - paramIndex)
+        seen.record("x", isType = false, entry)
+      else
+        super.enodeLambdaParamName(paramIndex, paramTp)
+
+    override def toTextQualifiedType(parent: Type, qualifier: qualified_types.ENode.Lambda): Text =
+      if seen.isActive then
+        val paramTps = qualifier.paramTps
+        enodeLambdaDepth += paramTps.length
+        try
+          val binderName = enodeLambdaParamName(0, paramTps.head)
+          "{" ~ binderName ~ ": " ~ toText(parent) ~ " with " ~ qualifier.body.toText(this) ~ "}"
+        finally
+          enodeLambdaDepth -= paramTps.length
+      else
+        super.toTextQualifiedType(parent, qualifier)
 
     override def toTextCapability(c: Capability): Text =
       (c, super.toTextCapability(c)) match

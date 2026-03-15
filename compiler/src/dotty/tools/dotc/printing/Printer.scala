@@ -21,6 +21,17 @@ abstract class Printer {
 
   private var prec: Precedence = GlobalPrec
 
+  /** Current nesting depth of ENode.Lambda nodes during printing.
+   *  Used to compute binding levels for ENodeParamRef disambiguation.
+   */
+  var enodeLambdaDepth: Int = 0
+
+  /** The name to use for an ENode lambda parameter at the current depth.
+   *  @param paramIndex the parameter's position within the lambda's parameter list
+   *  Overridden in the Message printer to go through disambiguation.
+   */
+  def enodeLambdaParamName(paramIndex: Int, paramTp: Type): Text = "_"
+
   /** The current precedence level.
    *  When pretty-printing arguments of operator `op`, `currentPrecedence` must equal `op`'s precedence level,
    *  so that pretty-printing expressions using lower-precedence operators can insert parentheses automatically

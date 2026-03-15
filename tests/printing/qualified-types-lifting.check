@@ -1,0 +1,52 @@
+[[syntax trees at end of                     typer]] // tests/printing/qualified-types-lifting.scala
+package example {
+  final lazy module val qualified-types-lifting$package:
+    example.qualified-types-lifting$package =
+    new example.qualified-types-lifting$package()
+  final module class qualified-types-lifting$package() extends Object() {
+    this: example.qualified-types-lifting$package.type =>
+    def greaterThan(x: Int, y: Int @qualified[Int]((z: Int) => z > x)): Unit =
+      ()
+    def qualifiedResult(x: Int, y: Int): Int @qualified[Int]((z: Int) => z > x)
+       =
+      {
+        val ev$1: Int = runtimeChecked[Int](x + y)
+        if ev$1.isInstanceOf[Int with eparam(0) > x] then
+          ev$1.asInstanceOf[Int with eparam(0) > x] else
+          throw new IllegalArgumentException()
+      }
+    def noQualifier(x: Int, y: Int): Unit = ()
+    def qualifiedSelf(x: Int @qualified[Int]((y: Int) => y > 0)): Unit = ()
+    def impure(): Int = 42
+    def test(): Unit =
+      {
+        {
+          val $1$: Int = example.impure()
+          val $2$: Int with eparam(0) > $1$ =
+            {
+              val ev$2: Int = runtimeChecked[Int](3)
+              if ev$2.isInstanceOf[Int with eparam(0) > $1$] then
+                ev$2.asInstanceOf[Int with eparam(0) > $1$] else
+                throw new IllegalArgumentException()
+            }
+          example.greaterThan($1$, $2$)
+        }
+        {
+          val $3$: Int = example.impure()
+          example.qualifiedResult($3$, 3).$asInstanceOf[Int with eparam(0) > ?1]
+          }
+        example.noQualifier(example.impure(), 3)
+        {
+          val $4$: Int with eparam(0) > 0 =
+            {
+              val ev$3: Int = runtimeChecked[Int](example.impure())
+              if ev$3.isInstanceOf[Int with eparam(0) > 0] then
+                ev$3.asInstanceOf[Int with eparam(0) > 0] else
+                throw new IllegalArgumentException()
+            }
+          example.qualifiedSelf($4$)
+        }
+      }
+  }
+}
+
