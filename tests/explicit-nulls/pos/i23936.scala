@@ -1,4 +1,4 @@
-//> using options -Yexplicit-nulls
+//> using options -language:safeNulls
 
 sealed abstract class IsSubtypeOfOutput[-A, +B] extends (A => B)
 object IsSubtypeOfOutput:

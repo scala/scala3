@@ -1,4 +1,4 @@
-//> using options -Yexplicit-nulls -Werror
+//> using options -language:safeNulls -Werror
 
 trait AwtComponentLogging extends java.awt.Component:
 
