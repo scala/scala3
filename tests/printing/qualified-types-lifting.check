@@ -11,8 +11,8 @@ package example {
        =
       {
         val ev$1: Int = runtimeChecked[Int](x + y)
-        if ev$1.isInstanceOf[Int with eparam0 > x] then
-          ev$1.asInstanceOf[Int with eparam0 > x] else
+        if ev$1.isInstanceOf[Int with eparam(0) > x] then
+          ev$1.asInstanceOf[Int with eparam(0) > x] else
           throw new IllegalArgumentException()
       }
     def noQualifier(x: Int, y: Int): Unit = ()
@@ -22,26 +22,26 @@ package example {
       {
         {
           val $1$: Int = example.impure()
-          val $2$: Int with eparam0 > $1$ =
+          val $2$: Int with eparam(0) > $1$ =
             {
               val ev$2: Int = runtimeChecked[Int](3)
-              if ev$2.isInstanceOf[Int with eparam0 > $1$] then
-                ev$2.asInstanceOf[Int with eparam0 > $1$] else
+              if ev$2.isInstanceOf[Int with eparam(0) > $1$] then
+                ev$2.asInstanceOf[Int with eparam(0) > $1$] else
                 throw new IllegalArgumentException()
             }
           example.greaterThan($1$, $2$)
         }
         {
           val $3$: Int = example.impure()
-          example.qualifiedResult($3$, 3).$asInstanceOf[Int with eparam0 > ?1]
-        }
+          example.qualifiedResult($3$, 3).$asInstanceOf[Int with eparam(0) > ?1]
+          }
         example.noQualifier(example.impure(), 3)
         {
-          val $4$: Int with eparam0 > 0 =
+          val $4$: Int with eparam(0) > 0 =
             {
               val ev$3: Int = runtimeChecked[Int](example.impure())
-              if ev$3.isInstanceOf[Int with eparam0 > 0] then
-                ev$3.asInstanceOf[Int with eparam0 > 0] else
+              if ev$3.isInstanceOf[Int with eparam(0) > 0] then
+                ev$3.asInstanceOf[Int with eparam(0) > 0] else
                 throw new IllegalArgumentException()
             }
           example.qualifiedSelf($4$)

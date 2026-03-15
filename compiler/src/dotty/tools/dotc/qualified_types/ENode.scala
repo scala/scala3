@@ -180,8 +180,12 @@ enum ENode extends Showable:
         case TypeApply(fn, args) =>
           fn.toText(p) ~ "[" ~ listToText(args, p.toText, ",") ~ "]"
         case Lambda(paramTps, retTp, body) =>
-          val paramsText = listToText(paramTps, "_: " ~ p.toText(_), ", ")
-          "(" ~ paramsText ~ ")" ~ " => " ~ p.atPrec(GlobalPrec)(body.toText(p))
+          p.enodeLambdaDepth += paramTps.length
+          try
+            val paramsText =
+              listToText(paramTps.zipWithIndex, (tp, i) => p.enodeLambdaParamName(i, tp) ~ ": " ~ p.toText(tp), ", ")
+            "(" ~ paramsText ~ ")" ~ " => " ~ p.atPrec(GlobalPrec)(body.toText(p))
+          finally p.enodeLambdaDepth -= paramTps.length
     )
 
   def showNoBreak(using Context): String =
