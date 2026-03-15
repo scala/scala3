@@ -19,7 +19,7 @@ package example {
     type Nested =
       Int @qualified[Int]((x: Int) =>
         example.id[Boolean @qualified[Boolean]((b: Boolean) => b == x > 42)](
-          (x > 42).$asInstanceOf[Boolean with x > 42 == eparam0])
+          (x > 42).$asInstanceOf[Boolean with x > 42 == eparam(0)])
       )
     type Intersection = Int & Int @qualified[Int]((x: Int) => x > 0)
     type ValRefinement =
