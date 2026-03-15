@@ -91,7 +91,7 @@ object TestConfiguration {
   lazy val picklingWithCompilerOptions =
     picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
-  val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
+  val explicitNullsOptions = defaultOptions `and` "-language:safeNulls"
 
   val oldSyntax = defaultOptions `and` "-old-syntax"
   val newSyntax = defaultOptions `and` "-new-syntax"

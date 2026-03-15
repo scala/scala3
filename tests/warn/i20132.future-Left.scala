@@ -1,4 +1,4 @@
-//> using options -Yexplicit-nulls -Yno-flexible-types
+//> using options -Yno-flexible-types
 
 import scala.language.unsafeNulls
 
