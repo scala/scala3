@@ -484,6 +484,8 @@ final class EGraph(_ctx: Context):
       case Op.IntProduct =>
         val (consts, nonConsts) = decomposeIntProduct(args)
         makeIntProduct(consts, nonConsts)
+      case Op.IntDiv => constFoldBinaryOp[Int, Int](op, args, _ / _)
+      case Op.IntMod => constFoldBinaryOp[Int, Int](op, args, _ % _)
       case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
       case Op.IntGreaterThan => normalizeOp(Op.IntLessThan, args.reverse)
       // Rewrite a <= b as a < b + 1 and a >= b as b < a + 1

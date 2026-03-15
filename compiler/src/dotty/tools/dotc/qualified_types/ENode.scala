@@ -160,7 +160,7 @@ enum ENode extends Showable:
                 args(1).toText(p)
               ) ~ " else " ~ p.atPrec(GlobalPrec)(args(2).toText(p))
             // All operators with arity >= 2
-            case Op.IntSum | Op.IntMinus | Op.IntProduct |
+            case Op.IntSum | Op.IntMinus | Op.IntProduct | Op.IntDiv | Op.IntMod |
                 Op.IntLessThan | Op.IntLessEqual | Op.IntGreaterThan | Op.IntGreaterEqual |
                 Op.LongSum | Op.LongMinus | Op.LongProduct |
                 Op.And | Op.Or | Op.Equal | Op.NotEqual =>
@@ -416,6 +416,10 @@ enum ENode extends Showable:
                 binaryOp(defn.Int_-)
               case Op.IntProduct =>
                 args.map(_.toTree(paramRefs)).reduceLeft(_.select(defn.Int_*).appliedTo(_))
+              case Op.IntDiv =>
+                binaryOp(defn.Int_/)
+              case Op.IntMod =>
+                binaryOp(defn.Int_%)
               case Op.LongSum =>
                 ???
               case Op.LongMinus =>
@@ -468,6 +472,8 @@ object ENode:
     case IntSum
     case IntMinus
     case IntProduct
+    case IntDiv
+    case IntMod
     case LongSum
     case LongMinus
     case LongProduct
@@ -487,6 +493,8 @@ object ENode:
         case IntSum => nme.Plus
         case IntMinus => nme.Minus
         case IntProduct => nme.Times
+        case IntDiv => nme.DIV
+        case IntMod => nme.MOD
         case LongSum => nme.Plus
         case LongMinus => nme.Minus
         case LongProduct => nme.Times
@@ -556,6 +564,8 @@ object ENode:
           case BinaryOp(lhs, d.Int_+, rhs) => binaryOpNode(ENode.Op.IntSum, lhs, rhs)
           case BinaryOp(lhs, d.Int_-, rhs) => binaryOpNode(ENode.Op.IntMinus, lhs, rhs)
           case BinaryOp(lhs, d.Int_*, rhs) => binaryOpNode(ENode.Op.IntProduct, lhs, rhs)
+          case BinaryOp(lhs, d.Int_/, rhs) => binaryOpNode(ENode.Op.IntDiv, lhs, rhs)
+          case BinaryOp(lhs, d.Int_%, rhs) => binaryOpNode(ENode.Op.IntMod, lhs, rhs)
           case BinaryOp(lhs, d.Int_<, rhs) => binaryOpNode(ENode.Op.IntLessThan, lhs, rhs)
           case BinaryOp(lhs, d.Int_<=, rhs) => binaryOpNode(ENode.Op.IntLessEqual, lhs, rhs)
           case BinaryOp(lhs, d.Int_>, rhs) => binaryOpNode(ENode.Op.IntGreaterThan, lhs, rhs)
