@@ -379,6 +379,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
     else Set(
       "scala/Predef$",
       "scala/runtime/ScalaRunTime$",
+      "scala/runtime/Scala3RunTime$",
       "scala/reflect/ClassTag$",
       "scala/reflect/ManifestFactory$",
       "scala/Array$",
