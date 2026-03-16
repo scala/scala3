@@ -3982,7 +3982,6 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
         // Emit warn for user-facing term-level typing, and avoid intermediate / redundant reports
         val doEmit =
           pos.exists
-            && ctx.mode.is(Mode.ReadPositions)
             && ctx.owner.isTerm
             && isStableScrut
             && ctx.phase.isTyper
