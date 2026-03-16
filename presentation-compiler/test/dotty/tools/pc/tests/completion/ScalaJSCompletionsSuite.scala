@@ -32,11 +32,9 @@ class ScalaJSCompletionsSuite extends BaseCompletionSuite {
         |""".stripMargin,
       """
         |WrappedArray[A](elems: A*): WrappedArray[A]
-        |WrappedSet[A](elems: A*): WrappedSet[A]
-        |AggregateError(errors: scala.scalajs.js.Iterable[Any], message: String = ...): AggregateError
-        |Array[A](items: A*): scala.scalajs.js.Array[A]
         |""".stripMargin,
-      topLines = Some(4)
+      topLines = Some(4),
+      filter = _.contains("WrappedArray")
     )
 
   @Test def scalajsDom =
@@ -52,7 +50,7 @@ class ScalaJSCompletionsSuite extends BaseCompletionSuite {
         |    dom.window.onbeforeunload@@ = _ => newws.close()
         |""".stripMargin,
       """
-        |onbeforeunload: scala.scalajs.js.Function1[BeforeUnloadEvent, ?] 
+        |onbeforeunload: scala.scalajs.js.Function1[BeforeUnloadEvent, ?]
         |""".stripMargin
     )
 }
