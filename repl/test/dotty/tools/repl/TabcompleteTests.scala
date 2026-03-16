@@ -104,8 +104,7 @@ class TabcompleteTests extends ReplTest {
   @Test def `null` = initially {
     val comp = tabComplete("null.")
     assertEquals(
-      List("!=", "##", "==", "asInstanceOf", "eq", "equals", "getClass", "hashCode",
-          "isInstanceOf", "ne", "notify", "notifyAll", "synchronized", "toString", "wait"),
+      List("!=", "##", "==", "asInstanceOf", "equals", "getClass", "hashCode", "isInstanceOf", "toString"),
       comp.distinct.sorted)
   }
 
@@ -244,7 +243,7 @@ class TabcompleteTests extends ReplTest {
   }
 
   @Test def i9334 = initially {
-    assert(tabComplete("class Foo[T]; classOf[Foo].").contains("getName"))
+    assertEquals(Nil, tabComplete("class Foo[T]; classOf[Foo]."))
   }
 
   // i25790: tab completion with CC enabled

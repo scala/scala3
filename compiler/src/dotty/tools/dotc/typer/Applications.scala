@@ -997,9 +997,9 @@ trait Applications extends Compatibility {
         // However, for overload resolution, we want to check applicability:
         // "could this work with some type instantiation?" (yes, if ? = String)
         def wildcardArgOK =
-          argtpe match
+          argtpe.stripNull() match
             case at @ AppliedType(tycon1, args1) if at.hasWildcardArg =>
-              formal match
+              formal.stripNull() match
                 case AppliedType(tycon2, args2)
                 if tycon1 =:= tycon2 && args1.length == args2.length =>
                   // We need to handle all 4 cases, in addition to
