@@ -62,8 +62,8 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  "".substrin@@
         |}
       """.stripMargin,
-      """|substring(beginIndex: Int): String
-         |substring(beginIndex: Int, endIndex: Int): String
+      """|substring(beginIndex: Int): (String)?
+         |substring(beginIndex: Int, endIndex: Int): (String)?
          |""".stripMargin
     )
 
@@ -74,7 +74,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  String.join@@
         |}
       """.stripMargin,
-      """|join(delimiter: CharSequence, elements: CharSequence*): String
+      """|join(delimiter: (CharSequence)?, elements: ((CharSequence)?*)?): (String)?
          |""".stripMargin,
       topLines = Some(1)
     )
@@ -89,7 +89,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  }
         |}
       """.stripMargin,
-      """|setValue(value: Int): Int
+      """|setValue(value: (Int)?): (Int)?
          |""".stripMargin
     )
 
@@ -100,7 +100,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  java.util.Collections.singletonLis@@
         |}
       """.stripMargin,
-      """|singletonList[T](o: T): java.util.List[T]
+      """|singletonList[T](o: (T)?): (java.util.List[T])?
          |""".stripMargin
     )
 

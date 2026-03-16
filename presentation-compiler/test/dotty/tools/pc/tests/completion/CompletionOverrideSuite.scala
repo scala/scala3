@@ -133,7 +133,7 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |
          |object Main {
          |  new java.nio.file.SimpleFileVisitor[java.nio.file.Path] {
-         |    override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = ${0:???}
+         |    override def visitFile(file: (Path)?, attrs: (BasicFileAttributes)?): (FileVisitResult)? = ${0:???}
          |  }
          |}
          |""".stripMargin,
