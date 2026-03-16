@@ -224,8 +224,9 @@ object TypeTestsCasts {
             !(!testCls.isPrimitiveValueClass && foundCls.isPrimitiveValueClass) &&
                // foundCls can be `Boolean`, while testCls is `Integer`
                // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
-            !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass
+            !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass &&
                // we don't have the logic to handle derived value classes
+            !ctx.platform.typeMightSubtypeAtRuntime(foundCls, testCls)
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issues a warning or an error otherwise.
