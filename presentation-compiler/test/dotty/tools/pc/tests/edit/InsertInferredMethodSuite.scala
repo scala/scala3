@@ -220,7 +220,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
        |  def main() = {
        |    def method1(s : String) = 123
        |      val path = Files.createTempDirectory("")
-       |      def otherMethod(arg0: Path): String = ???
+       |      def otherMethod(arg0: (Path)?): String = ???
        |      method1(otherMethod(path))
        |    }
        |}
@@ -550,7 +550,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |
          |object Main:
          |  val p = Paths.get("test")
-         |  extension (x: Path)
+         |  extension (x: (Path)?)
          |    def newMethod = ???
          |  p.newMethod
          |""".stripMargin

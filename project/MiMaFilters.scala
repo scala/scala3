@@ -15,6 +15,9 @@ object MiMaFilters {
       Versions.mimaPreviousVersion -> Seq(
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
+        // new language import for safe nulls, now that explicit nulls is on by default
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language.safeNulls"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$safeNulls$"),
       ),
 
       // Additions since last LTS

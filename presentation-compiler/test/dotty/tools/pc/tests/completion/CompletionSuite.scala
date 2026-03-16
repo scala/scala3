@@ -471,7 +471,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |  new java.util.ArrayList[String]().forEach(p => p.toChar@@)
         |}
       """.stripMargin,
-      """|toCharArray(): Array[Char]
+      """|toCharArray(): (Array[Char])?
          |""".stripMargin
     )
 
@@ -507,8 +507,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |  java.nio.file.Files.readAttributes@@
         |}
       """.stripMargin,
-      """|readAttributes(path: Path, attributes: String, options: LinkOption*): java.util.Map[String, Object]
-         |readAttributes[A <: BasicFileAttributes](path: Path, type: Class[A], options: LinkOption*): A
+      """|readAttributes(path: (Path)?, attributes: (String)?, options: ((LinkOption)?*)?): (java.util.Map[String, Object])?
+         |readAttributes[A <: BasicFileAttributes](path: (Path)?, type: (Class[A])?, options: ((LinkOption)?*)?): (A)?
          |""".stripMargin
     )
 
@@ -843,8 +843,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |  "".substring@@
           |}
           |""".stripMargin,
-      """substring(beginIndex: Int): String
-        |substring(beginIndex: Int, endIndex: Int): String
+      """substring(beginIndex: Int): (String)?
+        |substring(beginIndex: Int, endIndex: Int): (String)?
         |""".stripMargin,
       filterText = "substring"
     )
