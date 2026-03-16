@@ -214,6 +214,42 @@ class EGraphTest extends QualifiedTypesTest:
         |""".stripMargin
     )
 
+  /** Minimized from bijection.scala: given g(x) == x - 1,
+   *  prove g(x) + 1 == x.
+   */
+  @Test def substitutionThroughSum() =
+    checkImplies(
+      "g(x) == x - 1",
+      "g(x) + 1 == x",
+      """-1: {}
+        |-1 + x: {g(x)}
+        |0: {}
+        |1: {}
+        |false: {}
+        |g: {}
+        |true: {g(x) == -1 + x, x == 1 + g(x)}
+        |x: {1 + g(x)}
+        |""".stripMargin
+    )
+
+  /** From bijection.scala: given f(g(b)) == 1 + g(b) and g(b) == -1 + b,
+   *  prove f(g(b)) == b.
+   */
+  @Test def bijection() =
+    checkImplies(
+      "g(x) + 1 == g(g(x)) && g(x) == x - 1",
+      "g(g(x)) == x",
+      """-1: {}
+        |-1 + x: {g(x)}
+        |0: {}
+        |1: {}
+        |false: {}
+        |g: {}
+        |true: {1 + g(x) == g(g(x)), 1 + g(x) == g(g(x)) && g(x) == -1 + x, g(x) == -1 + x, x == 1 + g(x), x == g(g(x))}
+        |x: {1 + g(x), g(-1 + x), g(g(x))}
+        |""".stripMargin
+    )
+
   @Test def sizeSum() =
     checkImplies(
       "len(v1) == len(v2) + len(v3) && len(v2) == 3 && len(v3) == 4",
