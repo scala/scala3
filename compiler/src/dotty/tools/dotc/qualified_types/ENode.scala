@@ -291,7 +291,41 @@ enum ENode extends Showable:
   def normalizeTypes()(using Context): ENode =
     trace(i"normalizeTypes($this)", Printers.qualifiedTypes):
       ctx.base.qualifiedTypesStats.record("ENode.normalizeTypes"):
-        mapTypes(NormalizeMap())
+        mapTypes(NormalizeMap()).promoteAnyEquals()
+
+  /** After type normalization, `Any_==` calls whose receiver type is now
+   *  known to be a value type or case class can be promoted to `OpApply(Equal, ...)`.
+   *  This handles qualifiers written with type parameters (e.g., `g(f(a)) == a`
+   *  in a trait) that are later instantiated to concrete types
+   *  (see tests/pos-custom-args/qualified-types/bijection.scala).
+   */
+  private def promoteAnyEquals()(using Context): ENode =
+    map:
+      case Apply(Select(qual, sym), List(arg))
+          if (sym == defn.Any_== || sym == defn.Int_== || sym == defn.Boolean_==)
+            && ENode.isValidEqualClass(qual.resultType) =>
+        OpApply(Op.Equal, List(qual, arg))
+      case Apply(Select(qual, sym), List(arg))
+          if (sym == defn.Any_!= || sym == defn.Int_!= || sym == defn.Boolean_!=)
+            && ENode.isValidEqualClass(qual.resultType) =>
+        OpApply(Op.NotEqual, List(qual, arg))
+      case node => node
+
+  /** Try to infer the result type of this ENode, returning NoType if unknown. */
+  private def resultType(using Context): Type =
+    this match
+      case Atom(tp) => tp.widen
+      case Apply(fn, _) =>
+        fn.resultType match
+          case mt: MethodType => mt.resultType
+          case _ => NoPrefix
+      case OpApply(op, _) =>
+        import Op.*
+        op match
+          case IntSum | IntMinus | IntProduct | IntDiv | IntMod => defn.IntType
+          case LongSum | LongMinus | LongProduct => defn.LongType
+          case _ => defn.BooleanType
+      case _ => ENode.resolvedInfo(this)
 
   private class NormalizeMap(using Context) extends TypeMap:
     def apply(tp: Type): Type =
@@ -341,6 +375,25 @@ enum ENode extends Showable:
           val qualifier1 = qualifier.substEParamRefs(from, to).asInstanceOf[ENode.Lambda]
           tp.derivedAnnotatedType(parent1, annot.derivedAnnotation(qualifier1))
         case _ => mapOver(tp)
+
+  /** Apply `f` to all child ENodes, preserving structure identity when unchanged. */
+  def mapChildren(f: ENode => ENode): ENode =
+    this match
+      case Atom(_) | Constructor(_) => this
+      case node @ Select(qual, member) =>
+        node.derived(f(qual), member)
+      case node @ Apply(fn, args) =>
+        node.derived(f(fn), args.mapConserve(f))
+      case node @ OpApply(op, args) =>
+        node.derived(op, args.mapConserve(f))
+      case node @ TypeApply(fn, args) =>
+        node.derived(f(fn), args)
+      case node @ Lambda(paramTps, retTp, body) =>
+        node.derived(paramTps, retTp, f(body))
+
+  /** Bottom-up transformation: apply `f` to every node after transforming its children. */
+  def map(f: ENode => ENode): ENode =
+    f(mapChildren(_.map(f)))
 
   def foreach(f: ENode => Unit): Unit =
     f(this)
@@ -640,6 +693,25 @@ object ENode:
     else
       None
 
+  /** Resolve the info of a function-like ENode (Select or Atom TermRef),
+   *  looking through the receiver type to pick up overrides
+   *  (see tests/pos-custom-args/qualified-types/bijection.scala).
+   */
+  private def resolvedInfo(node: ENode)(using Context): Type =
+    node match
+      case Atom(tp: TermRef) => tp.symbol.info
+      case Select(Atom(qualTp), member) =>
+        qualTp.member(member.name).info
+      case Select(_, member) => member.info
+      case _ => NoPrefix
+
+  private def isValidEqualClass(tp: Type)(using Context): Boolean =
+    val clazz = tp.classSymbol
+    clazz == defn.IntClass
+    || clazz == defn.BooleanClass
+    || clazz == defn.StringClass
+    || clazz.exists && hasCaseClassEquals(clazz)
+
   private def hasCaseClassEquals(clazz: Symbol)(using Context): Boolean =
     val equalsMethod = clazz.info.decls.lookup(nme.equals_)
     val equalsNotOverriden = !equalsMethod.exists || equalsMethod.is(Flags.Synthetic)
@@ -717,16 +789,7 @@ object ENode:
    *  Only handles simple (non-curried, non-generic) methods.
    */
   private def resultTypeAssumptions(applyNode: Apply)(using Context): List[ENode] =
-    val fnInfo = applyNode.fn match
-      case Atom(tp: TermRef) => tp.symbol.info
-      case Select(Atom(qualTp), member) =>
-        // Resolve through the receiver type to pick up overrides
-        // (see tests/pos-custom-args/qualified-types/bijection.scala).
-        qualTp.member(member.name).info
-      case Select(_, member) => member.info
-      case _ => return Nil
-
-    fnInfo match
+    resolvedInfo(applyNode.fn) match
       case mt: MethodType =>
         mt.resultType match
           case QualifiedType(_, qualifier) =>
@@ -738,24 +801,7 @@ object ENode:
                   args(tp.paramNum)
                 case Atom(ref: ENodeParamRef) if ref.index == 0 =>
                   applyNode
-                case Atom(_) => node
-                case Constructor(_) => node
-                case node @ Select(qual, member) =>
-                  val qual1 = substBody(qual)
-                  if qual1 eq qual then node else Select(qual1, member)
-                case node @ Apply(fn, fArgs) =>
-                  val fn1 = substBody(fn)
-                  val fArgs1 = fArgs.mapConserve(substBody)
-                  if (fn1 eq fn) && (fArgs1 eq fArgs) then node else Apply(fn1, fArgs1)
-                case node @ OpApply(op, oArgs) =>
-                  val oArgs1 = oArgs.mapConserve(substBody)
-                  if oArgs1 eq oArgs then node else OpApply(op, oArgs1)
-                case node @ TypeApply(fn, tArgs) =>
-                  val fn1 = substBody(fn)
-                  if fn1 eq fn then node else TypeApply(fn1, tArgs)
-                case node @ Lambda(paramTps, retTp, body) =>
-                  val body1 = substBody(body)
-                  if body1 eq body then node else Lambda(paramTps, retTp, body1)
+                case node => node.mapChildren(substBody)
             List(substBody(qualifier.body))
           case _ => Nil
       case _ => Nil
