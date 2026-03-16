@@ -156,6 +156,43 @@ class RegressionTestScala3 {
     val c = Array.ofDim[Unit](0, 0)
     assertSame(classOf[Array[Array[Unit]]], c.getClass())
   }
+
+  @Test def issue25097(): Unit = {
+    val foo: Any = 1.0
+    assertTrue(foo.isInstanceOf[Int])
+
+    // should not get constant-folded incorrectly earlier in the pipeline:
+
+    assertTrue(1.0.isInstanceOf[Byte])
+    assertTrue(1.0.isInstanceOf[Short])
+    assertTrue(1.0.isInstanceOf[Int])
+    assertTrue(1.0.isInstanceOf[Float])
+    assertTrue(1.0.isInstanceOf[Double])
+
+    assertFalse(128.isInstanceOf[Byte])
+    assertTrue(128.isInstanceOf[Short])
+    assertTrue(128.isInstanceOf[Int])
+    assertTrue(128.isInstanceOf[Float])
+    assertTrue(128.isInstanceOf[Double])
+
+    assertFalse(32768.isInstanceOf[Byte])
+    assertFalse(32768.isInstanceOf[Short])
+    assertTrue(32768.isInstanceOf[Int])
+    assertTrue(32768.isInstanceOf[Float])
+    assertTrue(32768.isInstanceOf[Double])
+
+    assertFalse(2147483647.isInstanceOf[Byte])
+    assertFalse(2147483647.isInstanceOf[Short])
+    assertTrue(2147483647.isInstanceOf[Int])
+    assertFalse(2147483647.isInstanceOf[Float]) // cannot be represented exactly as a float
+    assertTrue(2147483647.isInstanceOf[Double])
+
+    assertFalse(2147483648.0.isInstanceOf[Byte])
+    assertFalse(2147483648.0.isInstanceOf[Short])
+    assertFalse(2147483648.0.isInstanceOf[Int])
+    assertTrue(2147483648.0.isInstanceOf[Float])
+    assertTrue(2147483648.0.isInstanceOf[Double])
+  }
 }
 
 object RegressionTestScala3 {

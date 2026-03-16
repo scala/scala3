@@ -251,7 +251,7 @@ object TypeTestsCasts {
 
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
-            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
+            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass && !ctx.platform.typeMightSubtypeAtRuntime(foundEffectiveClass, testCls) then
               report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
@@ -273,7 +273,7 @@ object TypeTestsCasts {
             }
             else if (testCls.isPrimitiveValueClass)
               foundClsSyms match
-                case List(cls) if cls.isPrimitiveValueClass =>
+                case List(cls) if cls.isPrimitiveValueClass && !ctx.platform.typeMightSubtypeAtRuntime(testCls, cls) =>
                   constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
                 case _ =>
                   transformIsInstanceOf(
@@ -369,7 +369,7 @@ object TypeTestsCasts {
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           checkTypePattern(expr.tpe, argType, expr.srcPos, isTrusted)
           transformTypeTest(expr, argType,
-            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
+            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, don't flag it even if it always false
         }
         else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
