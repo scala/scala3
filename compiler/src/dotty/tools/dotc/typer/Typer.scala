@@ -343,11 +343,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         imp.importSym.info match
           case ImportType(expr) =>
             val pre = expr.tpe
-            val denot0 = pre.memberBasedOnFlags(name, required, excluded)
+            def findMember(excluded: FlagSet) =
+              if ctx.isJava then
+                ctx.javaFindMember(name, pre, lookInCompanion = true, required, excluded)
+              else
+                pre.memberBasedOnFlags(name, required, excluded)
+            val denot0 = findMember(excluded)
             var accessibleDenot = denot0.accessibleFrom(pre)(using refctx)
             if !accessibleDenot.exists && denot0.hasAltWith(_.symbol.is(Private)) then
-              accessibleDenot = pre.memberBasedOnFlags(name, required, excluded | Private)
-                .accessibleFrom(pre)(using refctx)
+              accessibleDenot =
+                findMember(excluded | Private).accessibleFrom(pre)(using refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the context of the import scope
             if accessibleDenot.exists then
