@@ -44,6 +44,8 @@ i12656.scala
 trait-static-forwarder
 i17255
 named-tuples-strawman-2.scala
+25-1
+25-2
 
 # typecheckErrors method unpickling
 typeCheckErrors.scala
