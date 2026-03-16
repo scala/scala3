@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (this special case is JVM-only)
+
 object Foo
 def foo: Any = Foo
 

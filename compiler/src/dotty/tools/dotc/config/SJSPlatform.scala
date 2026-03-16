@@ -37,8 +37,7 @@ class SJSPlatform extends JavaPlatform {
     !sym.isSubClass(jsDefinitions.JSAnyClass)
 
   override def typeMightSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean =
-    super.typeMightSubtypeAtRuntime(c, potentialSuperClass) ||
-      // because we deal with primitive types, we also have to deal with the boxed version,
-      // otherwise the compiler will error with, e.g., "cannot test if scala.Double is a subtype of java.lang.Integer"
-      (defn.ScalaNumericValueClasses()(c) && (defn.ScalaNumericValueClasses()(potentialSuperClass) || defn.ScalaNumericBoxedClasses()(potentialSuperClass)))
+    // because we deal with primitive types, we also have to deal with the boxed version,
+    // otherwise the compiler will error with, e.g., "cannot test if scala.Double is a subtype of java.lang.Integer"
+    (defn.ScalaNumericValueClasses()(c) && (defn.ScalaNumericValueClasses()(potentialSuperClass) || defn.ScalaNumericBoxedClasses()(potentialSuperClass)))
 }
