@@ -1,0 +1,123 @@
+name: scaladoc (Mill)
+
+on:
+  push:
+    branches-ignore:
+      - 'language-reference-stable'
+      - 'gh-readonly-queue/**'
+  pull_request:
+    branches-ignore:
+      - 'language-reference-stable'
+  merge_group:
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "github.event_name == 'merge_group'
+         || (    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scaladoc')
+         || contains(github.event.ref, 'main')"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Compile and test scala3doc-js
+        run: ./mill -i scaladoc-js.main.test
+
+      - name: Compile and test
+        run: |
+          ./mill -i scaladoc.test
+          # Original sbt workflow comment: TODO: invalid interpolation of inherited @define #24963
+          # ./mill -i dist.jvm
+          # ./project/scripts/cmdScaladocTests
+
+      - name: Locally publish self
+        run: ./mill -i scaladoc.publishLocal
+
+      - name: Generate self documentation
+        run: ./mill -i scaladoc.generateSelfDocumentation
+
+      - name: Generate testcases documentation
+        run: ./mill -i scaladoc.generateTestcasesDocumentation
+
+      - name: Generate reference documentation
+        run: ./mill -i scaladoc.generateReferenceDocumentation
+
+      - name: Generate Scala 3 documentation
+        run: ./mill -i scaladoc.generateScalaDocumentation
+
+  validate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - uses: coursier/cache-action@v8
+      - uses: VirtusLab/scala-cli-setup@v1.12.2
+
+      - name: Validate docs sidebars
+        run: scala-cli ./project/scripts/checkSidebarDocs.scala
+
+  stdlib-sourcelinks-test:
+    runs-on: ubuntu-latest
+    # if false - disable flaky test
+    if: "false && ((    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scaladoc')
+         || contains(github.event.ref, 'scala3doc')
+         || contains(github.event.ref, 'main'))"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Test sourcelinks to stdlib
+        # currently commented out in the sbt workflow
+        run: ./mill -i scaladoc.test-source-links.test || true
+
+  check-error-code-snippets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: coursier/cache-action@v8
+      - uses: VirtusLab/scala-cli-setup@v1.11
+        with:
+          jvm: temurin:17
+          apps: sbt
+      - name: Publish compiler locally
+        run: |
+          version="$(./mill -i show compiler.publishVersion | jq -r)"
+          echo "SCALA_VERSION=$version" >> $GITHUB_ENV
+          echo "Would test snippets using Scala $version"
+
+          # Publish locally minimal set of artifacts that would be required to test snippets
+          ./mill -i publishLocal
+      - name: Test error code snippets
+        shell: bash
+        run: scala-cli test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+
+      - name: "[On failure] Print reproduction/fix steps"
+        if: failure()
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          Snippets validation for error codes failed
+
+          If you've modified messages of positions of error codes, you might need to update the expected outputs, to do it run: following command:
+          scala -S ${{ env.SCALA_VERSION }} project/scripts/checkErrorCodeSnippets.scala --with-compiler --main-class=updateAllErrorCodeOutputs
+
+          Single error code validation can be performed using:
+          scala -S ${{ env.SCALA_VERSION }} project/scripts/checkErrorCodeSnippets.scala --with-compiler -- docs/_docs/reference/error-codes/E001.md [--verbose --update-output]
+
+          To check the validation use dedicated test suite:
+          scala test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+
+          See ./docs/.ai/skill/add-error-code-docs.md for local skill for adding new error code docs.
+          EOF
