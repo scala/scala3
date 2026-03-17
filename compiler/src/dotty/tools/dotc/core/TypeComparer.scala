@@ -3977,7 +3977,6 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
         val noCasesText = MatchTypeTrace.noMatchesText(scrut, cases)
         val pos = ctx.source.atSpan(ctx.owner.span)
         val isStableScrut = !scrut.isInstanceOf[TypeVar]
-        val noErrorYet = !ctx.reporter.hasErrors
 
         // Emit warn for user-facing term-level typing, and avoid intermediate / redundant reports
         val doEmit =
@@ -3985,7 +3984,6 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             && ctx.owner.isTerm
             && isStableScrut
             && ctx.phase.isTyper
-            && noErrorYet
         if doEmit then
           report.warning(reporting.MatchTypeNoCases(noCasesText), pos)
 
