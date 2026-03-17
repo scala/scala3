@@ -487,6 +487,10 @@ final class EGraph(_ctx: Context):
       case Op.IntDiv => constFoldBinaryOp[Int, Int](op, args, _ / _)
       case Op.IntMod => constFoldBinaryOp[Int, Int](op, args, _ % _)
       case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
+      case Op.NotEqual =>
+        assert(args.size == 2, s"Expected 2 arguments for not-equal, got $args")
+        val eqNode = unique(normalizeOp(Op.Equal, args))
+        normalizeOp(Op.Not, List(eqNode))
       case Op.IntGreaterThan => normalizeOp(Op.IntLessThan, args.reverse)
       // Rewrite a <= b as a < b + 1 and a >= b as b < a + 1
       case Op.IntLessEqual =>
