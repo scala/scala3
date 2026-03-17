@@ -49,6 +49,6 @@ class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState
   // so that then only when the messages are unbuffered (when the reporter if flushed)
   // do they go through -Wconf, and possibly then buffered on the Run as a suspended message
   override def report(dia: Diagnostic)(using Context): Unit =
-    if fromTyperState then issueUnconfigured(dia)
+    if fromTyperState then issueUnconfigured(dia, forced = false)
     else super.report(dia)
 }
