@@ -1526,4 +1526,21 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin
     )
 
+  @Test def `named-tuple-field` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.<<na@@me>>
+         |""".stripMargin
+    )
+
+  @Test def `named-tuple-field-multiple` =
+    check(
+      """|object Main:
+         |  val x: (name: String, age: Int) = ???
+         |  val y = x.<<name>>
+         |  val z = x.<<na@@me>>
+         |""".stripMargin
+    )
+
 end DocumentHighlightSuite
