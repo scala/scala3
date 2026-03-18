@@ -13,30 +13,6 @@ class BytecodeTest extends BytecodeTesting {
   import compiler.*
 
   @Test
-  def t8731(): Unit = {
-    val code =
-      """class C {
-        |  def f(x: Int) = (x: @annotation.switch) match {
-        |    case 1 => 0
-        |    case 2 => 1
-        |    case 3 => 2
-        |  }
-        |  final val K = 10
-        |  def g(x: Int) = (x: @annotation.switch) match {
-        |    case K => 0
-        |    case 1 => 10
-        |    case 2 => 20
-        |  }
-        |}
-      """.stripMargin
-
-    val c = compileClass(code)
-
-    assertTrue(getInstructions(c, "f").count(_.isInstanceOf[TableSwitch]) == 1)
-    assertTrue(getInstructions(c, "g").count(_.isInstanceOf[LookupSwitch]) == 1)
-  }
-
-  @Test
   def t8926(): Unit = {
     import scala.reflect.internal.util.BatchSourceFile
 
