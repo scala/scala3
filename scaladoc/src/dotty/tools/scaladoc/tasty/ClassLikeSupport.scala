@@ -73,6 +73,31 @@ trait ClassLikeSupport:
     else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum(typeArgs, args)
     else Kind.Class(typeArgs, args)
 
+  private def usesClausesFor(classDef: ClassDef): List[UsesClause] =
+    def captureRefsFrom(annot: Term): Option[List[TypeRepr]] =
+      if annot.tpe.typeSymbol == CaptureDefs.retainsCap then
+        Some(List(CaptureDefs.captureRoot.termRef))
+      else
+        annot.tpe.typeArgs match
+          case retained :: Nil => decomposeCaptureRefs(retained)
+          case _ => None
+
+    def clauseFrom(symbol: Symbol, keyword: String): Option[UsesClause] =
+      symbol.annotations.collectFirst(Function.unlift { annot =>
+        Option.when(annot.tpe.typeSymbol.isRetains)(annot).flatMap(captureRefsFrom).flatMap { refs =>
+          Option.when(refs.nonEmpty) {
+            UsesClause(keyword, emitCaptureRefsSignature(using qctx)(refs)(using classDef, classDef.symbol))
+          }
+        }
+      })
+
+    if !ccEnabled then Nil
+    else
+      List(
+        clauseFrom(classDef.symbol, "uses"),
+        clauseFrom(classDef.constructor.symbol, "uses_init")
+      ).flatten
+
   def mkClass(classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,
     name: String = classDef.symbol.normalizedName,
@@ -137,6 +162,7 @@ trait ClassLikeSupport:
     ).copy(
       directParents = classDef.getParentsAsLinkToTypes,
       parents = supertypes,
+      usesClauses = usesClausesFor(classDef)
     )
 
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
@@ -554,6 +580,7 @@ trait ClassLikeSupport:
     visibility = symbol.getVisibility(),
     modifiers = modifiers,
     annotations = symbol.getAnnotations(),
+    usesClauses = Nil,
     signature = signature,
     sources = symbol.source,
     origin = origin,
