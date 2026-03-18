@@ -15,15 +15,15 @@ package scala.collection.immutable
 import org.junit.Assert.*
 import org.junit.Test
 
-import tools.ReflectUtil.{getFieldAccessible => f}
+import tools.ReflectUtil
 
 class LongMapTest {
 
   @Test
   def `isEmpty O(1)`(): Unit = {
     val m = LongMap(1L -> (), 2L -> (), 3L -> ())
-    f[LongMap.Bin[?]]("left").set(m, null)
-    f[LongMap.Bin[?]]("right").set(m, null)
+    ReflectUtil.getFieldAccessible[LongMap.Bin[?]]("left").set(m, null)
+    ReflectUtil.getFieldAccessible[LongMap.Bin[?]]("right").set(m, null)
     assertFalse(m.isEmpty) // no NPE, does not access left or right
   }
 }
