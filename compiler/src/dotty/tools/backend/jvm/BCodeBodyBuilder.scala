@@ -1462,14 +1462,16 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
       import InvokeStyle.*
       if (style == Super) {
         val ownerBType = ts.toTypeKind(method.owner.info)
-        if (isInterface) {
-          superCallTargets.add(ownerBType.asClassBType)
-        }
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = BackendUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
+          if (isInterface) {
+            superCallTargets.add(ownerBType.asClassBType)
+          }
+          // invokespecial on non-interfaces is only allowed for the direct superclass,
+          // so we must keep track of the fact we emitted this to ensure the class is a direct superclass
           bc.invokespecial(receiverName, jname, mdescr, isInterface, pos)
         }
       } else {
