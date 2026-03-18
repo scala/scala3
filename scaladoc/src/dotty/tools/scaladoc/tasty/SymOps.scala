@@ -13,6 +13,9 @@ object SymOps:
 
   extension (using Quotes)(sym: reflect.Symbol)
 
+    private def isPackageObjectOwner(owner: reflect.Symbol): Boolean =
+      owner.name.toString.contains("package$")
+
     private def ownerPath: List[reflect.Symbol] =
       import reflect._
       @tailrec
@@ -44,7 +47,7 @@ object SymOps:
         case owner
         if owner.isClassDef
           && !owner.flags.is(Flags.Package)
-          && !owner.name.toString.endsWith("$package") =>
+          && !sym.isPackageObjectOwner(owner) =>
             owner.name
       }
       Option.when(classOwners.nonEmpty)(classOwners.mkString("$"))
