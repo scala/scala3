@@ -134,7 +134,8 @@ final class InlineInfoLoader(bCodeRepository: BCodeRepository, primitives: Dotty
       staticMethods ++ classMethods
     else
       val staticForwarders = if classSym.isInterface then
-        classSym.info.decls.filter(s => !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
+        // !!! This logic duplicates PlainSkelBuilder::makeStaticForwarder, copy changes there !!!
+        classSym.info.decls.filter(s => s.isTerm && !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
           BackendUtils.makeStatifiedDefSymbol(s.asTerm, BackendUtils.traitSuperAccessorName(s).toTermName)
         })
       else Nil

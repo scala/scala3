@@ -360,8 +360,7 @@ private sealed trait OptimizerSettings:
   def optAllowSkipClassLoading(using Context): Boolean = optEnabled("allow-skip-class-loading")
   
   val inlineHelp =
-    """
-      |Inlining requires a list of patterns defining where code can be inlined from: `-opt-inline:p1,p2`.
+    """Inlining requires a list of patterns defining where code can be inlined from: `-opt-inline:p1,p2`. (Use `-opt-inline:help` for more details)
       |
       |  *              Matches classes in the empty package
       |  **             All classes

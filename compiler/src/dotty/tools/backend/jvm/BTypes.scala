@@ -789,15 +789,12 @@ object ClassBType {
    * already exist in the cache
    *
    * @param internalName The name of the class
-   * @param t            A value that will be passed to the `init` function. For efficiency, callers should use this
-   *                     value rather than capturing it in the `init` lambda, allowing that lambda to be hoisted.
-   * @param fromSymbol   Is this type being initialized from a `Symbol`, rather than from byte code?
    * @param ts           The core types associated with the compilation
    * @param cache        The cache to use. If you're wondering what to pass here, you're in the wrong place and should not be directly calling this.
    * @param init         Function to initialize the info of this `BType`. During execution of this function,
    *                     code _may_ reenter into `apply(internalName, ...)` and retrieve the initializing
    *                     `ClassBType`.
-   * @tparam T           The type of the state that will be threaded into the `init` function.
+   * @tparam T           The type of the error result.
    * @return             The `ClassBType`
    */
   final def apply[T](internalName: InternalName, ts: CoreBTypes, cache: ConcurrentHashMap[InternalName, ClassBType])

@@ -149,8 +149,8 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
       // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
-      val a = ts.classBTypeFromInternalName(inameA).head
-      val b = ts.classBTypeFromInternalName(inameB).head
+      val a = ts.classBTypeFromInternalName(inameA).get
+      val b = ts.classBTypeFromInternalName(inameB).get
       val lub = a.jvmWiseLUB(b)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")

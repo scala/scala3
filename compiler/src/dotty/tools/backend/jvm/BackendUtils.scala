@@ -146,10 +146,10 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
     val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
       def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
-        ts.classBTypeFromInternalName(internalName).head.info.nestedClasses
+        ts.classBTypeFromInternalName(internalName).get.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-        val c = ts.classBTypeFromInternalName(internalName).head
+        val c = ts.classBTypeFromInternalName(internalName).get
         Option.when(c.isNestedClass)(c)
       }
 

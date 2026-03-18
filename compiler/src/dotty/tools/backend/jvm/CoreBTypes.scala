@@ -83,7 +83,7 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
   def classBType(internalName: InternalName)(init: ClassBType => ClassInfo): ClassBType =
     ClassBType(internalName, this, classBTypeCache.get)(ct => Right(init(ct))).fold(_ => assert(false), identity)
 
-  /** Obtain a previously constructed ClassBType for a given internal name. */
+  /** Obtain a previously constructed ClassBType for a given internal name, or None if no such ClassBType was constructed. */
   def classBTypeFromInternalName(internalName: InternalName): Option[ClassBType] =
     Option(classBTypeCache.get.get(internalName))
 
