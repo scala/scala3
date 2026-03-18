@@ -111,7 +111,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): fansi.Str = {
     val res = pprintRender(
       value,
-      width = ctx.settings.XreplPrintWidth.value,
+      width = ctx.settings.pageWidth.value,
       height = ctx.settings.XreplPrintHeight.value,
       initialOffset = prefixLength
     )

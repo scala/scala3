@@ -821,7 +821,7 @@ class ReplPrintDimentionsTests extends ReplTest(ReplTest.defaultOptions) {
 
   @Test def testWidth =
     runTest(
-      List("-Xrepl-print-width", "10"),
+      List("-pagewidth", "15"),
       """
         |val t: Test = Test(
         |  i = 1,
@@ -831,7 +831,7 @@ class ReplPrintDimentionsTests extends ReplTest(ReplTest.defaultOptions) {
 
   @Test def testWidthAndHeight =
     runTest(
-      List("-Xrepl-print-width", "10", "-Xrepl-print-height", "3"),
+      List("-pagewidth", "15", "-Xrepl-print-height", "3"),
       """
         |val t: Test = Test(
         |  i = 1,
