@@ -41,10 +41,13 @@ object SymOps:
     def className: Option[String] =
       import reflect._
       val classOwners = sym.ownerPath.collect {
-        case owner if owner.isClassDef && !owner.flags.is(Flags.Package) => owner.name
+        case owner
+        if owner.isClassDef
+          && !owner.flags.is(Flags.Package)
+          && !owner.name.toString.endsWith("$package") =>
+            owner.name
       }
       Option.when(classOwners.nonEmpty)(classOwners.mkString("$"))
-        .filterNot(_.contains("package$"))
 
     def anchor: Option[String] =
       if (!sym.isClassDef && !sym.isPackageDef) {
