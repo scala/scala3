@@ -1477,10 +1477,11 @@ object desugar {
        | IrrefutableGenFrom => sel.withAttachment(CheckIrrefutable, checkMode)
       // TODO: use `pushAttachment` and investigate duplicate attachment
 
-  /** Desugars `pat = rhs` where `pat` is a pattern,
-   *  given the `span` the overall pattern def occurs at, whether `given` patterns are allowed
-   *  (they are if `rhs` comes from a `GenAlias` but not a `PatDef`),
-   *  and optionally the modifiers that should apply to the result, if they can't be taken from `pat` itself.
+  /** Desugars `pat = rhs` where `pat` is a pattern.
+   *
+   *  The `original` tree determines the `span` of the overall pattern def.
+   *  `given` patterns are allowed if it is a `GenAlias` but not a `PatDef`.
+   *  Modifiers derive from a `PatDef`, or from the pattern if it is a definition.
    *
    *  Outputs simpler desugaring if possible, e.g.,
    *  `(a, b) = (x, y)` does not need the full generalizability of `(a, _, c) = foo()`.
@@ -1493,7 +1494,8 @@ object desugar {
    *   val/var/lazy val p = e  ==>  val/var/lazy val x_1 = (e: @unchecked) match (case p => (x_1))
    *
    *   in case there are zero or more than one variables in pattern
-   *   val/var/lazy p = e  ==>  private[this] synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
+   *   val/var/lazy p = e  ==>
+   *     private[this] synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
    *                   val/var/def x_1 = t$._1
    *                   ...
    *                   val/var/def x_N = t$._N
@@ -1577,8 +1579,8 @@ object desugar {
                 case _ => false
               }
               if forallResults(rhs, isMatchingTuple) then (Optimization.SimpleTuple, allVariables)
-              else if rhs.isInstanceOf[Annotated] then (Optimization.None, generalGetVariables)
-              else (Optimization.MatchableTuple, allVariables)
+              else if !rhs.isInstanceOf[Annotated] then (Optimization.MatchableTuple, allVariables)
+              else (Optimization.None, generalGetVariables)
             else
               (Optimization.None, generalGetVariables)
           case _ => (Optimization.None, generalGetVariables)
@@ -1592,13 +1594,9 @@ object desugar {
           // In the matchable tuple case, we use a pattern but replace all names in it with wildcards,
           // name the overall pattern, and use that name.
           case Optimization.MatchableTuple =>
-            val patAsWildcard = pat match
-              case TuplePattern(pats, _) =>
-                val wildcardPats = pats.map(p => Ident(nme.WILDCARD).withSpan(p.span))
-                Tuple(wildcardPats).withSpan(pat.span)
             val tmpTuple = UniqueName.fresh()
             val tupled = Ident(tmpTuple).withAttachment(ForArtifact, ())
-            val caseDef = CaseDef(Bind(tmpTuple, patAsWildcard), EmptyTree, tupled)
+            val caseDef = CaseDef(Bind(tmpTuple, pat), EmptyTree, tupled)
             Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
           // In the general case, we must name each individual item we want to extract.
           case Optimization.None =>
@@ -1638,9 +1636,9 @@ object desugar {
                 // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }`
                 // does not leak into the API,
                 val patMods = (mods & Lazy) | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
-                // use the type of the tuple as declared if there is one so we don't lose information,
+                // when optimizing use the declared type of the tuple to preserve information
                 val tupType = pat match
-                  case TuplePattern(_, t) => t
+                  case TuplePattern(_, tpt) if opt != Optimization.None => tpt
                   case _ => TypeTree()
                 // and define the assignment.
                 val firstDef =
@@ -1648,7 +1646,7 @@ object desugar {
                     .withSpan(pat.span.union(rhs.span))
                     .withMods(patMods)
                 (List(firstDef), tmpName)
-              // Then, write each assignment, keeping in mind we need special selection if we exceed the max tuple arity,
+              // Then write each assignment, keeping in mind we need special selection if we exceed the max tuple arity
               val useSelectors = variables.length <= Definitions.MaxTupleArity
               def selector(idx: Int) = splitRhs match
                 case elems: List[Tree] => elems(idx)
@@ -1673,7 +1671,6 @@ object desugar {
               flatTree(firstDef ++ restDefs)
     }
   }
-  end makePatDef
 
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(using Context): Bind = {
@@ -2083,20 +2080,13 @@ object desugar {
       ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
     FunctionWithMods(params, body, Modifiers(Given), erasedParams)
 
-  private def derivedValDef(originalSpan: Span, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
+  private def derivedValDef(originalSpan: Span, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) =
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
       .withMods(mods)
       .withSpan(originalSpan.withPoint(named.span.start))
       .withAttachment(PatternVar, ())
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
-  }
-
-  @unused
-  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceFile) =
-    DefDef(named.name.asTermName, Nil, tpt, rhs)
-      .withMods(mods)
-      .withSpan(original.span.withPoint(named.span.start))
 
   /** Main desugaring method */
   def apply(tree: Tree, pt: Type = NoType)(using Context): Tree = {
