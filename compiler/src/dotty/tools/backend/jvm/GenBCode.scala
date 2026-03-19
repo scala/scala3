@@ -38,8 +38,15 @@ class GenBCode extends Phase { self =>
     _frontendAccess.nn
   }
 
-  private var _bTypes: CoreBTypesFromSymbols | Null = null
-  def bTypes(using Context): CoreBTypesFromSymbols = {
+  private var _primitives: DottyPrimitives | Null = null
+  def primitives(using Context): DottyPrimitives = {
+    if _primitives eq null then
+      _primitives = DottyPrimitives(ctx)
+    _primitives.nn
+  }
+
+  private var _bTypes: CoreBTypes | Null = null
+  def bTypes(using Context): CoreBTypes = {
     if _bTypes eq null then
       _bTypes = CoreBTypesFromSymbols(frontendAccess)(using ctx)
     _bTypes.nn
@@ -48,7 +55,7 @@ class GenBCode extends Phase { self =>
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, bTypes)
+      _postProcessor = new PostProcessor(frontendAccess, primitives, bTypes)
     _postProcessor.nn
   }
 
@@ -62,8 +69,7 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(backendUtils, dottyPrimitives, frontendAccess, bTypes)
+      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, postProcessor.callGraph, bTypes)
     _codeGen.nn
   }
 
