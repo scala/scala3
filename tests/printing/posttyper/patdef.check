@@ -32,27 +32,29 @@ package <empty> {
     private[<empty>] val $5$: (Int, Int) =
       foo():(Int, Int) @RuntimeChecked match
         {
-          case $4$ @ Tuple2.unapply[Int, Int](_, _) => $4$:(Int, Int)
+          case $4$ @ Tuple2.unapply[Int, Int](k @ _, l @ _) => $4$:(Int, Int)
         }
     val k: Int = $5$._1
     val l: Int = $5$._2
     private[<empty>] val $7$: (Int, Int) =
       foo():(Int, Int) @RuntimeChecked match
         {
-          case $6$ @ Tuple2.unapply[Int, Int](_, _) => $6$:(Int, Int)
+          case $6$ @ Tuple2.unapply[Int, Int](m @ _, _) => $6$:(Int, Int)
         }
     val m: Int = $7$._1
     private[<empty>] val $9$: Tuple2[Int, Int] =
       foo():(Int, Int) @RuntimeChecked match
         {
-          case $8$ @ Tuple2.unapply[Int, Int](_, _) => $8$:(Int, Int)
+          case $8$ @ Tuple2.unapply[Int, Int](n @ _, o @ _):Tuple2[Int, Int] =>
+            $8$:(Int, Int)
         }
     val n: Int = $9$._1
     val o: Int = $9$._2
     private[<empty>] val $11$: Tuple2[Int, Int] =
       foo():(Int, Int) @RuntimeChecked match
         {
-          case $10$ @ Tuple2.unapply[Int, Int](_, _) => $10$:(Int, Int)
+          case $10$ @ Tuple2.unapply[Int, Int](p @ _, _):Tuple2[Int, Int] =>
+            $10$:(Int, Int)
         }
     val p: Int = $11$._1
     private[<empty>] val $12$: (Int, Int) =
