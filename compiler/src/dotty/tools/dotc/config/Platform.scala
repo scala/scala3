@@ -12,6 +12,11 @@ import core.Flags.Module
  */
 abstract class Platform {
 
+  /** Initialize platform-specific definitions for the current run.
+   *  Called at the start of each compilation run.
+   */
+  def init()(using Context): Unit = ()
+
   /** The root symbol loader. */
   def rootLoader(root: TermSymbol)(using Context): SymbolLoader
 
