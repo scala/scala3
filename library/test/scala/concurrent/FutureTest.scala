@@ -50,7 +50,7 @@ class FutureTest {
     assert(fh.getMessage == "Boom Early")
   }
 
-  @Test @Ignore
+  @Test
   def `bug/issues#10513 firstCompletedOf must not leak references`(): Unit = {
     val unfulfilled = Promise[AnyRef]()
     val quick       = Promise[AnyRef]()

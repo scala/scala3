@@ -64,18 +64,18 @@ class BigDecimalTest {
   }
 
   // Motivated by scala/bug#6456: scala.math.BigDecimal should not accept a null value
-  //@Test
-  //def refusesNullTest(): Unit = {
-  //  def isIAE[A](a: => A) = try { a; false } catch { case iae: IllegalArgumentException => true }
-  //  def isNPE[A](a: => A) = try { a; false } catch { case npe: NullPointerException => true }
-  //  assertTrue(
-  //    isIAE(new BigDecimal(null: BD, new MC(2))) &&
-  //    isIAE(new BigDecimal(new BD("5.7"), null: MC)) &&
-  //    isNPE(BigDecimal(null: BigInt)) &&
-  //    isNPE(BigDecimal(null: String)) &&
-  //    isNPE(BigDecimal(null: Array[Char]))
-  //  )
-  //}
+  @Test
+  def refusesNullTest(): Unit = {
+    def isIAE[A](a: => A) = try { a; false } catch { case iae: IllegalArgumentException => true }
+    def isNPE[A](a: => A) = try { a; false } catch { case npe: NullPointerException => true }
+    assertTrue(
+      isIAE(new BigDecimal(null.asInstanceOf[BD], new MC(2))) &&
+      isIAE(new BigDecimal(new BD("5.7"), null.asInstanceOf[MC])) &&
+      isNPE(BigDecimal(null.asInstanceOf[BigInt])) &&
+      isNPE(BigDecimal(null.asInstanceOf[String])) &&
+      isNPE(BigDecimal(null.asInstanceOf[Array[Char]]))
+    )
+  }
 
   // Motivated by scala/bug#6153: BigDecimal.hashCode() has high collision rate
   @Test
@@ -312,8 +312,8 @@ class BigDecimalTest {
 
   @Test
   def testImplicitBigDecimalConversionJavaToScalaHandlesNull(): Unit = {
-    //val bdNull: BigDecimal = (null: java.math.BigDecimal): BigDecimal
-    //assertNull(bdNull)
+    val bdNull: BigDecimal = (null.asInstanceOf[java.math.BigDecimal]): BigDecimal
+    assertNull(bdNull)
 
     val bdValue: BigDecimal = (BD.ONE: java.math.BigDecimal): BigDecimal
     assertEquals(BD.ONE, bdValue.bigDecimal)

@@ -81,7 +81,7 @@ class MapWrapperTest {
   }
 
   // was: induce intermittent failure due to contention, where updater is called more than once
-  @Test @Ignore("busy work") def `t12586 updateWith should delegate to compute`: Unit = {
+  @Test def `t12586 updateWith should delegate to compute`: Unit = {
     import jutil.concurrent.ConcurrentHashMap
     val limit = 100      // retries until trigger
     @volatile var count = 0

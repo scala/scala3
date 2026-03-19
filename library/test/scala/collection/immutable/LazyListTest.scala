@@ -54,14 +54,6 @@ class LazyListTest {
     assertTrue(ll.toList == List(1, 2))
   }
 
-  @Ignore @Test def racySerialization(): Unit = {
-    import sd.*
-    val ll = 1 #:: { Thread.sleep(500); 2} #:: LazyList.empty
-    new Thread(() => println(ll.toList)).start()
-    Thread.sleep(200)
-    AssertUtil.assertThrows[NotSerializableException](serialize(ll), _.contains("MidEvaluation"))
-  }
-
   @Test def storeNull(): Unit = {
     val l = "1" #:: null #:: "2" #:: LazyList.empty
     assert(l.toList == List("1", null, "2"))
