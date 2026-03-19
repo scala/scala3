@@ -74,29 +74,18 @@ trait ClassLikeSupport:
     else Kind.Class(typeArgs, args)
 
   private def usesClausesFor(classDef: ClassDef): List[UsesClause] =
-    def captureRefsFrom(annot: Term): Option[List[TypeRepr]] =
-      if annot.tpe.typeSymbol == CaptureDefs.retainsCap then
-        Some(List(CaptureDefs.captureRoot.termRef))
-      else
-        annot.tpe.typeArgs match
-          case retained :: Nil => decomposeCaptureRefs(retained)
-          case _ => None
-
     def clauseFrom(symbol: Symbol, keyword: String): Option[UsesClause] =
-      symbol.annotations.collectFirst(Function.unlift { annot =>
-        Option.when(annot.tpe.typeSymbol.isRetains)(annot).flatMap(captureRefsFrom).flatMap { refs =>
-          Option.when(refs.nonEmpty) {
-            UsesClause(keyword, emitCaptureRefsSignature(using qctx)(refs)(using classDef, classDef.symbol))
-          }
-        }
-      })
+      for
+        annot <- symbol.annotations.find(_.tpe.typeSymbol.isRetains)
+        refs <- retainedCaptureRefs(annot)
+        if refs.nonEmpty
+      yield UsesClause(keyword, emitCaptureRefsSignature(using qctx)(refs)(using classDef, classDef.symbol))
 
     if !ccEnabled then Nil
     else
-      List(
-        clauseFrom(classDef.symbol, "uses"),
-        clauseFrom(classDef.constructor.symbol, "uses_init")
-      ).flatten
+      val uses = clauseFrom(classDef.symbol, "uses")
+      val usesInit = clauseFrom(classDef.constructor.symbol, "uses_init")
+      List(uses, usesInit).flatten
 
   def mkClass(classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,
