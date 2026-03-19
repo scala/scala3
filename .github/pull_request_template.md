@@ -10,7 +10,7 @@
 
 <!-- if the PR is still a WIP, create it as a draft PR (or convert it into one) -->
 
-## How much have your relied on LLM-based tools in this contribution?
+## How much have you relied on LLM-based tools in this contribution?
 
 <!-- 
   State clearly in the pull request description, 
