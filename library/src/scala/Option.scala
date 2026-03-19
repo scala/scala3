@@ -18,13 +18,18 @@ object Option {
 
   import scala.language.implicitConversions
 
-  /** An implicit conversion that converts an option to an iterable value. */
+  /** An implicit conversion that converts an option to an iterable value.
+   *
+   *  @tparam A the element type of the option
+   *  @param xo the option to convert to an iterable
+   */
   implicit def option2Iterable[A](xo: Option[A]): Iterable[A] =
     if (xo.isEmpty) Iterable.empty else Iterable.single(xo.get)
 
   /** An Option factory which creates Some(x) if the argument is not null,
    *  and None if it is null.
    *
+   *  @tparam A the type of the value
    *  @param  x the value
    *  @return   Some(value) if value != null, None if value == null
    */
@@ -32,18 +37,28 @@ object Option {
 
   /** An Option factory which returns `None` in a manner consistent with
    *  the collections hierarchy.
+   *
+   *  @tparam A the type of the option's value
    */
   def empty[A] : Option[A] = None
 
   /** When a given condition is true, evaluates the `a` argument and returns
    *  `Some(a)`. When the condition is false, `a` is not evaluated and `None` is
    *  returned.
+   *
+   *  @tparam A the type of the value
+   *  @param cond the condition to evaluate
+   *  @param a the value to wrap in `Some` when `cond` is true (evaluated lazily)
    */
   def when[A](cond: Boolean)(a: => A): Option[A] =
     if (cond) Some(a) else None
 
   /** Unless a given condition is true, this will evaluate the `a` argument and
    *  return `Some(a)`. Otherwise, `a` is not evaluated and `None` is returned.
+   *
+   *  @tparam A the type of the value
+   *  @param cond the condition to evaluate
+   *  @param a the value to wrap in `Some` when `cond` is false (evaluated lazily)
    */
   @inline def unless[A](cond: Boolean)(a: => A): Option[A] =
     when(!cond)(a)
@@ -141,6 +156,8 @@ object Option {
  *  @define willNotTerminateInf
  *  @define collectExample
  *  @define undefinedorder
+ *
+ *  @tparam A the type of the value contained in the option
  */
 @SerialVersionUID(-114498752079829388L) // value computed by serialver for 2.11.2, annotation added in 2.11.4
 sealed abstract class Option[+A] extends IterableOnce[A] with Product with Serializable {
@@ -155,6 +172,8 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => true
    *  }
    *  ```
+   *
+   *  @return `true` if the option is `None`, `false` otherwise
    */
   final def isEmpty: Boolean = this eq None
 
@@ -167,6 +186,8 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => false
    *  }
    *  ```
+   *
+   *  @return `true` if the option is a `Some`, `false` otherwise
    */
   final def isDefined: Boolean = !isEmpty
 
@@ -182,6 +203,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  }
    *  ```
    *  @note The option must be nonempty.
+   *  @return the contained value
    *  @throws NoSuchElementException if the option is empty.
    */
   def get: A
@@ -197,7 +219,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  }
    *  ```
    *
+   *  @tparam B the result type, a supertype of `A`
    *  @param default  the default expression.
+   *  @return the option's value if nonempty, otherwise the result of evaluating `default`
    */
   @inline final def getOrElse[B >: A](default: => B): B =
     if (isEmpty) default else this.get
@@ -219,6 +243,10 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  val initialText: Option[String] = getInitialText
    *  val textField = new JComponent(initialText.orNull,20)
    *  ```
+   *
+   *  @tparam A1 a supertype of `A` for which `Null` is a valid value
+   *  @param ev evidence that `Null` is a subtype of `A1`
+   *  @return the option's value if nonempty, or `null` if empty
    */
   @inline final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
 
@@ -236,7 +264,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @note This is similar to `flatMap` except here,
    *  $f does not need to wrap its result in an $option.
    *
+   *  @tparam B the result type of the function `f`
    *  @param  f   the function to apply
+   *  @return a `Some` containing the result of applying `f` to this option's value if nonempty, otherwise `None`
    *  @see flatMap
    *  @see foreach
    */
@@ -258,8 +288,10 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  ```
    *  option.map(f).getOrElse(ifEmpty)
    *  ```
+   *  @tparam B the result type of the fold
    *  @param  ifEmpty the expression to evaluate if empty.
    *  @param  f       the function to apply if nonempty.
+   *  @return the result of applying `f` to this option's value if nonempty, otherwise the result of evaluating `ifEmpty`
    */
   @inline final def fold[B](ifEmpty: => B)(f: A => B): B =
     if (isEmpty) ifEmpty else f(this.get)
@@ -277,7 +309,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => None
    *  }
    *  ```
+   *  @tparam B the element type of the returned option
    *  @param  f   the function to apply
+   *  @return the result of applying `f` to this option's value if nonempty, otherwise `None`
    *  @see map
    *  @see foreach
    */
@@ -301,6 +335,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @param ev an implicit conversion that asserts that the value is
    *           also an $option.
    *  @see flatMap
+   *
+   *  @tparam B the element type of the nested option
+   *  @return the contained option if nonempty, otherwise `None`
    */
   def flatten[B](implicit ev: A <:< Option[B]): Option[B] =
     if (isEmpty) None else ev(this.get)
@@ -316,6 +353,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  }
    *  ```
    *  @param  p   the predicate used for testing.
+   *  @return this option if nonempty and the predicate returns true, otherwise `None`
    */
   @inline final def filter(p: A => Boolean): Option[A] =
     if (isEmpty || p(this.get)) this else None
@@ -331,6 +369,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  }
    *  ```
    *  @param  p   the predicate used for testing.
+   *  @return this option if nonempty and the predicate returns false, otherwise `None`
    */
   @inline final def filterNot(p: A => Boolean): Option[A] =
     if (isEmpty || !p(this.get)) this else None
@@ -345,17 +384,23 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  }
    *  ```
    *  @note   Implemented here to avoid the implicit conversion to Iterable.
+   *
+   *  @return `true` if the option is a `Some`, `false` otherwise
    */
   final def nonEmpty: Boolean = isDefined
 
   /** Necessary to keep $option from being implicitly converted to
    *  [[scala.collection.Iterable]] in `for` comprehensions.
+   *
+   *  @param p the predicate used to test elements
    */
   @inline final def withFilter(p: A => Boolean): WithFilter = new WithFilter(p)
 
   /** We need a whole WithFilter class to honor the "doesn't create a new
    *  collection" contract even though it seems unlikely to matter much in a
    *  collection with max size 1.
+   *
+   *  @param p the predicate used to filter the option value
    */
   class WithFilter(p: A => Boolean) {
     def map[B](f: A => B): Option[B] = self filter p map f
@@ -387,6 +432,8 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @param elem the element to test.
    *  @return `true` if the option has an element that is equal (as
    *  determined by `==`) to `elem`, `false` otherwise.
+   *
+   *  @tparam A1 a supertype of `A` used for the equality comparison
    */
   final def contains[A1 >: A](elem: A1): Boolean =
     !isEmpty && this.get == elem
@@ -403,6 +450,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  }
    *  ```
    *  @param  p   the predicate to test
+   *  @return `true` if this option is nonempty and `p` returns true when applied to the value, `false` otherwise
    */
   @inline final def exists(p: A => Boolean): Boolean =
     !isEmpty && p(this.get)
@@ -418,6 +466,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  }
    *  ```
    *  @param  p   the predicate to test
+   *  @return `true` if this option is empty or the predicate returns true when applied to the value
    */
   @inline final def forall(p: A => Boolean): Boolean = isEmpty || p(this.get)
 
@@ -431,6 +480,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => ()
    *  }
    *  ```
+   *  @tparam U the result type of the procedure `f` (result is discarded)
    *  @param  f   the procedure to apply.
    *  @see map
    *  @see flatMap
@@ -459,6 +509,8 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @param  pf   the partial function.
    *  @return the result of applying `pf` to this $option's
    *  value (if possible), or $none.
+   *
+   *  @tparam B the result type of the partial function
    */
   @inline final def collect[B](pf: PartialFunction[A, B]): Option[B] =
     if (!isEmpty) pf.lift(this.get) else None
@@ -473,7 +525,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => alternative
    *  }
    *  ```
+   *  @tparam B the element type of the alternative option, a supertype of `A`
    *  @param alternative the alternative expression.
+   *  @return this option if nonempty, otherwise the result of evaluating `alternative`
    */
   @inline final def orElse[B >: A](alternative: => Option[B]): Option[B] =
     if (isEmpty) alternative else this
@@ -501,6 +555,10 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  ```
    *
    *  @param  that   the options which is going to be zipped
+   *
+   *  @tparam A1 a supertype of `A`, the type of the first element of the resulting pair
+   *  @tparam B the type of the second element of the resulting pair
+   *  @return a `Some` containing a pair of both values if both options are nonempty, otherwise `None`
    */
   final def zip[A1 >: A, B](that: Option[B]): Option[(A1, B)] =
     if (isEmpty || that.isEmpty) None else Some((this.get, that.get))
@@ -572,6 +630,8 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => Nil
    *  }
    *  ```
+   *
+   *  @return a singleton list containing the option's value if nonempty, or the empty list if empty
    */
   def toList: List[A] =
     if (isEmpty) List() else new ::(this.get, Nil)
@@ -588,7 +648,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => Left(left)
    *  }
    *  ```
+   *  @tparam X the type of the `Left` value
    *  @param left the expression to evaluate and return if this is empty
+   *  @return a `Right` containing this option's value if nonempty, or a `Left` containing the result of evaluating `left`
    *  @see toLeft
    */
   @inline final def toRight[X](left: => X): Either[X, A] =
@@ -606,7 +668,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *   case None    => Right(right)
    *  }
    *  ```
+   *  @tparam X the type of the `Right` value
    *  @param right the expression to evaluate and return if this is empty
+   *  @return a `Left` containing this option's value if nonempty, or a `Right` containing the result of evaluating `right`
    *  @see toRight
    */
   @inline final def toLeft[X](right: => X): Either[A, X] =
@@ -615,6 +679,9 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
 
 /** Class `Some[A]` represents existing values of type
  *  `A`.
+ *
+ *  @tparam A the type of the contained value
+ *  @param value the contained value
  */
 @SerialVersionUID(1234815782226070388L) // value computed by serialver for 2.11.2, annotation added in 2.11.4
 final case class Some[+A](value: A) extends Option[A] {
