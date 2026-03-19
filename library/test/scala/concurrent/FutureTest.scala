@@ -10,7 +10,6 @@ import duration.Duration.{Inf, Undefined}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.impl.Promise.DefaultPromise
 import scala.util.chaining.*
-import org.junit.Ignore
 
 class FutureTest {
   @Test
@@ -195,7 +194,7 @@ class FutureTest {
       c4()
       assert(numTransforms(p) == 2)
       p.complete(Success(41))
-      println(b.mkString)
+      //println(b.mkString)
       assert(b.mkString == "b4a4")
     }
   }

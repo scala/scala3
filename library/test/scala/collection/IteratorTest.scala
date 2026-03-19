@@ -2,7 +2,6 @@ package scala.collection
 
 import org.junit.Assert.{assertEquals, assertFalse, assertSame, assertTrue}
 import org.junit.Test
-import org.junit.Ignore
 
 import tools.AssertUtil.*
 import scala.util.chaining.*

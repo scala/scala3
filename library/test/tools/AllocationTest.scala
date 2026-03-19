@@ -53,13 +53,13 @@ object AllocationTest {
 
   def sizeOf[T <: AnyRef](fn: => T, msg: String, ignoreEqualCheck: Boolean = false): Long = {
     val size = coster.calcAllocationInfo(coster.sizeOf(fn), costObject, msg, ignoreEqualCheck).min
-    println(s"size of $msg = $size")
+    //println(s"size of $msg = $size")
     size
   }
 
   private def costOf[T](fn: => T, tpe: String): Long = {
     val cost = coster.calcAllocationInfo(fn, 0, "", ignoreEqualCheck = false).min
-    println(s"cost of tracking allocations - cost of $tpe = $cost")
+    //println(s"cost of tracking allocations - cost of $tpe = $cost")
     cost
   }
 }

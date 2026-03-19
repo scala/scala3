@@ -3,7 +3,7 @@ package scala.collection.convert
 import java.{util => jutil}
 
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
-import org.junit.{Ignore, Test}
+import org.junit.Test
 
 import scala.jdk.CollectionConverters.*
 import tools.AssertUtil.assertThrows

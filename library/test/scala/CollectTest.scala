@@ -1,7 +1,7 @@
 package scala
 
 import org.junit.Assert.*
-import org.junit.{Ignore, Test}
+import org.junit.Test
 
 import scala.collection.mutable.ArrayBuffer
 

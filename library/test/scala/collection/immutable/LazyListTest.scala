@@ -3,9 +3,7 @@ package immutable
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.junit.Ignore
 
-import java.io.NotSerializableException
 import scala.annotation.unused
 import scala.collection.immutable.LazyListTest.sd
 import scala.collection.mutable.{Builder, ListBuffer}
