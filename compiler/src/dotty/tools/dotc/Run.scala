@@ -420,10 +420,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
     cancelAsyncTasty()
 
+    suppressions.runFinished()
     ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
-    suppressions.runFinished()
     while (finalizeActions.nonEmpty && canProgress()) {
       val action = finalizeActions.remove(0)
       action()
