@@ -339,6 +339,11 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       val flags = BCodeUtils.javaFlags(claszSymbol)
 
       val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
+      val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
+                                              else BCodeUtils.checkConstantStringLength(thisName)
+      if !lengthOk then
+        report.error("Class name is too long for the JVM", claszSymbol.srcPos)
+        return
       cnode.visit(backendUtils.classfileVersion, flags,
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
@@ -731,7 +736,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    def initJMethod(flags: Int, params: List[Symbol]): Unit = {
+    private def initJMethod(flags: Int, params: List[Symbol]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
@@ -742,6 +747,11 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         else jMethodName
 
       val mdesc = asmMethodType(methSymbol).descriptor
+      val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
+                                        else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
+      if !lengthOk then
+        report.error("Method signature is too long for the JVM", methSymbol.srcPos)
+        return
       mnode = cnode.visitMethod(
         flags,
         bytecodeName,
@@ -873,7 +883,9 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
       val paramSyms = params.map(_.symbol)
       initJMethod(flags, paramSyms)
-
+      if mnode eq null then
+        // we failed to emit the method header, no point in continuing
+        return
 
       if (!isAbstractMethod && !isNative) {
         // #14773 Reuse locals slots for tailrec-generated mutable vars
