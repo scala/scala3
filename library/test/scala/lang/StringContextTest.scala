@@ -94,11 +94,11 @@ class StringContextTest {
     assertEquals(expected, res)
   }
 
-  /*@annotation.nowarn("msg=Boolean format is null test for non-Boolean")
+  @annotation.nowarn
   @Test def `non booleans as boolean`(): Unit = {
     assertEquals("false", f"${null}%b")
     assertEquals("FALSE", f"${null}%B")
-  }*/
+  }
 
   @Test def `f interpolator baseline`(): Unit = {
 

@@ -446,11 +446,11 @@ class StreamConvertersTypingTest {
     }
   }
 
-  /*@Test
+  @Test
   def anyStepperOfPrimitiveAsStream(): Unit = {
     import scala.jdk.StreamConverters.*
     val s = new AnyStepper[Int] with EfficientSplit {
-      override def trySplit(): AnyStepper[Int] = null
+      override def trySplit(): AnyStepper[Int] = null.asInstanceOf[AnyStepper[Int]]
       override def hasStep: Boolean = false
       override def nextStep(): Int = ???
       override def estimateSize: Long = Long.MaxValue
@@ -458,7 +458,7 @@ class StreamConvertersTypingTest {
     }
     (s: AnyStepper[Int]).asJavaSeqStream.count()
     s.asJavaParStream.count()
-  }*/
+  }
 
   @Test
   def arraySeqStepper(): Unit = {
