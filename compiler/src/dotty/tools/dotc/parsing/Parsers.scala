@@ -3471,8 +3471,8 @@ object Parsers {
         if (in.token == LPAREN)
           p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
         p match
-        case nt: NameTree if isVarPattern(nt) => nt.checkPatternName
-        case p => p
+          case nt: NameTree if isVarPattern(nt) => nt.checkPatternName
+          case p => p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      *                      |  NamedPattern {‘,’ NamedPattern}
@@ -3810,7 +3810,7 @@ object Parsers {
           if in.isColon then
             syntaxErrorOrIncomplete(ExpectedTokenButFoundSoftKeyword(IDENTIFIER, COLONop, nme.using, paramModAdvice))
 
-      def param(): ValDef =
+      def param(): ValDef = {
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
         if isConsume || isErased then
@@ -3859,6 +3859,7 @@ object Parsers {
           if (impliedMods.mods.nonEmpty)
             impliedMods = impliedMods.withMods(Nil) // keep only flags, so that parameter positions don't overlap
           ValDef(name, tpt, default).withMods(mods)
+      }
 
       def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
         case Nil =>
@@ -4188,7 +4189,7 @@ object Parsers {
           val vdef =
             if isBackquoted(id) then
               ValDef(id.name.asTermName, tpt, rhs)
-              .tap(_.pushAttachment(Backquoted, ()))
+                .tap(_.pushAttachment(Backquoted, ()))
             else
               ValDef(id.name.asTermName, tpt, rhs)
           finalizeDef(vdef, mods, start)

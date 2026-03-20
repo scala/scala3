@@ -1,4 +1,4 @@
-//> using options -Wconf:name=IllegalIdentifier&msg=reserved:e
+//> using options -Wconf:name=IllegalIdentifier&msg=reserved:e -source:3.9
 /* vals */
 val goodVal = 1
 val $startVal = 1 // error

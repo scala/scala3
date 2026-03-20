@@ -180,9 +180,14 @@ class Namer { typer: Typer =>
     if conflictsDetected then name.freshened else name
   end checkNoConflict
 
-  def checkDefName(name: Name, tree: Tree)(using Context): Unit =
+  def checkDefName(name: Name, tree: Tree, flags: FlagSet)(using Context): Unit =
+    def exempt =
+         isBackquoted(tree)
+      || tree.span.isSynthetic
+      || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
+      || flags.is(Param) && ctx.owner.is(Synthetic)
     val isModule = name.is(ModuleClassName)
-    if isModule || !name.toTermName.isInstanceOf[DerivedName] then
+    if !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
       val simple = name.toSimpleName
       val max = if isModule then simple.length - 1 else simple.length
       val last = simple.lastIndexOf('$', start = max - 1)
@@ -267,12 +272,8 @@ class Namer { typer: Typer =>
         if Feature.shouldBehaveAsScala2 then
           flags |= Scala2x
         val name = checkNoConflict(tree.name, tree.span).asTypeName
-        if name == tree.name
-        && !isBackquoted(tree)
-        && !tree.span.isSynthetic
-        && !flags.is(Synthetic)
-        then
-          checkDefName(name, tree)
+        if name == tree.name then
+          checkDefName(name, tree, flags)
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -282,15 +283,8 @@ class Namer { typer: Typer =>
       case tree: MemberDef =>
         var flags = checkFlags(tree.mods.flags)
         val name = checkNoConflict(tree.name, tree.span)
-        if name == tree.name
-        && !isBackquoted(tree)
-        && !tree.span.isSynthetic
-        && !flags.is(Synthetic)
-        && !(flags.is(Param) && ctx.owner.is(Synthetic))
-        && !flags.is(Accessor)
-        && !flags.is(CaseAccessor) // check only the param
-        then
-          checkDefName(name, tree)
+        if name == tree.name then
+          checkDefName(name, tree, flags)
         tree match
           case tree: ValOrDefDef =>
             if tree.isInstanceOf[ValDef] && !flags.is(Param) && name.endsWith("_=") then
@@ -375,7 +369,7 @@ class Namer { typer: Typer =>
       }
       else
         val pname = pid.name.asTermName
-        checkDefName(pname, pid)
+        checkDefName(pname, pid, EmptyFlags)
         newCompletePackageSymbol(pkgOwner, pname).entered
     }
   }

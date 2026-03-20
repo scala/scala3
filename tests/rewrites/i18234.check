@@ -1,3 +1,4 @@
+//> using options -source:3.9-migration
 /* vals */
 val goodVal = 1
 val `$startVal` = 1 // error
