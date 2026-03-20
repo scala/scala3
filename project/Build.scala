@@ -136,9 +136,9 @@ object Build {
   val mimaPreviousDottyVersion = "3.8.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.12.4"
+  val scalaCliLauncherVersion = "1.12.5"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M23"
+  val coursierJarVersion = "2.1.25-M24"
 
   object CompatMode {
     final val BinaryCompatible = 0
