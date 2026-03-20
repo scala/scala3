@@ -44,6 +44,36 @@ jobs:
           Get-Content 'install.log'
           Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\scala\bin"
 
+      # Verify that the MSI installed the expected file layout
+      - name: Verify installation layout
+        shell: cmd
+        run: |
+          echo Checking VERSION file...
+          if not exist "C:\Program Files (x86)\scala\VERSION" (
+            echo ERROR: VERSION file not found at install root
+            exit /b 1
+          )
+          type "C:\Program Files (x86)\scala\VERSION"
+
+          echo Checking scala-cli.exe...
+          if not exist "C:\Program Files (x86)\scala\libexec\scala-cli.exe" (
+            echo ERROR: scala-cli.exe not found in libexec
+            exit /b 1
+          )
+
+          echo Checking cli-common-platform.bat...
+          if not exist "C:\Program Files (x86)\scala\libexec\cli-common-platform.bat" (
+            echo ERROR: cli-common-platform.bat not found in libexec
+            exit /b 1
+          )
+
+          echo Checking maven2 directory...
+          if not exist "C:\Program Files (x86)\scala\maven2" (
+            echo ERROR: maven2 directory not found
+            exit /b 1
+          )
+          dir "C:\Program Files (x86)\scala\maven2" /b
+
       # Run tests to ensure the Scala Runner was installed and works
       - name: Test Scala Runner
         shell: pwsh
@@ -69,9 +99,23 @@ jobs:
             Write-Host "Invalid scaladoc version of MSI installed runner, expected ${{ inputs.version }}"
             Exit 1
           }
+
+      # Compile and run a trivial Scala program to verify the full toolchain:
+      #   scala.bat -> scala-cli.exe -> bundled compiler from maven2/ -> compile + run
+      # --server=false avoids starting a background Bloop server that would lock
+      # files and prevent msiexec /X from completing during uninstall.
+      - name: Smoke test - compile and run
+        shell: cmd
+        run: |
+          echo @main def test() = println("Hello from Scala") > test.scala
+          scala run --server=false test.scala
+          if not %ERRORLEVEL%==0 (
+            echo ERROR: Failed to compile and run test.scala
+            exit /b 1
+          )
+
       - name : Uninstall the `scala` package
         shell: pwsh
         run: |
           Start-Process 'msiexec.exe' -ArgumentList '/X "scala.msi" /L*V "uninstall.log" /qb' -Wait
           Get-Content 'uninstall.log'
-        
