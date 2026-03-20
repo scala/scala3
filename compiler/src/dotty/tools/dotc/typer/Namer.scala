@@ -181,12 +181,25 @@ class Namer { typer: Typer =>
   end checkNoConflict
 
   def checkDefName(name: Name, tree: Tree, flags: FlagSet)(using Context): Unit =
+    val isModule = name.is(ModuleClassName)
+    // nme.raw.DOLLAR or $$, avoiding toString and toSimpleName but incurring toTermName
+    // also matches "a" since it cannot contain "$"
+    inline def isDollars =
+      name.toTermName.match {
+        case simple: SimpleName =>
+          simple.length == 1 || simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
+        case _ =>
+          isModule && {
+            val simple = name.toSimpleName
+            simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
+          }
+      }
     def exempt =
          isBackquoted(tree)
       || tree.span.isSynthetic
       || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
       || flags.is(Param) && ctx.owner.is(Synthetic)
-    val isModule = name.is(ModuleClassName)
+      || isDollars
     if !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
       val simple = name.toSimpleName
       val max = if isModule then simple.length - 1 else simple.length

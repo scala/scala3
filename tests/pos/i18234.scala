@@ -7,3 +7,6 @@ class `C$Z`:
     x match
     case Some(`funky$thing` @ _) => true
     case _ => false
+
+class $
+object $
