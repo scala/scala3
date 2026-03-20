@@ -226,7 +226,7 @@ object TypeTestsCasts {
                // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
             !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass &&
                // we don't have the logic to handle derived value classes
-            !ctx.platform.typeMightSubtypeAtRuntime(foundCls, testCls)
+            !ctx.platform.typeMightBeSubtypeAtRuntime(foundCls, testCls)
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issues a warning or an error otherwise.
@@ -251,7 +251,7 @@ object TypeTestsCasts {
 
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
-            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass && !ctx.platform.typeMightSubtypeAtRuntime(foundEffectiveClass, testCls) then
+            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass /*&& !ctx.platform.typeMightBeSubtypeAtRuntime(foundEffectiveClass, testCls)*/ then
               report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
@@ -273,7 +273,7 @@ object TypeTestsCasts {
             }
             else if (testCls.isPrimitiveValueClass)
               foundClsSyms match
-                case List(cls) if cls.isPrimitiveValueClass && !ctx.platform.typeMightSubtypeAtRuntime(testCls, cls) =>
+                case List(cls) if cls.isPrimitiveValueClass && !ctx.platform.typeMightBeSubtypeAtRuntime(testCls, cls) =>
                   constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
                 case _ =>
                   transformIsInstanceOf(

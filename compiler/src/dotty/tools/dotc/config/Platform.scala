@@ -61,5 +61,5 @@ abstract class Platform {
    * This does not imply that they always will be,
    * only that the compiler cannot fold `x.isInstanceOf[potentialSuperClass]` to false for for `x: c`
    */
-  def typeMightSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean
+  def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean
 }

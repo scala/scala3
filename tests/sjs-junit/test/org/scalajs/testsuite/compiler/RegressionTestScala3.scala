@@ -192,6 +192,8 @@ class RegressionTestScala3 {
     assertFalse(2147483648.0.isInstanceOf[Int])
     assertTrue(2147483648.0.isInstanceOf[Float])
     assertTrue(2147483648.0.isInstanceOf[Double])
+
+    assertTrue((1: java.lang.Integer).isInstanceOf[java.lang.Double]) // ensure the target being boxed also works
   }
 }
 
