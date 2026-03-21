@@ -51,7 +51,7 @@ object Parsers {
     case InGuard       extends Location(false, false, false)
     case InPatternArgs extends Location(false, true, true) // InParens not true, since it might be an alternative
     case InBlock       extends Location(false, false, false)
-    case ElseWhere     extends Location(false, false, false)
+    case Elsewhere     extends Location(false, false, false)
 
   enum ParamOwner:
     case Class           // class or trait or enum
@@ -1914,7 +1914,7 @@ object Parsers {
     def infixType(inContextBound: Boolean = false): Tree = infixTypeRest(inContextBound)(refinedType())
 
     def infixTypeRest(inContextBound: Boolean = false)(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
-      infixOps(t, canStartInfixTypeTokens, operand, Location.ElseWhere, ParseKind.Type,
+      infixOps(t, canStartInfixTypeTokens, operand, Location.Elsewhere, ParseKind.Type,
         isOperator = !followingIsVararg()
                      && !isPureArrow
                      && !(isIdent(nme.as) && sourceVersion.enablesNewGivens && inContextBound)
@@ -2402,9 +2402,9 @@ object Parsers {
               inSepRegion(InCond):
                 expr1Rest(
                   postfixExprRest(
-                    simpleExprRest(t, Location.ElseWhere),
-                    Location.ElseWhere),
-                  Location.ElseWhere)
+                    simpleExprRest(t, Location.Elsewhere),
+                    Location.Elsewhere),
+                  Location.Elsewhere)
             else
               if rewriteToNewSyntax(t.span) then
                 dropParensOrBraces(t.span.start, tokenString(altToken))
@@ -2454,7 +2454,7 @@ object Parsers {
      */
     val exprInParens: () => Tree = () => expr(Location.InParens)
 
-    val expr: () => Tree = () => expr(Location.ElseWhere)
+    val expr: () => Tree = () => expr(Location.Elsewhere)
 
     def subExpr() = subPart(expr)
 
@@ -2499,7 +2499,7 @@ object Parsers {
             wrapPlaceholders(t)
     }
 
-    def expr1(location: Location = Location.ElseWhere): Tree = in.token match
+    def expr1(location: Location = Location.Elsewhere): Tree = in.token match
       case IF =>
         ifExpr(in.offset, If)
       case WHILE =>
@@ -2604,7 +2604,7 @@ object Parsers {
         t match
           case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) | PostfixOp(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
-              val loc = if location.inArgs then location else Location.ElseWhere
+              val loc = if location.inArgs then location else Location.Elsewhere
               Assign(t, subPart(() => expr(loc)))
             }
           case _ =>
@@ -2794,7 +2794,7 @@ object Parsers {
      *                  | InfixExpr id ColonArgument
      *                  | InfixExpr MatchClause
      */
-    def postfixExpr(location: Location = Location.ElseWhere): Tree =
+    def postfixExpr(location: Location = Location.Elsewhere): Tree =
       val t = postfixExprRest(prefixExpr(location), location)
       if location.inArgs && followingIsVararg() then
         Typed(t, atSpan(in.skipToken()) { Ident(tpnme.WILDCARD_STAR) })
@@ -2876,7 +2876,7 @@ object Parsers {
           newExpr()
         case MACRO =>
           val start = in.skipToken()
-          MacroTree(simpleExpr(Location.ElseWhere))
+          MacroTree(simpleExpr(Location.Elsewhere))
         case _ =>
           if isLiteral then
             literal()
@@ -3314,30 +3314,46 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
+    // After a pattern, accept colon and type or ascription per tree.
+    // Warn if old style ascription after pattern that is not a simple name.
+    // Warn mildly for case X: String, that is, introducing a "constant" id in a typed pattern.
+    def checkedAscription(pat: Tree, inPattern: Boolean = true)(tree: => Tree): Tree =
+      val atColon = in.isColon
+      tree.tap: tree =>
+        if atColon then
+          val isIdent = unsplice(pat) match {
+            case x: Ident =>
+              if inPattern && !x.name.isVarPattern then
+                val tpt = tree match
+                  case Typed(_, tpt) => i"${tpt}"
+                  case _ => "T"
+                report.warning(em"Typed pattern is not a variable pattern but could be written `${x.name} @ (_: $tpt)`",
+                  pat.sourcePos)
+              true
+            case _ => false
+          }
+          if !isIdent && !pat.isInstanceOf[Number] then
+            report.errorOrMigrationWarning(
+              em"""Type ascriptions after patterns other than:
+                  |  * variable pattern, e.g. `case x: String =>`
+                  |  * number literal pattern, e.g. `case 10.5: Double =>`
+                  |are no longer supported. Remove the type ascription or move it to a separate variable pattern.""",
+              pat.sourcePos,
+              MigrationVersion.AscriptionAfterPattern)
+
     /**  Pattern1     ::= PatVar `:` RefinedType
      *                  | [‘-’] integerLiteral `:` RefinedType
      *                  | [‘-’] floatingPointLiteral `:` RefinedType
      *                  | Pattern2
      */
     def pattern1(location: Location = Location.InPattern): Tree =
-      val p = pattern2(location)
-      if in.isColon then
-        val isVariable = unsplice(p) match {
-          case x: Ident => x.name.isVarPattern
-          case _ => false
-        }
-        val isVariableOrNumber = isVariable || p.isInstanceOf[Number]
-        if !isVariableOrNumber then
-          report.errorOrMigrationWarning(
-            em"""Type ascriptions after patterns other than:
-                |  * variable pattern, e.g. `case x: String =>`
-                |  * number literal pattern, e.g. `case 10.5: Double =>`
-                |are no longer supported. Remove the type ascription or move it to a separate variable pattern.""",
-            p.sourcePos,
-            MigrationVersion.AscriptionAfterPattern)
-        in.nextToken()
-        ascription(p, location)
-      else p
+      val pat = pattern2(location)
+      inline def maybeAscription =
+        if in.isColon then
+          in.nextToken()
+          ascription(pat, location)
+        else pat
+      checkedAscription(pat, inPattern = true)(maybeAscription)
 
     /**  Pattern3    ::=  InfixPattern
      */
@@ -4108,7 +4124,7 @@ object Parsers {
         case _ =>
           first :: Nil
       }
-      val tpt = typedOpt()
+      val tpt = checkedAscription(first, inPattern = false)(typedOpt())
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
           accept(EQUALS)
