@@ -1078,6 +1078,7 @@ class Definitions {
   @tu lazy val ChildAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Child")
   @tu lazy val ContextResultCountAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ContextResultCount")
   @tu lazy val ProvisionalSuperClassAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ProvisionalSuperClass")
+  @tu lazy val DecreasesByAnnot: ClassSymbol = requiredClass("scala.annotation.decreasesBy")
   @tu lazy val DeprecatedAnnot: ClassSymbol = requiredClass("scala.deprecated")
   @tu lazy val DeprecatedOverridingAnnot: ClassSymbol = requiredClass("scala.deprecatedOverriding")
   @tu lazy val DeprecatedInheritanceAnnot: ClassSymbol = requiredClass("scala.deprecatedInheritance")

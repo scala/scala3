@@ -58,7 +58,7 @@ class CheckTermination extends MiniPhase {
                   (qualifier.symbol :: argSymbols, thisSymbol :: params)
                 case _ => (argSymbols, params)
               }
-              if !areSmaller(allArgs, allParams) then {
+              if !areSmaller(allArgs, allParams, methodSymbol) then {
                 report.error(
                   s"${startMethod.name} may not terminate due to (mutually) recursive call.",
                   tree.srcPos
@@ -102,10 +102,26 @@ class CheckTermination extends MiniPhase {
     }
 
     private inline def getMethodParams(methodSymbol: Symbol): List[Symbol] = {
-      methodSymbol.paramSymss.filter(!_.exists(_.isTypeParam)).head
+      methodSymbol.paramSymss.filter(!_.exists(_.isTypeParam)) match {
+        case Nil => Nil
+        case head :: _ => head
+      }
     }
 
-    private def areSmaller(args: List[Symbol], params: List[Symbol])(using Context): Boolean = {
+    private def getMeasure(tree: DefDef)(using Context) = {
+      val candidates = tree.tpt.tpe.getAnnotation(defn.DecreasesByAnnot) match {
+        case Some(annot) =>
+          annot.argument(0) match {
+            case Some(Apply(_, args)) => args.map(_.symbol)
+            case Some(arg @ Ident(_)) => List(arg.symbol)
+            case _ => Nil
+          }
+        case _ => Nil
+      }
+      candidates.filter(getMethodParams(tree.symbol).contains)
+    }
+
+    private def areSmaller(args: List[Symbol], params: List[Symbol], methodSymbol: Symbol)(using Context): Boolean = {
       def compareSize(arg: Symbol, param: Symbol, decreased: Boolean = false): Size =
         if arg == param then
           if decreased then Size.Smaller else Size.Same
@@ -131,7 +147,15 @@ class CheckTermination extends MiniPhase {
           case Nil => false
         }
 
-      isLexicoDecreasing(args.zip(params))
+      val measure = methodSymbol.defTree match {
+        case tree: DefDef => getMeasure(tree)
+        case _ => Nil
+      }
+      val measureMap = measure.zipWithIndex.toMap
+      val orderdArgsParams = args.zip(params).sortBy((_, param) =>
+          measureMap.getOrElse(param, Int.MaxValue)
+      )
+      isLexicoDecreasing(orderdArgsParams)
     }
 
     private def isUnapplySynthetic(selector: Tree)(using Context): Boolean = {

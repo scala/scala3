@@ -13,6 +13,8 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.BuildFrom.buildFromIArray"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.terminates")
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.terminates"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.decreasesBy"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
