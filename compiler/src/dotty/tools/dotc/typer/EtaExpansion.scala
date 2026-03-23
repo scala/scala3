@@ -217,22 +217,15 @@ object LiftCoverage extends LiftImpure {
   override def noLift(expr: tpd.Tree)(using Context) =
     if liftingArgs then noLiftArg(expr) else super.noLift(expr)
 
-  /** Preserve constant singleton precision for lifted coverage temps when available. */
+  /** Preserve singleton precision for lifted coverage temps when the underlying value is a
+   *  compile-time constant (same notion ConstFold uses), so constant re-folding after lifting
+   *  still matches the original inferred singleton type. Everything else uses the base widen.
+   */
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
     val dealiased = expr.tpe.dealias.deskolemized
-    dealiased match
-      // By-name references carry ExprType in their denotation; lifting them as singleton refs
-      // later collides with elimByName/Ycheck (`i.apply(): Int` vs expected `() ?=> Int`).
-      case tr: TermRef if tr.info.isInstanceOf[ExprType] =>
-        tr.info.widenExpr.deskolemized
-      // Protected Java members can be rewritten to protected$ accessors later; keeping a
-      // precise member-ref type here leads to stale expected/ref mismatch in Ycheck.
-      case tr: TermRef if tr.symbol.is(Protected) && tr.symbol.is(JavaDefined) =>
-        tr.info.widenExpr.deskolemized
-      case _ if dealiased.isSingleton =>
-        dealiased
-      case _ =>
-        expr.tpe.widenTermRefExpr.deskolemized
+    dealiased.widenTermRefExpr.normalized.simplified match
+      case _: ConstantType => dealiased
+      case _ => super.liftedExprType(expr)
 
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
     val liftedFun = liftApp(defs, tree.fun)

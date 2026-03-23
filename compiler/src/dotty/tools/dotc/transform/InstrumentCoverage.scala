@@ -290,12 +290,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     private def tryInstrument(tree: Select)(using Context): InstrumentedParts =
       val sym = tree.symbol
-      val qual1 = transform(tree.qualifier).ensureConforms(tree.qualifier.tpe)
-      // Preserve original Select node when qualifier is unchanged to avoid
-      // losing typer metadata used by later accessor rewriting phases.
-      val transformed =
-        if qual1.eq(tree.qualifier) then tree
-        else cpy.Select(tree)(qual1, tree.name)
+      val qual = transform(tree.qualifier).ensureConforms(tree.qualifier.tpe)
+      val transformed = cpy.Select(tree)(qual, tree.name)
       if canInstrumentParameterless(sym) then
         // call to a parameterless method
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
