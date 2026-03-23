@@ -216,22 +216,23 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     }
 
   /**
-   * Creates a ValDef used as the underlying volatile var,
+   * Creates a ValDef used as the underlying var,
    * and also returns the term name as it's later needed as a TermName (and not just any symbol name)
    */
-  private def mkContainerTree(x: ValOrDefDef, isVolatile: Boolean)(using Context): (Names.TermName, ValDef) =
+  private def mkContainerTree(x: ValOrDefDef, tpe: Type, isVolatile: Boolean)(using Context): ValDef =
     val claz = x.symbol.owner.asClass
-    val tpe = if isVolatile then defn.ObjectType else x.tpe.widen.resultType.widen
+    //val tpe = if isVolatile then defn.ObjectType else x.tpe.widen.resultType.widen
     val containerName = LazyLocalName.fresh(x.name.asTermName)
     val containerSymbol = newSymbol(claz, containerName, x.symbol.flags &~ containerFlagsMask | containerFlags | Private, tpe, coord = x.symbol.coord).enteredAfter(this)
-    if isVolatile then containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span))
     // Keep field annotations like @transient, see scala/scala3#23487
     for a <- x.symbol.annotations do
       if a.hasOneOfMetaAnnotation(Set(defn.FieldMetaAnnot)) then
         containerSymbol.addAnnotation(a)
-    // for the thread-safe implementation, the generated symbol must not be static or the CAS operations won't work, see scala/scala3#16800
-    if isVolatile then containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
-    (containerName, ValDef(containerSymbol, defaultValue(tpe)))
+    if isVolatile then
+      containerSymbol.addAnnotation(Annotation(defn.VolatileAnnot, containerSymbol.span))
+      // for the thread-safe implementation, the generated symbol must not be static or the CAS operations won't work, see scala/scala3#16800
+      containerSymbol.removeAnnotation(defn.ScalaStaticAnnot)
+    ValDef(containerSymbol, defaultValue(tpe))
 
   /** Create thread-unsafe lazy accessor equivalent to such code
     * ```
@@ -280,7 +281,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
   def transformMemberDefThreadUnsafe(x: ValOrDefDef)(using Context): Thicket = {
-    val (_, containerTree) = mkContainerTree(x, isVolatile = false)
+    val containerTree = mkContainerTree(x, x.tpe.widen.resultType.widen, isVolatile = false)
     if (x.tpe.isNotNull && containerTree.rhs.tpe <:< defn.ObjectType)
       // can use 'null' value instead of flag
       Thicket(containerTree, mkDefThreadUnsafeNonNullable(x.symbol, containerTree.symbol, x.rhs))
@@ -477,13 +478,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
   def transformMemberDefThreadSafeNew(x: ValOrDefDef)(using Context): Thicket = {
-    import dotty.tools.dotc.core.Types.*
     import dotty.tools.dotc.core.Flags.*
 
     val claz = x.symbol.owner.asClass
     val thizClass = Literal(Constant(claz.info))
 
-    val (containerName, containerTree) = mkContainerTree(x, isVolatile = true)
+    val containerTree = mkContainerTree(x, defn.ObjectType, isVolatile = true)
+    val containerName = containerTree.symbol.name.asTermName
 
     // create a VarHandle for this lazy val
     val varHandleSymbol: TermSymbol = newSymbol(claz, LazyVarHandleName(containerName), Private | Synthetic, defn.VarHandleClass.typeRef).enteredAfter(this)
