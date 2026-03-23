@@ -250,12 +250,8 @@ object TypeTestsCasts {
             end check
 
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
-            // Help the user by pointing out impossible value-to-reference type tests,
-            // unless we're on a platform where such type tests might actually succeed
-            // (Scala.js semantics dictate that, e.g., `42: Int` is an instance of `java.lang.Integer`)
-            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass && !ctx.platform.typeMightBeSubtypeAtRuntime(foundEffectiveClass, testCls) then
-              report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
-              false
+            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
+              unreachable(i"$exprType is a primitive and $testCls is a reference")
             else foundClasses.exists(check)
           end checkSensical
 
