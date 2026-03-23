@@ -73,7 +73,6 @@ i9228.scala
 i9880.scala
 infersingle.scala
 interop-unsound-src
-java-collectors.scala
 large2.scala
 match-single-sub-case.scala
 match-sub-cases.scala
