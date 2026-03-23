@@ -1981,17 +1981,16 @@ class DottyBytecodeTests extends DottyBytecodeTest {
    * https://github.com/scala/scala3/issues/20496
    */
   @Test def deterministicAdditionalImports = {
+    val javaSource =
+    """interface Actor { default void receive() { } }
+      |interface Timers { default void timers() { } }""".stripMargin
     val source =
-    """trait Actor:
-        |  def receive() = ()
-        |trait Timers:
-        |  def timers() = ()
-        |abstract class ShardCoordinator extends Actor with Timers
-        |class PersistentShardCoordinator extends ShardCoordinator:
-        |  def foo =
-        |    super.receive()
-        |    super.timers()""".stripMargin
-    checkBCode(source) { dir =>
+    """abstract class ShardCoordinator extends Actor with Timers
+      |class PersistentShardCoordinator extends ShardCoordinator:
+      |  def foo =
+      |    super.receive()
+      |    super.timers()""".stripMargin
+    checkBCode(scalaSources = List(source), javaSources = List(javaSource)) { dir =>
       val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
 
