@@ -213,8 +213,12 @@ object GenericSignatures {
               boxedSig(bounds.lo)
             }
             else builder.append('*')
-          case _: HKTypeLambda =>
-            builder.append('*')
+          case hkt: HKTypeLambda =>
+            val res = hkt.resultType
+            if res.isPrimitiveValueType then
+              jsig(defn.boxedType(res)) // value classes cannot appear as generic arguments
+            else
+              jsig(res)
           case _ =>
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
