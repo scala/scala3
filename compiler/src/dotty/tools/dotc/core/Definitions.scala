@@ -1031,6 +1031,9 @@ class Definitions {
   def TupledFunctionClass(using Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
   def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
 
+  @tu lazy val assumeTerminatesModule: Symbol = requiredModule("scala.util.assumeTerminates")
+  @tu lazy val assumeTerminatesMethod: Symbol = assumeTerminatesModule.requiredMethod("apply")
+
   @tu lazy val boundaryModule: Symbol = requiredModule("scala.util.boundary")
   @tu lazy val LabelClass: Symbol = requiredClass("scala.util.boundary.Label")
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")

@@ -46,6 +46,9 @@ class CheckTermination extends MiniPhase {
       tree match {
         case tree: DefDef => () // Don't traverse inner function definitions.
 
+        case tree @ Apply(fn, _) if fn.symbol == defn.assumeTerminatesMethod =>
+          () // Don't traverse as indicated by user.
+
         case tree @ Apply(fn, args) =>
           val argSymbols = args.map(_.symbol)
 
