@@ -1144,6 +1144,7 @@ object Build {
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
       ),
       // We do not want to list any dependency for the stdlib
       pomPostProcess := { (node: XmlNode) =>
@@ -1231,6 +1232,7 @@ object Build {
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
       ),
       // We do not want to list any dependency for the stdlib
       pomPostProcess := { (node: XmlNode) =>
