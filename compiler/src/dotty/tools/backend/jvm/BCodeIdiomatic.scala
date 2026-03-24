@@ -6,7 +6,6 @@ import scala.language.unsafeNulls
 
 import scala.tools.asm
 import scala.annotation.switch
-import Primitives.{NE, EQ, TestOp}
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report

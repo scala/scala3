@@ -41,8 +41,6 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
    */
   abstract class PlainBodyBuilder(cunit: CompilationUnit) extends PlainSkelBuilder(cunit) {
 
-    import Primitives.TestOp
-
     private object DesugaredSelect {
       private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -1516,7 +1514,6 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           bc.emitIF_ACMP(op, success)
         } else {
-          import Primitives.*
           def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
           (tk: @unchecked) match {
             case LONG   => emit(asm.Opcodes.LCMP)
@@ -1531,7 +1528,6 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
 
     /* Emits code to compare (and consume) stack-top and zero using the 'op' operator */
     private def genCZJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label, negated: Boolean = false): Unit = {
-      import Primitives.*
       if (targetIfNoJump == success) genCZJUMP(failure, success, op.negate(), tk, targetIfNoJump, negated = !negated)
       else {
         if (tk.isIntSizedType) { // BOOL, BYTE, CHAR, SHORT, or INT
@@ -1561,14 +1557,14 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
     }
 
     def testOpForPrimitive(primitiveCode: Int) = (primitiveCode: @switch) match {
-       case ScalaPrimitivesOps.ID => Primitives.EQ
-       case ScalaPrimitivesOps.NI => Primitives.NE
-       case ScalaPrimitivesOps.EQ => Primitives.EQ
-       case ScalaPrimitivesOps.NE => Primitives.NE
-       case ScalaPrimitivesOps.LT => Primitives.LT
-       case ScalaPrimitivesOps.LE => Primitives.LE
-       case ScalaPrimitivesOps.GT => Primitives.GT
-       case ScalaPrimitivesOps.GE => Primitives.GE
+       case ScalaPrimitivesOps.ID => EQ
+       case ScalaPrimitivesOps.NI => NE
+       case ScalaPrimitivesOps.EQ => EQ
+       case ScalaPrimitivesOps.NE => NE
+       case ScalaPrimitivesOps.LT => LT
+       case ScalaPrimitivesOps.LE => LE
+       case ScalaPrimitivesOps.GT => GT
+       case ScalaPrimitivesOps.GE => GE
      }
 
     /*
@@ -1601,7 +1597,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
 
       def loadAndTestBoolean() = {
         genLoad(tree, BOOL)
-        genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+        genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
       }
 
       lineNumber(tree)
@@ -1713,17 +1709,17 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         genLoad(r, ts.ObjectRef)
         stack.pop()
         genCallMethod(equalsMethod, InvokeStyle.Static)
-        genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+        genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
       }
       else {
         if (isNull(l)) {
           // null == expr -> expr eq null
           genLoad(r, ts.ObjectRef)
-          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump)
+          genCZJUMP(success, failure, EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNull(r)) {
           // expr == null -> expr eq null
           genLoad(l, ts.ObjectRef)
-          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump)
+          genCZJUMP(success, failure, EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNonNullExpr(l)) {
           // SI-7852 Avoid null check if L is statically non-null.
           genLoad(l, ts.ObjectRef)
@@ -1731,7 +1727,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           genLoad(r, ts.ObjectRef)
           stack.pop()
           genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
-          genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+          genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
         } else {
           // l == r -> Objects.equals(l, r)
           genLoad(l, ts.ObjectRef)
@@ -1739,7 +1735,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           genLoad(r, ts.ObjectRef)
           stack.pop()
           genCallMethod(defn.Objects_equals, InvokeStyle.Static)
-          genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+          genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
         }
       }
     }
