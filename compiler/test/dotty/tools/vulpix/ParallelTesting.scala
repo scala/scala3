@@ -1561,7 +1561,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *    is a number. These groups are then ordered in ascending order based on
    *    the value of `X` and each group is compiled one after the other.
    *    A file can request compilation by a legacy compiler via a version suffix:
-   *    `A_1_c3.2.0.scala` in group 1 is compiled by 3.2.0 under canonical JDK 17.
+   *    `A_1_c3.2.0.scala` in group 1 is compiled by 3.2.0 when testing under the minimum supported JDK.
    *
    *  For this function to work as expected, we use the same convention for
    *  directory layout as the old partest. That is:
