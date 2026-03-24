@@ -1,16 +1,15 @@
-package dotty.tools
-package backend.jvm
+package dotty.tools.backend
 
-import dotc.ast.Trees.Select
-import dotc.ast.tpd.*
-import dotc.core.*
-import Contexts.*
-import Names.TermName, StdNames.*
-import Types.{JavaArrayType, UnspecifiedErrorType, Type}
-import Symbols.{Symbol, NoSymbol}
-import Decorators.em
-import dotc.report
-import dotc.util.ReadOnlyMap
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Types.{JavaArrayType, Type, UnspecifiedErrorType}
+import dotty.tools.dotc.core.Symbols.{MutableSymbolMap, NoSymbol, Symbol, defn}
+import dotty.tools.dotc.report
+import dotty.tools.dotc.util.ReadOnlyMap
+import dotty.tools.dotc.ast.Trees.Select
+import dotty.tools.dotc.ast.tpd.*
 
 import scala.annotation.threadUnsafe
 
@@ -31,7 +30,7 @@ import scala.annotation.threadUnsafe
  *
  * Inspired from the `scalac` compiler.
  */
-class DottyPrimitives(ictx: Context) {
+class ScalaPrimitives(ictx: Context) {
   import dotty.tools.backend.ScalaPrimitivesOps.*
 
   @threadUnsafe private lazy val primitives: ReadOnlyMap[Symbol, Int] = init
@@ -53,7 +52,6 @@ class DottyPrimitives(ictx: Context) {
   def getPrimitive(app: Apply, tpe: Type): Int = {
     given Context = ictx
     val fun = app.fun.symbol
-    val defn = ctx.definitions
     val code = app.fun match {
       case Select(_, nme.primitive.arrayLength) =>
         LENGTH
@@ -122,9 +120,7 @@ class DottyPrimitives(ictx: Context) {
   private def init: ReadOnlyMap[Symbol, Int]  = {
 
     given Context = ictx
-
-    import Symbols.defn
-    val primitives = Symbols.MutableSymbolMap[Int](512)
+    val primitives = MutableSymbolMap[Int](512)
 
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {
@@ -407,7 +403,7 @@ class DottyPrimitives(ictx: Context) {
     || (fun.symbol == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}}
         && {
           fun match
-            case Select(_, StdNames.nme.clone_) => false // but array.clone is NOT a primitive op.
+            case Select(_, nme.clone_) => false // but array.clone is NOT a primitive op.
             case _ => true
         })
 }

@@ -34,7 +34,7 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) extends BCodeSkelBuilder {
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.

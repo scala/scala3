@@ -7,11 +7,12 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import Symbols.*
+import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.io.*
+
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import java.util.concurrent.TimeoutException
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.Await
 
@@ -38,10 +39,10 @@ class GenBCode extends Phase { self =>
     _frontendAccess.nn
   }
 
-  private var _primitives: DottyPrimitives | Null = null
-  def primitives(using Context): DottyPrimitives = {
+  private var _primitives: ScalaPrimitives | Null = null
+  def primitives(using Context): ScalaPrimitives = {
     if _primitives eq null then
-      _primitives = DottyPrimitives(ctx)
+      _primitives = ScalaPrimitives(ctx)
     _primitives.nn
   }
 

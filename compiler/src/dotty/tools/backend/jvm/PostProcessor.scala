@@ -1,12 +1,14 @@
 package dotty.tools.backend.jvm
 
-import java.util.concurrent.ConcurrentHashMap
+import dotty.tools.backend.ScalaPrimitives
 
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
+
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
@@ -15,7 +17,7 @@ import dotty.tools.backend.jvm.opt.*
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val primitives: DottyPrimitives, private val ts: CoreBTypes)(using Context) {
+class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val primitives: ScalaPrimitives, private val ts: CoreBTypes)(using Context) {
 
   private val backendUtils        = new BackendUtils(frontendAccess, ts)
   private val byteCodeRepository  = new BCodeRepository(frontendAccess, backendUtils, ts)

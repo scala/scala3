@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types.abstractTermNameFilter
 import dotty.tools.dotc.core.Phases.picklerPhase
 import SymbolUtils.given
+import dotty.tools.backend.ScalaPrimitives
 
 import scala.annotation.tailrec
 import scala.collection.{SortedMap, mutable}
@@ -67,7 +68,7 @@ final case class MethodInlineInfo(effectivelyFinal: Boolean = false,
                                   annotatedInline: Boolean = false,
                                   annotatedNoInline: Boolean = false)
 
-final class InlineInfoLoader(bCodeRepository: BCodeRepository, primitives: DottyPrimitives, ts: CoreBTypes)(using Context) {
+final class InlineInfoLoader(bCodeRepository: BCodeRepository, primitives: ScalaPrimitives, ts: CoreBTypes)(using Context) {
   private val infos: mutable.Map[ClassInfo, InlineInfo] = mutable.Map.empty
 
   /**
