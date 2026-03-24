@@ -2175,7 +2175,7 @@ object Build {
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala-library-sjs`).
+    dependsOn(`scala-library-sjs`, `scala3-compiler-bootstrapped`).
     settings(
       regularScalaJSProjectSettings,
       // Required to run Scala.js tests.

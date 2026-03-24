@@ -1,0 +1,4 @@
+-- Warning: tests/warn/typetest.scala:5:10 -----------------------------------------------------------------------------
+5 |  println(i.isInstanceOf[Object])                     // warning
+  |          ^
+  |          this will always yield false since type Int is a primitive and class Object is a reference

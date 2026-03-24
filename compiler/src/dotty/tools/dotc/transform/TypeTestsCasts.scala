@@ -250,7 +250,7 @@ object TypeTestsCasts {
             end check
 
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
-            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
+            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass && !ctx.platform.typeMightBeSubtypeAtRuntime(foundEffectiveClass, testCls) then
               unreachable(i"$exprType is a primitive and $testCls is a reference")
             else foundClasses.exists(check)
           end checkSensical
