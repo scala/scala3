@@ -6,7 +6,7 @@ import dotty.tools.backend.jvm.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleVal, Sealed}
-import dotty.tools.dotc.core.Symbols.{requiredClass as _, *}
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types.abstractTermNameFilter
 import dotty.tools.dotc.core.Phases.picklerPhase

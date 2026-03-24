@@ -25,27 +25,6 @@ import NameKinds.{LazyBitMapName, LazyLocalName}
 import Names.Name
 
 object DottyBackendInterface {
-
-  private def erasureString(clazz: Class[?]): String = {
-    if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
-    else clazz.getName
-  }
-
-  def requiredClass(str: String)(using Context): ClassSymbol =
-    Symbols.requiredClass(str)
-
-  def requiredClass[T](using evidence: ClassTag[T], ctx: Context): Symbol =
-    requiredClass(erasureString(evidence.runtimeClass))
-
-  def requiredModule(str: String)(using Context): Symbol =
-    Symbols.requiredModule(str)
-
-  def requiredModule[T](using evidence: ClassTag[T], ctx: Context): Symbol = {
-    val moduleName = erasureString(evidence.runtimeClass)
-    val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
-    requiredModule(className)
-  }
-
   given symExtensions: AnyRef with
     extension (sym: Symbol)
 

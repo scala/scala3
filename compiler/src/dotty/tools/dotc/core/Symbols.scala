@@ -19,19 +19,23 @@ import DenotTransformers.*
 import StdNames.*
 import NameOps.*
 import NameKinds.LazyImplicitName
-import ast.*, tpd.*
+import ast.*
+import tpd.*
 import Constants.Constant
 import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
+import util.{EqHashMap, NoSource, Property, SourceFile, SourcePosition, SrcPos}
+
 import scala.annotation.internal.sharable
 import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyVersion
+
+import scala.reflect.ClassTag
 
 object Symbols extends SymUtils {
 
@@ -1017,6 +1021,9 @@ object Symbols extends SymUtils {
       case sym => defn.AnyClass
     }
   }
+
+  def requiredClass[T](using evidence: ClassTag[T], ctx: Context): Symbol =
+    requiredClass(evidence.runtimeClass.getName)
 
   def requiredClassRef(path: PreName)(using Context): TypeRef = requiredClass(path).typeRef
 

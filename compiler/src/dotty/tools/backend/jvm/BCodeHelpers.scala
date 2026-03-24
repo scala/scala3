@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.NameKinds.ExpandedName
 import dotty.tools.dotc.core.Signature
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.TypeErasure

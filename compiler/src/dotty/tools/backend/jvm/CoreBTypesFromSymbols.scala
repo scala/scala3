@@ -1,6 +1,6 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.core.Symbols.{requiredClass as _, *}
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
 
 import scala.tools.asm.{Handle, Opcodes}
