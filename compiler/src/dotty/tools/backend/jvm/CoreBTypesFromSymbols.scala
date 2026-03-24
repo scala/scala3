@@ -77,11 +77,11 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
     assert(
       if (classSym == defn.ObjectClass)
         superClassSym == NoSymbol
-      else if (classSym.isInterface)
+      else if (classSym.is(Trait))
         superClassSym == defn.ObjectClass
       else
         // A ClassBType for a primitive class (scala.Boolean et al.) is only created when compiling these classes.
-        ((superClassSym != NoSymbol) && !superClassSym.isInterface) || primitiveTypeMap.contains(classSym),
+        ((superClassSym != NoSymbol) && !superClassSym.is(Trait)) || primitiveTypeMap.contains(classSym),
       s"Bad superClass for $classSym: $superClassSym"
     )
     val superClass = if (superClassSym == NoSymbol) None

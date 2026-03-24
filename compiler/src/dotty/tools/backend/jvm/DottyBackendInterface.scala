@@ -1,37 +1,17 @@
 package dotty.tools.backend.jvm
 
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Flags.*
 
-import java.io.{File => _}
-
-import scala.reflect.ClassTag
-import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.*
 import Contexts.*
-import Types.*
 import Symbols.*
 import Phases.*
-import Decorators.em
-
-import dotty.tools.dotc.util.ReadOnlyMap
-import dotty.tools.dotc.report
-
-import tpd.*
-
-import StdNames.nme
 import NameKinds.{LazyBitMapName, LazyLocalName}
-import Names.Name
 
 object DottyBackendInterface {
   given symExtensions: AnyRef with
     extension (sym: Symbol)
-
-      def isInterface(using Context): Boolean = sym.is(PureInterface) || sym.is(Trait)
-
-      def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
-
       /** Fields of static modules will be static at backend
        *
        *  Note that lazy val encoding assumes bitmap fields are non-static.

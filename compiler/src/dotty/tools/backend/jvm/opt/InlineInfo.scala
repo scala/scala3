@@ -2,10 +2,9 @@ package dotty.tools.backend.jvm.opt
 
 import scala.jdk.CollectionConverters.*
 import dotty.tools.backend.jvm.*
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
-import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleVal, Sealed}
+import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleVal, Sealed, Trait}
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types.abstractTermNameFilter
@@ -133,7 +132,7 @@ final class InlineInfoLoader(bCodeRepository: BCodeRepository, primitives: Dotty
       val staticMethods = companion.info.decls.iterator.filter(m => !m.isConstructor && keepMember(m))
       staticMethods ++ classMethods
     else
-      val staticForwarders = if classSym.isInterface then
+      val staticForwarders = if classSym.is(Trait) then
         // !!! This logic duplicates PlainSkelBuilder::makeStaticForwarder, copy changes there !!!
         classSym.info.decls.filter(s => s.isTerm && !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
           BackendUtils.makeStatifiedDefSymbol(s.asTerm, BackendUtils.traitSuperAccessorName(s).toTermName)
