@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames.*
 import BCodeAsmCommon.*
 import dotty.tools.dotc.core.Flags.{JavaDefined, Method, ModuleClass, PackageClass, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
-import DottyBackendInterface.{*, given}
+import SymbolUtils.given
 import PostProcessorFrontendAccess.Lazy
 
 import scala.annotation.threadUnsafe

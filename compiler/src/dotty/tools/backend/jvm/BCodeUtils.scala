@@ -482,7 +482,7 @@ object BCodeUtils {
    *      and they would fail verification after lifted.
    */
   final def javaFlags(sym: Symbol)(using Context): Int = {
-    import DottyBackendInterface.symExtensions
+    import SymbolUtils.given
 
     // Classes are always emitted as public. This matches the behavior of Scala 2
     // and is necessary for object deserialization to work properly, otherwise

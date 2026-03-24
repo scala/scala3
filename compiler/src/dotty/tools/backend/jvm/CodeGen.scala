@@ -27,7 +27,7 @@ import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.util
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.util.NoSourcePosition
-import DottyBackendInterface.symExtensions
+import SymbolUtils.given
 import opt.CallGraph
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypes)(using Context) {

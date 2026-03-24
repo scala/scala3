@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types.abstractTermNameFilter
 import dotty.tools.dotc.core.Phases.picklerPhase
-import DottyBackendInterface.given
+import SymbolUtils.given
 
 import scala.annotation.tailrec
 import scala.collection.{SortedMap, mutable}

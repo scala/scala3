@@ -25,7 +25,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
 import dotty.tools.dotc.ast.Positioned
 import tpd.*
-import DottyBackendInterface.symExtensions
+import SymbolUtils.given
 import dotty.tools.dotc.util.SrcPos
 
 /*

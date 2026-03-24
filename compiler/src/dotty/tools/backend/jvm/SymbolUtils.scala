@@ -1,6 +1,5 @@
 package dotty.tools.backend.jvm
 
-
 import dotty.tools.dotc.core.Flags.*
 
 import dotty.tools.dotc.core.*
@@ -9,7 +8,7 @@ import Symbols.*
 import Phases.*
 import NameKinds.{LazyBitMapName, LazyLocalName}
 
-object DottyBackendInterface {
+object SymbolUtils:
   given symExtensions: AnyRef with
     extension (sym: Symbol)
       /** Fields of static modules will be static at backend
@@ -63,8 +62,3 @@ object DottyBackendInterface {
         atPhase(flattenPhase) {
           toDenot(sym).owner.is(PackageClass)
         }
-
-    end extension
-
-  end symExtensions
-}

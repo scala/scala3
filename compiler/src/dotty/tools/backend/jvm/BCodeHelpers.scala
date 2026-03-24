@@ -36,7 +36,7 @@ import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 
 import tpd.*
-import DottyBackendInterface.{*, given}
+import SymbolUtils.given
 
 /*
  *  Encapsulates functionality to convert Scala AST Trees into ASM ClassNodes.

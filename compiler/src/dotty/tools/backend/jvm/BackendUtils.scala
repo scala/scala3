@@ -3,7 +3,7 @@ package backend.jvm
 
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
+import dotty.tools.backend.jvm.SymbolUtils.given
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Definitions
