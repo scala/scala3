@@ -64,10 +64,6 @@ object DottyBackendInterface {
           toDenot(sym).owner.is(PackageClass)
         }
 
-      def javaSimpleName(using Context): String = toDenot(sym).name.mangledString
-      def javaClassName(using Context): String = toDenot(sym).fullName.mangledString
-      def javaBinaryName(using Context): String = javaClassName.replace('.', '/')
-
     end extension
 
   end symExtensions
