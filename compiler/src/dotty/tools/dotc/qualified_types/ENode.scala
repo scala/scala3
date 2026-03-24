@@ -244,7 +244,7 @@ enum ENode extends Showable:
       case Atom(tp) =>
         val mappedTp0 =
           f(tp) match
-            case Range(lo, hi) => lo
+            case Range(lo, hi) => hi
             case mappedTp0 => mappedTp0
         val mappedTp = ensureValidPrefixes(mappedTp0)
 
