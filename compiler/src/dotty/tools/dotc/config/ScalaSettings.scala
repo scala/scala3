@@ -266,12 +266,13 @@ private sealed trait WarningSettings:
          |
          |The default configuration is empty.
          |
-         |User-defined configurations are added to the left. The leftmost rule matching
-         |a warning message defines the action.
+         |The last matching configuration for a diagnostic, in definition order,
+         |determines the action for that diagnostic message.
          |
          |Examples:
          |  - change every warning into an error: -Wconf:any:error
          |  - silence deprecations: -Wconf:cat=deprecation:s
+         |  - error but silence deprecations: -Wall -Wconf:any:e,cat=deprecation:s
          |  - silence a deprecation: -Wconf:origin=java\.lang\.Thread\.getId:s
          |  - silence warnings in src_managed directory: -Wconf:src=src_managed/.*:s
          |
