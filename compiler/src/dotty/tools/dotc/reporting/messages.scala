@@ -2457,6 +2457,12 @@ extends NamingMsg(DoubleDefinitionID):
             i"have the same$nameAnd type $erasedType after erasure.$hint"
         }
       }
+      else if decl.is(CaseAccessor) || previousDecl.is(CaseAccessor) then
+        val selector = """_(\d+)""".r
+        decl.name.toString match
+          case selector(n) =>
+            s"${decl.name} is a case element selector and must name the ${n}th element"
+          case _ => ""
       else ""
     def symLocation(sym: Symbol) = {
       val lineDesc =
