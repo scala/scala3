@@ -55,6 +55,9 @@ object report:
     else issueWarning(new FeatureWarning(msg, pos.sourcePos))
   end featureWarning
 
+  def optimizerWarning(msg: Message, site: String, pos: SrcPos)(using Context): Unit =
+    issueWarning(new OptimizerWarning(msg, site, addInlineds(pos)))
+  
   def warning(msg: Message, pos: SrcPos, origin: String)(using Context): Unit =
     issueWarning(LintWarning(msg, addInlineds(pos), origin))
 

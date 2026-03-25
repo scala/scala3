@@ -1,7 +1,6 @@
 package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.CompilerSettings
 import dotty.tools.dotc.util.SourcePosition
 

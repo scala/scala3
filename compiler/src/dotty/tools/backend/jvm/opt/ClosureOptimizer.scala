@@ -27,10 +27,12 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.*
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.report
 
 class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
-                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
+                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile)(using ctx: Context) {
 
   import ClosureOptimizer.*
 
@@ -117,7 +119,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                ppa.backendReporting.optimizerWarning(em"${warning.toString}", ppa.backendReporting.siteString(ownerClass, method.name), warning.pos)
+                report.optimizerWarning(em"${warning.toString}", BackendUtils.siteString(ownerClass, method.name), warning.pos)
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)

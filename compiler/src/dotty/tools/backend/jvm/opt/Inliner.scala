@@ -27,10 +27,12 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.report
 
 class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inlineInfoLoader: InlineInfoLoader,
               callGraph: CallGraph, coreBTypes: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer) {
+              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer)(using ctx: Context) {
 
   // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
   // inlined in a later inlining round.
@@ -206,16 +208,16 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
                 case Some(inlinedCallsite) =>
                   val rw = inlinedCallsite.warning.get
                   if (rw.emitWarning(ppa.compilerSettings)) {
-                    ppa.backendReporting.optimizerWarning(
+                    report.optimizerWarning(
                       em"${rw.toString + inlineChainSuffix(r.callsite, state.inlineChain(inlinedCallsite.eliminatedCallsite.callsiteInstruction, skipForwarders = true))}",
-                      ppa.backendReporting.siteString(inlinedCallsite.eliminatedCallsite.callsiteClass.internalName, inlinedCallsite.eliminatedCallsite.callsiteMethod.name),
+                      BackendUtils.siteString(inlinedCallsite.eliminatedCallsite.callsiteClass.internalName, inlinedCallsite.eliminatedCallsite.callsiteMethod.name),
                       inlinedCallsite.eliminatedCallsite.callsitePosition)
                   }
                 case _ =>
                   if (w.emitWarning(ppa.compilerSettings))
-                    ppa.backendReporting.optimizerWarning(
+                    report.optimizerWarning(
                       em"${w.toString + inlineChainSuffix(r.callsite, state.inlineChain(r.callsite.callsiteInstruction, skipForwarders = true))}",
-                      ppa.backendReporting.siteString(r.callsite.callsiteClass.internalName, r.callsite.callsiteMethod.name),
+                      BackendUtils.siteString(r.callsite.callsiteClass.internalName, r.callsite.callsiteMethod.name),
                       r.callsite.callsitePosition)
               }
           }
@@ -267,9 +269,9 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
                 val w = inlinedCallsite.warning.get
                 state.inlineLog.logRollback(callsite, s"Instruction ${LogUtils.textify(notInlinedIllegalInsn)} would cause an IllegalAccessError, and is not selected for (or failed) inlining", state.outerCallsite(notInlinedIllegalInsn))
                 if (w.emitWarning(ppa.compilerSettings))
-                  ppa.backendReporting.optimizerWarning(
+                  report.optimizerWarning(
                     em"${w.toString + inlineChainSuffix(callsite, state.inlineChain(callsite.callsiteInstruction, skipForwarders = true))}",
-                    ppa.backendReporting.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name),
+                    BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name),
                     callsite.callsitePosition)
               case _ =>
                 // TODO: replace by dev warning after testing

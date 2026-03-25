@@ -97,15 +97,6 @@ class GenBCode extends Phase { self =>
     try
       val result = super.runOn(units)
       generatedClassHandler.complete()
-      try
-        for
-          async <- ctx.run.nn.asyncTasty
-          bufferedReporter <- async.sync()
-        do
-          frontendAccess.backendReporting.relayReports(bufferedReporter)
-      catch
-        case ex: Exception =>
-          report.error(s"exception from future: $ex, (${Option(ex.getCause())})")
       result
     finally
       // frontendAccess and postProcessor are created lazily, clean them up only if they were initialized

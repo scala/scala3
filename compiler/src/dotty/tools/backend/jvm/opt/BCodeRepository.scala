@@ -20,6 +20,7 @@ import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.{BackendUtils, ClassNode1, CoreBTypes, PostProcessorFrontendAccess}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.report
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
@@ -314,7 +315,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
         Some(classNode, moduleNode)
       } catch {
         case ex: Exception =>
-          frontendAccess.backendReporting.warning(em"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
+          report.warning(em"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
           None
       }
     } match {

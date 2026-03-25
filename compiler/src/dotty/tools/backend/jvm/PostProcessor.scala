@@ -12,6 +12,7 @@ import dotty.tools.dotc.core.Decorators.em
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
+import dotty.tools.dotc.report
 
 import scala.tools.asm
 
@@ -51,11 +52,11 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
         serializeClass(classNode)
       catch
         case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
-          frontendAccess.backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
+          report.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
         case ex: Throwable =>
           if frontendAccess.compilerSettings.debug then ex.printStackTrace()
-          frontendAccess.backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
+          report.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
     if bytes != null then
@@ -104,10 +105,10 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
           else s" (defined in ${pos2.source.file.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
-          frontendAccess.backendReporting.error(
+          report.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
         else
-          frontendAccess.backendReporting.warning(
+          report.warning(
             em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
                 |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
     }

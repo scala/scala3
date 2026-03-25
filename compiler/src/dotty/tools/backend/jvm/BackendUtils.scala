@@ -679,4 +679,12 @@ object BackendUtils {
 
   def compilingPrimitive(using Context) =
     primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
+
+  // ===
+
+  def siteString(owner: String, method: String): String = {
+    val c = owner.replace('/', '.').replaceAll("\\$+", ".").replaceAll("\\.$", "")
+    if (method.isEmpty) c
+    else s"$c.$method"
+  }
 }

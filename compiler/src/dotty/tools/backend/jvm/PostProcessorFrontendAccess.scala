@@ -1,14 +1,11 @@
 package dotty.tools
 package backend.jvm
 
-import scala.collection.mutable.{Clearable, HashSet}
-import dotty.tools.dotc.util.*
-import dotty.tools.dotc.reporting.Message
-import dotty.tools.io.{AbstractFile, ClassPath}
+import scala.collection.mutable.HashSet
+import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.classpath.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.config.ScalaSettings
 
 import scala.collection.mutable
@@ -22,12 +19,6 @@ sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
-
-  def withThreadLocalReporter[T](reporter: BackendReporting)(fn: => T): T
-
-  def backendReporting: BackendReporting
-
-  def directBackendReporting: BackendReporting
 
   def getEntryPoints: List[String]
 
@@ -159,25 +150,6 @@ object PostProcessorFrontendAccess {
       override def optLogInline: Option[String] = s.YoptLogInline.valueSetByUser
       override def optTrace: Option[String] = s.YoptTrace.valueSetByUser
      }
-
-     private lazy val localReporter = new ThreadLocal[BackendReporting]
-
-     override def withThreadLocalReporter[T](reporter: BackendReporting)(fn: => T): T = {
-       val old = localReporter.get()
-       localReporter.set(reporter)
-       try fn
-       finally
-         if old eq null then localReporter.remove()
-         else localReporter.set(old)
-     }
-
-     override def backendReporting: BackendReporting = {
-       val local = localReporter.get()
-       if local eq null then directBackendReporting
-       else local
-     }
-
-    override def directBackendReporting = DirectBackendReporting(this)(using ctx)
 
     override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)(using ctx)
 
