@@ -249,13 +249,14 @@ object TypeTestsCasts {
               else true
             end check
 
-            val foundEffectiveClass = effectiveClass(expr.tpe.widen)
+            /*val foundEffectiveClass = effectiveClass(expr.tpe.widen)
             // To ensure we don't have platform-dependent compile errors, always report this
             // if `unreachable` would report an error, even if on a platform where the type test might be acceptable
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass &&
                ((flagUnrelated && inMatch) || !ctx.platform.typeMightBeSubtypeAtRuntime(foundEffectiveClass, testCls)) then
               unreachable(i"$exprType is a primitive and $testCls is a reference")
-            else foundClasses.exists(check)
+            else foundClasses.exists(check)*/
+            foundClasses.exists(check)
           end checkSensical
 
           val tp = if expr.tpe.isPrimitiveValueType then defn.boxedType(expr.tpe) else expr.tpe
