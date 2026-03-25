@@ -13,6 +13,8 @@ import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
 
+import scala.tools.asm
+
 /**
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
@@ -127,7 +129,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
-    val cw = new ClassWriterWithBTypeLub(backendUtils.extraProc)
+    val cw = new ClassWriterWithBTypeLub(asm.ClassWriter.COMPUTE_MAXS | asm.ClassWriter.COMPUTE_FRAMES)
     classNode.accept(cw)
     cw.toByteArray.nn
   }
