@@ -1190,10 +1190,12 @@ trait Checking {
     checkLegalImportOrExportPath(path, "import prefix")
     languageImport(path) match
       case Some(prefix) =>
-        val required =
-          if prefix == nme.experimental then defn.LanguageExperimentalModule
-          else if prefix == nme.deprecated then defn.LanguageDeprecatedModule
-          else defn.LanguageModule
+        import NameKinds.QualifiedName
+        val required = prefix match
+          case QualifiedName(nme.experimental, nme.qualifiedTypes) => defn.LanguageExperimentalQualifiedTypesModule
+          case nme.experimental => defn.LanguageExperimentalModule
+          case nme.deprecated => defn.LanguageDeprecatedModule
+          case _ => defn.LanguageModule
         if path.symbol != required then
           report.error(em"import looks like a language import, but refers to something else: ${path.symbol.showLocated}", path.srcPos)
       case None =>

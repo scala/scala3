@@ -139,6 +139,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("compileWarn")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/warn", defaultOptions),
+      compileFilesInDir("tests/warn-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes")),
     ))
     runWithCoverageOrFallback[WarnTestWithCoverage](compilationTest, "Warn")
   }

@@ -22,6 +22,9 @@ object MiMaFilters {
         // qualified types related
         ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.qualifiedTypes"),
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$runtimeChecks$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$silent$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$warn$"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.qualifiedTypes"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$qualifiedTypes$"),
       )
