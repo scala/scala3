@@ -19,7 +19,8 @@ import dotty.tools.dotc.ast.tpd.{
   Typed,
   given
 }
-import dotty.tools.dotc.config.Printers
+import dotty.tools.dotc.config.{Feature, Printers}
+import dotty.tools.dotc.config.Feature.QualifiedTypesMode
 import dotty.tools.dotc.core.Atoms
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
@@ -96,25 +97,38 @@ object QualifiedTypes:
   def adapt(tree: Tree, pt: Type)(using Context): Tree =
     if containsQualifier(pt) then
       trace(i"adapt $tree to qualified type $pt", Printers.qualifiedTypes):
-        if tree.tpe.hasAnnotation(defn.RuntimeCheckedAnnot) then
-          if checkContainsSkolem(pt, tree.srcPos) then
-            tpd.evalOnce(tree): e =>
-              If(
-                e.isInstance(pt),
-                e.asInstance(pt),
-                Throw(New(defn.IllegalArgumentExceptionType, List()))
-              )
-          else
-            tree.withType(ErrorType(em""))
-        else
-          ENode.selfify(tree) match
-            case Some(qualifier) =>
-              val selfifiedTp = QualifiedType(tree.tpe, qualifier)
-              if selfifiedTp <:< pt then tree.cast(selfifiedTp) else EmptyTree
-            case None =>
-              EmptyTree
+        val mode =
+          if tree.tpe.hasAnnotation(defn.RuntimeCheckedAnnot) then QualifiedTypesMode.RuntimeChecks
+          else Feature.qualifiedTypesMode
+        ENode.selfify(tree) match
+          case Some(qualifier) =>
+            val selfifiedTp = QualifiedType(tree.tpe, qualifier)
+            if selfifiedTp <:< pt then tree.cast(selfifiedTp)
+            else adaptByMode(tree, pt, mode)
+          case None =>
+            adaptByMode(tree, pt, mode)
     else
       EmptyTree
+
+  private def adaptByMode(tree: Tree, pt: Type, mode: QualifiedTypesMode)(using Context): Tree =
+    mode match
+      case QualifiedTypesMode.RuntimeChecks =>
+        if checkContainsSkolem(pt, tree.srcPos, mode) then
+          tpd.evalOnce(tree): e =>
+            If(
+              e.isInstance(pt),
+              e.asInstance(pt),
+              Throw(New(defn.IllegalArgumentExceptionType, List()))
+            )
+        else
+          tree.withType(ErrorType(em""))
+      case QualifiedTypesMode.Warn =>
+        report.warning(em"Qualified type conversion from ${tree.tpe} to $pt cannot be verified statically", tree.srcPos)
+        tree.cast(pt)
+      case QualifiedTypesMode.Silent =>
+        tree.cast(pt)
+      case QualifiedTypesMode.Error =>
+        EmptyTree
 
   def containsQualifier(tp: Type)(using Context): Boolean =
     tp match
@@ -124,14 +138,23 @@ object QualifiedTypes:
       case OrType(tp1, tp2) => containsQualifier(tp1) || containsQualifier(tp2)
       case _ => false
 
-  def checkContainsSkolem(tp: Type, pos: SrcPos)(using Context): Boolean =
+  def checkContainsSkolem(
+      tp: Type,
+      pos: SrcPos,
+      mode: QualifiedTypesMode = QualifiedTypesMode.Error
+  )(using Context): Boolean =
     var res = true
     tp.foreachPart:
       case QualifiedType(_, qualifier) =>
         qualifier.foreachType: rootTp =>
           rootTp.foreachPart:
             case tp: SkolemType =>
-              report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)
+              mode match
+                case QualifiedTypesMode.Error | QualifiedTypesMode.RuntimeChecks =>
+                  report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)
+                case QualifiedTypesMode.Warn =>
+                  report.warning(em"The qualified type $qualifier cannot be checked at runtime", pos)
+                case QualifiedTypesMode.Silent => ()
               res = false
             case _ => ()
       case _ => ()
