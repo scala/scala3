@@ -296,7 +296,18 @@ object language {
 
     /** Experimental support for qualified types */
     @compileTimeOnly("`qualifiedTypes` is only be used at compile time")
-    object qualifiedTypes
+    object qualifiedTypes:
+      /** Automatically insert runtime checks for qualified type conversions. */
+      @compileTimeOnly("`runtimeChecks` can only be used at compile time in import statements")
+      object runtimeChecks
+
+      /** Emit a warning when a qualified type conversion cannot be verified statically. */
+      @compileTimeOnly("`warn` can only be used at compile time in import statements")
+      object warn
+
+      /** Silently insert asInstanceOf for unverified qualified type conversions. */
+      @compileTimeOnly("`silent` can only be used at compile time in import statements")
+      object silent
 
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
