@@ -77,7 +77,7 @@ sealed trait CalleeInfoWarning extends OptimizerWarning {
 
   def descriptor: String
 
-  private def warningMessageSignature = BackendReporting.methodSignature(declarationClass, name, descriptor)
+  private def warningMessageSignature = s"$declarationClass::$name$descriptor"
 
   override def toString: String = this match {
     case MethodInlineInfoIncomplete(_, _, _, cause) =>
@@ -117,7 +117,7 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
   /** Either the callee or the callsite is annotated @inline */
   def annotatedInline: Boolean
 
-  private def calleeMethodSig = BackendReporting.methodSignature(calleeDeclarationClass, name, descriptor)
+  private def calleeMethodSig = s"$calleeDeclarationClass::$name$descriptor"
 
   override def toString: String = {
     val annotWarn = if (annotatedInline) " is annotated @inline but" else ""
@@ -136,7 +136,7 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
             |$cause"""
 
       case MethodWithHandlerCalledOnNonEmptyStack(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
-        s"""|The operand stack at the callsite in ${BackendReporting.methodSignature(callsiteClass, callsiteName, callsiteDesc)} contains more values than the
+        s"""|The operand stack at the callsite in $callsiteClass::$callsiteName$callsiteDesc contains more values than the
             |arguments expected by the callee $calleeMethodSig. These values would be discarded
             |when entering an exception handler declared in the inlined method."""
 
@@ -147,12 +147,12 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
         s"Method $calleeMethodSig cannot be inlined because it does not have any instructions, even though it is not abstract. The class may come from a signature jar file (such as a Bazel 'hjar')."
 
       case StrictfpMismatch(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
-        s"""The callsite method ${BackendReporting.methodSignature(callsiteClass, callsiteName, callsiteDesc)}
+        s"""The callsite method $callsiteClass::$callsiteName$callsiteDesc
            |does not have the same strictfp mode as the callee $calleeMethodSig.
        """.stripMargin
 
       case ResultingMethodTooLarge(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
-        s"""The size of the callsite method ${BackendReporting.methodSignature(callsiteClass, callsiteName, callsiteDesc)}
+        s"""The size of the callsite method $callsiteClass::$callsiteName$callsiteDesc
            |would exceed the JVM method size limit after inlining $calleeMethodSig.
        """.stripMargin
     }

@@ -13,12 +13,10 @@
 package dotty.tools
 package backend.jvm
 
-import scala.tools.asm.tree.MethodNode
-import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
-import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition, SrcPos}
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.io.FileWriters.{BufferingReporter, Report}
 
 
@@ -85,21 +83,4 @@ final class DirectBackendReporting(ppa: PostProcessorFrontendAccess)(using Conte
   def warning(message: Context ?=> Message, position: SourcePosition): Unit = ppa.frontendSynch(report.warning(message, position))
   def optimizerWarning(message: Context ?=> Message, site: String, position: SourcePosition): Unit = ppa.frontendSynch(report.warning(message, position, site))
   def log(message: String): Unit = ppa.frontendSynch(report.log(message))
-}
-
-/**
- * Utilities for error reporting.
- *
- * Defines some utility methods to make error reporting with Either easier.
- */
-object BackendReporting {
-  def methodSignature(classInternalName: InternalName, name: String, desc: String) = {
-    classInternalName + "::" + name + desc
-  }
-
-  def methodSignature(classInternalName: InternalName, method: MethodNode): String = {
-    methodSignature(classInternalName, method.name, method.desc)
-  }
-
-  def assertionError(message: String): Nothing = throw new AssertionError(message)
 }

@@ -24,7 +24,6 @@ import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
@@ -123,9 +122,9 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
     def inlineChainSuffix(callsite: KnownCallsite, chain: List[KnownCallsite]): String =
       if (chain.isEmpty) "" else
         s"""
-           |Note that this callsite was itself inlined into ${BackendReporting.methodSignature(callsite.callsiteClass.internalName, callsite.callsiteMethod)}
+           |Note that this callsite was itself inlined into ${callsite.callsiteClass.internalName}::${callsite.callsiteMethod.name}${callsite.callsiteMethod.desc}
            |by inlining the following methods:
-           |${chain.map(cs => BackendReporting.methodSignature(cs.callee.calleeDeclarationClass.internalName, cs.callee.callee)).mkString("  - ", "\n  - ", "")}""".stripMargin
+           |${chain.map(cs => s"${cs.callee.calleeDeclarationClass.internalName}::${cs.callee.callee.name}${cs.callee.callee.desc}").mkString("  - ", "\n  - ", "")}""".stripMargin
 
     while (requests.nonEmpty || changedMethods.nonEmpty) {
       // First inline all requests that were initially collected. Then check methods that changed
@@ -758,7 +757,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
         case INVOKEVIRTUAL | INVOKESPECIAL | INVOKEINTERFACE => 1
         case INVOKESTATIC => 0
         case INVOKEDYNAMIC =>
-          assertionError(s"Unexpected opcode, cannot inline ${LogUtils.textify(callsite.callsiteInstruction)}")
+          throw new AssertionError(s"Unexpected opcode, cannot inline ${LogUtils.textify(callsite.callsiteInstruction)}")
       })
       callsite.callsiteStackHeight > expectedArgs
     }
