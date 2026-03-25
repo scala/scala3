@@ -5,12 +5,8 @@
 # Empty lines are ignored
 
 16583.scala
-alphanumeric-infix-operator-compat
 annotation-named-pararamters
 applied_constructor_types.scala
-backwardCompat-3.0
-backwardCompat-3.1
-backwardsCompat-implicitParens
 bridges.scala
 capt1.scala
 capture.scala
