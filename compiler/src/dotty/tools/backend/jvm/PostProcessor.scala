@@ -59,8 +59,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
           null
 
     if bytes != null then
-      if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
-        AsmUtils.traceClass(bytes)
+      TraceUtils.traceSerializedClassIfRequested(internalName, bytes)
       val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
       clazz.onFileCreated(clsFile)
   }

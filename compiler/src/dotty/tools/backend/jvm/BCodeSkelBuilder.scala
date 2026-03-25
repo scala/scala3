@@ -290,8 +290,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       // This needs to wait until now since it uses `superCallTargets` which is populating while emitting the class body
       initJClass(cnode)
 
-      if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
-        AsmUtils.traceClass(cnode)
+      TraceUtils.traceClassIfRequested(cnode)
 
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
 
@@ -953,8 +952,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         // The only non-instruction nodes to be found are LabelNode and LineNumberNode.
       }
 
-      if (AsmUtils.traceMethodEnabled && mnode.name.contains(AsmUtils.traceMethodPattern))
-        AsmUtils.traceMethod(mnode)
+      TraceUtils.traceMethodIfRequested(mnode)
 
       mnode = null
     } // end of method genDefDef()
