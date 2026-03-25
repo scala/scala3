@@ -1,0 +1,18 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/qualified-types/mode_scoped.scala:4:39 ----------------------------
+4 |  val v1: {v: Int with v == 1} = getInt() // error
+  |                                 ^^^^^^^^
+  |                                 Found:    Int
+  |                                 Required: {x: Int with x == 1}
+  |
+  |                                 where:    x is a lambda parameter of type Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/qualified-types/mode_scoped.scala:16:39 ---------------------------
+16 |  val v4: {v: Int with v == 4} = getInt() // error
+   |                                 ^^^^^^^^
+   |                                 Found:    Int
+   |                                 Required: {x: Int with x == 4}
+   |
+   |                                 where:    x is a lambda parameter of type Int
+   |
+   | longer explanation available when compiling with `-explain`

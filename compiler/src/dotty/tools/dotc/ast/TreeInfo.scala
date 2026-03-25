@@ -314,11 +314,20 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   private val languageSubCategories = Set(nme.experimental, nme.deprecated)
 
+  /** Sub-modules of `experimental` that can themselves contain language feature imports. */
+  private val experimentalSubCategories = Set(nme.qualifiedTypes)
+
   /** If `path` looks like a language import, `Some(name)` where name
    *  is `experimental` if that sub-module is imported, and the empty
-   *  term name otherwise.
+   *  term name otherwise. For deeper nesting like
+   *  `language.experimental.qualifiedTypes`, returns
+   *  `Some(QualifiedName(experimental, qualifiedTypes))`.
    */
   def languageImport(path: Tree): Option[TermName] = path match
+    case Select(p1, name: TermName) if experimentalSubCategories.contains(name) =>
+      languageImport(p1) match
+        case Some(nme.experimental) => Some(NameKinds.QualifiedName(nme.experimental, name))
+        case _ => None
     case Select(p1, name: TermName) if languageSubCategories.contains(name) =>
       languageImport(p1) match
         case Some(EmptyTermName) => Some(name)
