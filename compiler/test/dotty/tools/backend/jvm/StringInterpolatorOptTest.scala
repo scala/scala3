@@ -1,10 +1,11 @@
 package dotty.tools.backend.jvm
 
-import org.junit.Assert._
+import dotty.DottyBytecodeTest
+import org.junit.Assert.*
 import org.junit.Test
 
 class StringInterpolatorOptTest extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
 
   @Test def testRawInterpolator = {
     val source =

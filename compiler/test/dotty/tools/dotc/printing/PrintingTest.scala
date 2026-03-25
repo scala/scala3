@@ -10,7 +10,7 @@ import vulpix.TestConfiguration
 import vulpix.ParallelTesting
 import reporting.TestReporter
 
-import java.io._
+import java.io.*
 import java.nio.file.{Path => JPath}
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.charset.StandardCharsets

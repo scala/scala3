@@ -7,17 +7,17 @@ import scala.language.unsafeNulls
 import org.junit.{AfterClass, Ignore, Test}
 import org.junit.experimental.categories.Category
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import reporting.TestReporter
-import vulpix._
+import vulpix.*
 
-import java.nio.file._
+import java.nio.file.*
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BootstrappedOnlyCompilationTests {
-  import ParallelTesting._
-  import TestConfiguration._
-  import BootstrappedOnlyCompilationTests._
+  import ParallelTesting.*
+  import TestConfiguration.*
+  import BootstrappedOnlyCompilationTests.*
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------

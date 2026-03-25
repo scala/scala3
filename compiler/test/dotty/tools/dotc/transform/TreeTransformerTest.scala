@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import org.junit.{Assert, Test}
-import MegaPhase._
+import MegaPhase.*
 import ast.tpd
 import core.Constants.Constant
 import core.Contexts.Context
