@@ -123,6 +123,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     result
 
+  private def treeSize(tree: Tree)(using Context): Int =
+    var count = 0
+    tree.foreachSubTree(_ => count += 1)
+    count
+
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
     val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
     coverageExcludeClasslikePatterns.isEmpty || !coverageExcludeClasslikePatterns.exists(
@@ -330,6 +335,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           case tree if tree.isEmpty || tree.isType => tree // empty Thicket, Ident (referring to a type), TypeTree, ...
           case tree if !tree.span.exists || tree.span.isZeroExtent => tree // no meaningful position
 
+          case tree: ValDef if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes =>
+            tree
+
           case tree: Literal =>
             val rest = tryInstrument(tree).toTree
             rest
@@ -460,6 +468,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       if sym.isOneOf(Inline | Erased) then
         // Inline and erased definitions will not be in the generated code and therefore do not need to be instrumented.
         // (Note that a retained inline method will have a `$retained` variant that will be instrumented.)
+        tree
+      else if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes then
         tree
       else
         // Only transform the params (for the default values) and the rhs, not the name and tpt.
@@ -679,6 +689,12 @@ object InstrumentCoverage:
   val name: String = "instrumentCoverage"
   val description: String = "instrument code for coverage checking"
   val ExcludeMethodFlags: FlagSet = Artifact | Erased
+
+  /** Maximum number of tree nodes in a method body for coverage instrumentation.
+    * Beyond this threshold, the instrumented bytecode risks exceeding the JVM's 64KB
+    * method size limit. The per-statement overhead of `Invoker.invoked()` is ~15 bytes,
+    * so roughly half of the tree nodes in a large body would each add that overhead. */
+  val MaxInstrumentableTreeNodes: Int = 3000
   val scoverageLocalOn: Regex = """^\s*//\s*\$COVERAGE-ON\$""".r
   val scoverageLocalOff: Regex = """^\s*//\s*\$COVERAGE-OFF\$""".r
 
