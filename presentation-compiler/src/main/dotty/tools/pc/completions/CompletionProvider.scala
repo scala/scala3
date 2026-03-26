@@ -81,6 +81,7 @@ class CompletionProvider(
       case Some(unit) =>
         val newctx = ctx.fresh
           .setCompilationUnit(unit)
+          .setSettings(ctx.settings.YhideFlexibleTypes.updateIn(ctx.settingsState.reinitializedCopy(), true))
           .setProfiler(Profiler()(using ctx))
           .withPhase(Phases.typerPhase(using ctx))
         val tpdPath0 = Interactive.pathTo(unit.tpdTree, pos.span)(using newctx)
