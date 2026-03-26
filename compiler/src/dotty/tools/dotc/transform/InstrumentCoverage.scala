@@ -152,6 +152,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   private class CoverageTransformer(outputPath: String) extends Transformer:
     private val ConstOutputPath = Constant(outputPath)
 
+    private def warnSkippedLargeTreeCoverage(tree: MemberDef, subject: String, nodeCount: Int)(using Context): Unit =
+      report.warning(
+        s"Skipping coverage instrumentation for large $subject ($nodeCount tree nodes exceeds threshold ${InstrumentCoverage.MaxInstrumentableTreeNodes}); compilation will continue but no coverage data will be recorded for it.",
+        tree.srcPos
+      )
+
     /** Generates the tree for:
       * ```
       * Invoker.invoked(id, DIR)
@@ -336,6 +342,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           case tree if !tree.span.exists || tree.span.isZeroExtent => tree // no meaningful position
 
           case tree: ValDef if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes =>
+            warnSkippedLargeTreeCoverage(tree, s"value initializer `${tree.name.show}`", treeSize(tree.rhs))
             tree
 
           case tree: Literal =>
@@ -470,6 +477,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // (Note that a retained inline method will have a `$retained` variant that will be instrumented.)
         tree
       else if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes then
+        warnSkippedLargeTreeCoverage(tree, s"method body `${tree.name.show}`", treeSize(tree.rhs))
         tree
       else
         // Only transform the params (for the default values) and the rhs, not the name and tpt.
