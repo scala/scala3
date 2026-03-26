@@ -285,20 +285,24 @@ final class EGraph(_ctx: Context):
           // beta reduction can fire during repair.
           case (_: ENode.Lambda, _) => (a, b)
           case (_, _: ENode.Lambda) => (b, a)
+          // Prefer Atom over compound nodes (Select, Apply, TypeApply) to
+          // prevent term blowup: if a.height == w, using `w` as representant
+          // keeps terms small, while using `a.height` would expand every
+          // occurrence of `w` into a compound expression.
+          case (_: ENode.Atom, _) => (a, b)
+          case (_, _: ENode.Atom) => (b, a)
           case (_: ENode.Select, _) => (a, b)
           case (_, _: ENode.Select) => (b, a)
           case (_: ENode.Apply, _) => (a, b)
           case (_, _: ENode.Apply) => (b, a)
           case (_: ENode.TypeApply, _) => (a, b)
           case (_, _: ENode.TypeApply) => (b, a)
-          case (_: ENode.Atom, _) => (a, b)
-          case (_, _: ENode.Atom) => (b, a)
           case _ => (a, b)
 
   def repair(): Unit =
     var i = 0
-    trace(s"repair (queue: ${worklist.map(show).mkString(", ")})"):
-      while !worklist.isEmpty do
+    while !worklist.isEmpty do
+      trace(s"repair (queue: ${worklist.map(show).mkString(", ")})"):
         val head = worklist.dequeue()
         val headRepr = representant(head)
         val headCanonical = canonicalize(head, deep = false)
