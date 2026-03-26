@@ -11,8 +11,7 @@ given Ordering[Int]:
 def max[T: Ordering as ord, U <: T](x: U, y: U): U =
   if ord.compare(x, y) >= 0 then x else y
 
+// Example 1 from OOPSLA 26
 def maximum[T: Ordering, U <: T](xs: List[U]): U = xs.reduce(max)
-
 type Even = {v: Int with v % 2 == 0}
-
 def test: Even = maximum(List(2, 4, 6))
