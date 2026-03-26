@@ -467,7 +467,7 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |    object inner {
          |      val nio: java.nio.file.Path = path
          |      object inner {
-         |        val java: (_root_.java.nio.file.Path)? = path
+         |        val java: _root_.java.nio.file.Path = path
          |      }
          |    }
          |  }
