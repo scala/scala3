@@ -677,7 +677,9 @@ object ENode:
         case tpd.Block(stats, expr) =>
           // Process val defs, collecting bindings for those whose RHS can be
           // converted to ENodes. When an Ident references a bound val, we
-          // return its ENode directly.
+          // return its ENode directly. Non-ValDef statements (e.g., coverage
+          // instrumentation calls, local defs) are skipped as they don't
+          // affect the block's result value.
           //
           // FIXEME: types embedded in the tree (e.g., TypeApply args) may
           // still contain TermRefs to inlined vals.
@@ -689,8 +691,7 @@ object ENode:
                 fromTreeRec(vdef.rhs, paramSyms, paramTps, bindings) match
                   case Some(node) => bindings = bindings.updated(vdef.symbol, node)
                   case None => ok = false
-              case _ =>
-                ok = false
+              case _ => ()
           if ok then rec(expr, valBindings = valBindings ++ bindings)
           else None
         case tpd.Inlined(_, Nil, expr) =>
