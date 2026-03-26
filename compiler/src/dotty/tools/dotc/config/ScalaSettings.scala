@@ -578,6 +578,7 @@ private sealed trait YSettings:
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
   val YnoDoubleBindings: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-var-bounds", "Print type variables with their bounds.")
+  val YhideFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yhide-flexible-types", "Print flexible types as their base type. (T instead of (T)?)")
 
   val Yinstrument: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
