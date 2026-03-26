@@ -40,9 +40,14 @@ import dotty.tools.dotc.core.Types.{
 }
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.trace
-import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.util.{Property, SrcPos}
 
 object QualifiedTypes:
+
+  /** A key attached to casts inserted by `adaptByMode` for qualified type
+   *  conversions that could not be verified statically.
+   */
+  val QualifiedTypeCast: Property.StickyKey[Unit] = Property.StickyKey()
 
   /** Does the type `tp1` imply the qualifier `qualifier2`?
    *
@@ -124,9 +129,9 @@ object QualifiedTypes:
           tree.withType(ErrorType(em""))
       case QualifiedTypesMode.Warn =>
         report.warning(em"Qualified type conversion from ${tree.tpe} to $pt cannot be verified statically", tree.srcPos)
-        tree.cast(pt)
+        tree.cast(pt).withAttachment(QualifiedTypeCast, ())
       case QualifiedTypesMode.Silent =>
-        tree.cast(pt)
+        tree.cast(pt).withAttachment(QualifiedTypeCast, ())
       case QualifiedTypesMode.Error =>
         EmptyTree
 
