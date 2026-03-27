@@ -371,8 +371,8 @@ trait BCodeIdiomatic(using Context) {
     final def emitIF_ICMP(cond: TestOp, label: asm.Label): Unit = { jmethod.visitJumpInsn(cond.opcodeIFICMP(), label) }
     // can-multi-thread
     final def emitIF_ACMP(cond: TestOp, label: asm.Label): Unit = {
-      assert((cond == EQ) || (cond == NE), cond)
-      val opc = if (cond == EQ) Opcodes.IF_ACMPEQ else Opcodes.IF_ACMPNE
+      assert((cond == TestOp.EQ) || (cond == TestOp.NE), cond)
+      val opc = if (cond == TestOp.EQ) Opcodes.IF_ACMPEQ else Opcodes.IF_ACMPNE
       jmethod.visitJumpInsn(opc, label)
     }
     // can-multi-thread

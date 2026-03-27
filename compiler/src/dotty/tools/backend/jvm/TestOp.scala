@@ -2,66 +2,31 @@ package dotty.tools
 package backend
 package jvm
 
-/** This class represents a test operation. */
-sealed abstract class TestOp {
+/** Test operation. */
+enum TestOp:
+  case EQ, NE, LT, LE, GT, GE
 
   /** Returns the negation of this operation. */
-  def negate(): TestOp
+  def negate(): TestOp = this match
+    case EQ => NE
+    case NE => EQ
+    case LT => GE
+    case GE => LT
+    case LE => GT
+    case GT => LE
 
-  /** Returns a string representation of this operation. */
-  override def toString(): String
+  def opcodeIF(): Int = this match
+    case EQ => scala.tools.asm.Opcodes.IFEQ
+    case NE => scala.tools.asm.Opcodes.IFNE
+    case LT => scala.tools.asm.Opcodes.IFLT
+    case GE => scala.tools.asm.Opcodes.IFGE
+    case LE => scala.tools.asm.Opcodes.IFLE
+    case GT => scala.tools.asm.Opcodes.IFGT
 
-  /** used only from GenASM */
-  def opcodeIF(): Int
-
-  /** used only from GenASM */
-  def opcodeIFICMP(): Int
-}
-
-/** An equality test */
-case object EQ extends TestOp {
-  def negate() = NE
-  override def toString() = "EQ"
-  override def opcodeIF() = scala.tools.asm.Opcodes.IFEQ
-  override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPEQ
-}
-
-/** A non-equality test */
-case object NE extends TestOp {
-  def negate() = EQ
-  override def toString() = "NE"
-  override def opcodeIF() = scala.tools.asm.Opcodes.IFNE
-  override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPNE
-}
-
-/** A less-than test */
-case object LT extends TestOp {
-  def negate() = GE
-  override def toString() = "LT"
-  override def opcodeIF() = scala.tools.asm.Opcodes.IFLT
-  override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPLT
-}
-
-/** A greater-than-or-equal test */
-case object GE extends TestOp {
-  def negate() = LT
-  override def toString() = "GE"
-  override def opcodeIF() = scala.tools.asm.Opcodes.IFGE
-  override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPGE
-}
-
-/** A less-than-or-equal test */
-case object LE extends TestOp {
-  def negate() = GT
-  override def toString() = "LE"
-  override def opcodeIF() = scala.tools.asm.Opcodes.IFLE
-  override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPLE
-}
-
-/** A greater-than test */
-case object GT extends TestOp {
-  def negate() = LE
-  override def toString() = "GT"
-  override def opcodeIF() = scala.tools.asm.Opcodes.IFGT
-  override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPGT
-}
+  def opcodeIFICMP(): Int = this match
+    case EQ => scala.tools.asm.Opcodes.IF_ICMPEQ
+    case NE => scala.tools.asm.Opcodes.IF_ICMPNE
+    case LT => scala.tools.asm.Opcodes.IF_ICMPLT
+    case GE => scala.tools.asm.Opcodes.IF_ICMPGE
+    case LE => scala.tools.asm.Opcodes.IF_ICMPLE
+    case GT => scala.tools.asm.Opcodes.IF_ICMPGT

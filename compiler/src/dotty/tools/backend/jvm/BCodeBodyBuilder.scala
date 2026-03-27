@@ -1514,7 +1514,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           bc.emitIF_ACMP(op, success)
         } else {
-          def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
+          def useCmpG = if (negated) op == TestOp.GT || op == TestOp.GE else op == TestOp.LT || op == TestOp.LE
           (tk: @unchecked) match {
             case LONG   => emit(asm.Opcodes.LCMP)
             case FLOAT  => emit(if (useCmpG) asm.Opcodes.FCMPG else asm.Opcodes.FCMPL)
@@ -1534,11 +1534,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
           bc.emitIF(op, success)
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           (op: @unchecked) match { // references are only compared with EQ and NE
-            case EQ => bc.emitIFNULL(   success)
-            case NE => bc.emitIFNONNULL(success)
+            case TestOp.EQ => bc.emitIFNULL(   success)
+            case TestOp.NE => bc.emitIFNONNULL(success)
           }
         } else {
-          def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
+          def useCmpG = if (negated) op == TestOp.GT || op == TestOp.GE else op == TestOp.LT || op == TestOp.LE
           (tk: @unchecked) match {
             case LONG   =>
               emit(asm.Opcodes.LCONST_0)
@@ -1557,14 +1557,14 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     }
 
     def testOpForPrimitive(primitiveCode: Int) = (primitiveCode: @switch) match {
-       case ScalaPrimitivesOps.ID => EQ
-       case ScalaPrimitivesOps.NI => NE
-       case ScalaPrimitivesOps.EQ => EQ
-       case ScalaPrimitivesOps.NE => NE
-       case ScalaPrimitivesOps.LT => LT
-       case ScalaPrimitivesOps.LE => LE
-       case ScalaPrimitivesOps.GT => GT
-       case ScalaPrimitivesOps.GE => GE
+       case ScalaPrimitivesOps.ID => TestOp.EQ
+       case ScalaPrimitivesOps.NI => TestOp.NE
+       case ScalaPrimitivesOps.EQ => TestOp.EQ
+       case ScalaPrimitivesOps.NE => TestOp.NE
+       case ScalaPrimitivesOps.LT => TestOp.LT
+       case ScalaPrimitivesOps.LE => TestOp.LE
+       case ScalaPrimitivesOps.GT => TestOp.GT
+       case ScalaPrimitivesOps.GE => TestOp.GE
      }
 
     /*
@@ -1597,7 +1597,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
 
       def loadAndTestBoolean() = {
         genLoad(tree, BOOL)
-        genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
+        genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
       }
 
       lineNumber(tree)
@@ -1709,17 +1709,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         genLoad(r, ts.ObjectRef)
         stack.pop()
         genCallMethod(equalsMethod, InvokeStyle.Static)
-        genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
+        genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
       }
       else {
         if (isNull(l)) {
           // null == expr -> expr eq null
           genLoad(r, ts.ObjectRef)
-          genCZJUMP(success, failure, EQ, ts.ObjectRef, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNull(r)) {
           // expr == null -> expr eq null
           genLoad(l, ts.ObjectRef)
-          genCZJUMP(success, failure, EQ, ts.ObjectRef, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNonNullExpr(l)) {
           // SI-7852 Avoid null check if L is statically non-null.
           genLoad(l, ts.ObjectRef)
@@ -1727,7 +1727,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
           genLoad(r, ts.ObjectRef)
           stack.pop()
           genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
-          genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
         } else {
           // l == r -> Objects.equals(l, r)
           genLoad(l, ts.ObjectRef)
@@ -1735,7 +1735,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
           genLoad(r, ts.ObjectRef)
           stack.pop()
           genCallMethod(defn.Objects_equals, InvokeStyle.Static)
-          genCZJUMP(success, failure, NE, BOOL, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
         }
       }
     }
