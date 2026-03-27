@@ -161,9 +161,7 @@ object ScaladocTastyInspector:
       report.error("File extension is not `tasty` or `jar`: " + invalidPath)
 
     if tastyPaths.nonEmpty then
-      val noFlexibleTypeSettings = ctx.compilerContext.settings.YnoExplicitNulls.updateIn(ctx.compilerContext.settingsState.reinitializedCopy(), true)
-      val newContext = ctx.compilerContext.fresh.setSettings(noFlexibleTypeSettings)
-      ScaladocInternalTastyInspector.inspectAllTastyFilesInContext(tastyPaths, jarPaths, classpath)(inspector)(using newContext)
+      ScaladocInternalTastyInspector.inspectAllTastyFilesInContext(tastyPaths, jarPaths, classpath)(inspector)(using ctx.compilerContext)
 
     val all = inspector.topLevels.result()
     all.groupBy(_._1).map { case (pckName, members) =>
