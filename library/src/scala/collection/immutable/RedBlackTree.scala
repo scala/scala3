@@ -15,7 +15,7 @@ package collection
 package immutable
 
 import scala.language.`2.13`
-// import language.experimental.captureChecking
+import language.experimental.captureChecking
 
 import scala.annotation.meta.{getter, setter}
 import scala.annotation.tailrec
@@ -989,7 +989,7 @@ private[collection] object RedBlackTree {
    *  @param xs an iterator yielding keys in ascending order
    *  @param size the number of keys to consume from the iterator
    */
-  def fromOrderedKeys[A](xs: Iterator[A], size: Int): Tree[A, Null] | Null = {
+  def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, Null] | Null = size match {
       case 0 => null
@@ -1011,7 +1011,7 @@ private[collection] object RedBlackTree {
    *  @param xs an iterator yielding key-value pairs in ascending key order
    *  @param size the number of entries to consume from the iterator
    */
-  def fromOrderedEntries[A, B](xs: Iterator[(A, B)], size: Int): Tree[A, B] | Null = {
+  def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, B] | Null = size match {
       case 0 => null
