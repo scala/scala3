@@ -682,6 +682,14 @@ object BackendUtils {
 
   // ===
 
+  def methodSignature(classInternalName: InternalName, name: String, desc: String) = {
+    classInternalName + "::" + name + desc
+  }
+
+  def methodSignature(classInternalName: InternalName, method: MethodNode): String = {
+    methodSignature(classInternalName, method.name, method.desc)
+  }
+  
   def siteString(owner: String, method: String): String = {
     val c = owner.replace('/', '.').replaceAll("\\$+", ".").replaceAll("\\.$", "")
     if (method.isEmpty) c

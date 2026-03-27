@@ -24,6 +24,7 @@ import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
+import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
@@ -124,9 +125,9 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
     def inlineChainSuffix(callsite: KnownCallsite, chain: List[KnownCallsite]): String =
       if (chain.isEmpty) "" else
         s"""
-           |Note that this callsite was itself inlined into ${callsite.callsiteClass.internalName}::${callsite.callsiteMethod.name}${callsite.callsiteMethod.desc}
+           |Note that this callsite was itself inlined into ${BackendUtils.methodSignature(callsite.callsiteClass.internalName, callsite.callsiteMethod)}
            |by inlining the following methods:
-           |${chain.map(cs => s"${cs.callee.calleeDeclarationClass.internalName}::${cs.callee.callee.name}${cs.callee.callee.desc}").mkString("  - ", "\n  - ", "")}""".stripMargin
+           |${chain.map(cs => BackendUtils.methodSignature(cs.callee.calleeDeclarationClass.internalName, cs.callee.callee)).mkString("  - ", "\n  - ", "")}""".stripMargin
 
     while (requests.nonEmpty || changedMethods.nonEmpty) {
       // First inline all requests that were initially collected. Then check methods that changed
