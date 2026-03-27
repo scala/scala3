@@ -43,7 +43,7 @@ object TraceUtils {
     if TraceUtils.traceSerializedClassEnabled && internalName.contains(TraceUtils.traceSerializedClassPattern) then
       TraceUtils.traceClass(bytes)
 
-  private def traceMethod(mnode: MethodNode): Unit = {
+  def traceMethod(mnode: MethodNode): Unit = {
     println(s"Bytecode for method ${mnode.name}")
     val p = new Textifier
     val tracer = new TraceMethodVisitor(p)
@@ -53,17 +53,17 @@ object TraceUtils {
     w.flush()
   }
 
-  private def traceClass(cnode: ClassNode): Unit = {
+  def traceClass(cnode: ClassNode): Unit = {
     println(s"Bytecode for class ${cnode.name}")
     val w = new PrintWriter(System.out)
     cnode.accept(new TraceClassVisitor(w))
     w.flush()
   }
 
-  private def traceClass(bytes: Array[Byte]): Unit = traceClass(readClass(bytes))
+  def traceClass(bytes: Array[Byte]): Unit = traceClass(readClass(bytes))
 
-  private def readClass(bytes: Array[Byte]): ClassNode1 = {
-    val node = new ClassNode1()
+  private def readClass(bytes: Array[Byte]): ClassNode = {
+    val node = new ClassNode()
     new ClassReader(bytes).accept(node, 0)
     node
   }
