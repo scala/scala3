@@ -28,6 +28,7 @@ object JavadocAnchorCreator:
   private def transformType(using Quotes)(tpe: reflect.TypeRepr): String =
     import reflect.*
     tpe.simplified match
+      case FlexibleType(hi) => transformType(hi)
       case AppliedType(tpe, typeList) if tpe.classSymbol.fold(false)(_ == defn.ArrayClass) => transformType(typeList.head) + ":A"
       case AppliedType(tpe, typeList) if tpe.classSymbol.fold(false)(_ == defn.RepeatedParamClass) => transformType(typeList.head) + "..."
       case AppliedType(tpe, typeList) => transformPrimitiveType(tpe)
