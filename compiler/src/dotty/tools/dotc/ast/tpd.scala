@@ -398,8 +398,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
         DefDef(fwdMeth, ref(fn).appliedToArgss(_))
       }
-      termForwarders.map((name, sym) => forwarder(name, sym)) ++
-      typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
+      val typeDefs = typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
+      termForwarders.map((name, sym) => forwarder(name, sym)) ++ typeDefs
     }
   }
 
