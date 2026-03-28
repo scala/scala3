@@ -2041,7 +2041,6 @@ object Build {
       },
       ideTestsScalaJSClasspath := {
         val externalJSCommonDeps = (`scaladoc-js-common`  / Compile / externalDependencyClasspath).value
-        println(externalJSCommonDeps)
         val scalaJSCommonDom = findArtifact(externalJSCommonDeps, "scalajs-dom_sjs1_3")
         val externalJSDeps = (`scala-library-sjs` / Compile / externalDependencyClasspath).value
         val scalaJSLibrary = findArtifact(externalJSDeps, "scalajs-library_2.13")
