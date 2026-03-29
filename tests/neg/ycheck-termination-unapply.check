@@ -2,6 +2,10 @@
 14 |    n match { // warning
    |    ^
    |    n may not structurally decrease because Node unapply method is overridden or undefined.
+-- Warning: tests/neg/ycheck-termination-unapply.scala:16:8 ------------------------------------------------------------
+16 |        v + caseLoop(next) // error
+   |        ^^^^^^^^^^^^^^^^^^
+   |        Method + has an empty tree.
 -- Error: tests/neg/ycheck-termination-unapply.scala:16:20 -------------------------------------------------------------
 16 |        v + caseLoop(next) // error
    |            ^^^^^^^^^^^^^^

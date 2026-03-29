@@ -35,10 +35,14 @@ class CheckTermination extends MiniPhase {
   private class TerminationChecker(startMethod: Symbol)(using Context)
       extends TreeTraverser {
 
+    private val whiteListedMethods = Set[Symbol](
+      defn.assumeTerminatesMethod,
+    )
+
     enum Size:
       case Smaller, Same, Unknown
 
-    private var sizeMap = Map.empty[Symbol, (Symbol, Size)]
+    private var sizeMap = Map.empty[Symbol, (Symbol | Tree, Size)]
 
     private var callStack = List[Symbol](startMethod)
 
@@ -46,22 +50,20 @@ class CheckTermination extends MiniPhase {
       tree match {
         case tree: DefDef => () // Don't traverse inner function definitions.
 
-        case tree @ Apply(fn, _) if fn.symbol == defn.assumeTerminatesMethod =>
-          () // Don't traverse as indicated by user.
+        case tree @ Apply(fn, _) if whiteListedMethods.contains(fn.symbol) =>
+          () // Don't traverse, as we assume they terminate.
 
-        case tree @ Apply(fn, args) =>
-          val argSymbols = args.map(_.symbol)
+        case tree: Apply =>
+          val (fn, args) = peelApplies(tree)
 
           callStack.find(_ == fn.symbol) match {
             case Some(methodSymbol) =>
               val params = getMethodParams(methodSymbol)
-              val (allArgs, allParams) = fn match {
-                case Select(qualifier, _) =>
-                  val thisSymbol = methodSymbol.enclosingClass.thisType.typeSymbol
-                  (qualifier.symbol :: argSymbols, thisSymbol :: params)
-                case _ => (argSymbols, params)
+              val argsSymbols = args.map {
+                case symbol: Symbol => symbol
+                case tree: Tree => tree.symbol
               }
-              if !areSmaller(allArgs, allParams, methodSymbol) then {
+              if !areSmaller(argsSymbols, params, methodSymbol) then {
                 report.error(
                   s"${startMethod.name} may not terminate due to (mutually) recursive call.",
                   tree.srcPos
@@ -69,22 +71,26 @@ class CheckTermination extends MiniPhase {
               }
 
             case None =>
-              val methodSymbol = fn.symbol
+              val methodSymbol = getMethodSymbol(fn)
               methodSymbol.defTree match {
-                case tree: DefDef =>
+                case defTree: DefDef if !defTree.rhs.isEmpty || methodSymbol.isConstructor =>
                   val params = getMethodParams(methodSymbol)
                   callStack = methodSymbol :: callStack
                   val savedMap = sizeMap
 
-                  params.zip(args).foreach((param, arg) => sizeMap += param -> (arg.symbol, Size.Same))
-                  traverse(tree.rhs)
+                  params.zip(args).foreach((param, arg) => sizeMap += param -> (arg, Size.Same))
+                  traverse(defTree.rhs)
 
                   sizeMap = savedMap
                   callStack = callStack.tail
-                case _ => ()
+                case _ => report.warning(s"Method ${methodSymbol.name} has an empty tree.", tree.srcPos)
               }
           }
-          traverseChildren(tree)
+          traverse(fn)
+          args.foreach{
+            case tree: Tree => traverse(tree)
+            case _ => ()
+          }
 
         case tree @ Match(selector, cases) =>
           val syntheticUnapply = isUnapplySynthetic(selector)
@@ -97,18 +103,50 @@ class CheckTermination extends MiniPhase {
           )
 
         case tree: ValDef =>
-          sizeMap += tree.symbol -> (tree.rhs.symbol -> Size.Same)
+          sizeMap += tree.symbol -> (tree.rhs -> Size.Same)
           traverseChildren(tree)
 
         case _ => traverseChildren(tree)
       }
     }
 
-    private inline def getMethodParams(methodSymbol: Symbol): List[Symbol] = {
-      methodSymbol.paramSymss.filter(!_.exists(_.isTypeParam)) match {
-        case Nil => Nil
-        case head :: _ => head
+    private def getMethodParams(methodSymbol: Symbol)(using Context): List[Symbol] = {
+      val thisSymbol = methodSymbol.enclosingClass.thisType.typeSymbol
+      thisSymbol :: methodSymbol.paramSymss.filter(!_.exists(_.isTypeParam)).flatten
+    }
+
+    private def getMethodSymbol(fn: Tree)(using Context): Symbol = {
+      val symbol = fn match {
+        case Select(qualifier, _) => qualifier.symbol
+        case _ => fn.symbol
       }
+      sizeMap.get(symbol) match {
+        case Some((op, _)) =>
+          op match {
+            case Block(tree :: _, Closure(_, _, _)) => tree.symbol
+            case op: Tree => getMethodSymbol(op)
+            case _ => fn.symbol
+          }
+        case None => fn.symbol
+      }
+    }
+
+    private def peelApplies(tree: Apply)(using Context): (Tree, List[Symbol | Tree]) = {
+      def loop(tree: Tree, acc: List[Tree] = Nil): (Tree, List[Tree]) =
+        tree match {
+          case Apply(fn, args) => loop(fn, args ++ acc)
+          case TypeApply(fn, _) => loop(fn, acc)
+          case _ => (tree, acc)
+        }
+
+      val (fn, args) = loop(tree)
+      (fn,
+        (fn match {
+          case Select(qualifier, _) => qualifier.symbol
+          case TypeApply(Select(qualifier, _), _) => qualifier.symbol
+          case _ => fn.symbol.enclosingClass.thisType.typeSymbol
+        }) :: args
+      )
     }
 
     private def getMeasure(tree: DefDef)(using Context) = {
@@ -131,10 +169,14 @@ class CheckTermination extends MiniPhase {
         else
           sizeMap.get(arg) match {
             case None => Size.Unknown
-            case Some((sym, size)) =>
+            case Some((result, size)) =>
+              val symbol = result match {
+                case symbol: Symbol => symbol
+                case tree: Tree => tree.symbol
+              }
               size match {
-                case Size.Smaller => compareSize(sym, param, true)
-                case Size.Same => compareSize(sym, param, decreased)
+                case Size.Smaller => compareSize(symbol, param, true)
+                case Size.Same => compareSize(symbol, param, decreased)
                 case Size.Unknown => Size.Unknown
               }
           }
