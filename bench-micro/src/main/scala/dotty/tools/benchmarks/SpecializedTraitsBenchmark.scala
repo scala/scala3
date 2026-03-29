@@ -1,4 +1,4 @@
-// Run with: scala-cli --power --jmh dotty/tests/run/specialized-traits-benchmark.scala
+// Run with: scala-cli --power --jmh bench-micro/src/main/scala/dotty/tools/benchmarks/SpecializedTraitsBenchmark.scala
 // May have to run it again / delete .scala-build and rerun if you get a class not found
 // error from scala-cli first time - the --jmh flag is still experimental.
 //> using scala 3.8.3-RC1-bin-SNAPSHOT-nonbootstrapped
