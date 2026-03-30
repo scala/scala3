@@ -25,7 +25,7 @@ package grandParentWithArgs:
   val simpleC = SimpleC()
   println(simpleC.foo())
   println(simpleC.bar("Test SimpleC"))
-  println
+  println()
 
   val c = C()
   println(c.foo())
