@@ -1,5 +1,5 @@
 inline trait A:
-    class InnerA:
+    class InnerA: // error: Inline traits may not define inner classes or traits.
         val x = 10
 
 class B extends A:

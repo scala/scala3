@@ -1,5 +1,5 @@
 inline trait A:
-  sealed class InnerA:
+  sealed class InnerA: // error: Inline traits may not define inner classes or traits.
     val x = 1
   def generate(x: Int) = InnerA()
 

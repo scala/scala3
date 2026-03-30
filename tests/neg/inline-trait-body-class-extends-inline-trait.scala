@@ -1,5 +1,5 @@
 inline trait A:
-  class Inner extends Trait[Int]:
+  class Inner extends Trait[Int]: // error: Inline traits may not define inner classes or traits.
     val x = 1
 
 inline trait Trait[T]:

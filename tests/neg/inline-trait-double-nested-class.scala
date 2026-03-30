@@ -1,5 +1,5 @@
 inline trait A:
-  sealed class InnerA:
+  sealed class InnerA: // error: Inline traits may not define inner classes or traits.
       sealed class InnerInnerA:
         val x = 1
 
