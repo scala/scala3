@@ -261,11 +261,17 @@ object Inlines:
 
   def transformInlineTrait(inlineTrait: TypeDef)(using Context): TypeDef =
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
+    
+    tmpl.body.foreach {
+        case innerClass: TypeDef if innerClass.symbol.isClass => report.error("Inline traits may not define inner classes or traits.", innerClass.srcPos)
+        case _ =>
+    }
+    
     val body1 = tmpl.body.flatMap {
-      // case innerClass: TypeDef if innerClass.symbol.isClass =>
-      //   val newTrait = makeTraitFromInnerClass(innerClass)
-      //   val newType = makeTypeFromInnerClass(inlineTrait.symbol, innerClass, newTrait.symbol)
-      //   List(newTrait, newType)
+      /* case innerClass: TypeDef if innerClass.symbol.isClass =>
+         val newTrait = makeTraitFromInnerClass(innerClass)
+         val newType = makeTypeFromInnerClass(inlineTrait.symbol, innerClass, newTrait.symbol)
+         List(newTrait, newType) */
       case member: MemberDef =>
         List(member)
       case _ =>
