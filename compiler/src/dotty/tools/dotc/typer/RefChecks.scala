@@ -622,6 +622,7 @@ object RefChecks {
           overrideError("cannot have a @targetName annotation since external names would be different")
       else if other.is(ParamAccessor) && !isInheritedAccessor(member, other)
            && !member.is(Tracked) // see remark on tracked members above
+           && !other.owner.isInlineTrait // Allow inline traits to override val params because we prune the params from the parent traits later so they need to live in the children.
       then // (1.12)
         report.errorOrMigrationWarning(
             em"cannot override val parameter ${other.showLocated}",
