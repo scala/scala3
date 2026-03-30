@@ -322,6 +322,14 @@ hope to avoid extending `ArrayIterator[Int]` directly, because extending `ArrayI
 `ArrayIterator[Int]` which is not allowed unless `ArrayIterator[Int]` is also mixed in directly to pass parameters (due to the rules of
 trait parameter passing in Scala 3). 
 
+## Summary of restrictions on specialized traits
+
+| Behaviour                | Is currently supported in... |
+|--------------------------|-----------------------------------------------|
+| Inheriting from specialized traits | In inline traits or anonymous class instances (for instance creation) only |
+| Taking `Specialized` parameters| Only by inline traits |
+
+
 
 ## [1] Why are the generated traits inline?
 Consider the following:

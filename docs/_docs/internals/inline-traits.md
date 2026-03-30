@@ -121,7 +121,7 @@ inline trait A(b: Boolean):
 
 class B extends A(true)
 ```
-Is conveted to:
+Is converted to:
 
 ```scala
 inline trait A(b: Boolean):
@@ -133,7 +133,7 @@ class B extends A(true):
     private val A$$x: Int = 1
     override def foo(): Int = if this.A$$b then this.A$$x.+(1) else 0
 ```
-- An inline receiver may mix in multiple inline traits with colliding member names. In this case the latest extended trait prevails. In the following example calling `foo` on an instance of `C` will return "Bonjour". This is in contrast to ordinary traits which require the `override` modifier in this case. <!-- TODO: Is this ok? We do it because otherwise they would have to write override on all members in Specialized traits because we mix those in multiple times -->
+- An inline receiver may mix in multiple inline traits with colliding member names. In this case the latest extended trait prevails. In the following example calling `foo` on an instance of `C` will return "Bonjour". This is in contrast to ordinary traits which require the `override` modifier in this case. <!-- TODO: Is this ok? We do it because otherwise they would have to write override on all members in Specialized traits because we mix those in multiple times. I suppose we could add this ourselves? Maybe that's better. -->
 ```scala
 inline trait A:
     def foo = "Hello World"
@@ -143,7 +143,7 @@ inline trait B:
 
 class C extends A, B
 ```
-However, an inline receiver may not define a member whose name collides with the name of an inlined public member from a parent inline trait, unless the override modifier is used.
+However, an inline receiver may not define a member whose name collides with the name of an inlined public member from a parent inline trait, unless the override modifier is used. This reflects the behaviour of ordinary traits.
 ```scala
 inline trait A:
     def foo = "Hello World"
@@ -154,6 +154,14 @@ inline trait B:
 class C extends A, B:
     def foo = "Bonjour2" // Must be override.
 ```
+- Inline receivers may not access the parameters of their parents (these are private):
+```scala
+inline trait A(x: Int)
+
+class C extends A(10):
+  val y = x // error: Not Found Error
+```
+
 - Inlined members of inline traits are typed with the type of the right hand side resulting from inlining. This is particularly important for typeclass instances:
 ```scala
 inline trait A[T: Numeric]:
@@ -234,10 +242,12 @@ This problem is addressed via `Specialized` traits; see the accompanying documen
 |--------------------------|----------------------------------------------|
 | Methods                  | ✅                                           |
 | `val` / `var` Properties | ✅                                           |
+| Private properies |              ❌                              | <!-- TODO: Surely this is less than ideal - see inline-trait-body-private-name-collision.scala -->
 | `type`s                  | ✅                                           |
-| Inner classes            | ❌                                           |
+| Inner classes/traits            | ❌                                    |
 | Opaque types             | ❌                                           |
-| Self types               | ❌                                            
+| Self types               | ❌                                           |
+| Inheritance (of inline traits) | Only allowed by classes and inline traits | 
 
 ## Processing of inline traits in the compiler
 Inline traits in user code are inlined in the phase `specializeInlineTraits`. The phase `replaceInlinedTraitSymbols`
