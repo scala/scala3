@@ -8,4 +8,5 @@ inline trait C[S: Specialized]:
 inline trait A[T: Specialized]:
    def x(y: C[T]): Unit = println("x")
 
-class B extends A[Char]
+def main = 
+   val b = new A[Char] {}

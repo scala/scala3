@@ -32,6 +32,10 @@ import dotty.tools.dotc.core.Flags.GivenOrImplicit
 import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.transform.DesugarSpecializedTraits.isSpecializationOf
+import dotty.tools.dotc.report
+import dotty.tools.dotc.transform.DesugarSpecializedTraits.isImplementationOf
+import dotty.tools.dotc.core.Flags.InlineTrait
 
 class DesugarSpecializedTraits extends MacroTransform:
 
@@ -252,8 +256,20 @@ class DesugarSpecializedTraits extends MacroTransform:
             transformedDef.symbol.info = mapType(transformedDef.symbol.info)
             transformedDef
 
-          // TODO: Fix the Bar extends Foo case. Avoid updating the parents that we want to keep the same.
           case impl@Template(constr, preParentsOrDerived, self, _) => 
+            impl.parents.foreach(p => 
+              p.tpe match {
+               case Specialization(spec) if 
+                spec.hasSpecializedParams 
+                && !impl.symbol.owner.isAnonymousClass // impl.symbol = the dummy class; owner is the actual class.
+                && !isSpecializationOf(impl.symbol.typeRef, p.tpe, allowImplementationClass = true)
+                && !isImplementationOf(impl.symbol.owner.name, p.tpe.typeSymbol.name)
+                && !impl.symbol.owner.isOneOf(InlineTrait) =>
+                  report.error("Specialized traits may only be extended by anonymous class instances or inline traits.", impl.srcPos)
+                case _ => 
+              }
+            )
+
             cpy.Template(impl)(body = impl.body.map(transform(_)))
           case tree => super.transform(tree)
         }
@@ -329,15 +345,29 @@ object DesugarSpecializedTraits:
     generateName(specialization, str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
 
   // TODO: Put this somewhere else; consider if we want to do it like this?
-  def isSpecializationOf(type1: Type, type2: Type)(using Context) = 
+  def isSpecializationOf(type1: Type, type2: Type, allowImplementationClass: Boolean = false)(using Context) = 
     type2 match {
       case Specialization(spec) => type1 match {
-        case AppliedType(tp, args) => 
+        case AppliedType(tp, args) =>
           tp.typeSymbol.name == newSpecializedTraitName(spec)
+          || (allowImplementationClass && tp.typeSymbol.name == newImplementationClassName(spec))
+        case tp: TypeRef => 
+          (tp.typeSymbol.name.toString.contains(newSpecializedTraitName(spec).toString) && 
+          tp.symbol.owner.name == newSpecializedTraitName(spec))
+          || 
+          (allowImplementationClass &&
+          tp.typeSymbol.name.toString.contains(newImplementationClassName(spec).toString) && 
+          tp.symbol.owner.name == newImplementationClassName(spec)
+          )
         case _ => false
       }
       case _ => false
     }
+
+  // TODO: Maybe make consistent with the isSpecializationOf function
+  def isImplementationOf(name1: Name, name2: Name)(using Context) = 
+    name1.toString().replace(str.SPECIALIZED_TRAIT_IMPL_SUFFIX, str.SPECIALIZED_TRAIT_SUFFIX) == name2.toString()
+
 end DesugarSpecializedTraits
 /*
   Stores the specializations we have found in the program and the symbols for the interface traits and implementation classes
@@ -412,14 +442,7 @@ end SpecializedTraitCache
 
 /* Represents an application traitSymbol[typeArguments] */
 class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(using Context): // TODO: Can we get away with List[Type]
-  object SpecializedEvidence {
-    def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
-      case AppliedType(tycon, List(tpeArg)) if tycon =:= ctx.definitions.SpecializedClass.typeRef => Some(tpeArg)
-      case _ => None
-    }
-  }
-
-  val specializedTypeParams: List[Type] = traitSymbol.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
+  val specializedTypeParams: List[Type] = Specialization.classSpecializedTypeParams(traitSymbol)
   
   private val specializedTypeParamsSet = specializedTypeParams.toSet
   private val paramToArgList = traitSymbol.typeParams.map(_.typeRef.asInstanceOf[Type]).zip(typeArguments)
@@ -456,6 +479,13 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(usi
 end Specialization
 
 object Specialization:
+  private object SpecializedEvidence {
+    def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
+      case AppliedType(tycon, List(tpeArg)) if tycon =:= ctx.definitions.SpecializedClass.typeRef => Some(tpeArg)
+      case _ => None
+    }
+  }
+
   def unapply(tpt: Tree)(using Context): Option[Specialization] = tpt match {
     case AppliedTypeTree(specializedTrait: Ident, concreteTypeTrees: List[Tree]) => Some(Specialization(specializedTrait.denot.symbol, concreteTypeTrees))
     case t: TypeTree => Specialization.unapply(t.tpe)
@@ -466,6 +496,8 @@ object Specialization:
     case AppliedType(tycon: Type, args: List[Type]) => Some(Specialization(tycon.typeSymbol, args.map(TypeTree(_))))
     case _ => None
   }
+
+  def classSpecializedTypeParams(classSym: Symbol)(using Context): List[Type] = classSym.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
 end Specialization
 
 // Would be nice to define a Specialization class I think
@@ -581,3 +613,16 @@ end Specialization
 // like `Seq$sp$Int` is equal to its parameterized version `Seq[Int]`
 
 // Warning for dropping Specialized qualifier or it doesn't compile?
+// TODO: Make name consistent for tests.
+// TODO: In order to fix Foo extends Bar (banned for now)
+// //           case impl@Template(constr, preParentsOrDerived, self, _) => 
+//             cpy.Template(impl)(body = impl.body.map(transform(_)), 
+//             parents = // CAN POTENTIALLY MOVE THE OWNER CALL UP HERE. 
+//               impl.parents.map(p => if isSpecializationOf(impl.symbol.typeRef, p.tpe, allowImplementationClass = true) then {println(impl.symbol.typeRef); println(p.tpe); p} else transform(p)))
+//           case tree => super.transform(tree)
+//         }
+// Plus need another case in the normal map where you add sp trait as a parent as well as the original trait, AND update symbols. (or maybe switch to impl calss also possibhle).
+
+// end DesugarSpecializedTraits
+// Also delete the other members that already got inlined or maybe we don't care.
+// extend both traits
