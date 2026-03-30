@@ -20,10 +20,6 @@ addSbtPlugin("ch.epfl.scala" % "sbt-tasty-mima" % "1.0.0")
 
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.0")
 
-addSbtPlugin("com.gradle" % "sbt-develocity" % "1.3.1")
-
-addSbtPlugin("com.gradle" % "sbt-develocity-common-custom-user-data" % "1.1")
-
 addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.6")

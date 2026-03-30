@@ -1,14 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21920.scala:34:35 ---------------------------------------
 34 |  val cell: Cell[File] = File.open(f => Cell(() => Seq(f))) // error
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability cap outlives its scope: it leaks into outer capture set 's1 which is owned by an enclosing function.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by value cell.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: File^'s2) ->'s3 Cell[File^'s4]{val head: () ->'s5 IterableOnce[File^'s6]^'s7}^'s8
-   |Required: File^ => Cell[File^'s9]{val head: () ->'s10 IterableOnce[File^'s11]^'s12}^'s13
+   |Found:    (f: File^) ->'s2 Cell[File^{f}]{val head: () ->'s3 IterableOnce[File^{f}]^'s4}^'s5
+   |Required: File^ => Cell[File^'s1]{val head: () ->'s6 IterableOnce[File^]^'s7}^'s8
    |
-   |where:    =>  refers to a fresh root capability created in value cell when checking argument to parameter f of method open
-   |          ^   refers to the universal root capability
-   |          cap is a root capability associated with the result type of (): IterableOnce[File^'s1]^²
+   |where:    => refers to a root capability created in value cell when checking argument to parameter f of method open
+   |          ^  refers to the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`

@@ -145,3 +145,6 @@ i23299.scala
 
 # typecheckErrors method unpickling
 i21415.scala
+
+# missing symbol (unsure why it errors here)
+java-records

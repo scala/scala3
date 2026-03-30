@@ -1,23 +1,22 @@
 package dotty.tools.pc
 
 import scala.collection.mutable
-import scala.util.control.NonFatal
-
+import scala.meta.internal.pc.PcSymbolInformation
+import scala.meta.internal.pc.SymbolInfo
 import scala.meta.pc.PcSymbolKind
 import scala.meta.pc.PcSymbolProperty
+import scala.util.control.NonFatal
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Denotations.{Denotation, MultiDenotation}
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.pc.utils.InteractiveEnrichments.deepDealiasAndSimplify
 import dotty.tools.pc.SemanticdbSymbols
 import dotty.tools.pc.utils.InteractiveEnrichments.allSymbols
+import dotty.tools.pc.utils.InteractiveEnrichments.deepDealiasAndSimplify
 import dotty.tools.pc.utils.InteractiveEnrichments.stripBackticks
-import scala.meta.internal.pc.PcSymbolInformation
-import scala.meta.internal.pc.SymbolInfo
-import dotty.tools.dotc.core.Denotations.{Denotation, MultiDenotation}
 
 class SymbolInformationProvider(using Context):
 
@@ -34,20 +33,36 @@ class SymbolInformationProvider(using Context):
       case sym :: _ =>
         val classSym = if sym.isClass then sym else sym.moduleClass
         val parents =
-          if classSym.isClass
-          then classSym.asClass.parentSyms.map(SemanticdbSymbols.symbolName)
+          if classSym.isClass then
+            val classInfo = classSym.asClass
+            val parentSymbols = classInfo.parentSyms
+
+            val selfTypeParents =
+              val givenSelf = classInfo.givenSelfType
+              if givenSelf.isValueType then
+                givenSelf.classSymbols.filter(_ != classSym)
+              else
+                Nil
+
+            (selfTypeParents ++ parentSymbols).distinct.map(SemanticdbSymbols.symbolName)
           else Nil
         val allParents =
           val visited = mutable.Set[Symbol]()
-          def collect(sym: Symbol): Unit = {
+          def collect(sym: Symbol): Unit =
             visited += sym
             if sym.isClass
-            then sym.asClass.parentSyms.foreach {
-              case parent if !visited(parent) =>
+            then
+              sym.asClass.parentSyms.foreach {
+                case parent if !visited(parent) =>
                   collect(parent)
-              case _ =>
-            }
-          }
+                case _ =>
+              }
+              val givenSelf = sym.asClass.givenSelfType
+              if givenSelf.isValueType then
+                givenSelf.classSymbols.foreach { selfParent =>
+                  if !visited(selfParent) && selfParent != sym then
+                    collect(selfParent)
+                }
           collect(classSym)
           visited.toList.map(SemanticdbSymbols.symbolName)
         val dealisedSymbol =
@@ -122,7 +137,7 @@ object SymbolProvider:
 
     def loop(
         owners: List[Symbol],
-        parts: List[(String, Boolean)],
+        parts: List[(String, Boolean)]
     ): List[Symbol] =
       parts match
         case (head, isClass) :: tl =>

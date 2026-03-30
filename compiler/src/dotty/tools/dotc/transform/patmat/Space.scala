@@ -578,10 +578,11 @@ object SpaceEngine {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    var resTp0 = mt.resultType
-    if mt.isResultDependent then
-      resTp0 = ctx.typeAssigner.safeSubstParam(resTp0, mt.paramRefs.head, scrutineeTp)
-    val resTp = wildApprox(resTp0.finalResultType)
+    val resTp =
+      var resTp0 = mt.resultType
+      if mt.isResultDependent then
+        resTp0 = ctx.typeAssigner.safeSubstParam(resTp0, mt.paramRefs.head, scrutineeTp)
+      wildApprox(resTp0.finalResultType.stripNamedTuple)
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
@@ -602,7 +603,7 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos)
+            val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos).stripNamedTuple
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }

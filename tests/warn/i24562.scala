@@ -28,3 +28,15 @@ package aliased:
       import Wrap.* // warn! not a naming error because a benign alias
       val localBar = Bar() // not Wrap.Bar!
       val localNewBar = new Bar
+
+package i24879:
+  class C:
+    class D
+
+  class Baz:
+    val c = new C
+    export c.*
+
+  def test =
+    val baz = Baz()
+    baz.D() // no warn and no crash

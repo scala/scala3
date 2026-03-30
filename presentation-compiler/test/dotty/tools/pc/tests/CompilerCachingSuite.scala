@@ -1,25 +1,25 @@
 package dotty.tools.pc.tests
 
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.pc.base.BasePCSuite
-import dotty.tools.pc.ScalaPresentationCompiler
-import org.junit.{Before, Test}
+import java.nio.file.Paths
+import java.util.Collections
+import java.util.concurrent.CompletableFuture
 
+import scala.concurrent.Await
+import scala.concurrent.Future
+import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.metals.EmptyCancelToken
 import scala.meta.internal.metals.PcQueryContext
 import scala.meta.pc.OffsetParams
-import scala.meta.pc.reports.EmptyReportContext
-import scala.concurrent.Future
-import scala.concurrent.Await
 import scala.meta.pc.VirtualFileParams
-import scala.concurrent.duration.*
+import scala.meta.pc.reports.EmptyReportContext
 
-import java.util.Collections
-import java.nio.file.Paths
-import java.util.concurrent.CompletableFuture
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.pc.ScalaPresentationCompiler
+import dotty.tools.pc.base.BasePCSuite
 
+import org.junit.{Before, Test}
 
 class CompilerCachingSuite extends BasePCSuite:
 
@@ -30,17 +30,19 @@ class CompilerCachingSuite extends BasePCSuite:
       case pc: ScalaPresentationCompiler =>
         val compilations = pc.compilerAccess.withNonInterruptableCompiler(-1, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx.runId
-        }(emptyQueryContext).get(timeout.length, timeout.unit)
+        }(using emptyQueryContext).get(timeout.length, timeout.unit)
         assertEquals(expected, compilations, s"Expected $expected compilations but got $compilations")
-      case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
+      case _ =>
+        throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
   private def getContext(): Context =
     presentationCompiler match
       case pc: ScalaPresentationCompiler =>
         pc.compilerAccess.withNonInterruptableCompiler(null, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx
-        }(emptyQueryContext).get(timeout.length, timeout.unit)
-      case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
+        }(using emptyQueryContext).get(timeout.length, timeout.unit)
+      case _ =>
+        throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
   private def emptyQueryContext = PcQueryContext(None, () => "")(using EmptyReportContext())
 
@@ -58,7 +60,6 @@ class CompilerCachingSuite extends BasePCSuite:
     val dryRunContext = getContext()
     assert(freshContext != dryRunContext)
 
-
   @Test
   def `cursor-compilation-does-not-corrupt-cache`: Unit =
     val contextPreCompilation = getContext()
@@ -69,7 +70,8 @@ class CompilerCachingSuite extends BasePCSuite:
     assert(contextPreCompilation != contextPostFirst)
     checkCompilationCount(4)
 
-    val fakeParamsCursor = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = new", 15, EmptyCancelToken)
+    val fakeParamsCursor =
+      CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = new", 15, EmptyCancelToken)
     presentationCompiler.complete(fakeParamsCursor).get(timeout.length, timeout.unit)
     val contextPostCursor = getContext()
     assert(contextPreCompilation != contextPostCursor)
@@ -118,7 +120,6 @@ class CompilerCachingSuite extends BasePCSuite:
   @Test
   def `compilation-for-different-snippet-is-not-cached`: Unit =
 
-
     checkCompilationCount(3)
     val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = prin", 16, EmptyCancelToken)
     presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
@@ -132,8 +133,7 @@ class CompilerCachingSuite extends BasePCSuite:
     presentationCompiler.complete(fakeParams3).get(timeout.length, timeout.unit)
     checkCompilationCount(6)
 
-
-  private val testFunctions: List[OffsetParams => CompletableFuture[_]] = List(
+  private val testFunctions: List[OffsetParams => CompletableFuture[?]] = List(
     presentationCompiler.complete(_),
     presentationCompiler.convertToNamedArguments(_, Collections.emptyList()),
     presentationCompiler.autoImports("a", _, false),
@@ -149,7 +149,6 @@ class CompilerCachingSuite extends BasePCSuite:
     presentationCompiler.signatureHelp(_),
     presentationCompiler.typeDefinition(_)
   )
-
 
   @Test
   def `different-api-calls-reuse-cache`: Unit =

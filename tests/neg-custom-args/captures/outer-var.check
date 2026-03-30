@@ -4,9 +4,9 @@
    |        Found:    (q : () => Unit)
    |        Required: () ->{p, q²} Unit
    |
-   |        Note that capability q is not included in capture set {p, q²}.
+   |        Note that capability `q` cannot flow into capture set {p, q²}.
    |
-   |        where:    => refers to a fresh root capability in the type of parameter q
+   |        where:    => refers to a root capability in the type of parameter q
    |                  q  is a parameter in method inner
    |                  q² is a parameter in method test
    |
@@ -14,23 +14,23 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------
 13 |    x = (q: Proc)   // error
    |         ^^^^^^^
-   |         Found:    () => Unit
+   |         Found:    () ->{any} Unit
    |         Required: () ->{p, q} Unit
    |
-   |         Note that capability cap is not included in capture set {p, q}.
+   |         Note that capability `any` cannot flow into capture set {p, q}.
    |
-   |         where:    => and cap refer to a fresh root capability created in method inner
+   |         where:    any is a root capability created in method inner
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:9 -------------------------------------
 14 |    y = (q: Proc)   // error
    |         ^^^^^^^
-   |         Found:    () => Unit
+   |         Found:    () ->{any} Unit
    |         Required: () ->{p} Unit
    |
-   |         Note that capability cap cannot be included in capture set {p} of variable y.
+   |         Note that capability `any` cannot flow into capture set {p} of variable y.
    |
-   |         where:    => and cap refer to a fresh root capability created in method inner
+   |         where:    any is a root capability created in method inner
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:15:8 -------------------------------------
@@ -39,8 +39,8 @@
    |        Found:    (q : () => Unit)
    |        Required: () ->{p} Unit
    |
-   |        Note that capability q cannot be included in capture set {p} of variable y.
+   |        Note that capability `q` cannot flow into capture set {p} of variable y.
    |
-   |        where:    => refers to a fresh root capability in the type of parameter q
+   |        where:    => refers to a root capability in the type of parameter q
    |
    | longer explanation available when compiling with `-explain`

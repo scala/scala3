@@ -340,7 +340,7 @@ class ReplDriver(settings: Array[String],
         state
 
       case parsed: Parsed if parsed.trees.nonEmpty =>
-          compile(parsed, state)
+        compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)

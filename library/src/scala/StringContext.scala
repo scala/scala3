@@ -18,37 +18,37 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuilder
 
 /** This class provides the basic mechanism to do String Interpolation.
- * String Interpolation allows users
- * to embed variable references directly in *processed* string literals.
- * Here's an example:
- * {{{
+ *  String Interpolation allows users
+ *  to embed variable references directly in *processed* string literals.
+ *  Here's an example:
+ *  ```
  *   val name = "James"
  *   println(s"Hello, \$name")  // Hello, James
- * }}}
+ *  ```
  *
- * Any processed string literal is rewritten as an instantiation and
- * method call against this class.   For example:
- * {{{
+ *  Any processed string literal is rewritten as an instantiation and
+ *  method call against this class.   For example:
+ *  ```
  *   s"Hello, \$name"
- * }}}
+ *  ```
  *
- * is rewritten to be:
+ *  is rewritten to be:
  *
- * {{{
+ *  ```
  *   StringContext("Hello, ", "").s(name)
- * }}}
+ *  ```
  *
- * By default, this class provides the `raw`, `s` and `f` methods as
- * available interpolators.
+ *  By default, this class provides the `raw`, `s` and `f` methods as
+ *  available interpolators.
  *
- * To provide your own string interpolator, create an implicit class
- * which adds a method to `StringContext`.  Here's an example:
- * {{{
+ *  To provide your own string interpolator, create an implicit class
+ *  which adds a method to `StringContext`.  Here's an example:
+ *  ```
  *    implicit class JsonHelper(private val sc: StringContext) extends AnyVal {
  *      def json(args: Any*): JSONObject = ...
  *    }
  *    val x: JSONObject = json"{ a: \$a }"
- * }}}
+ *  ```
  *
  *  Here the `JsonHelper` extension class implicitly adds the `json` method to
  *  `StringContext` which can be used for `json` string literals.
@@ -68,17 +68,17 @@ case class StringContext(parts: String*) {
    *  It inserts its arguments between corresponding parts of the string context.
    *  It also treats standard escape sequences as defined in the Scala specification.
    *  Here's an example of usage:
-   *  {{{
+   *  ```
    *    val name = "James"
    *    println(s"Hello, \$name")  // Hello, James
-   *  }}}
+   *  ```
    *  In this example, the expression \$name is replaced with the `toString` of the
    *  variable `name`.
    *  The `s` interpolator can take the `toString` of any arbitrary expression within
    *  a `\${}` block, for example:
-   *  {{{
+   *  ```
    *    println(s"1 + 1 = \${1 + 1}")
-   *  }}}
+   *  ```
    *  will print the string `1 + 1 = 2`.
    *
    *  @param `args` The arguments to be inserted into the resulting string.
@@ -100,30 +100,30 @@ case class StringContext(parts: String*) {
      *
      *  Here is an example usage:
      *
-     *  {{{
+     *  ```
      *    val s"Hello, \$name" = "Hello, James"
      *    println(name)  // "James"
-     *  }}}
+     *  ```
      *
      *  In this example, the string "James" ends up matching the location where the pattern
      *  `\$name` is positioned, and thus ends up bound to that variable.
      *
      *  Multiple matches are supported:
      *
-     *  {{{
+     *  ```
      *    val s"\$greeting, \$name" = "Hello, James"
      *    println(greeting)  // "Hello"
      *    println(name)  // "James"
-     *  }}}
+     *  ```
      *
      *  And the `s` matcher can match an arbitrary pattern within the `\${}` block, for example:
      *
-     *  {{{
+     *  ```
      *    val TimeSplitter = "([0-9]+)[.:]([0-9]+)".r
      *    val s"The time is \${TimeSplitter(hours, mins)}" = "The time is 10.50"
      *    println(hours) // 10
      *    println(mins) // 50
-     *  }}}
+     *  ```
      *
      *  Here, we use the `TimeSplitter` regex within the `s` matcher, further splitting the
      *  matched string "10.50" into its constituent parts
@@ -138,14 +138,14 @@ case class StringContext(parts: String*) {
    *
    *  For example, the raw processed string `raw"a\nb"` is equal to the scala string `"a\\nb"`.
    *
-   *  ''Note:'' Even when using the raw interpolator, Scala will process Unicode escapes.
+   *  *Note:* Even when using the raw interpolator, Scala will process Unicode escapes.
    *  Unicode processing in the raw interpolator is deprecated as of scala 2.13.2 and
    *  will be removed in the future
    *  For example:
-   *  {{{
+   *  ```
    *    scala> raw"\u005cu0023"
    *    res0: String = #
-   *  }}}
+   *  ```
    *
    *  @param `args` The arguments to be inserted into the resulting string.
    *  @throws IllegalArgumentException
@@ -169,11 +169,11 @@ case class StringContext(parts: String*) {
    *  way they are treated in Java.
    *
    *  For example:
-   *  {{{
+   *  ```
    *    val height = 1.9d
    *    val name = "James"
    *    println(f"\$name%s is \$height%2.2f meters tall")  // James is 1.90 meters tall
-   *  }}}
+   *  ```
    *
    *  @param `args` The arguments to be inserted into the resulting string.
    *  @throws IllegalArgumentException
@@ -198,16 +198,15 @@ case class StringContext(parts: String*) {
 }
 
 object StringContext {
-  /**
-    * Linear time glob-matching implementation.
-    * Adapted from https://research.swtch.com/glob
-    *
-    * @param patternChunks The non-wildcard portions of the input pattern,
-    *                      separated by wildcards
-    * @param input The input you wish to match against
-    * @return `None` if there is no match, `Some` containing the sequence of matched
-    *         wildcard strings if there is a match 
-    */
+  /** Linear time glob-matching implementation.
+   *  Adapted from https://research.swtch.com/glob
+   *
+   *  @param patternChunks The non-wildcard portions of the input pattern,
+   *                      separated by wildcards
+   *  @param input The input you wish to match against
+   *  @return `None` if there is no match, `Some` containing the sequence of matched
+   *         wildcard strings if there is a match 
+   */
   def glob(patternChunks: Seq[String], input: String): Option[Seq[String]] = {
     var patternIndex = 0
     var inputIndex = 0
@@ -413,15 +412,15 @@ object StringContext {
    *  index of the first index of a backslash character followed by a `u`
    *  character
    *
-   * If a backslash is followed by one or more `u` characters and there is
-   * an odd number of backslashes immediately preceding the `u`, processing
-   * the escape is attempted and an invalid escape is an error.
-   * The odd backslashes rule is, well, odd, but is grandfathered in from
-   * pre-2.13.2 times, when this same rule existed in the scanner, and was also
-   * odd. Since escape handling here is for backwards compatibility only, that
-   * backwards compatibility is also retained.
-   * Otherwise, the backslash is not taken to introduce an escape and the
-   * backslash is taken to be literal
+   *  If a backslash is followed by one or more `u` characters and there is
+   *  an odd number of backslashes immediately preceding the `u`, processing
+   *  the escape is attempted and an invalid escape is an error.
+   *  The odd backslashes rule is, well, odd, but is grandfathered in from
+   *  pre-2.13.2 times, when this same rule existed in the scanner, and was also
+   *  odd. Since escape handling here is for backwards compatibility only, that
+   *  backwards compatibility is also retained.
+   *  Otherwise, the backslash is not taken to introduce an escape and the
+   *  backslash is taken to be literal
    */
   private def replaceU(str: String, backslash: Int): String = {
     val len = str.length()

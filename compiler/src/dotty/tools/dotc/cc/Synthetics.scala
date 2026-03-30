@@ -65,9 +65,9 @@ object Synthetics:
 
     /** Add capture dependencies to the type of the `apply` or `copy` method of a case class.
      *  An apply method in a case class like this:
-     *    case class CC(a: A^{d}, b: B, c: C^{cap})
+     *    case class CC(a: A^{d}, b: B, c: C^{any})
      *  would get type
-     *    def apply(a': A^{d}, b: B, c': C^{cap}): CC^{a', c'} { val a = A^{a'}, val c = C^{c'} }
+     *    def apply(a': A^{d}, b: B, c': C^{any}): CC^{a', c'} { val a = A^{a'}, val c = C^{c'} }
      *  where `'` is used to indicate the difference between parameter symbol and refinement name.
      *  Analogous for the copy method.
      */
@@ -112,7 +112,7 @@ object Synthetics:
       case _ =>
         info
 
-    /** Augment an unapply of type `(x: C): D` to `(x: C^{cap}): D^{x}` */
+    /** Augment an unapply of type `(x: C): D` to `(x: C^{any}): D^{x}` */
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
@@ -132,7 +132,7 @@ object Synthetics:
       val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      val paramCaptures = CaptureSet(enclThis, GlobalCap)
+      val paramCaptures = CaptureSet(enclThis, GlobalAny)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
         mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
@@ -150,7 +150,7 @@ object Synthetics:
     def transformCompareCaptures =
       val (enclThis: ThisType) = symd.owner.thisType: @unchecked
       MethodType(
-        defn.ObjectType.capturing(CaptureSet(GlobalCap, enclThis)) :: Nil,
+        defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis)) :: Nil,
         defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match

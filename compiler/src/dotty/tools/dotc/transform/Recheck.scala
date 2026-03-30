@@ -270,6 +270,9 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckSuper(tree: Super, pt: Type)(using Context): Type =
       tree.tpe
 
+    def recheckNew(tree: New, pt: Type)(using Context): Type =
+      tree.tpe
+
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
         recheck(body, pt)
@@ -392,10 +395,13 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
+    protected def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+      TypeOps.avoid(tp, symsToAvoid)
+
     private def recheckBlock(stats: List[Tree], expr: Tree, pt: Type)(using Context): Type =
       recheckStats(stats)
       val exprType = recheck(expr, pt)
-      TypeOps.avoid(exprType, localSyms(stats).filterConserve(_.isTerm))
+      avoidLocals(exprType, localSyms(stats).filterConserve(_.isTerm))
 
     def recheckBlock(tree: Block, pt: Type)(using Context): Type = tree match
       case Block((mdef : DefDef) :: Nil, closure: Closure) =>
@@ -439,7 +445,7 @@ abstract class Recheck extends Phase, SymTransformer:
       // for blocks since a case branch is of the form `return[MatchResultN] { ... }`
       // For source-level returns from methods, there's nothing to avoid, since the
       // result type of a method with a return must be given explicitly.
-      def avoidMap = new TypeOps.AvoidMap:
+      val avoidMap = new TypeOps.AvoidMap:
         def toAvoid(tp: NamedType) =
            tp.symbol.is(Case) && tp.symbol.owner.isContainedIn(ctx.owner)
 
@@ -563,7 +569,8 @@ abstract class Recheck extends Phase, SymTransformer:
         case tree: TypeApply => recheckTypeApply(tree, pt)
         case tree: This => recheckThis(tree, pt)
         case tree: Super => recheckSuper(tree, pt)
-        case _: New | _: Literal => tree.tpe
+        case tree: New => recheckNew(tree, pt)
+        case _: Literal => tree.tpe
         case tree: Typed => recheckTyped(tree)
         case tree: Assign => recheckAssign(tree)
         case tree: Block => recheckBlock(tree, pt)

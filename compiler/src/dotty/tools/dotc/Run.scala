@@ -296,7 +296,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.
    */
-  var ccEnabledSomewhere = Feature.enabledBySetting(Feature.captureChecking)(using ictx)
+  var ccEnabledSomewhere = Feature.ccEnabledBySetting(using ictx)
 
   private var myEnrichedErrorMessage = false
 

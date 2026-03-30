@@ -1,4 +1,4 @@
-import caps.{cap, Mutable}
+import caps.{any, Mutable}
 import language.experimental.captureChecking
 
 class Buffer[T] extends Mutable:

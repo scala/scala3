@@ -6,7 +6,7 @@ object Test {
   import colltest5.strawman.collections.*
   import CollectionStrawMan5.*
 
-  def seqOps(xs: Seq[Int]) = { // try with Seq[Int]^{cap}
+  def seqOps(xs: Seq[Int]) = { // try with Seq[Int]^{any}
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
     val isEven: Int => Boolean = _ % 2 == 0

@@ -58,7 +58,7 @@ extension (tree: Tree)
     case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
     case _ =>
       if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-      then defn.captureRoot.termRef
+      then defn.Caps_any.termRef
       else NoType
 
 extension (tp: Type)
@@ -70,10 +70,14 @@ extension (tp: Type)
       tp1.toCapability.readOnly
     case OnlyCapability(tp1, cls) =>
       tp1.toCapability.restrict(cls)
-    case ref: TermRef if ref.isCapRef =>
-      GlobalCap
+    case ref: TermRef if ref.isCapsAnyRef =>
+      GlobalAny
+    case ref: TermRef if ref.isCapsFreshRef =>
+      GlobalFresh
     case ref: Capability if ref.isTrackableRef =>
       ref
+    case ref: TermRef if ref.isLocalMutable =>
+      ref.mapLocalMutable
     case _ =>
       // if this was compiled from cc syntax, problem should have been reported at Typer
       throw IllegalCaptureRef(tp)
@@ -101,7 +105,12 @@ extension (tp: Type)
 
   /** A list of capabilities of a retained set. */
   def retainedElements(using Context): List[Capability] =
-    retainedElementsRaw.map(_.toCapability)
+    retainedElementsRaw.flatMap: elem =>
+      elem match
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+          refs.elems.toList
+        case _ =>
+          elem.toCapability :: Nil
 
   /** Is this type a Capability that can be tracked?
    *  This is true for
@@ -115,7 +124,7 @@ extension (tp: Type)
       !tp.underlying.exists // might happen during construction of lambdas with annotations on parameters
       ||
         ((tp.prefix eq NoPrefix)
-        || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
+        || tp.symbol.isField && tp.prefix.isPrefixOfTrackableRef
         ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
@@ -124,6 +133,11 @@ extension (tp: Type)
       || tp.derivesFrom(defn.Caps_CapSet)
     case _ =>
       false
+
+  private def isPrefixOfTrackableRef(using Context): Boolean =
+    isTrackableRef || tp.match
+      case tp: TermRef => tp.symbol.is(Package)
+      case _ => false
 
   /** The capture set of a type. This is:
     *   - For object capabilities: The singleton capture set consisting of
@@ -143,7 +157,7 @@ extension (tp: Type)
    *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
    *  a singleton capability `x` or a reach capability `x*`, the deep capture
    *  set can be narrowed to`{x*}`.
-   *  @param includeTypevars  if true, return a new FreshCap for every type parameter
+   *  @param includeTypevars  if true, return a new LocalCap for every type parameter
    *                          or abstract type with an Any upper bound. Types with
    *                          defined upper bound are always mapped to the dcs of their bound
    *  @param includeBoxed     if true, include capture sets found in boxed parts of this type
@@ -341,9 +355,16 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Is this a reference to caps.cap? Note this is _not_ the GlobalCap capability. */
-  def isCapRef(using Context): Boolean = tp match
-    case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
+  /** Is this a reference to caps.any? Note this is _not_ the GlobalAny capability. */
+  def isCapsAnyRef(using Context): Boolean = tp match
+    case tp: TermRef =>
+         tp.name == nme.any && tp.symbol == defn.Caps_any
+      || tp.name == nme.cap && tp.symbol == defn.Caps_cap
+    case _ => false
+
+  /** Is this a reference to caps.any? Note this is _not_ the GlobalFresh capability. */
+  def isCapsFreshRef(using Context): Boolean = tp match
+    case tp: TermRef => tp.name == nme.fresh && tp.symbol == defn.Caps_fresh
     case _ => false
 
   /** Knowing that `tp` is a function type, is it an alias to a function other
@@ -407,7 +428,7 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
-  /** If `x` is a capability, replace all no-flip covariant occurrences of `cap`
+  /** If `x` is a capability, replace all no-flip covariant occurrences of `any`
    *  in type `tp` with `x*`.
    */
   def withReachCaptures(ref: Type)(using Context): Type = ref match
@@ -417,7 +438,7 @@ extension (tp: Type)
         def apply(t: Type) =
           if variance <= 0 then t
           else t.dealias match
-            case t @ CapturingType(p, cs) if cs.containsCapOrFresh =>
+            case t @ CapturingType(p, cs) if cs.containsGlobalOrLocalCap =>
               val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
               if reachRef.singletonCaptureSet.mightSubcapture(cs) then
                 change = true
@@ -442,20 +463,31 @@ extension (tp: Type)
       tp
   end withReachCaptures
 
-  /** Does this type contain no-flip covariant occurrences of `cap`? */
-  def containsCap(using Context): Boolean =
-    val acc = new TypeAccumulator[Boolean]:
+  private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
+    val search = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
-        x
-        || variance > 0 && t.dealiasKeepAnnots.match
-          case t @ CapturingType(p, cs) if cs.containsCap =>
+        if x then true
+        else if variance <= 0 then false
+        else if directly && defn.isFunctionSymbol(t.typeSymbol) then false
+        else t match
+          case CapturingType(_, refs) if refs.elems.exists(_.core == c) =>
             true
           case t @ AnnotatedType(parent, ann) =>
             // Don't traverse annotations, which includes capture sets
             this(x, parent)
           case _ =>
             foldOver(x, t)
-    acc(false, tp)
+    search(false, tp)
+
+  /** Does this type contain no-flip covariant occurrences of `any`? */
+  def containsGlobalAny(using Context): Boolean =
+    containsGlobal(GlobalAny, directly = false)
+
+  /** Does `tp` contain contain no-flip covariant occurrences of `fresh` directly,
+   *  which are not in the result of some function type?
+   */
+  def containsGlobalFreshDirectly(using Context): Boolean =
+    containsGlobal(GlobalFresh, directly = true)
 
   def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
     RefinedType.precise(tp, name, rinfo)
@@ -488,10 +520,16 @@ extension (tp: Type)
     if tp.isArrayUnderStrictMut then defn.Caps_Unscoped
     else tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
-extension (tp: MethodType)
+extension (tp: MethodOrPoly)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
     !tp.resType.isInstanceOf[MethodOrPoly]
+
+extension (ref: TermRef | ThisType)
+  /** Map a local mutable var to its mirror */
+  def mapLocalMutable(using Context): TermRef | ThisType = ref match
+    case ref: TermRef if ref.isLocalMutable => ref.symbol.varMirror.termRef
+    case _ => ref
 
 extension (cls: ClassSymbol)
 
@@ -666,6 +704,16 @@ extension (sym: Symbol)
   def isArrayUnderStrictMut(using Context): Boolean =
     sym == defn.ArrayClass && ccConfig.strictMutability
 
+  def isDisallowedInCapset(using Context): Boolean =
+    sym.isOneOf(if ccConfig.strictMutability then Method else UnstableValueFlags)
+
+  def varMirror(using Context): Symbol =
+    ccState.varMirrors.getOrElseUpdate(sym,
+      sym.copy(
+        flags = Flags.EmptyFlags,
+        info = defn.Caps_Var.typeRef.appliedTo(sym.info)
+            .capturing(LocalCap(sym, Origin.InDecl(sym)))))
+
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match
@@ -673,8 +721,7 @@ extension (tp: AnnotatedType)
     case _ => false
 
 /** A prototype that indicates selection */
-class PathSelectionProto(val select: Select, val pt: Type) extends typer.ProtoTypes.WildcardSelectionProto:
-  def selector(using Context): Symbol = select.symbol
+class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
 
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into retains annotations with Nothing (i.e. empty set) as

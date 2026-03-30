@@ -4,7 +4,7 @@
    |                                         Found:    () ->{t} () ->{io} String
    |                                         Required: () -> () ->{io} String
    |
-   |                                         Note that capability t is not included in capture set {}.
+   |                                         Note that capability `t` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:34:41 ------------------------------------
@@ -13,7 +13,7 @@
    |                                         Found:    () ->{t} String
    |                                         Required: () -> String
    |
-   |                                         Note that capability t is not included in capture set {}.
+   |                                         Note that capability `t` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:36:41 ------------------------------------
@@ -22,7 +22,7 @@
    |                                         Found:    () ->{c} String
    |                                         Required: () ->{c.console} String
    |
-   |                                         Note that capability c is not included in capture set {c.console}.
+   |                                         Note that capability `c` cannot flow into capture set {c.console}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:37:41 ------------------------------------
@@ -31,7 +31,7 @@
    |                                         Found:    () ->{t} String
    |                                         Required: () -> String
    |
-   |                                         Note that capability t is not included in capture set {}.
+   |                                         Note that capability `t` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:40:28 ------------------------------------
@@ -40,7 +40,7 @@
    |                            Found:    () ->{t, c} String
    |                            Required: () ->{c} String
    |
-   |                            Note that capability t is not included in capture set {c}.
+   |                            Note that capability `t` cannot flow into capture set {c}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:41:30 ------------------------------------
@@ -49,7 +49,7 @@
    |                              Found:    () ->{t, c} String
    |                              Required: () ->{t} String
    |
-   |                              Note that capability c is not included in capture set {t}.
+   |                              Note that capability `c` cannot flow into capture set {t}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals5.scala:61:55 ------------------------------------
@@ -58,7 +58,7 @@
    |                         Found:    () ->{t2, c2} String
    |                         Required: () ->{c2.memberLazy, t2.memberLazy²} String
    |
-   |                         Note that capability t2 is not included in capture set {c2.memberLazy, t2.memberLazy²}.
+   |                         Note that capability `t2` cannot flow into capture set {c2.memberLazy, t2.memberLazy²}.
    |
    |                         where:    memberLazy  is a lazy value in class Clazz2
    |                                   memberLazy² is a lazy value in trait Trait2

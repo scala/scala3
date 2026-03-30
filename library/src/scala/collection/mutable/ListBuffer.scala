@@ -24,20 +24,20 @@ import scala.collection.generic.DefaultSerializable
 import scala.runtime.Statics.releaseFence
 
 /** A `Buffer` implementation backed by a list. It provides constant time
-  *  prepend and append. Most other operations are linear.
-  *
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#list-buffers "Scala's Collection Library overview"]]
-  *  section on `List Buffers` for more information.
-  *
-  *  @tparam A    the type of this list buffer's elements.
-  *
-  *  @define Coll `ListBuffer`
-  *  @define coll list buffer
-  *  @define orderDependent
-  *  @define orderDependentFold
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *  prepend and append. Most other operations are linear.
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#list-buffers)
+ *  section on `List Buffers` for more information.
+ *
+ *  @tparam A    the type of this list buffer's elements.
+ *
+ *  @define Coll `ListBuffer`
+ *  @define coll list buffer
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 @SerialVersionUID(-8428291952499836345L)
 class ListBuffer[A]
   extends AbstractBuffer[A]
@@ -95,9 +95,9 @@ class ListBuffer[A]
   def result(): immutable.List[A] = toList
 
   /** Prepends the elements of this buffer to a given list
-    *
-    *  @param xs   the list to which elements are prepended
-    */
+   *
+   *  @param xs   the list to which elements are prepended
+   */
   def prependToList(xs: List[A]): List[A] = {
     if (isEmpty) xs
     else {
@@ -181,8 +181,8 @@ class ListBuffer[A]
   }
 
   /** Reduces the length of the buffer, and nulls out last0
-    *  if this reduces the length to 0.
-    */
+   *  if this reduces the length to 0.
+   */
   private def reduceLengthBy(num: Int): Unit = {
     len -= num
     if (len <= 0)   // obviously shouldn't be < 0, but still better not to leak
@@ -389,22 +389,20 @@ class ListBuffer[A]
     this
   }
 
-  /**
-   * Selects the last element.
+  /** Selects the last element.
    *
-   * Runs in constant time.
+   *  Runs in constant time.
    *
-   * @return The last element of this $coll.
-   * @throws NoSuchElementException If the $coll is empty.
+   *  @return The last element of this $coll.
+   *  @throws NoSuchElementException If the $coll is empty.
    */
   override def last: A = if (last0 eq null) throw new NoSuchElementException("last of empty ListBuffer") else last0.head
 
-  /**
-   * Optionally selects the last element.
+  /** Optionally selects the last element.
    *
-   * Runs in constant time.
+   *  Runs in constant time.
    *
-   * @return the last element of this $coll$ if it is nonempty, `None` if it is empty.
+   *  @return the last element of this $coll$ if it is nonempty, `None` if it is empty.
    */
   override def lastOption: Option[A] = if (last0 eq null) None else Some(last0.head)
 

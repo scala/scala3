@@ -280,10 +280,9 @@ final class DoubleAccumulator
     ans
   }
 
-  /**
-   * Copies the elements in this `DoubleAccumulator` to a specified collection.
-   * Note that the target collection is not specialized.
-   * Usage example: `acc.to(Vector)`
+  /** Copies the elements in this `DoubleAccumulator` to a specified collection.
+   *  Note that the target collection is not specialized.
+   *  Usage example: `acc.to(Vector)`
    */
   override def to[C1](factory: Factory[Double, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

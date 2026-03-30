@@ -1,0 +1,60 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:14:38 -------------------------------------
+14 |  private val later1 = usingLogFile { f => () => f.write() } // error
+   |                                      ^^^^^^^^^^^^^^^^^^^^
+   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by value later1.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: Test2.File^) ->'s2 () ->{f} Unit
+   |Required: Test2.File^ => () ->'s1 Unit
+   |
+   |where:    => refers to a root capability created in value later1 when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:15:38 -------------------------------------
+15 |  private val later2 = usingLogFile { f => Box(f) } // error
+   |                                      ^^^^^^^^^^^
+   |Capability `f` outlives its scope: it leaks into outer capture set 's3 which is owned by value later2.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: Test2.File^) ->'s4 Test2.Box[Test2.File^{f}]^'s5
+   |Required: Test2.File^ => Test2.Box[Test2.File^'s3]^'s6
+   |
+   |where:    => refers to a root capability created in value later2 when checking argument to parameter op of method usingLogFile
+   |          ^  refers to the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:17:9 --------------------------------------
+17 |    f => () => f.write() // error
+   |         ^^^^^^^^^^^^^^^
+   |Found:    () ->{f} Unit
+   |Required: () ->{any} Unit
+   |
+   |Note that capability `f` cannot flow into capture set {any}
+   |because (f : Test2.File^) in an enclosing function is not visible from any in value later3.
+   |
+   |where:    ^   refers to a root capability created in anonymous function of type (f²: Test2.File^²): () => Unit of parameter parameter f of method $anonfun
+   |          any is a root capability created in value later3
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/withFile.scala:19:12 -------------------------------------
+19 |    f => Box(f) // error
+   |         ^^^^^^
+   |Found:    Test2.Box[Test2.File^{f}]^'s7
+   |Required: Test2.Box[Test2.File^{any}]
+   |
+   |Note that capability `f` cannot flow into capture set {any}
+   |because (f : Test2.File^) in an enclosing function is not visible from any in value later4.
+   |
+   |where:    ^   refers to a root capability created in anonymous function of type (f²: Test2.File^²): Test2.Box[Test2.File^²] of parameter parameter f of method $anonfun
+   |          any is a root capability created in value later4
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/withFile.scala:16:20 ----------------------------------------------------------
+16 |  private val later3 = usingLogFile[() => Unit]: // error
+   |                    ^
+   |           value later3 needs an explicit type because it captures a root capability in its type () => Unit.
+   |           Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |           subsumed by the computed capability of the enclosing class.
+   |
+   |           where:    => refers to a root capability in the type of value later3

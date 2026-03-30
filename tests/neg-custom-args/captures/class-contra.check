@@ -4,6 +4,6 @@
    |                                        Found:    (a : T^{x, y})
    |                                        Required: T^{k.f}
    |
-   |                                        Note that capability x is not included in capture set {k.f}.
+   |                                        Note that capability `x` cannot flow into capture set {k.f}.
    |
    | longer explanation available when compiling with `-explain`

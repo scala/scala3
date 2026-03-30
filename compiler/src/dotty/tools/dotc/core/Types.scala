@@ -920,7 +920,7 @@ object Types extends TypeUtils {
             pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
           else
             val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = CCState.withCollapsedFresh:
+            val joint = CCState.withCollapsedLocalCaps:
                 // We have to do a collapseFresh here since `pdenot` will see the class
                 // view and a fresh in the class will not be able to subsume a
                 // refinement from outside since level checking would fail.
@@ -1961,14 +1961,6 @@ object Types extends TypeUtils {
      */
     def ignoreSelectionProto(using Context): Type = this
 
-    /** If this is an AndType, the number of factors, 1 for all other types */
-    def andFactorCount: Int = 1
-
-    /** If this is a OrType, the number of factors if that match `soft`,
-     *  1 for all other types.
-     */
-    def orFactorCount(soft: Boolean): Int = 1
-
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to
@@ -2486,7 +2478,7 @@ object Types extends TypeUtils {
       util.Stats.record("NamedType.computeDenot")
 
       def finish(d: Denotation) = {
-        if (d.exists)
+        if d.exists then
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
@@ -3336,15 +3328,6 @@ object Types extends TypeUtils {
     override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
       PreciseRefinedType(parent, refinedName, refinedInfo)
 
-  /** Used for refined function types created at cc/Setup that come from original
-   *  generic function types. Function types of this class don't get their result
-   *  captures mapped from FreshCaps to ResultCaps with toResult.
-   */
-  class InferredRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
-  extends RefinedType(parent, refinedName, refinedInfo):
-    override def newLikeThis(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
-      InferredRefinedType(parent, refinedName, refinedInfo)
-
   object RefinedType {
     @tailrec def make(parent: Type, names: List[Name], infos: List[Type])(using Context): Type =
       if (names.isEmpty) parent
@@ -3358,10 +3341,6 @@ object Types extends TypeUtils {
     def precise(parent: Type, name: Name, info: Type)(using Context): RefinedType =
       assert(!ctx.erasedTypes)
       unique(new PreciseRefinedType(parent, name, info)).checkInst
-
-    def inferred(parent: Type, name: Name, info: Type)(using Context): RefinedType =
-      assert(!ctx.erasedTypes)
-      unique(new InferredRefinedType(parent, name, info)).checkInst
   }
 
   /** A recursive type. Instances should be constructed via the companion object.
@@ -3577,12 +3556,6 @@ object Types extends TypeUtils {
       myBaseClasses
     }
 
-    private var myFactorCount = 0
-    override def andFactorCount =
-      if myFactorCount == 0 then
-        myFactorCount = tp1.andFactorCount + tp2.andFactorCount
-      myFactorCount
-
     def derivedAndType(tp1: Type, tp2: Type)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType.make(tp1, tp2, checkValid = true)
@@ -3612,22 +3585,26 @@ object Types extends TypeUtils {
       expectValueTypeOrWildcard(tp2, where)
       unchecked(tp1, tp2)
 
-    def balanced(tp1: Type, tp2: Type)(using Context): AndType =
-      tp1 match
-        case AndType(tp11, tp12) if tp1.andFactorCount > tp2.andFactorCount * 2 =>
-          if tp11.andFactorCount < tp12.andFactorCount then
-            return apply(tp12, balanced(tp11, tp2))
-          else
-            return apply(tp11, balanced(tp12, tp2))
-        case _ =>
-      tp2 match
-        case AndType(tp21, tp22) if tp2.andFactorCount > tp1.andFactorCount * 2 =>
-          if tp22.andFactorCount < tp21.andFactorCount then
-            return apply(balanced(tp1, tp22), tp21)
-          else
-            return apply(balanced(tp1, tp21), tp22)
-        case _ =>
-      apply(tp1, tp2)
+    def balanced(tp1: Type, tp2: Type)(using Context): Type =
+      def size(tp: Type): Int = tp match
+        case AndType(l, r) => size(l) + size(r)
+        case _ => 1
+
+      def iterator(tp: Type): Iterator[Type] = tp match
+        case AndType(l, r) => iterator(l) ++ iterator(r)
+        case _ => Iterator.single(tp)
+
+      def build(count: Int, it: Iterator[Type]): Type =
+        if count == 1 then it.next()
+        else
+          val leftSize = count / 2
+          val rightSize = count - leftSize
+          apply(build(leftSize, it), build(rightSize, it))
+
+      val size1 = size(tp1)
+      val size2 = size(tp2)
+      if Math.abs(size1 - size2) <= 1 then apply(tp1, tp2)
+      else build(size1 + size2, iterator(tp1) ++ iterator(tp2))
 
     def unchecked(tp1: Type, tp2: Type)(using Context): AndType = {
       assertUnerased()
@@ -3673,14 +3650,6 @@ object Types extends TypeUtils {
       }
       myBaseClasses
     }
-
-    private var myFactorCount = 0
-    override def orFactorCount(soft: Boolean) =
-      if this.isSoft == soft then
-        if myFactorCount == 0 then
-          myFactorCount = tp1.orFactorCount(soft) + tp2.orFactorCount(soft)
-        myFactorCount
-      else 1
 
     private var myJoin: Type = uninitialized
     private var myJoinPeriod: Period = Nowhere
@@ -3770,22 +3739,26 @@ object Types extends TypeUtils {
       unique(new CachedOrType(tp1, tp2, soft))
     }
 
-    def balanced(tp1: Type, tp2: Type, soft: Boolean)(using Context): OrType =
-      tp1 match
-        case OrType(tp11, tp12) if tp1.orFactorCount(soft) > tp2.orFactorCount(soft) * 2 =>
-          if tp11.orFactorCount(soft) < tp12.orFactorCount(soft) then
-            return apply(tp12, balanced(tp11, tp2, soft), soft)
-          else
-            return apply(tp11, balanced(tp12, tp2, soft), soft)
-        case _ =>
-      tp2 match
-        case OrType(tp21, tp22) if tp2.orFactorCount(soft) > tp1.orFactorCount(soft) * 2 =>
-          if tp22.orFactorCount(soft) < tp21.orFactorCount(soft) then
-            return apply(balanced(tp1, tp22, soft), tp21, soft)
-          else
-            return apply(balanced(tp1, tp21, soft), tp22, soft)
-        case _ =>
-      apply(tp1, tp2, soft)
+    def balanced(tp1: Type, tp2: Type, soft: Boolean)(using Context): Type =
+      def size(tp: Type): Int = tp match
+        case o@OrType(l, r) if o.isSoft == soft => size(l) + size(r)
+        case _ => 1
+
+      def iterator(tp: Type): Iterator[Type] = tp match
+        case o@OrType(l, r) if o.isSoft == soft => iterator(l) ++ iterator(r)
+        case _ => Iterator.single(tp)
+
+      def build(count: Int, it: Iterator[Type]): Type =
+        if count == 1 then it.next()
+        else
+          val leftSize = count / 2
+          val rightSize = count - leftSize
+          apply(build(leftSize, it), build(rightSize, it), soft)
+
+      val size1 = size(tp1)
+      val size2 = size(tp2)
+      if Math.abs(size1 - size2) <= 1 then apply(tp1, tp2, soft)
+      else build(size1 + size2, iterator(tp1) ++ iterator(tp2))
 
     def make(tp1: Type, tp2: Type, soft: Boolean)(using Context): Type =
       if (tp1 eq tp2) tp1
@@ -4241,7 +4214,7 @@ object Types extends TypeUtils {
             case Reach(c1) =>
               apply(c1) match
                 case tp1a: ObjectCapability if tp1a.isTrackableRef => tp1a.reach
-                case _ => GlobalCap
+                case _ => GlobalAny
             case _ => super.mapCapability(c, deep)
         }
         dropDependencies(resultType)
@@ -6282,6 +6255,11 @@ object Types extends TypeUtils {
     /** Fuse with another map */
     def fuse(next: BiTypeMap)(using Context): Option[TypeMap] = None
 
+    /** A summarization to be used to describe capture sets resulting from this map
+     *  in cc diagnostics.
+     */
+    def summarize(using Context): String = getClass.toString
+
   end BiTypeMap
 
   /** A typemap that follows non-opaque aliases and keeps their transformed
@@ -6388,9 +6366,9 @@ object Types extends TypeUtils {
         null
 
     def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
-      case c @ FreshCap(prefix) =>
+      case c @ LocalCap(prefix) =>
         // If `pre` is not a path, transform it to a path starting with a skolem TermRef.
-        // We create at most one such skolem per FreshCap/context owner pair.
+        // We create at most one such skolem per LocalCap/context owner pair.
         // This approximates towards creating fewer skolems than otherwise needed,
         // which means we might get more separation conflicts than otherwise. But
         // it's not clear we will get such conflicts anyway.
@@ -6404,7 +6382,7 @@ object Types extends TypeUtils {
                 val skolem = pre.narrow(ctx.owner)
                 c.skolems = c.skolems.updated(ctx.owner, skolem)
                 skolem
-        c.derivedFreshCap(ensurePath(apply(prefix)))
+        c.derivedLocalCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
       case Reach(c1) =>
         mapCapability(c1, deep = true)
@@ -7140,10 +7118,13 @@ object Types extends TypeUtils {
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(n, tp.superType)
         case tp: TypeParamRef =>
-          val bounds = TypeComparer.bounds(tp)
-          val loSize = apply(n, bounds.lo)
-          val hiSize = apply(n, bounds.hi)
-          hiSize max loSize
+          if seen.contains(tp) then n
+          else
+            seen += tp
+            val bounds = TypeComparer.bounds(tp)
+            val loSize = apply(n, bounds.lo)
+            val hiSize = apply(n, bounds.hi)
+            hiSize max loSize
         case tp: LazyRef =>
           if seen.contains(tp) then n
           else

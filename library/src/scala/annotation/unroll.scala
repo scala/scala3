@@ -9,6 +9,6 @@ import language.experimental.captureChecking
  * through code generation of hidden forwarder methods (but visible in the binary API).
  *
  * Read more about parameter unrolling, and the usage of `@unroll` in the reference documentation:
- * https://dotty.epfl.ch/docs/reference/experimental/unrolled-defs.html
+ * https://nightly.scala-lang.org/docs/reference/experimental/unrolled-defs.html
  */
 final class unroll extends scala.annotation.StaticAnnotation

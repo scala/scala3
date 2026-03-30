@@ -26,7 +26,7 @@ import caps.unsafe.untrackedCaptures
  *  framework in their implementation.
  *
  *  Example usage,
- * {{{
+ *  ```
  *    extension [Repr, I <: IsIterableOnce[Repr]](coll: Repr)(using it: I) {
  *      final def filterMap[B, That](f: it.A => Option[B])(using bf: BuildFrom[Repr, B, That]): That = {
  *        val b = bf.newBuilder(coll)
@@ -37,7 +37,7 @@ import caps.unsafe.untrackedCaptures
  *
  *    List(1, 2, 3, 4, 5).filterMap(i => if(i % 2 == 0) Some(i) else None)
  *    // == List(2, 4)
- * }}}
+ *  ```
  */
 transparent trait IsIterableOnce[Repr] {
 

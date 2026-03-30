@@ -23,4 +23,4 @@
    |  Footprint set of second argument      : {io}
    |  The two sets overlap at               : {io}
    |
-   |where:    => refers to a fresh root capability created in method test when checking argument to parameter op1 of method par
+   |where:    => refers to a root capability created in method test when checking argument to parameter op1 of method par

@@ -8,7 +8,7 @@ date: 2020-02-05
 
 Hello! We are excited to announce 0.22.0-RC1 of Dotty. This version brings syntactic enhancements for extension methods and context parameters, as well as the kind projector syntax. Other notable changes include type-level arithmetic, changes to the `inline` parameters semantics and suggestions on missing context parameters.
 
-You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://dotty.epfl.ch/) and scrolling down to the "Create a Dotty Project" section.
+You can try out this version right now, from the comfort of your SBT, by visiting the [home page](https://nightly.scala-lang.org/) and scrolling down to the "Create a Dotty Project" section.
 
 Alternatively, you can try this version of Scala online via [Scastie](https://scastie.scala-lang.org/). Once you're there, click "Build Settings" and set "Target" to "Dotty".
 
@@ -55,7 +55,7 @@ println(s"Third: ${list.third}")  // 3
 
 This syntax is a completely separate one from the `given` syntax and hence is aimed to bring more clarity and disentangle the two different concepts.
 
-For the discussion, see [PR #7917](https://github.com/scala/scala3/pull/7917). For more information on how to use extension methods in general and collective extension methods in particular, see the [documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html).
+For the discussion, see [PR #7917](https://github.com/scala/scala3/pull/7917). For more information on how to use extension methods in general and collective extension methods in particular, see the [documentation](https://nightly.scala-lang.org/docs/reference/contextual/extension-methods.html).
 
 # Kind projector syntax support
 [Kind projector](https://github.com/typelevel/kind-projector) is a popular compiler plugin for Scala 2. It is especially useful in the context of purely functional programming and type class derivation – everywhere where you need to work extensively with types.
@@ -127,7 +127,7 @@ As opposed to the previous:
 f(2)(given 20)
 ```
 
-For the time being, the change is experimental and the old syntax is also supported. For the discussion, see [PR #8162](https://github.com/scala/scala3/pull/8162). You can browse the documentation concerning the new syntax [here](https://dotty.epfl.ch/docs/reference/contextual/motivation-new.html).
+For the time being, the change is experimental and the old syntax is also supported. For the discussion, see [PR #8162](https://github.com/scala/scala3/pull/8162). You can browse the documentation concerning the new syntax [here](https://nightly.scala-lang.org/docs/reference/contextual/motivation-new.html).
 
 # Semantics of inline parameters changed
 Inline parameters is a metaprogramming feature of Dotty which allows to splice the body of the parameter on its call site. Previously, inline parameters to methods were required to be known on compile time. With this release, this constraint has been relaxed. The following:
@@ -171,7 +171,7 @@ private def powerCode(x: Expr[Double], n: Expr[Int])(given QuoteContext): Expr[D
 
 You can obtain the constant value of `n` from within the macro implementation by calling `n.getValue` on it which returns an `Option`. This change was introduced by [PR #8061](https://github.com/scala/scala3/pull/8061).
 
-For more information about the inline capability of Dotty, see [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html).
+For more information about the inline capability of Dotty, see [documentation](https://nightly.scala-lang.org/docs/reference/metaprogramming/inline.html).
 
 # Primitive compiletime operations on singleton types
 Contributed by [Maxime Kjaer](https://github.com/MaximeKjaer), this release brings along type-level arithmetic:
@@ -194,7 +194,7 @@ The compile-time error above will say:
 
 This feature is particularly useful for data science applications. In data science, it is very easy to make a linear algebra mistake, multiply matrices of wrong dimensions and get a runtime error – sometimes after a few hours of running the model. Hence compile-time verification of the models has a great potential for saving time. With such a type-level arithmetic, Scala becomes well-positioned to implement such type-safe data science frameworks.
 
-For the discussion, see [PR #7628](https://github.com/scala/scala3/pull/7628). The documentation is available [here](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html#the-scalacompiletimeops-package).
+For the discussion, see [PR #7628](https://github.com/scala/scala3/pull/7628). The documentation is available [here](https://nightly.scala-lang.org/docs/reference/metaprogramming/inline.html#the-scalacompiletimeops-package).
 
 # Suggestions on missing context parameters
 If there's a compile-time error due to a missing context parameter and this error can be fixed with an import, the compiler will attempt to suggest such an import in the error message. Here is an example of how this error looks like:
@@ -215,7 +215,7 @@ One area where these suggestions will make life easier is purely functional prog
 For the discussion, see [PR #7862](https://github.com/scala/scala3/pull/7862).
 
 # TASTy Inspector library
-TASTy Consumer was renamed to TASTy Inspector as of this release. It was also published in a library of its own. For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/tasty-inspect.html) on this library.
+TASTy Consumer was renamed to TASTy Inspector as of this release. It was also published in a library of its own. For more information, see the [documentation](https://nightly.scala-lang.org/docs/reference/metaprogramming/tasty-inspect.html) on this library.
 
 # Let us know what you think!
 
@@ -266,7 +266,7 @@ According to `git shortlog -sn --no-merges 0.21.0-RC1..0.22.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

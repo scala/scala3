@@ -17,20 +17,18 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j.SemanticTokenModifiers
 import org.eclipse.lsp4j.SemanticTokenTypes
 
-/**
- *  Provides semantic tokens of file(@param params)
- *  according to the LSP specification.
+/** Provides semantic tokens of file(@param params) according to the LSP
+ *  specification.
  */
 final class PcSemanticTokensProvider(
     driver: InteractiveDriver,
     params: VirtualFileParams
 ):
-  /**
-   * Declaration is set for:
-   * 1. parameters,
-   * 2. defs/vals/vars without rhs,
-   * 3. type parameters,
-   * In all those cases we don't have a specific value for sure.
+  /** Declaration is set for:
+   *    1. parameters,
+   *    2. defs/vals/vars without rhs,
+   *    3. type parameters, In all those cases we don't have a specific value
+   *       for sure.
    */
   private def isDeclaration(tree: Tree | EndMarker) = tree match
     case df: ValOrDefDef => df.rhs.isEmpty
@@ -40,14 +38,13 @@ final class PcSemanticTokensProvider(
         case _ => df.rhs.isEmpty
     case _ => false
 
-  /**
-   * Definition is set for:
-   * 1. defs/vals/vars/type with rhs.
-   * 2. pattern matches
+  /** Definition is set for:
+   *    1. defs/vals/vars/type with rhs.
+   *    2. pattern matches
    *
-   * We don't want to set it for enum cases despite the fact
-   * that the compiler sees them as vals, as it's not clear
-   * if they should be declaration/definition at all.
+   *  We don't want to set it for enum cases despite the fact that the compiler
+   *  sees them as vals, as it's not clear if they should be
+   *  declaration/definition at all.
    */
   private def isDefinition(tree: Tree | EndMarker) = tree match
     case _: EndMarker => true
@@ -65,10 +62,10 @@ final class PcSemanticTokensProvider(
         parent: Option[Tree]
     )(tree: Tree | EndMarker, pos: SourcePosition, symbol: Option[Symbol]): Option[Node] =
       val sym =
-         tree match
-           case tree: Tree =>
-             symbol.fold(tree.symbol)(identity)
-           case EndMarker(sym) => sym
+        tree match
+          case tree: Tree =>
+            symbol.fold(tree.symbol)(identity)
+          case EndMarker(sym) => sym
       if !pos.exists || sym == NoSymbol then None
       else
         Some(
@@ -79,8 +76,6 @@ final class PcSemanticTokensProvider(
             isDeclaration = isDeclaration(tree)
           )
         )
-    end collect
-  end Collector
 
   given Context = Collector.ctx
 
@@ -129,7 +124,7 @@ final class PcSemanticTokensProvider(
         if sym.isGetter | sym.isSetter then
           getTypeId(SemanticTokenTypes.Variable)
         else getTypeId(SemanticTokenTypes.Method) // "def"
-      else if sym.isTerm && sym.info.typeSymbol.is(Flags.Module)  then
+      else if sym.isTerm && sym.info.typeSymbol.is(Flags.Module) then
         getTypeId(SemanticTokenTypes.Class) // "class"
       else if sym.isTerm &&
         (!sym.is(Flags.Param) || sym.is(Flags.ParamAccessor))

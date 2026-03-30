@@ -12,7 +12,7 @@ object ScaladocGeneration {
     def serialize: String =
       value match {
         case s: String => s"$key ${escape(s)}"
-        case true => s"$key"
+        case value: Boolean => s"$key:$value"
         case list: List[_] => s"$key:${list.map(x => escape(x.toString)).mkString(",")}"
         case _ =>
           println(s"Unsupported setting: $key -> $value")
@@ -143,6 +143,10 @@ object ScaladocGeneration {
 
   case class SuppressCC(value: Boolean) extends Arg[Boolean] {
     def key: String = "-suppressCC"
+  }
+
+  case class GenerateAPI(value: Boolean) extends Arg[Boolean] {
+    def key: String = "-Ygenerate-api"
   }
 
   import _root_.scala.reflect._

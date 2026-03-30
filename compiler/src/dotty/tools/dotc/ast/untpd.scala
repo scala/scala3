@@ -534,7 +534,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     Select(Select(scalaDot(nme.caps), nme.internal), name)
 
   def captureRoot(using Context): Select =
-    Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
+    Select(scalaDot(nme.caps), nme.any)
 
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     var annot: Tree = scalaAnnotationDot(annotName)
@@ -554,6 +554,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
       annot.putAttachment(RetainsAnnot, ())
     Annotated(parent, annot)
+
+  def getRetainsAnnot(tree: Tree): Tree = tree match
+    case Annotated(parent, annot) if annot.hasAttachment(RetainsAnnot) => annot
+    case _ => EmptyTree
+
+  def isEmptyRetainsAnnot(annot: Tree)(using Context): Boolean = annot match
+    case New(AppliedTypeTree(annot, TypedSplice(tpt: TypeTree) :: Nil)) =>
+      tpt.tpe.isNothingType
+    case _ =>
+      false
 
   def makeReachAnnot()(using Context): Tree =
     New(scalaAnnotationInternalDot(tpnme.reachCapability), Nil :: Nil)

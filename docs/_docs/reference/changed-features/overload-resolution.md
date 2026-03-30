@@ -46,6 +46,10 @@ This change is motivated by the new language feature
 [extension methods](../contextual/extension-methods.md), where emerges the need to do
 overload resolution based on additional argument blocks.
 
+Note that extension methods do not compete with member methods when extension syntax is used.
+Contrarily, since extension methods can be called using ordinary method call syntax,
+in the case of ambiguity, the member method will be preferred.
+
 ## Parameter Types of Function Values
 
 The handling of function values with missing parameter types has been improved. We can now

@@ -108,9 +108,10 @@ object TypeTestsCasts {
         //
         // If we perform widening, we will get X = Nothing, and we don't have
         // Ident[X] <:< Ident[Int] any more.
-        TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = true)
+        val forceInvariantRefinement = !tycon.classSymbol.is(Trait)
+        TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = forceInvariantRefinement)
         debug.println(
-          TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = true))
+          TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = forceInvariantRefinement))
         )
       }
 

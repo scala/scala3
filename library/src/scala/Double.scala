@@ -232,7 +232,7 @@ object Double extends AnyValCompanion {
 
   /** Transforms a value type into a boxed reference type.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToDouble`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToDouble`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the Double to be boxed
    *  @return     a java.lang.Double offering `x` as its underlying value.
@@ -243,11 +243,11 @@ object Double extends AnyValCompanion {
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Double.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToDouble`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToDouble`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the java.lang.Double to be unboxed.
-   *  @throws     ClassCastException  if the argument is not a java.lang.Double
    *  @return     the Double resulting from calling doubleValue() on `x`
+   *  @throws     ClassCastException  if the argument is not a java.lang.Double
    */
   def unbox(x: java.lang.Object): Double = ???
 

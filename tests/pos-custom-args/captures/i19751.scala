@@ -1,12 +1,12 @@
 import language.experimental.captureChecking
-import caps.{cap, Shared, SharedCapability}
+import caps.{any, Shared, SharedCapability}
 
 trait Ptr[A]
 trait Scope extends caps.SharedCapability:
   def allocate(size: Int): Ptr[Unit]^{this}
 
 object Scope:
-  def confined[A](fn: Scope ?->{cap.only[Shared]} A): A =
+  def confined[A](fn: Scope ?->{any.only[Shared]} A): A =
     val scope = new Scope:
       def allocate(size: Int) = new Ptr[Unit] {}
     fn(using scope)

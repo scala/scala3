@@ -15,7 +15,9 @@ object CaptureDefs:
   def CapsModule(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredPackage("scala.caps")
   def captureRoot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredPackage("scala.caps.cap")
+    qctx.reflect.Symbol.requiredPackage("scala.caps." + captureRootName)
+  def freshCap(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredPackage("scala.caps." + freshCapName)
   def Caps_Capability(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.caps.Capability")
   def Caps_CapSet(using qctx: Quotes) =
@@ -57,6 +59,8 @@ object CaptureDefs:
   val useAnnotFullName: String = "scala.caps.use.<init>"
   val consumeAnnotFullName: String = "scala.caps.consume.<init>"
   val ccImportSelector = "captureChecking"
+  val captureRootName = "any"
+  val freshCapName = "fresh"
 end CaptureDefs
 
 extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
@@ -82,9 +86,20 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
   def isCaptureRoot: Boolean =
     import qctx.reflect.*
     tpe match
-      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), "cap") => true
-      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), "cap") => true
-      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), "cap") => true
+      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), CaptureDefs.captureRootName) => true
+      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), CaptureDefs.captureRootName) => true
+      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), CaptureDefs.captureRootName) => true
+      case _ => false
+
+  // Recognizes `caps.fresh` — the existentially-bound capability for function type
+  // results (see scoped-capabilities.md). Analogous to `isCaptureRoot` for `caps.cap`.
+  // Matches all prefix variants the compiler may produce in TASTY.
+  def isFreshCap: Boolean =
+    import qctx.reflect.*
+    tpe match
+      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), CaptureDefs.freshCapName) => true
+      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), CaptureDefs.freshCapName) => true
+      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), CaptureDefs.freshCapName) => true
       case _ => false
 
   // NOTE: There's something horribly broken with Symbols, and we can't rely on tests like .isContextFunctionType either,

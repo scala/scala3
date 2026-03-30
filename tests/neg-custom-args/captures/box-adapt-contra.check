@@ -6,10 +6,10 @@
 -- Error: tests/neg-custom-args/captures/box-adapt-contra.scala:13:57 --------------------------------------------------
 13 |  val f1: (Cap^{c} => Unit) ->{c} Unit = useCap1[Cap^{c}](c)  // error, was ok when cap was a root
    |                                         ^^^^^^^^^^^^^^^^^^^
-   |            Cap^{c} => Unit cannot be box-converted to Cap^{c} ->{cap, c} Unit
+   |            Cap^{c} => Unit cannot be box-converted to Cap^{c} ->{any, c} Unit
    |            since the additional capture set {c} resulting from box conversion is not allowed in Cap^{c} => Unit
    |
-   |            where:    => and cap refer to the universal root capability
+   |            where:    => and any refer to the root capability caps.any
 -- Error: tests/neg-custom-args/captures/box-adapt-contra.scala:19:54 --------------------------------------------------
 19 |  val f3: (Cap^{c} -> Unit) => Unit = useCap3[Cap^{c}](c)  // error
    |                                      ^^^^^^^^^^^^^^^^^^^

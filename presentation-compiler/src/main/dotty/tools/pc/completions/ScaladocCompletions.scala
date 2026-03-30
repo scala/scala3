@@ -98,7 +98,6 @@ object ScaladocCompletions:
       associatedDef = None
       traverse(root)
       associatedDef
-    end findAssociatedDef
   end AssociatedMemberDefFinder
 
   extension (defn: MemberDef)

@@ -31,20 +31,20 @@ import scala.language.`2.13`
     * external command can be as simple as `"ls".!`, or as complex as building a
     * pipeline of commands such as this:
     *
-    * {{{
+    * ```
     * import scala.sys.process._
     * "ls" #| "grep .scala" #&& Seq("sh", "-c", "scalac *.scala") #|| "echo nothing found" lazyLines
-    * }}}
+    * ```
     *
     * We describe below the general concepts and architecture of the package,
     * and then take a closer look at each of the categories mentioned above.
     *
-    * ==Concepts and Architecture==
+    * ## Concepts and Architecture
     *
     * The underlying basis for the whole package is Java's `Process` and
     * `ProcessBuilder` classes. While there's no need to use these Java classes,
     * they impose boundaries on what is possible. One cannot, for instance,
-    * retrieve a ''process id'' for whatever is executing.
+    * retrieve a *process id* for whatever is executing.
     *
     * When executing an external process, one can provide a command's name,
     * arguments to it, the directory in which it will be executed and what
@@ -70,7 +70,7 @@ import scala.language.`2.13`
     * another, they'll be executed simultaneously, and each will be passed a
     * `ProcessIO` that will copy the output of one to the input of the other.
     *
-    * ==What to Run and How==
+    * ## What to Run and How
     *
     * The central component of the process execution DSL is the
     * [[scala.sys.process.ProcessBuilder]] trait. It is `ProcessBuilder` that
@@ -104,7 +104,7 @@ import scala.language.`2.13`
     *   - The `Process` representing it (`run` methods)
     *
     * Some simple examples of these methods:
-    * {{{
+    * ```
     * import scala.sys.process._
     *
     * // This uses ! to get the exit code
@@ -119,12 +119,12 @@ import scala.language.`2.13`
     *   val cmd = Seq("find", baseDir, "-name", "*.scala", "-type", "f")
     *   cmd.lazyLines
     * }
-    * }}}
+    * ```
     *
     * We'll see more details about controlling I/O of the process in the next
     * section.
     *
-    * ==Handling Input and Output==
+    * ## Handling Input and Output
     *
     * In the underlying Java model, once a `Process` has been started, one can
     * get `java.io.InputStream` and `java.io.OutputStream` representing its
@@ -154,7 +154,7 @@ import scala.language.`2.13`
     *   - This package object itself, with a few implicit conversions.
     *
     * Some examples of I/O handling:
-    * {{{
+    * ```
     * import scala.sys.process._
     *
     * // An overly complex way of computing size of a compressed file
@@ -178,7 +178,7 @@ import scala.language.`2.13`
     *   val lazyLines = cmd lazyLines_! ProcessLogger(buffer append _)
     *   (lazyLines, buffer)
     * }
-    * }}}
+    * ```
     *
     * Instances of the java classes `java.io.File` and `java.net.URL` can both
     * be used directly as input to other processes, and `java.io.File` can be
@@ -186,17 +186,17 @@ import scala.language.`2.13`
     * without any intervening process, though that's not a design goal or
     * recommended usage. For example, the following code will copy a web page to
     * a file:
-    * {{{
+    * ```
     * import java.io.File
     * import java.net.URL
     * import scala.sys.process._
     * new URL("https://www.scala-lang.org/") #> new File("scala-lang.html") !
-    * }}}
+    * ```
     *
     * More information about the other ways of controlling I/O can be found
     * in the Scaladoc for the associated objects, traits and classes.
     *
-    * ==Running the Process==
+    * ## Running the Process
     *
     * Paradoxically, this is the simplest component of all, and the one least
     * likely to be interacted with. It consists solely of

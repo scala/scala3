@@ -41,7 +41,7 @@ abstract class MockEntries:
             ScalaSymbolDocumentation(
               param.name,
               param.name,
-              s"Found documentation for type param ${param.name}\n",
+              s"Found documentation for type param ${param.name}\n"
             )
           .asJava,
         params
@@ -50,7 +50,7 @@ abstract class MockEntries:
               param.name,
               param.name,
               s"Found documentation for param ${param.name}\n",
-              param.defaultValue,
+              param.defaultValue
             )
           )
           .asJava

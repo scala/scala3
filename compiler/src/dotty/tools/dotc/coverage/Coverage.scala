@@ -8,7 +8,7 @@ import java.nio.file.Path
 class Coverage:
   private val statementsById = new mutable.LongMap[Statement](256)
 
-  private var _nextStatementId: Int = 1
+  private var _nextStatementId: Int = 0
 
   def nextStatementId(): Int = _nextStatementId
   def setNextStatementId(id: Int): Unit = _nextStatementId = id

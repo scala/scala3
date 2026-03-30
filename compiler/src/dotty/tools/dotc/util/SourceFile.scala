@@ -20,9 +20,8 @@ import dotty.tools.dotc.util.chaining.*
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.{FileSystemException, NoSuchFileException, Paths}
+import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
 object ScriptSourceFile {
@@ -264,7 +263,7 @@ object SourceFile {
 
   /** Returns the relative path of `source` within the `reference` path
    *
-   *  It returns the absolute path of `source` if it is not contained in `reference`.
+   *  It returns the current path under `source.file.jpath` if it is not contained in `reference`.
    */
   def relativePath(source: SourceFile, reference: String): String = {
     val file = source.file
@@ -295,7 +294,7 @@ object SourceFile {
         val path = refPath.relativize(sourcePath)
         path.iterator.asScala.mkString("/")
       else
-        sourcePath.toString
+        jpath.toString
   }
 
   /** Return true if file is a script:

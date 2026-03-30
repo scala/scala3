@@ -1,16 +1,3 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-curried-par.scala:23:32 ------------------------------
-23 |  val bar = (p1: () => Unit) => (p2: () ->{p1, cap} Unit) => par(p1, p2) // error, but error message could be better
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                Capability p1 defined in an enclosing function outlives its scope:
-   |                                it leaks into outer capture set 's1 which is owned by value bar.
-   |                                The leakage occurred when trying to match the following types:
-   |
-   |                                Found:    (p2: () ->{p1, cap} Unit) ->{p1} Unit
-   |                                Required: (() ->'s2 Unit) ->'s1 Unit
-   |
-   |                                where:    cap is the universal root capability
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:6:48 ----------------------------------------------------
 6 |def parCurriedBad(p1: () => Unit): (() => Unit) => Unit = // error: consume failure
   |                                   ^^^^^^^^^^^^^^^^^^^^
@@ -31,15 +18,15 @@
    |  Footprint set of second argument      : {p}
    |  The two sets overlap at               : {p}
    |
-   |where:    =>  refers to a fresh root capability in the type of value p
-   |          =>² refers to a fresh root capability created in method test when checking argument to parameter p1 of method par
+   |where:    =>  refers to a root capability in the type of value p
+   |          =>² refers to a root capability created in method test when checking argument to parameter p1 of method par
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:18:16 ---------------------------------------------------
 18 |  parCurried(p)(p) // error: consume failure
    |                ^
    |Separation failure: Illegal access to (p : () => Unit), which was passed as a consume parameter to method parCurried
    |on line 18 and therefore is no longer available.
    |
-   |where:    => refers to a fresh root capability in the type of value p
+   |where:    => refers to a root capability in the type of value p
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:21:9 ----------------------------------------------------
 21 |  foo(c)(c) // error: separation
    |         ^
@@ -55,5 +42,39 @@
    |  Footprint set of function prefix      : {c}
    |  The two sets overlap at               : {c}
    |
-   |where:    =>  refers to a fresh root capability in the type of parameter c
-   |          =>² refers to a fresh root capability created in method test when checking argument to parameter v1 of method apply
+   |where:    =>  refers to a root capability in the type of parameter c
+   |          =>² refers to a root capability created in method test when checking argument to parameter v1 of method apply
+-- Error: tests/neg-custom-args/captures/sep-curried-par.scala:23:65 ---------------------------------------------------
+23 |  val bar = (p1: () => Unit) => (p2: () ->{p1, any} Unit) => par(p1, p2) // error separation
+   |                                                                 ^^
+   |Separation failure: argument of type  (p1 : () => Unit)
+   |to method par: (p1: () => Unit, p2: () => Unit): Unit
+   |corresponds to capture-polymorphic formal parameter p1 of type  () =>² Unit
+   |and hides capabilities  {p1}.
+   |Some of these overlap with the captures of the second argument with type  (p2 : () ->{p1, any} Unit).
+   |
+   |  Hidden set of current argument        : {p1}
+   |  Hidden footprint of current argument  : {p1}
+   |  Capture set of second argument        : {p2}
+   |  Footprint set of second argument      : {p2, p1}
+   |  The two sets overlap at               : {p1}
+   |
+   |where:    =>  refers to a root capability in the type of parameter p1
+   |          =>² refers to a root capability created in anonymous function of type (p2²: () ->{p1, any} Unit): Unit when checking argument to parameter p1 of method par
+-- Error: tests/neg-custom-args/captures/sep-curried-par.scala:24:9 ----------------------------------------------------
+24 |  bar(c)(c) // error separation
+   |         ^
+   |Separation failure: argument of type  (c : () => Unit)
+   |to a function of type (() => Unit) ->{c} Unit
+   |corresponds to capture-polymorphic formal parameter v1 of type  () =>² Unit
+   |and hides capabilities  {c}.
+   |Some of these overlap with the captures of the function prefix.
+   |
+   |  Hidden set of current argument        : {c}
+   |  Hidden footprint of current argument  : {c}
+   |  Capture set of function prefix        : {c}
+   |  Footprint set of function prefix      : {c}
+   |  The two sets overlap at               : {c}
+   |
+   |where:    =>  refers to a root capability in the type of parameter c
+   |          =>² refers to a root capability created in method test when checking argument to parameter v1 of method apply

@@ -13,5 +13,5 @@ class Foo[T](val x: T)
 type BoxedLazyVal[T] = Foo[LazyVal[T]]
 
 def force[A](v: BoxedLazyVal[A]): A =
-  // Γ ⊢ v.x : □ {cap} Unit -> A
+  // Γ ⊢ v.x : □ {any} Unit -> A
   v.x(unit)  // error: (unbox v.x)(unit), was ok under the sealed policy

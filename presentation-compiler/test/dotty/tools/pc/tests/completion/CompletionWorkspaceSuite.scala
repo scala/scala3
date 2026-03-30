@@ -182,7 +182,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
         |import java.util.concurrent.CompletableFuture
         |object Main extends CompletableFuture[$0]
         |""".stripMargin,
-        assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `replace` =
@@ -195,7 +195,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
         |import java.util.concurrent.CompletableFuture
         |object Main extends CompletableFuture[$0]
         |""".stripMargin,
-        assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `block1` =
@@ -309,7 +309,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       filter = _.contains("java.util"),
-      assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `type` =
@@ -328,7 +328,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       filter = _.contains("scala.util"),
-      assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `partial-function` =
@@ -811,7 +811,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|fooBar: String
          |fooBar - test.A: List[Int]
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `type-apply` =
@@ -828,7 +828,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|MyType(m: Long): MyType - demo.other
          |MyType - demo.other
-         """.stripMargin,
+         """.stripMargin
     )
 
   @Test def `type-apply2` =
@@ -845,7 +845,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|MyType(m: Long): MyType - demo.other
          |MyType - demo.other
-      """.stripMargin,
+      """.stripMargin
     )
 
   @Test def `method-name-conflict` =
@@ -945,5 +945,5 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |package b:
          |  val i = Uniq@@
          |""".stripMargin,
-         "UniqueObject(): UniqueObject - a"
+      "UniqueObject(): UniqueObject - a"
     )

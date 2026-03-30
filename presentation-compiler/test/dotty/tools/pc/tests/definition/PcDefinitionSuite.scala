@@ -1,8 +1,8 @@
 package dotty.tools.pc.tests.definition
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BasePcDefinitionSuite
 import dotty.tools.pc.utils.MockEntries
@@ -29,7 +29,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       MockLocation("scala/Predef.Ensuring#ensuring(+3).", "Predef.scala"),
       MockLocation("scala/collection/immutable/List#`::`().", "List.scala"),
       MockLocation("scala/package.List.", "package.scala"),
-      MockLocation("scala/collection/immutable/Vector.", "Vector.scala"),
+      MockLocation("scala/collection/immutable/Vector.", "Vector.scala")
     )
 
   override def definitions(offsetParams: OffsetParams): List[Location] =
@@ -530,7 +530,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |  extension (i: MyIntOut) def <<uneven>> = i.value % 2 == 1
          |
          |val a = MyIntOut(1).un@@even
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `named-tuples` =

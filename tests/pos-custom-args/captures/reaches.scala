@@ -37,7 +37,7 @@ def cons(x: Proc, xs: List[Proc]): List[() ->{x, xs*} Unit] =
 def addOneProc(consume xs: List[Proc]): List[Proc] =
   val x: Proc = () => println("hello")
   val result: List[() ->{x, xs*} Unit] = x :: xs
-  result // OK, we can widen () ->{x, xs*} Unit to cap here.
+  result // OK, we can widen () ->{x, xs*} Unit to any here.
 
 def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))

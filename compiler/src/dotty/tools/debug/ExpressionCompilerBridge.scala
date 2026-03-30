@@ -1,11 +1,7 @@
 package dotty.tools.debug
 
 import java.nio.file.Path
-import java.util.function.Consumer
-import java.{util => ju}
-import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.Driver
 

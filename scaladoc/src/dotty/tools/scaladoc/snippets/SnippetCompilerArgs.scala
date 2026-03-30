@@ -14,16 +14,16 @@ enum SCFlags(val flagName: String):
   case NoCompile extends SCFlags("nocompile")
   case Fail extends SCFlags("fail")
 
-case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], defaultFlag: SCFlags):
+case class SnippetCompilerArgs(scArgs: PathBased[SnippetCompilerArg], defaultFlag: SCFlags):
   def get(member: Member): SnippetCompilerArg =
     member.sources
-      .flatMap(s => scFlags.get(s.path).map(_.elem))
-      .fold(SnippetCompilerArg(defaultFlag))(SnippetCompilerArg(_))
+      .flatMap(s => scArgs.get(s.path).map(_.elem))
+      .getOrElse(SnippetCompilerArg(defaultFlag))
 
   def get(path: Option[Path]): SnippetCompilerArg =
     path
-      .flatMap(p => scFlags.get(p).map(_.elem))
-      .fold(SnippetCompilerArg(defaultFlag))(SnippetCompilerArg(_))
+      .flatMap(p => scArgs.get(p).map(_.elem))
+      .getOrElse(SnippetCompilerArg(defaultFlag))
 
 
 object SnippetCompilerArgs:
@@ -33,8 +33,8 @@ object SnippetCompilerArgs:
     |
     |This setting accept list of arguments in format:
     |args := arg{,arg}
-    |arg := [path=]flag
-    |where `path` is a prefix of the path to source files where snippets are located and `flag` is the mode in which snippets will be type checked.
+    |arg := [path=]flag[|scalacOption]*
+    |where `path` is a prefix of the path to source files where snippets are located, `flag` is the mode in which snippets will be type checked, and optional `scalacOption`s (separated by `|`) are passed to the compiler.
     |
     |If the path is not present, the argument will be used as the default for all unmatched paths..
     |
@@ -46,7 +46,7 @@ object SnippetCompilerArgs:
     """.stripMargin
 
   def load(args: List[String], defaultFlag: SCFlags = SCFlags.NoCompile)(using CompilerContext): SnippetCompilerArgs = {
-    PathBased.parse[SCFlags](args)(using SCFlagsParser) match {
+    PathBased.parse[SnippetCompilerArg](args)(using SnippetCompilerArgParser) match {
       case PathBased.ParsingResult(errors, res) =>
         if errors.nonEmpty then report.warning(s"""
             |Got following errors during snippet compiler args parsing:
@@ -60,8 +60,13 @@ object SnippetCompilerArgs:
   }
 
 object SCFlagsParser extends ArgParser[SCFlags]:
-  def parse(s: String): Either[String, SCFlags] = {
+  def parse(s: String): Either[String, SCFlags] =
     SCFlags.values
       .find(_.flagName == s)
       .fold(Left(s"$s: No such flag found."))(Right(_))
-  }
+
+object SnippetCompilerArgParser extends ArgParser[SnippetCompilerArg]:
+  def parse(s: String): Either[String, SnippetCompilerArg] =
+    val parts = s.split("\\|")
+    SCFlagsParser.parse(parts(0)).map: flag =>
+      SnippetCompilerArg(flag, parts.drop(1).toSeq)

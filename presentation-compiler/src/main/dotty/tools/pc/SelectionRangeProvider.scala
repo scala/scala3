@@ -3,11 +3,11 @@ package dotty.tools.pc
 import java.nio.file.Paths
 import java.util as ju
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 
-import dotty.tools.dotc.ast.untpd.*
 import dotty.tools.dotc.ast.NavigateAST
+import dotty.tools.dotc.ast.untpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -18,24 +18,22 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j
 import org.eclipse.lsp4j.SelectionRange
 
-/**
- * Provides the functionality necessary for the `textDocument/selectionRange` request.
+/** Provides the functionality necessary for the `textDocument/selectionRange`
+ *  request.
  *
- * @param compiler Metals Global presentation compiler wrapper.
- * @param params offset params converted from the selectionRange params.
+ *  @param compiler Metals Global presentation compiler wrapper.
+ *  @param params offset params converted from the selectionRange params.
  */
 class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetParams]):
 
-  /**
-   * Get the seletion ranges for the provider params
+  /** Get the seletion ranges for the provider params
    *
-   * @return selection ranges
+   *  @return selection ranges
    */
   def selectionRange(): List[SelectionRange] =
     given ctx: Context = driver.currentCtx
 
     params.asScala.toList.map { param =>
-
       val uri = param.uri().nn
       val text = param.text().nn
       val filePath = Paths.get(uri)
@@ -78,7 +76,9 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
     }
   end selectionRange
 
-  /** Given a tree, create a seq of [[SelectionRange]]s corresponding to that tree. */
+  /** Given a tree, create a seq of [[SelectionRange]]s corresponding to that
+   *  tree.
+   */
   private def selectionRangesFromTree(pos: SourcePosition)(tree: Tree)(using Context) =
     def toSelectionRange(srcPos: SourcePosition) =
       val selectionRange = new SelectionRange()
@@ -96,7 +96,7 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
         case list =>
           val srcPos = list.head.sourcePos
           val lastSpan = list.last.span
-          val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span union lastSpan, srcPos.outer)
+          val allArgsSrcPos = SourcePosition(srcPos.source, srcPos.span `union` lastSpan, srcPos.outer)
           maybeToSelectionRange(allArgsSrcPos)
 
     val allSelectionRanges: Iterable[SelectionRange] = tree match

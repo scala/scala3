@@ -416,6 +416,23 @@ C
 Class
 covtest.C
 new1
+291
+297
+21
+<init>
+Apply
+false
+0
+false
+new {}
+
+24
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+new1
 277
 285
 21
@@ -426,7 +443,7 @@ false
 false
 def new1
 
-24
+25
 SimpleMethods.scala
 covtest
 C
@@ -443,7 +460,7 @@ false
 false
 ()
 
-25
+26
 SimpleMethods.scala
 covtest
 C
@@ -460,7 +477,7 @@ true
 false
 ()
 
-26
+27
 SimpleMethods.scala
 covtest
 C
@@ -477,7 +494,7 @@ false
 false
 1
 
-27
+28
 SimpleMethods.scala
 covtest
 C
@@ -494,7 +511,7 @@ true
 false
 => 1
 
-28
+29
 SimpleMethods.scala
 covtest
 C

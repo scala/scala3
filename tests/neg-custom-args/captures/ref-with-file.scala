@@ -18,7 +18,7 @@ def Test =
   withFile: f => // error
     val r = Ref(f)
     r
-  withFile: f => // error
+  withFile: f => // was error now ok
     val r = Ref(f)
     ???
 

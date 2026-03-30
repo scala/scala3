@@ -7,7 +7,7 @@ import config.{Feature, SourceVersion}
 
 object ccConfig:
 
-  /** If enabled, cache capture sets of infos capabilties */
+  /** If enabled, cache capture sets of infos capabilities */
   inline val cacheCaptureSetOfInfo = false
 
   /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`
@@ -48,13 +48,13 @@ object ccConfig:
    */
   inline val useSpanCapset = false
 
-  /** If true, do level checking for FreshCap instances */
-  def useFreshLevels(using Context): Boolean =
+  /** If true, do level checking for LocalCap instances */
+  def useLocalCapLevels(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using ctx: Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
 
   /** Allow @use annotations */
   def allowUse(using Context): Boolean =
@@ -65,6 +65,6 @@ object ccConfig:
    *  Enabled under separation checking
    */
   def strictMutability(using Context): Boolean =
-    Feature.enabled(Feature.separationChecking)
+    Feature.enabled(Feature.separationChecking) || Feature.enabled(Feature.safe)
 
 end ccConfig

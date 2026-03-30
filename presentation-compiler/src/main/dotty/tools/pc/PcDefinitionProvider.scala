@@ -60,33 +60,31 @@ class PcDefinitionProvider(
     else result
   end definitions
 
-  /**
-   * Some nodes might disapear from the typed tree, since they are mostly
-   * used as syntactic sugar. In those cases we check the untyped tree
-   * and try to get the symbol from there, which might actually be there,
-   * because these are the same nodes that go through the typer.
+  /** Some nodes might disapear from the typed tree, since they are mostly used
+   *  as syntactic sugar. In those cases we check the untyped tree and try to
+   *  get the symbol from there, which might actually be there, because these
+   *  are the same nodes that go through the typer.
    *
-   * This will happen for:
-   * - `.. derives Show`
-   * @param unit compilation unit of the file
-   * @param pos cursor position
-   * @return definition result
+   *  This will happen for:
+   *    - `.. derives Show`
+   *  @param unit compilation unit of the file
+   *  @param pos cursor position
+   *  @return definition result
    */
   private def fallbackToUntyped(pos: SourcePosition, uri: URI)(
-    using ctx: Context
+      using ctx: Context
   ) =
     lazy val untpdPath = NavigateAST
       .untypedPath(pos.span)
       .collect { case t: untpd.Tree => t }
 
     definitionsForSymbols(untpdPath.headOption.map(_.symbol).toList, uri, pos)
-  end fallbackToUntyped
 
   private def findDefinitions(
       path: List[Tree],
       pos: SourcePosition,
       indexed: IndexedContext,
-      uri: URI,
+      uri: URI
   ): DefinitionResult =
     import indexed.ctx
     definitionsForSymbols(
@@ -94,13 +92,12 @@ class PcDefinitionProvider(
       uri,
       pos
     )
-  end findDefinitions
 
   private def findTypeDefinitions(
       path: List[Tree],
       pos: SourcePosition,
       indexed: IndexedContext,
-      uri: URI,
+      uri: URI
   ): DefinitionResult =
     import indexed.ctx
     val enclosing = path.expandRangeToEnclosingApply(pos)
@@ -117,7 +114,6 @@ class PcDefinitionProvider(
           case _ => DefinitionResultImpl.empty
       case _ =>
         definitionsForSymbols(typeSymbols, uri, pos)
-  end findTypeDefinitions
 
   private def definitionsForSymbols(
       symbols: List[Symbol],
@@ -155,14 +151,15 @@ class PcDefinitionProvider(
       syms: List[Symbol]
   )(using ctx: Context): List[(Symbol, String)] =
     syms
-      .collect { case sym if sym.exists =>
-        // in case of having the same type and teerm symbol
-        // term comes first
-        // used only for ordering symbols that come from `Import`
-        val termFlag =
-          if sym.is(ModuleClass) then sym.sourceModule.isTerm
-          else sym.isTerm
-        (termFlag, sym.sourceSymbol, SemanticdbSymbols.symbolName(sym))
+      .collect {
+        case sym if sym.exists =>
+          // in case of having the same type and teerm symbol
+          // term comes first
+          // used only for ordering symbols that come from `Import`
+          val termFlag =
+            if sym.is(ModuleClass) then sym.sourceModule.isTerm
+            else sym.isTerm
+          (termFlag, sym.sourceSymbol, SemanticdbSymbols.symbolName(sym))
       }
       .sortBy { case (termFlag, _, name) => (termFlag, name) }
       .map(_.tail)

@@ -5,31 +5,31 @@
 -- Error: tests/neg-custom-args/captures/i15772.scala:22:46 ------------------------------------------------------------
 22 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
-   |C^ => Unit cannot be box-converted to C{val arg: C^²}^{c} ->{cap, c} Unit
+   |C^ => Unit cannot be box-converted to C{val arg: C^²}^{c} ->{any, c} Unit
    |since the additional capture set {c} resulting from box conversion is not allowed in C{val arg: C^²}^{c} => Unit
    |
-   |where:    => and ^ and cap refer to the universal root capability
-   |          ^²               refers to a fresh root capability in the type of value arg
+   |where:    => and ^ and any refer to the root capability caps.any
+   |          ^²               refers to a root capability in the type of value arg
 -- Error: tests/neg-custom-args/captures/i15772.scala:29:35 ------------------------------------------------------------
 29 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
-   |C^ => Unit cannot be box-converted to C{val arg: C^²}^{c} ->{cap, c} Unit
+   |C^ => Unit cannot be box-converted to C{val arg: C^²}^{c} ->{any, c} Unit
    |since the additional capture set {c} resulting from box conversion is not allowed in C{val arg: C^²}^{c} => Unit
    |
-   |where:    => and ^ and cap refer to the universal root capability
-   |          ^²               refers to a fresh root capability in the type of value arg
+   |where:    => and ^ and any refer to the root capability caps.any
+   |          ^²               refers to a root capability in the type of value arg
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:33 ---------------------------------------
 35 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                             ^^^^^^^
-   |Found:    (C{val arg: C^}^² => Unit) -> Unit
-   |Required: (C => Unit) =>² Unit
+   |      Found:    (C{val arg: C^}^{any} => Unit) -> Unit
+   |      Required: (C => Unit) =>² Unit
    |
-   |Note that capability cap is not included in capture set {}.
+   |      Note that capability `any` cannot flow into capture set {}.
    |
-   |where:    =>         refers to the universal root capability
-   |          =>²        refers to a fresh root capability in the type of value boxed2
-   |          ^          refers to a fresh root capability in the type of value arg
-   |          ^² and cap refer to a fresh root capability created in value boxed2 when instantiating method c's type -> C^{cap²}
+   |      where:    =>  refers to the root capability caps.any
+   |                =>² refers to a root capability in the type of value boxed2
+   |                ^   refers to a root capability in the type of value arg
+   |                any is a root capability created in value boxed2 when instantiating method c's type -> C^{fresh}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:46:2 ----------------------------------------
@@ -38,7 +38,7 @@
    |  Found:    (x : () ->{filesList, sayHello} Unit)
    |  Required: () -> Unit
    |
-   |  Note that capability filesList is not included in capture set {}.
+   |  Note that capability `filesList` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i15772.scala:34:10 ------------------------------------------------------------

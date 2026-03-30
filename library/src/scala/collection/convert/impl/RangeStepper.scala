@@ -17,9 +17,9 @@ import scala.language.`2.13`
 import scala.collection.{IntStepper, Stepper}
 
 /** Implements Stepper on an integer Range.  You don't actually need the Range to do this,
-  * so only the relevant parts are included.  Because the arguments are protected, they are
-  * not error-checked; `Range` is required to provide valid arguments.
-  */
+ *  so only the relevant parts are included.  Because the arguments are protected, they are
+ *  not error-checked; `Range` is required to provide valid arguments.
+ */
 private[collection] final class RangeStepper(protected var myNext: Int, myStep: Int, _i0: Int, _iN: Int)
 extends IndexedStepperBase[IntStepper, RangeStepper](_i0, _iN)
 with IntStepper {

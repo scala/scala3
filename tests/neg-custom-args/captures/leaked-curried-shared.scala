@@ -8,13 +8,13 @@ trait Box:
 
 def main(): Unit =
   val leaked = withCap: (io: Cap) =>
-    class Fuzz extends Box, caps.Pure:
+    class Fuzz extends Box, caps.Pure: // error
       self =>
       val get: () ->{} () ->{io} Cap =
-        () => () => io // error
-    class Foo extends Box, caps.Pure:
+        () => () => io
+    class Foo extends Box, caps.Pure: // error
       val get: () ->{} () ->{io} Cap =
-        () => () => io // error
+        () => () => io
     new Foo
   val bad = leaked.get()().use()  // using a leaked capability
 

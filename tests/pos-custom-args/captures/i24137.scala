@@ -1,10 +1,10 @@
 //< using options -Ycc-verbose
-import caps.{cap, Shared, SharedCapability}
+import caps.{any, Shared, SharedCapability}
 import caps.unsafe.untrackedCaptures
 open class A
 
-class B(elem1: A^{cap.only[Shared]}, elem2: A^{cap.only[Shared]}):
-  @untrackedCaptures private var curElem: A^ = elem1 // problem is curElem contibutes cap to B().
+class B(elem1: A^{any.only[Shared]}, elem2: A^{any.only[Shared]}):
+  @untrackedCaptures private var curElem: A^ = elem1 // problem is curElem contibutes any to B().
   def next() =
     curElem = elem2
 

@@ -2169,7 +2169,7 @@ Symbols:
 example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
 example/InstrumentTyper#AnnotatedType# => type AnnotatedType  = Int @param
 example/InstrumentTyper#`<init>`(). => primary ctor <init> (): InstrumentTyper
-example/InstrumentTyper#all(). => method all => List[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
+example/InstrumentTyper#all(). => method all => List[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 example/InstrumentTyper#clazzOf. => final val method clazzOf Option[Int]
 example/InstrumentTyper#singletonType(). => method singletonType (param x: Predef.type): Nothing
 example/InstrumentTyper#singletonType().(x) => param x: Predef.type
@@ -2231,7 +2231,7 @@ Occurrences:
 [24:37..24:40): Int -> scala/Int#
 
 Synthetics:
-[8:12..8:16):List => *.apply[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
+[8:12..8:16):List => *.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 [8:12..21:3):List(
     Literal.int,
     Literal.long,
@@ -2245,7 +2245,7 @@ Synthetics:
     Literal.javaEnum,
     Literal.clazzOf,
     List()
-  ) => List.apply[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]](*)
+  ) => List.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]](*)
 [20:4..20:8):List => *.apply[Nothing]
 [20:4..20:10):List() => List.apply[Nothing](*)
 
@@ -3810,7 +3810,7 @@ Occurrences:
 [16:9..16:15): Object -> java/lang/Object#
 [17:8..17:17): scalameta <- local4
 [17:19..17:25): String -> scala/Predef.String#
-[19:4..19:4): <- local6
+[18:6..18:6): <- local6
 [19:8..19:17): scalameta <- local5
 [20:2..20:3): V -> example/StructuralTypes.V.
 [20:4..20:13): scalameta -> scala/reflect/Selectable#selectDynamic().
@@ -5366,7 +5366,7 @@ Text => empty
 Language => Scala
 Symbols => 50 entries
 Occurrences => 78 entries
-Diagnostics => 6 entries
+Diagnostics => 5 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -5507,7 +5507,6 @@ Diagnostics:
 [9:42..9:43): [warning] unused explicit parameter
 [21:11..21:12): [warning] unused explicit parameter
 [24:24..24:27): [warning] unused pattern variable
-[25:27..25:28): [warning] unused pattern variable
 
 Synthetics:
 [23:6..23:10):List => *.unapplySeq[Nothing]

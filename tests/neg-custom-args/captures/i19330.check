@@ -2,14 +2,14 @@
 15 |  val leaked = usingLogger[x.T]: l =>  // error
    |                           ^^^
    |                           Type variable T of method usingLogger cannot be instantiated to x.T since
-   |                           the part () => Logger^ of that type captures the root capability `cap`.
+   |                           the part () => Logger^ of that type captures the root capability `any`.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:17:4 ----------------------------------------
 17 |    t: x.T // error
    |    ^
    |    Found:    () ->{t} Logger^{t*}
    |    Required: x.T
    |
-   |    Note that capability t is not included in capture set {}.
+   |    Note that capability `t` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------

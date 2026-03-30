@@ -27,9 +27,9 @@ import scala.util.boundary.break
  *  Even if `isDefinedAt` returns true for an `a: A`, calling `apply(a)` may
  *  still throw an exception, so the following code is legal:
  *
- *  {{{
+ *  ```
  *  val f: PartialFunction[Int, Any] = { case x => x / 0 }   // ArithmeticException: / by zero
- *  }}}
+ *  ```
  *
  *  It is the responsibility of the caller to call `isDefinedAt` before
  *  calling `apply`, because if `isDefinedAt` is false, it is not guaranteed
@@ -43,7 +43,7 @@ import scala.util.boundary.break
  *  Note that `isDefinedAt` may itself throw an exception while evaluating pattern guards
  *  or other parts of the `PartialFunction`. The same caveat holds for `applyOrElse`.
  *
- *  {{{
+ *  ```
  *  val sample = 1 to 10
  *  def isEven(n: Int) = n % 2 == 0
  *
@@ -64,7 +64,7 @@ import scala.util.boundary.break
  *  // A method that takes a Function will get one, using the same syntax.
  *  // Note that all cases are supplied since Function has no `isDefinedAt`.
  *  def evened = sample.map { case odd if !isEven(odd) => odd + 1 case even => even }
- *  }}}
+ *  ```
  *
  *  The main distinction between `PartialFunction` and [[scala.Function1]] is
  *  that the client of a `PartialFunction` can perform an alternative computation
@@ -72,7 +72,7 @@ import scala.util.boundary.break
  *
  *  For example:
  *
- *  {{{
+ *  ```
  *  val oddlyEnough: PartialFunction[Int, String] = {
  *    case x if !isEven(x) => s"\$x is odd"
  *  }
@@ -84,28 +84,28 @@ import scala.util.boundary.break
  *  // The same computation but with a function literal that calls applyOrElse
  *  // with oddlyEnough as fallback, which it can do because a PartialFunction is a Function.
  *  val numbers = sample.map(n => eveningNews.applyOrElse(n, oddlyEnough))
- *  }}}
+ *  ```
  *
  *  As a convenience, function literals can also be adapted into partial functions
  *  when needed. If the body of the function is a match expression, then the cases
  *  are used to synthesize the PartialFunction as already shown.
  *
- *  {{{
+ *  ```
  *  // The partial function isDefinedAt inputs resulting in the Success case.
  *  val inputs = List("1", "two", "3").collect(x => Try(x.toInt) match { case Success(i) => i })
- *  }}}
+ *  ```
  *
  *  @note Optional [[Function]]s, [[PartialFunction]]s and extractor objects
  *        can be converted to each other as shown in the following table.
  *  &nbsp;
- * | How to convert ... | to a [[PartialFunction]] | to an optional [[Function]] | to an extractor |
- * | :---:  | ---  | --- | --- |
- * | from a [[PartialFunction]] | [[Predef.identity]] | [[lift]] | [[Predef.identity]] |
- * | from optional [[Function]] | [[Function1.UnliftOps#unlift]] or [[Function.unlift]] | [[Predef.identity]] | [[Function1.UnliftOps#unlift]] |
- * | from an extractor | `{ case extractor(x) => x }` | `extractor.unapply(_)` | [[Predef.identity]] |
+ *  | How to convert ... | to a [[PartialFunction]] | to an optional [[Function]] | to an extractor |
+ *  | :---:  | ---  | --- | --- |
+ *  | from a [[PartialFunction]] | [[Predef.identity]] | [[lift]] | [[Predef.identity]] |
+ *  | from optional [[Function]] | [[Function1.UnliftOps#unlift]] or [[Function.unlift]] | [[Predef.identity]] | [[Function1.UnliftOps#unlift]] |
+ *  | from an extractor | `{ case extractor(x) => x }` | `extractor.unapply(_)` | [[Predef.identity]] |
  *  &nbsp;
  *
- * @define applyOrElseOrElse Note that calling [[isDefinedAt]] on the resulting partial function
+ *  @define applyOrElseOrElse Note that calling [[isDefinedAt]] on the resulting partial function
  *                           may apply the first partial function and execute its side effect.
  *                           For efficiency, it is recommended to call [[applyOrElse]] instead of [[isDefinedAt]] or [[apply]].
  */
@@ -117,30 +117,30 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
 
   /** Returns an extractor object with a `unapplySeq` method, which extracts each element of a sequence data.
    *
-   *  @example {{{
+   *  @example ```
    *           val firstChar: String => Option[Char] = _.headOption
    *
    *           Seq("foo", "bar", "baz") match {
    *             case firstChar.unlift.elementWise(c0, c1, c2) =>
    *               println(s"\$c0, \$c1, \$c2") // Output: f, b, b
    *           }
-   *           }}}
+   *           ```
    */
   def elementWise: ElementWiseExtractor[A, B]^{this} = new ElementWiseExtractor[A, B](this)
 
   /** Checks if a value is contained in the function's domain.
    *
    *  @param  x   the value to test
-   *  @return `'''true'''`, iff `x` is in the domain of this function, `'''false'''` otherwise.
+   *  @return `**true**`, iff `x` is in the domain of this function, `**false**` otherwise.
    */
   def isDefinedAt(x: A): Boolean
 
   /** Composes this partial function with a fallback partial function which
    *  gets applied where this partial function is not defined.
    *
-   *  @param   that    the fallback function
    *  @tparam  A1      the argument type of the fallback function
    *  @tparam  B1      the result type of the fallback function
+   *  @param   that    the fallback function
    *  @return  a partial function which has as domain the union of the domains
    *           of this partial function and `that`. The resulting partial function
    *           takes `x` to `this(x)` where `this` is defined, and to `that(x)` where it is not.
@@ -149,15 +149,15 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
     new OrElse[A1, B1] (this, that)
   //TODO: why not overload it with orElse(that: F1): F1?
 
-  /**  Composes this partial function with a transformation function that
+  /** Composes this partial function with a transformation function that
    *   gets applied to results of this partial function.
    *
    *   If the runtime type of the function is a `PartialFunction` then the
    *   other `andThen` method is used (note its cautions).
    *
-   *   @param  k  the transformation function
-   *   @tparam C  the result type of the transformation function.
-   *   @return a partial function with the domain of this partial function,
+   *  @tparam C  the result type of the transformation function.
+   *  @param  k  the transformation function
+   *  @return a partial function with the domain of this partial function,
    *           possibly narrowed by the specified function, which maps
    *           arguments `x` to `k(this(x))`.
    */
@@ -166,29 +166,27 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
     case _                         => new AndThen[A, B, C](this, k)
   }
 
-  /**
-   * Composes this partial function with another partial function that
-   * gets applied to results of this partial function.
+  /** Composes this partial function with another partial function that
+   *  gets applied to results of this partial function.
    *
-   * $applyOrElseOrElse
+   *  $applyOrElseOrElse
    *
-   * @param  k  the transformation function
-   * @tparam C  the result type of the transformation function.
-   * @return a partial function with the domain of this partial function narrowed by
+   *  @tparam C  the result type of the transformation function.
+   *  @param  k  the transformation function
+   *  @return a partial function with the domain of this partial function narrowed by
    *         other partial function, which maps arguments `x` to `k(this(x))`.
    */
   def andThen[C](k: PartialFunction[B, C]^): PartialFunction[A, C]^{this, k} =
     new Combined[A, B, C](this, k)
 
-  /**
-   * Composes another partial function `k` with this partial function so that this
-   * partial function gets applied to results of `k`.
+  /** Composes another partial function `k` with this partial function so that this
+   *  partial function gets applied to results of `k`.
    *
-   * $applyOrElseOrElse
+   *  $applyOrElseOrElse
    *
-   * @param  k  the transformation function
-   * @tparam R  the parameter type of the transformation function.
-   * @return a partial function with the domain of other partial function narrowed by
+   *  @tparam R  the parameter type of the transformation function.
+   *  @param  k  the transformation function
+   *  @return a partial function with the domain of other partial function narrowed by
    *         this partial function, which maps arguments `x` to `this(k(x))`.
    */
   def compose[R](k: PartialFunction[R, A]^): PartialFunction[R, B]^{this, k} =
@@ -205,7 +203,7 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *  Applies fallback function where this partial function is not defined.
    *
    *  Note that expression `pf.applyOrElse(x, default)` is equivalent to
-   *  {{{ if(pf isDefinedAt x) pf(x) else default(x) }}}
+   *  ``` if(pf isDefinedAt x) pf(x) else default(x) ```
    *  except that `applyOrElse` method can be implemented more efficiently.
    *  For all partial function literals the compiler generates an `applyOrElse` implementation which
    *  avoids double evaluation of pattern matchers and guards.
@@ -234,7 +232,7 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *  The action function is invoked only for its side effects; its result is ignored.
    *
    *  Note that expression `pf.runWith(action)(x)` is equivalent to
-   *  {{{ if(pf isDefinedAt x) { action(pf(x)); true } else false }}}
+   *  ``` if(pf isDefinedAt x) { action(pf(x)); true } else false ```
    *  except that `runWith` is implemented via `applyOrElse` and thus potentially more efficient.
    *  Using `runWith` avoids double evaluation of pattern matchers and guards for partial function literals.
    *  @see `applyOrElse`.
@@ -251,7 +249,7 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
 
 /** A few handy operations which leverage the extra bit of information
  *  available in partial functions.  Examples:
- *  {{{
+ *  ```
  *  import PartialFunction._
  *
  *  def strangeConditional(other: Any): Boolean = cond(other) {
@@ -259,7 +257,7 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
  *    case x: Int => true
  *  }
  *  def onlyInt(v: Any): Option[Int] = condOpt(v) { case x: Int => x }
- *  }}}
+ *  ```
  */
 object PartialFunction {
 
@@ -273,8 +271,7 @@ object PartialFunction {
     }
   }
 
-  /** Composite function produced by `PartialFunction#orElse` method
-   */
+  /** Composite function produced by `PartialFunction#orElse` method */
   private class OrElse[-A, +B] (f1: PartialFunction[A, B]^, f2: PartialFunction[A, B]^)
     extends scala.runtime.AbstractPartialFunction[A, B] with Serializable {
     def isDefinedAt(x: A) = f1.isDefinedAt(x) || f2.isDefinedAt(x)
@@ -293,8 +290,7 @@ object PartialFunction {
       new OrElse[A, C] (f1 andThen k, f2 andThen k)
   }
 
-  /** Composite function produced by `PartialFunction#andThen` method
-   */
+  /** Composite function produced by `PartialFunction#andThen` method */
   private class AndThen[-A, B, +C] (pf: PartialFunction[A, B]^, k: B => C) extends PartialFunction[A, C] with Serializable {
     def isDefinedAt(x: A) = pf.isDefinedAt(x)
 
@@ -306,8 +302,7 @@ object PartialFunction {
     }
   }
 
-  /** Composite function produced by `PartialFunction#andThen` method
-    */
+  /** Composite function produced by `PartialFunction#andThen` method */
   private class Combined[-A, B, +C] (pf: PartialFunction[A, B]^, k: PartialFunction[B, C]^) extends PartialFunction[A, C] with Serializable {
     def isDefinedAt(x: A): Boolean = {
       val b: B = pf.applyOrElse(x, checkFallback[B])
@@ -322,12 +317,14 @@ object PartialFunction {
     }
   }
 
-  /** To implement patterns like {{{ if(pf isDefinedAt x) f1(pf(x)) else f2(x) }}} efficiently
+  /** To implement patterns like
+   *  ```
+   *  if(pf isDefinedAt x) f1(pf(x)) else f2(x)
+   *  ```
+   *  efficiently
    *  the following trick is used:
-   *
    *  To avoid double evaluation of pattern matchers & guards `applyOrElse` method is used here
    *  instead of `isDefinedAt`/`apply` pair.
-   *
    *  After call to `applyOrElse` we need both the function result it returned and
    *  the fact if the function's argument was contained in its domain. The only degree of freedom we have here
    *  to achieve this goal is tweaking with the continuation argument (`default`) of `applyOrElse` method.
@@ -337,10 +334,8 @@ object PartialFunction {
    *  I know only one way how you can do this task efficiently: `default` function should return unique marker object
    *  which never may be returned by any other (regular/partial) function. This way after calling `applyOrElse` you need
    *  just one reference comparison to distinguish if `pf isDefined x` or not.
-   *
    *  This correctly interacts with specialization as return type of `applyOrElse`
    *  (which is parameterized upper bound) can never be specialized.
-   *
    *  Here `fallback_fn` is used as both unique marker object and special fallback function that returns it.
    */
   private val fallback_fn: Any -> Any = _ => fallback_fn
@@ -371,10 +366,10 @@ object PartialFunction {
     case _ => new Unlifted(f)
   }
 
-  /**  Converts an ordinary function to a partial function. Note that calling `isDefinedAt(x)` on
+  /** Converts an ordinary function to a partial function. Note that calling `isDefinedAt(x)` on
    *   this partial function will return `true` for every `x`.
-   *   @param  f  an ordinary function
-   *   @return    a partial function which delegates to the ordinary function `f`
+   *  @param  f  an ordinary function
+   *  @return    a partial function which delegates to the ordinary function `f`
    */
   def fromFunction[A, B](f: A => B): PartialFunction[A, B]^{f} = { case x => f(x) }
 
