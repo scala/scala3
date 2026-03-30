@@ -1,6 +1,7 @@
 // Run with: scala-cli --power --jmh bench-micro/src/main/scala/dotty/tools/benchmarks/SpecializedTraitsBenchmark.scala
 // May have to run it again / delete .scala-build and rerun if you get a class not found
 // error from scala-cli first time - the --jmh flag is still experimental.
+
 //> using scala 3.8.3-RC1-bin-SNAPSHOT-nonbootstrapped
 
 package dotty.tools.benchmarks
@@ -10,7 +11,6 @@ import java.util.concurrent.TimeUnit
 
 class VecManual(elems: Array[Int]):
   private val num = summon[Numeric[Int]]
-  private val x = 1
 
   def length = elems.length
 
@@ -25,7 +25,6 @@ class VecManual(elems: Array[Int]):
 
 class VecGeneric[T: Numeric](elems: Array[T]):
   private val num = summon[Numeric[T]]
-  private val x = 1
 
   def length = elems.length
 
@@ -40,7 +39,6 @@ class VecGeneric[T: Numeric](elems: Array[T]):
 
 inline trait VecSpecialized[T: {Specialized, Numeric}](elems: Array[T]):
   private val num = summon[Numeric[T]]
-  private val x = 1
 
   def length = elems.length
 
