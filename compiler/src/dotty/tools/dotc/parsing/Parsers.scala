@@ -2335,7 +2335,7 @@ object Parsers {
         else EmptyTermName
       val res = ContextBoundTypeTree(t, pname, ownName)
       if t.span.exists then
-        res.withSpan(t.span.withPoint(t.span.end).withEnd(in.lastOffset))
+        res.withSpan(Span(t.span.start, end = in.lastOffset, point = t.span.end))
       else res
 
     /** ContextBounds     ::= ContextBound [`:` ContextBounds]
