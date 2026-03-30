@@ -109,7 +109,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
     if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
       // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
-      report.error(em"super may be not be used on ${sym.underlyingSymbol}", sel.srcPos)
+      report.error(em"super may not be used on ${sym.underlyingSymbol}", sel.srcPos)
     else if (isDisallowed(sym))
       report.error(em"super not allowed here: use this.${sel.name} instead", sel.srcPos)
     else if (sym.is(Deferred)) {
