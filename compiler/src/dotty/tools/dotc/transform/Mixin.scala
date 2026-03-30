@@ -339,8 +339,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             EmptyTree
         }
         else if wasOneOf(getter, ParamAccessor) then
-          // mixin parameter field is defined by an override; evaluate the argument and throw it away
-          nextArgument()
+          if (mixin.isInlineTrait) then {nextArgument(); EmptyTree} else nextArgument()
         else EmptyTree
     }
 
