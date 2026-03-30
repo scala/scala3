@@ -1,5 +1,10 @@
 package scala
+import language.experimental.erasedDefinitions
+import scala.annotation.nowarn
 
-trait Specialized[T]
+trait Specialized[T] extends compiletime.Erased
+
 object Specialized:
-    def apply[T] = new Specialized[T] {}
+    /* @nowarn: New anonymous class definition will be duplicated at each inline site, 
+                however it's erased at runtime so we don't care. */
+    @nowarn inline def apply[T] = new Specialized[T] {}

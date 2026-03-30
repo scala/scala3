@@ -1,3 +1,5 @@
+//> using options -language:experimental.specializedTraits
+
 // A[Char] => A$sp$Char => C$sp$Char, but only once we inline the body of C$sp$Char do we realise that we need 
 // C$impl$Char as well.
 

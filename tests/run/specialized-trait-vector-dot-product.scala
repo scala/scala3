@@ -1,6 +1,7 @@
+//> using options -language:experimental.specializedTraits
+
 inline trait Vec[T: {Specialized, Numeric}](elems: Array[T]):
   private val num = summon[Numeric[T]]
-  private val x = 1
 
   def length = elems.length
 
@@ -19,4 +20,3 @@ object Test:
     val y = new Vec[Int](Array(3, 4, 5, 6, 7)) {}
     val z = x.scalarProduct(y)
     assert(z == 85)
-  

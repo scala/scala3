@@ -1,3 +1,4 @@
+//> using options -language:experimental.specializedTraits
 inline trait Foo[T: Specialized](x: T):
     def foo = x
 

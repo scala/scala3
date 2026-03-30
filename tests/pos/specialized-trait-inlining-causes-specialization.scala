@@ -1,3 +1,5 @@
+//> using options -language:experimental.specializedTraits
+
 inline trait D[R: Specialized]
 
 inline trait C[S: Specialized]:

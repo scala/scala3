@@ -3,6 +3,7 @@
 // error from scala-cli first time - the --jmh flag is still experimental.
 
 //> using scala 3.8.3-RC1-bin-SNAPSHOT-nonbootstrapped
+//> using options -language:experimental.specializedTraits
 
 package dotty.tools.benchmarks
 

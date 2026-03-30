@@ -1,3 +1,5 @@
+//> using options -language:experimental.specializedTraits
+
 // Check we actually call the specialized method that we should be calling
 // We can't easily check the return type, but we can check that we are calling a method
 // on Foo$impl$Int$ directly, with no bridge methods in between (this means it's the correct

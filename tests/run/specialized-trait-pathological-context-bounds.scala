@@ -1,3 +1,5 @@
+//> using options -language:experimental.specializedTraits
+
 trait A[T, R, Q]
 
 inline trait Trait[T: {Specialized, Numeric}, S <: Object, Q: Numeric, R: Specialized, D: {Numeric, Specialized}](a: Int) extends A[S, Char, T] {
