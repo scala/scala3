@@ -6,6 +6,7 @@ import scala.annotation.tailrec
 import Names.*, Types.*, Contexts.*, StdNames.*, Decorators.*
 import TypeErasure.sigName
 import Signature.*
+import dotty.tools.dotc.core.StdNames.str.SPECIALIZED_TRAIT_SUFFIX
 
 /** The signature of a denotation.
  *
@@ -52,14 +53,26 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
   private def consistent(name1: ParamSig, name2: ParamSig) =
     name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated
 
+  // TODO: Put this somewhere else?
+  private def isSpecializedName(name1: ParamSig, name2: ParamSig) = (name1, name2) match {
+    case (n1: TypeName, n2: TypeName) => (n1.toTermName.split, n2.toTermName.split) match {
+      case ((prefix1, lastPart1, _), (prefix2, lastPart2, _)) =>
+        prefix1 == prefix2 && lastPart2.startsWith((lastPart1 ++ SPECIALIZED_TRAIT_SUFFIX).toString()) 
+                           || lastPart1.startsWith((lastPart2 ++ SPECIALIZED_TRAIT_SUFFIX).toString())
+    } 
+    case _ => false
+  } 
+
   /** Does this signature coincide with that signature on their parameter parts?
    *  This is the case if all parameter signatures are _consistent_, i.e. they are either
    *  equal or on of them is tpnme.Uninstantiated.
    */
-  final def consistentParams(that: Signature)(using Context): Boolean = {
+  final def consistentParams(that: Signature, allowSpecializations: Boolean = false)(using Context): Boolean = {
     @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
       if (names1.isEmpty) names2.isEmpty
-      else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
+      else !names2.isEmpty && (consistent(names1.head, names2.head) || (
+        allowSpecializations && isSpecializedName(names1.head, names2.head) 
+      )) && loop(names1.tail, names2.tail)
     loop(this.paramsSig, that.paramsSig)
   }
 
@@ -85,8 +98,8 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  or `ParamMatch`.
    *  If the parameters are inconsistent, the result is always `NoMatch`.
    */
-  final def matchDegree(that: Signature)(using Context): MatchDegree =
-    if consistentParams(that) then
+  final def matchDegree(that: Signature, allowSpecializations: Boolean = false)(using Context): MatchDegree =
+    if consistentParams(that, allowSpecializations) then
       if resSig == that.resSig || isWildcard(resSig) || isWildcard(that.resSig) then
         FullMatch
       else if (this == NotAMethod) != (that == NotAMethod) then

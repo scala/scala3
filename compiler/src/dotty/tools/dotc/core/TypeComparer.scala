@@ -28,6 +28,8 @@ import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
 import scala.util.boundary, boundary.break
+import transform.DesugarSpecializedTraits
+
 
 /** Provides methods to compare types.
  */
@@ -2410,7 +2412,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case formal2 :: rest2 =>
             val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
             val paramsMatch =
-              if precise then
+              if DesugarSpecializedTraits.isSpecializationOf(formal1, formal2a) then
+                true
+              else if precise then
                 isSameTypeWhenFrozen(formal1, formal2a)
               else if isCaptureCheckingOrSetup then
                 // allow to constrain capture set variables
