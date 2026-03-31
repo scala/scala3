@@ -6,7 +6,6 @@ import dotty.tools.dotc.transform.Erasure
 import scala.tools.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.{StdNames, Symbols}
 import BTypes.*
-import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
@@ -19,16 +18,9 @@ import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Types.abstractTermNameFilter
 
-import scala.annotation.threadUnsafe
 import scala.tools.asm
 
 final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess, primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader])(using val ctx: Context) extends CoreBTypes(ppa) {
-
-  /**
-   * Cache for the method classBTypeFromSymbol.
-   */
-  @threadUnsafe private lazy val convertedClasses = collection.mutable.HashMap.empty[Symbol, ClassBType]
-
   /**
    * The ClassBType for a class symbol `sym`.
    */
@@ -39,15 +31,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess, primitives: 
       classSym != defn.NothingClass && classSym != defn.NullClass,
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
 
-    convertedClasses.synchronized:
-      convertedClasses.getOrElse(classSym, {
-        val internalName = classSym.javaBinaryName
-        // We first create and add the ClassBType to the hash map before computing its info. This
-        // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
-        val result = classBType(internalName)(ct => createClassInfo(ct, classSym.asClass))
-        convertedClasses(classSym) = result
-        result
-      })
+    classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
   }
 
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {

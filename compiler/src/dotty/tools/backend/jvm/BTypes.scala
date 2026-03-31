@@ -853,6 +853,8 @@ object ClassBType {
       newRes.synchronized {
         cache.putIfAbsent(internalName, newRes) match {
           case null =>
+            // We first create and add the ClassBType to the hash map before computing its info. This
+            // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
             init(newRes).map(ci => {
               newRes.info = ci
               newRes
