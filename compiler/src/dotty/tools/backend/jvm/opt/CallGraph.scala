@@ -20,7 +20,6 @@ import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
@@ -31,7 +30,7 @@ import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 class CallGraph(frontendAccess: PostProcessorFrontendAccess,
                 byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                inlineInfoLoader: InlineInfoLoader, ts: CoreBTypes)(using Context) {
+                inlineInfoLoader: InlineInfoLoader, ts: CoreBTypes) {
 
   /**
    * The call graph contains the callsites in the program being compiled.

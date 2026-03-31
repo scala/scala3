@@ -20,7 +20,6 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.MethodNode
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils
@@ -29,7 +28,7 @@ import PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
 import dotty.tools.dotc.report
 
-class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, byteCodeRepository: BCodeRepository, callGraph: CallGraph, ts: CoreBTypes)(using Context) {
+class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, byteCodeRepository: BCodeRepository, callGraph: CallGraph, ts: CoreBTypes) {
 
   private lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = ppa.perRunLazy(new InlineSourceMatcher(ppa.compilerSettings.optInlineFrom))
 
@@ -61,18 +60,18 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
 
             case Some(Left(w)) =>
               if (w.emitWarning(ppa.compilerSettings)) {
-                report.optimizerWarning(em"${w.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
+                ppa.optimizerWarning(em"${w.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
               }
 
             case None =>
               if (callsiteWarning.exists(_.emitWarning(ppa.compilerSettings))) {
-                report.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
+                ppa.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
               }
           }
 
         case callsite @ UnknownCallsite(ins, meth, clas, pos, _, warning) =>
           if (warning.emitWarning(ppa.compilerSettings)) {
-            report.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", BackendUtils.siteString(clas.internalName, meth.name), pos)
+            ppa.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", BackendUtils.siteString(clas.internalName, meth.name), pos)
           }
       }
       (methodNode, requests)

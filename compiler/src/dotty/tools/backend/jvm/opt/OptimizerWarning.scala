@@ -12,15 +12,6 @@ sealed trait OptimizerWarning {
   def emitWarning(settings: CompilerSettings): Boolean
 }
 
-object OptimizerWarning {
-  // Method withFilter in RightBiasedEither requires an implicit empty value. Taking the value here
-  // in scope allows for-comprehensions that desugar into withFilter calls (for example when using a
-  // tuple de-constructor).
-  implicit val emptyOptimizerWarning: OptimizerWarning = new OptimizerWarning {
-    def emitWarning(settings: CompilerSettings): Boolean = false
-  }
-}
-
 sealed trait MissingBytecodeWarning extends OptimizerWarning {
   override def toString: String = this match {
     case ClassNotFound(internalName) =>
@@ -101,9 +92,9 @@ sealed trait CalleeInfoWarning extends OptimizerWarning {
   }
 }
 
-final case class MethodInlineInfoIncomplete(declarationClass: InternalName, name: String, descriptor: String, cause: ClassInlineInfoWarning) extends CalleeInfoWarning
+final case class MethodInlineInfoIncomplete(declarationClass: InternalName, name: String, descriptor: String, cause: OptimizerWarning) extends CalleeInfoWarning
 
-final case class MethodInlineInfoMissing(declarationClass: InternalName, name: String, descriptor: String, cause: Option[ClassInlineInfoWarning]) extends CalleeInfoWarning
+final case class MethodInlineInfoMissing(declarationClass: InternalName, name: String, descriptor: String, cause: Option[OptimizerWarning]) extends CalleeInfoWarning
 
 final case class MethodInlineInfoError(declarationClass: InternalName, name: String, descriptor: String, cause: OptimizerWarning) extends CalleeInfoWarning
 

@@ -7,6 +7,8 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.classpath.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.config.ScalaSettings
+import dotty.tools.dotc.reporting.Message
+import dotty.tools.dotc.util.SrcPos
 
 import scala.collection.mutable
 import scala.compiletime.uninitialized
@@ -23,6 +25,9 @@ sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
   def getEntryPoints: List[String]
 
   def findClassFileAndModuleFile(name: String): Option[(io.AbstractFile, Option[io.AbstractFile])]
+  
+  def optimizerWarning(msg: Context ?=> Message, site: String, pos: SrcPos): Unit =
+    report.optimizerWarning(msg(using ctx), site, pos)(using ctx)
 
   private val frontendLock: AnyRef = new Object()
 

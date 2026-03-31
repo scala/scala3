@@ -43,19 +43,8 @@ import scala.tools.asm.tree.{ClassNode, ModuleNode}
 final case class InlineInfo(isEffectivelyFinal: Boolean,
                             sam: Option[String],
                             methodInfos: collection.SortedMap[(String, String), MethodInlineInfo],
-                            warning: Option[ClassInlineInfoWarning],
-                            isAccessible: Boolean) {
-  lazy val methodInfosSorted: IndexedSeq[((String, String), MethodInlineInfo)] = {
-    val result = new Array[((String, String), MethodInlineInfo)](methodInfos.size)
-    var i = 0
-    methodInfos.foreachEntry { (ownerAndName, info) =>
-      result(i) = (ownerAndName, info)
-      i += 1
-    }
-    scala.util.Sorting.quickSort(result)(using Ordering.by(_._1))
-    ArraySeq.unsafeWrapArray(result)
-  }
-}
+                            warning: Option[OptimizerWarning],
+                            isAccessible: Boolean)
 
 /**
  * Metadata about a method, used by the inliner.
@@ -68,7 +57,7 @@ final case class MethodInlineInfo(effectivelyFinal: Boolean = false,
                                   annotatedInline: Boolean = false,
                                   annotatedNoInline: Boolean = false)
 
-final class InlineInfoLoader(bCodeRepository: BCodeRepository, primitives: ScalaPrimitives, ts: CoreBTypes)(using Context) {
+final class InlineInfoLoader(bCodeRepository: BCodeRepository, primitives: ScalaPrimitives, ts: CoreBTypes) {
   private val infos: mutable.Map[ClassInfo, InlineInfo] = mutable.Map.empty
 
   /**
@@ -217,84 +206,4 @@ final class InlineInfoLoader(bCodeRepository: BCodeRepository, primitives: Scala
 
 object InlineInfo {
   val empty = InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = SortedMap.empty, warning = None, isAccessible = false)
-
-  /**
-   * Check if a type is accessible to some class, as defined in JVMS 5.4.4.
-   * (A1) C is public
-   * (A2) C and D are members of the same run-time package
-   */
-  @tailrec
-  def classIsAccessible(accessed: BType, from: ClassBType): Boolean = (accessed: @unchecked) match {
-    // TODO: A2 requires "same run-time package", which seems to be package + classloader (JVMS 5.3.). is the below ok?
-    case c: ClassBType => c.isPublic || c.packageInternalName == from.packageInternalName
-    case a: ArrayBType => classIsAccessible(a.elementType, from)
-    case _: PrimitiveBType => true
-  }
-
-  /**
-   * Check if a member reference is accessible from the `destinationClass`, as defined in the
-   * JVMS 5.4.4. Note that the class name in a field / method reference is not necessarily the
-   * class in which the member is declared:
-   *
-   * class A { def f = 0 }; class B extends A { f }
-   *
-   * The INVOKEVIRTUAL instruction uses a method reference "B.f ()I". Therefore this method has
-   * two parameters:
-   *
-   * @param memberDeclClass The class in which the member is declared (A)
-   * @param memberRefClass  The class used in the member reference (B)
-   *
-   *                        (B0) JVMS 5.4.3.2 / 5.4.3.3: when resolving a member of class C in D, the class C is resolved
-   *                        first. According to 5.4.3.1, this requires C to be accessible in D.
-   *
-   *                        JVMS 5.4.4 summary: A field or method R is accessible to a class D (destinationClass) iff
-   *                        (B1) R is public
-   *                        (B2) R is protected, declared in C (memberDeclClass) and D is a subclass of C.
-   *                        If R is not static, R must contain a symbolic reference to a class T (memberRefClass),
-   *                        such that T is either a subclass of D, a superclass of D, or D itself.
-   *                        Also (P) needs to be satisfied.
-   *                        (B3) R is either protected or has default access and declared by a class in the same
-   *                        run-time package as D.
-   *                        If R is protected, also (P) needs to be satisfied.
-   *                        (B4) R is private and is declared in D.
-   *
-   *                        (P) When accessing a protected instance member, the target object on the stack (the receiver)
-   *                        has to be a subtype of D (destinationClass). This is enforced by classfile verification
-   *                        (https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.10.1.8).
-   *
-   *                        TODO: we cannot currently implement (P) because we don't have the necessary information
-   *                        available. Once we have a type propagation analysis implemented, we can extract the receiver
-   *                        type from there (https://github.com/scala-opt/scala/issues/13).
-   */
-  def memberIsAccessible(memberFlags: Int, memberDeclClass: ClassBType, memberRefClass: ClassBType, from: ClassBType): Boolean = {
-    // TODO: B3 requires "same run-time package", which seems to be package + classloader (JVMS 5.3.). is the below ok?
-    def samePackageAsDestination = memberDeclClass.packageInternalName == from.packageInternalName
-
-    def targetObjectConformsToDestinationClass = false // needs type propagation analysis, see above
-
-    def memberIsAccessibleImpl = {
-      val key = (ACC_PUBLIC | ACC_PROTECTED | ACC_PRIVATE) & memberFlags
-      key match {
-        case ACC_PUBLIC => // B1
-          true
-
-        case ACC_PROTECTED => // B2
-          val isStatic = (ACC_STATIC & memberFlags) != 0
-          val condB2 = from.isSubtypeOf(memberDeclClass) && {
-            isStatic || memberRefClass.isSubtypeOf(from) || from.isSubtypeOf(memberRefClass)
-          }
-          (condB2 || samePackageAsDestination /* B3 (protected) */) &&
-            (isStatic || targetObjectConformsToDestinationClass) // (P)
-
-
-        case 0 => // B3 (default access)
-          samePackageAsDestination
-
-        case ACC_PRIVATE => // B4
-          memberDeclClass == from
-      }
-    }
-
-    classIsAccessible(memberDeclClass, from) && memberIsAccessibleImpl // B0
-  }
 }

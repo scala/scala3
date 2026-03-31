@@ -27,12 +27,10 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.*
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.report
 
 class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
-                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile)(using ctx: Context) {
+                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
 
   import ClosureOptimizer.*
 
@@ -119,7 +117,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                report.optimizerWarning(em"${warning.toString}", BackendUtils.siteString(ownerClass, method.name), warning.pos)
+                ppa.optimizerWarning(em"${warning.toString}", BackendUtils.siteString(ownerClass, method.name), warning.pos)
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
@@ -193,7 +191,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
           declClassBType              <- bTypesFromClassfile.classBTypeFromParsedClassfile(declClass)
           lambdaOwnerBType            <- bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner)
         } yield {
-          InlineInfo.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
+          Inliner.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
         }
 
         def pos = callGraph.callsites.get(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
