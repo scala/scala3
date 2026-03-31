@@ -53,20 +53,20 @@ class GenBCode extends Phase { self =>
     _bTypes.nn
   }
 
-  private var _postProcessor: PostProcessor | Null = null
-  def postProcessor(using Context): PostProcessor = {
-    if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, primitives, bTypes)
-    _postProcessor.nn
-  }
-
   private var _backendUtils: BackendUtils | Null = null
   def backendUtils(using Context): BackendUtils = {
     if _backendUtils eq null then
       _backendUtils = BackendUtils(frontendAccess, bTypes)
     _backendUtils.nn
   }
-  
+
+  private var _postProcessor: PostProcessor | Null = null
+  def postProcessor(using Context): PostProcessor = {
+    if _postProcessor eq null then
+      _postProcessor = new PostProcessor(frontendAccess, backendUtils, primitives, bTypes)
+    _postProcessor.nn
+  }
+
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
