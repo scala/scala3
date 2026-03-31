@@ -4,41 +4,20 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass, Ignore }
-import org.junit.Assert._
-import org.junit.Assume._
-import org.junit.experimental.categories.Category
+import org.junit.{ Test, AfterClass }
+import org.junit.Assume.*
 
-import java.io.File
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.jdk.CollectionConverters._
-import scala.util.matching.Regex
-import scala.concurrent.duration._
-import TestSources.sources
-import TestSources.scoverageIgnoreExcludelisted
-import reporting.TestReporter
-import vulpix._
-import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.dotc.coverage.Serializer
+import java.nio.file.*
+import scala.concurrent.duration.*
+
+import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.vulpix.*
 
 class CompilationTests {
-  import ParallelTesting._
-  import TestConfiguration._
-  import CompilationTests._
+  import ParallelTesting.*
+  import TestConfiguration.*
+  import CompilationTests.*
   import CompilationTest.aggregateTests
-
-  // For ease of debugging individual tests:
-  @Ignore @Test def singleFile: Unit =
-    implicit val testGroup: TestGroup = TestGroup("single-test")
-    // can add, e.g., .and("-some-option")
-    val options = defaultOptions
-    // can also use `compileDir` (single test as a dir), `compileFilesInDir` (all tests within a dir)
-    val test = compileFile("tests/pos/tuple-filter.scala", options)
-    // or `RunTestWithCoverage` for "run" tests with output, or `WarnTestWithCoverage` for "warn" tests with warnings
-    type TestKind = PosTestWithCoverage
-    val compilationTest = withCoverage(aggregateTests(test))
-    runWithCoverageOrFallback[TestKind](compilationTest, testGroup.name)
 
   // Positive tests ------------------------------------------------------------
 
