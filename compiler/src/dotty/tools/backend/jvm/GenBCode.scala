@@ -8,6 +8,7 @@ import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import Symbols.*
 import dotty.tools.backend.ScalaPrimitives
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile}
 import dotty.tools.io.*
 
 import scala.collection.mutable
@@ -16,6 +17,18 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
 import scala.concurrent.Await
 
+/**
+ * GenBCode has 3 parts:
+ * 1. Translating trees to Java bytecode
+ * 2. Optimizing the bytecode, if the user requested it
+ * 3. Emitting the bytecode to class files.
+ *
+ * Part 1 requires a Context, and must therefore be done sequentially.
+ * Parts 2 and 3 do not require a Context and can be parallelized.
+ *
+ * It is crucial that parts 2 and 3 do not accidentally depend on a Context,
+ * which is why we have a "post-processor frontend interface" that hides this Context.
+ */
 class GenBCode extends Phase { self =>
 
   override def phaseName: String = GenBCode.name
@@ -46,10 +59,26 @@ class GenBCode extends Phase { self =>
     _primitives.nn
   }
 
+  private var _byteCodeRepository: BCodeRepository | Null = null
+  def byteCodeRepository(using Context): BCodeRepository = {
+    if _byteCodeRepository eq null then
+      _byteCodeRepository = BCodeRepository(frontendAccess, backendUtils, bTypes)
+    _byteCodeRepository.nn
+  }
+
+  private var _bTypesFromClassfile: BTypesFromClassfile | Null = null
+  def bTypesFromClassfile(using Context): BTypesFromClassfile = {
+    if _bTypesFromClassfile eq null then
+      _bTypesFromClassfile = BTypesFromClassfile(byteCodeRepository, bTypes)
+    _bTypesFromClassfile.nn
+  }
+
   private var _bTypes: CoreBTypes | Null = null
   def bTypes(using Context): CoreBTypes = {
     if _bTypes eq null then
-      _bTypes = CoreBTypesFromSymbols(frontendAccess)(using ctx)
+      // lazy load to break the circular dependency
+      def inlineInfoLoader() = Option.when[InlineInfoLoader](frontendAccess.compilerSettings.optInlinerEnabled)(bTypesFromClassfile)
+      _bTypes = CoreBTypesFromSymbols(frontendAccess, primitives, inlineInfoLoader)(using ctx)
     _bTypes.nn
   }
 
@@ -63,7 +92,7 @@ class GenBCode extends Phase { self =>
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, backendUtils, primitives, bTypes)
+      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, backendUtils, bTypes)
     _postProcessor.nn
   }
 

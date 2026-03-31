@@ -14,8 +14,9 @@ package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
-import dotty.tools.backend.jvm.opt.{BCodeRepository, ClassNotFound, InlineInfo, MethodInlineInfo, NoClassBTypeInfo, OptimizerWarning}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, ClassNotFound, NoClassBTypeInfo, OptimizerWarning}
 import dotty.tools.backend.jvm.*
+import dotty.tools.dotc.core.StdNames.nme
 
 import scala.annotation.{switch, unused}
 import scala.collection.mutable
@@ -23,7 +24,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
 
-class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) {
+class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) extends InlineInfoLoader {
 
   /**
    * Obtain the BType for a type descriptor or internal name. For class descriptors, the ClassBType
@@ -31,7 +32,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    *
    * Some JVM operations use either a full descriptor or only an internal name. Example:
    *   ANEWARRAY java/lang/String    // a new array of strings (internal name for the String class)
-   *   ANEWARRAY [Ljava/lang/String; // a new array of array of string (full descriptor for the String class)
+   *   ANEWARRAY [Ljava/lang/String; // a new array of arrays of string (full descriptor for the String class)
    *
    * This method supports both descriptors and internal names.
    */
@@ -151,10 +152,63 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
     val interfaces = collect(classNode.interfaces.asScala.iterator.map(classBTypeFromParsedClassfile))
 
     (superClass, interfaces, nestedClasses, nestedInfo) match
-      case (Right(sc), Right(is), Right(ncs), Right(ni)) => Right(ClassInfo(sc, is, flags, ncs, ni, ClassInfoSource.Classfile(classNode, moduleNode)))
+      case (Right(sc), Right(is), Right(ncs), Right(ni)) => Right(ClassInfo(sc, is, flags, ncs, ni, inlineInfoFromClassfile(classNode, moduleNode)))
       case (Left(l), _, _, _) => Left(l)
       case (_, Left(l), _, _) => Left(l)
       case (_, _, Left(l), _) => Left(l)
       case (_, _, _, Left(l)) => Left(l)
+  }
+
+  def loadInlineInfoFor(name: InternalName): InlineInfo =
+    byteCodeRepository.classNode(name) match {
+      case Right(classNode, moduleNode) =>
+        inlineInfoFromClassfile(classNode, moduleNode)
+      case Left(missingClass) =>
+        InlineInfo.empty.copy(warning = Some(ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass)))
+    }
+  
+  /**
+   * Build the InlineInfo for a class. For Scala classes, the information is stored in the
+   * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
+   * metadata available in the classfile (ACC_FINAL flags, etc.).
+   */
+  private def inlineInfoFromClassfile(classNode: ClassNode, moduleNode: Option[ModuleNode]): InlineInfo = {
+    def fromClassfileAttribute: Option[InlineInfo] = {
+      if (classNode.attrs == null) None
+      else classNode.attrs.asScala.collectFirst { case a: InlineInfoAttribute => a.inlineInfo }
+    }
+
+    def fromClassfileWithoutAttribute = {
+      val warning = {
+        val isScala = classNode.attrs != null && classNode.attrs.asScala.exists(a => a.`type` == nme.ScalaATTR.toString || a.`type` == nme.ScalaSignatureATTR.toString)
+        if (isScala) Some(NoInlineInfoAttribute(classNode.name))
+        else None
+      }
+      // when building MethodInlineInfos for the members of a ClassSymbol, we exclude those methods
+      // in scalaPrimitives. This is necessary because some of them have non-erased types, which would
+      // require special handling. Excluding is OK because they are never inlined.
+      // Here we are parsing from a classfile and we don't need to do anything special. Many of these
+      // primitives don't even exist, for example Any.isInstanceOf.
+      val methodInfos = new mutable.TreeMap[(String, String), MethodInlineInfo]()
+      val isFinalClass = BCodeUtils.isFinalClass(classNode)
+      classNode.methods.forEach(methodNode => {
+        val info = MethodInlineInfo(effectivelyFinal = isFinalClass || BCodeUtils.isFinalMethod(methodNode))
+        methodInfos((methodNode.name, methodNode.desc)) = info
+      })
+
+      // We only want an approximation of SAMs for inlining heuristics, no need to check FunctionalInterface annotations or such
+      val abstractMethods = classNode.methods.asScala.filter(m => (m.access & Opcodes.ACC_ABSTRACT) != 0)
+      val sam = if abstractMethods.size == 1 then Some(abstractMethods.head.name + abstractMethods.head.desc) else None
+
+      // No module => always accessible
+      val isAccessible = moduleNode.forall(m =>
+        val nodePackageName = classNode.name.substring(0, classNode.name.lastIndexOf('/'))
+        m.exports.asScala.exists(e => (e.modules == null || e.modules.size == 0) && e.packaze == nodePackageName)
+      )
+
+      InlineInfo(isFinalClass, sam, methodInfos, warning, isAccessible)
+    }
+
+    fromClassfileAttribute.getOrElse(fromClassfileWithoutAttribute)
   }
 }

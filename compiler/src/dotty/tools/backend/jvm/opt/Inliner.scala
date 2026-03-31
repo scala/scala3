@@ -29,7 +29,7 @@ import dotty.tools.backend.jvm.analysis.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inlineInfoLoader: InlineInfoLoader,
+class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
               callGraph: CallGraph, coreBTypes: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer) {
 
@@ -793,14 +793,12 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, inli
 
   private val isInternalCache = mutable.Map.empty[String, Either[OptimizerWarning, Boolean]]
   private def isInternal(name: String): Either[OptimizerWarning, Boolean] = {
-    def isAccessible(ct: ClassBType): Boolean =
-      inlineInfoLoader.load(ct.info).isAccessible
     isInternalCache.getOrElseUpdate(name,
       coreBTypes.classBTypeFromInternalName(name) match
-        case Some(ct) => Right(!isAccessible(ct))
+        case Some(ct) => Right(!ct.info.inlineInfo.isAccessible)
         case None => bTypesFromClassfile.classBTypeFromParsedClassfile(name) match
           case Left(l) => Left(l)
-          case Right(ct) => Right(!isAccessible(ct))
+          case Right(ct) => Right(!ct.info.inlineInfo.isAccessible)
     )
   }
 

@@ -1,7 +1,5 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.backend.ScalaPrimitives
-
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
@@ -21,15 +19,13 @@ import scala.tools.asm
  * optimizations, post-processing and classfile serialization and writing.
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
-                    private val backendUtils: BackendUtils, private val primitives: ScalaPrimitives, private val ts: CoreBTypes)(using Context) {
+                    private val byteCodeRepository: BCodeRepository, private val bTypesFromClassfile: BTypesFromClassfile,
+                    private val backendUtils: BackendUtils, private val ts: CoreBTypes)(using Context) {
 
-  private val byteCodeRepository  = new BCodeRepository(frontendAccess, backendUtils, ts)
-  private val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, ts)
-  private val inlineInfoLoader    = new InlineInfoLoader(byteCodeRepository, primitives, ts)
-  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, inlineInfoLoader, ts)
+  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, ts)
   private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile)
   private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, inlineInfoLoader, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
   private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, inliner, ts, bTypesFromClassfile)
   val classfileWriters            = new ClassfileWriters(frontendAccess)
   val classfileWriter             = classfileWriters.ClassfileWriter()
