@@ -936,7 +936,24 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
-      val resultType = super.recheckApplication(tree, qualType, funType, argTypes)
+      val instArgs =
+        // Improve the argument types with which the method type is instantiated.
+        // If the rechecked argument type is an unboxed capturing type but the previous
+        // argument type is a singleton type, use the previous argument type instead.
+        // This makes sure path dependent types in the function result are still well-formed.
+        // An example is i25613.scala. See i16114.scala for an example why we have to
+        // exclude boxed capturing types because this might lose uses stemming from unboxing
+        // a function result.
+        if argTypes.hasSameLengthAs(tree.args) && ccConfig.newScheme then
+          val argTypes1 = argTypes.zipWithConserve(tree.args):
+            case (nuType @ CapturingType(_, _), arg: Tree)
+            if arg.tpe.isSingleton && !nuType.isBoxedCapturing => arg.tpe
+            case (nuType, _) => nuType
+          if argTypes1 ne argTypes then
+            capt.println(i"improve $argTypes to $argTypes1 in $tree")
+          argTypes1
+        else argTypes
+      val resultType = super.recheckApplication(tree, qualType, funType, instArgs)
       val appType = resultToAny(resultType, Origin.ResultInstance(funType, tree))
       val qualCaptures = qualType.captureSet
       val argCaptures =
