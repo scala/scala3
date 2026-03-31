@@ -1,0 +1,5 @@
+# Any changes to the Scala 3 Standard Library must be approve
+# by one of the officers responsible of maintaining it
+/library/      @scala/stdlib-officers
+/library-aux/  @scala/stdlib-officers
+/library-js/   @scala/stdlib-officers
