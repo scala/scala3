@@ -82,7 +82,7 @@ class GenBCode extends Phase { self =>
   }
 
   protected def run(using Context): Unit =
-    frontendAccess.frontendSynchWithoutContext {
+    frontendAccess.frontendSynch {
       frontendAccess
       .ctx
       .setCompilationUnit(ctx.compilationUnit)

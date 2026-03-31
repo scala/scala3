@@ -26,11 +26,9 @@ sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
 
   private val frontendLock: AnyRef = new Object()
 
-  inline final def frontendSynch[T](inline x: Context ?=> T)(using Context): T = frontendLock.synchronized(x)
+  inline final def frontendSynch[T](inline x: T): T = frontendLock.synchronized(x)
 
-  inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
-
-  def perRunLazy[T](init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
+  def perRunLazy[T](init: => T): Lazy[T] = new SynchronizedLazy(this, init)
 }
 
 object PostProcessorFrontendAccess {
@@ -42,7 +40,7 @@ object PostProcessorFrontendAccess {
    * Used for sharing variables requiring a Context for initialization, between different threads
    * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
    */
-  private class SynchronizedLazy[T](frontendAccess: PostProcessorFrontendAccess, init: Context ?=> T)(using Context) extends Lazy[T] {
+  private class SynchronizedLazy[T](frontendAccess: PostProcessorFrontendAccess, init: => T) extends Lazy[T] {
     @volatile private var isInit: Boolean = false
     private var v: T = uninitialized
 
@@ -98,7 +96,7 @@ object PostProcessorFrontendAccess {
 
   class Impl(entryPoints: mutable.HashSet[String])(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
-    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)(using ctx)
+    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings(using ctx))
 
     private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
@@ -151,7 +149,7 @@ object PostProcessorFrontendAccess {
       override def optTrace: Option[String] = s.YoptTrace.valueSetByUser
      }
 
-    override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)(using ctx)
+    override def getEntryPoints: List[String] = entryPoints.toList
 
     /* Create a class path for the backend, based on the given class path.
      * Used to make classes available to the inliner's bytecode repository.
