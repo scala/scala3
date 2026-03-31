@@ -469,7 +469,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         case t1 @ CapturingType(parent, refs) =>
           t1.derivedCapturingType(stripImpliedCaptureSet(mapAndMaybeDealias(parent)), refs)
         case t1 =>
-          if t1.containsGlobalFreshDirectly then t1 else mappedDealias(t1)
+          val t2 = mappedDealias(t1)
+          if t1.containsGlobalFreshDirectly && (t2 eq t1) then t1 else t2
 
       /** Map references to capability classes C to C^{any}, or (if Mutable)
        *  tp C^{any.rd}. Normalize captures and map to dependent functions.
