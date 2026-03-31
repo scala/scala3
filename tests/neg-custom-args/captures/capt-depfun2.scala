@@ -1,6 +1,6 @@
 import annotation.retains
 class C
-type Cap = C @retains[caps.cap.type]
+type Cap = C @retains[caps.any.type]
 class Str
 
 def f(y: Cap, z: Cap) =

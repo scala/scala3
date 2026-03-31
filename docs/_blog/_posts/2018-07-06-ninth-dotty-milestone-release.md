@@ -19,11 +19,11 @@ be a big step towards realizing the full potential of these ideas. Its main obje
 - build on strong foundations to ensure the design hangs well together,
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
-This is our ninth scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+This is our ninth scheduled release according to our [6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 The [previous technology preview](https://github.com/scala/scala3/releases/tag/0.8.0-RC1) added
 support for sbt 1, introduced improved unchecked warnings and improved SAM type support.
 
@@ -99,7 +99,7 @@ more important.
 Starting with 1.1.5 Dotty compiler plugins can be used with `sbt`. Please refer to the `sbt`
 [documentation](https://www.scala-sbt.org/1.x/docs/Compiler-Plugins.html) for more information.
 
-For more information, visit the [Compiler Plugin](https://dotty.epfl.ch/docs/reference/changed-features/compiler-plugins.html)
+For more information, visit the [Compiler Plugin](https://nightly.scala-lang.org/docs/reference/changed-features/compiler-plugins.html)
 section of our documentation.
 
 ## Trying out Dotty
@@ -179,7 +179,7 @@ According to `git shortlog -sn --no-merges 0.8.0..0.9.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.
 

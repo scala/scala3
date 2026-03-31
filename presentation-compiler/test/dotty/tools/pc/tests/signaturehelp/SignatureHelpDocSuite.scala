@@ -26,13 +26,38 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       MockDocumentation("java/io/File#`<init>`(+1).", "<init>", Seq(), Seq("parent", "child")),
       MockDocumentation("java/io/File#`<init>`(+2).", "<init>", Seq(), Seq("parent", "child")),
       MockDocumentation("java/io/File#`<init>`(+3).", "<init>", Seq(), Seq("uri")),
-      ScalaMockDocumentation("java/util/Collections#singleton().", "singleton", List(MockParam("T")), List(MockParam("o"))),
+      ScalaMockDocumentation(
+        "java/util/Collections#singleton().",
+        "singleton",
+        List(MockParam("T")),
+        List(MockParam("o"))
+      ),
       ScalaMockDocumentation("scala/Some#", "Some"),
-      ScalaMockDocumentation("scala/Option#fold().", "fold", List(MockParam("B")), List(MockParam("ifEmpty"), MockParam("f"))),
+      ScalaMockDocumentation(
+        "scala/Option#fold().",
+        "fold",
+        List(MockParam("B")),
+        List(MockParam("ifEmpty"), MockParam("f"))
+      ),
       ScalaMockDocumentation("scala/Option.apply().", "apply", List(), List(MockParam("x"))),
-      ScalaMockDocumentation("scala/collection/immutable/List#map().", "map", List(MockParam("B")), List(MockParam("f"))),
-      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List(MockParam("B")), List(MockParam("z"), MockParam("op"))),
-      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List(), List(MockParam("pf"), MockParam("fin"), MockParam("rethrow")))
+      ScalaMockDocumentation(
+        "scala/collection/immutable/List#map().",
+        "map",
+        List(MockParam("B")),
+        List(MockParam("f"))
+      ),
+      ScalaMockDocumentation(
+        "scala/collection/LinearSeqOps#foldLeft().",
+        "foldLeft",
+        List(MockParam("B")),
+        List(MockParam("z"), MockParam("op"))
+      ),
+      ScalaMockDocumentation(
+        "scala/util/control/Exception.Catch#",
+        "Catch",
+        List(),
+        List(MockParam("pf"), MockParam("fin"), MockParam("rethrow"))
+      )
     )
 
   @Test def `curry` =

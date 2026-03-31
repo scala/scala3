@@ -18,9 +18,7 @@ import java.util.Objects
 import scala.util.control.NonFatal
 import scala.annotation.{switch, tailrec}
 
-/**
- * Marker trait to indicate that a Runnable is Batchable by BatchingExecutors
- */
+/** Marker trait to indicate that a Runnable is Batchable by BatchingExecutors */
 trait Batchable {
   self: Runnable =>
 }
@@ -40,30 +38,29 @@ private[concurrent] object BatchingExecutorStatics {
   }
 }
 
-/**
- * Mixin trait for an Executor
- * which groups multiple nested `Runnable.run()` calls
- * into a single Runnable passed to the original
- * Executor. This can be a useful optimization
- * because it bypasses the original context's task
- * queue and keeps related (nested) code on a single
- * thread which may improve CPU affinity. However,
- * if tasks passed to the Executor are blocking
- * or expensive, this optimization can prevent work-stealing
- * and make performance worse.
- * A batching executor can create deadlocks if code does
- * not use `scala.concurrent.blocking` when it should,
- * because tasks created within other tasks will block
- * on the outer task completing.
- * This executor may run tasks in any order, including LIFO order.
- * There are no ordering guarantees.
+/** Mixin trait for an Executor
+ *  which groups multiple nested `Runnable.run()` calls
+ *  into a single Runnable passed to the original
+ *  Executor. This can be a useful optimization
+ *  because it bypasses the original context's task
+ *  queue and keeps related (nested) code on a single
+ *  thread which may improve CPU affinity. However,
+ *  if tasks passed to the Executor are blocking
+ *  or expensive, this optimization can prevent work-stealing
+ *  and make performance worse.
+ *  A batching executor can create deadlocks if code does
+ *  not use `scala.concurrent.blocking` when it should,
+ *  because tasks created within other tasks will block
+ *  on the outer task completing.
+ *  This executor may run tasks in any order, including LIFO order.
+ *  There are no ordering guarantees.
  *
- * WARNING: Only use *EITHER* `submitAsyncBatched` OR `submitSyncBatched`!!
+ *  WARNING: Only use *EITHER* `submitAsyncBatched` OR `submitSyncBatched`!!
  *
- * When you implement this trait for async executors like thread pools,
- * you're going to need to implement it something like the following:
+ *  When you implement this trait for async executors like thread pools,
+ *  you're going to need to implement it something like the following:
  *
- * {{{
+ *  ```
  *  final override def submitAsync(runnable: Runnable): Unit =
  *    super[SuperClass].execute(runnable) // To prevent reentrancy into `execute`
  *
@@ -74,12 +71,12 @@ private[concurrent] object BatchingExecutorStatics {
  *      submitAsync(runnable)
  *
  *  final override def reportFailure(cause: Throwable): Unit = …
- *  }}}
+ *  ```
  *
  *  And if you want to implement if for a sync, trampolining, executor you're
  *  going to implement it something like this:
  *
- * {{{
+ *  ```
  *  final override def submitAsync(runnable: Runnable): Unit = ()
  *
  *  final override def execute(runnable: Runnable): Unit =
@@ -87,8 +84,7 @@ private[concurrent] object BatchingExecutorStatics {
  *
  *  final override def reportFailure(cause: Throwable): Unit =
  *    ExecutionContext.defaultReporter(cause) // Or choose something more fitting
- * }}}
- *
+ *  ```
  */
 private[concurrent] trait BatchingExecutor extends Executor {
   private final val _tasksLocal = new ThreadLocal[AnyRef]()
@@ -223,19 +219,18 @@ private[concurrent] trait BatchingExecutor extends Executor {
   }
 
   /** MUST throw a NullPointerException when `runnable` is null
-   * When implementing a sync BatchingExecutor, it is RECOMMENDED
-   * to implement this method as `runnable.run()`
-  */
+   *  When implementing a sync BatchingExecutor, it is RECOMMENDED
+   *  to implement this method as `runnable.run()`
+   */
   protected def submitForExecution(runnable: Runnable): Unit
 
   /** Reports that an asynchronous computation failed.
    *  See `ExecutionContext.reportFailure(throwable: Throwable)`
-  */
+   */
   protected def reportFailure(throwable: Throwable): Unit
 
-  /**
-   * WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
-   * implementation of `BatchingExecutor`
+  /** WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
+   *  implementation of `BatchingExecutor`
    */
   protected final def submitAsyncBatched(runnable: Runnable): Unit = {
     val b = _tasksLocal.get
@@ -243,9 +238,8 @@ private[concurrent] trait BatchingExecutor extends Executor {
     else submitForExecution(new AsyncBatch(runnable))
   }
 
-  /**
-   * WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
-   * implementation of `BatchingExecutor`
+  /** WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
+   *  implementation of `BatchingExecutor`
    */
   protected final def submitSyncBatched(runnable: Runnable): Unit = {
     Objects.requireNonNull(runnable, "runnable is null")

@@ -4,7 +4,7 @@
   |  Found:    () ->{f} Unit
   |  Required: () -> Unit
   |
-  |  Note that capability f is not included in capture set {}.
+  |  Note that capability `f` cannot flow into capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21347.scala:11:15 ------------------------------------------------------------

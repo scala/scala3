@@ -20,11 +20,12 @@ package object duration {
    * This object can be used as closing token if you prefer dot-less style but do not want
    * to enable language.postfixOps:
    *
-   * {{{
+   * ```
    * import scala.concurrent.duration._
    *
    * val duration = 2 seconds span
-   * }}}
+   * ```
+   
    */
   object span
 
@@ -32,11 +33,12 @@ package object duration {
    * This object can be used as closing token for declaring a deadline at some future point
    * in time:
    *
-   * {{{
+   * ```
    * import scala.concurrent.duration._
    *
    * val deadline = 3 seconds fromNow
-   * }}}
+   * ```
+   
    */
   object fromNow
 

@@ -34,7 +34,6 @@ object Constants {
     def isLongRange: Boolean     = ByteTag <= tag && tag <= LongTag
     def isFloatRange: Boolean    = ByteTag <= tag && tag <= FloatTag
     def isNumeric: Boolean       = ByteTag <= tag && tag <= DoubleTag
-    def isNonUnitAnyVal: Boolean = BooleanTag <= tag && tag <= DoubleTag
     def isAnyVal: Boolean        = UnitTag <= tag && tag <= DoubleTag
 
     def tpe(using Context): Type = tag match {

@@ -8,7 +8,7 @@ class Cap2 extends caps.SharedCapability:
   def use[T](body: Cap2 => T) = body(this)
 
 class Box[T](body: Cap ?=> T):
-  inline def open(using cap: Cap) = cap.use(body)
+  inline def open(using any: Cap) = any.use(body)
 
 object Box:
   def make[T](body: Cap ?=> T)(using Cap): Box[T]^{body} = Box(body)

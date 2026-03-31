@@ -765,8 +765,13 @@ object TreeChecker {
 
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
+      def isAllowedTypeArg(tp: Type): Boolean = tp.dealias match
+        case _: TypeRef | _: TermRef | _: ThisType => true
+        case tp: AndType => isAllowedTypeArg(tp.tp1) && isAllowedTypeArg(tp.tp2)
+        case _ => false
+
       for arg <- args do
-        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef | TermRef | ThisType], "Unexpected type arg in Hole: " + arg.tpe)
+        assert(arg.isTerm || isAllowedTypeArg(arg.tpe), "Unexpected type arg in Hole: " + arg.tpe)
 
       // Check result type of the hole
       if isTerm then assert(tree1.typeOpt <:< pt)

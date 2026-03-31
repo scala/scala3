@@ -31,24 +31,24 @@ trait Buffer[A]
 
   //TODO Prepend is a logical choice for a readable name of `+=:` but it conflicts with the renaming of `append` to `add`
   /** Prepends a single element at the front of this $coll.
-    *
-    *  @param elem  the element to $add.
-    *  @return the $coll itself
-    */
+   *
+   *  @param elem  the element to $add.
+   *  @return the $coll itself
+   */
   def prepend(elem: A): this.type
 
   /** Appends the given elements to this buffer.
-    *
-    *  @param elem  the element to append.
-    */
+   *
+   *  @param elem  the element to append.
+   */
   @`inline` final def append(elem: A): this.type = addOne(elem)
 
   @deprecated("Use appendAll instead", "2.13.0")
   @`inline` final def append(elems: A*): this.type = addAll(elems)
 
   /** Appends the elements contained in a iterable object to this buffer.
-    *  @param xs  the iterable object containing the elements to append.
-    */
+   *  @param xs  the iterable object containing the elements to append.
+   */
   @`inline` final def appendAll(xs: IterableOnce[A]): this.type = addAll(xs)
 
 
@@ -64,71 +64,71 @@ trait Buffer[A]
   @inline final def ++=:(elems: IterableOnce[A]): this.type = prependAll(elems)
 
   /** Inserts a new element at a given index into this buffer.
-    *
-    *  @param idx    the index where the new elements is inserted.
-    *  @param elem   the element to insert.
-    *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
-    *            `0 <= idx <= length`.
-    */
+   *
+   *  @param idx    the index where the new elements is inserted.
+   *  @param elem   the element to insert.
+   *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
+   *            `0 <= idx <= length`.
+   */
   @throws[IndexOutOfBoundsException]
   def insert(idx: Int, elem: A): Unit
 
   /** Inserts new elements at the index `idx`. Opposed to method
-    *  `update`, this method will not replace an element with a new
-    *  one. Instead, it will insert a new element at index `idx`.
-    *
-    *  @param idx     the index where a new element will be inserted.
-    *  @param elems   the iterable object providing all elements to insert.
-    *  @throws IndexOutOfBoundsException if `idx` is out of bounds.
-    */
+   *  `update`, this method will not replace an element with a new
+   *  one. Instead, it will insert a new element at index `idx`.
+   *
+   *  @param idx     the index where a new element will be inserted.
+   *  @param elems   the iterable object providing all elements to insert.
+   *  @throws IndexOutOfBoundsException if `idx` is out of bounds.
+   */
   @throws[IndexOutOfBoundsException]
   def insertAll(idx: Int, elems: IterableOnce[A]): Unit
 
   /** Removes the element at a given index position.
-    *
-    *  @param idx  the index which refers to the element to delete.
-    *  @return   the element that was formerly at index `idx`.
-    */
+   *
+   *  @param idx  the index which refers to the element to delete.
+   *  @return   the element that was formerly at index `idx`.
+   */
   @throws[IndexOutOfBoundsException]
   def remove(idx: Int): A
 
   /** Removes the element on a given index position. It takes time linear in
-    *  the buffer size.
-    *
-    *  @param idx       the index which refers to the first element to remove.
-    *  @param count   the number of elements to remove.
-    *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
-    *            `0 <= idx <= length - count` (with `count > 0`).
-    *  @throws   IllegalArgumentException if `count < 0`.
-    */
+   *  the buffer size.
+   *
+   *  @param idx       the index which refers to the first element to remove.
+   *  @param count   the number of elements to remove.
+   *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
+   *            `0 <= idx <= length - count` (with `count > 0`).
+   *  @throws   IllegalArgumentException if `count < 0`.
+   */
   @throws[IndexOutOfBoundsException]
   @throws[IllegalArgumentException]
   def remove(idx: Int, count: Int): Unit
 
   /** Removes a single element from this buffer, at its first occurrence.
-    *  If the buffer does not contain that element, it is unchanged.
-    *
-    *  @param x  the element to remove.
-    *  @return   the buffer itself
-    */
+   *  If the buffer does not contain that element, it is unchanged.
+   *
+   *  @param x  the element to remove.
+   *  @return   the buffer itself
+   */
   def subtractOne (x: A): this.type = {
     val i = indexOf(x)
     if (i != -1) remove(i)
     this
   }
 
-  /** Removes the first ''n'' elements of this buffer.
-    *
-    *  @param n  the number of elements to remove from the beginning
-    *            of this buffer.
-    */
+  /** Removes the first *n* elements of this buffer.
+   *
+   *  @param n  the number of elements to remove from the beginning
+   *            of this buffer.
+   */
   def trimStart(n: Int): Unit = remove(0, normalized(n))
 
-  /** Removes the last ''n'' elements of this buffer.
-    *
-    *  @param n  the number of elements to remove from the end
-    *            of this buffer.
-    */
+  /** Removes the last *n* elements of this buffer.
+   *
+   *  @param n  the number of elements to remove from the end
+   *            of this buffer.
+   */
   def trimEnd(n: Int): Unit = {
     val norm = normalized(n)
     remove(length - norm, norm)

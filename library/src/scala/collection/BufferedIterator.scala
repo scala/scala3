@@ -20,14 +20,13 @@ import language.experimental.captureChecking
  */
 trait BufferedIterator[+A] extends Iterator[A] {
 
-  /** Returns next element of iterator without advancing beyond it.
-   */
+  /** Returns next element of iterator without advancing beyond it. */
   def head: A
 
   /** Returns an option of the next element of an iterator without advancing beyond it.
-    * @return  the next element of this iterator if it has a next element
-    *           `None` if it does not
-    */
+   *  @return  the next element of this iterator if it has a next element
+   *           `None` if it does not
+   */
   def headOption : Option[A] = if (hasNext) Some(head) else None
 
   override def buffered: this.type = this

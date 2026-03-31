@@ -4,6 +4,6 @@
    |           Found:    (x: String) ->{cap3} String
    |           Required: String -> String
    |
-   |           Note that capability cap3 is not included in capture set {}.
+   |           Note that capability `cap3` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

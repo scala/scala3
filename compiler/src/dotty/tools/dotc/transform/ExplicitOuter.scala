@@ -299,10 +299,15 @@ object ExplicitOuter {
         case _ => false
 
       def containsOuterRefsAnywhere(tp: Type): Boolean =
-        tp.existsPart({
+        def hasOuterRef(t: Type) =
+          { t match
             case t: SingletonType => isOuterRef(t)
             case _ => false
-          }, StopAt.Static)
+          } || {
+            val t1 = t.dealias
+            (t1 ne t) && containsOuterRefsAnywhere(t1)
+          }
+        tp.existsPart(hasOuterRef, StopAt.Static)
 
       def containsOuterRefs(t: Tree): Boolean = t match
         case _: This | _: Ident => isOuterRef(t.tpe)
@@ -320,7 +325,7 @@ object ExplicitOuter {
           containsOuterRefsAtTopLevel(app.args.head.tpe.dealias)
         case t: TypeTree if inInline =>
           // Expansions of inline methods must be able to address outer types
-          containsOuterRefsAnywhere(t.tpe.dealias)
+          containsOuterRefsAnywhere(t.tpe)
         case _ =>
           false
 

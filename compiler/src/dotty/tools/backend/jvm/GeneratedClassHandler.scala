@@ -65,13 +65,34 @@ private[jvm] object GeneratedClassHandler {
         new AsyncWritingClassHandler(postProcessor, javaExecutor)
     }
 
-    // if (settings.optInlinerEnabled || settings.optClosureInvocations) new GlobalOptimisingGeneratedClassHandler(postProcessor, handler)
-    // else
-    handler
+    if compilerSettings.optInlinerEnabled || compilerSettings.optClosureInvocations then
+      new GlobalOptimisingGeneratedClassHandler(postProcessor, handler)
+    else
+      handler
+  }
+
+  private class GlobalOptimisingGeneratedClassHandler(val postProcessor: PostProcessor, underlying: WritingClassHandler)
+    extends GeneratedClassHandler {
+
+    private val generatedUnits = ListBuffer.empty[GeneratedCompilationUnit]
+
+    def process(unit: GeneratedCompilationUnit): Unit = generatedUnits += unit
+
+    def complete(): Unit = {
+      val allGeneratedUnits = generatedUnits.result()
+      generatedUnits.clear()
+      postProcessor.runGlobalOptimizations(allGeneratedUnits)
+      allGeneratedUnits.foreach(underlying.process)
+      underlying.complete()
+    }
+
+    override def close(): Unit = underlying.close()
+
+    override def toString: String = s"GloballyOptimising[$underlying]"
   }
 
   sealed abstract class WritingClassHandler(val javaExecutor: Executor) extends GeneratedClassHandler {
-    import postProcessor.bTypes.frontendAccess
+    import postProcessor.frontendAccess
 
     def tryStealing: Option[Runnable]
 
@@ -187,5 +208,5 @@ final private class CompilationUnitInPostProcess(private var classes: List[Gener
   /** the main async task submitted onto the scheduler */
   var task: Future[Unit] = uninitialized
 
-  val bufferedReporting = new PostProcessorFrontendAccess.BufferingBackendReporting()
+  val bufferedReporting = new BufferingBackendReporting()
 }

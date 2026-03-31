@@ -50,10 +50,19 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   extension [A](state: State)
     infix def andThen(op: State ?=> A): A = op(using state)
 
-  def testFile(f: JFile): Unit = 
+  def testFiles(it: Array[JFile]): Unit =
+    val errors = it.collect(testFile.unlift)
+    if errors.length > 0 then
+      fail(errors.mkString("\n"))
+
+  def testScript(name: => String, str: String): Unit =
+    testScript(name, str.linesIterator.toList).foreach(fail)
+
+  private def testFile(f: JFile): Option[String] =
     testScript(f.toString, readLines(f), Some(f))
 
-  def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Unit = {
+  /** Returns failures: None if all is well, Some for an error */
+  private def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Option[String] = {
     val prompt = "scala>"
 
     def evaluate(state: State, input: String) =
@@ -94,21 +103,23 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
       (optsLine :: buf.toList).filter(nonBlank)
     }
 
-    if !FileDiff.matches(actualOutput, expectedOutput) then
+    if FileDiff.matches(actualOutput, expectedOutput) then None
+    else
       // Some tests aren't file-based but just pass a string, so can't update anything then
       // Also the files here are the copies in target/ not the original, so you need to vimdiff/mv them...
-      if dotty.Properties.testsUpdateCheckfile && scriptFile != None then
+      if dotty.Properties.testsUpdateCheckfile && scriptFile.isDefined then
         val checkFile = scriptFile.get
         FileDiff.dump(checkFile.toPath.toString, actualOutput)
         println(s"Wrote updated script file to $checkFile")
+        None
       else
         println(dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
 
-        fail(s"Error in script $name, expected output did not match actual")
+        Some(s"Error in script $name, expected output did not match actual")
     end if
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-pagewidth", "80")
+  val commonOptions = Array("-color:never", "-pagewidth", "80" /* TODO: but a lot of tests need fixing to match production behavior "-Ydebug"*/)
   val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.replClassPath)
   lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.replWithStagingClasspath)

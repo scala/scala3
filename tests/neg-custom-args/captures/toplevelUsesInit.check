@@ -1,0 +1,82 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:18:4 ----------------------------
+18 |  M.c.println()      // error
+   |  ^^^
+   |  Reference `test.M.c` is not included in the allowed capture set {}
+   |  of the enclosing constructor N in object N.
+   |
+   |  External uses should be declared explicitly with a uses_init clause in object N:
+   |
+   |      uses_init test.M.c
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:19:2 ----------------------------
+19 |  Console.println()  // error
+   |  ^^^^^^^
+   |  Reference `test.Console` is not included in the allowed capture set {}
+   |  of the enclosing constructor N in object N.
+   |
+   |  Note that `test.Console` is a capability because it contains a field out: test.Stream^.
+   |
+   |  External uses should be declared explicitly with a uses_init clause in object N:
+   |
+   |      uses_init test.Console
+   |
+   |  where:    ^ refers to a root capability classified as SharedCapability in the type of value out
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:20:2 ----------------------------
+20 |  Console2.println() // error
+   |  ^^^^^^^^
+   |  Reference `test.Console2` is not included in the allowed capture set {}
+   |  of the enclosing constructor N in object N.
+   |
+   |  Note that `test.Console2` is a capability because it uses {test.Console}.
+   |
+   |  External uses should be declared explicitly with a uses_init clause in object N:
+   |
+   |      uses_init test.Console2
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:28:10 ---------------------------
+28 |val _ = M.c.println()          // error
+   |        ^^^
+   |        Reference `test.M.c` is not included in the allowed capture set {}
+   |        of the enclosing constructor toplevelUsesInit$package in package test.
+   |
+   |        The top-level definitions should be wrapped in an object with a uses_init clause:
+   |
+   |            uses_init test.M.c
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:29:8 ----------------------------
+29 |val _ = Console.println()      // error
+   |        ^^^^^^^
+   |        Reference `test.Console` is not included in the allowed capture set {}
+   |        of the enclosing constructor toplevelUsesInit$package in package test.
+   |
+   |        Note that `test.Console` is a capability because it contains a field out: test.Stream^.
+   |
+   |        The top-level definitions should be wrapped in an object with a uses_init clause:
+   |
+   |            uses_init test.Console
+   |
+   |        where:    ^ refers to a root capability classified as SharedCapability in the type of value out
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:32:16 ---------------------------
+32 |  val x = () => N2.ping()      // error
+   |                ^^
+   |                References {test.Console, test.M.c} are not all included in the allowed capture set {}
+   |                of the enclosing top-level definitions in package test.
+   |
+   |                Note that `test.Console` is a capability because it contains a field out: test.Stream^.
+   |
+   |                The top-level definitions should be wrapped in an object with a uses clause:
+   |
+   |                    uses test.Console, test.M.c
+   |
+   |                where:    ^ refers to a root capability classified as SharedCapability in the type of value out
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:34:22 -----------------------------
+34 |  val _: () -> Unit = x        // error
+   |                      ^
+   |Found:    (x : () ->{test.Console, test.M.c} Unit)
+   |Required: () -> Unit
+   |
+   |Note that capability `any` cannot flow into capture set {}.
+   |
+   |Note that capability `test.Console` cannot flow into capture set {}.
+   |Note that object Console is a capability because it contains fields value out
+   |
+   |where:    any is a root capability classified as SharedCapability in the type of object Console with contributing field val out
+   |
+   | longer explanation available when compiling with `-explain`

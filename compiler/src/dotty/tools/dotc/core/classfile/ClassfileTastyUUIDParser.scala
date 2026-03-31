@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.util.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.tasty.TastyReader
+import dotty.tools.tasty.{ TastyReader, UnpickleException }
 
 import ClassfileParser.Header
 
@@ -37,7 +37,9 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
-      val addendum = Header.Version.brokenVersionAddendum(classfileVersion)
+      val addendum = e match
+        case _: UnpickleException => ""
+        case _ => Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
         i"""  class file ${classfile.canonicalPath} is broken$addendum,
           |  reading aborted with ${e.getClass}:

@@ -190,7 +190,7 @@ trait TypeAssigner {
     if tpe.isError then tpe
     else errorType(CannotBeAccessed(tpe, superAccess), pos)
 
-  def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
+  def processAppliedType(tp: Type)(using Context): Type = tp match
     case AppliedType(tycon, args) =>
       val constr = tycon.typeSymbol
       if constr == defn.andType then AndType(args(0), args(1))
@@ -506,7 +506,7 @@ trait TypeAssigner {
     val tparams = tycon.tpe.typeParams
     val ownType =
       if tparams.hasSameLengthAs(args) then
-        processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
+        processAppliedType(tycon.tpe.appliedTo(args.tpes))
       else
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)

@@ -5,6 +5,7 @@ import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core.MacroClassLoader
 import dotty.tools.dotc.config.Settings.Setting._
 import dotty.tools.dotc.interfaces.{ SourcePosition => ISourcePosition }
 import dotty.tools.dotc.ast.Trees.Tree
@@ -42,7 +43,7 @@ class SnippetCompiler(
         ctx.setSetting(setting.setting, setting.value)
       }
       res.initialize()(using res)
-      res
+      MacroClassLoader.init(res)
 
   private val scala3Compiler = new Compiler
 

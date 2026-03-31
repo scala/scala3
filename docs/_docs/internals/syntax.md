@@ -518,7 +518,10 @@ ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
                     |  Export
 Template          ::=  InheritClauses [TemplateBody]
-InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+InheritClauses    ::=  [‘extends’ ConstrApps]
+                       [‘derives’ QualId {‘,’ QualId}]
+                       [‘uses’ CaptureRef {‘,’ CaptureRef}]
+                       [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
 ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation

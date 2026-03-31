@@ -764,11 +764,9 @@ object JavaParsers {
       ValDef(name, tpt2, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
-    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] = in.token match
-      case CLASS | ENUM | RECORD | INTERFACE | AT =>
-        typeDecl(start, if definesInterface(parentToken) then mods | Flags.JavaStatic else mods)
-      case _ =>
-        termDecl(start, mods, parentToken)
+    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] =
+      if (isTypeDeclStart()) typeDecl(start, if definesInterface(parentToken) then mods | Flags.JavaStatic else mods)
+      else termDecl(start, mods, parentToken)
 
     def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
       atSpan(cdef.span) {
@@ -889,7 +887,7 @@ object JavaParsers {
 
       val accessors =
         (for (name, (tpt, annots)) <- fieldsByName yield
-          DefDef(name, List(Nil), adaptVarargsType(tpt), unimplementedExpr)
+          DefDef(name, ListOfNil, adaptVarargsType(tpt), unimplementedExpr)
             .withMods(Modifiers(Flags.JavaDefined | Flags.Method | Flags.Synthetic))
         ).toList
 
@@ -1057,6 +1055,10 @@ object JavaParsers {
       }
     }
 
+    def isTypeDeclStart() = in.token match {
+      case CLASS | ENUM | RECORD | INTERFACE | AT => true
+      case _ => false
+    }
     def typeDecl(start: Offset, mods: Modifiers): List[Tree] = in.token match
       case ENUM      => enumDecl(start, mods)
       case INTERFACE => interfaceDecl(start, mods)
@@ -1106,6 +1108,13 @@ object JavaParsers {
         case Some(t)  => t.name.toTypeName
         case _        => tpnme.EMPTY
       }
+      var compact = false
+      def typeDeclOrCompact(start: Offset, mods: Modifiers): List[Tree] =
+        if (isTypeDeclStart()) typeDecl(start, mods)
+        else
+          val ts = termDecl(start, mods, CLASS)
+          if (ts.nonEmpty) compact = true
+          Nil
       val buf = new ListBuffer[Tree]
       while (in.token == IMPORT)
         buf ++= importDecl()
@@ -1115,12 +1124,13 @@ object JavaParsers {
           val start = in.offset
           val mods = modifiers(inInterface = false)
           adaptRecordIdentifier() // needed for typeDecl
-          buf ++= typeDecl(start, mods)
+          buf ++= typeDeclOrCompact(start, mods)
         }
       }
       val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
-      unit match
+      if (compact) EmptyTree
+      else unit match
         case PackageDef(Ident(nme.EMPTY_PACKAGE), Nil) => EmptyTree
         case _ => unit
     }

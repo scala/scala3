@@ -25,11 +25,10 @@ class SyncVar[A] {
   private var isDefined: Boolean = false
   private var value: A = compiletime.uninitialized
 
-  /**
-   * Wait for this SyncVar to become defined and then get
-   * the stored value without modifying it.
+  /** Wait for this SyncVar to become defined and then get
+   *  the stored value without modifying it.
    *
-   * @return value that is held in this container
+   *  @return value that is held in this container
    */
   def get: A = synchronized {
     while (!isDefined) wait()
@@ -37,8 +36,8 @@ class SyncVar[A] {
   }
 
   /** Waits `timeout` millis. If `timeout <= 0` just returns 0.
-    * It never returns negative results.
-    */
+   *  It never returns negative results.
+   */
   private def waitMeasuringElapsed(timeout: Long): Long = if (timeout <= 0) 0 else {
     val start = System.nanoTime()
     wait(timeout)
@@ -67,11 +66,10 @@ class SyncVar[A] {
     if (isDefined) Some(value) else None
   }
 
-  /**
-   * Wait for this SyncVar to become defined and then get
-   * the stored value, unsetting it as a side effect.
+  /** Wait for this SyncVar to become defined and then get
+   *  the stored value, unsetting it as a side effect.
    *
-   * @return value that was held in this container
+   *  @return value that was held in this container
    */
   def take(): A = synchronized {
     try get
@@ -92,7 +90,8 @@ class SyncVar[A] {
   }
 
   /** Place a value in the SyncVar. If the SyncVar already has a stored value,
-   * wait until another thread takes it. */
+   *  wait until another thread takes it. 
+   */
   def put(x: A): Unit = synchronized {
     while (isDefined) wait()
     setVal(x)

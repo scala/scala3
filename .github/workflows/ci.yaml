@@ -34,7 +34,6 @@ concurrency:
 
 env:
   DOTTY_CI_RUN: true
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 # In this file, we set `--cpu-shares 4096` on every job. This might seem useless
 # since it means that every container has the same weight which should be
@@ -78,7 +77,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Test
-        run: sbt ";scala3-bootstrapped-new/compile ;scala3-compiler-bootstrapped-new/test"
+        run: sbt ";scala3-bootstrapped/compile ;scala3-compiler-bootstrapped/test"
         shell: cmd
 
   publish_release:
@@ -86,6 +85,7 @@ jobs:
     permissions:
       contents: write  # for GH CLI to create a release
     runs-on: [self-hosted, Linux]
+    needs: [stdlib-tests]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
@@ -132,7 +132,7 @@ jobs:
       - name: Check compiler version
         shell: bash
         run : |
-          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped-new/version" | tail -n1)
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
           echo "This build version: ${version}"
           if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
             echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
@@ -210,22 +210,23 @@ jobs:
           ./project/scripts/sbtPublish " \
             all \
               scala-library-bootstrapped/publishSigned \
-              scala3-compiler-bootstrapped-new/publishSigned \
+              scala3-compiler-bootstrapped/publishSigned \
               scala3-interfaces/publishSigned \
               scala3-language-server/publishSigned \
-              scala3-library-bootstrapped-new/publishSigned \
+              scala3-library-bootstrapped/publishSigned \
               scala3-library-sjs/publishSigned \
               scala3-presentation-compiler/publishSigned \
               scala3-repl/publishSigned \
               scala3-sbt-bridge-bootstrapped/publishSigned \
-              scala3-staging-new/publishSigned \
-              scala3-tasty-inspector-new/publishSigned \
+              scala3-staging/publishSigned \
+              scala3-tasty-inspector/publishSigned \
               scaladoc/publishSigned \
-              tasty-core-bootstrapped-new/publishSigned \
+              tasty-core-bootstrapped/publishSigned \
             ;sonaUpload"
 
       - name: Publish Release (org.scala-js)
         run: |
+          # Ensure the staging does not contain any stale artifacts
           rm -rf ./target/sona-staging/
           ./project/scripts/sbtPublish "scala-library-sjs/publishSigned ;sonaUpload"
 
@@ -270,3 +271,13 @@ jobs:
      java-version: 17
    if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
    needs: [ build-chocolatey-package ]
+
+  scalafmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: coursier/cache-action@v8
+      - uses: VirtusLab/scala-cli-setup@v1.12.4
+      - run: scala-cli format --check

@@ -175,11 +175,12 @@ subsection:
           - page: reference/experimental/capture-checking/polymorphism.md
           - page: reference/experimental/capture-checking/advanced.md
             hidden: true
-          - page: reference/experimental/capture-checking/scoped-caps.md
+          - page: reference/experimental/capture-checking/scoped-capabilities.md
           - page: reference/experimental/capture-checking/classifiers.md
           - page: reference/experimental/capture-checking/checked-exceptions.md
           - page: reference/experimental/capture-checking/mutability.md
           - page: reference/experimental/capture-checking/separation-checking.md
+          - page: reference/experimental/capture-checking/safe.md
           - page: reference/experimental/capture-checking/how-to-use.md
           - page: reference/experimental/capture-checking/internals.md
       - page: reference/experimental/purefuns.md

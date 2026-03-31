@@ -1,0 +1,18 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/toplevelUses.scala:13:22 ---------------------------------
+13 |  val _: () -> Unit = f // error
+   |                      ^
+   |                      Found:    (f : () ->{test.M.c} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `test.M.c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/toplevelUses.scala:16:22 ---------------------------------
+16 |  val _: () -> Unit = g // error
+   |                      ^
+   |                      Found:    (g : () ->{cc} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `cc` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

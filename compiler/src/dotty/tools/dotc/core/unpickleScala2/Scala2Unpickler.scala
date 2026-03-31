@@ -16,7 +16,7 @@ import util.Spans.*
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd.*
 import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
-import printing.Texts.*
+import printing.Texts.{*, given}
 import printing.Printer
 import io.AbstractFile
 import util.common.*
@@ -854,7 +854,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val args = until(end, () => readTypeRef())
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
         else if (ctx.settings.scalajs.value && args.length == 2 &&
-            sym.owner == JSDefinitions.jsdefn.ScalaJSJSPackageClass && sym == JSDefinitions.jsdefn.PseudoUnionClass) {
+            sym.owner == JSDefinitions.jsdefn.ScalaJSJSPackageClass && sym.name == tpnme.raw.BAR) {
           // Treat Scala.js pseudo-unions as real unions, this requires a
           // special-case in erasure, see TypeErasure#eraseInfo.
           OrType(args(0), args(1), soft = false)

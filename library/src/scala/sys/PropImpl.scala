@@ -16,8 +16,7 @@ package sys
 import scala.language.`2.13`
 import scala.collection.mutable
 
-/** The internal implementation of scala.sys.Prop.
- */
+/** The internal implementation of scala.sys.Prop. */
 private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends Prop[T] {
   def value: T = if (isSet) valueFn(get) else zero
   def isSet    = underlying contains key

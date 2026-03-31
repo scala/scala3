@@ -21,16 +21,16 @@ The highlights of this release are:
 
 <!--more-->
 
-This is our second scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+This is our second scheduled release according to our [6-week release schedule](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 
 ## What’s in the 0.2.0-RC1 technology preview?
 The [previous technology preview](/_blog/_posts/2017-05-31-first-dotty-milestone-release.html) has shipped new language features planned for Scala 3:
-[Intersection Types](https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html),
-[Union Types](https://dotty.epfl.ch/docs/reference/new-types/union-types.html),
-[Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html),
-[Enumerations](https://dotty.epfl.ch/docs/reference/enums/enums.html),
-[Algebraic Data Types](https://dotty.epfl.ch/docs/reference/enums/adts.html),
-[By-Name Implicits](https://dotty.epfl.ch/docs/reference/other-new-features/implicit-by-name-parameters.html).
+[Intersection Types](https://nightly.scala-lang.org/docs/reference/new-types/intersection-types.html),
+[Union Types](https://nightly.scala-lang.org/docs/reference/new-types/union-types.html),
+[Trait Parameters](https://nightly.scala-lang.org/docs/reference/other-new-features/trait-parameters.html),
+[Enumerations](https://nightly.scala-lang.org/docs/reference/enums/enums.html),
+[Algebraic Data Types](https://nightly.scala-lang.org/docs/reference/enums/adts.html),
+[By-Name Implicits](https://nightly.scala-lang.org/docs/reference/other-new-features/implicit-by-name-parameters.html).
 
 This technology preview is geared towards improving stability and reliability. It includes:
 

@@ -8,10 +8,10 @@ trait Test:
 
   def foo[C^](x: T[C]): Unit = ???
   def bar(x: T[{}]): Unit = ???
-  def baz(x: T[{caps.cap}]): Unit = ???
+  def baz(x: T[{caps.any}]): Unit = ???
   def foo2[C^](x: U[C]): Unit = ???
   def bar2(x: U[{}]): Unit = ???
-  def baz2(x: U[{caps.cap}]): Unit = ???
+  def baz2(x: U[{caps.any}]): Unit = ???
 
   def test =
     val t: T[{C}] = ???

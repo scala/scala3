@@ -19,8 +19,7 @@ import language.experimental.captureChecking
 
 import scala.collection.generic.CommonErrors
 
-/** Trait that overrides operations to take advantage of strict builders.
- */
+/** Trait that overrides operations to take advantage of strict builders. */
 transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends Any
     with SeqOps[A, CC, C]

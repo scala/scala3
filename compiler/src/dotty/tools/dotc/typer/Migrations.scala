@@ -89,8 +89,8 @@ trait Migrations:
       else s"use `$prefix<function>$suffix` instead"
     def rewrite = Message.rewriteNotice("This construct", mversion.patchFrom)
     report.errorOrMigrationWarning(
-      em"""The syntax `<function> _` is no longer supported;
-          |you can $remedy$rewrite""",
+      em"""The trailing ` _` for eta-expansion is unnecessary;
+        |the compiler performs eta-expansion automatically, so you can write the function value directly instead.$rewrite""",
       tree.srcPos, mversion)
     if mversion.needsPatch then
       patch(Span(tree.span.start), prefix)

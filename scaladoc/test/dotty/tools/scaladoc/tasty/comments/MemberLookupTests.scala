@@ -17,6 +17,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     testOwnerlessLookupOfClassWithinPackageWithPackageObject()
     testOwnedLookup()
     testStrictMemberLookup()
+    testOverloadedMethodLookup()
   }
 
   def testOwnerlessLookup(): Unit = {
@@ -173,6 +174,149 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     assertTrue("strict member lookup should not look outside", MemberLookup.lookup(parseQuery(query), owner).isEmpty)
   }
 
+  def testOverloadedMethodLookup(): Unit = {
+    // Test basic overload resolution with collection types
+    val collectionOverloadCases = List[(String, Sym)](
+      // Buffer overload
+      "tests.overloadedMethods.OverloadedMethods.processBuffer[A](b:scala.collection.mutable.Buffer[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processBuffer", "Buffer"),
+      // Map overload
+      "tests.overloadedMethods.OverloadedMethods.processMap[K,V](m:scala.collection.mutable.Map[K,V])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processMap", "Map"),
+      // Set overload
+      "tests.overloadedMethods.OverloadedMethods.processSet[A](s:scala.collection.mutable.Set[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processSet", "Set"),
+      // Seq overload
+      "tests.overloadedMethods.OverloadedMethods.processSeq[A](s:scala.collection.mutable.Seq[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processSeq", "Seq"),
+      // Iterator overload
+      "tests.overloadedMethods.OverloadedMethods.processIterator[A](it:scala.collection.Iterator[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processIterator", "Iterator"),
+      // Iterable overload
+      "tests.overloadedMethods.OverloadedMethods.processIterable[A](it:scala.collection.mutable.Iterable[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processIterable", "Iterable"),
+      // List overload
+      "tests.overloadedMethods.OverloadedMethods.processList[A](l:scala.collection.immutable.List[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processList", "List"),
+      // Properties overload
+      "tests.overloadedMethods.OverloadedMethods.processProperties(p:java.util.Properties)*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("processProperties", "Properties"),
+    )
+
+    collectionOverloadCases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
+    }
+
+    // Test transform method with multiple overloads including primitive Int
+    val transformOverloadCases = List[(String, Sym)](
+      // Int overload (primitive type)
+      "tests.overloadedMethods.OverloadedMethods.transform(x:Int)*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("transform", "Int"),
+      // Buffer overload
+      "tests.overloadedMethods.OverloadedMethods.transform[A](b:scala.collection.mutable.Buffer[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("transform", "Buffer"),
+      // Map overload
+      "tests.overloadedMethods.OverloadedMethods.transform[K,V](m:scala.collection.mutable.Map[K,V])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("transform", "Map"),
+      // Set overload
+      "tests.overloadedMethods.OverloadedMethods.transform[A](s:scala.collection.mutable.Set[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("transform", "Set"),
+      // Properties overload
+      "tests.overloadedMethods.OverloadedMethods.transform(p:java.util.Properties)*" ->
+        cls("tests.overloadedMethods.OverloadedMethods").funOverload("transform", "Properties"),
+    )
+
+    transformOverloadCases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
+    }
+
+    // Test static asJava methods in companion object
+    val staticOverloadCases = List[(String, Sym)](
+      // Buffer overload
+      "tests.overloadedMethods.OverloadedMethods.asJava[A](b:scala.collection.mutable.Buffer[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods$").funOverload("asJava", "Buffer"),
+      // Map overload
+      "tests.overloadedMethods.OverloadedMethods.asJava[K,V](m:scala.collection.mutable.Map[K,V])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods$").funOverload("asJava", "Map"),
+      // Set overload
+      "tests.overloadedMethods.OverloadedMethods.asJava[A](s:scala.collection.mutable.Set[A])*" ->
+        cls("tests.overloadedMethods.OverloadedMethods$").funOverload("asJava", "Set"),
+      // Properties overload
+      "tests.overloadedMethods.OverloadedMethods.asJava(p:java.util.Properties)*" ->
+        cls("tests.overloadedMethods.OverloadedMethods$").funOverload("asJava", "Properties"),
+    )
+
+    staticOverloadCases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
+    }
+
+    // Test custom types (non-collection)
+    val customTypeCases = List[(String, Sym)](
+      "tests.overloadedMethods.CustomTypeOverloads.process(x:tests.overloadedMethods.CustomTypeA)*" ->
+        cls("tests.overloadedMethods.CustomTypeOverloads").funOverload("process", "CustomTypeA"),
+      "tests.overloadedMethods.CustomTypeOverloads.process(x:tests.overloadedMethods.CustomTypeB)*" ->
+        cls("tests.overloadedMethods.CustomTypeOverloads").funOverload("process", "CustomTypeB"),
+    )
+
+    customTypeCases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
+    }
+
+    // Test multiple parameters
+    val multiParamCases = List[(String, Sym)](
+      "tests.overloadedMethods.MultiParamOverloads.merge(a:scala.collection.mutable.Buffer[_],b:scala.collection.mutable.Set[_])*" ->
+        cls("tests.overloadedMethods.MultiParamOverloads").funOverload("merge", "Buffer", "Set"),
+      "tests.overloadedMethods.MultiParamOverloads.merge(a:scala.collection.mutable.Set[_],b:scala.collection.mutable.Buffer[_])*" ->
+        cls("tests.overloadedMethods.MultiParamOverloads").funOverload("merge", "Set", "Buffer"),
+      "tests.overloadedMethods.MultiParamOverloads.combine(a:Int,b:String)*" ->
+        cls("tests.overloadedMethods.MultiParamOverloads").funOverload("combine", "Int", "String"),
+      "tests.overloadedMethods.MultiParamOverloads.combine(a:String,b:Int)*" ->
+        cls("tests.overloadedMethods.MultiParamOverloads").funOverload("combine", "String", "Int"),
+    )
+
+    multiParamCases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
+    }
+
+    // Test no-arg vs arg overloads - this tests that empty parameter lists
+    // are correctly distinguished from missing signatures
+    val noArgOverloadCases = List[(String, Sym)](
+      // No-arg version
+      "tests.overloadedMethods.NoArgOverloads.action()*" ->
+        cls("tests.overloadedMethods.NoArgOverloads").funOverload("action"),
+      // Int arg version
+      "tests.overloadedMethods.NoArgOverloads.action(x:Int)*" ->
+        cls("tests.overloadedMethods.NoArgOverloads").funOverload("action", "Int"),
+      // String arg version
+      "tests.overloadedMethods.NoArgOverloads.action(s:String)*" ->
+        cls("tests.overloadedMethods.NoArgOverloads").funOverload("action", "String"),
+      // Two arg version
+      "tests.overloadedMethods.NoArgOverloads.action(x:Int,y:String)*" ->
+        cls("tests.overloadedMethods.NoArgOverloads").funOverload("action", "Int", "String"),
+      // No-arg getValue
+      "tests.overloadedMethods.NoArgOverloads.getValue()*" ->
+        cls("tests.overloadedMethods.NoArgOverloads").funOverload("getValue"),
+      // Int arg getValue
+      "tests.overloadedMethods.NoArgOverloads.getValue(index:Int)*" ->
+        cls("tests.overloadedMethods.NoArgOverloads").funOverload("getValue", "Int"),
+    )
+
+    noArgOverloadCases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
+    }
+
+    // Test fallback behavior - queries without signature should fall back to first match
+    val fallbackCases = List[String](
+      "tests.overloadedMethods.OverloadedMethods.transform",
+      "tests.overloadedMethods.OverloadedMethods.processBuffer",
+    )
+
+    fallbackCases.foreach { query =>
+      val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
+      assertTrue(s"Fallback lookup should succeed for: $query", lookupRes.nonEmpty)
+    }
+  }
+
   given q.type = q
 
   def parseQuery(query: String): Query = {
@@ -189,6 +333,46 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       val List(sym) = symbol.methodMember(name)
       Sym(sym)
     def tpe(name: String) = Sym(symbol.typeMember(name))
+    /** Find a specific overloaded method by matching parameter types.
+      *  @param name The method name
+      *  @param paramTypes The simple names of parameter types to match (e.g., "Buffer", "Int")
+      */
+    def funOverload(name: String, paramTypes: String*): Sym = {
+      import q.reflect._
+
+      def extractSimpleTypeName(qualifiedType: String): String = {
+        val withoutTypeArgs = qualifiedType.indexOf('[') match {
+          case -1 => qualifiedType
+          case i => qualifiedType.substring(0, i)
+        }
+        withoutTypeArgs.split('.').last
+      }
+
+      def getMethodParamTypes(tpe: TypeRepr): Option[List[String]] = tpe match {
+        case MethodType(_, pts, _) =>
+          Some(pts.map(pt => extractSimpleTypeName(pt.show)))
+        case PolyType(_, _, resType) =>
+          getMethodParamTypes(resType)
+        case _ => None
+      }
+
+      val methods = symbol.methodMember(name)
+      val targetTypes = paramTypes.toList
+      val matchingMethod = methods.find { sym =>
+        getMethodParamTypes(sym.info) match {
+          case Some(actualTypes) => actualTypes == targetTypes
+          case None => false
+        }
+      }
+      matchingMethod match {
+        case Some(sym) => Sym(sym)
+        case None =>
+          throw new AssertionError(
+            s"Could not find overload $name(${paramTypes.mkString(", ")}) in ${symbol.fullName}. " +
+            s"Available overloads: ${methods.map(m => m.name + ": " + m.info.show).mkString("; ")}"
+          )
+      }
+    }
   }
 
   def cls(fqn: String) = Sym(q.reflect.Symbol.classSymbol(fqn))

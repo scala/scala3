@@ -1,7 +1,7 @@
 //> using options -source 3.7
 import language.experimental.captureChecking
 // no separation checking
-import caps.{cap, use}
+import caps.{any, use}
 
 def foo1(@use xs: List[() => Unit]): Unit =
   var x: () ->{xs*} Unit = xs.head

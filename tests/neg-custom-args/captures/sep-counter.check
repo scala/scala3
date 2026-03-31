@@ -1,12 +1,12 @@
 -- Error: tests/neg-custom-args/captures/sep-counter.scala:12:19 -------------------------------------------------------
 12 |  def mkCounter(): Pair[Ref^, Ref^] =  // error
    |                   ^^^^^^^^^^^^^^^^
-   |Separation failure in method mkCounter's result type Pair[Ref^, Ref^²].
-   |One part,  Ref^, hides capabilities  {c, cap, cap²}.
-   |Another part,  Ref^²,  captures capabilities  {c}.
-   |The two sets overlap at  {c}.
+   |    Separation failure in method mkCounter's result type Pair[Ref^, Ref^²].
+   |    One part,  Ref^, hides capabilities  {c, any, any²}.
+   |    Another part,  Ref^²,  captures capabilities  {c}.
+   |    The two sets overlap at  {c}.
    |
-   |where:    ^    refers to a fresh root capability classified as Unscoped in the result type of method mkCounter
-   |          ^²   refers to a fresh root capability classified as Unscoped in the result type of method mkCounter
-   |          cap  is a fresh root capability classified as Unscoped in the type of value c
-   |          cap² is a fresh root capability classified as Unscoped created in value c when constructing instance Ref
+   |    where:    ^    refers to a root capability classified as Unscoped in the result type of method mkCounter
+   |              ^²   refers to a root capability classified as Unscoped in the result type of method mkCounter
+   |              any  is a root capability classified as Unscoped in the type of value c
+   |              any² is a root capability classified as Unscoped created in value c when constructing instance Ref

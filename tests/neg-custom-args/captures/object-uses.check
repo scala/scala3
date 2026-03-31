@@ -1,0 +1,14 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/object-uses.scala:12:22 --------------------------------
+12 |      Console.println(g.toString) // error
+   |                      ^
+   |                      Reference `A.this.g` is not included in the allowed capture set {A.this.f}
+   |                      of the enclosing object B in class A.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/object-uses.scala:15:18 ----------------------------------
+15 |  val _: Object = b // error
+   |                  ^
+   |                  Found:    (A.this.b : A.this.B.type)
+   |                  Required: Object
+   |
+   |                  Note that capability `A.this.f` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,18 +1,18 @@
 package dotty.tools.pc
 
+import scala.jdk.CollectionConverters.*
+import scala.meta.pc.VirtualFileParams
+
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.interfaces.Diagnostic as DiagnosticInterfaces
-import dotty.tools.dotc.reporting.ErrorMessageID
-import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.reporting.CodeAction
+import dotty.tools.dotc.reporting.Diagnostic
+import dotty.tools.dotc.reporting.ErrorMessageID
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.pc.utils.InteractiveEnrichments.toLsp
 
 import org.eclipse.lsp4j
-
-import scala.jdk.CollectionConverters.*
-import scala.meta.pc.VirtualFileParams
 
 class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
   def diagnostics(): List[lsp4j.Diagnostic] =
@@ -70,7 +70,7 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
   private def toDiagnosticSeverity(severity: Int): lsp4j.DiagnosticSeverity =
     severity match
-      case DiagnosticInterfaces.ERROR   => lsp4j.DiagnosticSeverity.Error
+      case DiagnosticInterfaces.ERROR => lsp4j.DiagnosticSeverity.Error
       case DiagnosticInterfaces.WARNING => lsp4j.DiagnosticSeverity.Warning
-      case DiagnosticInterfaces.INFO    => lsp4j.DiagnosticSeverity.Information
-      case _                            => lsp4j.DiagnosticSeverity.Information
+      case DiagnosticInterfaces.INFO => lsp4j.DiagnosticSeverity.Information
+      case _ => lsp4j.DiagnosticSeverity.Information

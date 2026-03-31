@@ -1,37 +1,17 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees.EmptyTree
-import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.util.{Property, SrcPos}
-import dotty.tools.dotc.core.Symbols.ClassSymbol
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Flags.EmptyFlags
 import dotty.tools.dotc.ast.tpd.TreeTraverser
-import dotty.tools.dotc.core.Types.watchList
-import dotty.tools.dotc.core.Types.NoType
-import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.semanticdb.TypeOps
-import dotty.tools.dotc.core.Symbols.{NoSymbol, isParamOrAccessor}
-import scala.collection.mutable
-import dotty.tools.dotc.core.Scopes.Scope
-import scala.collection.immutable.HashMap
 import dotty.tools.dotc.core.Symbols
-import dotty.tools.dotc.typer.ImportInfo
-import dotty.tools.dotc.ast.untpd.ImportSelector
-import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.ast.Trees.Ident
-import dotty.tools.dotc.core.Names.TypeName
-import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.Mode.Type
 import dotty.tools.dotc.core.Names.SimpleName
 
 class CheckShadowing extends MiniPhase:

@@ -22,7 +22,7 @@ import scala.annotation.migration
  *  equivalence and a representation of equivalence on some type. This
  *  trait is for representing the latter.
  *
- *  An [[https://en.wikipedia.org/wiki/Equivalence_relation equivalence relation]]
+ *  An [equivalence relation](https://en.wikipedia.org/wiki/Equivalence_relation)
  *  is a binary relation on a type. This relation is exposed as
  *  the `equiv` method of the `Equiv` trait.  The relation must be:
  *
@@ -33,21 +33,19 @@ import scala.annotation.migration
  */
 
 trait Equiv[T] extends Any with Serializable {
-  /** Returns `true` iff `x` is equivalent to `y`.
-   */
+  /** Returns `true` iff `x` is equivalent to `y`. */
   def equiv(x: T, y: T): Boolean
 }
 
 trait LowPriorityEquiv {
   self: Equiv.type =>
 
-  /**
-   * @deprecated This implicit universal `Equiv` instance allows accidentally
-   * comparing instances of types for which equality isn't well-defined or implemented.
-   * (For example, it does not make sense to compare two `Function1` instances.)
+  /** Use `Equiv.universal` explicitly instead. If you really want an implicit universal `Equiv` instance
+   *  @deprecated This implicit universal `Equiv` instance allows accidentally
+   *  comparing instances of types for which equality isn't well-defined or implemented.
+   *  (For example, it does not make sense to compare two `Function1` instances.)
    *
-   * Use `Equiv.universal` explicitly instead. If you really want an implicit universal `Equiv` instance
-   * despite the potential problems, consider `implicit def universalEquiv[T]: Equiv[T] = universal[T]`.
+   *  despite the potential problems, consider `implicit def universalEquiv[T]: Equiv[T] = universal[T]`.
    */
   @deprecated("Use explicit Equiv.universal instead. See Scaladoc entry for more information: " +
     "https://www.scala-lang.org/api/current/scala/math/Equiv$.html#universalEquiv[T]:scala.math.Equiv[T]",
@@ -88,7 +86,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that  => true
-      case that: IterableEquiv[_, _]     => this.eqv == that.eqv
+      case that: IterableEquiv[?, ?]     => this.eqv == that.eqv
       case _                             => false
     }
     override def hashCode(): Int = eqv.hashCode() * iterableSeed
@@ -96,8 +94,8 @@ object Equiv extends LowPriorityEquiv {
 
   trait ExtraImplicits {
     /** Not in the standard scope due to the potential for divergence:
-      * For instance `implicitly[Equiv[Any]]` diverges in its presence.
-      */
+     *  For instance `implicitly[Equiv[Any]]` diverges in its presence.
+     */
     implicit def seqEquiv[CC[X] <: scala.collection.Seq[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
 
@@ -137,39 +135,39 @@ object Equiv extends LowPriorityEquiv {
   }
 
   /** `Equiv`s for `Float`s.
-    *
-    * @define floatEquiv Because the behaviour of `Float`s specified by IEEE is
-    *                    not consistent with behaviors required of an equivalence
-    *                    relation for `NaN` (it is not reflexive), there are two
-    *                    equivalences defined for `Float`: `StrictEquiv`, which
-    *                    is reflexive, and `IeeeEquiv`, which is consistent
-    *                    with IEEE spec and floating point operations defined in
-    *                    [[scala.math]].
-    */
+   *
+   *  @define floatEquiv Because the behaviour of `Float`s specified by IEEE is
+   *                    not consistent with behaviors required of an equivalence
+   *                    relation for `NaN` (it is not reflexive), there are two
+   *                    equivalences defined for `Float`: `StrictEquiv`, which
+   *                    is reflexive, and `IeeeEquiv`, which is consistent
+   *                    with IEEE spec and floating point operations defined in
+   *                    [[scala.math]].
+   */
   object Float {
     /** An equivalence for `Float`s which is reflexive (treats all `NaN`s
-      * as equivalent), and treats `-0.0` and `0.0` as not equivalent; it
-      * behaves the same as [[java.lang.Float.compare]].
-      *
-      * $floatEquiv
-      *
-      * This equivalence may be preferable for collections.
-      *
-      * @see [[IeeeEquiv]]
-      */
+     *  as equivalent), and treats `-0.0` and `0.0` as not equivalent; it
+     *  behaves the same as [[java.lang.Float.compare]].
+     *
+     *  $floatEquiv
+     *
+     *  This equivalence may be preferable for collections.
+     *
+     *  @see [[IeeeEquiv]]
+     */
     trait StrictEquiv extends Equiv[Float] {
       def equiv(x: Float, y: Float): Boolean = java.lang.Float.compare(x, y) == 0
     }
     implicit object StrictEquiv extends StrictEquiv
 
     /** An equivalence for `Float`s which is consistent with IEEE specifications.
-      *
-      * $floatEquiv
-      *
-      * This equivalence may be preferable for numeric contexts.
-      *
-      * @see [[StrictEquiv]]
-      */
+     *
+     *  $floatEquiv
+     *
+     *  This equivalence may be preferable for numeric contexts.
+     *
+     *  @see [[StrictEquiv]]
+     */
     trait IeeeEquiv extends Equiv[Float] {
       override def equiv(x: Float, y: Float): Boolean = x == y
     }
@@ -184,39 +182,39 @@ object Equiv extends LowPriorityEquiv {
   implicit object DeprecatedFloatEquiv extends Float.StrictEquiv
 
   /** `Equiv`s for `Double`s.
-    *
-    * @define doubleEquiv Because the behaviour of `Double`s specified by IEEE is
-    *                     not consistent with behaviors required of an equivalence
-    *                     relation for `NaN` (it is not reflexive), there are two
-    *                     equivalences defined for `Double`: `StrictEquiv`, which
-    *                     is reflexive, and `IeeeEquiv`, which is consistent
-    *                     with IEEE spec and floating point operations defined in
-    *                     [[scala.math]].
-    */
+   *
+   *  @define doubleEquiv Because the behaviour of `Double`s specified by IEEE is
+   *                     not consistent with behaviors required of an equivalence
+   *                     relation for `NaN` (it is not reflexive), there are two
+   *                     equivalences defined for `Double`: `StrictEquiv`, which
+   *                     is reflexive, and `IeeeEquiv`, which is consistent
+   *                     with IEEE spec and floating point operations defined in
+   *                     [[scala.math]].
+   */
   object Double {
     /** An equivalence for `Double`s which is reflexive (treats all `NaN`s
-      * as equivalent), and treats `-0.0` and `0.0` as not equivalent; it
-      * behaves the same as [[java.lang.Double.compare]].
-      *
-      * $doubleEquiv
-      *
-      * This equivalence may be preferable for collections.
-      *
-      * @see [[IeeeEquiv]]
-      */
+     *  as equivalent), and treats `-0.0` and `0.0` as not equivalent; it
+     *  behaves the same as [[java.lang.Double.compare]].
+     *
+     *  $doubleEquiv
+     *
+     *  This equivalence may be preferable for collections.
+     *
+     *  @see [[IeeeEquiv]]
+     */
     trait StrictEquiv extends Equiv[Double] {
       def equiv(x: Double, y: Double): Boolean = java.lang.Double.compare(x, y) == 0
     }
     implicit object StrictEquiv extends StrictEquiv
 
     /** An equivalence for `Double`s which is consistent with IEEE specifications.
-      *
-      * $doubleEquiv
-      *
-      * This equivalence may be preferable for numeric contexts.
-      *
-      * @see [[StrictEquiv]]
-      */
+     *
+     *  $doubleEquiv
+     *
+     *  This equivalence may be preferable for numeric contexts.
+     *
+     *  @see [[StrictEquiv]]
+     */
     trait IeeeEquiv extends Equiv[Double] {
       def equiv(x: Double, y: Double): Boolean = x == y
     }
@@ -257,7 +255,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: OptionEquiv[_]         => this.eqv == that.eqv
+      case that: OptionEquiv[?]         => this.eqv == that.eqv
       case _                            => false
     }
     override def hashCode(): Int = eqv.hashCode() * optionSeed
@@ -274,7 +272,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple2Equiv[_, _] =>
+      case that: Tuple2Equiv[?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2
       case _ => false
@@ -295,7 +293,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple3Equiv[_, _, _] =>
+      case that: Tuple3Equiv[?, ?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2 &&
         this.eqv3 == that.eqv3
@@ -320,7 +318,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple4Equiv[_, _, _, _] =>
+      case that: Tuple4Equiv[?, ?, ?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2 &&
         this.eqv3 == that.eqv3 &&
@@ -348,7 +346,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple5Equiv[_, _, _, _, _] =>
+      case that: Tuple5Equiv[?, ?, ?, ?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2 &&
         this.eqv3 == that.eqv3 &&
@@ -379,7 +377,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple6Equiv[_, _, _, _, _, _] =>
+      case that: Tuple6Equiv[?, ?, ?, ?, ?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2 &&
         this.eqv3 == that.eqv3 &&
@@ -413,7 +411,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple7Equiv[_, _, _, _, _, _, _] =>
+      case that: Tuple7Equiv[?, ?, ?, ?, ?, ?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2 &&
         this.eqv3 == that.eqv3 &&
@@ -450,7 +448,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple8Equiv[_, _, _, _, _, _, _, _] =>
+      case that: Tuple8Equiv[?, ?, ?, ?, ?, ?, ?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2 &&
         this.eqv3 == that.eqv3 &&
@@ -490,7 +488,7 @@ object Equiv extends LowPriorityEquiv {
 
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
-      case that: Tuple9Equiv[_, _, _, _, _, _, _, _, _] =>
+      case that: Tuple9Equiv[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         this.eqv1 == that.eqv1 &&
         this.eqv2 == that.eqv2 &&
         this.eqv3 == that.eqv3 &&

@@ -15,11 +15,11 @@ opaque type IArray[+T] = Array[? <: T]
 object IArray:
 
   /** The selection operation on an immutable array.
-    *
-    *  @param arr the immutable array
-    *  @param n   the index of the element to select
-    *  @return    the element of the array at the given index
-    */
+   *
+   *  @param arr the immutable array
+   *  @param n   the index of the element to select
+   *  @return    the element of the array at the given index
+   */
   extension (arr: IArray[Byte]) def apply(n: Int): Byte = arr.asInstanceOf[Array[Byte]].apply(n)
   extension (arr: IArray[Short]) def apply(n: Int): Short = arr.asInstanceOf[Array[Short]].apply(n)
   extension (arr: IArray[Char]) def apply(n: Int): Char = arr.asInstanceOf[Array[Char]].apply(n)
@@ -31,8 +31,8 @@ object IArray:
   extension [T](arr: IArray[T]) def apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
 
   /** The number of elements in an immutable array.
-    *  @param arr  the immutable array
-    */
+   *  @param arr  the immutable array
+   */
   extension (arr: IArray[Byte]) def length: Int = arr.asInstanceOf[Array[Byte]].length
   extension (arr: IArray[Short]) def length: Int = arr.asInstanceOf[Array[Short]].length
   extension (arr: IArray[Char]) def length: Int = arr.asInstanceOf[Array[Char]].length
@@ -93,12 +93,14 @@ object IArray:
     genericArrayOps(arr).find(p)
 
   /** Builds a new array by applying a function to all elements of this array
-    * and using the elements of the resulting collections. */
+   *  and using the elements of the resulting collections. 
+   */
   extension [T](arr: IArray[T]) def flatMap[U: ClassTag](f: T => IterableOnce[U]^): IArray[U] =
     genericArrayOps(arr).flatMap(f)
 
   /** Flattens a two-dimensional array by concatenating all its rows
-    * into a single array. */
+   *  into a single array. 
+   */
   extension [T](arr: IArray[T]) def flatten[U](using asIterable: T => Iterable[U]^, ct: ClassTag[U]): IArray[U] =
     genericArrayOps(arr).flatten
 
@@ -107,12 +109,14 @@ object IArray:
     genericArrayOps(arr).fold(z)(op)
 
   /** Applies a binary operator to a start value and all elements of this array,
-    * going left to right. */
+   *  going left to right. 
+   */
   extension [T](arr: IArray[T]) def foldLeft[U](z: U)(op: (U, T) => U): U =
     genericArrayOps(arr).foldLeft(z)(op)
 
   /** Applies a binary operator to all elements of this array and a start value,
-    * going right to left. */
+   *  going right to left. 
+   */
   extension [T](arr: IArray[T]) def foldRight[U](z: U)(op: (T, U) => U): U =
     genericArrayOps(arr).foldRight(z)(op)
 
@@ -197,12 +201,14 @@ object IArray:
     genericArrayOps(arr).scan(z)(op)
 
   /** Produces an array containing cumulative results of applying the binary
-    * operator going left to right. */
+   *  operator going left to right. 
+   */
   extension [T](arr: IArray[T]) def scanLeft[U: ClassTag](z: U)(op: (U, T) => U): IArray[U] =
     genericArrayOps(arr).scanLeft(z)(op)
 
   /** Produces an array containing cumulative results of applying the binary
-    * operator going right to left. */
+   *  operator going right to left. 
+   */
   extension [T](arr: IArray[T]) def scanRight[U: ClassTag](z: U)(op: (T, U) => U): IArray[U] =
     genericArrayOps(arr).scanRight(z)(op)
 
@@ -215,7 +221,8 @@ object IArray:
     genericArrayOps(arr).slice(from, until)
 
   /** Sorts this array according to the Ordering which results from transforming
-    * an implicitly given Ordering with a transformation function. */
+   *  an implicitly given Ordering with a transformation function. 
+   */
   extension [T](arr: IArray[T]) def sortBy[U](f: T => U)(using math.Ordering[U]): IArray[T] =
     genericArrayOps(arr).sortBy(f)
 
@@ -442,13 +449,13 @@ object IArray:
 
   /** Builds an array from the iterable collection.
    *
-   *  {{{
+   *  ```
    *  scala> val a = IArray.from(Seq(1, 5))
    *  val a: IArray[Int] = IArray(1, 5)
    *
    *  scala> val b = IArray.from(Range(1, 5))
    *  val b: IArray[Int] = IArray(1, 2, 3, 4)
-   *  }}}
+   *  ```
    *
    *  @param  it the iterable collection
    *  @return    an array consisting of elements of the iterable collection
@@ -583,7 +590,7 @@ object IArray:
   /** Returns an immutable array containing a sequence of increasing integers in a range.
    *
    *  @param start  the start value of the array
-   *  @param end    the end value of the array, exclusive (in other words, this is the first value '''not''' returned)
+   *  @param end    the end value of the array, exclusive (in other words, this is the first value **not** returned)
    *  @return  the immutable array with values in range `start, start + 1, ..., end - 1`
    *  up to, but excluding, `end`.
    */
@@ -592,7 +599,7 @@ object IArray:
   /** Returns an immutable array containing equally spaced values in some integer interval.
    *
    *  @param start the start value of the array
-   *  @param end   the end value of the array, exclusive (in other words, this is the first value '''not''' returned)
+   *  @param end   the end value of the array, exclusive (in other words, this is the first value **not** returned)
    *  @param step  the increment value of the array (may not be zero)
    *  @return      the immutable array with values in `start, start + step, ...` up to, but excluding `end`
    */
@@ -631,8 +638,8 @@ object IArray:
   class WithFilter[T](p: T => Boolean, xs: IArray[T]):
 
     /** Applies `f` to each element for its side effects.
-      * Note: [U] parameter needed to help scalac's type inference.
-      */
+     *  Note: [U] parameter needed to help scalac's type inference.
+     */
     def foreach[U](f: T => U): Unit = {
       val len = xs.length
       var i = 0
@@ -644,12 +651,12 @@ object IArray:
     }
 
     /** Builds a new array by applying a function to all elements of this array.
-      *
-      *  @param f      the function to apply to each element.
-      *  @tparam U     the element type of the returned array.
-      *  @return       a new array resulting from applying the given function
-      *                `f` to each element of this array and collecting the results.
-      */
+     *
+     *  @tparam U     the element type of the returned array.
+     *  @param f      the function to apply to each element.
+     *  @return       a new array resulting from applying the given function
+     *                `f` to each element of this array and collecting the results.
+     */
     def map[U: ClassTag](f: T => U): IArray[U] = {
       val b = IArray.newBuilder[U]
       var i = 0
@@ -662,13 +669,13 @@ object IArray:
     }
 
     /** Builds a new array by applying a function to all elements of this array
-      * and using the elements of the resulting collections.
-      *
-      *  @param f      the function to apply to each element.
-      *  @tparam U     the element type of the returned array.
-      *  @return       a new array resulting from applying the given collection-valued function
-      *                `f` to each element of this array and concatenating the results.
-      */
+     *  and using the elements of the resulting collections.
+     *
+     *  @tparam U     the element type of the returned array.
+     *  @param f      the function to apply to each element.
+     *  @return       a new array resulting from applying the given collection-valued function
+     *                `f` to each element of this array and concatenating the results.
+     */
     def flatMap[U: ClassTag](f: T => IterableOnce[U]^): IArray[U] = {
       val b = IArray.newBuilder[U]
       var i = 0

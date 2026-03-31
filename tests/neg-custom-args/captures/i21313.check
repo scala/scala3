@@ -8,8 +8,8 @@
    |Found:    (src2 : Source[Int, scala.caps.CapSet^{ac2}]^{})
    |Required: Source[Int, scala.caps.CapSet^{ac1}]^
    |
-   |Note that capability ac1 cannot be included in capture set {ac2} of value src2.
+   |Note that capability `ac1` cannot flow into capture set {ac2} of value src2.
    |
-   |where:    ^ refers to a fresh root capability created in method test when checking argument to parameter src of method await
+   |where:    ^ refers to a root capability created in method test when checking argument to parameter src of method await
    |
    | longer explanation available when compiling with `-explain`

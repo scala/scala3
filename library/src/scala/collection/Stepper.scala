@@ -22,24 +22,24 @@ import java.{lang => jl}
 import scala.collection.Stepper.EfficientSplit
 
 /** Steppers exist to enable creating Java streams over Scala collections, see
-  * [[scala.jdk.StreamConverters]]. Besides that use case, they allow iterating over collections
-  * holding unboxed primitives (e.g., `Array[Int]`) without boxing the elements.
-  *
-  * Steppers have an iterator-like interface with methods `hasStep` and `nextStep()`. The difference
-  * to iterators - and the reason `Stepper` is not a subtype of `Iterator` - is that there are
-  * hand-specialized variants of `Stepper` for `Int`, `Long` and `Double` ([[IntStepper]], etc.).
-  * These enable iterating over collections holding unboxed primitives (e.g., Arrays,
-  * [[scala.jdk.Accumulator]]s) without boxing the elements.
-  *
-  * The selection of primitive types (`Int`, `Long` and `Double`) matches the hand-specialized
-  * variants of Java Streams ([[java.util.stream.Stream]], [[java.util.stream.IntStream]], etc.)
-  * and the corresponding Java Spliterators ([[java.util.Spliterator]], [[java.util.Spliterator.OfInt]], etc.).
-  *
-  * Steppers can be converted to Scala Iterators, Java Iterators and Java Spliterators. Primitive
-  * Steppers are converted to the corresponding primitive Java Iterators and Spliterators.
-  *
-  * @tparam A the element type of the Stepper
-  */
+ *  [[scala.jdk.StreamConverters]]. Besides that use case, they allow iterating over collections
+ *  holding unboxed primitives (e.g., `Array[Int]`) without boxing the elements.
+ *
+ *  Steppers have an iterator-like interface with methods `hasStep` and `nextStep()`. The difference
+ *  to iterators - and the reason `Stepper` is not a subtype of `Iterator` - is that there are
+ *  hand-specialized variants of `Stepper` for `Int`, `Long` and `Double` ([[IntStepper]], etc.).
+ *  These enable iterating over collections holding unboxed primitives (e.g., Arrays,
+ *  [[scala.jdk.Accumulator]]s) without boxing the elements.
+ *
+ *  The selection of primitive types (`Int`, `Long` and `Double`) matches the hand-specialized
+ *  variants of Java Streams ([[java.util.stream.Stream]], [[java.util.stream.IntStream]], etc.)
+ *  and the corresponding Java Spliterators ([[java.util.Spliterator]], [[java.util.Spliterator.OfInt]], etc.).
+ *
+ *  Steppers can be converted to Scala Iterators, Java Iterators and Java Spliterators. Primitive
+ *  Steppers are converted to the corresponding primitive Java Iterators and Spliterators.
+ *
+ *  @tparam A the element type of the Stepper
+ */
 trait Stepper[@specialized(Double, Int, Long) +A] {
   /** Checks if there's an element available. */
   def hasStep: Boolean
@@ -48,43 +48,43 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
   def nextStep(): A
 
   /** Splits this stepper, if applicable. The elements of the current Stepper are split up between
-    * the resulting Stepper and the current stepper.
-    *
-    * May return `null`, in which case the current Stepper yields the same elements as before.
-    *
-    * See method `trySplit` in [[java.util.Spliterator]].
-    */
+   *  the resulting Stepper and the current stepper.
+   *
+   *  May return `null`, in which case the current Stepper yields the same elements as before.
+   *
+   *  See method `trySplit` in [[java.util.Spliterator]].
+   */
   def trySplit(): Stepper[A]^{this} | Null
 
   /** Returns an estimate of the number of elements of this Stepper, or [[Long.MaxValue]]. See
-    * method `estimateSize` in [[java.util.Spliterator]].
-    */
+   *  method `estimateSize` in [[java.util.Spliterator]].
+   */
   def estimateSize: Long
 
   /** Returns a set of characteristics of this Stepper and its elements. See method
-    * `characteristics` in [[java.util.Spliterator]].
-    */
+   *  `characteristics` in [[java.util.Spliterator]].
+   */
   def characteristics: Int
 
   /** Returns a [[java.util.Spliterator]] corresponding to this Stepper.
-    *
-    * Note that the return type is `Spliterator[_]` instead of `Spliterator[A]` to allow returning
-    * a [[java.util.Spliterator.OfInt]] (which is a `Spliterator[Integer]`) in the subclass [[IntStepper]]
-    * (which is a `Stepper[Int]`).
-    */
+   *
+   *  Note that the return type is `Spliterator[_]` instead of `Spliterator[A]` to allow returning
+   *  a [[java.util.Spliterator.OfInt]] (which is a `Spliterator[Integer]`) in the subclass [[IntStepper]]
+   *  (which is a `Stepper[Int]`).
+   */
   def spliterator[B >: A]: Spliterator[?]^{this}
 
   /** Returns a Java [[java.util.Iterator]] corresponding to this Stepper.
-    *
-    * Note that the return type is `Iterator[_]` instead of `Iterator[A]` to allow returning
-    * a [[java.util.PrimitiveIterator.OfInt]] (which is a `Iterator[Integer]`) in the subclass
-    * [[IntStepper]] (which is a `Stepper[Int]`).
-    */
+   *
+   *  Note that the return type is `Iterator[_]` instead of `Iterator[A]` to allow returning
+   *  a [[java.util.PrimitiveIterator.OfInt]] (which is a `Iterator[Integer]`) in the subclass
+   *  [[IntStepper]] (which is a `Stepper[Int]`).
+   */
   def javaIterator[B >: A]: JIterator[?]^{this}
 
   /** Returns an [[Iterator]] corresponding to this Stepper. Note that Iterators corresponding to
-    * primitive Steppers box the elements.
-    */
+   *  primitive Steppers box the elements.
+   */
   def iterator: Iterator[A]^{this} = new AbstractIterator[A] {
     def hasNext: Boolean = hasStep
     def next(): A = nextStep()
@@ -93,10 +93,10 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
 
 object Stepper {
   /** A marker trait that indicates that a `Stepper` can call `trySplit` with at worst O(log N) time
-    * and space complexity, and that the division is likely to be reasonably even. Steppers marked
-    * with `EfficientSplit` can be converted to parallel streams with the `asJavaParStream` method
-    * defined in [[scala.jdk.StreamConverters]].
-    */
+   *  and space complexity, and that the division is likely to be reasonably even. Steppers marked
+   *  with `EfficientSplit` can be converted to parallel streams with the `asJavaParStream` method
+   *  defined in [[scala.jdk.StreamConverters]].
+   */
   trait EfficientSplit
 
   private[collection] final def throwNSEE(): Nothing = throw new NoSuchElementException("Empty Stepper")

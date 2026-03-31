@@ -38,8 +38,7 @@ object ScalaRunTime {
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
     iterable(coll) drop num
 
-  /** Returns the class object representing an array with element class `clazz`.
-   */
+  /** Returns the class object representing an array with element class `clazz`. */
   def arrayClass(clazz: jClass[?]): jClass[?] = {
     // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
@@ -180,15 +179,15 @@ object ScalaRunTime {
 
   /** Given any Scala value, convert it to a String.
    *
-   * The primary motivation for this method is to provide a means for
-   * correctly obtaining a String representation of a value, while
-   * avoiding the pitfalls of naively calling toString on said value.
-   * In particular, it addresses the fact that (a) toString cannot be
-   * called on null and (b) depending on the apparent type of an
-   * array, toString may or may not print it in a human-readable form.
+   *  The primary motivation for this method is to provide a means for
+   *  correctly obtaining a String representation of a value, while
+   *  avoiding the pitfalls of naively calling toString on said value.
+   *  In particular, it addresses the fact that (a) toString cannot be
+   *  called on null and (b) depending on the apparent type of an
+   *  array, toString may or may not print it in a human-readable form.
    *
-   * @param   arg   the value to stringify
-   * @return        a string representation of arg.
+   *  @param   arg   the value to stringify
+   *  @return        a string representation of arg.
    */
   def stringOf(arg: Any): String = stringOf(arg, scala.Int.MaxValue)
   def stringOf(arg: Any, maxElements: Int): String = {
@@ -217,19 +216,19 @@ object ScalaRunTime {
     // When doing our own iteration is dangerous
     def useOwnToString(x: Any) = x match {
       // Range/NumericRange have a custom toString to avoid walking a gazillion elements
-      case _: Range | _: NumericRange[_] => true
+      case _: Range | _: NumericRange[?] => true
       // Sorted collections to the wrong thing (for us) on iteration - ticket #3493
-      case _: SortedOps[_, _]  => true
+      case _: SortedOps[?, ?]  => true
       // StringBuilder(a, b, c) and similar not so attractive
       case _: StringView | _: StringOps | _: StringBuilder => true
       // Don't want to evaluate any elements in a view
-      case _: View[_] => true
+      case _: View[?] => true
       // Node extends NodeSeq extends Seq[Node] and MetaData extends Iterable[MetaData]
       // -> catch those by isXmlNode and isXmlMetaData.
       // Don't want to a) traverse infinity or b) be overly helpful with peoples' custom
       // collections which may have useful toString methods - ticket #3710
       // or c) print AbstractFiles which are somehow also Iterable[AbstractFile]s.
-      case x: Iterable[_] => (!x.isInstanceOf[StrictOptimizedIterableOps[?, AnyConstr, ?]]) || !isScalaClass(x) || isScalaCompilerClass(x) || isXmlNode(x.getClass) || isXmlMetaData(x.getClass)
+      case x: Iterable[?] => (!x.isInstanceOf[StrictOptimizedIterableOps[?, AnyConstr, ?]]) || !isScalaClass(x) || isScalaCompilerClass(x) || isXmlNode(x.getClass) || isXmlMetaData(x.getClass)
       // Otherwise, nothing could possibly go wrong
       case _ => false
     }
@@ -258,9 +257,9 @@ object ScalaRunTime {
       case x: String                    => if (x.head.isWhitespace || x.last.isWhitespace) "\"" + x + "\"" else x
       case x if useOwnToString(x)       => x.toString
       case x: AnyRef if isArray(x)      => arrayToString(x)
-      case x: scala.collection.Map[_, _] => x.iterator.take(maxElements).map(mapInner).mkString(x.collectionClassName + "(", ", ", ")")
-      case x: Iterable[_]               => x.iterator.take(maxElements).map(inner).mkString(x.collectionClassName + "(", ", ", ")")
-      case x: Product1[_] if isTuple(x) => "(" + inner(x._1) + ",)" // that special trailing comma
+      case x: scala.collection.Map[?, ?] => x.iterator.take(maxElements).map(mapInner).mkString(x.collectionClassName + "(", ", ", ")")
+      case x: Iterable[?]               => x.iterator.take(maxElements).map(inner).mkString(x.collectionClassName + "(", ", ", ")")
+      case x: Product1[?] if isTuple(x) => "(" + inner(x._1) + ",)" // that special trailing comma
       case x: Product if isTuple(x)     => x.productIterator.map(inner).mkString("(", ",", ")")
       case x                            => x.toString
     }

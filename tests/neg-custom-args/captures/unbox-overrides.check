@@ -4,8 +4,8 @@
   |error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
   |  method foo of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
   |
-  |where:    ^  refers to a fresh root capability in the type of type C²
-  |          ^² refers to a fresh root capability in the type of type C³
+  |where:    ^  refers to a root capability in the type of type C²
+  |          ^² refers to a root capability in the type of type C³
   |
   | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:9:6 ----------------------------------
@@ -14,8 +14,8 @@
   |error overriding method bar in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
   |  method bar of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
   |
-  |where:    ^  refers to a fresh root capability in the type of type C²
-  |          ^² refers to a fresh root capability in the type of type C³
+  |where:    ^  refers to a root capability in the type of type C²
+  |          ^² refers to a root capability in the type of type C³
   |
   | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:15:15 --------------------------------
@@ -24,7 +24,7 @@
    |error overriding method foo in trait A of type [C >: scala.caps.CapSet <: scala.caps.CapSet^]: Object^{C};
    |  method foo in trait B2 of type [C >: scala.caps.CapSet <: scala.caps.CapSet^²]: Object^{C} has a parameter C with different @reserve status than the corresponding parameter in the overridden definition
    |
-   |where:    ^  refers to a fresh root capability in the type of type C²
-   |          ^² refers to a fresh root capability in the type of type C³
+   |where:    ^  refers to a root capability in the type of type C²
+   |          ^² refers to a root capability in the type of type C³
    |
    | longer explanation available when compiling with `-explain`

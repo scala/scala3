@@ -19,7 +19,7 @@ import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
-import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
+import typer.ProtoTypes.{ViewProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
@@ -30,15 +30,16 @@ import ast.untpd
 import ast.tpd
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
-import cc.CaptureSet.IdentityCaptRefMap
+import cc.CaptureSet
+import cc.Capabilities.Capability
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
-import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 import Message.{Disambiguation, Note}
+import dotty.tools.dotc.util.SimpleIdentitySet
 
 /**  Messages
   *  ========
@@ -112,6 +113,9 @@ abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Mess
 
 abstract class StagingMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   override final def kind = MessageKind.Staging
+
+abstract class CapturesMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  override final def kind = MessageKind.CaptureChecking
 
 abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
 extends SyntaxMsg(errNo) {
@@ -276,13 +280,18 @@ class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name, proto: T
 extends NotFoundMsg(MissingIdentID) {
   def msg(using Context) =
     val missing = name.show
-    val addendum =
-      didYouMean(
-        inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true)
-          .closestTo(missing),
-        proto, "")
-
-    i"Not found: $treeKind$name$addendum"
+    // If we're looking for a term or type X and a type or term X respectively is in scope, don't emit "Not found: X" as that's confusing for beginners
+    val wrongKind = inScopeCandidates(!name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing, maxDist = 0)
+    if wrongKind.nonEmpty then
+      if name.isTypeName then
+        val extra = if wrongKind.exists(_._2.sym.denot.is(Module)) then f" - did you mean $name.type?" else ""
+        i"Expected a type, but found a term: $name$extra"
+      else
+        i"Expected a term, but found a type: $name"
+    else
+      val candidates = inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing)
+      val addendum = didYouMean(candidates, proto, "")
+      i"Not found: $treeKind$name$addendum"
   def explain(using Context) = {
     i"""|Each identifier in Scala needs a matching declaration. There are two kinds of
         |identifiers: type identifiers and value identifiers. Value identifiers are introduced
@@ -294,12 +303,13 @@ extends NotFoundMsg(MissingIdentID) {
         |
         |Possible reasons why no matching declaration was found:
         | - The declaration or the use is mis-spelt.
-        | - An import is missing."""
+        | - An import is missing.
+        | - The declaration exists but refers to a type in a context where a term is expected, or vice-versa."""
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], notes: List[Note] = Nil)(using Context)
-  extends TypeMismatchMsg(found, expected)(TypeMismatchID):
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], val notes: List[Note] = Nil)(using Context)
+  extends TypeMismatchMsg(found, expected)(TypeMismatchID) {
 
   private val shouldSuggestNN =
     if ctx.mode.is(Mode.SafeNulls) && expected.isValueType then
@@ -313,7 +323,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
-    object reported extends TypeMap, IdentityCaptRefMap:
+    object reported extends TypeMap, CaptureSet.IdentityCaptRefMap:
       var notes: String = ""
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
@@ -385,7 +395,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       case _ =>
         List()
     }
-end TypeMismatch
+}
 
 class NotAMember(site: Type, val name: Name, selected: String, proto: Type, addendum: => String = "")(using Context)
 extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
@@ -741,7 +751,12 @@ extends Message(ProperDefinitionNotFoundID) {
 
 class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
 extends SyntaxMsg(ByNameParameterNotSupportedID) {
-  def msg(using Context) = i"By-name parameter type ${tpe} not allowed here."
+  def msg(using Context) =
+    val tpeStr = tpe match
+      case untpd.ByNameTypeTree(untpd.CapturesAndResult(_, tpe1)) =>
+        i"=> $tpe1" // suppress CapturesAndResult encoding under cc
+      case _ => i"$tpe"
+    i"By-name parameter type $tpeStr not allowed here."
 
   def explain(using Context) =
     i"""|By-name parameters act like functions that are only evaluated when referenced,
@@ -2113,8 +2128,9 @@ class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(using Context) extends
   def explain(using Context) = ""
 }
 
-class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context)
+class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol, addingCaptureSet: Boolean = false)(using Context)
 extends NamingMsg(AlreadyDefinedID):
+  private def isCaptureConflict = addingCaptureSet || Feature.ccEnabled && conflicting.isDummyCaptureParam
   def msg(using Context) =
     def where: String =
       if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
@@ -2144,11 +2160,29 @@ extends NamingMsg(AlreadyDefinedID):
       else if owner.is(Method) || conflicting.is(Method) then
         "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
       else ""
-    if conflicting.isTerm != name.isTermName then
-      i"$name clashes with $conflicting$where; the two must be defined together"
-    else
-      i"$name is already defined as $conflicting$where$note"
-  def explain(using Context) = ""
+    def defaultMsg =
+      if conflicting.isTerm != name.isTermName then
+        i"$name clashes with $conflicting$where; the two must be defined together"
+      else
+        i"$name is already defined as $conflicting$where$note"
+    if addingCaptureSet then
+      val captureKind =
+        if !owner.isClass then "capture-set parameter"
+        else
+          val typeSym = owner.unforcedDecls.lookup(name.toTypeName)
+          if typeSym.is(Param) then "capture-set parameter" else "capture-set member"
+      val what = if conflicting.is(Param) then "term parameter"
+        else if conflicting.owner.isClass then i"member $conflicting" else "term"
+      i"$captureKind $name clashes with $what of the same name"
+    else if Feature.ccEnabled && conflicting.isDummyCaptureParam then
+      i"$name clashes with capture-set parameter of the same name"
+    else defaultMsg
+  def explain(using Context) =
+    if isCaptureConflict then
+      i"""Capture-set parameters (declared with ^) range over capture sets. Since both
+         |capture-set parameter names and regular term names can appear in a capture set,
+         |they must be distinct to avoid ambiguity."""
+    else ""
 
 class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
   def msg(using Context) =
@@ -3520,7 +3554,7 @@ final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Conte
 
 class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
   def msg(using Context) =
-    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
+    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single named tuple argument.
        |To avoid this warning, either remove the argument names or use dotted selection."""
         + Message.rewriteNotice("This", version = SourceVersion.`3.7-migration`)
 
@@ -3749,3 +3783,75 @@ final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(Enco
        |or `myfile-test.scala` can produce encoded names for the generated package objects.
        |
        |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+final class CannotBeIncluded(
+    added: Capability | CaptureSet,
+    target: CaptureSet,      // The original set where elements cannot be included
+    realTarget: CaptureSet,  // The underlying set of an IncludeFailure
+    notes: List[Note],
+    targetOwner: Symbol,
+    provenance: => String)(using Context) extends CapturesMessage(CannotBeIncludedID) {
+
+  def msg(using Context): String = {
+    val prefix = added match
+      case added: Capability =>
+        i"`${added.showAsCapability}` cannot be referenced here; it is not"
+      case added: CaptureSet =>
+        val addedDescription =
+          if added.description.isEmpty then "" else i" ${added.description}"
+        if added.elems.size == 1 then
+          i"Reference `${added.elems.nth(0).showAsCapability}`$addedDescription is not"
+        else
+          i"References $added$addedDescription are not all"
+
+    def needsUseStr =
+      if target.isAlwaysEmpty && (targetOwner.isClass || targetOwner.isConstructor) then
+        val (uses, loc) =
+          if targetOwner.isClass
+          then ("uses", targetOwner)
+          else ("uses_init", targetOwner.owner)
+        val usedStr = added match
+          case added: Capability => i"${added.showAsCapability}"
+          case added: CaptureSet => i"${added.elems.toList.map(_.showAsCapability).mkString(", ")}"
+
+        if loc.isPackageObject then
+          i"""
+            |
+            |The top-level definitions should be wrapped in an object with a $uses clause:
+            |
+            |    $uses $usedStr"""
+        else
+          i"""
+            |
+            |External uses should be declared explicitly with a $uses clause in $loc:
+            |
+            |    $uses $usedStr"""
+      else ""
+
+    def notesStr: String = notes.map(_.render).mkString
+    val provisional = realTarget.isProvisionallySolved
+    val kind = if provisional then "previously estimated\n" else "allowed "
+
+    // Show target instead of real target if that is more informative; i.e.
+    // real target has no description, but target has a description or a provenance
+    // for target exists. Always show realTarget under provisional, so we see
+    // which was the root cause for a recompile.
+    val shownTarget =
+      if provisional
+        || realTarget.description.nonEmpty
+        || target.description.isEmpty && provenance.isEmpty
+      then realTarget
+      else target
+    val provenanceStr: String =
+      if shownTarget.description.isEmpty then provenance else ""
+    i"$prefix included in the ${kind}capture set $shownTarget$provenanceStr.$notesStr$needsUseStr"
+  }
+  def explain(using Context) = ""
+}
+
+final class OverrideClass(using Context) extends SyntaxMsg(OverrideClassID):
+  override protected def msg(using Context) =
+    "`override` modifier is deprecated for classes and traits"
+  override protected def explain(using Context) =
+    i"""Instead of overriding a type alias with a class type, use an alias of the class.
+       |For example, instead of `override class C`, use `override type C = CImpl; class CImpl`."""

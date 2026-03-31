@@ -15,5 +15,5 @@ class Ref(init: Int)(using l: Logger) extends Stateful:
 
 def test =
   given l: Logger = Logger()
-  val r: Ref^{cap.rd} = Ref(3)
+  val r: Ref^{any.rd} = Ref(3)
   r.get()

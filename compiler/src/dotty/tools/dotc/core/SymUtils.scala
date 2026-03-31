@@ -126,6 +126,8 @@ class SymUtils:
         i"constructor of ${self.owner.sanitizedDescription}"
       else if self.isAnonymousFunction then
         i"anonymous function of type ${self.info}"
+      else if self.is(ModuleClass) then
+        self.sourceModule.sanitizedDescription
       else if self.name.toString.contains('$') then
         self.owner.sanitizedDescription
       else
@@ -313,7 +315,7 @@ class SymUtils:
       }
 
     def isField(using Context): Boolean =
-      self.isTerm && !self.isOneOf(Method | PhantomSymbol | NonMember)
+      self.isTerm && !self.isOneOf(Method | PhantomSymbol | NonMember | Package)
 
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)

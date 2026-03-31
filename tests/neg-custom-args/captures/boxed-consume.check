@@ -9,4 +9,4 @@
    |        Separation failure: Illegal access to (d : Object^), which was passed as a consume parameter to method g
    |        on line 15 and therefore is no longer available.
    |
-   |        where:    ^ refers to a fresh root capability in the type of value d
+   |        where:    ^ refers to a root capability in the type of value d

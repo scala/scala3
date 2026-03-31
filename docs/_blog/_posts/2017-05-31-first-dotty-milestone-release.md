@@ -20,7 +20,7 @@ is slated to become Scala 3.0. This is an ongoing development,
 transparently developed as open source software. The Dotty project
 started more than 4 years ago. It reached a major milestone in 2015 by
 achieving
-[bootstrap](https://dotty.epfl.ch/blog/2015/10/23/dotty-compiler-bootstraps.html),
+[bootstrap](https://nightly.scala-lang.org/blog/2015/10/23/dotty-compiler-bootstraps.html),
 that is, showing that the new compiler could compile itself.  Today we
 have reached another milestone with this first release of the
 codebase. Developments will not stop here, but they will in the future
@@ -63,19 +63,19 @@ You can try it out there without installing anything.
 # What’s in the 0.1.2-RC1 technology preview?
 This technology preview demonstrates new language features planned for Scala 3:
 
-  - [Intersection Types](https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html)
-  - [Union Types](https://dotty.epfl.ch/docs/reference/new-types/union-types.html)
-  - [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html)
-  - [Enumerations](https://dotty.epfl.ch/docs/reference/enums/enums.html)
-  - [Algebraic Data Types](https://dotty.epfl.ch/docs/reference/enums/adts.html)
-  - [By-Name Implicits](https://dotty.epfl.ch/docs/reference/other-new-features/implicit-by-name-parameters.html)
+  - [Intersection Types](https://nightly.scala-lang.org/docs/reference/new-types/intersection-types.html)
+  - [Union Types](https://nightly.scala-lang.org/docs/reference/new-types/union-types.html)
+  - [Trait Parameters](https://nightly.scala-lang.org/docs/reference/other-new-features/trait-parameters.html)
+  - [Enumerations](https://nightly.scala-lang.org/docs/reference/enums/enums.html)
+  - [Algebraic Data Types](https://nightly.scala-lang.org/docs/reference/enums/adts.html)
+  - [By-Name Implicits](https://nightly.scala-lang.org/docs/reference/other-new-features/implicit-by-name-parameters.html)
 
 We also ship with tools that help you try out the Dotty platform:
 
   - [IDE features for Visual Studio Code](https://docs.scala-lang.org/scala3/getting-started.html#using-vscode-with-metals)
   - [sbt support, including retro-compatibility with Scala 2](https://github.com/lampepfl/dotty-example-project)
 
-See here for the full [release notes](https://dotty.epfl.ch/docs/release-notes/0.1.2.html).
+See here for the full [release notes](https://nightly.scala-lang.org/docs/release-notes/0.1.2.html).
 
 ## Release schedule
 
@@ -86,7 +86,7 @@ Starting from this release, we are adopting a time-based release schedule:
 - Every 6 weeks, the latest release candidate becomes a release.
 
 At the end of 6 weeks, the milestone will be promoted to a stable release.
-See here for the full [version number explanation](https://dotty.epfl.ch/docs/usage/version-numbers.html).
+See here for the full [version number explanation](https://nightly.scala-lang.org/docs/usage/version-numbers.html).
 
 ## What are the next steps?
 

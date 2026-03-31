@@ -5,7 +5,7 @@
    |      Found:    Result.Ok[Future[T^'s1]^{fr, contextual$1}]
    |      Required: Result[Future[T], Nothing]
    |
-   |      Note that capability fr is not included in capture set {}.
+   |      Note that capability `fr` cannot flow into capture set {}.
    |
 65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
@@ -20,30 +20,26 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:69:10 ---------------------------------
 69 |          Future: fut ?=> // error, type mismatch
    |          ^
-   |Capability contextual$9 outlives its scope: it leaks into outer capture set 's2 which is owned by method fail4.
+   |Capability `contextual$9` outlives its scope: it leaks into outer capture set 's2 which is owned by method fail4.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (contextual$9: boundary.Label[Result[Future[T^'s3]^'s4, E^'s5]^'s6]^'s7) ?->{fr, async} Future[T^'s8]^{fr, contextual$9}
-   |Required: (boundary.Label[Result[Future[T^'s9]^'s2, E^'s10]]^) ?=> Future[T^'s9]^'s2
+   |Found:    (contextual$9: boundary.Label[Result[Future[T^'s3]^'s4, E^'s5]]^) ?->{fr, async} Future[T^'s6]^{fr, contextual$9}
+   |Required: (boundary.Label[Result[Future[T^'s7]^'s2, E^'s8]]^) ?=> Future[T^'s7]^'s2
    |
-   |where:    ?=> refers to a fresh root capability created in method fail4 when checking argument to parameter body of method make
-   |          ^   refers to the universal root capability
+   |where:    ?=> refers to a root capability created in method fail4 when checking argument to parameter body of method make
+   |          ^   refers to the root capability caps.any
    |
 70 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:73:35 ---------------------------------
-73 |        Result.make[Future[T], E]: lbl ?=> // error: type mismatch
-   |                                   ^
-   |Found:    (lbl: boundary.Label[Result[Future[T^'s11]^'s12, E^'s13]^'s14]^'s15) ?->{fr, async} Future[T^'s16]^{fr, lbl}
-   |Required: (boundary.Label[Result[Future[T], E]]^) ?=> Future[T]
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:74:10 ---------------------------------
+74 |          Future: fut ?=>  // error: type mismatch
+   |          ^
+   |          Found:    Future[T^'s9]^{fr, lbl}
+   |          Required: Future[T]
    |
-   |Note that capability fr is not included in capture set {}.
+   |          Note that capability `fr` cannot flow into capture set {}.
    |
-   |where:    ?=> refers to a fresh root capability created in method fail5 when checking argument to parameter body of method make
-   |          ^   refers to the universal root capability
-   |
-74 |          Future: fut ?=>
 75 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`

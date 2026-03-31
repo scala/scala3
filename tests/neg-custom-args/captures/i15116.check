@@ -7,7 +7,7 @@
   |           Inferred type          : test.Foo{val m: (Bar.this.m² : test.STR^)}^{Bar.this.m²}
   |           Externally visible type: test.Foo
   |
-  |          where:    ^  refers to a fresh root capability in the type of value m²
+  |          where:    ^  refers to a root capability in the type of value m²
   |                    m  is a value in class Foo
   |                    m² is a value in class Bar
 -- Error: tests/neg-custom-args/captures/i15116.scala:7:13 -------------------------------------------------------------
@@ -19,7 +19,7 @@
   |           Inferred type          : test.Foo{val m: (Baz.this.m² : test.STR^)}^{Baz.this.m²}
   |           Externally visible type: test.Foo
   |
-  |          where:    ^  refers to a fresh root capability in the type of value m²
+  |          where:    ^  refers to a root capability in the type of value m²
   |                    m  is a value in class Foo
   |                    m² is a value in trait Baz
 -- Error: tests/neg-custom-args/captures/i15116.scala:9:13 -------------------------------------------------------------
@@ -31,7 +31,7 @@
   |           Inferred type          : test.Foo{val m: (Bar1.this.m² : test.STR^)}^{Bar1.this.m²}
   |           Externally visible type: test.Foo
   |
-  |          where:    ^  refers to a fresh root capability in the type of value m²
+  |          where:    ^  refers to a root capability in the type of value m²
   |                    m  is a value in class Foo
   |                    m² is a value in class Bar1
 -- Error: tests/neg-custom-args/captures/i15116.scala:11:13 ------------------------------------------------------------
@@ -43,6 +43,6 @@
    |           Inferred type          : test.Foo{val m: (Baz2.this.m² : test.STR^)}^{Baz2.this.m²}
    |           Externally visible type: test.Foo
    |
-   |          where:    ^  refers to a fresh root capability in the type of value m²
+   |          where:    ^  refers to a root capability in the type of value m²
    |                    m  is a value in class Foo
    |                    m² is a value in trait Baz2

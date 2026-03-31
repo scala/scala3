@@ -37,7 +37,7 @@ class ExpressionCompilerConfig private[debug] (
   def withLocalVariables(localVariables: ju.Set[String]): ExpressionCompilerConfig = copy(localVariables = localVariables)
   def withErrorReporter(errorReporter: Consumer[String]): ExpressionCompilerConfig = copy(errorReporter = errorReporter)
 
-  private[debug] val expressionTermName: TermName = termName(outputClassName.toLowerCase.toString)
+  private[debug] val expressionTermName: TermName = termName(outputClassName.toLowerCase)
   private[debug] val expressionClassName: TypeName = typeName(outputClassName)
 
   private[debug] def expressionClass(using Context): ClassSymbol =

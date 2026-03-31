@@ -46,22 +46,18 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   protected var _loadFactor = defaultLoadFactor
 
-  /** The actual hash table.
-   */
+  /** The actual hash table. */
   protected[collection] var table: Array[HashEntry[A, Entry] | Null] = new Array(initialCapacity)
 
-  /** The number of mappings contained in this hash table.
-   */
+  /** The number of mappings contained in this hash table. */
   protected[collection] var tableSize: Int = 0
 
   final def size: Int = tableSize
 
-  /** The next size value at which to resize (capacity * load factor).
-   */
+  /** The next size value at which to resize (capacity * load factor). */
   protected[collection] var threshold: Int = initialThreshold(_loadFactor)
 
-  /** The array keeping track of the number of elements in 32 element blocks.
-   */
+  /** The array keeping track of the number of elements in 32 element blocks. */
   @annotation.stableNull
   protected var sizemap: Array[Int] | Null = null
 
@@ -69,12 +65,10 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   protected def tableSizeSeed = Integer.bitCount(table.length - 1)
 
-  /** The initial size of the hash table.
-   */
+  /** The initial size of the hash table. */
   protected def initialSize: Int = 16
 
-  /** The initial threshold.
-   */
+  /** The initial threshold. */
   private def initialThreshold(_loadFactor: Int): Int = newThreshold(_loadFactor, initialCapacity)
 
   private def initialCapacity = capacity(initialSize)
@@ -87,9 +81,8 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     idx
   }
 
-  /**
-   * Initializes the collection from the input stream. `readEntry` will be called for each
-   * entry to be read from the input stream.
+  /** Initializes the collection from the input stream. `readEntry` will be called for each
+   *  entry to be read from the input stream.
    */
   private[collection] def init(in: java.io.ObjectInputStream, readEntry: => Entry): Unit = {
     _loadFactor = in.readInt()
@@ -115,12 +108,11 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     }
   }
 
-  /**
-   * Serializes the collection to the output stream by saving the load factor, collection
-   * size and collection entries. `writeEntry` is responsible for writing an entry to the stream.
+  /** Serializes the collection to the output stream by saving the load factor, collection
+   *  size and collection entries. `writeEntry` is responsible for writing an entry to the stream.
    *
-   * `foreachEntry` determines the order in which the key/value pairs are saved to the stream. To
-   * deserialize, `init` should be used.
+   *  `foreachEntry` determines the order in which the key/value pairs are saved to the stream. To
+   *  deserialize, `init` should be used.
    */
   private[collection] def serializeTo(out: java.io.ObjectOutputStream, writeEntry: Entry => Unit): Unit = {
     out.writeInt(_loadFactor)
@@ -131,8 +123,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     foreachEntry(writeEntry)
   }
 
-  /** Finds entry with given key in table, null if not found.
-   */
+  /** Finds entry with given key in table, null if not found. */
   final def findEntry(key: A): Entry | Null =
     findEntry0(key, index(elemHashCode(key)))
 
@@ -176,13 +167,11 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    */
   def createNewEntry(key: A, value: B): Entry
 
-  /** Removes entry from table if present.
-   */
+  /** Removes entry from table if present. */
   final def removeEntry(key: A) : Entry | Null = {
     removeEntry0(key, index(elemHashCode(key)))
   }
-  /** Removes entry from table if present.
-   */
+  /** Removes entry from table if present. */
   private[collection] final def removeEntry0(key: A, h: Int) : Entry | Null = {
     var e = table(h).asInstanceOf[Entry | Null]
     if (e != null) {
@@ -210,8 +199,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     null
   }
 
-  /** An iterator returning all entries.
-   */
+  /** An iterator returning all entries. */
   def entriesIterator: Iterator[Entry]^{this} = new AbstractIterator[Entry] {
     val iterTable = table
     var idx       = lastPopulatedIndex
@@ -247,8 +235,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     }
   }
 
-  /** Removes all entries from table
-   */
+  /** Removes all entries from table */
   def clearTable(): Unit = {
     var i = table.length - 1
     while (i >= 0) { table(i) = null; i = i - 1 }
@@ -360,10 +347,9 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   protected def elemEquals(key1: A, key2: A): Boolean = (key1 == key2)
 
-  /**
-    * Note: we take the most significant bits of the hashcode, not the lower ones
-    * this is of crucial importance when populating the table in parallel
-    */
+  /** Note: we take the most significant bits of the hashcode, not the lower ones
+   *  this is of crucial importance when populating the table in parallel
+   */
   protected[collection] final def index(hcode: Int): Int = {
     val ones = table.length - 1
     val exponent = Integer.numberOfLeadingZeros(ones)
@@ -372,8 +358,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 }
 
 private[collection] object HashTable {
-  /** The load factor for the hash table (in 0.001 step).
-   */
+  /** The load factor for the hash table (in 0.001 step). */
   private[collection] final def defaultLoadFactor: Int = 750 // corresponds to 75%
   private[collection] final def loadFactorDenum = 1000 // should be loadFactorDenom, but changing that isn't binary compatible
 
@@ -390,30 +375,26 @@ private[collection] object HashTable {
 
     protected[collection] def elemHashCode(key: KeyType) = key.##
 
-    /**
-      * Defer to a high-quality hash in [[scala.util.hashing]].
-      * The goal is to distribute across bins as well as possible even if a hash code has low entropy at some bits.
-      * <p/>
-      * OLD VERSION - quick, but bad for sequence 0-10000 - little entropy in higher bits - since 2003
-      * {{{
-      * var h: Int = hcode + ~(hcode << 9)
-      * h = h ^ (h >>> 14)
-      * h = h + (h << 4)
-      * h ^ (h >>> 10)
-      * }}}
-      * the rest of the computation is due to SI-5293
-      */
+    /** Defer to a high-quality hash in [[scala.util.hashing]].
+     *  The goal is to distribute across bins as well as possible even if a hash code has low entropy at some bits.
+     *  <p/>
+     *  OLD VERSION - quick, but bad for sequence 0-10000 - little entropy in higher bits - since 2003
+     *  ```
+     *  var h: Int = hcode + ~(hcode << 9)
+     *  h = h ^ (h >>> 14)
+     *  h = h + (h << 4)
+     *  h ^ (h >>> 10)
+     *  ```
+     *  the rest of the computation is due to SI-5293
+     */
     protected final def improve(hcode: Int, seed: Int): Int = rotateRight(byteswap32(hcode), seed)
   }
 
-  /**
-   * Returns a power of two >= `target`.
-   */
+  /** Returns a power of two >= `target`. */
   private[collection] def nextPositivePowerOfTwo(target: Int): Int = 1 << -numberOfLeadingZeros(target - 1)
 }
 
-/** Class used internally.
-  */
+/** Class used internally. */
 private[collection] trait HashEntry[A, E <: HashEntry[A, E]] {
   val key: A
   var next: E | Null = compiletime.uninitialized

@@ -2009,6 +2009,67 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertEquals(expected, clsNode.interfaces.asScala)
     }
   }
+
+  // Test for https://github.com/scala/scala3/issues/24997
+  // Automatic untupling should not introduce extra CHECKCAST instructions for unused tuple elements
+  @Test def i24997 = {
+    val source =
+      """|class Wrapper[A](value: A):
+        |  def use[B](f: A => B): B = f(value)
+        |
+        |class Test:
+        |  def withCase: Int =
+        |    val w = Wrapper(("42", "Answer"))
+        |    w.use { case (s, _) => s.length }
+        |
+        |  def withoutCase: Int =
+        |    val w = Wrapper(("42", "Answer"))
+        |    w.use { (s, _) => s.length }
+        |""".stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+
+      // Get instructions for both methods
+      def getCheckCastCount(methodPrefix: String): Int = {
+        clsNode.methods.asScala.filter(_.name.startsWith(methodPrefix)).map { method =>
+          instructionsFromMethod(method).count {
+            case TypeOp(Opcodes.CHECKCAST, _) => true
+            case _ => false
+          }
+        }.sum
+      }
+
+      val withCaseCasts = getCheckCastCount("withCase")
+      val withoutCaseCasts = getCheckCastCount("withoutCase")
+
+      // Both methods should have the same number of CHECKCAST instructions
+      // (specifically, they should NOT have extra ones for unused wildcard elements)
+      assertEquals(s"withCase should have 1 CHECKCAST", 1, withCaseCasts)
+      assertEquals(s"withoutCase should have 1 CHECKCAST", 1, withoutCaseCasts)
+    }
+  }
+
+  @Test def i24997_placeholder = {
+    // Regression test for https://github.com/scala/scala3/pull/25085
+    // Ensure that placeholder syntax `_ + _` works correctly when tupled.
+    // The previous fix accidentally removed the binding for the used synthetic parameters.
+    val source =
+      """|class Test:
+        |  def use(f: ((Int, Int)) => Int): Int = f((1, 2))
+        |
+        |  def test: Int =
+        |    use { _ + _ }
+        |""".stripMargin
+    checkBCode(source) { dir =>
+      // The main verification is that it compiles.
+      // We can also check that `test` method exists.
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      assert(clsNode.methods.asScala.exists(_.name == "test"))
+    }
+  }
 }
 
 object invocationReceiversTestCode {

@@ -104,7 +104,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
     if (!isEmpty) apply(0)
     else throw new NoSuchElementException(s"head of empty ${
       self match {
-        case self: IndexedSeq[_] => self.collectionClassName
+        case self: IndexedSeq[?] => self.collectionClassName
         case _ => toString
       }
     }")
@@ -115,7 +115,7 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
     if (!isEmpty) apply(length - 1)
     else throw new NoSuchElementException(s"last of empty ${
       self match {
-        case self: IndexedSeq[_] => self.collectionClassName
+        case self: IndexedSeq[?] => self.collectionClassName
         case _ => toString
       }
     }")
