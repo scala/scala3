@@ -37,16 +37,16 @@ class TastyBootstrapTests {
     val dotty2Group = TestGroup("tastyBootstrap/dotty2")
 
     // Make sure that the directory is clean
-    dotty.tools.io.Directory(defaultOutputDir + "tastyBootstrap").deleteRecursively()
+    dotty.tools.io.Directory(new java.io.File(defaultOutputDir, "tastyBootstrap").getAbsolutePath).deleteRecursively()
 
     val opt = TestFlags(
       List(
         // compile with bootstrapped library on cp:
-        defaultOutputDir + libGroup + "/lib/",
+        Paths.get(defaultOutputDir.getAbsolutePath, libGroup.name, "lib").toString,
         // and bootstrapped tasty-core:
-        defaultOutputDir + tastyCoreGroup + "/tastyCore/",
+        Paths.get(defaultOutputDir.getAbsolutePath, tastyCoreGroup.name, "tastyCore").toString,
         // as well as bootstrapped compiler:
-        defaultOutputDir + dotty1Group + "/dotty1/",
+        Paths.get(defaultOutputDir.getAbsolutePath, dotty1Group.name, "dotty1").toString,
         // and the other compiler dependencies:
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
