@@ -65,7 +65,7 @@ class GenBCode extends Phase { self =>
       _backendUtils = BackendUtils(frontendAccess, bTypes)
     _backendUtils.nn
   }
-  
+
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
@@ -93,6 +93,11 @@ class GenBCode extends Phase { self =>
     }
 
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
+    report.warning(
+      "The JVM backend is deprecated and will be removed in a future version of Scala. " +
+      "Consider migrating to Scala.js, the main backend going forward. " +
+      "See https://www.scala-js.org/ for migration instructions."
+    )
     try
       val result = super.runOn(units)
       generatedClassHandler.complete()
