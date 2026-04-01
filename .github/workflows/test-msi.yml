@@ -18,11 +18,13 @@ on:
         type: string
       java-version:
         required: true
-        type    : string
+        type: string
 
 jobs:
   test:
     runs-on: windows-latest
+    env:
+      VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/setup-java@v5
         with:
@@ -79,24 +81,24 @@ jobs:
         shell: pwsh
         run: |
           scala --version
-          if (-not (scala --version | Select-String "Scala version \(default\): ${{ inputs.version }}")) {
-            Write-Host "Invalid Scala version of MSI installed runner, expected ${{ inputs.version }}"
+          if (-not (scala --version | Select-String "Scala version \(default\): $Env:VERSION")) {
+            Write-Host "Invalid Scala version of MSI installed runner, expected $Env:VERSION"
             Exit 1
           }
       - name : Test the `scalac` command
         shell: pwsh
         run: |
           scalac --version
-          if (-not (scalac --version | Select-String "Scala compiler version ${{ inputs.version }}")) {
-            Write-Host "Invalid scalac version of MSI installed runner, expected ${{ inputs.version }}"
+          if (-not (scalac --version | Select-String "Scala compiler version $Env:VERSION")) {
+            Write-Host "Invalid scalac version of MSI installed runner, expected $Env:VERSION"
             Exit 1
           }
       - name : Test the `scaladoc` command
         shell: pwsh
         run: |
           scaladoc --version
-          if (-not (scaladoc --version | Select-String "Scaladoc version ${{ inputs.version }}")) {
-            Write-Host "Invalid scaladoc version of MSI installed runner, expected ${{ inputs.version }}"
+          if (-not (scaladoc --version | Select-String "Scaladoc version $Env:VERSION")) {
+            Write-Host "Invalid scaladoc version of MSI installed runner, expected $Env:VERSION"
             Exit 1
           }
 
