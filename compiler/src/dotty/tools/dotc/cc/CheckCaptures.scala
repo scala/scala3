@@ -944,10 +944,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         // An example is i25613.scala. See i16114.scala for an example why we have to
         // exclude boxed capturing types because this might lose uses stemming from unboxing
         // a function result.
-        if argTypes.hasSameLengthAs(tree.args) && ccConfig.newScheme then
+        if argTypes.hasSameLengthAs(tree.args) then
           val argTypes1 = argTypes.zipWithConserve(tree.args):
             case (nuType @ CapturingType(_, _), arg: Tree)
-            if arg.tpe.isSingleton && !nuType.isBoxedCapturing => arg.tpe
+            if arg.tpe.isStable            // stable --> there might be path dependent types with arg as prefix
+               && arg.tpe.isTrackableRef   // isTrackableRef --> we can get back original capture set by adaptation
+               && !nuType.isBoxedCapturing // !isBoxed --> no risk of losing uses when unboxing in result
+              => arg.tpe
             case (nuType, _) => nuType
           if argTypes1 ne argTypes then
             capt.println(i"improve $argTypes to $argTypes1 in $tree")
