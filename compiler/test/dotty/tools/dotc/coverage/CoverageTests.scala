@@ -8,7 +8,6 @@ import org.junit.experimental.categories.Category
 import dotty.{BootstrappedOnlyTests, Properties}
 import dotty.tools.vulpix.*
 import dotty.tools.vulpix.TestConfiguration.*
-import dotty.tools.dotc.Main
 import dotty.tools.dotc.reporting.TestReporter
 
 import java.nio.file.{FileSystems, Files, Path, Paths, StandardCopyOption}
@@ -16,7 +15,6 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
 import scala.language.unsafeNulls
 import scala.collection.mutable.Buffer
-import dotty.tools.dotc.util.DiffUtil
 
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors

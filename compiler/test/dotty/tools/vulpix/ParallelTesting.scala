@@ -507,11 +507,15 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
       def javacOptions  = toolArgs.getOrElse(ToolName.Javac, Nil)
 
-      val flags = flags0
+      var flags = flags0
         .and(scalacOptions*)
-        .and("-sourceroot", TestSources.rootPath().toAbsolutePath.toString)
         .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
+
+      // We must set -sourceroot for SemanticDB extraction to work properly inside an IDE,
+      // but we have many existing coverage tests that assume it is not set, so as a workaround:
+      if !flags.all.contains("-coverage-out") then
+        flags = flags.and("-sourceroot", TestSources.rootPath().toAbsolutePath.toString)
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
