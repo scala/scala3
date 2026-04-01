@@ -58,19 +58,15 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     result
   }
 
-  /** Read a natural number fitting in an Int in big endian format, base 128.
+  /** Read a nonnegative integer number in 2's complement big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
-  def readNat(): Int = readLongNat().toInt
-
-  /** Like `readNat`, but throws if the read number is negative.
-   */
-  def readNonnegNat(): Int = {
-    val res = readNat()
-    if (res < 0) {
-      throw new UnpickleException("Unexpected negative number")
+  def readNat(): Int = {
+    val l = readLongNat()
+    if (l > Int.MaxValue) {
+      throw new UnpickleException("Expected a nonnegative Int, got a number too large to fit")
     }
-    res
+    l.toInt
   }
 
   /** Read an integer number in 2's complement big endian format, base 128.
@@ -89,8 +85,10 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
       x = (x << 7) | (b & 0x7f)
       bp += 1
       (b & 0x80) == 0
-    })
-    ()
+    }) ()
+    if (x < 0) {
+      throw new UnpickleException("Negative number where a nonnegative one was expected")
+    }
     x
   }
 
@@ -133,7 +131,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** Read a length number and return the absolute end address implied by it,
    *  given as <address following length field> + <length-value-read>.
    */
-  def readEnd(): Addr = addr(readNonnegNat() + bp)
+  def readEnd(): Addr = addr(readNat() + bp)
 
   /** Set read position to the one pointed to by `addr` */
   def goto(addr: Addr): Unit =

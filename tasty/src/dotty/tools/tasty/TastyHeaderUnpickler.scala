@@ -110,7 +110,7 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
       val fileMinor = readNat()
       val fileExperimental = readNat()
       val toolingVersion = {
-        val length = readNonnegNat()
+        val length = readNat()
         val start = currentAddr
         val end = start + length
         goto(end)
