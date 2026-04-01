@@ -22,34 +22,37 @@ object Cleaner {
         // ignore it, it's a character that should never appear in everyday text anyway
         index += 1
       } else if (text(index) == '<') {
-        val endOfTagIndex = text.indexOf('>', index)
-        if (endOfTagIndex == -1) {
-          return result.toString
-        }
         val endOfNameIndex = text.indexOf(' ', index)
-        val subStringEndIndex = if (endOfNameIndex == -1) endOfTagIndex else Math.min(endOfTagIndex, endOfNameIndex)
-        result.append(text.substring(index + 1, subStringEndIndex) match {
-          case "p" | "div" => "\n\n"
-          case "h1"  => "\n= "
-          case "/h1" => " =\n"
-          case "h2"  => "\n== "
-          case "/h2" => " ==\n"
-          case "h3"  => "\n=== "
-          case "/h3" => " ===\n"
-          case "h4" | "h5" | "h6" => "\n==== "
-          case "/h4" | "/h5" | "/h6" => " ====\n"
-          case "li" => "\n *  - "
-          case "/li" => ""
-          case "" => ""
-          case other =>
-            val simple = if (other(0) == '/') other.substring(1) else other
-            if (SafeTags(simple)) {
-              s"$safeTagMarker${text.substring(index, endOfTagIndex + 1)}$safeTagMarker"
-            } else {
-              ""
-            }
-        })
-        index = endOfTagIndex + 1
+        val endOfTagIndex = text.indexOf('>', index)
+        if (endOfNameIndex == -1 || endOfNameIndex == index + 1 || endOfTagIndex == -1) {
+          // not actually a tag, e.g., "< hello >", "a<b"
+          result.append("&lt;")
+          index += 1
+        } else {
+          val subStringEndIndex = Math.min(endOfTagIndex, endOfNameIndex)
+          result.append(text.substring(index + 1, subStringEndIndex) match {
+            case "" => "&lt;" // not actually a tag
+            case "p" | "div" => "\n\n"
+            case "h1" => "\n= "
+            case "/h1" => " =\n"
+            case "h2" => "\n== "
+            case "/h2" => " ==\n"
+            case "h3" => "\n=== "
+            case "/h3" => " ===\n"
+            case "h4" | "h5" | "h6" => "\n==== "
+            case "/h4" | "/h5" | "/h6" => " ====\n"
+            case "li" => "\n *  - "
+            case "/li" => ""
+            case other =>
+              val simple = if (other(0) == '/') other.substring(1) else other
+              if (SafeTags(simple)) {
+                s"$safeTagMarker${text.substring(index, endOfTagIndex + 1)}$safeTagMarker"
+              } else {
+                ""
+              }
+          })
+          index = endOfTagIndex + 1
+        }
       } else {
         result.append(text(index))
         index += 1

@@ -17,8 +17,20 @@ class TagSanitizationTest extends BaseHtmlTest:
 
   @Test def scriptTagWithSpaces(): Unit =
     val html = docHtml("ScriptWithSpaces")
-    assertEquals("<p>alert('hello')</p>", html)
+    assertEquals("<p>&lt; script &gt;alert('hello')</p>", html)
 
   @Test def scriptTagWithSafeChar(): Unit =
     val html = docHtml("FakeSafeScript")
     assertEquals("<p>alert('hello')</p>", html)
+
+  @Test def notATag(): Unit =
+    val html = docHtml("NotATag")
+    assertEquals("<p>Example &lt; Second &lt;: Third &lt;= Fourth</p>", html)
+
+  @Test def notATagButHasGreaterThan(): Unit =
+    val html = docHtml("NotATagButHasGreaterThan")
+    assertEquals("<p>Example &lt; Second &gt;: Third</p>", html)
+
+  @Test def notATagButNoSpaces(): Unit =
+    val html = docHtml("NotATagButNoSpaces")
+    assertEquals("<p>a&lt;b</p>", html)

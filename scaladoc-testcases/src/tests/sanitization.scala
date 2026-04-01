@@ -9,3 +9,12 @@ class ScriptWithSpaces
 
 /** <script>alert('hello')</script> */
 class FakeSafeScript
+
+/** Example < Second <: Third <= Fourth */
+class NotATag
+
+/** Example < Second >: Third */
+class NotATagButHasGreaterThan
+
+/** a<b */
+class NotATagButNoSpaces
