@@ -126,4 +126,12 @@ class ProcessTest {
       case (_, other)                        => fail(s"Expected one IOException, got $other")
     }
   }
+
+  @Test def unmatchedQuotes(): Unit =
+    val badCommand = "echo 'Hello"
+    tools.AssertUtil.assertThrows[RuntimeException] { badCommand.!! }
+
+  @Test def trailingBackslash(): Unit =
+    val badCommand = "echo 'Hello'\\"
+    tools.AssertUtil.assertThrows[RuntimeException] { badCommand.!! }
 }

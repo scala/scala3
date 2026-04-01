@@ -110,7 +110,5 @@ private[scala] object Parser {
     loop()
   }
 
-  class ParseException(msg: String) extends RuntimeException(msg)
-
-  def tokenize(line: String): List[String] = tokenize(line, x => throw new ParseException(x))
+  def tokenize(line: String): List[String] = tokenize(line, scala.sys.error)
 }
