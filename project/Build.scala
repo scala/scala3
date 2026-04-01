@@ -58,7 +58,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.3-RC3"
+  val referenceVersion = "3.8.3"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -96,7 +96,7 @@ object Build {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimetnal
    */
-  val expectedTastyVersion = "28.9-experimental-1"
+  val expectedTastyVersion = "28.8"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
