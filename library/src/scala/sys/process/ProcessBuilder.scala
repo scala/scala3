@@ -446,7 +446,7 @@ object ProcessBuilder extends ProcessBuilderImpl {
      *  argument is call-by-name, so the stream is recreated, written, and closed each
      *  time this process is executed.
      */
-    def #>(out: => OutputStream): ProcessBuilder = #> (new OStreamBuilder(out, "<output stream>"))
+    def #>(out: => OutputStream): ProcessBuilder = #> (new StreamOutput(out, "<output stream>"))
 
     /** Writes the output stream of this process to a [[scala.sys.process.ProcessBuilder]]. */
     def #>(b: ProcessBuilder): ProcessBuilder = new PipedBuilder(toSource, b, toError = false)
@@ -472,7 +472,7 @@ object ProcessBuilder extends ProcessBuilderImpl {
      *  argument is call-by-name, so the stream is recreated, read, and closed each
      *  time this process is executed.
      */
-    def #<(in: => InputStream): ProcessBuilder = #< (new IStreamBuilder(in, "<input stream>"))
+    def #<(in: => InputStream): ProcessBuilder = #< (new StreamInput(in, "<input stream>"))
 
     /** Reads the output of a [[scala.sys.process.ProcessBuilder]] into the input stream of this process. */
     def #<(b: ProcessBuilder): ProcessBuilder = new PipedBuilder(b, toSink, toError = false)

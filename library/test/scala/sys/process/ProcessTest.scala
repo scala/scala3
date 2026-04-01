@@ -58,11 +58,6 @@ class ProcessTest {
     val res = ("cat" #< new ByteArrayInputStream("lol".getBytes)).!!
     assertEquals("lol\n", res)
   }
-  // test non-hanging
-  //@Test def t10055(): Unit = noWin() {
-  //  val res = ("cat" #< ( () => -1 ) ).!
-  //  assertEquals(0, res)
-  //}
 
   @Test def t10953(): Unit =
     Using.resources(File.createTempFile("foo", "tmp"), File.createTempFile("bar", "tmp")) {
