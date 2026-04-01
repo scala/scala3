@@ -1,4 +1,11 @@
 package tests.sanitization
 
 /** <script>alert('hello')</script> */
-class Simple
+class Script
+
+/** < script   >alert('hello')</script
+> */
+class ScriptWithSpaces
+
+/** <script>alert('hello')</script> */
+class FakeSafeScript

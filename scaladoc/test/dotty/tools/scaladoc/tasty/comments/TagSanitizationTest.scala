@@ -11,6 +11,14 @@ class TagSanitizationTest extends BaseHtmlTest:
   private def docHtml(cls: String): String =
     super.docHtml("sanitization", cls, "markdown")
 
-  @Test def simpleScriptTag(): Unit =
-    val html = docHtml("Simple")
-    assertEquals("&lt;script&gt;alert('hello')&lt;script&gt;", html)
+  @Test def scriptTag(): Unit =
+    val html = docHtml("Script")
+    assertEquals("<p>alert('hello')</p>", html)
+
+  @Test def scriptTagWithSpaces(): Unit =
+    val html = docHtml("ScriptWithSpaces")
+    assertEquals("<p>alert('hello')</p>", html)
+
+  @Test def scriptTagWithSafeChar(): Unit =
+    val html = docHtml("FakeSafeScript")
+    assertEquals("<p>alert('hello')</p>", html)
