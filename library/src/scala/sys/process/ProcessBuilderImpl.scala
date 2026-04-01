@@ -45,7 +45,7 @@ private[process] trait ProcessBuilderImpl {
   // Because the argument must be call-by-name to re-create the stream every time,
   // this class should not be reused in a context where the call-by-name argument does something sensitive,
   // like `url.openStream()`, since otherwise there is a hypothetical possibility of a Java deserialization gadget chain.
-  private[process] final class StreamInput(stream: => InputStream, label: String) extends ThreadBuilder(label) {
+  private[process] final class IStreamBuilder(stream: => InputStream, label: String) extends ThreadBuilder(label) {
     override def hasExitValue = false
     override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(stream))
   }
@@ -55,7 +55,8 @@ private[process] trait ProcessBuilderImpl {
     override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(new FileInputStream(file)))
   }
 
-  private[process] final class StreamOutput(stream: OutputStream, label: String) extends ThreadBuilder(label) {
+  // Same remark as IStreamBuilder
+  private[process] final class OStreamBuilder(stream: => OutputStream, label: String) extends ThreadBuilder(label) {
     override def hasExitValue = false
     override def runImpl(io: ProcessIO): Unit = io.writeInput(protect(stream))
   }
@@ -229,7 +230,7 @@ private[process] trait ProcessBuilderImpl {
 
     def #<<(f: File): ProcessBuilder           = #<<(new FileInput(f))
     def #<<(u: URL): ProcessBuilder            = #<<(new URLInput(u))
-    def #<<(s: => InputStream): ProcessBuilder = #<<(new StreamInput(s, "<input stream>"))
+    def #<<(s: => InputStream): ProcessBuilder = #<<(new IStreamBuilder(s, "<input stream>"))
     def #<<(b: ProcessBuilder): ProcessBuilder = new PipedBuilder(b, new FileOutput(base, append = true), toError = false)
   }
 
