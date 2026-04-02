@@ -225,7 +225,7 @@ class TreeUnpickler(reader: TastyReader,
           if (mode == MemberDefsOnly) skipTree(tag)
           else if (tag >= firstLengthTreeTag) {
             val end = readEnd()
-            var nrefs = numRefs(tag)
+            val nrefs = numRefs(tag)
             if (nrefs < 0) {
               for (i <- nrefs until 0) scanTree(buf)
               goto(end)
@@ -241,7 +241,7 @@ class TreeUnpickler(reader: TastyReader,
           }
           else if (tag >= firstNatASTTreeTag) { readNat(); scanTree(buf) }
           else if (tag >= firstASTTreeTag) scanTree(buf)
-          else if (tag >= firstNatTreeTag) readNat()
+          else if (tag >= firstNatTreeTag) readLongInt()
       }
     }
 
