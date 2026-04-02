@@ -87,12 +87,15 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     val ogBp = bp
     var b = 0L
     var x = 0L
+    var debugStr = ""
     while ({
       b = bytes(bp)
+      debugStr = debugStr + " " + b.toHexString.substring(7*2)
       x = (x << 7) | (b & 0x7f)
       bp += 1
       (b & 0x80) == 0
     }) ()
+    println("LONGNAT: " +debugStr + " -> " + x)
     // the writer uses 9 bytes for the 9*7 = 63 bits, then 1 byte just to stop
     if (bp - ogBp > 10) {
       throw new UnpickleException(s"Expected to read a long nat, but read too many bytes (${bp - ogBp})")
