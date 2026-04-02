@@ -1260,7 +1260,7 @@ object Build {
       Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-bootstrapped",
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
-        /* TODO: enable for Scala 3.9: "-opt", "-opt-inline:**,!java.**", */
+        "-opt", "-opt-inline:**,!java.**",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
