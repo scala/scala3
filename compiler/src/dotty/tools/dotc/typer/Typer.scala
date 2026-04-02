@@ -4498,7 +4498,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if isAcceptedSpuriousApply(tree, pt.args) then tree
         else
           tryInsertApplyOrImplicit(tree, pt, locked):
-            errorTree(tree, MethodDoesNotTakeParameters(tree))
+            val pos =
+              if pt.args.isEmpty then tree.srcPos
+              else
+                val union = tree.sourcePos.withSpan:
+                  tree.srcPos.span.union(pt.args.last.srcPos.span)
+                if union.startLine != union.endLine then union // if multiline, show more context
+                else tree.srcPos
+            errorTree(tree, MethodDoesNotTakeParameters(tree), pos)
     }
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
