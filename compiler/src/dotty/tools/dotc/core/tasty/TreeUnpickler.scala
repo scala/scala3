@@ -188,7 +188,7 @@ class TreeUnpickler(reader: TastyReader,
       if (tag >= firstLengthTreeTag) goto(readEnd())
       else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
       else if (tag >= firstASTTreeTag) skipTree()
-      else if (tag >= firstNatTreeTag) readNat()
+      else if (tag >= firstNatTreeTag) readLongInt()
     }
     def skipTree(): Unit = skipTree(readByte())
 

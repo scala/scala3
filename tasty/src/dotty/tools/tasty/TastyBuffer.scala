@@ -64,14 +64,14 @@ class TastyBuffer(initialSize: Int) {
     length += n
   }
 
-  /** Write a natural number in big endian format, base 128.
-   *  All but the last digits have bit 0x80 set.
+  /** Write a natural number in big endian format, base 128, as octets.
+   *  All octets but the last have bit 0x80 unset.
    */
   def writeNat(x: Int): Unit =
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
 
-  /** Write a natural number in 2's complement big endian format, base 128.
-   *  All but the last digits have bit 0x80 set.
+  /** Write a natural number in 2's complement big endian format, base 128, as octets.
+   *  All octets but the last have bit 0x80 unset.
    */
   def writeInt(x: Int): Unit =
     writeLongInt(x)
