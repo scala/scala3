@@ -250,12 +250,20 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
     val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
     val scala3Project = if bootstrapped then "scala3-bootstrapped" else "scala3"
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
+    val sbtPublishRecipe = Seq(
+      "clean",
+      """set every doc := new File("unused")""",
+      s"set scaladoc/Compile/resourceGenerators := (`$scala3Project`/Compile/resourceGenerators).value",
+      s"$scala3Project/publishLocal",
+    ).mkString("; ")
+
     val bisectRunScript = raw"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
       |rm -rf out
       |export JAVA_HOME=${sys.props("java.home")}
       |sbt_build_log=$$(mktemp)
-      |if sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal" >"$$sbt_build_log" 2>&1; then
+      |echo 'Running sbt publish recipe: sbt "$sbtPublishRecipe"'
+      |if sbt '$sbtPublishRecipe' >"$$sbt_build_log" 2>&1; then
       |  rm -f "$$sbt_build_log"
       |  ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
       |else
