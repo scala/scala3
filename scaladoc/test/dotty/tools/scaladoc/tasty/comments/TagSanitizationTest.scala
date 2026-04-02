@@ -34,3 +34,13 @@ class TagSanitizationTest extends BaseHtmlTest:
   @Test def notATagButNoSpaces(): Unit =
     val html = docHtml("NotATagButNoSpaces")
     assertEquals("<p>a&lt;b</p>", html)
+
+  @Test def tagOutsideCode(): Unit =
+    val html = docHtml("TagOutsideCode")
+    assertFalse(html, html.contains("<script>"))
+    assertFalse(html, html.contains("</script>"))
+
+  @Test def linkToTagLike(): Unit =
+    val html = docHtml("LinkToTagLike")
+    // ensure we don't treat the text between <:< and >:> as a tag content
+    assertTrue(html, html.contains("or"))

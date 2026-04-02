@@ -18,3 +18,17 @@ class NotATagButHasGreaterThan
 
 /** a<b */
 class NotATagButNoSpaces
+
+/**
+ * test
+ * ```
+ * example = false
+ * ```
+ * <script>alert('hello')</script>
+ */
+class TagOutsideCode
+
+/**
+ * see [[<:<]], or [[>:>]]
+ */
+class LinkToTagLike

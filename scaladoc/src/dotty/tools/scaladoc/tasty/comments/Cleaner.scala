@@ -1,6 +1,11 @@
 package dotty.tools.scaladoc
 package tasty.comments
 
+/**
+ * Removes HTML tags except simple ones that can be translated or that are definitely harmless,
+ * translates Scala/Javadoc tags, and generally cleans the input.
+ * Not the fastest code in the world, and should eventually be replaced by a real parser,
+ * but works fine for now. */
 object Cleaner {
   import Regexes._
   import java.util.regex.Matcher
@@ -12,13 +17,33 @@ object Cleaner {
     "small", "span", "strong", "sub", "sup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "var"
   )
 
-  /** Removes all tags except simple ones that can be translated or that are definitely harmless.
-   *  Not the fastest code in the world, but should work just fine for our purposes. */
   private def cleanHtml(text: String): String = {
     val result = StringBuilder()
     var index = 0
+    var insideCode = false
+    var insideLink = false
     while (index < text.length) {
-      if (text(index) == safeTagMarker) {
+      if (insideCode) {
+        result.append(text(index))
+        if (index >= 2 && text(index) == '`' && text(index - 1) == '`' && text(index - 2) == '`') {
+          insideCode = false
+        }
+        index += 1
+      } else if (insideLink) {
+        result.append(text(index))
+        if (index >= 1 && text(index) == ']' && text(index - 1) == ']') {
+          insideLink = false
+        }
+        index += 1
+      } else if (index <= text.length - 3 && text(index) == '`' && text(index + 1) == '`' && text(index + 2) == '`') {
+        result.append("```")
+        insideCode = true
+        index += 3
+      } else if (index <= text.length - 2 && text(index) == '[' && text(index + 1) == '[') {
+        result.append("[[")
+        insideLink = true
+        index += 2
+      } else if (text(index) == safeTagMarker) {
         // ignore it, it's a character that should never appear in everyday text anyway
         index += 1
       } else if (text(index) == '<') {
