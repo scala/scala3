@@ -28,7 +28,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** The address of the next byte to read */
   def currentAddr: Addr = addr(bp)
 
-  /** the address one greater than the last brte to read */
+  /** the address one greater than the last byte to read */
   def endAddr: Addr = addr(end)
 
   /** Have all bytes been read? */
@@ -58,7 +58,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     result
   }
 
-  /** Read a 32-bit natural (nonnegative) integer number in 2's complement big endian format, base 128.
+  /** Read a 31-bit natural (nonnegative) integer number in 2's complement big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
   def readNat(): Int = {
@@ -80,7 +80,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     l.toInt
   }
 
-  /** Read a 64-bit natural (nonnegative) number in 2's complement big endian format, base 128.
+  /** Read a 63-bit natural (nonnegative) number in 2's complement big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
   def readLongNat(): Long = {
@@ -93,7 +93,8 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
       bp += 1
       (b & 0x80) == 0
     }) ()
-    if (bp - ogBp > (63 / 7)) {
+    // the writer uses 9 bytes for the 9*7 = 63 bits, then 1 byte just to stop
+    if (bp - ogBp > 10) {
       throw new UnpickleException(s"Expected to read a long nat, but read too many bytes (${bp - ogBp})")
     }
     if (x < 0) {
@@ -115,7 +116,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
       x = (x << 7) | (b & 0x7f)
       bp += 1
     }
-    if (bp - ogBp > (64 / 7)) {
+    if (bp - ogBp > 10) {
       throw new UnpickleException(s"Expected to read a long int, but read too many bytes (${bp - ogBp})")
     }
     x
