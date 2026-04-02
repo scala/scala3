@@ -1569,8 +1569,8 @@ object desugar {
           case TuplePattern(pats, _) =>
             // We want to include wildcards for the optimizations, so we can't use `IdPattern` which excludes them
             val allVariables = pats.map {
-              case id: Ident => Some(id, TypeTree())
-              case Typed(id: Ident, tpt) => Some((id, tpt))
+              case id: Ident if isVarPattern(id) => Some(id, TypeTree())
+              case Typed(id: Ident, tpt) if isVarPattern(id) => Some((id, tpt))
               case _ => None
             }.flatten
             if allVariables.size == pats.size then
