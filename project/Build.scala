@@ -638,6 +638,50 @@ object Build {
   }
 
   // ==============================================================================================
+  // ============================================ ROOT ============================================
+  // ==============================================================================================
+
+  // All projects, used to forward tasks like clean.
+  lazy val allProjects: Seq[Project] = Seq(
+    `scala3-interfaces`,
+    `scala3-bootstrapped`,
+    `scala3-compiler-nonbootstrapped`,
+    `scala3-compiler-bootstrapped`,
+    `scala3-sbt-bridge-nonbootstrapped`,
+    `scala3-sbt-bridge-bootstrapped`,
+    `scala-library-nonbootstrapped`,
+    `scala-library-bootstrapped`,
+    `scala3-library-nonbootstrapped`,
+    `scala3-library-bootstrapped`,
+    `scala-library-sjs`,
+    `scala3-library-sjs`,
+    `tasty-core-nonbootstrapped`,
+    `tasty-core-bootstrapped`,
+    `scala3-staging`,
+    `scala3-tasty-inspector`,
+    `scala3-repl`,
+    `scala2-library`,
+    scaladoc,
+    `scaladoc-testcases`,
+    `scaladoc-js-common`,
+    `scaladoc-js-main`,
+    `scaladoc-js-contributors`,
+    `scala3-presentation-compiler`,
+    `scala3-presentation-compiler-testcases`,
+    `scala3-language-server`,
+    sjsSandbox,
+    sjsJUnitTests,
+    sjsCompilerTests,
+    `community-build`,
+    dist,
+    `dist-mac-x86_64`,
+    `dist-mac-aarch64`,
+    `dist-win-x86_64`,
+    `dist-linux-x86_64`,
+    `dist-linux-aarch64`,
+  )
+
+  // ==============================================================================================
   // ================================= NON-BOOTSTRAPPED PROJECTS ==================================
   // ==============================================================================================
 
@@ -655,6 +699,14 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-nonbootstrapped",
+      // Clean all projects, not just the ones aggregated by this project
+      clean / aggregate := false,
+      clean := {
+        streams.value.log.info("cleaning all projects")
+        // Inspired from the Scala.js build:
+        // https://github.com/scala-js/scala-js/blob/c4e7f43932551aabb573c925147e3841ac3ca4be/project/Build.scala#L1006
+        clean.dependsOn(allProjects.map(_ / clean): _*).value
+      },
       scalac := Def.inputTaskDyn {
         val log = streams.value.log
         val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
