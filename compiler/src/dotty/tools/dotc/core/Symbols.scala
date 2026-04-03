@@ -25,7 +25,7 @@ import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile}
 import scala.annotation.internal.sharable
 import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
@@ -386,8 +386,12 @@ object Symbols extends SymUtils {
     final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
     final def sourcePos(using Context): SourcePosition = {
-      val src = source
-      (if (src.exists) src else ctx.source).atSpan(span)
+      val src = if source.exists then source else ctx.source
+      WrappedSourceFile.locateMagicHeader(src) match
+        case WrappedSourceFile.MagicHeaderInfo.HasHeader(offset, originalFile)
+          if span.exists && span.start >= offset =>
+            originalFile.atSpan(span.shift(-offset))
+        case _ => src.atSpan(span)
     }
 
     /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
