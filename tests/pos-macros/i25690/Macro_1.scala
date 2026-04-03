@@ -11,4 +11,4 @@ object Tracer:
 
   def autoTraceImpl(using Quotes): Expr[Trace] =
     import quotes.reflect.*
-    Typed(Literal(StringConstant("loc")), TypeTree.of[Trace]).asExprOf[Trace]
+    Literal(StringConstant("loc")).asExprOf[String].asInstanceOf[Expr[Trace]]
