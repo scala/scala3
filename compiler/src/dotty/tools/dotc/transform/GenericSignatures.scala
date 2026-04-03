@@ -237,6 +237,8 @@ object GenericSignatures {
 
       val tp = tp0.dealias
       tp match {
+        case RefinedType(parent, _, _) =>
+          jsig(parent, toplevel = toplevel, unboxedVCs = unboxedVCs)
 
         case ref @ TypeParamRef(_: PolyType, _) =>
           val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
