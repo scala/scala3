@@ -22,7 +22,6 @@ import dotty.tools.dotc.typer.ErrorReporting.errorTree
 import dotty.tools.dotc.typer.Implicits.*
 import dotty.tools.dotc.typer.Inferencing.*
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.util.WrappedSourceFile
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
@@ -49,7 +48,7 @@ trait QuotesAndSplices {
     val quotes = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
 
     if quotes.tpe.isInstanceOf[SearchFailureType] then
-      report.error(missingArgMsg(quotes, defn.QuotesClass.typeRef, ""), WrappedSourceFile.sourcePos(ctx.source, tree.span))
+      report.error(missingArgMsg(quotes, defn.QuotesClass.typeRef, ""), ctx.source.atSpan(tree.span))
     else if !quotes.tpe.isStable then
       report.error(em"Quotes require stable Quotes, but found non stable $quotes", quotes.srcPos)
 
