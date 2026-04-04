@@ -5,7 +5,6 @@ package transform
 import core.Annotations.*
 import core.Contexts.*
 import core.Phases.*
-import core.Decorators.*
 import core.Definitions
 import core.Flags.*
 import core.Names.Name
@@ -15,8 +14,6 @@ import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement,
 import core.Types.*
 import core.classfile.ClassfileConstants
 
-import config.Printers.transforms
-import reporting.trace
 import java.lang.StringBuilder
 
 import scala.annotation.tailrec
@@ -89,11 +86,11 @@ object GenericSignatures {
       ps.foreach(boxedSig)
     }
 
-    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, unboxedVCs = false)
+    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, vcBoxing = ValueClassBoxing.Box)
 
     /** The signature of the upper-bound of a type parameter.
      *
-     *  @pre none of the bounds are themselves type parameters.
+     *  @note precondition: none of the bounds are themselves type parameters.
      *       TODO: Remove this restriction so we can support things like:
      *
      *           class Foo[A]:
@@ -201,6 +198,7 @@ object GenericSignatures {
     }
 
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+      @tailrec
       def argSig(tp: Type): Unit =
         tp match {
           case bounds: TypeBounds =>
@@ -258,20 +256,23 @@ object GenericSignatures {
       builder.append(';')
     }
 
+    enum ValueClassBoxing:
+      case Box, Unbox, UnboxOnlyPrimitives
+
     @noinline
-    def jsig(tp0: Type, toplevel: Boolean = false, unboxedVCs: Boolean = true): Unit = {
-      inline def jsig1(tp0: Type): Unit = jsig(tp0, toplevel = false, unboxedVCs = true)
+    def jsig(tp0: Type, toplevel: Boolean = false, vcBoxing: ValueClassBoxing = ValueClassBoxing.Unbox): Unit = {
+      inline def jsig1(tp0: Type): Unit = jsig(tp0)
 
       val tp = tp0.dealias
       tp match {
         case RefinedType(parent, _, _) =>
-          jsig(parent, toplevel = toplevel, unboxedVCs = unboxedVCs)
+          jsig(parent, toplevel = toplevel, vcBoxing = vcBoxing)
 
         case ref @ TypeParamRef(_: PolyType, _) =>
           val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
           // don't emit type param name if the param is upper-bounded by a primitive type (including via a value class)
           if erasedUnderlying.isPrimitiveValueType then
-            jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
+            jsig(erasedUnderlying, toplevel = toplevel, vcBoxing = vcBoxing)
           else {
             val name = sanitizeName(ref.paramName.lastPart)
             val nameToUse = methodTypeParamRenaming.getOrElse(name, name)
@@ -286,13 +287,13 @@ object GenericSignatures {
           // Since the TermRef originally intended to capture the underlying type of a `val`,
           // we recover that information by directly checking the resultType of the getter.
           // See `tests/run/i24553.scala` for an example
-          jsig(ref.info.resultType, toplevel = toplevel, unboxedVCs = unboxedVCs)
+          jsig(ref.info.resultType, toplevel = toplevel, vcBoxing = vcBoxing)
 
         case ref: SingletonType =>
           // Singleton types like `x.type` need to be widened to their underlying type
           // For example, `def identity[A](x: A): x.type` should have signature
           // with return type `A` (not `java.lang.Object`)
-          jsig(ref.underlying, toplevel = toplevel, unboxedVCs = unboxedVCs)
+          jsig(ref.underlying, toplevel = toplevel, vcBoxing = vcBoxing)
 
         case defn.ArrayOf(elemtp) =>
           if (isGenericArrayElement(elemtp, isScala2 = false))
@@ -301,7 +302,10 @@ object GenericSignatures {
             builder.append(ClassfileConstants.ARRAY_TAG)
             elemtp match
               case TypeBounds(lo, hi) => jsig1(hi.widenDealias)
-              case _ => jsig1(elemtp)
+              // derived VCs are not unboxed inside arrays,
+              // i.e., `Array[VC]` where `class VC(n: X) extends AnyVal`
+              // is `[LVC;`, not `[LX;`
+              case _ => jsig(elemtp, vcBoxing = ValueClassBoxing.UnboxOnlyPrimitives)
 
         case RefOrAppliedType(sym, pre, args) =>
           if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
@@ -319,13 +323,15 @@ object GenericSignatures {
           else if (sym == defn.NullClass)
             builder.append("Lscala/runtime/Null$;")
           else if (sym.isPrimitiveValueClass)
-            if (!unboxedVCs) jsig1(defn.ObjectType)
+            // TODO, but a few tests need fixing / disabling until a newer scalac is ingested,
+            // replace the next 2 lines with: if (vcBoxing == ValueClassBoxing.Box || sym == defn.UnitClass) jsig1(defn.boxedClass(sym).typeRef)
+            if (vcBoxing == ValueClassBoxing.Box) jsig1(defn.ObjectType)
             else if (sym == defn.UnitClass) jsig1(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
-            if (unboxedVCs) {
+            if (vcBoxing == ValueClassBoxing.Unbox) {
               val erasedUnderlying = fullErasure(tp)
-              jsig(erasedUnderlying, toplevel = toplevel, unboxedVCs = true)
+              jsig(erasedUnderlying, toplevel = toplevel)
             } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
@@ -335,7 +341,7 @@ object GenericSignatures {
           else if sym.isClass then
             classSig(sym, pre, args)
           else
-            jsig(erasure(tp), toplevel = toplevel, unboxedVCs = unboxedVCs)
+            jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
 
         case ExprType(restpe) if toplevel =>
           builder.append("()")
@@ -376,7 +382,7 @@ object GenericSignatures {
         case tp: AndType =>
           // Only intersections appearing as the upper-bound of a type parameter
           // can be preserved in generic signatures and those are already
-          // handled by `boundsSig`, so here we fallback to picking a parent of
+          // handled by `boundsSig`, so here we fall back to picking a parent of
           // the intersection to determine its overall signature. We must pick a
           // parent whose erasure matches the erasure of the intersection
           // because javac relies on the generic signature to determine the
@@ -386,7 +392,7 @@ object GenericSignatures {
           val (reprParents, _) = splitIntersection(parents)
           val repr =
             reprParents.find(_.typeSymbol.is(TypeParam)).getOrElse(reprParents.head)
-          jsig(repr, toplevel = false, unboxedVCs = unboxedVCs)
+          jsig(repr, toplevel = false, vcBoxing = vcBoxing)
 
         case ci: ClassInfo =>
           val tParams = tp.typeParams
@@ -394,15 +400,15 @@ object GenericSignatures {
           superSig(ci.typeSymbol, ci.parents)
 
         case AnnotatedType(atp, _) =>
-          jsig(atp, toplevel, unboxedVCs)
+          jsig(atp, toplevel, vcBoxing)
 
         case hktl: HKTypeLambda =>
-          jsig(hktl.finalResultType, toplevel, unboxedVCs)
+          jsig(hktl.finalResultType, toplevel, vcBoxing)
 
         case _ =>
           val etp = erasure(tp)
           if (etp eq tp) throw new UnknownSig
-          else jsig(etp, toplevel, unboxedVCs)
+          else jsig(etp, toplevel, vcBoxing)
       }
     }
     val throwsArgs = sym0.annotations flatMap ThrownException.unapply
