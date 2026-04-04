@@ -387,11 +387,7 @@ object Symbols extends SymUtils {
 
     final def sourcePos(using Context): SourcePosition = {
       val src = if source.exists then source else ctx.source
-      WrappedSourceFile.locateMagicHeader(src) match
-        case WrappedSourceFile.MagicHeaderInfo.HasHeader(offset, originalFile)
-          if span.exists && span.start >= offset =>
-            originalFile.atSpan(span.shift(-offset))
-        case _ => src.atSpan(span)
+      WrappedSourceFile.sourcePos(src, span)
     }
 
     /** This positioned item, widened to `SrcPos`. Used to make clear we only need the

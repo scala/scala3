@@ -7,6 +7,7 @@ import core.*
 import ast.{TreeTypeMap, untpd, tpd}
 import util.Spans.*
 import util.Stats.{record, monitored}
+import util.WrappedSourceFile
 import printing.{Showable, Printer}
 import printing.Texts.*
 import Contexts.*
@@ -962,7 +963,7 @@ trait Implicits:
   def implicitArgTree(formal: Type, span: Span, where: => String = "")(using Context): Tree = {
     val arg = inferImplicitArg(formal, span)
     if (arg.tpe.isInstanceOf[SearchFailureType])
-      report.error(missingArgMsg(arg, formal, where), ctx.source.atSpan(span))
+      report.error(missingArgMsg(arg, formal, where), WrappedSourceFile.sourcePos(ctx.source, span))
     arg
   }
 
@@ -1101,7 +1102,7 @@ trait Implicits:
           if !companion.isAccessibleFrom(pre) then
             report.deprecationWarning(
               em"Usage of implicit ${ref.symbol} defined in $companion, which is not accessible here. In Scala 3.10, this implicit will no longer be found.",
-              ctx.source.atSpan(span))
+              WrappedSourceFile.sourcePos(ctx.source, span))
         case _ =>
 
   /** Find an implicit parameter or conversion.
@@ -1164,7 +1165,7 @@ trait Implicits:
                   report.migrationWarning(
                     result.reason.msg
                       .prepend(s"According to new implicit resolution rules, this will be ambiguous:\n"),
-                    ctx.source.atSpan(span))
+                    WrappedSourceFile.sourcePos(ctx.source, span))
                   altResult
                 case _ =>
                   result
@@ -1281,7 +1282,7 @@ trait Implicits:
 
     private val wideProto = pt.widenExpr
 
-    private val srcPos = ctx.source.atSpan(span)
+    private val srcPos = WrappedSourceFile.sourcePos(ctx.source, span)
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
     private val wildProto: Type =

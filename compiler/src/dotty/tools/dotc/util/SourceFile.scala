@@ -69,6 +69,15 @@ object WrappedSourceFile:
 
   private val cache: mutable.HashMap[SourceFile, MagicHeaderInfo] = mutable.HashMap.empty
 
+  /** Convert a (source, span) pair into a SourcePosition, remapping through the
+   *  magic offset header if applicable. Use this instead of `source.atSpan(span)`
+   *  when positions need to be reported in the original file. */
+  def sourcePos(sourceFile: SourceFile, span: Span)(using Context): SourcePosition =
+    locateMagicHeader(sourceFile) match
+      case HasHeader(offset, originalFile) if span.exists && span.start >= offset =>
+        originalFile.atSpan(span.shift(-offset))
+      case _ => sourceFile.atSpan(span)
+
   def locateMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
     def findOffset: MagicHeaderInfo =
       val magicHeader = ctx.settings.YmagicOffsetHeader.value
