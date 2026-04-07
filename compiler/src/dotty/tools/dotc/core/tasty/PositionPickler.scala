@@ -49,7 +49,7 @@ object PositionPickler:
       buf.writeNat(content.count(_ == '\n') + 1) // number of lines
       var lastIndex = content.indexOf('\n', 0)
       if (lastIndex == -1) {
-        lastIndex = 0
+        lastIndex = content.length
       }
       buf.writeNat(lastIndex) // size of first line
       while lastIndex != -1 do
