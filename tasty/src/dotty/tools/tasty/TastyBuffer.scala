@@ -67,8 +67,12 @@ class TastyBuffer(initialSize: Int) {
   /** Write a natural number in big endian format, base 128, as octets.
    *  All octets but the last have bit 0x80 unset.
    */
-  def writeNat(x: Int): Unit =
+  def writeNat(x: Int): Unit = {
+    if (x < 0) {
+      throw new PickleException(s"Expected a natural (nonnegative) number to write, but got: $x")
+    }
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
+  }
 
   /** Write a natural number in 2's complement big endian format, base 128, as octets.
    *  All octets but the last have bit 0x80 unset.
@@ -83,6 +87,9 @@ class TastyBuffer(initialSize: Int) {
    * Int.MAX_VALUE.
    */
   def writeLongNat(x: Long): Unit = {
+    if (x < 0) {
+      throw new PickleException(s"Expected a natural (nonnegative) number to write, but got: $x")
+    }
     def writePrefix(x: Long): Unit = {
       val y = x >>> 7
       if (y != 0L) writePrefix(y)

@@ -3,15 +3,15 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.TastyFormat.{SOURCE, PositionsSection}
-import dotty.tools.tasty.TastyBuffer
+import dotty.tools.tasty.TastyFormat.{PositionsSection, SOURCE}
+import dotty.tools.tasty.{PickleException, TastyBuffer}
 import TastyBuffer.*
-
 import ast.*
 import Trees.WithLazyFields
-import util.{SourceFile, NoSource}
+import util.{NoSource, SourceFile}
 import core.*
-import Annotations.*, Decorators.*
+import Annotations.*
+import Decorators.*
 import collection.mutable
 import util.Spans.*
 import reporting.Message
@@ -48,6 +48,9 @@ object PositionPickler:
       val content = source.content()
       buf.writeNat(content.count(_ == '\n') + 1) // number of lines
       var lastIndex = content.indexOf('\n', 0)
+      if (lastIndex == -1) {
+        lastIndex = 0
+      }
       buf.writeNat(lastIndex) // size of first line
       while lastIndex != -1 do
         val nextIndex = content.indexOf('\n', lastIndex + 1)
