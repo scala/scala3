@@ -14,8 +14,7 @@ import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 /**
- * Functionality needed in the post-processor whose implementation depends on the compiler
- * frontend. All methods are synchronized.
+ * Abstracts the frontend data structures, specially the Context, that need to be accessed in a single-threaded manner.
  */
 sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
   import PostProcessorFrontendAccess.*
