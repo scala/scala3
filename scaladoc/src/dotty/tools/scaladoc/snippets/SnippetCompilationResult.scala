@@ -8,12 +8,13 @@ case class Position(srcPos: SourcePosition, relativeLine: Int)
 
 case class SnippetCompilerMessage(position: Option[Position], message: String, level: MessageLevel):
   def emit()(using CompilerContext): Unit =
+    val ctx = position.fold(summon[CompilerContext])(pos => summon[CompilerContext].withSource(pos.srcPos.source))
     val pos: SrcPos = position.fold(dotty.tools.dotc.util.NoSourcePosition)(_.srcPos)
     level match
-      case MessageLevel.Info => report.log(message, pos)
-      case MessageLevel.Warning => report.warning(message, pos)
-      case MessageLevel.Error => report.error(message, pos)
-      case MessageLevel.Debug => report.log(message, pos)
+      case MessageLevel.Info => report.log(message, pos)(using ctx)
+      case MessageLevel.Warning => report.warning(message, pos)(using ctx)
+      case MessageLevel.Error => report.error(message, pos)(using ctx)
+      case MessageLevel.Debug => report.log(message, pos)(using ctx)
 
 case class SnippetCompilationResult(
   wrappedSnippet: WrappedSnippet,

@@ -76,24 +76,24 @@ case class TemplateFile(
   def isIndexPage() = file.isFile && (file.getName == "index.md" || file.getName == "index.html")
 
   private[site] def resolveInner(ctx: RenderingContext)(using ssctx: StaticSiteContext): ResolvedPage =
-
     lazy val snippetCheckingFunc: SnippetChecker.SnippetCheckingFunc =
       val path = Some(Paths.get(file.getAbsolutePath))
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
       val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get), scala.io.Codec.UTF8)
-      (snippet: SnippetSource, argOverride: Option[SnippetCompilerArg]) => {
-          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
-          val compilerData = SnippetCompilerData(
-            "staticsitesnippet",
-            SnippetCompilerData.Position(configOffset - 1, 0)
-          )
-          ssctx.snippetChecker.checkSnippet(snippet, Some(compilerData), arg, sourceFile, 0).collect {
-              case r: SnippetCompilationResult if !r.isSuccessful =>
-                ssctx.bufferSnippetMessages(r.messages)
-                r
-              case r => r
-          }
-      }
+      (snippet: SnippetSource, argOverride: Option[SnippetCompilerArg]) =>
+        val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
+        val compilerData = SnippetCompilerData("staticsitesnippet", SnippetCompilerData.Position(configOffset - 1, 0))
+        val result = ssctx.snippetChecker.checkSnippet(
+          snippet,
+          Some(compilerData),
+          arg,
+          sourceFile,
+          0
+        )
+        result.foreach: r =>
+          if !r.isSuccessful then
+            ssctx.bufferSnippetMessages(r.messages)
+        result
 
     if (ctx.resolving.contains(file.getAbsolutePath))
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")

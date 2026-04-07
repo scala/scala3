@@ -142,7 +142,7 @@ If any scope refuses to absorb the capability, capture checking fails:
 
 ```scala sc:fail sc-compile-with:scoped-fs-context
 def process(fs: FileSystem^): Unit =
-  val f: () -> Unit = () => fs.read()  // Error: fs cannot flow into {}
+  val f: () -> Unit = () => fs.read()  // error: fs cannot flow into {}
 ```
 
 The closure is declared pure (`() -> Unit`), meaning its local `any` is the empty set. The
@@ -312,14 +312,14 @@ determines the binding structure automatically from where `fresh` appears in the
 
 The rules above establish a key practical distinction when writing function types. Consider:
 
-```scala sc:fail
+```scala sc:fail sc-compile-with:scoped-cc-context
 import caps.fresh
 class A
 class B
 
 def test(): Unit =
-  val f: (x: A^) -> B^{fresh} = ???   // B^{fresh}: existentially bound
-  val g: A^ -> B^             = ???   // B^{any}: enclosing scope's local any
+  val f: (x: A^) -> B^{fresh} = ???  // B^{fresh}: existentially bound
+  val g: A^ -> B^             = ???  // B^{any}: enclosing scope's local any
 
   val _: A^ -> B^        = f   // error: fresh is not in {any}
   val _: A^ -> B^{fresh} = f   // ok
@@ -390,7 +390,7 @@ directly returning a closure that captures it:
 ```scala sc:fail sc-compile-with:scoped-withfile-context
 withFile[() => File^]("test.txt"): f =>
 //       ^^^^^^^^^^^ T = () => File^, i.e., () ->{any} File^{any} for some outer any
-  () => f  // error: We want to return this as () => File^
+  () => f  // error // error // error: We want to return this as () => File^
 ```
 
 The lambda `(f: File^) => () => f` has inferred type:
@@ -414,7 +414,7 @@ into this outer `any`, so the assignment fails.
 Otherwise, allowing widening `∃fresh. () ->{fresh} File^{fresh}` to `() => File^` would let the scoped file escape:
 
 ```scala sc:fail sc-compile-with:scoped-withfile-context
-val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f)
+val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f) // error // error
 //           ^^^^^^^^^^^ any here is in the outer scope
 escaped().read()  // Use-after-close!
 ```

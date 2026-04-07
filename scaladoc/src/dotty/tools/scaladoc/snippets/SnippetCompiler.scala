@@ -7,19 +7,10 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.MacroClassLoader
 import dotty.tools.dotc.config.Settings.Setting._
-import dotty.tools.dotc.interfaces.{ SourcePosition => ISourcePosition }
-import dotty.tools.dotc.ast.Trees.Tree
-import dotty.tools.dotc.interfaces.{SourceFile => ISourceFile}
-import dotty.tools.dotc.reporting.{ Diagnostic, StoreReporter }
-import dotty.tools.dotc.parsing.Parsers.Parser
+import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.dotc.{ Compiler, Run }
-import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import dotty.tools.io.AbstractFileClassLoader
-import dotty.tools.dotc.util.Spans._
-import dotty.tools.dotc.interfaces.Diagnostic._
-import dotty.tools.dotc.util.{ SourcePosition, NoSourcePosition, SourceFile }
-
-import scala.util.{ Try, Success, Failure }
+import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.util.Spans.NoSpan
 
 class SnippetCompiler(
   val snippetCompilerSettings: Seq[SnippetCompilerSetting[?]],
@@ -49,32 +40,12 @@ class SnippetCompiler(
 
   private def newRun(using ctx: Context): Run = scala3Compiler.newRun
 
-  private def nullableMessage(msgOrNull: String | Null): String =
-    if (msgOrNull == null) "" else msgOrNull
-
-  private def createReportMessage(wrappedSnippet: WrappedSnippet, diagnostics: Seq[Diagnostic], sourceFile: SourceFile): Seq[SnippetCompilerMessage] = {
-    val infos = diagnostics.toSeq.sortBy(_.pos.source.path)
-    val errorMessages = infos.map {
-      case diagnostic if diagnostic.position.isPresent =>
-        val diagPos = diagnostic.position.get match
-          case s: SourcePosition => s
-          case _ => NoSourcePosition
-        val pos = wrappedSnippet.sourcePosition(diagPos, sourceFile)
-        val dmsg = Try(diagnostic.message) match {
-          case Success(msg) => msg
-          case Failure(ex) => ex.getMessage
-        }
-        val msg = nullableMessage(dmsg)
-        val level = MessageLevel.fromOrdinal(diagnostic.level)
-        SnippetCompilerMessage(pos, msg, level)
-      case d =>
-        val level = MessageLevel.fromOrdinal(d.level)
-        SnippetCompilerMessage(None, nullableMessage(d.message), level)
-    }
-    errorMessages
-  }
-
-  private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, sourceFile: SourceFile, context: Context): Seq[SnippetCompilerMessage] = {
+  private def additionalMessages(
+    wrappedSnippet: WrappedSnippet,
+    arg: SnippetCompilerArg,
+    sourceFile: SourceFile,
+    context: Context
+  ): Seq[SnippetCompilerMessage] = {
       Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
         SnippetCompilerMessage(
           Some(Position(SourcePosition(sourceFile, NoSpan), wrappedSnippet.outerLineOffset)),
@@ -84,10 +55,16 @@ class SnippetCompiler(
 
   private def isSuccessful(arg: SnippetCompilerArg, context: Context): Boolean = {
     if arg.flag == SCFlags.Fail then context.reporter.hasErrors
-    else !context.reporter.hasErrors
+      else !context.reporter.hasErrors
   }
 
+  private def missingExpectedErrorsMessage(arg: SnippetCompilerArg): Seq[SnippetCompilerMessage] =
+    Option.when(arg.flag == SCFlags.Fail)(
+      SnippetCompilerMessage(None, "No errors found when compiling snippet", MessageLevel.Error)
+    ).toList
+
   def compile(
+    snippet: SnippetSource,
     wrappedSnippet: WrappedSnippet,
     arg: SnippetCompilerArg,
     sourceFile: SourceFile
@@ -108,10 +85,35 @@ class SnippetCompiler(
     val run = newRun(using context)
     run.compileFromStrings(List(wrappedSnippet.snippet))
 
+    val diagnostics = context.reporter.pendingMessages(using context)
+    val observed = SnippetExpectations.observe(diagnostics, wrappedSnippet, sourceFile)
+    val shouldVerifyDiagnostics = arg.verifyDiagnostics
+    val expected =
+      if shouldVerifyDiagnostics then SnippetExpectations.parse(snippet, sourceFile)
+      else SnippetExpectations.Parsed(Nil, Nil)
+    val diagnosticMessages =
+      if shouldVerifyDiagnostics then SnippetExpectations.validate(expected, observed, sourceFile)
+      else Nil
+    val failMessages =
+      if shouldVerifyDiagnostics && expected.expectedErrors == 0 && !context.reporter.hasErrors then
+        missingExpectedErrorsMessage(arg)
+      else Nil
+    val compatibilityMessages =
+      if !shouldVerifyDiagnostics then
+        additionalMessages(wrappedSnippet, arg, sourceFile, context)
+      else Nil
+    val validationMessages = diagnosticMessages ++ failMessages ++ compatibilityMessages
+    val expectationDriven = shouldVerifyDiagnostics
+    val hasMismatches = validationMessages.exists(_.level == MessageLevel.Error)
     val messages =
-      createReportMessage(wrappedSnippet, context.reporter.pendingMessages(using context), sourceFile) ++
-      additionalMessages(wrappedSnippet, arg, sourceFile, context)
+      if expectationDriven && hasMismatches then validationMessages
+      else observed.map(_.message) ++ validationMessages
+    val succeeded =
+      if expectationDriven then
+        !hasMismatches
+          && (arg.flag != SCFlags.Fail || context.reporter.hasErrors || expected.expectedErrors > 0)
+      else isSuccessful(arg, context)
 
     val t = Option.when(!context.reporter.hasErrors)(target)
-    SnippetCompilationResult(wrappedSnippet, isSuccessful(arg, context), t, messages)
+    SnippetCompilationResult(wrappedSnippet, succeeded, t, messages)
   }

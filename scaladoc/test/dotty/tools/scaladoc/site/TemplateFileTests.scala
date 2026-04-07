@@ -344,8 +344,6 @@ class TemplateFileTests:
       loadTemplateFile(first).resolveInner(RenderingContext(Map.empty))
       loadTemplateFile(second).resolveInner(RenderingContext(Map.empty))
 
-      assertEquals(0, dctx.compilerContext.reportedDiagnostics.errors.size)
-
       summon[StaticSiteContext].reportSnippetMessages()
 
       val diagnostics = dctx.compilerContext.reportedDiagnostics
@@ -354,6 +352,40 @@ class TemplateFileTests:
         "doesNotCompile",
         "stillDoesNotCompile"
       )
+    finally IO.delete(tmpRoot)
+
+  @Test
+  def markdownInlineExpectationsCanValidateFailingSnippets(): Unit =
+    val tmpRoot = Files.createTempDirectory("snippet-inline-checks").toFile()
+    val tmpDocs = File(tmpRoot, "_docs")
+    val tmpFile = File(tmpDocs, "checks.md")
+    try
+      Files.createDirectories(tmpDocs.toPath)
+      Files.write(
+        tmpFile.toPath,
+        """---
+          |title: "Snippet inline checks"
+          |---
+          |
+          |```scala sc:fail
+          |val x = 1.missing // error
+          |```
+          |""".stripMargin.getBytes
+      )
+
+      val dctx = DocContext(
+        testArgs().copy(
+          docsRoot = Some(tmpRoot.getAbsolutePath),
+          snippetCompiler = List(s"${tmpFile.getAbsolutePath}=compile+test")
+        ),
+        testContext
+      )
+      given StaticSiteContext = dctx.staticSiteContext.get
+
+      loadTemplateFile(tmpFile).resolveInner(RenderingContext(Map.empty))
+      summon[StaticSiteContext].reportSnippetMessages()
+
+      assertEquals(0, dctx.compilerContext.reportedDiagnostics.errors.size)
     finally IO.delete(tmpRoot)
 
   private def renderNamedSnippet(relativePath: String, noSnippetNamesFor: List[String] = Nil): String =

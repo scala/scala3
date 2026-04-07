@@ -139,7 +139,13 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
       val sourceFile = scDataCollector.getSourceFile(s)
       (snippet: SnippetSource, argOverride: Option[SnippetCompilerArg]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
-          val res = snippetChecker.checkSnippet(snippet, Some(data), arg, sourceFile, SnippetChecker.docCommentColumnOffset)
+          val res = snippetChecker.checkSnippet(
+            snippet,
+            Some(data),
+            arg,
+            sourceFile,
+            SnippetChecker.docCommentColumnOffset
+          )
           res.filter(r => !r.isSuccessful).foreach(_.reportMessages()(using compilerContext))
           res
       }

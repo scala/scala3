@@ -2143,9 +2143,7 @@ object Build {
               .add(NoLinkWarnings(true))
               .add(NoLinkAssetWarnings(true))
               .add(GenerateAPI(false))
-              .add(SnippetCompiler(List(
-                s"${tempDocsRoot.getAbsolutePath}=compile"
-              )))
+              .add(SnippetCompiler(referenceSnippetCompilerTargets(tempRoot.getAbsolutePath)))
           }
 
           generateDocumentation(config)
@@ -3077,8 +3075,14 @@ object ScaladocConfigs {
     "enums",
     "experimental/capture-checking",
   )
+  def captureCheckingSnippetTestTargets(docsRoot: String) = List(
+    s"$docsRoot/_docs/reference/experimental/capture-checking/basics.md=compile+test",
+    s"$docsRoot/_docs/reference/experimental/capture-checking/checked-exceptions.md=compile+test",
+    s"$docsRoot/_docs/reference/experimental/capture-checking/scoped-capabilities.md=compile+test"
+  )
   def referenceSnippetCompilerTargets(docsRoot: String) =
-    referenceSnippetRelativeRoots.map(path => s"$docsRoot/_docs/reference/$path=compile")
+    referenceSnippetRelativeRoots.map(path => s"$docsRoot/_docs/reference/$path=compile") ++
+      captureCheckingSnippetTestTargets(docsRoot)
 
   lazy val Scala3 = Def.task {
     val stdlib = { // relative path to the stdlib directory ('library/')
