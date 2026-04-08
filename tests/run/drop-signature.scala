@@ -24,4 +24,13 @@ object MMM extends AbstractMap[Int, String]
 object Test:
   def main(args: Array[String]): Unit =
     val m: Map[Int, String] = MMM
-    m.getClass.getMethods.filter(_.getName == "drop").map(_.toGenericString).foreach(println)
+    var c: Class[?] | Null = m.getClass
+    while c != null do
+      println("---")
+      println(c)
+      c.getTypeParameters.foreach(println)
+      println(c.getGenericSuperclass)
+      c.getGenericInterfaces.foreach(println)
+      c = c.getSuperclass
+      
+//    m.getClass.getMethods.filter(_.getName == "drop").map(_.toGenericString).foreach(println)

@@ -1,1 +1,17 @@
-public java.lang.Object AbstractIterable.drop(int)
+---
+class MMM$
+AbstractMap<java.lang.Object, java.lang.String>
+---
+class AbstractMap
+K
+V
+AbstractIterable<scala.Tuple2<K, V>>
+Map<K, V>
+---
+class AbstractIterable
+A
+class java.lang.Object
+Iterable<A>
+---
+class java.lang.Object
+null
