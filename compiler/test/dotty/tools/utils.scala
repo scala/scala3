@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path => JPath}
 
 import scala.io.Source
-import scala.jdk.StreamConverters._
+import scala.jdk.StreamConverters.*
 import scala.reflect.ClassTag
 import scala.util.Using.{Releasable, resource}
 import scala.util.chaining.given
@@ -166,7 +166,7 @@ def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,S
   }
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 class ToolArgsTest:
   @Test def `missing toolarg is absent`: Unit = assertEquals(Nil, toolArgsParse(List(""), None))

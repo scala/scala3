@@ -1,33 +1,29 @@
 package dotty
-package tools
-package backend.jvm
 
 import scala.language.unsafeNulls
+import dotty.tools.dotc.core.Contexts.{Context, ContextBase, ctx}
+import dotty.tools.dotc.core.Comments.{ContextDoc, ContextDocstrings}
+import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.Compiler
+import dotty.tools.dotc.Compiler
+import dotty.tools.dotc.core.Comments.{ContextDoc, ContextDocstrings}
+import dotty.tools.dotc.core.Contexts.{Context, ContextBase, ctx}
+import dotty.tools.io.{AbstractFile, VirtualDirectory, VirtualDirectory as Directory}
+import dotty.tools.vulpix.TestConfiguration
 
-import vulpix.TestConfiguration
-
-import dotc.core.Contexts.{Context, ContextBase, ctx}
-import dotc.core.Comments.{ContextDoc, ContextDocstrings}
-import dotc.core.Phases.Phase
-import dotc.Compiler
-
-import dotty.tools.io.{VirtualDirectory => Directory}
 import scala.tools.asm
-import asm._
-import asm.tree._
+import scala.tools.asm.*
+import scala.tools.asm.tree.*
+import dotty.tools.io.{AbstractFile, JavaClassPath, VirtualDirectory}
 
-import io.{AbstractFile, JavaClassPath, VirtualDirectory}
-import scala.jdk.CollectionConverters._
-import scala.tools.asm.{ClassWriter, ClassReader}
-import scala.tools.asm.tree._
-import java.io.{File => JFile, InputStream}
-
-import org.junit.Assert._
+import scala.jdk.CollectionConverters.*
+import java.io.{InputStream, File as JFile}
+import org.junit.Assert.*
 
 trait DottyBytecodeTest {
-  import AsmNode._
-  import ASMConverters._
-  import DottyBytecodeTest._
+  import AsmNode.*
+  import AsmConverters.*
+  import DottyBytecodeTest.*
 
   protected object Opcode {
     val newarray       = 188

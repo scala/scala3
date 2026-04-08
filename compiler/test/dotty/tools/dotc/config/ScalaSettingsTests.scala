@@ -2,11 +2,11 @@ package dotty.tools.dotc
 package config
 
 import CommandLineParser.tokenize
-import Settings._
+import Settings.*
 import dotty.tools.Useables.given
-import dotty.tools.dotc.config.ScalaSettingCategories._
+import dotty.tools.dotc.config.ScalaSettingCategories.*
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 import core.Decorators.toMessage
 import dotty.tools.io.{Path, PlainFile}
 

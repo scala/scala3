@@ -482,7 +482,7 @@ object BCodeUtils {
    *      and they would fail verification after lifted.
    */
   final def javaFlags(sym: Symbol)(using Context): Int = {
-    import DottyBackendInterface.symExtensions
+    import SymbolUtils.given
 
     // Classes are always emitted as public. This matches the behavior of Scala 2
     // and is necessary for object deserialization to work properly, otherwise
@@ -497,7 +497,7 @@ object BCodeUtils {
     0 .addFlagIf(privateFlag, ACC_PRIVATE)
       .addFlagIf(!privateFlag, ACC_PUBLIC)
       .addFlagIf(sym.is(Deferred) || sym.isOneOf(AbstractOrTrait), ACC_ABSTRACT)
-      .addFlagIf(sym.isInterface, ACC_INTERFACE)
+      .addFlagIf(sym.is(Trait), ACC_INTERFACE)
       .addFlagIf(finalFlag
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
@@ -509,7 +509,7 @@ object BCodeUtils {
       .addFlagIf(sym.isStaticMember && !sym.isClass, ACC_STATIC)
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
-      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+      .addFlagIf(sym.isClass && !sym.is(Trait), ACC_SUPER)
       .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
       .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)

@@ -1,12 +1,11 @@
-package dotty.tools.backend.jvm
-
-import scala.language.unsafeNulls
+package dotty
 
 import java.lang.reflect.Modifier
+import scala.jdk.CollectionConverters.*
+import scala.language.unsafeNulls
 import scala.tools.asm
-import asm._
-import asm.tree._
-import scala.jdk.CollectionConverters._
+import scala.tools.asm.*
+import scala.tools.asm.tree.*
 
 sealed trait AsmNode[+T] {
   def node: T
@@ -17,12 +16,12 @@ sealed trait AsmNode[+T] {
   def attrs: List[Attribute]
   def visibleAnnotations: List[AnnotationNode]
   def invisibleAnnotations: List[AnnotationNode]
-  def characteristics = "%15s %-30s%s%s".format(name, desc, accessString, sigString)
-  def erasedCharacteristics = "%15s %-30s%s".format(name, desc, accessString)
+  def characteristics: String = "%15s %-30s%s%s".format(name, desc, accessString, sigString)
+  def erasedCharacteristics: String = "%15s %-30s%s".format(name, desc, accessString)
 
-  private def accessString     = if (access == 0) "" else " " + Modifier.toString(access)
-  private def sigString        = if (signature == null) "" else " " + signature
-  override def toString        = characteristics
+  private def accessString      = if (access == 0) "" else " " + Modifier.toString(access)
+  private def sigString         = if (signature == null) "" else " " + signature
+  override def toString: String = characteristics
 }
 
 object AsmNode {
@@ -32,10 +31,9 @@ object AsmNode {
 
   implicit class ClassNodeOps(val node: ClassNode) {
     def fieldsAndMethods: List[AsmMember] = {
-      val xs: List[AsmMember] = (
-           node.methods.asScala.toList.map(x => (x: AsmMethod))
-        ++ node.fields.asScala.toList.map(x => (x: AsmField))
-      )
+      val xs: List[AsmMember] =
+           node.methods.asScala.toList.map(x => x: AsmMethod)
+        ++ node.fields.asScala.toList.map(x => x: AsmField)
       xs sortBy (_.characteristics)
     }
   }

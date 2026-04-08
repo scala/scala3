@@ -15,13 +15,13 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
-
-import DottyBackendInterface.{symExtensions, *}
+import SymbolUtils.given
+import dotty.tools.dotc.core.NameOps.isStaticConstructorName
 import tpd.*
 
 /*
@@ -181,7 +181,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       val cd = if (isCZStaticModule) {
         // Move statements from the primary constructor following the superclass constructor call to
         // a newly synthesised tree representing the "<clinit>", which also assigns the MODULE$ field.
-        // Because the assigments to both the module instance fields, and the fields of the module itself
+        // Because the assignments to both the module instance fields, and the fields of the module itself
         // are in the <clinit>, these fields can be static + final.
 
         // Should we do this transformation earlier, say in Constructors? Or would that just cause
@@ -211,7 +211,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
             f.setFlag(JavaStatic)
         }
 
-        val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
+        val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.name.isStaticConstructorName)
 
         val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
         val clInitSymbol: TermSymbol =
@@ -267,7 +267,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         cpy.TypeDef(cd0)(rhs = impl2)
       } else cd0
 
-      val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.isStaticConstructor)
+      val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.name.isStaticConstructorName)
       if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
 
       val optSerial: Option[Long] =
@@ -290,8 +290,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       // This needs to wait until now since it uses `superCallTargets` which is populating while emitting the class body
       initJClass(cnode)
 
-      if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
-        AsmUtils.traceClass(cnode)
+      TraceUtils.traceClassIfRequested(cnode)
 
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
 
@@ -427,7 +426,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         val javagensig = getGenericSignature(f, claszSymbol)
         val flags = javaFieldFlags(f)
 
-        assert(!f.isStaticMember || !claszSymbol.isInterface || !f.is(Mutable),
+        assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
           s"interface $claszSymbol cannot have non-final static field $f")
 
         val jfield = new asm.tree.FieldNode(
@@ -712,7 +711,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
            */
           val sym = dd.symbol
           val needsStaticImplMethod =
-            claszSymbol.isInterface && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
+            claszSymbol.is(Trait) && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
           if needsStaticImplMethod then
             if sym.name == nme.TRAIT_CONSTRUCTOR then
               genTraitConstructorDefDef(dd)
@@ -845,7 +844,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       methSymbol  = dd.symbol
       jMethodName = methSymbol.javaSimpleName
       returnType  = ts.asmMethodType(methSymbol).returnType
-      isMethSymStaticCtor = methSymbol.isStaticConstructor
+      isMethSymStaticCtor = methSymbol.name.isStaticConstructorName
 
       resetMethodBookkeeping(dd)
 
@@ -868,7 +867,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       }
 
       val isNative         = methSymbol.hasAnnotation(NativeAttr)
-      val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
+      val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.is(Trait) && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
       val flags =
         import GenBCodeOps.addFlagIf
         BCodeUtils.javaFlags(methSymbol)
@@ -953,8 +952,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         // The only non-instruction nodes to be found are LabelNode and LineNumberNode.
       }
 
-      if (AsmUtils.traceMethodEnabled && mnode.name.contains(AsmUtils.traceMethodPattern))
-        AsmUtils.traceMethod(mnode)
+      TraceUtils.traceMethodIfRequested(mnode)
 
       mnode = null
     } // end of method genDefDef()

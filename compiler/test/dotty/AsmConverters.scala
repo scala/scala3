@@ -1,19 +1,18 @@
-package dotty.tools.backend.jvm
+package dotty
 
+import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-
 import scala.tools.asm
-import asm._
-import asm.tree._
-import scala.jdk.CollectionConverters._
+import scala.tools.asm.*
+import scala.tools.asm.tree.*
 
 /** Makes using ASM from tests more convenient.
  *
  * Wraps ASM instructions in case classes so that equals and toString work
  * for the purpose of bytecode diffing and pretty printing.
  */
-object ASMConverters {
-  import asm.{tree => t}
+object AsmConverters {
+  import scala.tools.asm.tree as t
 
   /**
    * Transform the instructions of an ASM Method into a list of [[Instruction]]s.
@@ -23,9 +22,9 @@ object ASMConverters {
   def convertMethod(meth: t.MethodNode): Method = new AsmToScala(meth).method
 
   extension (self: List[Instruction]) {
-    def === (other: List[Instruction]) = equivalentBytecode(self, other)
+    def === (other: List[Instruction]): Boolean = equivalentBytecode(self, other)
 
-    def dropLinesFrames = self.filterNot(i => i.isInstanceOf[LineNumber] || i.isInstanceOf[FrameEntry])
+    def dropLinesFrames: List[Instruction] = self.filterNot(i => i.isInstanceOf[LineNumber] || i.isInstanceOf[FrameEntry])
 
     private def referencedLabels(instruction: Instruction): Set[Instruction] = instruction match {
       case Jump(op, label)                         => Set(label)
@@ -70,7 +69,7 @@ object ASMConverters {
     def opcode: Int
 
     // toString such that the first field, "opcode: Int", is printed textually.
-    final override def toString() = {
+    final override def toString: String = {
       val printOpcode = opcode != -1
       productPrefix + (
         if (printOpcode) Iterator(opcodeToString(opcode)) ++ productIterator.drop(1)
@@ -162,7 +161,7 @@ object ASMConverters {
     }
   }
 
-  import collection.mutable.{Map => MMap}
+  import collection.mutable.Map as MMap
 
   /**
    * Bytecode is equal modulo local variable numbering and label numbering.

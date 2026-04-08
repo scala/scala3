@@ -5,7 +5,6 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.io.ClassPath
-import dotty.tools.backend.jvm.AsmUtils
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith

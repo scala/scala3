@@ -1,31 +1,31 @@
 package dotty.tools.backend.jvm
 
 import java.util.concurrent.ConcurrentHashMap
-
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
+
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
+import dotty.tools.dotc.report
+
+import scala.tools.asm
 
 /**
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val primitives: DottyPrimitives, private val ts: CoreBTypes)(using Context) {
+class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
+                    private val byteCodeRepository: BCodeRepository, private val bTypesFromClassfile: BTypesFromClassfile,
+                    private val backendUtils: BackendUtils, private val ts: CoreBTypes)(using Context) {
 
-  private val backendUtils        = new BackendUtils(frontendAccess, ts)
-  private val byteCodeRepository  = new BCodeRepository(frontendAccess, backendUtils, ts)
-  private val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, ts)
-  private val inlineInfoLoader    = new InlineInfoLoader(byteCodeRepository, primitives, ts)
-  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, inlineInfoLoader, ts)
-  private val inlinerHeuristics   = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
+  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, ts)
   private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile)
   private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, inlineInfoLoader, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
   private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, inliner, ts, bTypesFromClassfile)
   val classfileWriters            = new ClassfileWriters(frontendAccess)
   val classfileWriter             = classfileWriters.ClassfileWriter()
@@ -47,16 +47,15 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
         serializeClass(classNode)
       catch
         case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
-          frontendAccess.backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
+          report.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
         case ex: Throwable =>
           if frontendAccess.compilerSettings.debug then ex.printStackTrace()
-          frontendAccess.backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
+          report.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
     if bytes != null then
-      if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
-        AsmUtils.traceClass(bytes)
+      TraceUtils.traceSerializedClassIfRequested(internalName, bytes)
       val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
       clazz.onFileCreated(clsFile)
   }
@@ -101,10 +100,10 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
           else s" (defined in ${pos2.source.file.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
-          frontendAccess.backendReporting.error(
+          report.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
         else
-          frontendAccess.backendReporting.warning(
+          report.warning(
             em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
                 |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
     }
@@ -125,7 +124,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
-    val cw = new ClassWriterWithBTypeLub(backendUtils.extraProc)
+    val cw = new ClassWriterWithBTypeLub(asm.ClassWriter.COMPUTE_MAXS | asm.ClassWriter.COMPUTE_FRAMES)
     classNode.accept(cw)
     cw.toByteArray.nn
   }

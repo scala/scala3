@@ -1,20 +1,20 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
+import dotty.DottyBytecodeTest
 
-import org.junit.Assert._
+import scala.language.unsafeNulls
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.tools.asm
-import asm._
-import asm.tree._
-
+import scala.tools.asm.*
+import scala.tools.asm.tree.*
 import scala.tools.asm.Opcodes
-import scala.jdk.CollectionConverters._
-import Opcodes._
+import scala.tools.asm.Opcodes.*
+import scala.jdk.CollectionConverters.*
 
 class DottyBytecodeTests extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
   @Test def nullChecks = {
     val source = """
                  |class Foo {
@@ -425,7 +425,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   @Test def dontWrapArraysInJavaVarargs = {
     val source =
       """
-        |import java.nio.file._
+        |import java.nio.file.*
         |class Test {
         |  def test(xs: Array[String]) = {
         |     val p4 = Paths.get("Hello", xs*)

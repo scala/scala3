@@ -1,14 +1,14 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.io.AbstractFile
-
 import org.junit.Assert.*
 import org.junit.Test
 
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.tree.ClassNode
-import dotty.tools.backend.jvm.ASMConverters.*
+import dotty.AsmConverters.*
+import dotty.DottyBytecodeTest
 
 class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
   override def initCtx = {

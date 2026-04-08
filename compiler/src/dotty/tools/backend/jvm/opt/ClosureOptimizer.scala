@@ -25,7 +25,6 @@ import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.*
-import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
@@ -118,7 +117,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                ppa.backendReporting.optimizerWarning(em"${warning.toString}", ppa.backendReporting.siteString(ownerClass, method.name), warning.pos)
+                ppa.optimizerWarning(em"${warning.toString}", BackendUtils.siteString(ownerClass, method.name), warning.pos)
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
@@ -192,7 +191,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
           declClassBType              <- bTypesFromClassfile.classBTypeFromParsedClassfile(declClass)
           lambdaOwnerBType            <- bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner)
         } yield {
-          InlineInfo.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
+          Inliner.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
         }
 
         def pos = callGraph.callsites.get(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)

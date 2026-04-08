@@ -8,12 +8,15 @@ import core.Phases.*
 import core.Definitions
 import core.Flags.*
 import core.Names.Name
+import core.NameOps.isContextFunction
 import core.Symbols.*
 import core.TypeApplications.{EtaExpansion, TypeParamInfo}
 import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement, tupleArity}
 import core.Types.*
 import core.classfile.ClassfileConstants
 
+import config.Printers.transforms
+import reporting.trace
 import java.lang.StringBuilder
 
 import scala.annotation.tailrec
@@ -537,7 +540,17 @@ object GenericSignatures {
     @tailrec def recur(tpe: Type): Type = tpe match
       case mtd: MethodType =>
         vparams ++= mtd.paramInfos.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
-        recur(mtd.resType)
+        mtd.resType.dealias match
+          // Returned context functions are erased by putting their parameters into the method's parameters,
+          // so we must duplicate that logic here
+          case AppliedType(tycon, args) if tycon.typeSymbol.name.isContextFunction =>
+            vparams ++= args.take(args.length - 1)
+            recur(args.last)
+          // Handle erased types too
+          case defn.FunctionTypeOfMethod(mt: MethodType) if mt.isContextualMethod =>
+            recur(mt)
+          case _ =>
+            recur(mtd.resType)
       case PolyType(tps, tpe) =>
         tparams ++= tps
         recur(tpe)

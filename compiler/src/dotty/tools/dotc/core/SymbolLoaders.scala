@@ -10,7 +10,6 @@ import scala.util.control.NonFatal
 import dotty.tools.dotc.classpath.{ ClassPathFactory, PackageNameUtils }
 import dotty.tools.dotc.classpath.FileUtils.{hasTastyExtension, hasBetastyExtension}
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*

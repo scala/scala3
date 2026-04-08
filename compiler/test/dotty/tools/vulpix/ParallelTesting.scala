@@ -347,7 +347,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
-    import summaryReport._
+    import summaryReport.*
 
     protected final val realStdout: PrintStream = System.out
     protected final val realStderr: PrintStream = System.err
@@ -622,7 +622,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
       def artifactClasspath(organizationName: String, moduleName: String) =
-        import coursier._
+        import coursier.*
         val dep = Dependency(
           Module(
             Organization(organizationName),

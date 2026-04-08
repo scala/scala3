@@ -1,31 +1,26 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.core.Symbols.{requiredClass as _, *}
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
 
 import scala.tools.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.{StdNames, Symbols}
 import BTypes.*
-import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import BCodeAsmCommon.*
-import dotty.tools.dotc.core.Flags.{JavaDefined, Method, ModuleClass, PackageClass, Trait}
+import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
-import DottyBackendInterface.{*, given}
+import SymbolUtils.given
 import PostProcessorFrontendAccess.Lazy
+import dotty.tools.backend.ScalaPrimitives
+import dotty.tools.dotc.core.Decorators.toTermName
+import dotty.tools.dotc.core.Types.abstractTermNameFilter
 
-import scala.annotation.threadUnsafe
 import scala.tools.asm
 
-final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ctx: Context) extends CoreBTypes(ppa) {
-
-  /**
-   * Cache for the method classBTypeFromSymbol.
-   */
-  @threadUnsafe private lazy val convertedClasses = collection.mutable.HashMap.empty[Symbol, ClassBType]
-
+final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess, primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader])(using val ctx: Context) extends CoreBTypes(ppa) {
   /**
    * The ClassBType for a class symbol `sym`.
    */
@@ -36,15 +31,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
       classSym != defn.NothingClass && classSym != defn.NullClass,
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
 
-    convertedClasses.synchronized:
-      convertedClasses.getOrElse(classSym, {
-        val internalName = classSym.javaBinaryName
-        // We first create and add the ClassBType to the hash map before computing its info. This
-        // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
-        val result = classBType(internalName)(ct => createClassInfo(ct, classSym.asClass))
-        convertedClasses(classSym) = result
-        result
-      })
+    classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
   }
 
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {
@@ -57,13 +44,13 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
         nestedClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
         nestedInfo = None,
-        source = ClassInfoSource.Missing
+        inlineInfo = InlineInfo.empty
       )
     )
   }
 
   private def createClassInfo(classBType: ClassBType, classSym: Symbol): ClassInfo = {
-    val superClassSym: Symbol =  {
+    val superClassSym: Symbol = {
       val t = classSym.asClass.superClass
       if (t.exists) t
       else if (classSym.is(ModuleClass)) {
@@ -77,11 +64,11 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
     assert(
       if (classSym == defn.ObjectClass)
         superClassSym == NoSymbol
-      else if (classSym.isInterface)
+      else if (classSym.is(Trait))
         superClassSym == defn.ObjectClass
       else
         // A ClassBType for a primitive class (scala.Boolean et al.) is only created when compiling these classes.
-        ((superClassSym != NoSymbol) && !superClassSym.isInterface) || primitiveTypeMap.contains(classSym),
+        ((superClassSym != NoSymbol) && !superClassSym.is(Trait)) || primitiveTypeMap.contains(classSym),
       s"Bad superClass for $classSym: $superClassSym"
     )
     val superClass = if (superClassSym == NoSymbol) None
@@ -148,16 +135,21 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
 
     val nestedInfo = buildNestedInfo(classSym)
 
-    ClassInfo(superClass, interfaces, flags, memberClasses, nestedInfo, ClassInfoSource.Symbol(classSym.asClass, classBType.internalName))
+    val inlineInfo = inlineInfoLoader() match {
+      case Some(loader) => buildInlineInfo(loader, classSym.asClass, classBType.internalName)
+      case None => InlineInfo.empty
+    }
+
+    ClassInfo(superClass, interfaces, flags, memberClasses, nestedInfo, inlineInfo)
   }
 
   /** For currently compiled classes: All locally defined classes including local classes.
-   *  The empty list for classes that are not currently compiled.
+   * The empty list for classes that are not currently compiled.
    */
   private def getNestedClasses(sym: Symbol): List[Symbol] = definedClasses(sym, flattenPhase)
 
   /** For currently compiled classes: All classes that are declared as members of this class
-   *  (but not inherited ones). The empty list for classes that are not currently compiled.
+   * (but not inherited ones). The empty list for classes that are not currently compiled.
    */
   private def getMemberClasses(sym: Symbol): List[Symbol] = definedClasses(sym, lambdaLiftPhase)
 
@@ -194,8 +186,10 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
           None
         } else {
           val outerName = innerClassSym.originalOwner.originalLexicallyEnclosingClass.javaBinaryName
+
           def dropModule(str: String): String =
             if (str.nonEmpty && str.last == '$') str.take(str.length - 1) else str
+
           // Java compatibility. See the big comment in BTypes that summarizes the InnerClass spec.
           val outerNameModule =
             if (innerClassSym.originalOwner.originalLexicallyEnclosingClass.isTopLevelModuleClass) dropModule(outerName)
@@ -214,6 +208,87 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
 
       Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass))
     }
+  }
+
+  /*
+   * Note that the InlineInfo is only built from the symbolic information for classes that are being
+   * compiled. For all other classes we delegate to inlineInfoFromClassfile. The reason is that
+   * mixed-in methods are only added to class symbols being compiled, but not to other classes
+   * extending traits. Creating the InlineInfo from the symbol would prevent these mixins from being
+   * inlined.
+   *
+   * So for classes being compiled, the InlineInfo is created here and stored in the ScalaInlineInfo
+   * classfile attribute.
+   */
+  private def buildInlineInfo(inlineInfoLoader: InlineInfoLoader, classSym: ClassSymbol, internalName: InternalName): InlineInfo = {
+    // phase travel required (or at least it was in Scala 2). for nested classes, it checks if the
+    // enclosingTopLevelClass is being compiled. after flatten, all classes are considered top-level,
+    // so it would return `false`.
+    if atPhase(picklerPhase.next) {
+      classSym.isDefinedInCurrentRun
+    } then buildInlineInfoFromClassSymbol(classSym) // // InlineInfo required for classes being compiled, we have to create the classfile attribute
+    // For classes not being compiled, the InlineInfo is read from the classfile attribute. This
+    // fixes an issue with mixed-in methods: the mixin phase enters mixin methods only to class
+    // symbols being compiled. For non-compiled classes, we could not build MethodInlineInfos
+    // for those mixin members, which prevents inlining.
+    else inlineInfoLoader.loadInlineInfoFor(internalName)
+  }
+
+  /**
+   * Build the [[InlineInfo]] for a class symbol.
+   */
+  private def buildInlineInfoFromClassSymbol(classSym: ClassSymbol): InlineInfo = {
+    // We only want an approximation of SAMs for inlining heuristics, no need to check FunctionalInterface annotations or such
+    val abstractMembers = classSym.memberNames(abstractTermNameFilter).iterator.map(classSym.classInfo.member).map(_.symbol).filter(_.is(Method)).toList
+    val sam = abstractMembers match
+      case List(single) =>
+        val btype = asmMethodType(single)
+        Some(single.javaSimpleName + btype.descriptor)
+      case _ => None
+
+    def keepMember(sym: Symbol) = sym.is(Method) && !primitives.isPrimitive(sym)
+
+    val classMethods = classSym.info.decls.iterator.filter(keepMember)
+    val methods = if classSym.is(JavaDefined) then
+      // Phase travel important for nested classes (scala-dev#402). When a java class symbol A$B
+      // is compiled from source, this ensures that `companionModule` doesn't return the `A$B`
+      // symbol created for the `A$B.class` file on the classpath, which might be different.
+      val companion = atPhase(picklerPhase.next) {
+        classSym.companionModule
+      }
+      val staticMethods = companion.info.decls.iterator.filter(m => !m.isConstructor && keepMember(m))
+      staticMethods ++ classMethods
+    else
+      val staticForwarders = if classSym.is(Trait) then
+        // !!! This logic duplicates PlainSkelBuilder::makeStaticForwarder, copy changes there !!!
+        classSym.info.decls.filter(s => s.isTerm && !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
+          BackendUtils.makeStatifiedDefSymbol(s.asTerm, BackendUtils.traitSuperAccessorName(s).toTermName)
+        })
+      else Nil
+      classMethods ++ staticForwarders
+
+    // Primitive methods cannot be inlined, so there's no point in building a MethodInlineInfo. Also, some
+    // primitive methods (e.g., `isInstanceOf`) have non-erased types, which confuses [[typeToBType]].
+    val methodInlineInfos = new collection.mutable.TreeMap[(String, String), MethodInlineInfo]()
+    methods.foreach {
+      methodSym =>
+        val name = methodSym.javaSimpleName // same as in genDefDef
+        val signature = (name, asmMethodType(methodSym).descriptor)
+
+        // In a trait, accesses to "modules" like enums are translated by the frontend as final methods,
+        // even though they are logically not final since classes implementing the trait will also have that method,
+        // so we must explicitly consider them to be non-final.
+        // TODO: This feels like something fundamentally weird in trees that should not exist.
+        val info = MethodInlineInfo(
+          effectivelyFinal = methodSym.isEffectivelyFinal && !methodSym.is(ModuleVal),
+          annotatedInline = methodSym.hasAnnotation(defn.InlineAnnot),
+          annotatedNoInline = methodSym.hasAnnotation(defn.NoInlineAnnot))
+
+        methodInlineInfos(signature) = info
+    }
+
+    // if we have a symbol, we're compiling the class, so we assume it's accessible
+    InlineInfo(classSym.is(Final), sam, methodInlineInfos, None, isAccessible = true)
   }
 
   /**
