@@ -1,0 +1,2 @@
+public default MapFactory Map.mapFactory()
+public default MapFactory<Map> Map.mapFactory()
