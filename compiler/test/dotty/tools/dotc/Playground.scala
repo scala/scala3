@@ -15,7 +15,7 @@ import org.junit.Ignore
     // can add, e.g., .and("-some-option")
     val options = defaultOptions
     // can also use `compileDir` (single test as a dir), `compileFilesInDir` (all tests within a dir)
-    val test = compileFile("tests/pos/tuple-filter.scala", options)
+    val test = compileFile("tests/pos/match-precise-type-unchecked.scala", options)
     // or `RunTestWithCoverage` for "run" tests with output, or `WarnTestWithCoverage` for "warn" tests with warnings
     type TestKind = PosTestWithCoverage
     val compilationTest = withCoverage(aggregateTests(test))

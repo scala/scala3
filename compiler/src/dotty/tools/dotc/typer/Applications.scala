@@ -1928,7 +1928,7 @@ trait Applications extends Compatibility {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
-        val ownType =
+        var ownType =
           if selType <:< unapplyArgType then
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             fullyDefinedType(unapplyArgType, "pattern selector", tree.srcPos)
@@ -1947,13 +1947,28 @@ trait Applications extends Compatibility {
             unapplyArgType
 
         val dummyArg = dummyTreeOfType(ownType)
-        val (newUnapplyFn, unapplyApp) =
+        var (newUnapplyFn, unapplyApp) =
           val unapplyAppCall =
             typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
           inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
 
         val unapplyPatterns = UnapplyArgs(unapplyApp.tpe, unapplyFn, unadaptedArgs, tree.srcPos)
           .typedPatterns(qual, this)
+
+        // Use the types of the `unapply` arguments if available,
+        // so that in `match m { case x @ (_: A, _: B) => x }`, `x` is of type `(A, B)`, not the type of `m`.
+        // This matters for @unchecked
+        (newUnapplyFn, unapplyApp, ownType) match
+          case (newUnapplyFn1: TypeApply, unapplyApp1: Apply, ownType1: AppliedType) if newUnapplyFn1.args.size == unapplyPatterns.size =>
+            val newArgs = newUnapplyFn1.args.zip(unapplyPatterns).map((a, p) => p match
+              case Bind(_, Typed(_, tpt: AppliedTypeTree)) if tpt.tpe <:< a.tpe => tpt
+              case _ => a
+            )
+            newUnapplyFn = tpd.cpy.TypeApply(newUnapplyFn1)(newUnapplyFn1.fun, newArgs)
+            unapplyApp = tpd.cpy.Apply(unapplyApp1)(newUnapplyFn, unapplyApp1.args)
+            ownType = AppliedType(ownType1.tycon, newArgs.map(_.tpe))
+          case _ => ()
+
         val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(dummyArg, unapplyApp), unapplyPatterns), ownType)
         if (ownType.stripped eq selType.stripped) || selType.isBottomType || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
