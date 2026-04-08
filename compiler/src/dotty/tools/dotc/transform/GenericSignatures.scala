@@ -200,7 +200,6 @@ object GenericSignatures {
     }
 
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
-      @tailrec
       def argSig(tp: Type): Unit =
         tp match {
           case bounds: TypeBounds =>

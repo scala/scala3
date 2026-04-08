@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (JVM-only test about signatures)
+
 // based on scala.collection.immutable.*
 
 transparent trait IterableOps[+A, +CC[_], +C] extends Any {
