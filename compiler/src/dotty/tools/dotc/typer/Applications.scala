@@ -1718,7 +1718,19 @@ trait Applications extends Compatibility {
   def typedUnApply(tree: untpd.Apply, selType0: Type)(using Context): Tree = {
     record("typedUnApply")
     val Apply(qual, unadaptedArgs) = tree
-    val selType = selType0.stripNamedTuple
+    // Use the types of the args if available, which can be more precise than the selector type,
+    // which is important if using `@unchecked`
+    val selType1 = selType0 match
+      case AppliedType(selCon, selArgs) if selArgs.size == unadaptedArgs.size =>
+        val newSelTypes = selArgs.zip(unadaptedArgs).map((sa, ua) => ua match
+          case Typed(_, tpt: AppliedTypeTree) =>
+            typed(tpt)
+            if tpt.hasType then tpt.tpe else sa
+          case _ => sa
+        )
+        AppliedType(selCon, newSelTypes)
+      case _ => selType0
+    val selType = selType1.stripNamedTuple
 
     def notAnExtractor(tree: Tree): Tree =
       // prefer inner errors
@@ -1954,21 +1966,6 @@ trait Applications extends Compatibility {
 
         val unapplyPatterns = UnapplyArgs(unapplyApp.tpe, unapplyFn, unadaptedArgs, tree.srcPos)
           .typedPatterns(qual, this)
-
-        // Use the types of the `unapply` arguments if available,
-        // so that in `match m { case x @ (_: A, _: B) => x }`, `x` is of type `(A, B)`, not the type of `m`.
-        // This matters for @unchecked
-        (newUnapplyFn, unapplyApp, ownType) match
-          case (newUnapplyFn1: TypeApply, unapplyApp1: Apply, ownType1: AppliedType) if newUnapplyFn1.args.size == unapplyPatterns.size =>
-            val newArgs = newUnapplyFn1.args.zip(unapplyPatterns).map((a, p) => p match
-              case Bind(_, Typed(_, tpt: AppliedTypeTree)) if tpt.tpe <:< a.tpe => tpt
-              case _ => a
-            )
-            newUnapplyFn = tpd.cpy.TypeApply(newUnapplyFn1)(newUnapplyFn1.fun, newArgs)
-            unapplyApp = tpd.cpy.Apply(unapplyApp1)(newUnapplyFn, unapplyApp1.args)
-            ownType = AppliedType(ownType1.tycon, newArgs.map(_.tpe))
-          case _ => ()
-
         val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(dummyArg, unapplyApp), unapplyPatterns), ownType)
         if (ownType.stripped eq selType.stripped) || selType.isBottomType || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
