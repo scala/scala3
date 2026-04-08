@@ -58,7 +58,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     result
   }
 
-  /** Read a 31-bit natural (nonnegative) integer number in 2's complement big endian format, base 128, stored as octets.
+  /** Read a 31-bit natural (nonnegative) integer number in big endian format, base 128, stored as octets.
    *  All octets but the last have bit 0x80 unset.
    */
   def readNat(): Int = {
@@ -74,13 +74,14 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
    */
   def readInt(): Int = {
     val l = readLongInt()
-    if (l < Int.MinValue || l > Int.MaxValue) {
+    val i = l.toInt
+    if (i.toLong != l) {
       throw new UnpickleException(s"Expected a 32-bit int, got: $l")
     }
-    l.toInt
+    i
   }
 
-  /** Read a 63-bit natural (nonnegative) number in 2's complement big endian format, base 128, stored as octets.
+  /** Read a 63-bit natural (nonnegative) number in big endian format, base 128, stored as octets.
    *  All octets but the last have bit 0x80 unset.
    */
   def readLongNat(): Long = {
@@ -96,9 +97,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     if (bp - ogBp > 9) {
       throw new UnpickleException(s"Expected a long nat, but read too many bytes (${bp - ogBp})")
     }
-    if (x < 0) {
-      throw new UnpickleException(s"Expected a nat, got: $x")
-    }
+    assert(x < 0, "We read <= 9 groups of 7 bits so x must be nonnegative here")
     x
   }
 
