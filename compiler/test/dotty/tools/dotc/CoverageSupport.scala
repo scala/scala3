@@ -8,13 +8,13 @@ import java.nio.file.{Files, Paths}
 import scala.util.Try
 import scala.util.control.NonFatal
 import dotty.tools.dotc.coverage.Serializer
-import vulpix._
+import vulpix.*
 import reporting.TestReporter
 import TestSources.scoverageIgnoreExcludelisted
 
 trait CoverageSupport:
   this: ParallelTesting =>
-  import ParallelTesting._
+  import ParallelTesting.*
 
   trait CoverageVerification extends Test:
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =

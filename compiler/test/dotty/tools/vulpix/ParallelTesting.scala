@@ -162,7 +162,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     final override def toString: String = sourceFiles match {
       case Array(f) => f.getPath
-      case _        => outDir.getPath.stripPrefix(defaultOutputDir).stripPrefix(name).stripPrefix("/")
+      case _        => outDir.getPath.stripPrefix(defaultOutputDirName).stripPrefix(name).stripPrefix("/")
     }
   }
 
@@ -347,7 +347,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
-    import summaryReport._
+    import summaryReport.*
 
     protected final val realStdout: PrintStream = System.out
     protected final val realStderr: PrintStream = System.err
@@ -507,10 +507,15 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
       def javacOptions  = toolArgs.getOrElse(ToolName.Javac, Nil)
 
-      val flags = flags0
+      var flags = flags0
         .and(scalacOptions*)
         .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
+
+      // We must set -sourceroot for SemanticDB extraction to work properly inside an IDE,
+      // but we have many existing coverage tests that assume it is not set, so as a workaround:
+      if !flags.all.contains("-coverage-out") then
+        flags = flags.and("-sourceroot", TestSources.rootPath().toAbsolutePath.toString)
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
@@ -626,7 +631,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
       def artifactClasspath(organizationName: String, moduleName: String) =
-        import coursier._
+        import coursier.*
         val dep = Dependency(
           Module(
             Organization(organizationName),
@@ -1418,24 +1423,23 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   end CompilationTest
 
   /** Create out directory for directory `d` */
-  def createOutputDirsForDir(d: JFile, sourceDir: JFile, outDir: String): JFile = {
-    val targetDir = new JFile(outDir + s"${sourceDir.getName}/${d.getName}")
+  def createOutputDirsForDir(d: JFile, sourceDir: JFile, outDir: JFile): JFile = {
+    val targetDir = new JFile(outDir, s"${sourceDir.getName}/${d.getName}")
     targetDir.mkdirs()
     targetDir
   }
 
   /** Create out directory for `file` */
-  private def createOutputDirsForFile(file: JFile, sourceDir: JFile, outDir: String): JFile = {
+  private def createOutputDirsForFile(file: JFile, sourceDir: JFile, outDir: JFile): JFile = {
     val uniqueSubdir = file.getName.substring(0, file.getName.lastIndexOf('.'))
-    val targetDir = new JFile(outDir + s"${sourceDir.getName}${JFile.separatorChar}$uniqueSubdir")
+    val targetDir = new JFile(outDir, s"${sourceDir.getName}${JFile.separatorChar}$uniqueSubdir")
     targetDir.mkdirs()
     targetDir
   }
 
   /** Make sure that directory string is as expected */
-  private def checkRequirements(f: String, sourceDir: JFile, outDir: String): Unit = {
+  private def checkRequirements(f: String, sourceDir: JFile, outDir: JFile): Unit = {
     require(sourceDir.isDirectory && sourceDir.exists, "passed non-directory to `compileFilesInDir`: " + sourceDir)
-    require(outDir.last == JFile.separatorChar, "please specify an `outDir` with a trailing file separator")
   }
 
   /** Separates directories from files and returns them as `(dirs, files)` */
@@ -1449,11 +1453,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
   /** Compiles a single file from the string path `f` using the supplied flags */
   def compileFile(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
-    val sourceFile = new JFile(f)
+    val sourceFile = TestSources.getPath(f).toFile
     val parent = sourceFile.getParentFile
     val outDir =
-      defaultOutputDir + testGroup + JFile.separator +
-      sourceFile.getName.substring(0, sourceFile.getName.lastIndexOf('.')) + JFile.separator
+      new JFile(new JFile(defaultOutputDir, testGroup.name), sourceFile.getName.substring(0, sourceFile.getName.lastIndexOf('.')))
 
     require(
       sourceFile.exists && !sourceFile.isDirectory &&
@@ -1478,8 +1481,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *  can be used for randomization.
    */
   def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None, recursive: Boolean = true)(using testGroup: TestGroup): CompilationTest = {
-    val outDir = defaultOutputDir + testGroup + JFile.separator
-    val sourceDir = new JFile(f)
+    val outDir = new JFile(defaultOutputDir, testGroup.name)
+    val sourceDir = TestSources.getPath(f).toFile
     checkRequirements(f, sourceDir, outDir)
 
     def flatten(f: JFile): Array[JFile] =
@@ -1497,7 +1500,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     }
 
     // Directories in which to compile all containing files with `flags`:
-    val targetDir = new JFile(outDir + JFile.separator + sourceDir.getName + JFile.separator)
+    val targetDir = new JFile(outDir, sourceDir.getName)
     targetDir.mkdirs()
 
     val target = JointCompilationSource(s"compiling '$f' in test '$testGroup'", randomized, flags, targetDir)
@@ -1509,10 +1512,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *  dissociated
    */
   def compileList(testName: String, files: List[String], flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
-    val outDir = defaultOutputDir + testGroup + JFile.separator + testName + JFile.separator
-
     // Directories in which to compile all containing files with `flags`:
-    val targetDir = new JFile(outDir)
+    val targetDir = new JFile(new JFile(defaultOutputDir, testGroup.name), testName)
     targetDir.mkdirs()
     assert(targetDir.exists, s"couldn't create target directory: $targetDir")
 
@@ -1540,8 +1541,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *    the same name as the directory (with the file extension `.check`)
    */
   def compileFilesInDir(f: String, flags: TestFlags, fileFilter: FileFilter = FileFilter.NoFilter)(implicit testGroup: TestGroup): CompilationTest = {
-    val outDir = defaultOutputDir + testGroup + JFile.separator
-    val sourceDir = new JFile(f)
+    val outDir = new JFile(defaultOutputDir, testGroup.name)
+    val sourceDir = TestSources.getPath(f).toFile
     checkRequirements(f, sourceDir, outDir)
 
     val (dirs, files) = compilationTargets(sourceDir, fileFilter)
@@ -1580,9 +1581,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *  Tests in the first part of the tuple must be executed before the second.
    *  Both testsRequires explicit delete().
    */
-  def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(
-      implicit testGroup: TestGroup): TastyCompilationTest = {
-    val outDir = defaultOutputDir + testGroup + JFile.separator
+  def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(implicit testGroup: TestGroup): TastyCompilationTest = {
+    val outDir = new JFile(defaultOutputDir, testGroup.name)
     val flags = flags0 `and` "-Yretain-trees"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
@@ -1645,7 +1645,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val semanticDbFlag = "-Xsemanticdb"
     assert(!flags.options.contains(bestEffortFlag), "Best effort compilation flag should not be added manually")
 
-    val outDir = defaultOutputDir + testGroup + JFile.separator
+    val outDir = new JFile(defaultOutputDir, testGroup.name)
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
@@ -1748,7 +1748,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val step1SourceFiles = step1SourceDir.listFiles
       val step2SourceFiles = step2SourceDir.listFiles
 
-      val outDir = defaultOutputDir + testGroup + JFile.separator + dir.getName().toString + JFile.separator
+      val outDir = new JFile(new JFile(defaultOutputDir, testGroup.name), dir.getName)
 
       val step1OutDir = createOutputDirsForDir(step1SourceDir, step1SourceDir, outDir)
       val step2OutDir = createOutputDirsForDir(step2SourceDir, step2SourceDir, outDir)
@@ -1834,7 +1834,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *  tests.
    */
   def compileShallowFilesInDir(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
-    val outDir = defaultOutputDir + testGroup + JFile.separator
+    val outDir = new JFile(defaultOutputDir, testGroup.name)
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
@@ -1860,7 +1860,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
 object ParallelTesting:
 
-  def defaultOutputDir: String = "out"+JFile.separator
+  def defaultOutputDirName: String = "out" + JFile.separator
+  def defaultOutputDir: JFile = TestSources.getPath(defaultOutputDirName).toFile
 
   def isSourceFile(f: JFile): Boolean = {
     val name = f.getName

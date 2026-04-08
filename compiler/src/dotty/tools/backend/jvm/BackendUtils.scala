@@ -1,9 +1,7 @@
 package dotty.tools
 package backend.jvm
 
-import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Definitions
@@ -12,8 +10,6 @@ import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{Symbol, TermSymbol}
 import dotty.tools.dotc.core.Types.MethodType
-import dotty.tools.dotc.report
-import dotty.tools.dotc.util.SourcePosition
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.switch
@@ -21,7 +17,6 @@ import scala.collection.{BitSet, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
 import scala.tools.asm
-import scala.tools.asm.Opcodes.{ANEWARRAY, NEWARRAY}
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Handle, Opcodes, Type}
 
@@ -41,15 +36,8 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   private val indyLambdaImplMethods: Lazy[ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]]] =
     ppa.perRunLazy(new ConcurrentHashMap)
 
-  lazy val classfileVersion: Int = BackendUtils.classfileVersionMap(ppa.compilerSettings.target.toInt)
-
-  lazy val extraProc: Int = {
-    import GenBCodeOps.addFlagIf
-    val majorVersion: Int = classfileVersion & 0xFF
-    val emitStackMapFrame = majorVersion >= 50
-    asm.ClassWriter.COMPUTE_MAXS
-      .addFlagIf(emitStackMapFrame, asm.ClassWriter.COMPUTE_FRAMES)
-  }
+  // take advantage of the fact classfile versions are consecutive
+  lazy val classfileVersion: Int = ppa.compilerSettings.target.toInt + (Opcodes.V17 - 17)
 
   def collectSerializableLambdas(classNode: ClassNode): Array[Handle] = {
     val indyLambdaBodyMethods = new mutable.ArrayBuffer[Handle]
@@ -472,19 +460,6 @@ object BackendUtils {
     ("Long", asm.Type.LONG_TYPE),
     ("Double", asm.Type.DOUBLE_TYPE))
 
-  lazy val classfileVersionMap: Map[Int, Int] = Map(
-    17 -> asm.Opcodes.V17,
-    18 -> asm.Opcodes.V18,
-    19 -> asm.Opcodes.V19,
-    20 -> asm.Opcodes.V20,
-    21 -> asm.Opcodes.V21,
-    22 -> asm.Opcodes.V22,
-    23 -> asm.Opcodes.V23,
-    24 -> asm.Opcodes.V24,
-    25 -> asm.Opcodes.V25,
-    26 -> asm.Opcodes.V26,
-  )
-
 
   /**
    * A pseudo-flag indicating if a MethodNode's unreachable code has been eliminated.
@@ -704,4 +679,20 @@ object BackendUtils {
 
   def compilingPrimitive(using Context) =
     primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
+
+  // ===
+
+  def methodSignature(classInternalName: InternalName, name: String, desc: String) = {
+    classInternalName + "::" + name + desc
+  }
+
+  def methodSignature(classInternalName: InternalName, method: MethodNode): String = {
+    methodSignature(classInternalName, method.name, method.desc)
+  }
+  
+  def siteString(owner: String, method: String): String = {
+    val c = owner.replace('/', '.').replaceAll("\\$+", ".").replaceAll("\\.$", "")
+    if (method.isEmpty) c
+    else s"$c.$method"
+  }
 }

@@ -733,11 +733,27 @@ object RefChecks {
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
+        /** Replace synthetic parameter names (x$0, x$1, ...) with
+         *  dollar-free versions (x0, x1, ...) so that stub implementations
+         *  are directly usable as valid Scala identifiers.
+         */
+        def replaceSyntheticParamNames(tp: Type): Type = tp match
+          case mt: MethodType if mt.allParamNamesSynthetic =>
+            val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
+            mt.derivedLambdaType(newNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
+          case mt: MethodType =>
+            mt.derivedLambdaType(mt.paramNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
+          case pt: PolyType =>
+            pt.derivedLambdaType(pt.paramNames, pt.paramInfos, replaceSyntheticParamNames(pt.resType))
+          case _ => tp
+
         def stubImplementations: List[String] = {
           // Grouping missing methods by the declaring class
           val regrouped = missingMethods.groupBy(_.owner).toList
           def membersStrings(members: List[Symbol]) =
-            members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl + " = ???")
+            members.sortBy(_.name.toString).map: sym =>
+              val denot = sym.asSeenFrom(clazz.thisType)
+              denot.mapInfo(replaceSyntheticParamNames).showDcl + " = ???"
 
           if (regrouped.tail.isEmpty)
             membersStrings(regrouped.head._2)
@@ -762,7 +778,7 @@ object RefChecks {
 
         for (member <- missingMethods) {
           def showDclAndLocation(sym: Symbol) =
-            s"${sym.showDcl} in ${sym.owner.showLocated}"
+            s"${sym.mapInfo(replaceSyntheticParamNames).showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
             abstractClassError(false, s"${showDclAndLocation(member)} is not defined $msg")
           val underlying = member.underlyingSymbol

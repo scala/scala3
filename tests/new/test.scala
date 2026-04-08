@@ -10,4 +10,3 @@ object Test:// uses Console uses_init Console:
 
   def f() =
     Console.println("hello")
-

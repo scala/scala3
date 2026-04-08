@@ -14,7 +14,7 @@
   |                      Note that capability `Test33` cannot flow into capture set {}.
   |                      Note that object Test33 is a capability because it uses capabilities {any}
   |
-  |                      where:    any is a root capability classified as Unscoped in the type of object Test33
+  |                      where:    any is a root capability classified as Unscoped created in object Test33
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/global-mutables.scala:11:22 ------------------------------
@@ -28,7 +28,7 @@
    |                      Note that capability `Test33` cannot flow into capture set {}.
    |                      Note that object Test33 is a capability because it uses capabilities {any}
    |
-   |                      where:    any is a root capability classified as Unscoped in the type of object Test33
+   |                      where:    any is a root capability classified as Unscoped created in object Test33
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/global-mutables.scala:16:22 ------------------------------

@@ -3,14 +3,14 @@ package dotty.tools.backend.jvm
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.junit.Test
-import scala.tools.asm.Opcodes._
-import org.junit.Assert._
 
-import ASMConverters._
-
+import scala.tools.asm.Opcodes.*
+import org.junit.Assert.*
+import dotty.AsmConverters.*
+import dotty.DottyBytecodeTest
 
 class StringConcatTest extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
 
   @Test
   def appendOverloadNoBoxing(): Unit = {

@@ -1,15 +1,16 @@
 package dotty.tools.backend.jvm
 
+import dotty.DottyBytecodeTest
+
 import scala.language.unsafeNulls
+import org.junit.{Ignore, Test}
 
-import org.junit.{Test, Ignore}
-
-import scala.tools.asm.Opcodes._
-
-import scala.jdk.CollectionConverters._
+import scala.tools.asm.Opcodes.*
+import scala.jdk.CollectionConverters.*
 
 class InlineBytecodeTests extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
+
   @Test def inlineUnit = {
     val source = """
                  |class Foo {

@@ -39,7 +39,7 @@ class Cap extends caps.SharedCapability
 def test(c: Cap) =
   class A:
     val x: A = this
-    def f = println(c)
+    def f = println(c) // error
 
   val later = usingLogFile { file => () => file.write(0) } // error
   later() // crash

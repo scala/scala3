@@ -6,7 +6,6 @@ import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.report
 
@@ -17,8 +16,7 @@ import Contexts.*
 import Phases.*
 import Symbols.*
 import StdNames.nme
-
-import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler }
+import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 import scala.tools.asm.tree.*
@@ -27,10 +25,11 @@ import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.util
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.util.NoSourcePosition
-import DottyBackendInterface.symExtensions
+import SymbolUtils.given
+import dotty.tools.backend.ScalaPrimitives
 import opt.CallGraph
 
-class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypes)(using Context) {
+class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypes)(using Context) {
   private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
     val ts: CoreBTypes = CodeGen.this.ts
 

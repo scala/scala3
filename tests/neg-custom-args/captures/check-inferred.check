@@ -6,7 +6,7 @@
 39 |class B extends caps.Control: // error
    |      ^
    |      class B is classied as scala.caps.Control but has a field x
-   |      of unclassified type test.A^
+   |      of unclassified type test.A^.
    |      Field classifiers have to conform to the classifier of the containing class.
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:43:6 -----------------------------------------------------
 43 |class C: // error

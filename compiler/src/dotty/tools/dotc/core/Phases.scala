@@ -12,7 +12,6 @@ import config.Printers.config
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase.*
 import dotty.tools.dotc.transform.*
-import Periods.*
 import parsing.Parser
 import printing.XprintMode
 import typer.{TyperPhase, RefChecks}
@@ -50,7 +49,7 @@ object Phases {
 
     def recordRecheckPhase(phase: Recheck): Unit =
       val id = phase.id
-      assert(id < 64, s"Recheck phase with id $id outside permissible range 0..63")
+      assert(id < 64, s"Recheck phase with id $id outside range 0..63, cannot use Long bits encoding")
       myRecheckPhaseIds |= (1L << id)
 
     object SomePhase extends Phase {
@@ -64,7 +63,7 @@ object Phases {
       protected def run(using Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(using Context): SingleDenotation =
         unsupported("transform")
-      override def lastPhaseId(using Context): Int = id
+      override def lastPhaseId(using Context): PhaseId = id
     }
 
     final def phasePlan: List[List[Phase]] = this.phasesPlan
@@ -153,7 +152,7 @@ object Phases {
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)
 
-      var phaseId = 0
+      var phaseId: PhaseId = 0
       def nextPhaseId = {
         phaseId += 1
         phaseId // starting from 1 as NoPhase is 0
@@ -260,7 +259,7 @@ object Phases {
     private var myGenBCodePhase: Phase = uninitialized
     private var myCheckCapturesPhase: Phase = uninitialized
 
-    private var myCheckCapturesPhaseId: Int = -2
+    private var myCheckCapturesPhaseId: PhaseId = -2
       // -1 means undefined, 0 means NoPhase, we make sure that we don't get a false hit
       // if ctx.phaseId is either of these.
 
@@ -292,7 +291,7 @@ object Phases {
     final def flattenPhase: Phase = myFlattenPhase
     final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
-    final def checkCapturesPhaseId: Int = myCheckCapturesPhaseId
+    final def checkCapturesPhaseId: PhaseId = myCheckCapturesPhaseId
 
     private def setSpecificPhases() = {
       def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
@@ -461,7 +460,7 @@ object Phases {
      */
     def printingContext(ctx: Context): Context = ctx
 
-    private var myPeriod: Period = Periods.InvalidPeriod
+    private var myPeriod: Period = Nowhere
     private var myBase: ContextBase = uninitialized
     private var myErasedTypes = false
     private var myFlatClasses = false
@@ -477,11 +476,11 @@ object Phases {
      * is reserved for NoPhase and the first real phase is at position 1.
      * -1 if the phase is not installed in the context.
      */
-    def id: Int = myPeriod.firstPhaseId
+    def id: PhaseId = myPeriod.firstPhaseId
 
     def period: Period = myPeriod
-    def start: Int = myPeriod.firstPhaseId
-    def end: Periods.PhaseId = myPeriod.lastPhaseId
+    def start: PhaseId = myPeriod.firstPhaseId
+    def end: PhaseId = myPeriod.lastPhaseId
 
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
@@ -489,17 +488,17 @@ object Phases {
     final def lambdaLifted: Boolean = myLambdaLifted // Phase is after LambdaLift
     final def patternTranslated: Boolean = myPatternTranslated // Phase is after PatternMatcher
 
-    final def sameMembersStartId: Int = mySameMembersStartId
+    final def sameMembersStartId: PhaseId = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
-    final def sameParentsStartId: Int = mySameParentsStartId
+    final def sameParentsStartId: PhaseId = mySameParentsStartId
       // id of first phase where all symbols are guaranteed to have the same parents as in this phase
-    final def sameBaseTypesStartId: Int = mySameBaseTypesStartId
+    final def sameBaseTypesStartId: PhaseId = mySameBaseTypesStartId
       // id of first phase where all symbols are guaranteed to have the same base tpyes as in this phase
 
-    protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
+    protected[Phases] def init(base: ContextBase, start: PhaseId, end: PhaseId): Unit = {
       if (start >= FirstPhaseId)
-        assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
-      assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
+        assert(myPeriod == Nowhere, s"phase $this has already been used once; cannot be reused")
+      assert(start <= MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
       myErasedTypes  = prev.getClass == classOf[Erasure]    || prev.erasedTypes
@@ -512,7 +511,7 @@ object Phases {
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId
     }
 
-    protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
+    protected[Phases] def init(base: ContextBase, id: PhaseId): Unit = init(base, id, id)
 
     final def <=(that: Phase): Boolean =
       exists && id <= that.id
@@ -585,7 +584,7 @@ object Phases {
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
   def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
   def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
-  def checkCapturesPhaseId(using Context): Int          = ctx.base.checkCapturesPhaseId
+  def checkCapturesPhaseId(using Context): PhaseId      = ctx.base.checkCapturesPhaseId
 
   def unfusedPhases(using Context): Array[Phase] = ctx.base.phases
 

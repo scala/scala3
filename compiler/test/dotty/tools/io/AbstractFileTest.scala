@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import org.junit.Test
 
 import dotty.tools.io.AbstractFile
-import java.nio.file.Files._
+import java.nio.file.Files.*
 import java.nio.file.attribute.PosixFilePermissions
 
 class AbstractFileTest {

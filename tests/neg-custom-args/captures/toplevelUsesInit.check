@@ -57,14 +57,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:34:22 -----------------------------
 34 |  val _: () -> Unit = x        // error
    |                      ^
-   |                 Found:    (x : () ->{test.Console, test.M.c} Unit)
-   |                 Required: () -> Unit
+   |                     Found:    (x : () ->{test.Console, test.M.c} Unit)
+   |                     Required: () -> Unit
    |
-   |                 Note that capability `any` cannot flow into capture set {}.
+   |                     Note that capability `any` cannot flow into capture set {}.
    |
-   |                 Note that capability `test.Console` cannot flow into capture set {}.
-   |                 Note that object Console is a capability because it uses capabilities {any}
+   |                     Note that capability `test.Console` cannot flow into capture set {}.
+   |                     Note that object Console is a capability because it uses capabilities {any}
    |
-   |                 where:    any is a root capability classified as SharedCapability in the type of object Console
+   |                     where:    any is a root capability classified as SharedCapability created in object Console
    |
    | longer explanation available when compiling with `-explain`

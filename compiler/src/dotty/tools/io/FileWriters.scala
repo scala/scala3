@@ -82,7 +82,6 @@ object FileWriters {
   enum Report:
     case Error(message: Context => Message, position: SourcePosition)
     case Warning(message: Context => Message, position: SourcePosition)
-    case OptimizerWarning(message: Context => Message, site: String, position: SourcePosition)
     case Log(message: String)
 
   final class BufferingReporter extends DelayedReporter {

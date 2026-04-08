@@ -51,10 +51,12 @@ object SafeRefs {
    */
   def init()(using Context): Unit =
     assumeSafe("scala.Predef", except = List("print", "println", "printf"))
+    assumeSafe("scala.runtime.coverage.Invoker")
     assumeSafe("java.lang.Object")
     assumeSafe("java.lang.Boolean")
     assumeSafe("java.lang.Byte")
     assumeSafe("java.lang.Char")
+    assumeSafe("java.lang.Character")
     assumeSafe("java.lang.Short")
     assumeSafe("java.lang.Integer")
     assumeSafe("java.lang.Long")
@@ -67,7 +69,15 @@ object SafeRefs {
     assumeSafe("java.lang.String")
     assumeSafe("java.lang.Throwable")
     assumeSafe("java.lang.Void")
-    assumeSafe("scala.runtime.coverage.Invoker")
+    assumeSafe("java.util.Locale")
+    assumeSafe("java.util.Random")
+    assumeSafe("java.util.UUID")
+    assumeSafe("java.util.Objects")
+    assumeSafe("java.util.Optional")
+    assumeSafe("java.util.OptionalInt")
+    assumeSafe("java.util.OptionalLong")
+    assumeSafe("java.util.OptionalDouble")
+    assumeSafe("java.util.TimeZone")
     assumeSafe("java.lang.Class", except = List(
       "accessFlags", "asSubclass", "cast", "describeConstable",
       "descriptorString", "desiredAssertionStatus", "forName", "forPrimitiveName", "getAnnotatedInterfaces",
@@ -92,7 +102,8 @@ object SafeRefs {
     false
 
   private def checkNotRejected(sym: Symbol, pos: SrcPos)(using Context): Boolean =
-    sym.getAnnotation(defn.RejectSafeAnnot) match
+    if !sym.exists then true
+    else sym.getAnnotation(defn.RejectSafeAnnot) match
       case Some(annot) =>
         val message = annot.argumentConstantString(0).getOrElse("")
           fail(sym, if message.nonEmpty then message else i"it is tagged @rejectSafe", pos)
@@ -102,10 +113,9 @@ object SafeRefs {
   def checkSafe(tree: Tree, pt: Type)(using Context): Unit = {
 
     def isSafe(sym: Symbol): Boolean =
-      if sym.is(Package) then
+      if !sym.exists then false
+      else if sym.is(Package) then
         defn.assumedSafePackages.contains(sym)
-      else if !sym.exists then
-        false
       else
         sym.hasAnnotation(defn.AssumeSafeAnnot)
         || isSafe(if sym.is(ModuleVal) then sym.moduleClass else sym.owner)

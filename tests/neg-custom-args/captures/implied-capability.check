@@ -7,5 +7,5 @@
 8 |class C2 extends SharedCapability: // error
   |      ^
   |      class C2 is classied as scala.caps.SharedCapability but has a field r
-  |      classified as scala.caps.Unscoped
+  |      classified as scala.caps.Unscoped.
   |      Field classifiers have to conform to the classifier of the containing class.

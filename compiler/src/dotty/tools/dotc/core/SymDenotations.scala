@@ -1844,6 +1844,10 @@ object SymDenotations {
     /** Same as `sealedStrictDescendants` but prepends this symbol as well.
      */
     final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
+
+    def javaSimpleName(using Context): String = name.mangledString
+    def javaClassName(using Context): String = fullName.mangledString
+    def javaBinaryName(using Context): String = javaClassName.replace('.', '/')
   }
 
   /** The contents of a class definition during a period
@@ -2124,7 +2128,7 @@ object SymDenotations {
       if (proceedWithEnter(sym, mscope)) {
         enterNoReplace(sym, mscope)
         val nxt = this.nextInRun
-        if (nxt.validFor.code > this.validFor.code)
+        if (nxt.validFor > this.validFor)
           this.nextInRun.asSymDenotation.asClass.enter(sym)
       }
     }
@@ -2966,10 +2970,10 @@ object SymDenotations {
     }
 
     def isValidAt(phase: Phase)(using Context) =
-      checkedPeriod.code == ctx.period.code ||
+      checkedPeriod == ctx.period ||
         createdAt.runId == ctx.runId &&
-        createdAt.phaseId < unfusedPhases.length &&
-        sameGroup(unfusedPhases(createdAt.phaseId), phase) &&
+        createdAt.lastPhaseId < unfusedPhases.length &&
+        sameGroup(unfusedPhases(createdAt.lastPhaseId), phase) &&
         { checkedPeriod = ctx.period; true }
   }
 

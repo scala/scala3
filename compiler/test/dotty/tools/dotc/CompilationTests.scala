@@ -4,35 +4,26 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass, Ignore }
-import org.junit.Assert._
-import org.junit.Assume._
-import org.junit.experimental.categories.Category
+import org.junit.{ Test, AfterClass }
+import org.junit.Assume.*
 
-import java.io.File
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.jdk.CollectionConverters._
-import scala.util.matching.Regex
-import scala.concurrent.duration._
-import TestSources.sources
-import TestSources.scoverageIgnoreExcludelisted
-import reporting.TestReporter
-import vulpix._
-import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.dotc.coverage.Serializer
+import java.nio.file.*
+import scala.concurrent.duration.*
+
+import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.vulpix.*
 
 class CompilationTests {
-  import ParallelTesting._
-  import TestConfiguration._
-  import CompilationTests._
+  import ParallelTesting.*
+  import TestConfiguration.*
+  import CompilationTests.*
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
 
   @Test def pos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    var tests = List(
+    val tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
@@ -279,7 +270,7 @@ class CompilationTests {
     locally {
       val group = TestGroup("checkInitGlobal/tastySource")
       val tastSourceOptions = defaultOptions.and("-Ysafe-init-global")
-      val outDirLib = defaultOutputDir + group + "/A/tastySource/A"
+      val outDirLib = Paths.get(defaultOutputDir.getAbsolutePath, group.name,"A", "tastySource", "A").toString
 
       // Set -sourceroot such that the source code cannot be found by the compiler
       val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
@@ -311,8 +302,8 @@ class CompilationTests {
     locally {
       val i12128Group = TestGroup("checkInit/i12128")
       val i12128Options = options.without("-Werror")
-      val outDir1 = defaultOutputDir + i12128Group + "/Reflect_1/i12128/Reflect_1"
-      val outDir2 = defaultOutputDir + i12128Group + "/Macro_2/i12128/Macro_2"
+      val outDir1 = Paths.get(defaultOutputDir.getAbsolutePath, i12128Group.name, "Reflect_1", "i12128", "Reflect_1").toString
+      val outDir2 = Paths.get(defaultOutputDir.getAbsolutePath, i12128Group.name, "Macro_2", "i12128", "Macro_2").toString
 
       val tests = List(
         withCoverage(compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(using i12128Group).keepOutput),
@@ -331,9 +322,9 @@ class CompilationTests {
       val tastyErrorGroup = TestGroup("checkInit/tasty-error/val-or-defdef")
       val tastyErrorOptions = options.without("-Werror")
 
-      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
-      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
-      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+      val classA0 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v0", "A").toString
+      val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
+      val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
 
       val tests = List(
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
@@ -355,10 +346,10 @@ class CompilationTests {
       val tastyErrorGroup = TestGroup("checkInit/tasty-error/typedef")
       val tastyErrorOptions = options.without("-Werror").without("-Ycheck:all")
 
-      val classC = defaultOutputDir + tastyErrorGroup + "/C/typedef/C"
-      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
-      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
-      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+      val classC =  Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "C", "typedef", "C").toString
+      val classA0 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v0", "A").toString
+      val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
+      val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
 
       val tests = List(
         withCoverage(compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),

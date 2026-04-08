@@ -261,7 +261,7 @@ sealed abstract class CaptureSet extends Showable:
         || // Even though subsumes already follows captureSetOfInfo, this is not enough.
            // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
           !x.isTerminalCapability
-          && !x.coreType.derivesFrom(defn.Caps_CapSet)
+          && !x.coreType.derivesFromCapSet
           && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
             // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
             // and might therefore insert an element that is too unspecific.
@@ -686,7 +686,7 @@ object CaptureSet:
       && variance >= 0
       && sym.isContainedIn(defn.ScalaPackageClass)
     if parent.derivesFromStateful
-      && parent.derivesFromExclusive
+      && parent.derivesFromCapTrait(defn.Caps_ExclusiveCapability)
       && !isArrayFromScalaPackage
     then GlobalAny.readOnly
     else GlobalAny
@@ -761,7 +761,6 @@ object CaptureSet:
 
     if debugVars && id == debugTarget then
       println(i"###INIT ELEMS of $id of class $getClass in $initialOwner, $nestedOK to $initialElems")
-      assert(false)
 
     def elems: Refs = myElems
     def elems_=(refs: Refs): Unit =
@@ -1029,54 +1028,64 @@ object CaptureSet:
   end Var
 
   /** Variables created in types of inferred type trees */
-  class ProperVar(override val owner: Symbol, initialElems: Refs = emptyRefs, nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
-  extends Var(owner, initialElems, nestedOK):
+  class VarInTypeTree(override val owner: Symbol, initialElems: Refs = emptyRefs, val nestedOK: Boolean = true, isRefining: Boolean)(using /*@constructorOnly*/ ictx: Context)
+  extends Var(owner, initialElems, nestedOK) {
 
     /** Make sure that capset variables in types of vals and result types of
      *  non-anonymous functions contain only a single LocalCap, and furthermore
      *  that that LocalCap has as origin InDecl(owner), where owner is the val
-     *  or def for which the type is defined.
+     *  or def for which the type is defined. If the capture set does not satisfy
+     *  this condition, create a LocalCap with the right origin and move other
+     *  LocalCaps to its hidden set.
      *  Note: This currently does not apply to classified or read-only LocalCaps.
      */
-    override def includeElem(elem: Capability)(using ctx: Context, vs: VarState): Unit = elem match
-      case elem: LocalCap
-      if !nestedOK
-          && !elems.contains(elem)
-          && !owner.isAnonymousFunction =>
-        def fail = i"attempting to add $elem to $this"
-        def hideIn(ac: LocalCap): Boolean =
-          assert(elem.tryClassifyAs(ac.hiddenSet.classifier), fail)
-          if isRefining then
-            // If a variable is added by addCaptureRefinements in a synthetic
-            // refinement of a class type, don't do level checking. The problem is
-            // that the variable might be matched against a type that does not have
-            // a refinement, in which case LocalCaps of the class definition would
-            // leak out in the corresponding places. This will fail level checking.
-            // The disallowBadRoots override below has a similar reason.
-            // TODO: We should instead mark the variable as impossible to instantiate
-            // and drop the refinement later in the inferred type.
-            // Test case is drop-refinement.scala.
-            true
-          else if ac.acceptsLevelOf(elem) then
-            ac.hiddenSet.add(elem)
-            true
-          else
-            capt.println(i"level failure when subsuming in a LocalCap, cannot add $elem with ${elem.levelOwner} to $owner / $fail")
-            false
-        val isSubsumed = (false /: elems): (isSubsumed, prev) =>
-          prev match
-            case prev: LocalCap => hideIn(prev)
-            case _ => isSubsumed
-        if !isSubsumed then
-          if elem.origin != Origin.InDecl(owner) || elem.hiddenSet.isConst then
-            val fc = LocalCap(owner, Origin.InDecl(owner, elem.origin.contributingFields))
-            assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
-            hideIn(fc)
-            super.includeElem(fc)
-          else
-            super.includeElem(elem)
-      case _ =>
-        super.includeElem(elem)
+    def normalizeLocalCaps()(using ctx: Context): Unit =
+      if !nestedOK && !owner.isAnonymousFunction then
+        var inDeclRoots = elems.filter:
+          case elem: LocalCap => elem.origin == Origin.InDecl(owner)
+          case _ => false
+        val oldElems = elems
+        elems = inDeclRoots
+        given VarState = VarState.Closed()
+        for elem <- oldElems do {
+          def fail = i"attempting to add $elem to $this"
+
+          def hideIn(ac: LocalCap): Boolean =
+            assert(elem.tryClassifyAs(ac.hiddenSet.classifier), fail)
+            if isRefining then
+              // If a variable is added by addCaptureRefinements in a synthetic
+              // refinement of a class type, don't do level checking. The problem is
+              // that the variable might be matched against a type that does not have
+              // a refinement, in which case LocalCaps of the class definition would
+              // leak out in the corresponding places. This will fail level checking.
+              // The disallowBadRoots override below has a similar reason.
+              // TODO: We should instead mark the variable as impossible to instantiate
+              // and drop the refinement later in the inferred type.
+              // Test case is drop-refinement.scala.
+              true
+            else if ac.acceptsLevelOf(elem) then
+              ac.hiddenSet.add(elem)
+              true
+            else
+              capt.println(i"level failure when subsuming in a LocalCap, cannot add $elem with ${elem.levelOwner} to $owner / $fail")
+              false
+
+          elem match
+            case elem: LocalCap =>
+              if elem.origin != Origin.InDecl(owner) then
+                val isSubsumed = (false /: inDeclRoots): (isSubsumed, root) =>
+                  hideIn(root.asInstanceOf[LocalCap])
+                if !isSubsumed then
+                  val fc = LocalCap(owner, Origin.InDecl(owner, elem.origin.contributingFields))
+                  assert(fc.tryClassifyAs(elem.hiddenSet.classifier), fail)
+                  if hideIn(fc) then
+                    inDeclRoots += fc
+                    elems += fc
+                  else
+                    elems += elem
+            case _ =>
+              elems += elem
+        }
 
     /** Variables that represent refinements of class parameters can have the universal
      *  capture set, since they represent only what is the result of the constructor.
@@ -1084,8 +1093,7 @@ object CaptureSet:
      */
     override def disallowBadRoots(upto: Symbol)(handler: () => Context ?=> Unit)(using Context) =
       if !isRefining then super.disallowBadRoots(upto)(handler)
-
-  end ProperVar
+  }
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -1759,7 +1767,7 @@ object CaptureSet:
         case tp: TermParamRef =>
           tp.captureSet
         case tp: (TypeRef | TypeParamRef) =>
-          if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
+          if tp.derivesFromCapSet then tp.captureSet
           else empty
         case CapturingOrRetainsType(parent, refs) =>
           recur(parent) ++ refs
@@ -1798,7 +1806,7 @@ object CaptureSet:
         else this(acc, parent)
 
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if t.derivesFrom(defn.Caps_CapSet) then t.singletonCaptureSet
+        if t.derivesFromCapSet then t.singletonCaptureSet
         else if includeTypevars && upperBound.isExactlyAny then LocalCap(Origin.DeepCS(t)).singletonCaptureSet
         else this(acc, upperBound)
 

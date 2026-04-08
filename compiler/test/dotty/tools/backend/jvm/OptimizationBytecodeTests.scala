@@ -1,6 +1,7 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.backend.jvm.ASMConverters.instructionsFromMethod
+import dotty.{AsmConverters, DottyBytecodeTest}
+import dotty.AsmConverters.instructionsFromMethod
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import org.junit.Test
 
@@ -76,8 +77,8 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       val meth = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(meth)
       for instr <- instructions do instr match {
-        case ASMConverters.Invoke(_, owner, name, _, _) => assert(allowedCalls(owner, name), s"Found invoke to $owner.$name in:\n${instructions.mkString("\n")}")
-        case ASMConverters.InvokeDynamic(_, name, _, _, _) => assert(false, s"Found dynamic invoke to $name in:\n${instructions.mkString("\n")}")
+        case AsmConverters.Invoke(_, owner, name, _, _) => assert(allowedCalls(owner, name), s"Found invoke to $owner.$name in:\n${instructions.mkString("\n")}")
+        case AsmConverters.InvokeDynamic(_, name, _, _, _) => assert(false, s"Found dynamic invoke to $name in:\n${instructions.mkString("\n")}")
         case _ => ()
       }
     }
@@ -574,14 +575,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       val instrs1b = instructionsFromMethod(meth1b)
       val instrs2a = instructionsFromMethod(meth2a)
       val instrs2b = instructionsFromMethod(meth2b)
-      assert(instrs1a.forall(i => !i.isInstanceOf[ASMConverters.Invoke]), "t1a should not have calls, it has:\n" + instrs1a.mkString("\n"))
-      assert(instrs1b.forall(i => !i.isInstanceOf[ASMConverters.Invoke]), "t1b should not have calls, it has:\n" + instrs1b.mkString("\n"))
+      assert(instrs1a.forall(i => !i.isInstanceOf[AsmConverters.Invoke]), "t1a should not have calls, it has:\n" + instrs1a.mkString("\n"))
+      assert(instrs1b.forall(i => !i.isInstanceOf[AsmConverters.Invoke]), "t1b should not have calls, it has:\n" + instrs1b.mkString("\n"))
       assert(instrs2a.forall {
-        case ASMConverters.Invoke(_, owner, name, _, _) => owner == "T" && name == "p"
+        case AsmConverters.Invoke(_, owner, name, _, _) => owner == "T" && name == "p"
         case _ => true
       }, "t2a should only call T.p, but instead:\n" + instrs2a.mkString("\n"))
       assert(instrs2b.forall {
-        case ASMConverters.Invoke(_, owner, name, _, _) => owner == "T" && name == "p"
+        case AsmConverters.Invoke(_, owner, name, _, _) => owner == "T" && name == "p"
         case _ => true
       }, "t2b should only call T.p, but instead:\n" + instrs2b.mkString("\n"))
     }
@@ -757,7 +758,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
 
       val instructions1 = instructionsFromMethod(meth1)
       assert(instructions1.exists {
-        case inv: ASMConverters.Invoke => inv.name == "println"
+        case inv: AsmConverters.Invoke => inv.name == "println"
         case _ => false
       })
     }
@@ -779,7 +780,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       for m <- List(getMethod(clsNode, "bad")) do
         val instrs = instructionsFromMethod(m)
         assert(!instrs.exists {
-          case inv: ASMConverters.Invoke => inv.owner.startsWith("jdk/internal")
+          case inv: AsmConverters.Invoke => inv.owner.startsWith("jdk/internal")
           case _ => false
         })
     }

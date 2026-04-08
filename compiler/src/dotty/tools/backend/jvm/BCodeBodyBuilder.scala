@@ -25,7 +25,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
 import dotty.tools.dotc.ast.Positioned
 import tpd.*
-import DottyBackendInterface.symExtensions
+import SymbolUtils.given
 import dotty.tools.dotc.util.SrcPos
 
 /*
@@ -34,14 +34,12 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) extends BCodeSkelBuilder {
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
   abstract class PlainBodyBuilder(cunit: CompilationUnit) extends PlainSkelBuilder(cunit) {
-
-    import Primitives.TestOp
 
     private object DesugaredSelect {
       private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
@@ -1516,8 +1514,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           bc.emitIF_ACMP(op, success)
         } else {
-          import Primitives.*
-          def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
+          def useCmpG = if (negated) op == TestOp.GT || op == TestOp.GE else op == TestOp.LT || op == TestOp.LE
           (tk: @unchecked) match {
             case LONG   => emit(asm.Opcodes.LCMP)
             case FLOAT  => emit(if (useCmpG) asm.Opcodes.FCMPG else asm.Opcodes.FCMPL)
@@ -1531,18 +1528,17 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
 
     /* Emits code to compare (and consume) stack-top and zero using the 'op' operator */
     private def genCZJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label, negated: Boolean = false): Unit = {
-      import Primitives.*
       if (targetIfNoJump == success) genCZJUMP(failure, success, op.negate(), tk, targetIfNoJump, negated = !negated)
       else {
         if (tk.isIntSizedType) { // BOOL, BYTE, CHAR, SHORT, or INT
           bc.emitIF(op, success)
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           (op: @unchecked) match { // references are only compared with EQ and NE
-            case EQ => bc.emitIFNULL(   success)
-            case NE => bc.emitIFNONNULL(success)
+            case TestOp.EQ => bc.emitIFNULL(   success)
+            case TestOp.NE => bc.emitIFNONNULL(success)
           }
         } else {
-          def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
+          def useCmpG = if (negated) op == TestOp.GT || op == TestOp.GE else op == TestOp.LT || op == TestOp.LE
           (tk: @unchecked) match {
             case LONG   =>
               emit(asm.Opcodes.LCONST_0)
@@ -1561,14 +1557,14 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
     }
 
     def testOpForPrimitive(primitiveCode: Int) = (primitiveCode: @switch) match {
-       case ScalaPrimitivesOps.ID => Primitives.EQ
-       case ScalaPrimitivesOps.NI => Primitives.NE
-       case ScalaPrimitivesOps.EQ => Primitives.EQ
-       case ScalaPrimitivesOps.NE => Primitives.NE
-       case ScalaPrimitivesOps.LT => Primitives.LT
-       case ScalaPrimitivesOps.LE => Primitives.LE
-       case ScalaPrimitivesOps.GT => Primitives.GT
-       case ScalaPrimitivesOps.GE => Primitives.GE
+       case ScalaPrimitivesOps.ID => TestOp.EQ
+       case ScalaPrimitivesOps.NI => TestOp.NE
+       case ScalaPrimitivesOps.EQ => TestOp.EQ
+       case ScalaPrimitivesOps.NE => TestOp.NE
+       case ScalaPrimitivesOps.LT => TestOp.LT
+       case ScalaPrimitivesOps.LE => TestOp.LE
+       case ScalaPrimitivesOps.GT => TestOp.GT
+       case ScalaPrimitivesOps.GE => TestOp.GE
      }
 
     /*
@@ -1601,7 +1597,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
 
       def loadAndTestBoolean() = {
         genLoad(tree, BOOL)
-        genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+        genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
       }
 
       lineNumber(tree)
@@ -1713,17 +1709,17 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
         genLoad(r, ts.ObjectRef)
         stack.pop()
         genCallMethod(equalsMethod, InvokeStyle.Static)
-        genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+        genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
       }
       else {
         if (isNull(l)) {
           // null == expr -> expr eq null
           genLoad(r, ts.ObjectRef)
-          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNull(r)) {
           // expr == null -> expr eq null
           genLoad(l, ts.ObjectRef)
-          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.EQ, ts.ObjectRef, targetIfNoJump)
         } else if (isNonNullExpr(l)) {
           // SI-7852 Avoid null check if L is statically non-null.
           genLoad(l, ts.ObjectRef)
@@ -1731,7 +1727,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           genLoad(r, ts.ObjectRef)
           stack.pop()
           genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
-          genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
         } else {
           // l == r -> Objects.equals(l, r)
           genLoad(l, ts.ObjectRef)
@@ -1739,7 +1735,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           genLoad(r, ts.ObjectRef)
           stack.pop()
           genCallMethod(defn.Objects_equals, InvokeStyle.Static)
-          genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
+          genCZJUMP(success, failure, TestOp.NE, BOOL, targetIfNoJump)
         }
       }
     }
@@ -1854,7 +1850,7 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
    *  create for Java-defined classes as well as for Java annotations
    *  which we represent as classes.
    */
-  private def isEmittedInterface(sym: Symbol): Boolean = sym.isInterface ||
+  private def isEmittedInterface(sym: Symbol): Boolean = sym.is(Trait) ||
     sym.is(JavaDefined) && (toDenot(sym).isAnnotation || sym.is(ModuleClass) && (sym.companionClass.is(PureInterface)) || sym.companionClass.is(Trait))
 
 

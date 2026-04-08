@@ -76,8 +76,8 @@ Principal areas of the compiler and internal team members responsible for their 
 - Transforms: @sjrd, @odersky, @smarter
 - Tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
-- JVM backend: @sjrd, @tanishiking, @lrytz
-- Java-compat: @tanishiking, @lrytz, (@smarter)
+- JVM backend: @sjrd, @tanishiking, @lrytz, @SolalPirelli
+- Java-compat: @tanishiking, @lrytz, @SolalPirelli, (@smarter)
 - Extension Methods: @odersky
 - Safe nulls (experimental): @noti0na1
 - Capture checker (experimental): @odersky, @Linyxus, @bracevac, @noti0na1
@@ -90,6 +90,7 @@ Principal areas of the compiler and internal team members responsible for their 
 - Runner/CLI: @Gedochao, (@tgodzik)
 - IDE: @tgodzik, @zielinsky
 - Scaladoc: (@Florian3k)
+- Bytecode Optimizer: @SolalPirelli, (@lrytz)
 - SemanticDB: @natsukagami, (@tanishiking)
 - Coverage: (@KacperFKorban)
 - Linting (especially unused warnings) / Reporting UX: @som-snytt, (@tgodzik)

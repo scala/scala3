@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
+import core.*
 import ast.Trees
 
 class PostTyperTransformerTest extends DottyTest {
   /* FIXME: re-enable after adapting to new scheme
 
   @Test
-  def shouldStripImports = checkCompile("typer", "class A{ import scala.collection.mutable._; val d = 1}") {
+  def shouldStripImports = checkCompile("typer", "class A{ import scala.collection.mutable.*; val d = 1}") {
     (tree, context) =>
       given Context = context
       class EmptyTransform extends TreeTransform {

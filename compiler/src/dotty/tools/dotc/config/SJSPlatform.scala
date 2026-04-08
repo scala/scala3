@@ -35,4 +35,10 @@ class SJSPlatform extends JavaPlatform {
    */
   override def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     !sym.isSubClass(jsDefinitions.JSAnyClass)
+
+  override def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean =
+    // because we deal with primitive types, we also have to deal with the boxed version,
+    // otherwise the compiler will error with, e.g., "cannot test if scala.Double is a subtype of java.lang.Integer"
+    (defn.ScalaNumericValueClasses()(c) || defn.ScalaNumericBoxedClasses()(c)) &&
+      (defn.ScalaNumericValueClasses()(potentialSuperClass) || defn.ScalaNumericBoxedClasses()(potentialSuperClass))
 }

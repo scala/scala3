@@ -10,7 +10,13 @@ Scala enables checked exceptions through a language import. Here is an example,
 taken from the [safer exceptions page](../canthrow.md), and also described in a
 [paper](https://infoscience.epfl.ch/record/290885) presented at the
  2021 Scala Symposium.
-```scala sc:nocompile
+```scala sc-hidden sc-name:checked-exceptions-imports
+import language.experimental.saferExceptions
+import language.experimental.captureChecking
+import caps.*
+```
+
+```scala sc-name:checked-exceptions-base sc-compile-with:checked-exceptions-imports
 import language.experimental.saferExceptions
 
 class LimitExceeded extends Exception
@@ -22,13 +28,17 @@ def f(x: Double): Double throws LimitExceeded =
 The new `throws` clause expands into an implicit parameter that provides
 a `CanThrow` capability. Hence, function `f` could equivalently be written
 like this:
-```scala sc:nocompile
-def f(x: Double)(using CanThrow[LimitExceeded]): Double = ...
+```scala sc-compile-with:checked-exceptions-base
+//{
+object Desugared:
+ //}
+  def f(x: Double)(using CanThrow[LimitExceeded]): Double =
+    if x < limit then x * x else throw LimitExceeded()
 ```
 If the implicit parameter is missing, an error is reported. For instance, the  function definition
-```scala sc:nocompile
+```scala sc:fail sc-compile-with:checked-exceptions-base
 def g(x: Double): Double =
-  if x < limit then x * x else throw LimitExceeded()
+  if x < limit then x * x else throw LimitExceeded() // error: missing CanThrow[LimitExceeded]
 ```
 is rejected with this error message:
 ```
@@ -42,7 +52,10 @@ is rejected with this error message:
 ```
 `CanThrow` capabilities are required by `throw` expressions and are created
 by `try` expressions. For instance, the expression
-```scala sc:nocompile
+```scala sc-compile-with:checked-exceptions-base
+//{
+def sumAll(xs: Double*): Double =
+ //}
 try xs.map(f).sum
 catch case ex: LimitExceeded => -1
 ```
@@ -58,9 +71,9 @@ erased.)
 
 As with other capability based schemes, one needs to guard against capabilities
 that are captured in results. For instance, here is a problematic use case:
-```scala sc:nocompile
+```scala sc:fail sc-compile-with:checked-exceptions-base
 def escaped(xs: Double*): (() => Double) throws LimitExceeded =
-  try () => xs.map(f).sum
+  try () => xs.map(f).sum // error: CanThrow escapes into returned closure
   catch case ex: LimitExceeded => () => -1
 val crasher = escaped(1, 2, 10e+11)
 crasher()
@@ -68,7 +81,7 @@ crasher()
 This code needs to be rejected since otherwise the call to `crasher()` would cause
 an unhandled `LimitExceeded` exception to be thrown.
 
-Under the language import `language.experimental.captureChecking`, the code is indeed rejected
+Under the language import `language.experimental.captureChecking`, the code is indeed rejected.
 
 <!--
 ```

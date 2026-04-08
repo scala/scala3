@@ -230,7 +230,9 @@ class Definitions {
   @tu lazy val JavaPackageClass: ClassSymbol = JavaPackageVal.moduleClass.asClass
   @tu lazy val JavaLangPackageVal: TermSymbol = requiredPackage(jnme.JavaLang)
   @tu lazy val JavaLangPackageClass: ClassSymbol = JavaLangPackageVal.moduleClass.asClass
-  @tu lazy val ScalaCollectionPackageClas: ClassSymbol = requiredPackage("scala.collection").moduleClass.asClass
+  @tu lazy val JavaMathPackageClass: ClassSymbol = requiredPackage("java.math").moduleClass.asClass
+  @tu lazy val JavaTimePackageClass: ClassSymbol = requiredPackage("java.time").moduleClass.asClass
+  @tu lazy val ScalaCollectionPackageClass: ClassSymbol = requiredPackage("scala.collection").moduleClass.asClass
   @tu lazy val ScalaCollectionImmutablePackageClass: ClassSymbol = requiredPackage("scala.collection.immutable").moduleClass.asClass
   @tu lazy val ScalaMathPackageClass: ClassSymbol = requiredPackage("scala.math").moduleClass.asClass
   @tu lazy val ScalaUtilPackageClass: ClassSymbol = requiredPackage("scala.util").moduleClass.asClass
@@ -1526,8 +1528,8 @@ class Definitions {
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
   @tu lazy val assumedSafePackages: Set[Symbol] =
-    Set(ScalaPackageClass, ScalaCollectionImmutablePackageClass, ScalaRuntimePackageClass,
-        ScalaMathPackageClass, ScalaUtilPackageClass)
+    Set(OpsPackageClass, ScalaPackageClass, ScalaCollectionImmutablePackageClass, ScalaRuntimePackageClass,
+        ScalaMathPackageClass, ScalaUtilPackageClass, JavaMathPackageClass, JavaTimePackageClass)
 
   @tu lazy val capsErasedValueMethods =
     Set(Caps_erasedValue, Caps_unsafeErasedValue)
@@ -2086,8 +2088,11 @@ class Definitions {
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypes.map(_.symbol))
   val ScalaValueClassesNoUnit: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypesNoUnit.map(_.symbol))
 
+  val ScalaNumericBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
+    Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass)
+  )
   val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
-    Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)
+    ScalaNumericBoxedClasses() `union` Set(BoxedUnitClass, BoxedBooleanClass)
   )
 
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()

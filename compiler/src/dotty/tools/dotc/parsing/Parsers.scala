@@ -2333,8 +2333,10 @@ object Parsers {
           in.nextToken()
           ident()
         else EmptyTermName
-      val newSpan = t.span.withPoint(t.span.end).withEnd(in.lastOffset)
-      ContextBoundTypeTree(t, pname, ownName).withSpan(newSpan)
+      val res = ContextBoundTypeTree(t, pname, ownName)
+      if t.span.exists then
+        res.withSpan(Span(t.span.start, end = in.lastOffset, point = t.span.end))
+      else res
 
     /** ContextBounds     ::= ContextBound [`:` ContextBounds]
      *                      | `{` ContextBound {`,` ContextBound} `}`
