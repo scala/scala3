@@ -1940,7 +1940,7 @@ trait Applications extends Compatibility {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
-        var ownType =
+        val ownType =
           if selType <:< unapplyArgType then
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             fullyDefinedType(unapplyArgType, "pattern selector", tree.srcPos)
@@ -1959,7 +1959,7 @@ trait Applications extends Compatibility {
             unapplyArgType
 
         val dummyArg = dummyTreeOfType(ownType)
-        var (newUnapplyFn, unapplyApp) =
+        val (newUnapplyFn, unapplyApp) =
           val unapplyAppCall =
             typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
           inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
