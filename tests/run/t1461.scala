@@ -4,8 +4,7 @@ object Test {
     jl.getGenericParameterTypes // works fine
 
     val l = classOf[Foo].getMethod("l", classOf[Baz[_]])
-    // By debugger inspection l.signature is (Ltest/Baz<J>;)V
-    l.getGenericParameterTypes // throws GenericSignatureFormatError
+    l.getGenericParameterTypes // works fine
   }
 }
 
