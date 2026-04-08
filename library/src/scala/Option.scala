@@ -220,7 +220,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  val textField = new JComponent(initialText.orNull,20)
    *  ```
    */
-  @inline final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
+  @inline final def orNull[A1 >: A | Null](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
 
   /** Returns a $some containing the result of applying $f to this $option's
    *  value if this $option is nonempty.
