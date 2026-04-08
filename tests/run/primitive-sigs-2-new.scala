@@ -1,3 +1,5 @@
+// scalajs: --skip
+// (JVM-only, generic signatures)
 
 import scala.language.{ postfixOps }
 import scala.reflect.{ClassTag, classTag}

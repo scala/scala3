@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (JVM-only, generic signatures)
+
 import scala.reflect.{ClassTag, classTag}
 import java.lang.Integer
 
