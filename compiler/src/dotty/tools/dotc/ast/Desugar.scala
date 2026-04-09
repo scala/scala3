@@ -1122,7 +1122,7 @@ object desugar {
         }
       }
       if mods.isAllOf(Given | Inline | Transparent) then
-        report.error("inline given instances cannot be trasparent", cdef)
+        report.error("inline given instances cannot be transparent", cdef)
       var classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
       val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
       if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
