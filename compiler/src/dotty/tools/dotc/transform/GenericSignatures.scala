@@ -195,7 +195,8 @@ object GenericSignatures {
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
       assert(sym.isClass)
-      val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
+      // Time travel necessary so we get the full name after inner classes have been lifted to package scope
+      val name = atPhase(flattenPhase.next) { sanitizeName(sym.fullName).replace('.', '/') }
       builder.append('L').append(name)
     }
 

@@ -29,7 +29,9 @@ import SymbolUtils.given
 import dotty.tools.backend.ScalaPrimitives
 import opt.CallGraph
 
-class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypes)(using Context) {
+class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
+              val callGraph: CallGraph, val ts: CoreBTypes,
+              val genBCode: GenBCode)(using Context) {
   private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
     val ts: CoreBTypes = CodeGen.this.ts
 
@@ -43,7 +45,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
-  private def genBCode(using Context) = Phases.genBCodePhase.asInstanceOf[GenBCode]
   private def postProcessor(using Context) = genBCode.postProcessor
   private def generatedClassHandler(using Context) = genBCode.generatedClassHandler
 

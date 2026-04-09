@@ -41,7 +41,7 @@ private[jvm] sealed trait GeneratedClassHandler {
 }
 
 private[jvm] object GeneratedClassHandler {
-  def apply(postProcessor: PostProcessor)(using ictx: Context): GeneratedClassHandler = {
+  def apply(postProcessor: PostProcessor, genBCode: GenBCode)(using ictx: Context): GeneratedClassHandler = {
     val handler = ictx.settings.YbackendParallelism.value match {
       case 1 => new SyncWritingClassHandler(postProcessor, ictx)
 
@@ -60,7 +60,7 @@ private[jvm] object GeneratedClassHandler {
         // The queue size is large enough to ensure that running a task on the main thread does
         // not take longer than to exhaust the queue for the backend workers.
         val queueSize = ictx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(maxThreads * 2)
-        val threadPoolFactory = ThreadPoolFactory(Phases.genBCodePhase)
+        val threadPoolFactory = ThreadPoolFactory(genBCode)
         val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, new CallerRunsPolicy, "non-ast")
         new AsyncWritingClassHandler(postProcessor, ictx, javaExecutor)
     }

@@ -96,14 +96,14 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, postProcessor.callGraph, bTypes)
+      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, postProcessor.callGraph, bTypes, this)
     _codeGen.nn
   }
 
   private var _generatedClassHandler: GeneratedClassHandler | Null = null
   def generatedClassHandler(using Context): GeneratedClassHandler = {
     if _generatedClassHandler eq null then
-      _generatedClassHandler = GeneratedClassHandler(postProcessor)
+      _generatedClassHandler = GeneratedClassHandler(postProcessor, this)
     _generatedClassHandler.nn
   }
 
