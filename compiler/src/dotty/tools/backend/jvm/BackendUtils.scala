@@ -3,6 +3,7 @@ package backend.jvm
 
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
+import dotty.tools.dotc.config.ScalaSettingsProperties
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Flags.{JavaStatic, Method}
@@ -10,6 +11,7 @@ import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{Symbol, TermSymbol}
 import dotty.tools.dotc.core.Types.MethodType
+import dotty.tools.dotc.report
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.switch
@@ -36,8 +38,18 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   private val indyLambdaImplMethods: Lazy[ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]]] =
     ppa.perRunLazy(new ConcurrentHashMap)
 
-  // take advantage of the fact classfile versions are consecutive
-  lazy val classfileVersion: Int = ppa.compilerSettings.target.toInt + (Opcodes.V17 - 17)
+  lazy val classfileVersion: Int =
+    val releaseValue = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
+    val targetValue = Option(ctx.settings.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
+    val target = (releaseValue, targetValue) match
+      case (Some(release), None) => release
+      case (None, Some(target)) => target
+      case (Some(release), Some(_)) =>
+        report.warning(s"The value of ${ctx.settings.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
+        release
+      case (None, None) => ScalaSettingsProperties.supportedTargetVersions.min // least supported version by default
+    // take advantage of the fact classfile versions are consecutive
+    target.toInt + (Opcodes.V17 - 17)
 
   def collectSerializableLambdas(classNode: ClassNode): Array[Handle] = {
     val indyLambdaBodyMethods = new mutable.ArrayBuffer[Handle]
@@ -355,7 +367,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
       (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
 
   lazy val modulesAllowSkipInitialization: Set[InternalName] =
-    if (!ppa.compilerSettings.optAllowSkipCoreModuleInit) Set.empty
+    if (!ctx.settings.optAllowSkipCoreModuleInit) Set.empty
     else Set(
       "scala/Predef$",
       "scala/runtime/ScalaRunTime$",

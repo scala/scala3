@@ -150,12 +150,14 @@ import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
+class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner,
+               ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile,
+               settings: OptimizerSettings) {
 
   import LocalOptImpls.*
 
   private val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
-  private val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, ppa.compilerSettings.optAllowSkipClassLoading)
+  private val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, settings.optAllowSkipClassLoading)
 
   /**
    * Remove unreachable instructions from all (non-abstract) methods and apply various other
@@ -205,7 +207,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
     // for local variables in dead blocks. Maybe that's a bug in the ASM framework.
 
     var currentTrace: String | Null = null
-    val doTrace = ppa.compilerSettings.optTrace match {
+    val doTrace = settings.optTrace match {
       case Some(v: String) =>
         val prefix = if (v == "_") "" else v
         s"$ownerClassName.${method.name}".startsWith(prefix)
@@ -242,46 +244,46 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
       traceIfChanged("beforeMethodOpt")
 
       // NULLNESS OPTIMIZATIONS
-      val runNullness = ppa.compilerSettings.optNullnessTracking && requestNullness
+      val runNullness = settings.optNullnessTracking && requestNullness
       val nullnessOptChanged = runNullness && nullnessOptimizations(method, ownerClassName)
       traceIfChanged("nullness")
 
       // UNREACHABLE CODE
       // Both AliasingAnalyzer (used in copyProp) and ProdConsAnalyzer (used in eliminateStaleStores,
       // boxUnboxElimination) require not having unreachable instructions (null frames).
-      val runDCE = (ppa.compilerSettings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
-        ppa.compilerSettings.optBoxUnbox ||
-        ppa.compilerSettings.optCopyPropagation
+      val runDCE = (settings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
+        settings.optBoxUnbox ||
+        settings.optCopyPropagation
       val codeRemoved = if (runDCE) LocalOptImpls.removeUnreachableCodeImpl(method, ownerClassName, callGraph, backendUtils) else false
       traceIfChanged("dce")
 
       // BOX-UNBOX
-      val runBoxUnbox = ppa.compilerSettings.optBoxUnbox && (requestBoxUnbox || nullnessOptChanged)
+      val runBoxUnbox = settings.optBoxUnbox && (requestBoxUnbox || nullnessOptChanged)
       val boxUnboxChanged = runBoxUnbox && boxUnbox.boxUnboxElimination(method, ownerClassName)
       traceIfChanged("boxUnbox")
 
       // COPY PROPAGATION
-      val runCopyProp = ppa.compilerSettings.optCopyPropagation && (requestCopyProp || boxUnboxChanged)
+      val runCopyProp = settings.optCopyPropagation && (requestCopyProp || boxUnboxChanged)
       val copyPropChanged = runCopyProp && copyProp.copyPropagation(method, ownerClassName)
       traceIfChanged("copyProp")
 
       // STALE STORES
-      val runStaleStores = ppa.compilerSettings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
+      val runStaleStores = settings.optCopyPropagation && (requestStaleStores || nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged)
       val (storesRemoved, intrinsicRewrittenByStaleStores, callInlinedByStaleStores) = if (!runStaleStores) (false, false, false) else copyProp.eliminateStaleStoresAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("staleStores")
 
       // REDUNDANT CASTS
-      val runRedundantCasts = ppa.compilerSettings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores || callInlinedByStaleStores)
+      val runRedundantCasts = settings.optRedundantCasts && (requestRedundantCasts || boxUnboxChanged || intrinsicRewrittenByStaleStores || callInlinedByStaleStores)
       val (typeInsnChanged, intrinsicRewrittenByCasts) = if (!runRedundantCasts) (false, false) else eliminateRedundantCastsAndRewriteSomeIntrinsics(method, ownerClassName)
       traceIfChanged("redundantCasts")
 
       // PUSH-POP
-      val runPushPop = ppa.compilerSettings.optCopyPropagation && (requestPushPop || storesRemoved || typeInsnChanged)
+      val runPushPop = settings.optCopyPropagation && (requestPushPop || storesRemoved || typeInsnChanged)
       val (pushPopRemoved, pushPopCastAdded, pushPopNullCheckAdded) = if (!runPushPop) (false, false, false) else copyProp.eliminatePushPop(method, ownerClassName)
       traceIfChanged("pushPop")
 
       // STORE-LOAD PAIRS
-      val runStoreLoad = ppa.compilerSettings.optCopyPropagation && (requestStoreLoad || boxUnboxChanged || copyPropChanged || pushPopRemoved)
+      val runStoreLoad = settings.optCopyPropagation && (requestStoreLoad || boxUnboxChanged || copyPropChanged || pushPopRemoved)
       val storeLoadRemoved = runStoreLoad && copyProp.eliminateStoreLoad(method)
       traceIfChanged("storeLoadPairs")
 
@@ -291,7 +293,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
 
       // SIMPLIFY JUMPS
       // almost all of the above optimizations enable simplifying more jumps, so we just run it in every iteration
-      val runSimplifyJumps = ppa.compilerSettings.optSimplifyJumps
+      val runSimplifyJumps = settings.optSimplifyJumps
       val jumpsChanged = runSimplifyJumps && simplifyJumps(method)
       traceIfChanged("simplifyJumps")
 
@@ -341,11 +343,11 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
       requestPushPop = true,
       requestStoreLoad = true)
 
-    if (ppa.compilerSettings.optUnreachableCode) BackendUtils.setDceDone(method)
+    if (settings.optUnreachableCode) BackendUtils.setDceDone(method)
 
     // (*) Removing stale local variable descriptors is required for correctness, see comment in `methodOptimizations`
     val localsRemoved =
-      if (ppa.compilerSettings.optCompactLocals) compactLocalVariables(method) // also removes unused
+      if (settings.optCompactLocals) compactLocalVariables(method) // also removes unused
       else if (requireEliminateUnusedLocals) removeUnusedLocalVariableNodes(method)() // (*)
       else false
     traceIfChanged("localVariables")
@@ -381,7 +383,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     Limits.sizeOKForNullness(method) && {
-      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, backendUtils.isNonNullMethodInvocation, ppa.compilerSettings.optAssumeModulesNonNull)
+      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, backendUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
       // When running nullness optimizations the method may still have unreachable code. Analyzer
       // frames of unreachable instructions are `null`.
@@ -572,7 +574,7 @@ class LocalOpt(backendUtils: BackendUtils, ppa: PostProcessorFrontendAccess, cal
     }
 
     lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
-    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, backendUtils.isNonNullMethodInvocation, ppa.compilerSettings.optAssumeModulesNonNull)
+    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, backendUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
     // cannot remove instructions while iterating, it gets the analysis out of synch (indexed by instructions)
     val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]

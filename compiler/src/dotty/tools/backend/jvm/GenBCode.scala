@@ -74,7 +74,7 @@ class GenBCode extends Phase { self =>
   def bTypes(using Context): CoreBTypes = {
     if _bTypes eq null then
       // lazy load to break the circular dependency
-      def inlineInfoLoader() = Option.when[InlineInfoLoader](frontendAccess.compilerSettings.optInlinerEnabled)(bTypesFromClassfile)
+      def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
       _bTypes = CoreBTypesFromSymbols(frontendAccess, primitives, inlineInfoLoader)(using ctx)
     _bTypes.nn
   }
@@ -127,12 +127,12 @@ class GenBCode extends Phase { self =>
     finally
       // frontendAccess and postProcessor are created lazily, clean them up only if they were initialized
       if _frontendAccess ne null then
-        frontendAccess.compilerSettings.outputDirectory match {
+        ctx.settings.outputDir.value match {
           case jar: JarArchive =>
             if (ctx.run.nn.suspendedUnits.nonEmpty)
               // If we close the jar the next run will not be able to write on the jar.
               // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
-              report.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
+              report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
 
             jar.close()
           case _ => ()

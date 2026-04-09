@@ -42,8 +42,7 @@ private[jvm] sealed trait GeneratedClassHandler {
 
 private[jvm] object GeneratedClassHandler {
   def apply(postProcessor: PostProcessor)(using ictx: Context): GeneratedClassHandler = {
-    val compilerSettings = postProcessor.frontendAccess.compilerSettings
-    val handler = compilerSettings.backendParallelism match {
+    val handler = ictx.settings.YbackendParallelism.value match {
       case 1 => new SyncWritingClassHandler(postProcessor, ictx)
 
       case maxThreads =>
@@ -60,13 +59,13 @@ private[jvm] object GeneratedClassHandler {
         // a new task to be executed on the main thread, which provides back-pressure.
         // The queue size is large enough to ensure that running a task on the main thread does
         // not take longer than to exhaust the queue for the backend workers.
-        val queueSize = compilerSettings.backendMaxWorkerQueue.getOrElse(maxThreads * 2)
+        val queueSize = ictx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(maxThreads * 2)
         val threadPoolFactory = ThreadPoolFactory(Phases.genBCodePhase)
         val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, new CallerRunsPolicy, "non-ast")
         new AsyncWritingClassHandler(postProcessor, ictx, javaExecutor)
     }
 
-    if compilerSettings.optInlinerEnabled || compilerSettings.optClosureInvocations then
+    if ictx.settings.optInlineEnabled || ictx.settings.optClosureInvocations then
       new GlobalOptimisingGeneratedClassHandler(postProcessor, ictx, handler)
     else
       handler

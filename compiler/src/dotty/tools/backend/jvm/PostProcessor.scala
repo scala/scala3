@@ -23,18 +23,20 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
                     private val backendUtils: BackendUtils, private val ts: CoreBTypes)(using Context) {
 
   val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, ts)
-  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile)
-  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
-  private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, inliner, ts, bTypesFromClassfile)
+  private val optSettings         = new OptimizerSettings()
+  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, optSettings)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, ts, bTypesFromClassfile, optSettings)
   val classfileWriters            = new ClassfileWriters(frontendAccess)
-  val classfileWriter             = classfileWriters.ClassfileWriter(frontendAccess.compilerSettings.mainClass)
+  val classfileWriter             = classfileWriters.ClassfileWriter(ctx.settings.XmainClass.valueSetByUser)
 
 
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !frontendAccess.compilerSettings.outputOnlyTasty then {
+  @annotation.nowarn("cat=deprecation")
+  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =
@@ -50,7 +52,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
           report.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
         case ex: Exception =>
-          if frontendAccess.compilerSettings.debug then ex.printStackTrace()
+          if ctx.debug then ex.printStackTrace()
           report.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
@@ -78,9 +80,9 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
-    if frontendAccess.compilerSettings.optInlinerEnabled then
+    if ctx.settings.optInlineEnabled then
       inliner.runInlinerAndClosureOptimizer()
-    else if frontendAccess.compilerSettings.optClosureInvocations then
+    else if ctx.settings.optClosureInvocations then
       closureOptimizer.rewriteClosureApplyInvocations(None, scala.collection.mutable.Map.empty)
   }
 

@@ -24,7 +24,6 @@ import dotty.tools.io.JarArchive
  * Until then, any changes to this file should be copied to `dotty.tools.io.FileWriters` as well.
  */
 class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: Context) {
-  import frontendAccess.compilerSettings
 
   sealed trait TastyWriter {
     def writeTasty(name: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): Unit
@@ -62,11 +61,11 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: C
       // In Scala 2 depenening on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
       val basicClassWriter = new SingleClassWriter(
-        FileWriter(compilerSettings.outputDirectory, jarManifestMainClass)
+        FileWriter(ctx.settings.outputDir.value, jarManifestMainClass)
       )
 
       val withAdditionalFormats =
-        compilerSettings.dumpClassesDirectory
+        ctx.settings.Xdumpclasses.valueSetByUser
           .map(getDirectory)
           .filter{path => Files.exists(path).tap{ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")}}
           .map(out => FileWriter(out.toPlainFile, None))
@@ -115,7 +114,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: C
   object FileWriter {
     def apply(file: AbstractFile, jarManifestMainClass: Option[String]): FileWriter =
       if (file.isInstanceOf[JarArchive]) {
-        val jarCompressionLevel = compilerSettings.jarCompressionLevel
+        val jarCompressionLevel = ctx.settings.XjarCompressionLevel.value
         // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
         // created using `AbstractFile.bufferedOutputStream`instead of JarWriter
         val jarFile = file.underlyingSource.getOrElse{
@@ -246,7 +245,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: C
         case e: FileConflictException =>
           report.error(em"error writing ${path.toString}: ${e.getMessage}")
         case e: java.nio.file.FileSystemException =>
-          if (compilerSettings.debug) e.printStackTrace()
+          if (ctx.debug) e.printStackTrace()
           report.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
       }
       AbstractFile.getFile(path).nn // we just wrote the file, so it had better exist

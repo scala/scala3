@@ -30,7 +30,8 @@ import BCodeUtils.*
 
 class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
-                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
+                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile,
+                       settings: OptimizerSettings) {
 
   import ClosureOptimizer.*
 
@@ -142,7 +143,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
       if (closureInit.ownerMethod != previousMethod) {
         previousMethod = closureInit.ownerMethod
         changedMethods += previousMethod.nn
-        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState(ppa.compilerSettings.optLogInline))
+        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState(settings.optLogInline))
         state.inlineLog.logClosureRewrite(closureInit, invocations, invocations.headOption.flatMap(p => state.outerCallsite(p._1)))
       }
     }
