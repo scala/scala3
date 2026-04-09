@@ -1,0 +1,48 @@
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:4:16 ------------------------------------------------------
+4 |  val ref = new scala.runtime.LongRef(0L)  // error
+  |                ^^^^^^^^^^^^^^^^^^^^^
+  |              Cannot refer to class LongRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:6:8 -------------------------------------------------------
+6 |    ref.elem = 42  // error
+  |    ^^^^^^^^
+  |    Cannot refer to class LongRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:8:16 ------------------------------------------------------
+8 |  val ref = new scala.runtime.ObjectRef("")  // error
+  |                ^^^^^^^^^^^^^^^^^^^^^^^
+  |            Cannot refer to class ObjectRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:10:8 ------------------------------------------------------
+10 |    ref.elem = "sk-123456"  // error
+   |    ^^^^^^^^
+   |    Cannot refer to class ObjectRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:12:16 -----------------------------------------------------
+12 |  val ref = new scala.runtime.VolatileIntRef(0)  // error
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     Cannot refer to class VolatileIntRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:14:8 ------------------------------------------------------
+14 |    ref.elem = 42  // error
+   |    ^^^^^^^^
+   |    Cannot refer to class VolatileIntRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:16:16 -----------------------------------------------------
+16 |  val ref = new scala.runtime.VolatileObjectRef[String]("")  // error
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Cannot refer to class VolatileObjectRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:18:8 ------------------------------------------------------
+18 |    ref.elem = "secret"  // error
+   |    ^^^^^^^^
+   |  Cannot refer to class VolatileObjectRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:20:16 -----------------------------------------------------
+20 |  val ref = new scala.runtime.LazyInt  // error
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |            Cannot refer to class LazyInt in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:22:8 ------------------------------------------------------
+22 |    ref.initialize(42)  // error
+   |    ^^^^^^^^^^^^^^
+   |    Cannot refer to class LazyInt in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:24:16 -----------------------------------------------------
+24 |  val ref = new scala.runtime.LazyRef[String]  // error
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            Cannot refer to class LazyRef in package scala.runtime from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-refs.scala:26:8 ------------------------------------------------------
+26 |    ref.initialize("hello")  // error
+   |    ^^^^^^^^^^^^^^
+   |    Cannot refer to class LazyRef in package scala.runtime from safe code since it is tagged @rejectSafe
