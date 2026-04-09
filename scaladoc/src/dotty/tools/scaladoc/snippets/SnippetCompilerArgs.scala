@@ -35,7 +35,7 @@ case class SnippetCompilerArgs(scArgs: PathBased[SnippetCompilerArg], defaultFla
 
 
 object SnippetCompilerArgs:
-  /** Enables inline diagnostic expectation checking (`// error`, `// warn`, ...). */
+  /** Enables inline diagnostic expectation checking (`// error`, `// warn`). */
   val TestModifier = "test"
 
   val usage =
@@ -55,7 +55,7 @@ object SnippetCompilerArgs:
     |fail - Enables snippet checking, asserts that snippet doesn't compile.
     |
     |Available modifiers:
-    |$TestModifier - Enables inline diagnostic expectation checking (`// error`, `// warn`, ...).
+    |$TestModifier - Enables inline diagnostic expectation checking (`// error`, `// warn`).
     """.stripMargin
 
   def load(args: List[String], defaultFlag: SCFlags = SCFlags.NoCompile)(using CompilerContext): SnippetCompilerArgs = {

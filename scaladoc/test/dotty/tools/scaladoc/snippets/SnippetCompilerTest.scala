@@ -120,7 +120,7 @@ class SnippetCompilerTest {
     val result = runTest(snippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
     assertFailedCompilation(result)
     assertEquals(2, result.messages.count(_.level == MessageLevel.Error))
-    assertTrue(result.messages.exists(_.message.contains("No expected errors marked in snippet -- use // error or // nopos-error")))
+    assertTrue(result.messages.exists(_.message.contains("No expected errors marked in snippet -- use // error")))
     assertTrue(result.messages.exists(_.message.contains("Unexpected error on line 1")))
   }
 
@@ -133,7 +133,7 @@ class SnippetCompilerTest {
     val result = runTest(snippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
     assertFailedCompilation(result)
     assertEquals(2, result.messages.count(_.level == MessageLevel.Error))
-    assertTrue(result.messages.exists(_.message.contains("No expected warnings marked in snippet -- use // warn or // nopos-warn")))
+    assertTrue(result.messages.exists(_.message.contains("No expected warnings marked in snippet -- use // warn")))
     assertTrue(result.messages.exists(_.message.contains("Unexpected warning on line 1")))
   }
 
@@ -222,8 +222,8 @@ class SnippetCompilerTest {
     val errors = parsed.parserErrors.map(_.message)
     assertEquals(2, parsed.parserErrors.size)
     assertEquals(0, parsed.expectations.size)
-    assertTrue(errors.exists(_.contains("Unsupported snippet diagnostic annotation `// anypos-error`; use `// error` or `// nopos-error`")))
-    assertTrue(errors.exists(_.contains("Unsupported snippet diagnostic annotation `// anypos-warn`; use `// warn` or `// nopos-warn`")))
+    assertTrue(errors.exists(_.contains("Unsupported snippet diagnostic annotation `// anypos-error`; use `// error`")))
+    assertTrue(errors.exists(_.contains("Unsupported snippet diagnostic annotation `// anypos-warn`; use `// warn`")))
   }
 
   @Test
@@ -235,6 +235,21 @@ class SnippetCompilerTest {
     val result = runTest(warningSnippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
     assertSuccessfulCompilation(result)
     assertMessageLevelPresent(result, MessageLevel.Warning)
+  }
+
+  @Test
+  def inlineExpectationWarnRowMismatch: Unit = {
+    // Warning occurs on line 1, but annotation is on line 2 — should fail.
+    val snippet =
+      """|val a: Int = try { 5 }
+         |val b = 1 + 1 // warn
+         |""".stripMargin
+
+    val result = runTest(snippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
+    assertFailedCompilation(result)
+    assertTrue(result.messages.exists(_.message.contains("Warnings found on incorrect row numbers when compiling snippet")))
+    assertTrue(result.messages.exists(_.message.contains("Unfulfilled expectation: warning on line 2")))
+    assertTrue(result.messages.exists(_.message.contains("Unexpected warning on line 1")))
   }
 
   @Test
