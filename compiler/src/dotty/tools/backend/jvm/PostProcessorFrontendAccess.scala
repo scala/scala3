@@ -18,8 +18,6 @@ import scala.compiletime.uninitialized
 sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
   import PostProcessorFrontendAccess.*
 
-  def findClassFileAndModuleFile(name: String): Option[(io.AbstractFile, Option[io.AbstractFile])]
-  
   def optimizerWarning(msg: Context ?=> Message, site: String, pos: SrcPos): Unit =
     report.optimizerWarning(msg(using ctx), site, pos)(using ctx)
 
@@ -52,22 +50,5 @@ object PostProcessorFrontendAccess {
     }
   }
 
-  class Impl(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
-
-    /* Create a class path for the backend, based on the given class path.
-     * Used to make classes available to the inliner's bytecode repository.
-     * In particular, if ct.sym is used for compilation, replace it with jrt.
-     */
-    private lazy val optimizerClassPath = ctx.platform.classPath(using ctx) match {
-      case cp @ AggregateClassPath(entries) if entries.head.isInstanceOf[CtSymClassPath] =>
-        JrtClassPath(release = None) match {
-          case Some(jrt) => AggregateClassPath(entries.drop(1).prepended(jrt))
-          case _ => cp
-        }
-      case cp => cp
-    }
-
-    override def findClassFileAndModuleFile(name: String): Option[(io.AbstractFile, Option[io.AbstractFile])] =
-      optimizerClassPath.findClassFileAndModuleFile(name)
-  }
+  class Impl(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx)
 }

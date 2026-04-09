@@ -59,7 +59,7 @@ class GenBCode extends Phase { self =>
   private var _byteCodeRepository: BCodeRepository | Null = null
   def byteCodeRepository(using Context): BCodeRepository = {
     if _byteCodeRepository eq null then
-      _byteCodeRepository = BCodeRepository(frontendAccess, backendUtils, bTypes)
+      _byteCodeRepository = BCodeRepository(frontendAccess, ctx.platform.classPath, backendUtils, bTypes)
     _byteCodeRepository.nn
   }
 

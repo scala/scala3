@@ -18,8 +18,11 @@ import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.{BackendUtils, ClassNode1, CoreBTypes, PostProcessorFrontendAccess}
+import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.NoSourcePosition
+import dotty.tools.io
+import dotty.tools.io.ClassPath
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
@@ -31,7 +34,7 @@ import scala.tools.asm.{Attribute, ClassReader, Type}
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) {
+class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, classPath: ClassPath, backendUtils: BackendUtils, ts: CoreBTypes) {
 
   type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
@@ -282,9 +285,22 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
     }
   }
 
+  /* Create a class path for the backend, based on the given class path.
+   * Used to make classes available to the inliner's bytecode repository.
+   * In particular, if ct.sym is used for compilation, replace it with jrt.
+   */
+  private lazy val optimizerClassPath = classPath match {
+    case cp@AggregateClassPath(entries) if entries.head.isInstanceOf[CtSymClassPath] =>
+      JrtClassPath(release = None) match {
+        case Some(jrt) => AggregateClassPath(entries.drop(1).prepended(jrt))
+        case _ => cp
+      }
+    case cp => cp
+  }
+
   private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     val fullName = internalName.replace('/', '.')
-    frontendAccess.findClassFileAndModuleFile(fullName).flatMap { (classFile, moduleFile) =>
+    optimizerClassPath.findClassFileAndModuleFile(fullName).flatMap { (classFile, moduleFile) =>
       val classNode = new ClassNode1
       val classReader = new ClassReader(classFile.toByteArray)
 
