@@ -510,7 +510,27 @@ object GenericSignatures {
   }
 
   private object RefOrAppliedType {
-    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match {
+    // In the special case where we see a type parameter applied to type parameters,
+    // such as `K[X, Y]` given `[X, Y, K <: Iterable[(X, Y)]]`, we must find its bound
+    // and instantiate it, otherwise in our example we end up with `Iterable[X, Y]` which is nonsensical.
+    private def resolveAppliedType(a: AppliedType)(using Context): Option[Type] =
+      a.tycon match
+        case TypeParamRef(binder, paramNum) =>
+          binder.paramInfos(paramNum).hi match
+            case hkt @ HKTypeLambda(_, _) =>
+              val instantiated = hkt.instantiate(a.args).dealias
+              // However, since Java doesn't have a way to refer to HKTs in generic signatures,
+              // we must trade precision for termination by only resolving one level,
+              // otherwise we end up in infinite loops, e.g., in `X[A] <: Thing[X[A]]` we keep resolving `X -> Thing[X[A]]`.
+              val hasNested = instantiated.existsPart:
+                case AppliedType(TypeParamRef(_, _), nestedArgs) => nestedArgs.exists(a.args.contains)
+                case _ => false
+              if hasNested then None
+              else Some(instantiated)
+            case _ => None
+        case _ => None
+
+    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
       case TypeParamRef(_, _) =>
         Some((tp.typeSymbol, tp, Nil))
       case TermParamRef(_, _) =>
@@ -518,11 +538,12 @@ object GenericSignatures {
       case TypeRef(pre, _) if !tp.typeSymbol.isAliasType =>
         val sym = tp.typeSymbol
         Some((sym, pre, Nil))
-      case AppliedType(pre, args) =>
-        Some((pre.typeSymbol, pre, args))
+      case a @ AppliedType(pre, args) =>
+        resolveAppliedType(a) match
+          case Some(resolved) => unapply(resolved)
+          case _ => Some((pre.typeSymbol, pre, args))
       case _ =>
         None
-    }
   }
 
   private def needsJavaSig(tp: Type, throwsArgs: List[Type])(using Context): Boolean = !ctx.settings.XnoGenericSig.value && {
