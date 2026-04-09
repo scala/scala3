@@ -15,7 +15,7 @@ import scala.compiletime.uninitialized
 /**
  * Abstracts the frontend data structures, specially the Context, that need to be accessed in a single-threaded manner.
  */
-sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
+final class PostProcessorFrontendAccess(val ctx: FreshContext) {
   import PostProcessorFrontendAccess.*
 
   def optimizerWarning(msg: Context ?=> Message, site: String, pos: SrcPos): Unit =
@@ -49,6 +49,4 @@ object PostProcessorFrontendAccess {
         v
     }
   }
-
-  class Impl(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx)
 }

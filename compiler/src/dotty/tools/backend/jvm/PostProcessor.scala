@@ -28,7 +28,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
   private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, optSettings)
   private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
   private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, ts, bTypesFromClassfile, optSettings)
-  val classfileWriters            = new ClassfileWriters(frontendAccess)
+  val classfileWriters            = new ClassfileWriters()
   val classfileWriter             = classfileWriters.ClassfileWriter(ctx.settings.XmainClass.valueSetByUser)
 
 

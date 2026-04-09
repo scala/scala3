@@ -18,12 +18,12 @@ import BTypes.InternalName
 import dotty.tools.dotc.report
 import dotty.tools.io.JarArchive
 
-/** !!! This file is now copied in `dotty.tools.io.FileWriters` in a more general way that does not rely upon
- * `PostProcessorFrontendAccess`, this should probably be changed to wrap that class instead.
+/** !!! This file is now copied in `dotty.tools.io.FileWriters` in a more general way,
+ * this should probably be changed to wrap that class instead.
  *
  * Until then, any changes to this file should be copied to `dotty.tools.io.FileWriters` as well.
  */
-class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: Context) {
+class ClassfileWriters(using ctx: Context) {
 
   sealed trait TastyWriter {
     def writeTasty(name: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): Unit
@@ -58,6 +58,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: C
     private def getDirectory(dir: String): Path = Paths.get(dir)
 
     def apply(jarManifestMainClass: Option[String]): ClassfileWriter = {
+
       // In Scala 2 depenening on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
       val basicClassWriter = new SingleClassWriter(
