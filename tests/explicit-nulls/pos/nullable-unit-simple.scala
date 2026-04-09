@@ -1,0 +1,1 @@
+def foo: Unit|Null = 1+2

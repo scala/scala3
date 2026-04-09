@@ -4968,7 +4968,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         return readapt(tree.cast(captured))
 
       // drop type if prototype is Unit
-      if pt.isRef(defn.UnitClass) then
+      if pt.stripNull().isRef(defn.UnitClass) then
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
