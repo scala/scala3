@@ -598,8 +598,7 @@ object TreeChecker {
 
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
-        !x.name.is(DocArtifactName) &&
-        !(ctx.phase.id >= genBCodePhase.id && x.name == str.MODULE_INSTANCE_FIELD.toTermName)
+        !x.name.is(DocArtifactName)
 
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)

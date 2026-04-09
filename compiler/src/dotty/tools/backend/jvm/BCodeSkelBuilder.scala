@@ -232,7 +232,11 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
             claszSymbol.typeRef,
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
-          ).entered
+          )
+        // While we could use `.entered` on `moduleField` to have it handled like any other field later,
+        // this would require some compensating in the tree checker as we're adding a "magical" field
+        // that isn't defined in the AST. So instead, we emit it separately:
+        addClassField(moduleField)
 
         val thisMap = new TreeMap {
           override def transform(tree: Tree)(using Context) = {
@@ -414,7 +418,25 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         .addFlagIf(!sym.is(Mutable), ACC_FINAL)
     }
 
-    def addClassFields(): Unit = {
+    def addClassField(f: Symbol): Unit = {
+      val javagensig = getGenericSignature(f, claszSymbol)
+      val flags = javaFieldFlags(f)
+
+      assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
+        s"interface $claszSymbol cannot have non-final static field $f")
+
+      val jfield = new asm.tree.FieldNode(
+        flags,
+        f.javaSimpleName,
+        symInfoTK(f).descriptor,
+        javagensig,
+        null // no initial value
+      )
+      cnode.fields.add(jfield)
+      emitAnnotations(jfield, f.annotations)
+    }
+
+    def addClassFields(): Unit =
       /*  Non-method term members are fields, except for module members. Module
        *  members can only happen on .NET (no flatten) for inner traits. There,
        *  a module symbol is generated (transformInfo in mixin) which is used
@@ -422,25 +444,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
        *  backend emits them as static).
        *  No code is needed for this module symbol.
        */
-      for (f <- claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Method))) {
-        val javagensig = getGenericSignature(f, claszSymbol)
-        val flags = javaFieldFlags(f)
-
-        assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
-          s"interface $claszSymbol cannot have non-final static field $f")
-
-        val jfield = new asm.tree.FieldNode(
-          flags,
-          f.javaSimpleName,
-          symInfoTK(f).descriptor,
-          javagensig,
-          null // no initial value
-        )
-        cnode.fields.add(jfield)
-        emitAnnotations(jfield, f.annotations)
-      }
-
-    } // end of method addClassFields()
+      claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Method)).foreach(addClassField)
 
     // current method
     var mnode: MethodNode1         = null
