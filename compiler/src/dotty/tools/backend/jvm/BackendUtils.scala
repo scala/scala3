@@ -169,38 +169,6 @@ class BackendUtils(val ts: WellKnownBTypes) {
   }
 
   /**
-   * The methods used as lambda bodies for IndyLambda instructions within `hostClass`. Note that
-   * the methods are not necessarily defined within the `hostClass` (when an IndyLambda is inlined
-   * into a different class).
-   */
-  def indyLambdaBodyMethods(hostClass: InternalName): mutable.SortedSet[Handle] = {
-    object handleOrdering extends Ordering[Handle] {
-      override def compare(x: Handle, y: Handle): Int = {
-        if (x eq y) return 0
-
-        val t = Ordering.Int.compare(x.getTag, y.getTag)
-        if (t != 0) return t
-
-        val i = Ordering.Boolean.compare(x.isInterface, y.isInterface)
-        if (x.isInterface != y.isInterface) return i
-
-        val o = x.getOwner.compareTo(y.getOwner)
-        if (o != 0) return o
-
-        val n = x.getName.compareTo(y.getName)
-        if (n != 0) return n
-
-        x.getDesc.compareTo(y.getDesc)
-      }
-    }
-
-    given Ordering[Handle] = handleOrdering
-    val res = mutable.TreeSet.empty[Handle]
-    onIndyLambdaImplMethodIfPresent(hostClass)(methods => res.addAll(methods.valuesIterator.flatMap(_.valuesIterator)))
-    res
-  }
-
-  /**
    * The methods used as lambda bodies for IndyLambda instructions within `method` of `hostClass`.
    */
   def indyLambdaBodyMethods(hostClass: InternalName, method: MethodNode): Map[InvokeDynamicInsnNode, Handle] = {
