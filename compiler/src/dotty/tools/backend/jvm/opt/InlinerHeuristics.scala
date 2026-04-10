@@ -32,11 +32,11 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
                         callGraph: CallGraph, ts: CoreBTypes,
                         settings: OptimizerSettings) {
 
-  private lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = ppa.perRunLazy(new InlineSourceMatcher(settings.optInlineFrom))
+  private lazy val inlineSourceMatcher: InlineSourceMatcher = new InlineSourceMatcher(settings.optInlineFrom)
 
-  def canInlineFromSource(sourceFilePath: Option[String], calleeDeclarationClass: InternalName): Boolean = {
-    inlineSourceMatcher.get.allowFromSources && sourceFilePath.isDefined ||
-    inlineSourceMatcher.get.allow(calleeDeclarationClass)
+  private def canInlineFromSource(sourceFilePath: Option[String], calleeDeclarationClass: InternalName): Boolean = {
+    inlineSourceMatcher.allowFromSources && sourceFilePath.isDefined ||
+    inlineSourceMatcher.allow(calleeDeclarationClass)
   }
 
   /**
