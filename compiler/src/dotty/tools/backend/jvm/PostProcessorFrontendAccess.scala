@@ -1,15 +1,11 @@
 package dotty.tools
 package backend.jvm
 
-import scala.collection.mutable.HashSet
-import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.classpath.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.SrcPos
 
-import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 /**
@@ -23,7 +19,7 @@ final class PostProcessorFrontendAccess(val ctx: FreshContext) {
 
   private val frontendLock: AnyRef = new Object()
 
-  inline final def frontendSynch[T](inline x: T): T = frontendLock.synchronized(x)
+  def frontendSynch[T](x: => T): T = frontendLock.synchronized(x)
 
   def perRunLazy[T](init: => T): Lazy[T] = new SynchronizedLazy(this, init)
 }

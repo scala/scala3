@@ -45,9 +45,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
-  private def postProcessor(using Context) = genBCode.postProcessor
-  private def generatedClassHandler(using Context) = genBCode.generatedClassHandler
-
   /**
    * Generate ASM ClassNodes for classes found in a compilation unit. The resulting classes are
    * passed to the `GenBCode.generatedClassHandler`.
@@ -60,8 +57,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
       try
         val sym = cd.symbol
         val sourceFile = unit.source.file
-
-
         val mainClassNode = genClass(cd, unit)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
@@ -88,7 +83,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
       catch
         case ex: TypeError =>
           report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", cd.sourcePos)
-
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
       for (binary <- unit.pickled.get(claszSymbol.asClass)) {
@@ -118,7 +112,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
       }
 
     genClassDefs(unit.tpdTree)
-    generatedClassHandler.process(
+    genBCode.generatedClassHandler.process(
       GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList)
     )
   }

@@ -92,8 +92,6 @@ private[jvm] object GeneratedClassHandler {
   }
 
   sealed abstract class WritingClassHandler(val javaExecutor: Executor) extends GeneratedClassHandler {
-    import postProcessor.frontendAccess
-
     def tryStealing: Option[Runnable]
 
     private val processingUnits = ListBuffer.empty[CompilationUnitInPostProcess]
@@ -104,9 +102,10 @@ private[jvm] object GeneratedClassHandler {
       processingUnits += unitInPostProcess
     }
 
-    protected implicit val executionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(javaExecutor)
+    private val executionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(javaExecutor)
 
-    final def postProcessUnit(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
+    private def postProcessUnit(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
+      given ExecutionContext = executionContext
       unitInPostProcess.task = Future:
         // we 'take' classes to reduce the memory pressure
         // as soon as the class is consumed and written, we release its data
@@ -116,7 +115,7 @@ private[jvm] object GeneratedClassHandler {
           postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
     }
 
-    protected def takeProcessingUnits(): List[CompilationUnitInPostProcess] = {
+    private def takeProcessingUnits(): List[CompilationUnitInPostProcess] = {
       val result = processingUnits.result()
       processingUnits.clear()
       result
