@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.io.AbstractFile
+import dotty.tools.io.FileWriters
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
 
@@ -11,8 +12,11 @@ import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.dotc.report
+import dotty.tools.io.PlainFile.toPlainFile
 
+import java.nio.file.{Files, Paths}
 import scala.tools.asm
+import scala.util.chaining.scalaUtilChainingOps
 
 /**
  * Implements late stages of the backend, i.e.,
@@ -28,15 +32,23 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
   private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, optSettings)
   private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
   private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, ts, bTypesFromClassfile, optSettings)
-  val classfileWriters            = new ClassfileWriters()
-  val classfileWriter             = classfileWriters.ClassfileWriter(ctx.settings.XmainClass.valueSetByUser)
 
+  given FileWriters.ReadOnlyContext = FileWriters.ReadOnlyContext.eager
+  private val classfileWriter: FileWriters.ClassfileWriter = {
+    val dumpClassesPath =
+      ctx.settings.Xdumpclasses.valueSetByUser
+        .map(p => Paths.get(p))
+        .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
+        .map(_.toPlainFile)
+
+    FileWriters.ClassfileWriter(ctx.settings.outputDir.value, ctx.settings.XmainClass.valueSetByUser, dumpClassesPath)
+  }
 
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
   @annotation.nowarn("cat=deprecation")
-  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
+  def sendToDisk(clazz: GeneratedClass): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =
@@ -58,14 +70,14 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
 
     if bytes != null then
       TraceUtils.traceSerializedClassIfRequested(internalName, bytes)
-      val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
+      val clsFile = classfileWriter.writeClass(internalName, bytes)
       clazz.onFileCreated(clsFile)
   }
 
-  def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
+  def sendToDisk(tasty: GeneratedTasty): Unit = {
     val GeneratedTasty(classNode, tastyGenerator) = tasty
     val internalName = classNode.name.nn
-    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator(), sourceFile)
+    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator())
   }
 
   def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
@@ -85,6 +97,9 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
     else if ctx.settings.optClosureInvocations then
       closureOptimizer.rewriteClosureApplyInvocations(None, scala.collection.mutable.Map.empty)
   }
+
+  def close(): Unit =
+    classfileWriter.close()
 
   private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
     val name = clazz.classNode.name

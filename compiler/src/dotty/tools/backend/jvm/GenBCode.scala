@@ -154,7 +154,7 @@ class GenBCode extends Phase { self =>
           case _ => ()
         }
       if _postProcessor ne null then
-        postProcessor.classfileWriter.close()
+        postProcessor.close()
       generatedClassHandler.close()
   }
 }

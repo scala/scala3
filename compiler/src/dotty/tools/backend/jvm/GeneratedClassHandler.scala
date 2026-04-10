@@ -100,10 +100,8 @@ private[jvm] object GeneratedClassHandler {
       unitInPostProcess.task = Future:
         // we 'take' classes to reduce the memory pressure
         // as soon as the class is consumed and written, we release its data
-        unitInPostProcess.takeClasses().foreach:
-          postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
-        unitInPostProcess.takeTasty().foreach:
-          postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
+        unitInPostProcess.takeClasses().foreach(postProcessor.sendToDisk)
+        unitInPostProcess.takeTasty().foreach(postProcessor.sendToDisk)
     }
 
     private def takeProcessingUnits(): List[CompilationUnitInPostProcess] = {

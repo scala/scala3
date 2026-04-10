@@ -11,10 +11,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ClosedByInterruptException
 import java.nio.channels.FileChannel
-import java.nio.file.FileAlreadyExistsException
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardOpenOption
+import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths, StandardOpenOption}
 import java.nio.file.attribute.FileAttribute
 import java.util
 import java.util.concurrent.ConcurrentHashMap
@@ -23,12 +20,9 @@ import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import scala.collection.mutable
-
-import dotty.tools.dotc.core.Contexts, Contexts.Context
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
-
-import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
-
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.report
 
@@ -38,8 +32,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.ConcurrentModificationException
 
 object FileWriters {
-  type InternalName = String
-  type NullableFile =  AbstractFile | Null
+  private def classRelativePath(className: String, suffix: String): String =
+    className.replace('.', '/') + suffix
 
   inline def ctx(using ReadOnlyContext): ReadOnlyContext = summon[ReadOnlyContext]
 
@@ -157,7 +151,7 @@ object FileWriters {
    * The interface to writing classfiles. GeneratedClassHandler calls these methods to generate the
    * directory and files that are created, and eventually calls `close` when the writing is complete.
    *
-   * The companion object is responsible for constructing a appropriate and optimal implementation for
+   * The companion object is responsible for constructing an appropriate and optimal implementation for
    * the supplied settings.
    *
    * Operations are threadsafe.
@@ -168,34 +162,25 @@ object FileWriters {
      *
      * @param name the internal name of the class, e.g. "scala.Option"
      */
-    def writeTasty(name: InternalName, bytes: Array[Byte])(using ReadOnlyContext): NullableFile
+    def writeTasty(name: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile
 
     /**
      * Close the writer. Behavior is undefined after a call to `close`.
      */
     def close(): Unit
-
-    protected def classToRelativePath(className: InternalName): String =
-      className.replace('.', '/') + ".tasty"
   }
 
   object TastyWriter {
 
-    def apply(output: AbstractFile)(using ReadOnlyContext): TastyWriter = {
-
-      // In Scala 2 depenening on cardinality of distinct output dirs MultiClassWriter could have been used
+    def apply(output: AbstractFile)(using ReadOnlyContext): TastyWriter =
+      // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
-      val basicTastyWriter = new SingleTastyWriter(
-        FileWriter(output, None)
-      )
-
-      basicTastyWriter
-    }
+      new SingleTastyWriter(FileWriter(output, None))
 
     private final class SingleTastyWriter(underlying: FileWriter) extends TastyWriter {
 
-      override def writeTasty(className: InternalName, bytes: Array[Byte])(using ReadOnlyContext): NullableFile = {
-        underlying.writeFile(classToRelativePath(className), bytes)
+      override def writeTasty(className: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = {
+        underlying.writeFile(classRelativePath(className, ".tasty"), bytes)
       }
 
       override def close(): Unit = underlying.close()
@@ -203,8 +188,71 @@ object FileWriters {
 
   }
 
+
+  /**
+   * The interface to writing classfiles. GeneratedClassHandler calls these methods to generate the
+   * directory and files that are created, and eventually calls `close` when the writing is complete.
+   *
+   * The companion object is responsible for constructing an appropriate and optimal implementation for
+   * the supplied settings.
+   *
+   * Operations are threadsafe.
+   */
+  sealed trait ClassfileWriter extends TastyWriter {
+    /**
+     * Write a classfile
+     */
+    def writeClass(name: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile
+
+    /**
+     * Close the writer. Behavior is undefined after a call to `close`.
+     */
+    def close(): Unit
+  }
+
+  object ClassfileWriter {
+    def apply(output: AbstractFile, jarManifestMainClass: Option[String], dumpClassesPath: Option[AbstractFile])(using ReadOnlyContext): ClassfileWriter = {
+      // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
+      // In Dotty we always use single output directory
+      val basicClassWriter = new SingleClassWriter(FileWriter(output, jarManifestMainClass))
+      dumpClassesPath match
+        case None => basicClassWriter
+        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, None))
+    }
+
+    private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {
+      override def writeClass(className: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = {
+        underlying.writeFile(classRelativePath(className, ".class"), bytes)
+      }
+
+      override def writeTasty(className: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = {
+        underlying.writeFile(classRelativePath(className, ".tasty"), bytes)
+      }
+
+      override def close(): Unit = underlying.close()
+    }
+
+    private final class DebugClassWriter(basic: ClassfileWriter, dump: FileWriter) extends ClassfileWriter {
+      override def writeClass(className: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = {
+        val outFile = basic.writeClass(className, bytes)
+        dump.writeFile(classRelativePath(className, ".class"), bytes)
+        outFile
+      }
+
+      override def writeTasty(className: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = {
+        basic.writeTasty(className, bytes)
+      }
+
+      override def close(): Unit = {
+        basic.close()
+        dump.close()
+      }
+    }
+  }
+
+
   sealed trait FileWriter {
-    def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): NullableFile
+    def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile
     def close(): Unit
   }
 
@@ -248,7 +296,7 @@ object FileWriters {
 
     lazy val crc = new CRC32
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): NullableFile = this.synchronized {
+    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = this.synchronized {
       val entry = new ZipEntry(relativePath)
       if (storeOnly) {
         // When using compression method `STORED`, the ZIP spec requires the CRC and compressed/
@@ -265,7 +313,13 @@ object FileWriters {
       jarWriter.putNextEntry(entry)
       try jarWriter.write(bytes, 0, bytes.length)
       finally jarWriter.flush()
-      null
+      // important detail here, even on Windows, Zinc expects the separator within the jar
+      // to be the system default, (even if in the actual jar file the entry always uses '/').
+      // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
+      val pathInJar =
+        if java.io.File.separatorChar == '/' then relativePath
+        else relativePath.replace('/', java.io.File.separatorChar)
+      PlainFile.toPlainFile(Paths.get(s"${file.absolutePath}!$pathInJar"))
     }
 
     override def close(): Unit = this.synchronized(jarWriter.close())
@@ -305,15 +359,15 @@ object FileWriters {
       checkName(filePath.getFileName())
     }
 
-    // the common case is that we are are creating a new file, and on MS Windows the create and truncate is expensive
+    // the common case is that we are creating a new file, and on MS Windows the create and truncate is expensive
     // because there is not an options in the windows API that corresponds to this so the truncate is applied as a separate call
     // even if the file is new.
-    // as this is rare, its best to always try to create a new file, and it that fails, then open with truncate if that fails
+    // as this is rare, it's best to always try to create a new file, and it that fails, then open with truncate if that fails
 
     private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): NullableFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = {
       val path = base.resolve(relativePath)
       try {
         ensureDirForPath(base, path)
@@ -327,7 +381,7 @@ object FileWriters {
         try os.write(ByteBuffer.wrap(bytes), 0L)
         catch {
           case ex: ClosedByInterruptException =>
-            try Files.deleteIfExists(path) // don't leave a empty of half-written classfile around after an interrupt
+            try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
             catch { case _: java.io.IOException => () }
             throw ex
         }
@@ -339,7 +393,7 @@ object FileWriters {
           if (ctx.settings.debug) e.printStackTrace()
           ctx.reporter.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
       }
-      AbstractFile.getFile(path)
+      AbstractFile.getFile(path).nn // we just wrote to it so it better still exist
     }
 
     override def close(): Unit = ()
@@ -363,7 +417,7 @@ object FileWriters {
       finally out.close()
     }
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext):NullableFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): AbstractFile = {
       val outFile = getFile(base, relativePath)
       writeBytes(outFile, bytes)
       outFile
