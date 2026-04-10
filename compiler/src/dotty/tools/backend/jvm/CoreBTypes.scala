@@ -72,20 +72,20 @@ abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAcces
 
   // Concurrent maps because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
-  private val classBTypeCache: Lazy[ConcurrentHashMap[InternalName, ClassBType]] =
-    frontendAccess.perRunLazy(new ConcurrentHashMap[InternalName, ClassBType])
+  private val classBTypeCache: ConcurrentHashMap[InternalName, ClassBType] =
+    new ConcurrentHashMap[InternalName, ClassBType]
 
   /** See doc of ClassBType.apply. This is where to use that method from. */
   def classBType[T](internalName: InternalName)(init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] =
-    ClassBType(internalName, this, classBTypeCache.get)(init)
+    ClassBType(internalName, this, classBTypeCache)(init)
 
   /** See doc of ClassBType.apply. This is where to use that method from. Version that cannot fail. */
   def classBType(internalName: InternalName)(init: ClassBType => ClassInfo): ClassBType =
-    ClassBType(internalName, this, classBTypeCache.get)(ct => Right(init(ct))).fold(_ => assert(false), identity)
+    ClassBType(internalName, this, classBTypeCache)(ct => Right(init(ct))).fold(_ => assert(false), identity)
 
   /** Obtain a previously constructed ClassBType for a given internal name, or None if no such ClassBType was constructed. */
   def classBTypeFromInternalName(internalName: InternalName): Option[ClassBType] =
-    Option(classBTypeCache.get.get(internalName))
+    Option(classBTypeCache.get(internalName))
 
   def classBTypeFromSymbol(classSym: Symbol): ClassBType
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType
