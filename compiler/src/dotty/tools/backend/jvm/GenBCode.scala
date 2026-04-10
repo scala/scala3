@@ -6,17 +6,12 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
-import Symbols.*
 import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
 import scala.collection.mutable
-import scala.compiletime.uninitialized
-import java.util.concurrent.TimeoutException
-import scala.concurrent.duration.Duration
-import scala.concurrent.Await
 
 /**
  * GenBCode has 3 parts:
@@ -28,7 +23,7 @@ import scala.concurrent.Await
  * Parts 2 and 3 do not require a Context and can be parallelized.
  *
  * It is crucial that parts 2 and 3 do not accidentally depend on a Context,
- * which is why we have a "post-processor frontend interface" that hides this Context.
+ * which is why we have abstractions to hide it such as OptimizerSettings.
  */
 class GenBCode extends Phase { self =>
 
@@ -38,6 +33,13 @@ class GenBCode extends Phase { self =>
 
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
+
+  private var _backendUtils: BackendUtils | Null = null
+  def backendUtils(using Context): BackendUtils = {
+    if _backendUtils eq null then
+      _backendUtils = BackendUtils(bTypes)
+    _backendUtils.nn
+  }
 
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
@@ -78,13 +80,6 @@ class GenBCode extends Phase { self =>
       def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
       _bTypes = CoreBTypesFromSymbols(frontendAccess, primitives, inlineInfoLoader)(using ctx)
     _bTypes.nn
-  }
-
-  private var _backendUtils: BackendUtils | Null = null
-  def backendUtils(using Context): BackendUtils = {
-    if _backendUtils eq null then
-      _backendUtils = BackendUtils(frontendAccess, bTypes)
-    _backendUtils.nn
   }
 
   private var _postProcessor: PostProcessor | Null = null

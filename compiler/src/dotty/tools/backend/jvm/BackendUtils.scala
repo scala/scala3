@@ -2,7 +2,6 @@ package dotty.tools
 package backend.jvm
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Flags.{JavaStatic, Method}
@@ -24,7 +23,7 @@ import scala.tools.asm.{Handle, Opcodes, Type}
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
  * instance.
  */
-class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
+class BackendUtils(val ts: CoreBTypes) {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -33,8 +32,8 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
    * inlining: when inlining an indyLambda instruction into a class, we need to make sure the class
    * has the method.
    */
-  private val indyLambdaImplMethods: Lazy[ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]]] =
-    ppa.perRunLazy(new ConcurrentHashMap)
+  private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
+    new ConcurrentHashMap
 
   def collectSerializableLambdas(classNode: ClassNode): Array[Handle] = {
     val indyLambdaBodyMethods = new mutable.ArrayBuffer[Handle]
@@ -172,13 +171,13 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes) {
   }
 
   def onIndyLambdaImplMethodIfPresent[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): Option[T] =
-    indyLambdaImplMethods.get.get(hostClass) match {
+    indyLambdaImplMethods.get(hostClass) match {
       case null => None
       case methods => Some(methods.synchronized(action(methods)))
     }
 
   def onIndyLambdaImplMethod[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): T = {
-    val methods = indyLambdaImplMethods.get.computeIfAbsent(hostClass, _ => mutable.Map.empty)
+    val methods = indyLambdaImplMethods.computeIfAbsent(hostClass, _ => mutable.Map.empty)
     methods.synchronized(action(methods))
   }
 
