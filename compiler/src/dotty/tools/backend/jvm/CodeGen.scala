@@ -125,7 +125,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
     clsFile => {
       val className = cls.name.replace('/', '.')
       if (ctx.compilerCallback ne null)
-        ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
+        ctx.compilerCallback.onClassGenerated(sourceFile, clsFile, className)
 
       ctx.withIncCallback: cb =>
         if isLocal then
@@ -138,16 +138,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
           cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
     }
   }
-
-  /** Convert a `dotty.tools.io.AbstractFile` into a
-   *  `dotty.tools.dotc.interfaces.AbstractFile`.
-   */
-  private def convertAbstractFile(absfile: dotty.tools.io.AbstractFile): interfaces.AbstractFile =
-    new interfaces.AbstractFile {
-      override def name = absfile.name
-      override def path = absfile.path
-      override def jfile: Optional[java.io.File] = Optional.ofNullable(absfile.file)
-    }
 
   private def genClass(cd: TypeDef, unit: CompilationUnit): ClassNode = {
     val b = new impl.SyncAndTryBuilder(unit)
