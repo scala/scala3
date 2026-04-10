@@ -215,7 +215,9 @@ trait RunnerOrchestration:
     }
 
     private def discardRunner(runner: Runner): Unit = synchronized {
+      runner.kill()
       busyRunners -= runner
+      notify()
     }
 
     private def withRunner(op: Runner => Status)(using SummaryReporting): Status =
