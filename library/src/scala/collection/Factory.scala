@@ -41,7 +41,7 @@ trait Factory[-A, +C] extends Any { self =>
   def fromSpecific(it: IterableOnce[A]^): C^{it}
 
   /** Gets a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
-   *  Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections. 
+   *  Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections.
    */
   def newBuilder: Builder[A, C]
 }
@@ -315,7 +315,7 @@ object SeqFactory {
     def lengthCompare(len: Int): Int = c.lengthCompare(len)
     def apply(i: Int): A = c(i)
     def drop(n: Int): scala.Seq[A] = c match {
-      case seq: scala.Seq[A] => seq.drop(n)
+      case seq: scala.Seq[A @unchecked] => seq.drop(n)
       case _                 => c.view.drop(n).toSeq
     }
     def toSeq: scala.Seq[A] = c.toSeq
@@ -654,7 +654,7 @@ object ClassTagIterableFactory {
     extends EvidenceIterableFactory.Delegate[CC, ClassTag](delegate) with ClassTagIterableFactory[CC]
 
   /** An IterableFactory that uses ClassTag.Any as the evidence for every element type. This may or may not be
-   *  sound depending on the use of the `ClassTag` by the collection implementation. 
+   *  sound depending on the use of the `ClassTag` by the collection implementation.
    */
   @SerialVersionUID(3L)
   class AnyIterableDelegate[CC[_]](delegate: ClassTagIterableFactory[CC]) extends IterableFactory[CC] {
@@ -685,7 +685,7 @@ object ClassTagSeqFactory {
     extends ClassTagIterableFactory.Delegate[CC](delegate) with ClassTagSeqFactory[CC]
 
   /** A SeqFactory that uses ClassTag.Any as the evidence for every element type. This may or may not be
-   *  sound depending on the use of the `ClassTag` by the collection implementation. 
+   *  sound depending on the use of the `ClassTag` by the collection implementation.
    */
   @SerialVersionUID(3L)
   class AnySeqDelegate[CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure](delegate: ClassTagSeqFactory[CC])

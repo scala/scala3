@@ -179,7 +179,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   def insertAll(@deprecatedName("n", "2.13.0") index: Int, elems: IterableOnce[A]^): Unit = {
     checkWithinBounds(index, index)
     elems match {
-      case elems: collection.Iterable[A] =>
+      case elems: collection.Iterable[A @unchecked] =>
         val elemsLength = elems.size
         if (elemsLength > 0) {
           mutationCount += 1

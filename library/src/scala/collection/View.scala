@@ -73,8 +73,8 @@ object View extends IterableFactory[View] {
    *  @return A view iterating over the given `Iterable`
    */
   def from[E](it: IterableOnce[E]^): View[E]^{it} = it match {
-    case it: (View[E]^{it})     => it
-    case it: (Iterable[E]^{it}) => View.fromIteratorProvider(() => it.iterator)
+    case it: (View[E @unchecked]^{it})     => it
+    case it: (Iterable[E @unchecked]^{it}) => View.fromIteratorProvider(() => it.iterator)
     case _                      => LazyList.from(it).view
   }
 
@@ -415,7 +415,7 @@ object View extends IterableFactory[View] {
   private[collection] class Patched[A](underlying: SomeIterableOps[A]^, from: Int, other: IterableOnce[A]^, replaced: Int) extends AbstractView[A] {
     // we may be unable to traverse `other` more than once, so we need to cache it if that's the case
     private val _other: Iterable[A]^{other} = other match {
-      case other: Iterable[A] => other
+      case other: Iterable[A @unchecked] => other
       case other              => LazyList.from(other)
     }
 

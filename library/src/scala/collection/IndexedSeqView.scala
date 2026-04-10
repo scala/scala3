@@ -162,7 +162,7 @@ object IndexedSeqView {
   @SerialVersionUID(3L)
   class Reverse[A](underlying: SomeIndexedSeqOps[A]^) extends SeqView.Reverse[A](underlying) with IndexedSeqView[A] {
     override def reverse: IndexedSeqView[A]^{this} = underlying match {
-      case x: IndexedSeqView[A] => x
+      case x: IndexedSeqView[A @unchecked] => x
       case _ => super.reverse
     }
   }

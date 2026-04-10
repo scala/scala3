@@ -725,7 +725,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   def concat[B >: A](suffix: IterableOnce[B]^): CC[B]^{this, suffix} = iterableFactory.from {
     suffix match {
-      case suffix: Iterable[B] => new View.Concat(this, suffix)
+      case suffix: Iterable[B @unchecked] => new View.Concat(this, suffix)
       case suffix => iterator ++ suffix.iterator
     }
   }
@@ -743,7 +743,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *                 The length of the returned collection is the minimum of the lengths of this $coll and `that`.
    */
   def zip[B](that: IterableOnce[B]^): CC[(A @uncheckedVariance, B)]^{this, that} = iterableFactory.from(that match { // sound bcs of VarianceNote
-    case that: Iterable[B] => new View.Zip(this, that)
+    case that: Iterable[B @unchecked] => new View.Zip(this, that)
     case _ => iterator.zip(that)
   })
 
@@ -851,7 +851,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
 
   @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
   def ++:[B >: A](that: IterableOnce[B]^): CC[B]^{this, that} = iterableFactory.from(that match {
-    case xs: Iterable[B] => new View.Concat(xs, this)
+    case xs: Iterable[B @unchecked] => new View.Concat(xs, this)
     case _ => that.iterator ++ iterator
   })
 }

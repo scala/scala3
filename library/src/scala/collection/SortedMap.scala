@@ -192,7 +192,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
     sortedMapFactory.from(new View.Collect(this, pf))
 
   override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CC[K, V2] = sortedMapFactory.from(suffix match {
-    case it: Iterable[(K, V2)] => new View.Concat(this, it)
+    case it: Iterable[(K, V2) @unchecked] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })(using ordering)
 

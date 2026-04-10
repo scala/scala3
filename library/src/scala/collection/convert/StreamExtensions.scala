@@ -134,7 +134,7 @@ trait StreamExtensions {
      */
     def asJavaSeqStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S = {
       val sStepper = stepper match {
-        case as: AnyStepper[A] => st.seqUnbox(as)
+        case as: AnyStepper[A @unchecked] => st.seqUnbox(as)
         case _ => stepper.asInstanceOf[St]
       }
       s.fromStepper(sStepper, par = false)

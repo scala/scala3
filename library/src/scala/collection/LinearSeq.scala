@@ -201,7 +201,7 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & 
       }
 
     that match {
-      case that: LinearSeq[B] => linearSeqEq(coll, that)
+      case that: LinearSeq[B @unchecked] => linearSeqEq(coll, that)
       case _ => super.sameElements(that)
     }
   }

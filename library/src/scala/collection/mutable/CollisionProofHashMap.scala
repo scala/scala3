@@ -446,7 +446,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     sortedMapFactory.from(new View.Collect(this, pf))
 
   override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
-    case it: Iterable[(K, V2)] => new View.Concat(this, it)
+    case it: Iterable[(K, V2) @unchecked] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })
 
@@ -894,4 +894,3 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 }
-

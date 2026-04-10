@@ -71,7 +71,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    *  @param start The lower-bound (inclusive) of the iterator
    */
   def iteratorFrom(start: A): Iterator[A]
-  
+
   @deprecated("Use `iteratorFrom` instead.", "2.13.0")
   @`inline` def keysIteratorFrom(start: A): Iterator[A] = iteratorFrom(start)
 
@@ -145,7 +145,7 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    */
   def zip[B](that: IterableOnce[B]^)(implicit @implicitNotFound(SortedSetOps.zipOrdMsg) ev: Ordering[(A @uncheckedVariance, B)]): CC[(A @uncheckedVariance, B)] = // sound bcs of VarianceNote
     sortedIterableFactory.from(that match {
-      case that: Iterable[B] => new View.Zip(this, that)
+      case that: Iterable[B @unchecked] => new View.Zip(this, that)
       case _ => iterator.zip(that)
     })
 

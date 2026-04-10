@@ -215,7 +215,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
       }
       this
 
-    case sorted: collection.SortedSet[Int] =>
+    case sorted: collection.SortedSet[Int @unchecked] =>
       // if `sorted` is using the regular Int ordering, ensure capacity for the largest
       // element up front to avoid multiple resizing allocations
       if (sorted.nonEmpty) {

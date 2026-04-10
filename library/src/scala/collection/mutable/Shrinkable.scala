@@ -68,7 +68,7 @@ trait Shrinkable[-A] {
       }
     } else {
       xs match {
-        case xs: collection.LinearSeq[A] => loop(xs)
+        case xs: collection.LinearSeq[A @unchecked] => loop(xs)
         case xs => xs.iterator.foreach(subtractOne)
       }
     }

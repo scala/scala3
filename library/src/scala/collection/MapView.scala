@@ -167,7 +167,7 @@ object MapView extends MapViewFactory {
   override def from[K, V](it: IterableOnce[(K, V)]^): View[(K, V)]^{it} = View.from(it)
 
   override def from[K, V](it: SomeMapOps[K, V]): MapView[K, V] = it match {
-    case mv: MapView[K, V] => mv
+    case mv: MapView[K @unchecked, V @unchecked] => mv
     case other => new MapView.Id(other)
   }
 

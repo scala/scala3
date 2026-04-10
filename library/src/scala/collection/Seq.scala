@@ -165,7 +165,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *                  by all the elements of this $coll.
    */
   def prependedAll[B >: A](prefix: IterableOnce[B]^): CC[B]^{this, prefix} = iterableFactory.from(prefix match {
-    case prefix: Iterable[B] => new View.Concat(prefix, this)
+    case prefix: Iterable[B @unchecked] => new View.Concat(prefix, this)
     case _ => prefix.iterator ++ iterator
   })
 
@@ -1137,7 +1137,7 @@ object SeqOps {
    *  @return Target packed in an IndexedSeq (taken from iterator unless W already is an IndexedSeq)
    */
   private def kmpOptimizeWord[B](W: scala.collection.Seq[B], n0: Int, n1: Int, forward: Boolean): IndexedSeqView[B] = W match {
-    case iso: IndexedSeq[B] =>
+    case iso: IndexedSeq[B @unchecked] =>
       // Already optimized for indexing--use original (or custom view of original)
       if (forward && n0==0 && n1==W.length) iso.view
       else if (forward) new AbstractIndexedSeqView[B] {

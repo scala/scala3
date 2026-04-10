@@ -231,10 +231,10 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
       while (it.hasNext) result = result + it.next()
       result.asInstanceOf[C]
     case _ => fromSpecific(that match {
-      case that: collection.Iterable[A] => new View.Concat(this, that)
+      case that: collection.Iterable[A @unchecked] => new View.Concat(this, that)
       case _ => iterator.concat(that.iterator)
     })
-  }    
+  }
 
   @deprecated("Consider requiring an immutable Set or fall back to Set.union", "2.13.0")
   def + (elem: A): C = fromSpecific(new View.Appended(this, elem))

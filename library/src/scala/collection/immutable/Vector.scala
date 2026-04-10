@@ -48,7 +48,7 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
           val a1: Arr1 = it match {
             case as: ArraySeq.ofRef[?] if as.elemTag.runtimeClass == classOf[AnyRef] =>
               as.unsafeArray.asInstanceOf[Arr1]
-            case it: Iterable[E] =>
+            case it: Iterable[E @unchecked] =>
               val a1 = new Arr1(knownSize)
               @annotation.unused val copied = it.copyToArray(a1.asInstanceOf[Array[Any]])
               //assert(copied == knownSize)

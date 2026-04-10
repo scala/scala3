@@ -424,7 +424,7 @@ sealed abstract class List[+A]
   }
 
   override def corresponds[B](that: collection.Seq[B])(p: (A, B) => Boolean): Boolean = that match {
-    case that: LinearSeq[B] =>
+    case that: LinearSeq[B @unchecked] =>
       var i = this
       var j = that
       while (!(i.isEmpty || j.isEmpty)) {

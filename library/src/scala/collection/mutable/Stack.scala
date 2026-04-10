@@ -79,7 +79,7 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
    */
   def pushAll(elems: scala.collection.IterableOnce[A]^): this.type =
     prependAll(elems match {
-      case it: scala.collection.Seq[A] => it.view.reverse
+      case it: scala.collection.Seq[A @unchecked] => it.view.reverse
       case it => IndexedSeq.from(it).view.reverse
     })
 

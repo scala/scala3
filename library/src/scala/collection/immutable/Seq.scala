@@ -40,7 +40,7 @@ transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collectio
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](List) {
   override def from[E](it: IterableOnce[E]^): Seq[E] = it match {
-    case s: Seq[E] => s
+    case s: Seq[E @unchecked] => s
     case _ => super.from(it)
   }
 }
@@ -113,7 +113,7 @@ object IndexedSeqDefaults {
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
   override def from[E](it: IterableOnce[E]^): IndexedSeq[E] = it match {
-    case is: IndexedSeq[E] => is
+    case is: IndexedSeq[E @unchecked] => is
     case _ => super.from(it)
   }
 }
@@ -144,7 +144,7 @@ trait LinearSeq[+A]
 @SerialVersionUID(3L)
 object LinearSeq extends SeqFactory.Delegate[LinearSeq](List) {
   override def from[E](it: IterableOnce[E]^): LinearSeq[E] = it match {
-    case ls: LinearSeq[E] => ls
+    case ls: LinearSeq[E @unchecked] => ls
     case _ => super.from(it)
   }
 }

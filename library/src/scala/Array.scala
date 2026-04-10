@@ -71,7 +71,7 @@ object Array {
    *  @return    an array consisting of elements of the iterable collection
    */
   def from[A : ClassTag](it: IterableOnce[A]^): Array[A] = it match {
-    case it: Iterable[A] => it.toArray[A]
+    case it: Iterable[A @unchecked] => it.toArray[A]
     case _ => it.iterator.toArray[A]
   }
 

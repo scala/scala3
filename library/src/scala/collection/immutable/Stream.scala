@@ -213,7 +213,7 @@ sealed abstract class Stream[+A] extends AbstractSeq[A]
     if (this.isEmpty || that.isEmpty) iterableFactory.empty
     else {
       val thatIterable = that match {
-        case that: collection.Iterable[B] => that
+        case that: collection.Iterable[B @unchecked] => that
         case _ => LazyList.from(that)
       }
       Stream.cons[(A, B)]((this.head, thatIterable.head), this.tail.zip(thatIterable.tail))

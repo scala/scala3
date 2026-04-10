@@ -162,7 +162,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.foreach(...) instead", "2.13.0")
   @`inline` def foreach[U](f: A => U): Unit = it match {
-    case it: Iterable[A] => it.foreach(f)
+    case it: Iterable[A @unchecked] => it.foreach(f)
     case _ => it.iterator.foreach(f)
   }
 
@@ -174,7 +174,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.toArray", "2.13.0")
   def toArray[B >: A: ClassTag]: Array[B] = it match {
-    case it: Iterable[B] => it.toArray[B]
+    case it: Iterable[B @unchecked] => it.toArray[B]
     case _ => it.iterator.toArray[B]
   }
 
@@ -208,25 +208,25 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.isEmpty instead", "2.13.0")
   def isEmpty: Boolean = it match {
-    case it: Iterable[A] => it.isEmpty
+    case it: Iterable[A @unchecked] => it.isEmpty
     case _ => it.iterator.isEmpty
   }
 
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString(start: String, sep: String, end: String): String = it match {
-    case it: Iterable[A] => it.mkString(start, sep, end)
+    case it: Iterable[A @unchecked] => it.mkString(start, sep, end)
     case _ => it.iterator.mkString(start, sep, end)
   }
 
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString(sep: String): String = it match {
-    case it: Iterable[A] => it.mkString(sep)
+    case it: Iterable[A @unchecked] => it.mkString(sep)
     case _ => it.iterator.mkString(sep)
   }
 
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString: String = it match {
-    case it: Iterable[A] => it.mkString
+    case it: Iterable[A @unchecked] => it.mkString
     case _ => it.iterator.mkString
   }
 
@@ -250,13 +250,13 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.map instead or consider requiring an Iterable", "2.13.0")
   def map[B](f: A => B): IterableOnce[B]^{f} = it match {
-    case it: Iterable[A]^{f} => it.map(f)
+    case it: Iterable[A @unchecked]^{f} => it.map(f)
     case _ => it.iterator.map(f)
   }
 
   @deprecated("Use .iterator.flatMap instead or consider requiring an Iterable", "2.13.0")
   def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B]^{f} = it match {
-    case it: Iterable[A] => it.flatMap(f)
+    case it: Iterable[A @unchecked] => it.flatMap(f)
     case _ => it.iterator.flatMap(f)
   }
 
@@ -294,7 +294,7 @@ object IterableOnce {
                                                               start: Int = 0,
                                                               len: Int = Int.MaxValue): Int =
     elems match {
-      case src: Iterable[A] => src.copyToArray[B](xs, start, len)
+      case src: Iterable[A @unchecked] => src.copyToArray[B](xs, start, len)
       case src              => src.iterator.copyToArray[B](xs, start, len)
     }
 }

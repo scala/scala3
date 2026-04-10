@@ -172,7 +172,7 @@ package concurrent {
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])
     final def ready[T](awaitable: Awaitable[T], atMost: Duration): awaitable.type = awaitable match {
-      case f: Future[T] if f.isCompleted =>
+      case f: Future[T @unchecked] if f.isCompleted =>
         if (atMost eq Duration.Undefined) Future.waitUndefinedError() // preserve semantics, see scala/scala#10972
         else awaitable
       case _ =>
@@ -211,7 +211,7 @@ package concurrent {
 
     private object FutureValue {
       def unapply[T](a: Awaitable[T]): Option[Try[T]] = a match {
-        case f: Future[T] => f.value
+        case f: Future[T @unchecked] => f.value
         case _ => None
       }
     }
