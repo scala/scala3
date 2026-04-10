@@ -31,7 +31,7 @@ import opt.CallGraph
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
               val callGraph: CallGraph, val ts: CoreBTypes,
-              val genBCode: GenBCode)(using Context) {
+              val generatedClassHandler: GeneratedClassHandler)(using Context) {
   private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
     val ts: CoreBTypes = CodeGen.this.ts
 
@@ -47,7 +47,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
 
   /**
    * Generate ASM ClassNodes for classes found in a compilation unit. The resulting classes are
-   * passed to the `GenBCode.generatedClassHandler`.
+   * passed to the `generatedClassHandler`.
    */
   def genUnit(unit: CompilationUnit)(using ctx: Context): Unit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
@@ -112,7 +112,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
       }
 
     genClassDefs(unit.tpdTree)
-    genBCode.generatedClassHandler.process(
+    generatedClassHandler.process(
       GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList)
     )
   }
