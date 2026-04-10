@@ -423,7 +423,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
     // New labels for the cloned instructions
     val labelsMap = cloneLabels(callee)
     val sameSourceFile = sourceFilePath match {
-      case Some(calleeSource) => byteCodeRepository.compilingClasses.get.get(callsite.callsiteClass.internalName) match {
+      case Some(calleeSource) => byteCodeRepository.compilingClasses.get(callsite.callsiteClass.internalName) match {
         case Some((_, `calleeSource`)) => true
         case _ => false
       }

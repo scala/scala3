@@ -410,7 +410,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // the method node is needed for building the call graph entry
     val bodyMethod = byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc)
-    val sourceFilePath = byteCodeRepository.compilingClasses.get.get(lambdaBodyHandle.getOwner).map(_._2)
+    val sourceFilePath = byteCodeRepository.compilingClasses.get(lambdaBodyHandle.getOwner).map(_._2)
     val callee = bodyMethod.flatMap({
       case (bodyMethodNode, bodyMethodDeclClass) =>
         bTypesFromClassfile.classBTypeFromParsedClassfile(bodyMethodDeclClass).flatMap(bodyDeclClassType =>

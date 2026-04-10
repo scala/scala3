@@ -15,7 +15,6 @@ package dotty.tools.backend.jvm.opt
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.{BackendUtils, ClassNode1, CoreBTypes, PostProcessorFrontendAccess}
 import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
@@ -42,7 +41,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, classPath: Cl
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
    * the current compilation run.
    */
-  val compilingClasses: Lazy[concurrent.Map[InternalName, (ClassAndModuleNodes, String)]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty)
+  val compilingClasses: concurrent.Map[InternalName, (ClassAndModuleNodes, String)] = concurrent.TrieMap.empty
 
   /**
   * Prevent the code repository from growing too large. Profiling reveals that the average size
@@ -57,16 +56,16 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, classPath: Cl
    * Note - although this is typed a mutable.Map, individual simple get and put operations are threadsafe as the
    * underlying data structure is synchronized.
    */
-  private val parsedClasses: Lazy[mutable.Map[InternalName, Either[ClassNotFound, ClassAndModuleNodes]]] =
-    frontendAccess.perRunLazy(FifoCache[InternalName, Either[ClassNotFound, ClassAndModuleNodes]](maxCacheSize, threadsafe = true))
+  private val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassAndModuleNodes]] =
+    FifoCache[InternalName, Either[ClassNotFound, ClassAndModuleNodes]](maxCacheSize, threadsafe = true)
 
   def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
-    case Some(path) if path != "<no file>" => compilingClasses.get(classNode.name) = ((classNode, None), path)
-    case _                                 => parsedClasses.get(classNode.name) = Right(classNode, None)
+    case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = ((classNode, None), path)
+    case _                                 => parsedClasses(classNode.name) = Right(classNode, None)
   }
 
   private def parsedClassNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
-    parsedClasses.get.getOrElseUpdate(internalName, parseClass(internalName))
+    parsedClasses.getOrElseUpdate(internalName, parseClass(internalName))
   }
 
   /**
@@ -74,7 +73,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, classPath: Cl
    * the class node is not yet available, it is parsed from the classfile on the compile classpath.
    */
   def classNodeAndSourceFilePath(internalName: InternalName): Either[ClassNotFound, (ClassAndModuleNodes, Option[String])] = {
-    compilingClasses.get.get(internalName) match {
+    compilingClasses.get(internalName) match {
       case Some((c, p)) => Right((c, Some(p)))
       case _            => parsedClassNode(internalName).map((_, None))
     }
@@ -85,7 +84,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, classPath: Cl
    * the classfile on the compile classpath.
    */
   def classNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
-    compilingClasses.get.get(internalName) match {
+    compilingClasses.get(internalName) match {
       case Some((c, _)) => Right(c)
       case None         => parsedClassNode(internalName)
     }
