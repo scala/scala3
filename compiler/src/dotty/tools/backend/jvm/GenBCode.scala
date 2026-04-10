@@ -44,11 +44,7 @@ class GenBCode extends Phase { self =>
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
-      // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
-      val context = ctx match
-        case fc: FreshContext => fc
-        case ctx => ctx.fresh
-      _frontendAccess = PostProcessorFrontendAccess(context)
+      _frontendAccess = PostProcessorFrontendAccess(ctx)
     _frontendAccess.nn
   }
 
@@ -94,7 +90,7 @@ class GenBCode extends Phase { self =>
   private var _callGraph: CallGraph | Null = null
   def callGraph(using Context): CallGraph = {
     if _callGraph eq null then
-      _callGraph = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, bTypes)
+      _callGraph = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile)
     _callGraph.nn
   }
 
@@ -134,16 +130,10 @@ class GenBCode extends Phase { self =>
   }
 
   protected def run(using Context): Unit =
-    frontendAccess.frontendSynch {
-      frontendAccess
-      .ctx
-      .setCompilationUnit(ctx.compilationUnit)
-    }
     codeGen.genUnit()
-    (ctx.compilerCallback: CompilerCallback | Null) match {
+    ctx.compilerCallback match
       case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
       case null => ()
-    }
 
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
     try
@@ -152,21 +142,19 @@ class GenBCode extends Phase { self =>
         report.error(em"unable to write $f $exn")
       result
     finally
-      // frontendAccess and postProcessor are created lazily, clean them up only if they were initialized
-      if _frontendAccess ne null then
-        ctx.settings.outputDir.value match {
-          case jar: JarArchive =>
-            if (ctx.run.nn.suspendedUnits.nonEmpty)
-              // If we close the jar the next run will not be able to write on the jar.
-              // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
-              report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
-
-            jar.close()
-          case _ => ()
-        }
+      ctx.settings.outputDir.value match
+        case jar: JarArchive =>
+          if (ctx.run.nn.suspendedUnits.nonEmpty)
+            // If we close the jar the next run will not be able to write on the jar.
+            // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
+            report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
+          jar.close()
+        case _ => ()
+      // created lazily, clean them up only if they were initialized
       if _postProcessor ne null then
         postProcessor.close()
-      generatedClassHandler.close()
+      if _generatedClassHandler ne null then
+        generatedClassHandler.close()
   }
 }
 

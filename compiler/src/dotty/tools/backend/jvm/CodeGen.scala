@@ -27,6 +27,7 @@ import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.util.NoSourcePosition
 import SymbolUtils.given
 import dotty.tools.backend.ScalaPrimitives
+import dotty.tools.dotc.interfaces.CompilerCallback
 import opt.CallGraph
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
@@ -125,8 +126,9 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
     }
     clsFile => {
       val className = cls.name.replace('/', '.')
-      if (ctx.compilerCallback ne null)
-        ctx.compilerCallback.onClassGenerated(sourceFile, clsFile, className)
+      ctx.compilerCallback match
+        case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
+        case null => ()
 
       ctx.withIncCallback: cb =>
         if isLocal then
