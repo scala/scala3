@@ -1,8 +1,7 @@
 package dotty.tools.backend.jvm
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
+import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.FileWriters
 import dotty.tools.dotc.core.Contexts.*

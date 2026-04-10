@@ -157,7 +157,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
   import LocalOptImpls.*
 
   private val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
-  private val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, settings.optAllowSkipClassLoading)
+  private val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, settings)
 
   /**
    * Remove unreachable instructions from all (non-abstract) methods and apply various other

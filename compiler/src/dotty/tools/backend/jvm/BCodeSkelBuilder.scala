@@ -346,7 +346,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       if !lengthOk then
         report.error("Class name is too long for the JVM", claszSymbol.srcPos)
         return
-      cnode.visit(backendUtils.classfileVersion, flags,
+      cnode.visit(classfileVersion, flags,
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
 

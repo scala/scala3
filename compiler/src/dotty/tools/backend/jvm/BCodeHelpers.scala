@@ -3,20 +3,17 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-
 import scala.annotation.threadUnsafe
 import scala.tools.asm
-import scala.tools.asm.AnnotationVisitor
-import scala.tools.asm.ClassWriter
+import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
 import scala.compiletime.uninitialized
-
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.Constants.*
-import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Contexts.{ctx, *}
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
@@ -34,9 +31,9 @@ import dotty.tools.dotc.transform.ElimErasedValueType
 import dotty.tools.dotc.transform.Mixin
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
-
 import tpd.*
 import SymbolUtils.given
+import dotty.tools.dotc.config.ScalaSettingsProperties
 
 /*
  *  Encapsulates functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -48,6 +45,19 @@ import SymbolUtils.given
 trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends BCodeIdiomatic {
 
   val ts: CoreBTypes
+
+  protected lazy val classfileVersion: Int =
+    val releaseValue = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
+    val targetValue = Option(ctx.settings.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
+    val target = (releaseValue, targetValue) match
+      case (Some(release), None) => release
+      case (None, Some(target)) => target
+      case (Some(release), Some(_)) =>
+        report.warning(s"The value of ${ctx.settings.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
+        release
+      case (None, None) => ScalaSettingsProperties.supportedTargetVersions.min // least supported version by default
+    // take advantage of the fact classfile versions are consecutive
+    target.toInt + (Opcodes.V17 - 17)
 
   private def ScalaATTRName: String = "Scala"
   private def ScalaSignatureATTRName: String = "ScalaSig"
@@ -547,7 +557,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
         report.error("Mirror class name is too long for the JVM", moduleClass.srcPos)
         return mirrorClass // not filled, but we cannot create it, and we just reported an error
       mirrorClass.visit(
-        backendUtils.classfileVersion,
+        classfileVersion,
         bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,
