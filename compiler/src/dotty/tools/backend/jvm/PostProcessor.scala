@@ -21,11 +21,11 @@ import scala.util.chaining.scalaUtilChainingOps
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
+class PostProcessor(private val frontendAccess: PostProcessorFrontendAccess,
                     private val byteCodeRepository: BCodeRepository, private val bTypesFromClassfile: BTypesFromClassfile,
+                    private val callGraph: CallGraph,
                     private val backendUtils: BackendUtils, private val ts: CoreBTypes)(using Context) {
 
-  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, ts)
   private val optSettings         = new OptimizerSettings()
   private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile, optSettings)
   private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, optSettings)

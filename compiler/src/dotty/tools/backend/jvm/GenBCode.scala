@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
@@ -82,10 +82,17 @@ class GenBCode extends Phase { self =>
     _bTypes.nn
   }
 
+  private var _callGraph: CallGraph | Null = null
+  def callGraph(using Context): CallGraph = {
+    if _callGraph eq null then
+      _callGraph = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, bTypes)
+    _callGraph.nn
+  }
+
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, backendUtils, bTypes)
+      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, backendUtils, bTypes)
     _postProcessor.nn
   }
 
@@ -113,7 +120,7 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, postProcessor.callGraph, bTypes, generatedClassHandler)
+      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, callGraph, bTypes, generatedClassHandler)
     _codeGen.nn
   }
 
