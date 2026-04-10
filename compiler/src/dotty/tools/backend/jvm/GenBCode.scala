@@ -9,6 +9,7 @@ import Contexts.*
 import Symbols.*
 import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile}
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
 import scala.collection.mutable
@@ -102,8 +103,22 @@ class GenBCode extends Phase { self =>
 
   private var _generatedClassHandler: GeneratedClassHandler | Null = null
   def generatedClassHandler(using Context): GeneratedClassHandler = {
-    if _generatedClassHandler eq null then
-      _generatedClassHandler = GeneratedClassHandler(postProcessor, this)
+    if _generatedClassHandler eq null then {
+      val handler = ctx.settings.YbackendParallelism.value match {
+        case 1 => GeneratedClassHandler.serial(postProcessor)
+        case maxThreads =>
+          // The thread pool queue is limited in size. When it's full, the `CallerRunsPolicy` causes
+          // a new task to be executed on the main thread, which provides back-pressure.
+          // The queue size is large enough to ensure that running a task on the main thread does
+          // not take longer than to exhaust the queue for the backend workers.
+          val queueSize = ctx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(maxThreads * 2)
+          GeneratedClassHandler.parallel(postProcessor, maxThreads, queueSize, this, ctx.profiler)
+      }
+      _generatedClassHandler =
+        if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations
+        then GeneratedClassHandler.withOptimizations(handler)
+        else handler
+    }
     _generatedClassHandler.nn
   }
 
@@ -122,7 +137,8 @@ class GenBCode extends Phase { self =>
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
     try
       val result = super.runOn(units)
-      generatedClassHandler.complete()
+      for (exn, f) <- generatedClassHandler.complete() do
+        report.error(em"unable to write $f $exn")
       result
     finally
       // frontendAccess and postProcessor are created lazily, clean them up only if they were initialized
