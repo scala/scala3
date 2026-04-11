@@ -978,7 +978,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
           val actualTp = dealiasOpaques(res.tpe)
           val expectedTp = dealiasOpaques(tree1.tpe)
-          if actualTp frozen_<:< expectedTp then
+          if !ctx.settings.XcheckMacros.value || (actualTp frozen_<:< expectedTp) then
             res
           else
             errorTree(tree1, em"""Macro expansion has type $actualTp, which does not conform to the expected type $expectedTp""")
