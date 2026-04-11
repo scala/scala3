@@ -55,6 +55,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     maxErrorLevel = -1
     errorNotes = Nil
     undoLog.clear()
+    frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
