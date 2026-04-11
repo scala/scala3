@@ -27,7 +27,7 @@ import scala.language.`2.13`
  *
  *  Typically, you'll want to chain to the previous `BlockContext`,
  *  like this:
- *  ```
+ *  ```scala sc:compile
  *  val oldContext = BlockContext.current
  *  val myContext = new BlockContext {
  *    override def blockOn[T](thunk: => T)(implicit permission: CanAwait): T = {

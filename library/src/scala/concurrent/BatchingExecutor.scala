@@ -60,30 +60,38 @@ private[concurrent] object BatchingExecutorStatics {
  *  When you implement this trait for async executors like thread pools,
  *  you're going to need to implement it something like the following:
  *
- *  ```
- *  final override def submitAsync(runnable: Runnable): Unit =
- *    super[SuperClass].execute(runnable) // To prevent reentrancy into `execute`
+ *  ```scala sc:compile
+ *  import java.util.concurrent.Executor
  *
- *  final override def execute(runnable: Runnable): Unit =
- *    if (runnable.isInstanceOf[Batchable]) // Or other logic
- *      submitAsyncBatched(runnable)
- *    else
- *      submitAsync(runnable)
+ *  final class AsyncBatchingExecutor(delegate: Executor)
+ *      extends ExecutionContextExecutor
+ *      with BatchingExecutor {
+ *    final override def submitForExecution(runnable: Runnable): Unit =
+ *      delegate.execute(runnable)
  *
- *  final override def reportFailure(cause: Throwable): Unit = …
+ *    final override def execute(runnable: Runnable): Unit =
+ *      if (runnable.isInstanceOf[Batchable])
+ *        submitAsyncBatched(runnable)
+ *      else
+ *        submitForExecution(runnable)
+ *
+ *    final override def reportFailure(cause: Throwable): Unit = ()
+ *  }
  *  ```
  *
  *  And if you want to implement if for a sync, trampolining, executor you're
  *  going to implement it something like this:
  *
- *  ```
- *  final override def submitAsync(runnable: Runnable): Unit = ()
+ *  ```scala sc:compile
+ *  final class TrampoliningExecutor extends ExecutionContextExecutor with BatchingExecutor {
+ *    final override def submitForExecution(runnable: Runnable): Unit = ()
  *
- *  final override def execute(runnable: Runnable): Unit =
- *    submitSyncBatched(runnable) // You typically will want to batch everything
+ *    final override def execute(runnable: Runnable): Unit =
+ *      submitSyncBatched(runnable)
  *
- *  final override def reportFailure(cause: Throwable): Unit =
- *    ExecutionContext.defaultReporter(cause) // Or choose something more fitting
+ *    final override def reportFailure(cause: Throwable): Unit =
+ *      ExecutionContext.defaultReporter(cause)
+ *  }
  *  ```
  */
 private[concurrent] trait BatchingExecutor extends Executor {

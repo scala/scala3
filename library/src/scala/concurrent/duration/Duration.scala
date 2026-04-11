@@ -323,11 +323,11 @@ object Duration {
  *
  *  <p/>
  *  Examples:
- *  ```
- *  import scala.concurrent.duration._
+ *  ```scala sc:compile
+ *  import scala.concurrent.duration.*
  *
  *  val duration = Duration(100, MILLISECONDS)
- *  val duration = Duration(100, "millis")
+ *  val sameDuration = Duration(100, "millis")
  *
  *  duration.toNanos
  *  duration < 1.second
@@ -338,8 +338,8 @@ object Duration {
  *
  *  <p/>
  *  Implicits are also provided for Int, Long and Double. Example usage:
- *  ```
- *  import scala.concurrent.duration._
+ *  ```scala sc:compile
+ *  import scala.concurrent.duration.*
  *
  *  val duration = 100.millis
  *  ```
@@ -347,7 +347,9 @@ object Duration {
  *  ***The DSL provided by the implicit conversions always allows construction of finite durations, even for infinite Double inputs; use Duration.Inf instead.***
  *
  *  Extractors, parsing and arithmetic are also included:
- *  ```
+ *  ```scala sc:compile
+ *  import scala.concurrent.duration.*
+ *  import scala.language.postfixOps
  *  val d = Duration("1.2 µs")
  *  val Duration(length, unit) = 5 millis
  *  val d2 = d * 2.5
@@ -567,7 +569,8 @@ sealed abstract class Duration extends Serializable with Ordered[Duration] {
   /** Returns duration which is equal to this duration but with a coarsest Unit, or self in case it is already the coarsest Unit
    *  <p/>
    *  Examples:
-   *  ```
+   *  ```scala sc:compile
+   *  import scala.concurrent.duration.*
    *  Duration(60, MINUTES).toCoarsest // Duration(1, HOURS)
    *  Duration(1000, MILLISECONDS).toCoarsest // Duration(1, SECONDS)
    *  Duration(48, HOURS).toCoarsest // Duration(2, DAYS)

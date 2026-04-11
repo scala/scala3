@@ -31,7 +31,7 @@ import scala.concurrent.impl.Promise.DefaultPromise
  *  Computations are executed using an `ExecutionContext`, which is usually supplied implicitly,
  *  and which is commonly backed by a thread pool.
  *
- *  ```
+ *  ```scala sc:compile
  *  import ExecutionContext.Implicits.global
  *  val s = "Hello"
  *  val f: Future[String] = Future {
@@ -79,7 +79,8 @@ import scala.concurrent.impl.Promise.DefaultPromise
  *  @define forComprehensionExamples
  *  Example:
  *
- *  ```
+ *  ```scala sc:compile
+ *  import ExecutionContext.Implicits.global
  *  val f = Future { 5 }
  *  val g = Future { 3 }
  *  val h = for {
@@ -90,7 +91,10 @@ import scala.concurrent.impl.Promise.DefaultPromise
  *
  *  is translated to:
  *
- *  ```
+ *  ```scala sc:compile
+ *  import ExecutionContext.Implicits.global
+ *  val f = Future { 5 }
+ *  val g = Future { 3 }
  *  f flatMap { (x: Int) => g map { (y: Int) => x + y } }
  *  ```
  *
@@ -237,9 +241,10 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  Example:
    *
-   *  ```
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
    *  val f = Future { "The future" }
-   *  val g = f map { x: String => x + " is now!" }
+   *  val g = f.map { (x: String) => x + " is now!" }
    *  ```
    *
    *  Note that a for comprehension involving a `Future`
@@ -291,7 +296,9 @@ trait Future[+T] extends Awaitable[T] {
    *  If the current future fails, then the resulting future also fails.
    *
    *  Example:
-   *  ```
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  import scala.concurrent.duration.Duration
    *  val f = Future { 5 }
    *  val g = f filter { _ % 2 == 1 }
    *  val h = f filter { _ % 2 == 0 }
@@ -329,7 +336,9 @@ trait Future[+T] extends Awaitable[T] {
    *  If the current future fails, then the resulting future also fails.
    *
    *  Example:
-   *  ```
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  import scala.concurrent.duration.Duration
    *  val f = Future { -5 }
    *  val g = f collect {
    *    case x if x < 0 => -x
@@ -361,10 +370,11 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  Example:
    *
-   *  ```
-   *  Future (6 / 0) recover { case e: ArithmeticException => 0 } // result: 0
-   *  Future (6 / 0) recover { case e: NotFoundException   => 0 } // result: exception
-   *  Future (6 / 2) recover { case e: ArithmeticException => 0 } // result: 3
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  Future(6 / 0).recover { case _: ArithmeticException => 0 } // result: 0
+   *  Future(6 / 0).recover { case _: NoSuchElementException => 0 } // result: exception
+   *  Future(6 / 2).recover { case _: ArithmeticException => 0 } // result: 3
    *  ```
    *
    *  @tparam U    the type of the returned `Future`
@@ -384,9 +394,10 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  Example:
    *
-   *  ```
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
    *  val f = Future { Int.MaxValue }
-   *  Future (6 / 0) recoverWith { case e: ArithmeticException => f } // result: Int.MaxValue
+   *  Future(6 / 0).recoverWith { case _: ArithmeticException => f } // result: Int.MaxValue
    *  ```
    *
    *  @tparam U    the type of the returned `Future`
@@ -454,7 +465,8 @@ trait Future[+T] extends Awaitable[T] {
    *  Using this method will not cause concurrent programs to become nondeterministic.
    *
    *  Example:
-   *  ```
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
    *  val f = Future { throw new RuntimeException("failed") }
    *  val g = Future { 5 }
    *  val h = f fallbackTo g
@@ -508,7 +520,9 @@ trait Future[+T] extends Awaitable[T] {
    *
    *  The following example prints out `5`:
    *
-   *  ```
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  import scala.util.{Failure, Success}
    *  val f = Future { 5 }
    *  f andThen {
    *    case r => throw new RuntimeException("runtime exception")
@@ -689,10 +703,12 @@ object Future {
    *
    *  The following expressions are equivalent:
    *
-   *  ```
-   *  val f1 = Future(expr)
-   *  val f2 = Future.unit.map(_ => expr)
-   *  val f3 = Future.unit.transform(_ => Success(expr))
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  import scala.util.Success
+   *  val f1 = Future(1 + 1)
+   *  val f2 = Future.unit.map(_ => 1 + 1)
+   *  val f3 = Future.unit.transform(_ => Success(1 + 1))
    *  ```
    *
    *  The result becomes available once the asynchronous computation is completed.
@@ -709,10 +725,11 @@ object Future {
    *
    *  The following expressions are semantically equivalent:
    *
-   *  ```
-   *  val f1 = Future(expr).flatten
-   *  val f2 = Future.delegate(expr)
-   *  val f3 = Future.unit.flatMap(_ => expr)
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  val f1 = Future(Future.successful(1 + 1)).flatten
+   *  val f2 = Future.delegate(Future.successful(1 + 1))
+   *  val f3 = Future.unit.flatMap(_ => Future.successful(1 + 1))
    *  ```
    *
    *  The result becomes available once the resulting Future of the asynchronous computation is completed.
@@ -805,8 +822,10 @@ object Future {
    *  or the result of the fold.
    *
    *  Example:
-   *  ```
-   *    val futureSum = Future.foldLeft(futures)(0)(_ + _)
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
+   *  val futureSum = Future.foldLeft(futures)(0)(_ + _)
    *  ```
    *
    *  @tparam T       the type of the value of the input Futures
@@ -829,8 +848,10 @@ object Future {
    *  or the result of the fold.
    *
    *  Example:
-   *  ```
-   *    val futureSum = Future.fold(futures)(0)(_ + _)
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
+   *  val futureSum = Future.fold(futures)(0)(_ + _)
    *  ```
    *
    *  @tparam T       the type of the value of the input Futures
@@ -850,8 +871,10 @@ object Future {
    *  where the fold-zero is the result value of the first `Future` in the collection.
    *
    *  Example:
-   *  ```
-   *    val futureSum = Future.reduce(futures)(_ + _)
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
+   *  val futureSum = Future.reduce(futures)(_ + _)
    *  ```
    *  @tparam T       the type of the value of the input Futures
    *  @tparam R       the type of the value of the returned `Future`
@@ -869,8 +892,10 @@ object Future {
    *  where the zero is the result value of the first `Future`.
    *
    *  Example:
-   *  ```
-   *    val futureSum = Future.reduceLeft(futures)(_ + _)
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  val futures = List(Future.successful(1), Future.successful(2), Future.successful(3))
+   *  val futureSum = Future.reduceLeft(futures)(_ + _)
    *  ```
    *  @tparam T       the type of the value of the input Futures
    *  @tparam R       the type of the value of the returned `Future`
@@ -889,8 +914,11 @@ object Future {
    *  This is useful for performing a parallel map. For example, to apply a function to all items of a list
    *  in parallel:
    *
-   *  ```
-   *    val myFutureList = Future.traverse(myList)(x => Future(myFunc(x)))
+   *  ```scala sc:compile
+   *  import ExecutionContext.Implicits.global
+   *  val myList = List(1, 2, 3)
+   *  def myFunc(x: Int): Int = x + 1
+   *  val myFutureList = Future.traverse(myList)(x => Future(myFunc(x)))
    *  ```
    *  @tparam A        the type of the value inside the Futures in the collection
    *  @tparam B        the type of the value of the returned `Future`

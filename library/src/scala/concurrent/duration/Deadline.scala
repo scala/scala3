@@ -17,8 +17,8 @@ import scala.language.`2.13`
 /** This class stores a deadline, as obtained via `Deadline.now` or the
  *  duration DSL:
  *
- *  ```
- *  import scala.concurrent.duration._
+ *  ```scala sc:compile
+ *  import scala.concurrent.duration.*
  *  3.seconds.fromNow
  *  ```
  *

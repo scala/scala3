@@ -30,7 +30,7 @@ import scala.util.Try
  * When working with Futures, you will often find that importing the whole concurrent
  * package is convenient:
  *
- * ```
+ * ```scala sc:compile
  * import scala.concurrent._
  * ```
  *
@@ -40,10 +40,12 @@ import scala.util.Try
  * If the code in question is a class or method definition, and no `ExecutionContext` is available,
  * request one from the caller by adding an implicit parameter list:
  *
- * ```
- * def myMethod(myParam: MyType)(implicit ec: ExecutionContext) = …
- * //Or
- * class MyClass(myParam: MyType)(implicit ec: ExecutionContext) { … }
+ * ```scala sc:compile
+ * def myMethod(myParam: Int)(implicit ec: ExecutionContext): Int = myParam + 1
+ * // Or
+ * class MyClass(myParam: Int)(implicit ec: ExecutionContext) {
+ *   def doubled: Int = myParam * 2
+ * }
  * ```
  *
  * This allows the caller of the method, or creator of the instance of the class, to decide which
@@ -51,7 +53,7 @@ import scala.util.Try
  *
  * For typical REPL usage and experimentation, importing the global `ExecutionContext` is often desired.
  *
- * ```
+ * ```scala sc:compile
  * import scala.concurrent.ExecutionContext.Implicits.global
  * ```
  *
@@ -60,8 +62,8 @@ import scala.util.Try
  * Operations often require a duration to be specified. A duration DSL is available
  * to make defining these easier:
  *
- * ```
- * import scala.concurrent.duration._
+ * ```scala sc:compile
+ * import scala.concurrent.duration.*
  * val d: Duration = 10.seconds
  * ```
  *
@@ -72,13 +74,12 @@ import scala.util.Try
  * without blocking the current thread. In order to create the Future you will need
  * either an implicit or explicit ExecutionContext to be provided:
  *
- * ```
- * import scala.concurrent._
+ * ```scala sc:compile
+ * import scala.concurrent.*
  * import ExecutionContext.Implicits.global  // implicit execution context
  *
  * val firstZebra: Future[Int] = Future {
- *   val words = Files.readAllLines("/etc/dictionaries-common/words").asScala
- *   words.indexOfSlice("zebra")
+ *   "aardvark zebra".indexOf("zebra")
  * }
  * ```
  *
@@ -86,8 +87,10 @@ import scala.util.Try
  *
  * Although blocking is possible in order to await results (with a mandatory timeout duration):
  *
- * ```
- * import scala.concurrent.duration._
+ * ```scala sc:compile
+ * import scala.concurrent.*
+ * import scala.concurrent.duration.*
+ * val firstZebra = Future.successful(9)
  * Await.result(firstZebra, 10.seconds)
  * ```
  *
@@ -96,14 +99,18 @@ import scala.util.Try
  * potential deadlocks and improve performance. Instead, use callbacks or combinators to
  * remain in the future domain:
  *
- * ```
+ * ```scala sc:compile
+ * import scala.concurrent.*
+ * import scala.concurrent.ExecutionContext.Implicits.global
+ * val firstAardvark = Future.successful(0)
+ * val firstZebra = Future.successful(600001)
  * val animalRange: Future[Int] = for {
  *   aardvark <- firstAardvark
  *   zebra <- firstZebra
  * } yield zebra - aardvark
  *
- * animalRange.onSuccess {
- *   case x if x > 500000 => println("It's a long way from Aardvark to Zebra")
+ * animalRange.foreach { x =>
+ *   if (x > 500000) println("It's a long way from Aardvark to Zebra")
  * }
  * ```
  */
