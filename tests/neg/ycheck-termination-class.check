@@ -1,15 +1,7 @@
--- Warning: tests/neg/ycheck-termination-class.scala:10:4 --------------------------------------------------------------
-10 |    1 + classLoop(r.next) // error
-   |    ^^^^^^^^^^^^^^^^^^^^^
-   |    Method + has an empty tree.
 -- Error: tests/neg/ycheck-termination-class.scala:10:17 ---------------------------------------------------------------
 10 |    1 + classLoop(r.next) // error
    |        ^^^^^^^^^^^^^^^^^
    |        classLoop may not terminate due to (mutually) recursive call.
--- Warning: tests/neg/ycheck-termination-class.scala:16:22 -------------------------------------------------------------
-16 |      case x :: xs => x + sumStd(xs) // error
-   |                      ^^^^^^^^^^^^^^
-   |                      Method + has an empty tree.
 -- Warning: tests/neg/ycheck-termination-class.scala:16:16 -------------------------------------------------------------
 16 |      case x :: xs => x + sumStd(xs) // error
    |                ^

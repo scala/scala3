@@ -29,6 +29,7 @@ final abstract class Boolean private extends AnyVal {
    *
    *  @return the negated expression
    */
+  @scala.annotation.assumeTerminates
   def unary_! : Boolean
 
   /** Compares two Boolean expressions and returns `true` if they evaluate to the same value.
@@ -37,6 +38,7 @@ final abstract class Boolean private extends AnyVal {
    *  - `a` and `b` are `true` or
    *  - `a` and `b` are `false`.
    */
+  @scala.annotation.assumeTerminates
   def ==(x: Boolean): Boolean
 
   /** Compares two Boolean expressions and returns `true` if they evaluate to a different value.
@@ -45,6 +47,7 @@ final abstract class Boolean private extends AnyVal {
    *  - `a` is `true` and `b` is `false` or
    *  - `a` is `false` and `b` is `true`.
    */
+  @scala.annotation.assumeTerminates
   def !=(x: Boolean): Boolean
 
   /** Compares two Boolean expressions and returns `true` if one or both of them evaluate to true.
@@ -61,6 +64,7 @@ final abstract class Boolean private extends AnyVal {
    *  @param x the right-hand operand, only evaluated if `this` is `false`
    *  @return `true` if at least one operand is `true`, `false` otherwise
    */
+  @scala.annotation.assumeTerminates
   def ||(x: Boolean): Boolean
 
   /** Compares two Boolean expressions and returns `true` if both of them evaluate to true.
@@ -75,6 +79,7 @@ final abstract class Boolean private extends AnyVal {
    *  @param x the right-hand operand, only evaluated if `this` is `true`
    *  @return `true` if both operands are `true`, `false` otherwise
    */
+  @scala.annotation.assumeTerminates
   def &&(x: Boolean): Boolean
 
   // Compiler won't build with these seemingly more accurate signatures
@@ -93,6 +98,7 @@ final abstract class Boolean private extends AnyVal {
    *  @param x the right-hand operand, always evaluated
    *  @return `true` if at least one operand is `true`, `false` otherwise
    */
+  @scala.annotation.assumeTerminates
   def |(x: Boolean): Boolean
 
   /** Compares two Boolean expressions and returns `true` if both of them evaluate to true.
@@ -105,6 +111,7 @@ final abstract class Boolean private extends AnyVal {
    *  @param x the right-hand operand, always evaluated
    *  @return `true` if both operands are `true`, `false` otherwise
    */
+  @scala.annotation.assumeTerminates
   def &(x: Boolean): Boolean
 
   /** Compares two Boolean expressions and returns `true` if they evaluate to a different value.
@@ -116,6 +123,7 @@ final abstract class Boolean private extends AnyVal {
    *  @param x the right-hand operand
    *  @return `true` if the operands evaluate to different values, `false` otherwise
    */
+  @scala.annotation.assumeTerminates
   def ^(x: Boolean): Boolean
 
 }

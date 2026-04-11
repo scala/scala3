@@ -22,12 +22,19 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Long private extends AnyVal {
+  @scala.annotation.assumeTerminates
   def toByte: Byte
+  @scala.annotation.assumeTerminates
   def toShort: Short
+  @scala.annotation.assumeTerminates
   def toChar: Char
+  @scala.annotation.assumeTerminates
   def toInt: Int
+  @scala.annotation.assumeTerminates
   def toLong: Long
+  @scala.annotation.assumeTerminates
   def toFloat: Float
+  @scala.annotation.assumeTerminates
   def toDouble: Double
 
   /** Returns the bitwise negation of this value.
@@ -37,10 +44,13 @@ final abstract class Long private extends AnyVal {
    *  //             11111010
    *  ```
    */
+  @scala.annotation.assumeTerminates
   def unary_~ : Long
   /** Returns this value, unmodified. */
+  @scala.annotation.assumeTerminates
   def unary_+ : Long
   /** Returns the negation of this value. */
+  @scala.annotation.assumeTerminates
   def unary_- : Long
 
   @deprecated("Adding a number and a String is deprecated. Use the string interpolation `s\"$num$str\"`", "2.13.0")
@@ -55,6 +65,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the number of bits to shift left
    */
+  @scala.annotation.assumeTerminates
   def <<(x: Int): Long
   /** Returns this value bit-shifted left by the specified number of bits,
    *         filling in the new right bits with zeroes.
@@ -65,6 +76,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the number of bits to shift left
    */
+  @scala.annotation.assumeTerminates
   def <<(x: Long): Long
   /** Returns this value bit-shifted right by the specified number of bits,
    *         filling the new left bits with zeroes.
@@ -77,6 +89,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the number of bits to shift right
    */
+  @scala.annotation.assumeTerminates
   def >>>(x: Int): Long
   /** Returns this value bit-shifted right by the specified number of bits,
    *         filling the new left bits with zeroes.
@@ -89,6 +102,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the number of bits to shift right
    */
+  @scala.annotation.assumeTerminates
   def >>>(x: Long): Long
   /** Returns this value bit-shifted right by the specified number of bits,
    *         filling in the left bits with the same value as the left-most bit of this.
@@ -101,6 +115,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the number of bits to shift right
    */
+  @scala.annotation.assumeTerminates
   def >>(x: Int): Long
   /** Returns this value bit-shifted right by the specified number of bits,
    *         filling in the left bits with the same value as the left-most bit of this.
@@ -113,138 +128,181 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the number of bits to shift right
    */
+  @scala.annotation.assumeTerminates
   def >>(x: Long): Long
 
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Byte): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Short): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Char): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Int): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Long): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Float): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Double): Boolean
 
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Byte): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Short): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Char): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Int): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Long): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Float): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Double): Boolean
 
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Byte): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Short): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Char): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Int): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Long): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Float): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Double): Boolean
 
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Byte): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Short): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Char): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Int): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Long): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Float): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Double): Boolean
 
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Byte): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Short): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Char): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Int): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Long): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Float): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Double): Boolean
 
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Byte): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Short): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Char): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Int): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Long): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Float): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Double): Boolean
 
   /** Returns the bitwise OR of this value and `x`.
@@ -258,6 +316,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to OR with this value
    */
+  @scala.annotation.assumeTerminates
   def |(x: Byte): Long
   /** Returns the bitwise OR of this value and `x`.
    *  @example ```
@@ -270,6 +329,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to OR with this value
    */
+  @scala.annotation.assumeTerminates
   def |(x: Short): Long
   /** Returns the bitwise OR of this value and `x`.
    *  @example ```
@@ -282,6 +342,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to OR with this value
    */
+  @scala.annotation.assumeTerminates
   def |(x: Char): Long
   /** Returns the bitwise OR of this value and `x`.
    *  @example ```
@@ -294,6 +355,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to OR with this value
    */
+  @scala.annotation.assumeTerminates
   def |(x: Int): Long
   /** Returns the bitwise OR of this value and `x`.
    *  @example ```
@@ -306,6 +368,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to OR with this value
    */
+  @scala.annotation.assumeTerminates
   def |(x: Long): Long
 
   /** Returns the bitwise AND of this value and `x`.
@@ -319,6 +382,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to AND with this value
    */
+  @scala.annotation.assumeTerminates
   def &(x: Byte): Long
   /** Returns the bitwise AND of this value and `x`.
    *  @example ```
@@ -331,6 +395,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to AND with this value
    */
+  @scala.annotation.assumeTerminates
   def &(x: Short): Long
   /** Returns the bitwise AND of this value and `x`.
    *  @example ```
@@ -343,6 +408,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to AND with this value
    */
+  @scala.annotation.assumeTerminates
   def &(x: Char): Long
   /** Returns the bitwise AND of this value and `x`.
    *  @example ```
@@ -355,6 +421,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to AND with this value
    */
+  @scala.annotation.assumeTerminates
   def &(x: Int): Long
   /** Returns the bitwise AND of this value and `x`.
    *  @example ```
@@ -367,6 +434,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to AND with this value
    */
+  @scala.annotation.assumeTerminates
   def &(x: Long): Long
 
   /** Returns the bitwise XOR of this value and `x`.
@@ -380,6 +448,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to XOR with this value
    */
+  @scala.annotation.assumeTerminates
   def ^(x: Byte): Long
   /** Returns the bitwise XOR of this value and `x`.
    *  @example ```
@@ -392,6 +461,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to XOR with this value
    */
+  @scala.annotation.assumeTerminates
   def ^(x: Short): Long
   /** Returns the bitwise XOR of this value and `x`.
    *  @example ```
@@ -404,6 +474,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to XOR with this value
    */
+  @scala.annotation.assumeTerminates
   def ^(x: Char): Long
   /** Returns the bitwise XOR of this value and `x`.
    *  @example ```
@@ -416,6 +487,7 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to XOR with this value
    */
+  @scala.annotation.assumeTerminates
   def ^(x: Int): Long
   /** Returns the bitwise XOR of this value and `x`.
    *  @example ```
@@ -428,186 +500,222 @@ final abstract class Long private extends AnyVal {
    *
    *  @param x the value to XOR with this value
    */
+  @scala.annotation.assumeTerminates
   def ^(x: Long): Long
 
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Byte): Long
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Short): Long
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Char): Long
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Int): Long
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Long): Long
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Float): Float
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Double): Double
 
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Byte): Long
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Short): Long
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Char): Long
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Int): Long
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Long): Long
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Float): Float
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Double): Double
 
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Byte): Long
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Short): Long
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Char): Long
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Int): Long
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Long): Long
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Float): Float
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Double): Double
 
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Byte): Long
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Short): Long
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Char): Long
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Int): Long
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Long): Long
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Float): Float
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Double): Double
 
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Byte): Long
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Short): Long
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Char): Long
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Int): Long
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Long): Long
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Float): Float
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Double): Double
 
 }

@@ -35,10 +35,6 @@ class CheckTermination extends MiniPhase {
   private class TerminationChecker(startMethod: Symbol)(using Context)
       extends TreeTraverser {
 
-    private val whiteListedMethods = Set[Symbol](
-      defn.assumeTerminatesMethod,
-    )
-
     enum Size:
       case Smaller, Same, Unknown
 
@@ -50,8 +46,17 @@ class CheckTermination extends MiniPhase {
       tree match {
         case tree: DefDef => () // Don't traverse inner function definitions.
 
-        case tree @ Apply(fn, _) if whiteListedMethods.contains(fn.symbol) =>
+        case tree: WhileDo =>
+          report.warning(
+            "The termination checker does not support while loops.",
+            tree.srcPos
+          )
+
+        case tree @ Apply(fn, _) if fn.symbol == defn.assumeTerminatesMethod =>
           () // Don't traverse, as we assume they terminate.
+
+        case tree @ Apply(fn, _) if fn.symbol.hasAnnotation(defn.AssumeTerminatesAnnot) =>
+          traverseChildren(tree)
 
         case tree: Apply =>
           val (fn, args) = peelApplies(tree)
@@ -83,7 +88,9 @@ class CheckTermination extends MiniPhase {
 
                   sizeMap = savedMap
                   callStack = callStack.tail
-                case _ => report.warning(s"Method ${methodSymbol.name} has an empty tree.", tree.srcPos)
+                case _ =>
+                  if methodSymbol.isRealMethod then
+                    report.warning(s"Method ${methodSymbol.name} has an empty tree.", tree.srcPos)
               }
           }
           traverse(fn)

@@ -22,332 +22,418 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Float private extends AnyVal {
+  @scala.annotation.assumeTerminates
   def toByte: Byte
+  @scala.annotation.assumeTerminates
   def toShort: Short
+  @scala.annotation.assumeTerminates
   def toChar: Char
+  @scala.annotation.assumeTerminates
   def toInt: Int
+  @scala.annotation.assumeTerminates
   def toLong: Long
+  @scala.annotation.assumeTerminates
   def toFloat: Float
+  @scala.annotation.assumeTerminates
   def toDouble: Double
 
   /** Returns this value, unmodified. */
+  @scala.annotation.assumeTerminates
   def unary_+ : Float
   /** Returns the negation of this value. */
+  @scala.annotation.assumeTerminates
   def unary_- : Float
 
   @deprecated("Adding a number and a String is deprecated. Use the string interpolation `s\"$num$str\"`", "2.13.0")
   def +(x: String): String
 
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Byte): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Short): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Char): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Int): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Long): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Float): Boolean
   /** Returns `true` if this value is equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def ==(x: Double): Boolean
 
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Byte): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Short): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Char): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Int): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Long): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Float): Boolean
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def !=(x: Double): Boolean
 
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Byte): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Short): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Char): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Int): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Long): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Float): Boolean
   /** Returns `true` if this value is less than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def <(x: Double): Boolean
 
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Byte): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Short): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Char): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Int): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Long): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Float): Boolean
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def <=(x: Double): Boolean
 
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Byte): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Short): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Char): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Int): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Long): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Float): Boolean
   /** Returns `true` if this value is greater than x, `false` otherwise.
    *
    *  @param x the value to compare against
    */
+  @scala.annotation.assumeTerminates
   def >(x: Double): Boolean
 
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Byte): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Short): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Char): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Int): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Long): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Float): Boolean
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
+  @scala.annotation.assumeTerminates
   def >=(x: Double): Boolean
 
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Byte): Float
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Short): Float
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Char): Float
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Int): Float
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Long): Float
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Float): Float
   /** Returns the sum of this value and `x`.
    *
    *  @param x the value to add to this value
    */
+  @scala.annotation.assumeTerminates
   def +(x: Double): Double
 
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Byte): Float
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Short): Float
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Char): Float
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Int): Float
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Long): Float
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Float): Float
   /** Returns the difference of this value and `x`.
    *
    *  @param x the value to subtract from this value
    */
+  @scala.annotation.assumeTerminates
   def -(x: Double): Double
 
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Byte): Float
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Short): Float
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Char): Float
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Int): Float
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Long): Float
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Float): Float
   /** Returns the product of this value and `x`.
    *
    *  @param x the value to multiply this value by
    */
+  @scala.annotation.assumeTerminates
   def *(x: Double): Double
 
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Byte): Float
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Short): Float
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Char): Float
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Int): Float
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Long): Float
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Float): Float
   /** Returns the quotient of this value and `x`.
    *
    *  @param x the value to divide this value by
    */
+  @scala.annotation.assumeTerminates
   def /(x: Double): Double
 
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Byte): Float
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Short): Float
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Char): Float
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Int): Float
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Long): Float
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Float): Float
   /** Returns the remainder of the division of this value by `x`.
    *
    *  @param x the divisor
    */
+  @scala.annotation.assumeTerminates
   def %(x: Double): Double
 
 }
