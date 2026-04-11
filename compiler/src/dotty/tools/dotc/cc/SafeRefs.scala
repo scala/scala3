@@ -15,6 +15,7 @@ import SymDenotations.*
 import Flags.*
 import Types.*
 import config.Feature
+import config.Printers.capt
 import typer.ProtoTypes.SelectionProto
 
 /** Check whether references from safe mode should be allowed */
@@ -69,15 +70,9 @@ object SafeRefs {
     assumeSafe("java.lang.String")
     assumeSafe("java.lang.Throwable")
     assumeSafe("java.lang.Void")
-    assumeSafe("java.util.Locale")
-    assumeSafe("java.util.Random")
-    assumeSafe("java.util.UUID")
-    assumeSafe("java.util.Objects")
-    assumeSafe("java.util.Optional")
-    assumeSafe("java.util.OptionalInt")
-    assumeSafe("java.util.OptionalLong")
-    assumeSafe("java.util.OptionalDouble")
-    assumeSafe("java.util.TimeZone")
+    assumeSafe("java.lang.Exception")
+    assumeSafe("java.lang.CharSequence")
+    assumeSafe("java.lang.Comparable")
     assumeSafe("java.lang.Class", except = List(
       "accessFlags", "asSubclass", "cast", "describeConstable",
       "descriptorString", "desiredAssertionStatus", "forName", "forPrimitiveName", "getAnnotatedInterfaces",
@@ -90,12 +85,50 @@ object SafeRefs {
       "getPackage", "getPackageName", "getPermittedSubclasses", "getProtectionDomain", "getRecordComponents",
       "getResource", "getResourceAsStream", "getSigners", "getTypeParameters", "getTypeName",
       "newInstance", "cast", "toGenericString"))
+    assumeSafe("java.util.Locale")
+    assumeSafe("java.util.Random")
+    assumeSafe("java.util.UUID")
+    assumeSafe("java.util.Objects")
+    assumeSafe("java.util.Optional")
+    assumeSafe("java.util.OptionalInt")
+    assumeSafe("java.util.OptionalLong")
+    assumeSafe("java.util.OptionalDouble")
+    assumeSafe("java.util.TimeZone")
     rejectSafe("scala.Console")
     rejectSafe("scala.unchecked")
     rejectSafe("scala.annotation.unchecked.uncheckedOverride")
     rejectSafe("scala.annotation.unchecked.uncheckedStable")
     rejectSafe("scala.annotation.unchecked.uncheckedVariance")
     rejectSafe("scala.annotation.unchecked.uncheckedCaptures")
+    // Reject mutable classes in scala.runtime
+    rejectSafe("scala.runtime.BooleanRef")
+    rejectSafe("scala.runtime.ByteRef")
+    rejectSafe("scala.runtime.CharRef")
+    rejectSafe("scala.runtime.DoubleRef")
+    rejectSafe("scala.runtime.FloatRef")
+    rejectSafe("scala.runtime.IntRef")
+    rejectSafe("scala.runtime.LongRef")
+    rejectSafe("scala.runtime.ShortRef")
+    rejectSafe("scala.runtime.ObjectRef")
+    rejectSafe("scala.runtime.VolatileBooleanRef")
+    rejectSafe("scala.runtime.VolatileByteRef")
+    rejectSafe("scala.runtime.VolatileCharRef")
+    rejectSafe("scala.runtime.VolatileDoubleRef")
+    rejectSafe("scala.runtime.VolatileFloatRef")
+    rejectSafe("scala.runtime.VolatileIntRef")
+    rejectSafe("scala.runtime.VolatileLongRef")
+    rejectSafe("scala.runtime.VolatileShortRef")
+    rejectSafe("scala.runtime.VolatileObjectRef")
+    rejectSafe("scala.runtime.LazyRef")
+    rejectSafe("scala.runtime.LazyBoolean")
+    rejectSafe("scala.runtime.LazyByte")
+    rejectSafe("scala.runtime.LazyChar")
+    rejectSafe("scala.runtime.LazyShort")
+    rejectSafe("scala.runtime.LazyInt")
+    rejectSafe("scala.runtime.LazyLong")
+    rejectSafe("scala.runtime.LazyFloat")
+    rejectSafe("scala.runtime.LazyDouble")
+    rejectSafe("scala.runtime.LazyUnit")
 
   private def fail(sym: Symbol, reason: String, pos: SrcPos)(using Context) =
     report.error(em"Cannot refer to ${sym.sanitizedDescription}${sym.showExtendedLocation} from safe code since $reason", pos)
@@ -122,7 +155,7 @@ object SafeRefs {
 
     val (sym, checkLater) = tree match
       case tree: New =>
-        (tree.tpt.symbol, false)
+        (tree.tpt.tpe.classSymbol, false)
       case tree: RefTree =>
         val checkLater =
           !tree.symbol.is(Method)
@@ -142,6 +175,8 @@ object SafeRefs {
         && !isSafe(sym)
     then
       fail(sym, "it is neither compiled in safe mode nor tagged with @assumedSafe", tree.srcPos)
+    else
+      capt.println(i"checked safe $tree, $sym, $checkLater")
   }
 
   private def checkSafeAnnot(ann: Annotation, pos: SrcPos)(using Context): Unit =

@@ -105,7 +105,7 @@ trait CoverageSupport:
   def runWithCoverageOrFallback[A <: Test](test: CompilationTest, desc: String)(using CoverageTestSupport[A], SummaryReporting): Unit =
     val tc = summon[CoverageTestSupport[A]]
     if Properties.testsInstrumentCoverage then
-      test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput), desc)
+      test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput))
     else
       tc.fallback(test)
 

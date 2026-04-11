@@ -5,13 +5,8 @@
 # Empty lines are ignored
 
 16583.scala
-alphanumeric-infix-operator-compat
 annotation-named-pararamters
 applied_constructor_types.scala
-backwardCompat-3.0
-backwardCompat-3.1
-backwardsCompat-implicitParens
-bridges.scala
 capt1.scala
 capture.scala
 catch-sub-cases.scala
@@ -46,7 +41,6 @@ i19637.scala
 i19955a.scala
 i19955b.scala
 i20053b.scala
-i20521.scala
 i2112.scala
 i21313.scala
 i2146.scala
@@ -64,7 +58,6 @@ i25000.scala
 i25000b.scala
 i3598.scala
 i5039.scala
-i7034.scala
 i8623.scala
 i8900a3.scala
 i8955.scala
@@ -73,7 +66,6 @@ i9228.scala
 i9880.scala
 infersingle.scala
 interop-unsound-src
-large2.scala
 match-single-sub-case.scala
 match-sub-cases.scala
 match-sub-sub-cases.scala
@@ -88,7 +80,6 @@ quote-function-applied-to.scala
 skolems2.scala
 spurious-overload.scala
 sub-cases-exhaustivity.scala
-t10594.scala
 tailrec.scala
 traitParams.scala
 i25460.scala

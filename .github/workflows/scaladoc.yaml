@@ -79,7 +79,6 @@ jobs:
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
 
   validate-generated-docs:
-    if: false
     needs: build
     runs-on: ubuntu-latest
     steps:

@@ -4,7 +4,7 @@ title: "Macros"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros.html
 ---
 
-> When developing macros enable `-Xcheck-macros` scalac option flag to have extra runtime checks.
+> **Warning:** Always enable `-Xcheck-macros` when developing macros. Without it, the compiler will not validate generated code, which may be unsound and lead to undefined behavior.
 
 ## Multi-Staging
 

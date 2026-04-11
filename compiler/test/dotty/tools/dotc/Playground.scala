@@ -7,7 +7,7 @@ import org.junit.Ignore
 // For ease of debugging individual tests
 @Ignore class Playground:
   import TestConfiguration.*
-  import CompilationTests.*
+  import CompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   @Test def example: Unit =

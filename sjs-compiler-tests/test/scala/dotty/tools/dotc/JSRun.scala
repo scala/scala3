@@ -7,7 +7,7 @@ import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
-import dotty.tools.vulpix.*
+import dotty.tools.vulpix.*, Status.{Failure, Success}
 
 import org.scalajs.jsenv.*
 import org.scalajs.jsenv.nodejs.NodeJSEnv

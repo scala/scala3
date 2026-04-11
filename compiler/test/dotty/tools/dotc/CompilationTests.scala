@@ -4,7 +4,7 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, AfterClass }
+import org.junit.{Test, AfterClass}
 import org.junit.Assume.*
 
 import java.nio.file.*
@@ -16,13 +16,13 @@ import dotty.tools.vulpix.*
 class CompilationTests {
   import ParallelTesting.*
   import TestConfiguration.*
-  import CompilationTests.*
+  import CompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
 
   @Test def pos: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePos")
+    given TestGroup = TestGroup("compilePos")
     val tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
@@ -274,9 +274,14 @@ class CompilationTests {
 
       // Set -sourceroot such that the source code cannot be found by the compiler
       val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
-      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)(using group).keepOutput.checkCompile()
+      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)
+        (using group)
+        .keepOutput
+        .checkCompile()
 
-      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))(using group).checkWarnings()
+      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))
+        (using group)
+        .checkWarnings()
 
       lib.delete()
     }
@@ -409,7 +414,8 @@ object CompilationTests extends ParallelTesting with CoverageSupport {
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  given summaryReport: SummaryReporting = new SummaryReport
+
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     summaryReport.echoSummary()
