@@ -1609,8 +1609,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def isCaptureVarComparison: Boolean =
       isCaptureCheckingOrSetup
-      && tp1.derivesFrom(defn.Caps_CapSet)
-      && tp2.derivesFrom(defn.Caps_CapSet)
+      && tp1.derivesFromCapSet
+      && tp2.derivesFromCapSet
 
     // begin recur
     if tp2 eq NoType then false

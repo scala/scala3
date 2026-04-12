@@ -20,9 +20,7 @@ import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendReporting.*
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis.*
@@ -32,7 +30,7 @@ import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 class CallGraph(frontendAccess: PostProcessorFrontendAccess,
                 byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                inlineInfoLoader: InlineInfoLoader, ts: CoreBTypes)(using Context) {
+                ts: CoreBTypes) {
 
   /**
    * The call graph contains the callsites in the program being compiled.
@@ -341,7 +339,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     for (i <- types.indices) {
       types(i) match {
         case c: ClassBType =>
-          if (inlineInfoLoader.load(c.info).sam.isDefined) res = res.updated(i, c)
+          if (c.info.inlineInfo.sam.isDefined) res = res.updated(i, c)
 
         case _ =>
       }
@@ -370,7 +368,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     // The inlineInfo.methodInfos of a ClassBType holds an InlineInfo for each method *declared*
     // within a class (not for inherited methods). Since we already have the  classBType of the
     // callee, we only check there for the methodInlineInfo, we should find it there.
-    inlineInfoLoader.load(calleeDeclarationClassBType.info).methodInfos.get(methodSignature) match {
+    calleeDeclarationClassBType.info.inlineInfo.methodInfos.get(methodSignature) match {
       case Some(methodInlineInfo) =>
         val owner = if call.owner.startsWith("[") then "java/lang/Object" else call.owner
         bTypesFromClassfile.classBTypeFromParsedClassfile(owner) match
@@ -401,10 +399,10 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
               isStaticCallsite(call) ||
                 (call.getOpcode == Opcodes.INVOKESPECIAL && receiverType == callsiteClass) || // (1)
                 methodInlineInfo.effectivelyFinal ||
-                inlineInfoLoader.load(receiverType.info).isEffectivelyFinal // (2)
+                receiverType.info.inlineInfo.isEffectivelyFinal // (2)
             }
 
-            val warning = inlineInfoLoader.load(calleeDeclarationClassBType.info).warning.map(
+            val warning = calleeDeclarationClassBType.info.inlineInfo.warning.map(
               MethodInlineInfoIncomplete(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc, _))
 
             samParamTypes(calleeMethodNode, paramTps, receiverType) match
@@ -420,7 +418,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
 
       case None =>
         val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc,
-                                              inlineInfoLoader.load(calleeDeclarationClassBType.info).warning)
+                                              calleeDeclarationClassBType.info.inlineInfo.warning)
         CallsiteInfo(warning = Some(warning))
     }
   }

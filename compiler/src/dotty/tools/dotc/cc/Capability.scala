@@ -596,11 +596,6 @@ object Capabilities:
       case self: CoreCapability => self.superType.derivesFromCapTrait(cls)
       case _ => false
 
-    def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-    def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
-    def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
-    def derivesFromUnscoped(using Context): Boolean = derivesFromCapTrait(defn.Caps_Unscoped)
-
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
       if mySingletonCaptureSet == null then
@@ -773,7 +768,7 @@ object Capabilities:
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
         case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
         case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
-        case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
+        case y: TypeRef if y.derivesFromCapSet =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
           // They can be other capture set variables, which are bounded by `CapSet`,
           // like `def test[X^, Y^, Z >: X <: Y]`.
@@ -790,7 +785,7 @@ object Capabilities:
           case Restricted(x1, cls) => y.isKnownClassifiedAs(cls) && x1.subsumes(y)
           case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
           case x: TypeRef if assumedContainsOf(x).contains(y) => true
-          case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
+          case x: TypeRef if x.derivesFromCapSet =>
             x.info match
               case TypeBounds(CapturingType(_, lorefs), _) =>
                 lorefs.elems.exists(_.subsumes(y))
@@ -842,14 +837,14 @@ object Capabilities:
         case x: ResultCap =>
           y match
             case y: ResultCap => vs.unify(x, y)
-            case _ => y.derivesFromShared
+            case _ => y.derivesFromCapTrait(defn.Caps_SharedCapability)
         case _: GlobalCap =>
           y match
             case _: GlobalCap => this eq y
             case _: ResultCap => false
             case _: LocalCap if CCState.collapseLocalCaps => true
             case _ =>
-              y.derivesFromShared
+              y.derivesFromCapTrait(defn.Caps_SharedCapability)
               || canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
@@ -1076,44 +1071,6 @@ object Capabilities:
   end Origin
 
   // ---------- Maps between different kinds of root capabilities -----------------
-
-  /** Map GlobalFresh capabilities in results of methods to ResultCaps
-   *  This map is peculiar since it has to run very early in Setup where some capture
-   *  sets are not yet known and consequently `map` in CaptureSet might give wrong results.
-   *  A test case where this would happen is neg-custom-args/captures/i13816.scala
-   *  This motivates the various tricks explained below.
-   */
-  class FreshCapToResult(using Context) extends TypeMap {
-    def apply(t: Type) =
-      t match
-        case t @ AnnotatedType(parent, ann) =>
-          // Leave capture sets and other annotations as is
-          t.derivedAnnotatedType(this(parent), ann)
-        case t @ defn.RefinedFunctionOf(mt) =>
-          // Don't touch parents of refined function types
-          t.derivedRefinedType(refinedInfo = apply(mt))
-        case mt: MethodType =>
-          val freshToResultInResult = new TypeMap {
-
-            def apply(t: Type) = t match
-              case t @ CapturingType(parent, refs: CaptureSet.Const) =>
-                // Map capture set elements one-by-one, don't try to form unions
-                val elems1 = refs.elems.map(mapCapability(_))
-                val refs1 = if elems1 == refs.elems then refs else CaptureSet(elems1.toList*)
-                t.derivedCapturingType(this(parent), refs1)
-              case _ =>
-                mapOver(t)
-
-            // Leave all elements unchanged except for mapping GlobalFresh to ResultFresh
-            override def mapCapability(c: Capability, deep: Boolean): Capability = c match
-              case GlobalFresh => ResultCap(mt)
-              case c: DerivedCapability => c.derivedCapability(mapCapability(c.underlying, deep))
-              case c => c
-          }
-          mapOver(mt.derivedLambdaType(resType = freshToResultInResult(mt.resType)))
-        case _ =>
-          mapOver(t)
-  }
 
   /** Map each occurrence of `caps.any` to a different LocalCap instance
    *  Exception: CapSet^ stays as it is.

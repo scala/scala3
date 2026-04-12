@@ -1,0 +1,16 @@
+-- Error: tests/neg-custom-args/captures/i25759.scala:4:14 -------------------------------------------------------------
+4 |  val q = new java.util.concurrent.ConcurrentLinkedQueue[String]() // error
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |Cannot refer to class ConcurrentLinkedQueue in package java.util.concurrent from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe
+-- Error: tests/neg-custom-args/captures/i25759.scala:9:15 -------------------------------------------------------------
+9 |  val xs = new java.util.ArrayList[String]()  // error
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |Cannot refer to class ArrayList in package java.util from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe
+-- Error: tests/neg-custom-args/captures/i25759.scala:14:14 ------------------------------------------------------------
+14 |  val m = new java.util.HashMap[String, String]() // error
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Cannot refer to class HashMap in package java.util from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe
+-- Error: tests/neg-custom-args/captures/i25759.scala:19:15 ------------------------------------------------------------
+19 |  val dq = new java.util.ArrayDeque[String]() // error
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Cannot refer to class ArrayDeque in package java.util from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe

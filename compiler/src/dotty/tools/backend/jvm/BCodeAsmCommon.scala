@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.report
 
-import DottyBackendInterface.symExtensions
+import SymbolUtils.given
 
 /**
  * Code shared between GenBCode and GenASM that depends on types defined in

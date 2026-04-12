@@ -1844,6 +1844,10 @@ object SymDenotations {
     /** Same as `sealedStrictDescendants` but prepends this symbol as well.
      */
     final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
+
+    def javaSimpleName(using Context): String = name.mangledString
+    def javaClassName(using Context): String = fullName.mangledString
+    def javaBinaryName(using Context): String = javaClassName.replace('.', '/')
   }
 
   /** The contents of a class definition during a period

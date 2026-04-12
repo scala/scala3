@@ -1122,7 +1122,7 @@ object desugar {
         }
       }
       if mods.isAllOf(Given | Inline | Transparent) then
-        report.error("inline given instances cannot be trasparent", cdef)
+        report.error("inline given instances cannot be transparent", cdef)
       var classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
       val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
       if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
@@ -1348,26 +1348,29 @@ object desugar {
       case _ => body
     cpy.PolyFunction(tree)(tree.targs, stripped(tree.body)).asInstanceOf[PolyFunction]
 
+  /** Apply function-level parameter flags such as `given` and `erased` to term parameters. */
+  private def addFunctionParamFlags(params: List[ValDef], funFlags: FlagSet, erasedParams: List[Boolean])(using Context): List[ValDef] =
+    val commonFlags = funFlags.toTermFlags & GivenOrImplicit
+    params.zipWithConserve(erasedParams): (param, isErased) =>
+      val flags = commonFlags | (if isErased then Erased else EmptyFlags)
+      if flags.isEmpty then param else param.withAddedFlags(flags)
+
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
    */
   def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = (tree: @unchecked) match
     case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) =>
-      val paramFlags = fun match
+      val vparams0 = vparamTypes.zipWithIndex.map {
+        case (p: ValDef, _) => p
+        case (p, n) => makeSyntheticParameter(n + 1, p)
+      }.toList
+      val vparams = fun match
         case fun: FunctionWithMods =>
           // TODO: make use of this in the desugaring when pureFuns is enabled.
           // val isImpure = funFlags.is(Impure)
-
-          // Function flags to be propagated to each parameter in the desugared method type.
-          val givenFlag = fun.mods.flags.toTermFlags & Given
-          fun.erasedParams.map(isErased => if isErased then givenFlag | Erased else givenFlag)
+          addFunctionParamFlags(vparams0, fun.mods.flags, fun.erasedParams)
         case _ =>
-          vparamTypes.map(_ => EmptyFlags)
-
-      val vparams = vparamTypes.lazyZip(paramFlags).zipWithIndex.map {
-        case ((p: ValDef, paramFlags), n) => p.withAddedFlags(paramFlags)
-        case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
-      }.toList
+          vparams0
 
       RefinedTypeTree(ref(defn.PolyFunctionType), List(
         DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
@@ -1569,8 +1572,8 @@ object desugar {
           case TuplePattern(pats, _) =>
             // We want to include wildcards for the optimizations, so we can't use `IdPattern` which excludes them
             val allVariables = pats.map {
-              case id: Ident => Some(id, TypeTree())
-              case Typed(id: Ident, tpt) => Some((id, tpt))
+              case id: Ident if isVarPattern(id) => Some(id, TypeTree())
+              case Typed(id: Ident, tpt) if isVarPattern(id) => Some((id, tpt))
               case _ => None
             }.flatten
             if allVariables.size == pats.size then
@@ -2076,8 +2079,9 @@ object desugar {
         if augmenting then paramNamesOrNil.map(ContextFunctionParamName.fresh(_))
         else paramNamesOrNil
       else List.fill(formals.length)(ContextFunctionParamName.fresh())
-    val params = for (tpt, pname) <- formals.zip(paramNames) yield
-      ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
+    val params0 = for (tpt, pname) <- formals.zip(paramNames) yield
+      ValDef(pname, tpt, EmptyTree).withFlags(Param)
+    val params = addFunctionParamFlags(params0, Given, erasedParams)
     FunctionWithMods(params, body, Modifiers(Given), erasedParams)
 
   private def derivedValDef(originalSpan: Span, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) =

@@ -18,8 +18,8 @@ import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.{BackendUtils, ClassNode1, CoreBTypes, PostProcessorFrontendAccess}
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.util.NoSourcePosition
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
@@ -31,7 +31,7 @@ import scala.tools.asm.{Attribute, ClassReader, Type}
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes)(using Context) {
+class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) {
 
   type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
@@ -314,7 +314,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
         Some(classNode, moduleNode)
       } catch {
         case ex: Exception =>
-          frontendAccess.backendReporting.warning(em"Error while reading InlineInfoAttribute from $fullName\n${ex.getMessage}")
+          frontendAccess.optimizerWarning(em"Error while reading InlineInfoAttribute: ${ex.getMessage}", fullName, NoSourcePosition)
           None
       }
     } match {

@@ -570,9 +570,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** Is this a capture variable's bounds? i.e. lo and hi are both CapSet-based. */
   private def isCaptureVarBounds(lo: Type, hi: Type): Boolean =
-    lo.derivesFrom(defn.Caps_CapSet) && (hi match
-      case CapturingType(parent, _) => parent.derivesFrom(defn.Caps_CapSet)
-      case hi => hi.derivesFrom(defn.Caps_CapSet))
+    lo.derivesFromCapSet && (hi match
+      case CapturingType(parent, _) => parent.derivesFromCapSet
+      case hi => hi.derivesFromCapSet)
 
   /** Print capture variable bounds using `^` syntax.
    *  Plain CapSet lower bound and universal upper bound are elided.

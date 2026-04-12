@@ -17,7 +17,7 @@ import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.interfaces.Diagnostic._
-import dotty.tools.dotc.util.{ SourcePosition, NoSourcePosition, SourceFile, NoSource }
+import dotty.tools.dotc.util.{ SourcePosition, NoSourcePosition, SourceFile }
 
 import scala.util.{ Try, Success, Failure }
 
@@ -52,25 +52,14 @@ class SnippetCompiler(
   private def nullableMessage(msgOrNull: String | Null): String =
     if (msgOrNull == null) "" else msgOrNull
 
-  private def createReportMessage(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, diagnostics: Seq[Diagnostic], sourceFile: SourceFile): Seq[SnippetCompilerMessage] = {
-    val line = wrappedSnippet.outerLineOffset
-    val column = wrappedSnippet.outerColumnOffset
-    val innerLineOffset = wrappedSnippet.innerLineOffset
-    val innerColumnOffset = wrappedSnippet.innerColumnOffset
+  private def createReportMessage(wrappedSnippet: WrappedSnippet, diagnostics: Seq[Diagnostic], sourceFile: SourceFile): Seq[SnippetCompilerMessage] = {
     val infos = diagnostics.toSeq.sortBy(_.pos.source.path)
     val errorMessages = infos.map {
       case diagnostic if diagnostic.position.isPresent =>
         val diagPos = diagnostic.position.get match
           case s: SourcePosition => s
           case _ => NoSourcePosition
-        val offsetFromLine = sourceFile match
-          case NoSource => 0
-          case sf: SourceFile => sf.lineToOffset(diagPos.line + line - innerLineOffset)
-        val offsetFromColumn = diagPos.column + column - innerColumnOffset
-        val span = Span(offsetFromLine + offsetFromColumn, offsetFromLine + offsetFromColumn)
-        val pos = Some(
-          Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), diagPos.line - innerLineOffset)
-        )
+        val pos = wrappedSnippet.sourcePosition(diagPos, sourceFile)
         val dmsg = Try(diagnostic.message) match {
           case Success(msg) => msg
           case Failure(ex) => ex.getMessage
@@ -120,7 +109,7 @@ class SnippetCompiler(
     run.compileFromStrings(List(wrappedSnippet.snippet))
 
     val messages =
-      createReportMessage(wrappedSnippet, arg, context.reporter.pendingMessages(using context), sourceFile) ++
+      createReportMessage(wrappedSnippet, context.reporter.pendingMessages(using context), sourceFile) ++
       additionalMessages(wrappedSnippet, arg, sourceFile, context)
 
     val t = Option.when(!context.reporter.hasErrors)(target)

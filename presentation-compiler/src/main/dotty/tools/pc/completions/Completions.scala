@@ -119,8 +119,10 @@ class Completions(
   end includeSymbol
 
   lazy val fuzzyMatcher: Name => Boolean = name =>
-    if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, name.toString)
-    else CompletionFuzzy.matches(completionPos.query, name.toString)
+    val nameString = name.toString
+    if nameString.isEmpty then false
+    else if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, nameString)
+    else CompletionFuzzy.matches(completionPos.query, nameString)
 
   def enrichedCompilerCompletions(
       qualType: Type,

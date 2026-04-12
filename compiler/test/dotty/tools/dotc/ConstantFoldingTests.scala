@@ -1,15 +1,15 @@
 package dotty.tools.dotc
 
-import scala.language.unsafeNulls
+import dotty.DottyBytecodeTest
 
-import org.junit.Assert._
+import scala.language.unsafeNulls
+import org.junit.Assert.*
 import org.junit.Test
-import dotty.tools.backend.jvm._
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.dotc.core.Contexts.FreshContext
-import scala.tools.asm.tree.MethodNode
 
-import scala.jdk.CollectionConverters._
+import scala.tools.asm.tree.MethodNode
+import scala.jdk.CollectionConverters.*
 
 class ConstantFoldingTests extends DottyBytecodeTest {
 
@@ -59,7 +59,7 @@ class ConstantFoldingTests extends DottyBytecodeTest {
 """
 
   @Test def constantFoldConditions: Unit = {
-    import ASMConverters._
+    import dotty.AsmConverters.*
 
     checkBCode(conditionSrc) { dir =>
       val clsIn   = dir.lookupName(s"Test.class", directory = false).input

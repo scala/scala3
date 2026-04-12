@@ -1,9 +1,7 @@
 package dotty.tools
 package backend
 
-object ScalaPrimitivesOps extends ScalaPrimitivesOps
-
-class ScalaPrimitivesOps {
+object ScalaPrimitivesOps {
   // Arithmetic unary operations
   inline val POS = 1                            // +x
   inline val NEG = 2                            // -x
