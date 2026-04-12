@@ -593,8 +593,7 @@ object Implicits:
 
   case class DivergingImplicit(ref: TermRef,
                                expectedType: Type,
-                               argument: Tree,
-                               reason: OpenSearch) extends SearchFailureType {
+                               argument: Tree) extends SearchFailureType {
     def msg(using Context): Message =
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
@@ -1090,6 +1089,7 @@ trait Implicits:
       val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
 
+
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
    *  @param argument        If an implicit conversion is searched, the argument to which
@@ -1295,10 +1295,15 @@ trait Implicits:
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
       */
-    def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
+    def tryImplicit(cand: Candidate, contextual: Boolean)(pending: List[Candidate]): SearchResult =
       checkDivergence(cand) match
-        case Some(prev) =>
-          SearchFailure(DivergingImplicit(cand.ref, wideProto, argument, prev), span)
+        case true =>
+          val isLast = pending.lastOption.contains(cand)
+          lazy val openCands = ctx.searchHistory.openSearchPairs.map { case (cand, _) => cand }
+          lazy val notInPending = openCands.filterNot(pending.contains).headOption
+          lazy val fullPendingTried = pending.filterNot(openCands.contains).isEmpty
+          ctx.searchHistory.setStopSearch(Option.when(isLast && fullPendingTried)(notInPending))
+          SearchFailure(DivergingImplicit(cand.ref, wideProto, argument), span)
         case _ if searchTooLarge() =>
           ImplicitSearchTooLargeFailure
         case _ =>
@@ -1450,7 +1455,7 @@ trait Implicits:
        *      treated as a simple failure, with a warning that semantics will change.
        *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
        */
-      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult =
+      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure])(using allPending: List[Candidate]): SearchResult =
         pending match {
           case cand :: remaining =>
             /** To recover from an ambiguous implicit failure, we need to find a pending
@@ -1476,30 +1481,16 @@ trait Implicits:
                 case _ => fail
             end healAmbiguous
 
-            /** In the case of diverging implicit search, search stack unwinds to
-             *  the candidate that led to this error.
-             */
-            def needUnwindSearchStack(failure: SearchFailureType): Boolean = {
-              failure match
-                case failure: DivergingImplicit =>
-                  failure.reason.index <= ctx.searchHistory.index
-                    && remaining.forall(compareAlternatives(_, cand) <= 0)
-                    && {
-                      found match
-                        case found: SearchSuccess =>
-                          compareAlternatives(found, cand) == 0
-                        case _ => true
-                    }
-                case _ => false
-            }
-
-            negateIfNot(tryImplicit(cand, contextual)) match {
+            negateIfNot(tryImplicit(cand, contextual)(allPending)) match {
               case fail: SearchFailure =>
-                if fail eq ImplicitSearchTooLargeFailure then
+                if ctx.searchHistory.stopSearch.exists(_.forall(notInPending =>
+                  if notInPending == cand then {
+                    ctx.searchHistory.setStopSearch(None); false
+                  } else true
+                )) then
                   fail
-                else if (needUnwindSearchStack(fail.reason))
-                  val newPending = remaining.filterConserve(compareAlternatives(_, cand) < 0)
-                  rank(newPending, fail, rfailures)
+                else if fail eq ImplicitSearchTooLargeFailure then
+                  fail
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
@@ -1579,35 +1570,26 @@ trait Implicits:
 
       /** A relation that influences the order in which eligible implicits are tried.
        *
-       *  We prefer (in order of importance)
-       *   1. previous candidates in search history
-       *   2. more deeply nested definitions
-       *   3. definitions with fewer implicit parameters
-       *   4. definitions whose owner has more parents (see `compareBaseClassesLength`)
-       *  The reason for (1) is that we want to fail fast in case of diverging implicit search. 
-       *  The reason for (3) is that we want to fail fast if the search type
-       *  is underconstrained. So we look for "small" goals first, because that
-       *  will give an ambiguity quickly.
+       * We prefer (in order of importance)
+       *   1. more deeply nested definitions
+       *   2. definitions with fewer implicit parameters
+       *   3. definitions whose owner has more parents (see `compareBaseClassesLength`)
+       *      The reason for (2) is that we want to fail fast if the search type
+       *      is underconstrained. So we look for "small" goals first, because that
+       *      will give an ambiguity quickly.
        */
       def compareEligibles(e1: Candidate, e2: Candidate): Int =
         if e1 eq e2 then return 0
-        ctx.searchHistory match
-          case OpenSearch(previous, _, _) => // 1.
-            if e1.ref eq previous.ref then
-              return -1
-            else if e2.ref eq previous.ref then
-              return 1
-          case _ =>
         val cmpLevel = e1.level - e2.level
-        if cmpLevel != 0 then return -cmpLevel // 2.
+        if cmpLevel != 0 then return -cmpLevel // 1.
         val sym1 = e1.ref.symbol
         val sym2 = e2.ref.symbol
         val arity1 = sym1.info.firstParamTypes.length
         val arity2 = sym2.info.firstParamTypes.length
         val cmpArity = arity1 - arity2
-        if cmpArity != 0 then return cmpArity // 3.
+        if cmpArity != 0 then return cmpArity // 2.
         val cmpBcs = compareBaseClassesLength(sym1.owner, sym2.owner)
-        -cmpBcs // 4.
+        -cmpBcs // 3.
 
       /** Check if `ord` respects the contract of `Ordering`.
        *
@@ -1675,7 +1657,8 @@ trait Implicits:
             validateOrdering(ord)
             throw ex
 
-      val res = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+      val pending = sort(eligible)
+      val res = rank(pending, NoMatchingImplicitsFailure, Nil)(using pending)
 
       // Issue all priority change warnings that can affect the result
       val shownWarnings = priorityChangeWarnings.toList.collect:
@@ -1866,9 +1849,9 @@ trait Implicits:
     * implicit search.
     *
     * @param cand The candidate implicit to be explored.
-    * @result     Some(reason) if this candidate/pt are divergent, None otherwise.
+    * @result     True if this candidate/pt are divergent, false otherwise.
     */
-    def checkDivergence(cand: Candidate): Option[OpenSearch] =
+    def checkDivergence(cand: Candidate): Boolean =
       // For full details of the algorithm see the SIP:
       //   https://docs.scala-lang.org/sips/byname-implicits.html
       Stats.record("checkDivergence")
@@ -1883,22 +1866,22 @@ trait Implicits:
       // as we ascend the chain of open implicits to the outermost search context.
 
       @tailrec
-      def loop(history: SearchHistory, belowByname: Boolean): Option[OpenSearch] =
+      def loop(history: SearchHistory, belowByname: Boolean): Boolean =
         history match
           case prev @ OpenSearch(cand1, tp, outer) =>
             if cand1.ref eq cand.ref then
               lazy val wildTp = wildApprox(tp.widenExpr)
               if belowByname && (wildTp <:< wildPt) then
                 fullyDefinedType(tp, "by-name implicit parameter", srcPos)
-                None
+                false
               else if prev.typeSize > ptSize || prev.coveringSet != ptCoveringSet then
                 loop(outer, tp.isByName || belowByname)
               else
-                if prev.typeSize < ptSize || wildTp =:= wildPt then
-                  Some(prev)
-                else loop(outer, tp.isByName || belowByname)
+                prev.typeSize < ptSize
+                  || wildTp =:= wildPt
+                  || loop(outer, tp.isByName || belowByname)
             else loop(outer, tp.isByName || belowByname)
-          case _ => None
+          case _ => false
 
       loop(ctx.searchHistory, pt.isByName)
     end checkDivergence
@@ -1963,8 +1946,10 @@ abstract class SearchHistory:
   val root: SearchRoot
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
-  val index: Int
   def openSearchPairs: List[(Candidate, Type)]
+
+  def stopSearch: Option[Option[Candidate]]
+  def setStopSearch(x: Option[Option[Candidate]]): Unit
 
   /**
    * Create the state for a nested implicit search.
@@ -1991,8 +1976,10 @@ end SearchHistory
 case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Context) extends SearchHistory:
   val root = outer.root
   val byname = outer.byname || pt.isByName
-  val index = outer.index + 1
   def openSearchPairs = (cand, pt) :: outer.openSearchPairs
+
+  def stopSearch: Option[Option[Candidate]] = outer.stopSearch
+  def setStopSearch(x: Option[Option[Candidate]]): Unit = outer.setStopSearch(x)
 
   // The typeSize and coveringSet of the current search.
   // Note: It is important to cache size and covering sets since types
@@ -2010,8 +1997,12 @@ end OpenSearch
 final class SearchRoot extends SearchHistory:
   val root = this
   val byname = false
-  val index = 0
   def openSearchPairs = Nil
+
+  var stop: Option[Option[Candidate]] = None
+  def stopSearch: Option[Option[Candidate]] = stop
+  def setStopSearch(x: Option[Option[Candidate]]): Unit = stop = x
+
 
   /** How many expressions were constructed so far in the current toplevel implicit search?
    */
