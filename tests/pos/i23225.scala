@@ -1,4 +1,4 @@
-import language.experimental.captureChecking
+import language.experimental.safe
 
 class A
 

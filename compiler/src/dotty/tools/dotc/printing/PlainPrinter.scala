@@ -329,7 +329,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
               ~ Str("R").provided(printDebug)
             else toText(tpe)
           case annot: CaptureAnnotation =>
-            toTextLocal(tpe) ~ "^" ~ toText(annot)
+            val boxText: Text = Str("box ") `provided` annot.boxed && ccVerbose
+            toTextCapturing(tpe, annot.refs, boxText)
           case _ if defn.SilentAnnots.contains(annot.symbol) && !printDebug =>
             toText(tpe)
           case _ =>
@@ -493,7 +494,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case pre: SingletonType => toTextRef(pre) ~ "."
         case pre => toText(pre) ~ "."
       def core: Text =
-        if ccVerbose then s"<any$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
+        if ccVerbose then
+          s"<any$idStr created in ${c.ccOwnerStr}"
+          ~ c.origin.explanation
+          ~ " hiding " ~ toTextCaptureSet(c.hiddenSet)
+          ~ classified
+          ~ ">"
         else "any"
       prefixTxt ~ core
     case tp: TypeProxy =>
@@ -508,13 +514,28 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextPrefixOf(tp: NamedType): Text = controlled {
       homogenize(tp.prefix) match {
         case NoPrefix => ""
-        case tp: SingletonType => toTextRef(tp) ~ "."
-        case tp => trimPrefix(toTextLocal(tp)) ~ "#"
+        case prefix: SingletonType => toTextRef(prefix) ~ "."
+        case prefix =>
+          // Use "." for Java nested classes (e.g., java.util.Map.Entry)
+          // Use "#" for Scala type projections (e.g., Outer#Inner)
+          val separator = if (isJavaNestedClass(tp)) "." else "#"
+          trimPrefix(toTextLocal(prefix)) ~ separator
       }
   }
 
   protected def isEmptyPrefix(sym: Symbol): Boolean =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
+
+  /** Check if tp represents a Java nested class that should use "." separator. */
+  protected def isJavaNestedClass(tp: NamedType)(using Context): Boolean = {
+    val sym = tp.symbol
+    sym.exists &&
+    sym.is(JavaDefined) &&
+    sym.isClass &&
+    sym.owner.exists &&
+    sym.owner.is(JavaDefined) &&
+    sym.owner.isClass
+  }
 
   /** String representation of a definition's type following its name,
    *  if symbol is completed, ": ?" otherwise.
@@ -547,6 +568,25 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (tparamStr, bounds.derivedTypeBounds(loRhs, hiRhs))
   end decomposeLambdas
 
+  /** Is this a capture variable's bounds? i.e. lo and hi are both CapSet-based. */
+  private def isCaptureVarBounds(lo: Type, hi: Type): Boolean =
+    lo.derivesFromCapSet && (hi match
+      case CapturingType(parent, _) => parent.derivesFromCapSet
+      case hi => hi.derivesFromCapSet)
+
+  /** Print capture variable bounds using `^` syntax.
+   *  Plain CapSet lower bound and universal upper bound are elided.
+   */
+  private def toTextCaptureVarBounds(lo: Type, hi: Type): Text =
+    val loText = lo match
+      case CapturingType(_, refs) => " >: " ~ toTextCaptureSet(refs)
+      case _ => Text() // plain CapSet = trivial lower bound
+    val hiText = hi match
+      case CapturingType(_, refs) if isElidableUniversal(refs) => Text() // trivial upper bound
+      case CapturingType(_, refs) => " <: " ~ toTextCaptureSet(refs)
+      case _ => Text()
+    Str("^") ~ loText ~ hiText
+
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled {
     homogenize(tp) match {
@@ -555,6 +595,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val binder = rhs match
           case tp: AliasingBounds =>
             " = " ~ toText(tp.alias)
+          case TypeBounds(lo, hi) if !printDebug && Feature.ccEnabledSomewhere && isCaptureVarBounds(lo, hi) =>
+            toTextCaptureVarBounds(lo, hi)
           case TypeBounds(lo, hi) =>
             (if lo.isExactlyNothing then Text() else " >: " ~ toText(lo))
             ~ (if hi.isExactlyAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))

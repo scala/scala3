@@ -9,5 +9,5 @@ def test(): Unit =
     withIO(setIO)
     withIO: (io2: IO^) =>
       myIO = io2  // error, level mismatch
-    withIO: io3 =>  // error
-      myIO = io3
+    withIO: io3 =>
+      myIO = io3  // error, level mismatch

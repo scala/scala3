@@ -162,7 +162,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
            |    a + b<<region<<
            |}""".stripMargin
       )
-  )
+    )
 
   @Test def `def - type params` =
     check(
@@ -174,7 +174,6 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "object Main extends App { >>region>>def foo[Type <: T1, B](hi: Int, b: Int, c:Int) = ???<<region<< }"
       )
     )
-
 
   @Test def `arithmetic` =
     check(
@@ -205,7 +204,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "val hello = (aaa: Int, >>region>>bbb: Int<<region<<, ccc: Int) => ???",
         "val hello = (>>region>>aaa: Int, bbb: Int, ccc: Int<<region<<) => ???",
         "val hello = >>region>>(aaa: Int, bbb: Int, ccc: Int) => ???<<region<<",
-        ">>region>>val hello = (aaa: Int, bbb: Int, ccc: Int) => ???<<region<<",
+        ">>region>>val hello = (aaa: Int, bbb: Int, ccc: Int) => ???<<region<<"
       )
     )
 
@@ -216,7 +215,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "def hello(aaa: Int, >>region>>bbb<<region<<: Int, ccc: Int) = ???",
         "def hello(aaa: Int, >>region>>bbb: Int<<region<<, ccc: Int) = ???",
         "def hello(>>region>>aaa: Int, bbb: Int, ccc: Int<<region<<) = ???",
-        ">>region>>def hello(aaa: Int, bbb: Int, ccc: Int) = ???<<region<<",
+        ">>region>>def hello(aaa: Int, bbb: Int, ccc: Int) = ???<<region<<"
       )
     )
 
@@ -227,7 +226,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "def hello = List(111, >>region>>222<<region<<, 333)",
         "def hello = List(>>region>>111, 222, 333<<region<<)",
         "def hello = >>region>>List(111, 222, 333)<<region<<",
-        ">>region>>def hello = List(111, 222, 333)<<region<<",
+        ">>region>>def hello = List(111, 222, 333)<<region<<"
       )
     )
 
@@ -239,7 +238,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "def hello = Map[>>region>>String, Int<<region<<]()",
         "def hello = >>region>>Map[String, Int]<<region<<()",
         "def hello = >>region>>Map[String, Int]()<<region<<",
-        ">>region>>def hello = Map[String, Int]()<<region<<",
+        ">>region>>def hello = Map[String, Int]()<<region<<"
       )
     )
 
@@ -250,7 +249,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         "val List(aaa, >>region>>bbb<<region<<, ccc) = List(111, 222, 333)",
         "val List(>>region>>aaa, bbb, ccc<<region<<) = List(111, 222, 333)",
         "val >>region>>List(aaa, bbb, ccc)<<region<< = List(111, 222, 333)",
-        ">>region>>val List(aaa, bbb, ccc) = List(111, 222, 333)<<region<<",
+        ">>region>>val List(aaa, bbb, ccc) = List(111, 222, 333)<<region<<"
       )
     )
 
@@ -260,7 +259,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
       List(
         "def hello = List(>>region>>222<<region<<)",
         "def hello = >>region>>List(222)<<region<<",
-        ">>region>>def hello = List(222)<<region<<",
+        ">>region>>def hello = List(222)<<region<<"
       )
     )
 
@@ -269,7 +268,7 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
       "class Foo(val ar@@g: Int)",
       List(
         """class Foo(val >>region>>arg<<region<<: Int)""",
-        """class Foo(>>region>>val arg: Int<<region<<)""",
+        """class Foo(>>region>>val arg: Int<<region<<)"""
       )
     )
 
@@ -278,6 +277,49 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
       "object `Foo B@@ar Baz` extends SomeTrait",
       List(
         """object `>>region>>Foo Bar Baz<<region<<` extends SomeTrait""",
-        """>>region>>object `Foo Bar Baz` extends SomeTrait<<region<<""",
+        """>>region>>object `Foo Bar Baz` extends SomeTrait<<region<<"""
+      )
+    )
+
+  @Test def `def-lhs` =
+    check(
+      "object Main extends App { def `foo ba@@r` = ??? }",
+      List(
+        """object Main extends App { def `>>region>>foo bar<<region<<` = ??? }""",
+        """object Main extends App { >>region>>def `foo bar` = ???<<region<< }"""
+      )
+    )
+
+  @Test def `expr-apply` =
+    check(
+      "object Main extends App { def foo = bar.baz(1, math.floor(p@@i), 2) }",
+      List(
+        """object Main extends App { def foo = bar.baz(1, math.floor(>>region>>pi<<region<<), 2) }""",
+        """object Main extends App { def foo = bar.baz(1, >>region>>math.floor(pi)<<region<<, 2) }""",
+        """object Main extends App { def foo = bar.baz(>>region>>1, math.floor(pi), 2<<region<<) }""",
+        """object Main extends App { def foo = >>region>>bar.baz(1, math.floor(pi), 2)<<region<< }""",
+        """object Main extends App { >>region>>def foo = bar.baz(1, math.floor(pi), 2)<<region<< }"""
+      )
+    )
+
+  @Test def `expr-backticked` =
+    check(
+      "object Main extends App { def foo = `foo ba@@r` + 1 }",
+      List(
+        """object Main extends App { def foo = >>region>>`foo bar`<<region<< + 1 }""",
+        """object Main extends App { def foo = >>region>>`foo bar` + 1<<region<< }""",
+        """object Main extends App { >>region>>def foo = `foo bar` + 1<<region<< }"""
+      )
+    )
+
+  @Test def `type-apply-nested` =
+    check(
+      "object Main extends App { def foo: Tuple3[Int, List[In@@t], Double] = ??? }",
+      List(
+        """object Main extends App { def foo: Tuple3[Int, List[>>region>>Int<<region<<], Double] = ??? }""",
+        """object Main extends App { def foo: Tuple3[Int, >>region>>List[Int]<<region<<, Double] = ??? }""",
+        """object Main extends App { def foo: Tuple3[>>region>>Int, List[Int], Double<<region<<] = ??? }""",
+        """object Main extends App { def foo: >>region>>Tuple3[Int, List[Int], Double]<<region<< = ??? }""",
+        """object Main extends App { >>region>>def foo: Tuple3[Int, List[Int], Double] = ???<<region<< }"""
       )
     )

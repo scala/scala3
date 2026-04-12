@@ -583,9 +583,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         def escapes(ref: Capability): Boolean = ref.pathRoot match
           case ref @ LocalCap(NoPrefix)
           if ref.classifier.derivesFrom(defn.Caps_Unscoped) =>
-            // we have an escaping reference if the LocalCap's adjustded owner
+            // we have an escaping reference if the LocalCap's adjusted owner
             // is properly contained inside the scope of the variable.
-            ref.adjustOwner(ref.ccOwner).isProperlyContainedIn(lhsOwner)
+            ref.ccOwner.widenOwner(skipModules = false).isProperlyContainedIn(lhsOwner)
           case _ =>
             ref.visibility.isProperlyContainedIn(lhsOwner) // ref itself is not levelOK
             && !ref.isTerminalCapability                   // ... and ...
@@ -694,6 +694,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             if encl.isProperlyContainedIn(ref.cls)
                 && !encl.is(Synthetic)
                 && !encl.hasAnnotation(defn.ConsumeAnnot)
+                && !encl.isStaticOwner // no restrictions for globals
             then
               report.error(
                 em"""Separation failure: $descr non-local this of class ${ref.cls}.
@@ -843,7 +844,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         ref match
           case ref: LocalCap =>
             ref.origin match
-              case Origin.InDecl(sym) if sym.isAbstractOrParamType =>
+              case Origin.InDecl(sym, _) if sym.isAbstractOrParamType =>
                 report.error(
                   em"""Separation failure: $descr $ref, which appears in the bound of $sym.
                       |This is not allowed. The $sym has to be returned explicitly in the result type.""",
@@ -996,10 +997,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  Hidden sets of checked definitions are added to `defsShadow`.
    */
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
-    if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
-      checkType(tree.tpt, tree.symbol)
-      capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
-      pushDef(tree, spanCaptures(tree.tpt).transHiddenSet.deductSymRefs(tree.symbol))
+    val sym = tree.symbol
+    if !sym.isOneOf(TermParamOrAccessor)
+       && !sym.needsResultRefinement
+       && !isUnsafeAssumeSeparate(tree.rhs)
+    then
+      checkType(tree.tpt, sym)
+      capt.println(i"sep check def $sym: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
+      pushDef(tree, spanCaptures(tree.tpt).transHiddenSet.deductSymRefs(sym))
 
   def inSection[T](op: => T)(using Context): T =
     val savedDefsShadow = defsShadow

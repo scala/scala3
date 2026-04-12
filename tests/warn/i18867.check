@@ -1,6 +1,6 @@
 -- Warning: tests/warn/i18867.scala:3:15 -------------------------------------------------------------------------------
 3 |def test = foo _ // warn
   |           ^^^^^
-  |           The syntax `<function> _` is no longer supported;
-  |           you can simply leave out the trailing ` _`
-  |           This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+  |          The trailing ` _` for eta-expansion is unnecessary;
+  |          the compiler performs eta-expansion automatically, so you can write the function value directly instead.
+  |          This construct can be rewritten automatically under -rewrite -source 3.4-migration.

@@ -3,5 +3,5 @@
   |^^^^^^
   |Failed to evaluate macro annotation '@crash'.
   |  Caused by class scala.NotImplementedError: an implementation is missing
-  |    scala.Predef$.$qmark$qmark$qmark(Predef.scala:387)
+  |    scala.Predef$.$qmark$qmark$qmark(Predef.scala:383)
   |    crash.transform(Macro_1.scala:7)

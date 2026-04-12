@@ -10,7 +10,7 @@ import vulpix.TestConfiguration
 import vulpix.ParallelTesting
 import reporting.TestReporter
 
-import java.io._
+import java.io.*
 import java.nio.file.{Path => JPath}
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.charset.StandardCharsets
@@ -26,12 +26,12 @@ import java.io.File
 class PrintingTest {
 
   def options(phase: String, flags: List[String]) =
-    val outDir = ParallelTesting.defaultOutputDir + "printing" + File.pathSeparator
-    File(outDir).mkdirs()
-    List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir, "-classpath", TestConfiguration.basicClasspath) ::: flags
+    val outDir = new File(ParallelTesting.defaultOutputDir, "printing")
+    outDir.mkdirs()
+    List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir.getAbsolutePath, "-classpath", TestConfiguration.basicClasspath) ::: flags
 
   private def compileFile(path: JPath, phase: String): Boolean = {
-    val baseFilePath  = path.toString.stripSuffix(".scala")
+    val baseFilePath  = path.toString.stripSuffix(".scala").stripSuffix(".java")
     val checkFilePath = baseFilePath + ".check"
     val flagsFilePath = baseFilePath + ".flags"
     val byteStream    = new ByteArrayOutputStream()
@@ -54,8 +54,8 @@ class PrintingTest {
 
   def testIn(testsDir: String, phase: String) =
     val res = Directory(testsDir).list.toList
-      .filter(f => f.ext.isScala)
-      .map { f => compileFile(f.jpath, phase) }
+      .filter(_.ext.isScalaOrJava)
+      .map(f => compileFile(f.jpath, phase))
 
     val failed = res.filter(!_)
 
@@ -81,4 +81,7 @@ class PrintingTest {
 
   @Test
   def getters: Unit = testIn("tests/printing/getters", "getters")
+
+  @Test
+  def inlining: Unit = testIn("tests/printing/inlining", "inlining")
 }

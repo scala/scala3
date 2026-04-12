@@ -23,18 +23,18 @@ import scala.collection.generic.DefaultSerializationProxy
 import scala.runtime.Statics
 
 /** This class implements mutable maps using a hashtable with red-black trees in the buckets for good
-  * worst-case performance on hash collisions. An `Ordering` is required for the element type. Equality
-  * as determined by the `Ordering` has to be consistent with `equals` and `hashCode`. Universal equality
-  * of numeric types is not supported (similar to `AnyRefMap`).
-  *
-  * @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables "Scala's Collection Library overview"]]
-  * section on `Hash Tables` for more information.
-  *
-  * @define Coll `mutable.CollisionProofHashMap`
-  * @define coll mutable collision-proof hash map
-  * @define mayNotTerminateInf
-  * @define willNotTerminateInf
-  */
+ *  worst-case performance on hash collisions. An `Ordering` is required for the element type. Equality
+ *  as determined by the `Ordering` has to be consistent with `equals` and `hashCode`. Universal equality
+ *  of numeric types is not supported (similar to `AnyRefMap`).
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables)
+ *  section on `Hash Tables` for more information.
+ *
+ *  @define Coll `mutable.CollisionProofHashMap`
+ *  @define coll mutable collision-proof hash map
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double)(implicit ordering: Ordering[K])
   extends AbstractMap[K, V]
     with MapOps[K, V, Map, CollisionProofHashMap[K, V]] //--
@@ -413,34 +413,34 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   ///////////////////// Overrides code from SortedMapOps
 
   /** Builds a new `CollisionProofHashMap` by applying a function to all elements of this $coll.
-    *
-    *  @param f      the function to apply to each element.
-    *  @return       a new $coll resulting from applying the given function
-    *                `f` to each element of this $coll and collecting the results.
-    */
+   *
+   *  @param f      the function to apply to each element.
+   *  @return       a new $coll resulting from applying the given function
+   *                `f` to each element of this $coll and collecting the results.
+   */
   def map[K2, V2](f: ((K, V)) => (K2, V2))
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Map[(K, V), (K2, V2)](this, f))
 
   /** Builds a new `CollisionProofHashMap` by applying a function to all elements of this $coll
-    *  and using the elements of the resulting collections.
-    *
-    *  @param f      the function to apply to each element.
-    *  @return       a new $coll resulting from applying the given collection-valued function
-    *                `f` to each element of this $coll and concatenating the results.
-    */
+   *  and using the elements of the resulting collections.
+   *
+   *  @param f      the function to apply to each element.
+   *  @return       a new $coll resulting from applying the given collection-valued function
+   *                `f` to each element of this $coll and concatenating the results.
+   */
   def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.FlatMap(this, f))
 
   /** Builds a new sorted map by applying a partial function to all elements of this $coll
-    *  on which the function is defined.
-    *
-    *  @param pf     the partial function which filters and maps the $coll.
-    *  @return       a new $coll resulting from applying the given partial function
-    *                `pf` to each element on which it is defined and collecting the results.
-    *                The order of the elements is preserved.
-    */
+   *  on which the function is defined.
+   *
+   *  @param pf     the partial function which filters and maps the $coll.
+   *  @return       a new $coll resulting from applying the given partial function
+   *                `pf` to each element on which it is defined and collecting the results.
+   *                The order of the elements is preserved.
+   */
   def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)])
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
@@ -693,10 +693,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     root
   }
 
-  /**
-    * Transplant the node `from` to the place of node `to`. This is done by setting `from` as a child of `to`'s previous
-    * parent and setting `from`'s parent to the `to`'s previous parent. The children of `from` are left unchanged.
-    */
+  /** Transplant the node `from` to the place of node `to`. This is done by setting `from` as a child of `to`'s previous
+   *  parent and setting `from`'s parent to the `to`'s previous parent. The children of `from` are left unchanged.
+   */
   private def transplant(_root: RBNode, to: RBNode, from: RBNode): RBNode = {
     var root = _root
     if (to.parent eq null) root = from
@@ -737,11 +736,10 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   }
 }
 
-/**
-  * $factoryInfo
-  * @define Coll `mutable.CollisionProofHashMap`
-  * @define coll mutable collision-proof hash map
-  */
+/** $factoryInfo
+ *  @define Coll `mutable.CollisionProofHashMap`
+ *  @define coll mutable collision-proof hash map
+ */
 @SerialVersionUID(3L)
 object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   private[collection] final val ordMsg = "No implicit Ordering[${K2}] found to build a CollisionProofHashMap[${K2}, ${V2}]. You may want to upcast to a Map[${K}, ${V}] first by calling `unsorted`."
@@ -836,10 +834,9 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   @tailrec private def minNodeNonNull[A, B](node: RBNode[A, B]): RBNode[A, B] =
     if (node.left eq null) node else minNodeNonNull(node.left)
 
-  /**
-    * Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
-    * therefore, the last node), this method returns `null`.
-    */
+  /** Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
+   *  therefore, the last node), this method returns `null`.
+   */
   private def successor[A, B](node: RBNode[A, B]): RBNode[A, B] | Null = {
     if (node.right ne null) minNodeNonNull(node.right)
     else {

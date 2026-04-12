@@ -47,7 +47,7 @@ import scala.math.Ordering
  *  the invariant of the underlying heap-ordered tree. Note that [[clone]]
  *  does not rebuild the underlying tree.
  *
- *  {{{
+ *  ```
  *  scala> val pq = collection.mutable.PriorityQueue(1, 2, 5, 3, 7)
  *  val pq: scala.collection.mutable.PriorityQueue[Int] = PriorityQueue(7, 3, 5, 1, 2)
  *
@@ -56,7 +56,7 @@ import scala.math.Ordering
  *
  *  scala> pq.clone.dequeueAll
  *  val res1: Seq[Int] = ArraySeq(7, 5, 3, 2, 1)
- *  }}}
+ *  ```
  *
  *  @tparam A    type of the elements in this priority queue.
  *  @param ord   implicit ordering used to compare the elements of type `A`.
@@ -161,10 +161,10 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   }
 
   /** Inserts a single element into the priority queue.
-    *
-    *  @param  elem        the element to insert.
-    *  @return             this $coll.
-    */
+   *
+   *  @param  elem        the element to insert.
+   *  @return             this $coll.
+   */
   def addOne(elem: A): this.type = {
     resarr.p_ensureAdditionalSize(1)
     resarr.p_array(resarr.p_size0) = elem.asInstanceOf[AnyRef]
@@ -234,17 +234,17 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   }
 
   /** Adds all elements provided by a `IterableOnce` object
-    *  into the priority queue.
-    *
-    *  @param  xs    a iterable object.
-    *  @return       a new priority queue containing elements of both `xs` and `this`.
-    */
+   *  into the priority queue.
+   *
+   *  @param  xs    a iterable object.
+   *  @return       a new priority queue containing elements of both `xs` and `this`.
+   */
   def ++(xs: IterableOnce[A]^): PriorityQueue[A] = { this.clone() ++= xs }
 
   /** Adds all elements to the queue.
-    *
-    *  @param  elems       the elements to add.
-    */
+   *
+   *  @param  elems       the elements to add.
+   */
   def enqueue(elems: A*): Unit = { this ++= elems }
 
   /** Returns the element with the highest priority in the queue,
@@ -275,41 +275,41 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   }
 
   /** Returns the element with the highest priority in the queue,
-    *  or throws an error if there is no element contained in the queue.
-    *
-    *  @return   the element with the highest priority.
-    */
+   *  or throws an error if there is no element contained in the queue.
+   *
+   *  @return   the element with the highest priority.
+   */
   override def head: A = if (resarr.p_size0 > 1) toA(resarr.p_array(1)) else throw new NoSuchElementException("queue is empty")
 
   /** Removes all elements from the queue. After this operation is completed,
-    *  the queue will be empty.
-    */
+   *  the queue will be empty.
+   */
   def clear(): Unit = {
     resarr.clear()
     resarr.p_size0 = 1
   }
 
   /** Returns an iterator which yields all the elements.
-    *
-    *  Note: The order of elements returned is undefined.
-    *  If you want to traverse the elements in priority queue
-    *  order, use `clone().dequeueAll.iterator`.
-    *
-    *  @return  an iterator over all the elements.
-    */
+   *
+   *  Note: The order of elements returned is undefined.
+   *  If you want to traverse the elements in priority queue
+   *  order, use `clone().dequeueAll.iterator`.
+   *
+   *  @return  an iterator over all the elements.
+   */
   override def iterator: Iterator[A] = resarr.iterator.drop(1)
 
   /** Returns the reverse of this priority queue. The new priority queue has
-    *  the same elements as the original, but the opposite ordering.
-    *
-    *  For example, the element with the highest priority in `pq` has the lowest
-    *  priority in `pq.reverse`, and vice versa.
-    *
-    *  Ties are handled arbitrarily.  Elements with equal priority may or
-    *  may not be reversed with respect to each other.
-    *
-    *  @return   the reversed priority queue.
-    */
+   *  the same elements as the original, but the opposite ordering.
+   *
+   *  For example, the element with the highest priority in `pq` has the lowest
+   *  priority in `pq.reverse`, and vice versa.
+   *
+   *  Ties are handled arbitrarily.  Elements with equal priority may or
+   *  may not be reversed with respect to each other.
+   *
+   *  @return   the reversed priority queue.
+   */
   def reverse: PriorityQueue[A] = {
     val revq = new PriorityQueue[A]()(using ord.reverse)
     // copy the existing data into the new array backwards
@@ -328,12 +328,12 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
 
 
   /** Returns an iterator which yields all the elements in the reverse order
-    *  than that returned by the method `iterator`.
-    *
-    *  Note: The order of elements returned is undefined.
-    *
-    *  @return  an iterator over all elements sorted in descending order.
-    */
+   *  than that returned by the method `iterator`.
+   *
+   *  Note: The order of elements returned is undefined.
+   *
+   *  @return  an iterator over all elements sorted in descending order.
+   */
   def reverseIterator: Iterator[A] = new AbstractIterator[A] {
     private var i = resarr.p_size0 - 1
     def hasNext: Boolean = i >= 1
@@ -345,29 +345,29 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   }
 
   /** Returns a regular queue containing the same elements.
-    *
-    *  Note: the order of elements is undefined.
-    */
+   *
+   *  Note: the order of elements is undefined.
+   */
   def toQueue: Queue[A] = new Queue[A] ++= this.iterator
 
   /** Returns a textual representation of a queue as a string.
-    *
-    *  @return the string representation of this queue.
-    */
+   *
+   *  @return the string representation of this queue.
+   */
   override def toString() = toList.mkString("PriorityQueue(", ", ", ")")
 
   /** Converts this $coll to a list.
-    *
-    *  Note: the order of elements is undefined.
-    *
-    *  @return a list containing all elements of this $coll.
-    */
+   *
+   *  Note: the order of elements is undefined.
+   *
+   *  @return a list containing all elements of this $coll.
+   */
   override def toList: immutable.List[A] = immutable.List.from(this.iterator)
 
   /** This method clones the priority queue.
-    *
-    *  @return  a priority queue with the same elements.
-    */
+   *
+   *  @return  a priority queue with the same elements.
+   */
   override def clone(): PriorityQueue[A] = {
     val pq = new PriorityQueue[A]
     val n = resarr.p_size0

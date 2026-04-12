@@ -1,12 +1,13 @@
 package dotty.tools.backend.jvm
 
+import dotty.DottyBytecodeTest
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
-import scala.tools.asm.Opcodes._
+import scala.tools.asm.Opcodes.*
 
 class IincTest extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
 
   @Test def increment = test(
     """{

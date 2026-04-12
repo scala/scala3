@@ -1044,7 +1044,6 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     tp match {
       case tp: TypeRef =>
         if (!tp.denot.exists)
-          // println(i"missing: ${tp.toString} ${tp.denot} / ${tp.prefix.member(tp.name)}")
           throw new MissingType(tp.prefix, tp.name)
         val sym = tp.symbol
         if (!sym.isClass) {

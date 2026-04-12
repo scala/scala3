@@ -1,27 +1,11 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:11:35 ---------------------------------
-11 |  private val later = usingLogFile { f => () => f.write(0) }  // error
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (local: scala.caps.Capability^) ?->'s1 java.io.FileOutputStream ->{fresh} () ->'s2 Unit
-   |Required: (local²: scala.caps.Capability^) ?-> java.io.FileOutputStream ->{any} () ->'s2 Unit
-   |
-   |Note that capability `fresh` is not included in capture set {any}
-   |because fresh is not visible from any in value later.
-   |
-   |where:    ^      refers to the root capability caps.any
-   |          any    is a root capability created in value later when checking argument to parameter op of method usingLogFile
-   |          fresh  is a root capability associated with the result type of (using local: scala.caps.Capability^): java.io.FileOutputStream ->{fresh} () ->'s2 Unit
-   |          local  is a reference to a value parameter
-   |          local² is a reference to a value parameter
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:22:29 ---------------------------------
 22 |  val later = usingLogFile { f => () => f.write(0) } // error
    |                             ^^^^^^^^^^^^^^^^^^^^^
-   |Capability `f` outlives its scope: it leaks into outer capture set 's3 which is owned by value later.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: java.io.FileOutputStream^'s4) ->'s5 () ->{f} Unit
-   |Required: java.io.FileOutputStream^ => () ->'s3 Unit
+   |Found:    (f: java.io.FileOutputStream^) ->'s2 () ->{f} Unit
+   |Required: java.io.FileOutputStream^ => () ->'s1 Unit
    |
    |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingLogFile
    |          ^  refers to the root capability caps.any
@@ -30,11 +14,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:27:38 ---------------------------------
 27 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability `f` outlives its scope: it leaks into outer capture set 's6 which is owned by value later2.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's3 which is owned by value later2.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: java.io.FileOutputStream^'s7) ->'s8 Test2.Cell[() ->{f} Unit]^'s9
-   |Required: java.io.FileOutputStream^ => Test2.Cell[() ->'s6 Unit]^'s10
+   |Found:    (f: java.io.FileOutputStream^) ->'s4 Test2.Cell[() ->{f} Unit]^'s5
+   |Required: java.io.FileOutputStream^ => Test2.Cell[() ->'s3 Unit]^'s6
    |
    |where:    => refers to a root capability created in value later2 when checking argument to parameter op of method usingLogFile
    |          ^  refers to the root capability caps.any
@@ -43,11 +27,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:43:33 ---------------------------------
 43 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability `f` outlives its scope: it leaks into outer capture set 's11 which is owned by value later.
+   |Capability `f` outlives its scope: it leaks into outer capture set 's7 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: java.io.OutputStream^'s12) ->'s13 Int ->{f} Unit
-   |Required: java.io.OutputStream^ => Int ->'s11 Unit
+   |Found:    (f: java.io.OutputStream^) ->'s8 Int ->{f} Unit
+   |Required: java.io.OutputStream^ => Int ->'s7 Unit
    |
    |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the root capability caps.any
@@ -56,11 +40,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:52:6 ----------------------------------
 52 |      usingLogger(_, l => () => l.log("test")))  // error after checking mapping scheme
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Capability `_$1` outlives its scope: it leaks into outer capture set 's14 which is owned by value later.
+   |Capability `_$1` outlives its scope: it leaks into outer capture set 's9 which is owned by value later.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (_$1: java.io.OutputStream^'s15) ->'s16 () ->{_$1} Unit
-   |Required: java.io.OutputStream^ => () ->'s14 Unit
+   |Found:    (_$1: java.io.OutputStream^) ->'s10 () ->{_$1} Unit
+   |Required: java.io.OutputStream^ => () ->'s9 Unit
    |
    |where:    => refers to a root capability created in value later when checking argument to parameter op of method usingFile
    |          ^  refers to the root capability caps.any

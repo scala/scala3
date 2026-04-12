@@ -4,11 +4,11 @@ package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
 import ast.tpd, tpd.*
-import util.Spans.Span
+import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
 import printing.Texts.Text
 import cc.{isRetainsLike, RetainingAnnotation}
-import config.Feature
+import config.Feature.sourceVersion
 import Decorators.*
 
 import scala.annotation.internal.sharable
@@ -142,6 +142,9 @@ object Annotations {
 
     def tree(using Context) = TypeTree(tpe)
 
+    def oldTree(using Context): Tree =
+      New(tpe, Nil).withSpan(NoSpan)
+
     override def symbol(using Context) = tpe.typeSymbol
 
     override def derivedAnnotation(tree: Tree)(using Context): Annotation =
@@ -153,7 +156,7 @@ object Annotations {
     override def arguments(using Context): List[Tree] =
       argumentTypes.map(TypeTree(_))
 
-    override def argumentTypes(using Context): List[Type] = tpe.argTypes
+    override def argumentTypes(using Context): List[Type] = tpe.argInfos
 
     def argumentType(i: Int)(using Context): Type =
       val args = argumentTypes

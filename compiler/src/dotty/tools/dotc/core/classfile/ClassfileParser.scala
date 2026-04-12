@@ -5,7 +5,7 @@ package classfile
 
 import scala.language.unsafeNulls
 
-import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
+import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler, UnpickleException }
 
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
 import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
@@ -306,7 +306,9 @@ class ClassfileParser(
   catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
-      val addendum = Header.Version.brokenVersionAddendum(classfileVersion)
+      val addendum = e match
+        case _: UnpickleException => ""
+        case _ => Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
         i"""  class file ${classfile.canonicalPath} is broken$addendum,
           |  reading aborted with ${e.getClass}:
@@ -1267,7 +1269,11 @@ class ClassfileParser(
             // return a new stub symbol for the inner class. This is tested by
             // `surviveMissingInnerClassAnnot` in AnnotationsTests.scala
         case _ =>
-          atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
+          // This code gets called as part of initializing Definitions, when phases haven't been initialized yet
+          if typerPhase.period == Periods.Nowhere then
+            getMember(owner, innerName.toTypeName)
+          else
+            atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},

@@ -296,7 +296,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.
    */
-  var ccEnabledSomewhere = Feature.enabledBySetting(Feature.captureChecking)(using ictx)
+  var ccEnabledSomewhere = Feature.ccEnabledBySetting(using ictx)
 
   private var myEnrichedErrorMessage = false
 
@@ -420,10 +420,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
     cancelAsyncTasty()
 
+    suppressions.runFinished()
     ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
-    suppressions.runFinished()
     while (finalizeActions.nonEmpty && canProgress()) {
       val action = finalizeActions.remove(0)
       action()
@@ -544,7 +544,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
     super[CaptureRunInfo].reset()
-    myCtx = null
+    // TODO: This makes `runContext` unusable after being reset.
+    myCtx = null.asInstanceOf[Context]
     myUnits = Nil
     myUnitsCached = Nil
   }
@@ -579,11 +580,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     start.setRun(this: @unchecked)
   }
 
-  private var myCtx: Context | Null = rootContext(using ictx)
+  private var myCtx: Context = rootContext(using ictx)
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
-  assert(runContext.runId <= Periods.MaxPossibleRunId)
+  given runContext[Dummy_so_its_a_def]: Context = myCtx
 }
 
 object Run {

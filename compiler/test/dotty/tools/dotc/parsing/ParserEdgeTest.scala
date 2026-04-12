@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package parsing
 
-import ast.untpd._
-import core.Constants._
+import ast.untpd.*
+import core.Constants.*
 
 import org.junit.Test
 

@@ -4,7 +4,7 @@
    |                             Found:    Future[T]^{collector.futures*}
    |                             Required: Future[T]^{C}
    |
-   |                             Note that capability `collector.futures*` is not included in capture set {C}.
+   |                             Note that capability `collector.futures*` cannot flow into capture set {C}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/gears-problem.scala:24:32 --------------------------------
@@ -13,7 +13,7 @@
    |                              Found:    Future[T^{}]^{collector.futures*}
    |                              Required: Future[T]^{C}
    |
-   |                              Note that capability `collector.futures*` is not included in capture set {C}.
+   |                              Note that capability `collector.futures*` cannot flow into capture set {C}.
    |
    | longer explanation available when compiling with `-explain`
 there were 4 deprecation warnings; re-run with -deprecation for details

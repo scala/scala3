@@ -63,14 +63,33 @@ class QueryParser(val query: CharSequence) {
 
   def readSegmentedQuery(): QuerySegment = {
     val id = readIdentifier()
-    if atEnd() || lookingAt('(') || lookingAt('[') then {
+    if atEnd() then {
       Query.Id(id.asString)
+    } else if lookingAt('(') || lookingAt('[') then {
+      // Include the entire signature in the identifier for overload resolution
+      val signature = readSignature()
+      Query.Id(id.asString + signature)
     } else {
       val ch = popCh()
       if ch == '.' || ch == '#'
       then Query.QualifiedId(id, ch, readSegmentedQuery())
       else err(s"expected . or #, instead saw: '$ch'")
     }
+  }
+
+  /** Read type parameters and parameter lists for overload resolution.
+   *  This reads everything up to the next '.' or '#' or end of string.
+   */
+  private def readSignature(): String = {
+    var depth = 0
+    var result = new StringBuilder()
+    while !atEnd() && (depth > 0 || !lookingAt('.') && !lookingAt('#')) do {
+      val ch = popCh()
+      result.append(ch)
+      if ch == '[' || ch == '(' then depth += 1
+      else if ch == ']' || ch == ')' then depth -= 1
+    }
+    result.toString
   }
 
   def readIdentifier(): Query.Qual = {

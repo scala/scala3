@@ -15,7 +15,7 @@ abstract class MacroTransform extends Phase {
 
   override def isRunnable(using Context) = super.isRunnable && !ctx.usedBestEffortTasty
 
-  override def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     unit.tpdTree = atPhase(transformPhase)(newTransformer.transform(unit.tpdTree))
   }

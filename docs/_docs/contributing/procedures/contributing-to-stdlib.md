@@ -6,7 +6,7 @@ title: Contributing to Scala Standard Library (SLC - Standard Library Changes)
 # Contributing to Scala Standard Library (SLC - Standard Library Changes)
 
 The Scala standard library is hosted in the
-[scala/scala](https://github.com/scala/scala3) repository. Any changes that
+[scala/scala3](https://github.com/scala/scala3) repository. Any changes that
 influence the standard library API should follow this process. If the changes
 are only internal, the process is the standard pull request one.
 

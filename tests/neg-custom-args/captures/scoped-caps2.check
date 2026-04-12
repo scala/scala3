@@ -4,7 +4,7 @@
   |                        Found:    (b : C ->{any} C)
   |                        Required: (x: C^) ->{any²} C^{fresh}
   |
-  |                        Note that capability `any` is not included in capture set {any²}.
+  |                        Note that capability `any` cannot flow into capture set {any²}.
   |
   |                        where:    ^     refers to the root capability caps.any
   |                                  any   is a root capability in the type of value b
@@ -18,7 +18,7 @@
   |                Found:    (a : (x: C) ->{any} C)
   |                Required: C^ ->{any²} C^²
   |
-  |                Note that capability `any` is not included in capture set {any²}.
+  |                Note that capability `any` cannot flow into capture set {any²}.
   |
   |                where:    ^    refers to the root capability caps.any
   |                          ^²   refers to a root capability classified as SharedCapability in the type of value _$2
@@ -26,19 +26,17 @@
   |                          any² is a root capability in the type of value _$2
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:9:18 ----------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:9:29 ----------------------------------
 9 |  val _: C => C = (x: C) => a(x) // error
-  |                  ^^^^^^^^^^^^^^
-  |                  Found:    (x: C^) ->{a} C^{fresh}
-  |                  Required: C^ => C^{any}
+  |                            ^^^^
+  |Found:    C^{any}
+  |Required: C^{any²}
   |
-  |                  Note that capability `fresh` is not included in capture set {any}
-  |                  because fresh is not visible from any in value _$4.
+  |Note that capability `any` cannot flow into capture set {any²}
+  |because any in an enclosing function is not visible from any² in value _$4.
   |
-  |                  where:    =>    refers to a root capability in the type of value _$4
-  |                            ^     refers to the root capability caps.any
-  |                            any   is a root capability classified as SharedCapability in the type of value _$4
-  |                            fresh is a root capability associated with the result type of (x: C^): C^{fresh}
+  |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
+  |          any² is a root capability classified as SharedCapability in the type of value _$4
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:15:18 ---------------------------------
@@ -47,7 +45,7 @@
    |                  Found:    (a : (x: C) -> C)
    |                  Required: C^ -> C^{any}
    |
-   |                  Note that capability `fresh` is not included in capture set {any}
+   |                  Note that capability `fresh` cannot flow into capture set {any}
    |                  because fresh is not visible from any in value _$6.
    |
    |                  where:    ^     refers to the root capability caps.any
@@ -61,10 +59,10 @@
    |Found:    C^{any}
    |Required: C^{any²}
    |
-   |Note that capability `any` is not included in capture set {any²}
+   |Note that capability `any` cannot flow into capture set {any²}
    |because any in an enclosing function is not visible from any² in value _$8.
    |
-   |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating method apply's type (x: C^): C^{fresh}
+   |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
    |          any² is a root capability classified as SharedCapability in the type of value _$8
    |
    | longer explanation available when compiling with `-explain`

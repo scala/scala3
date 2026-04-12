@@ -15,8 +15,7 @@ package scala.sys.process
 import scala.language.`2.13`
 import scala.annotation.tailrec
 
-/** A simple enough command line parser using shell quote conventions.
- */
+/** A simple enough command line parser using shell quote conventions. */
 private[scala] object Parser {
   private final val DQ = '"'
   private final val SQ = '\''
@@ -111,7 +110,5 @@ private[scala] object Parser {
     loop()
   }
 
-  class ParseException(msg: String) extends RuntimeException(msg)
-
-  def tokenize(line: String): List[String] = tokenize(line, x => throw new ParseException(x))
+  def tokenize(line: String): List[String] = tokenize(line, scala.sys.error)
 }

@@ -14,6 +14,7 @@ import dotty.tools.vulpix.TestConfiguration.mkClasspath
 import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
 import dotty.tools.dotc.config.ScalaVersion
+import io.PlainFile, PlainFile.*
 
 import java.nio.file.*, Files.*
 
@@ -196,7 +197,7 @@ class SettingsTests:
   @Test def `Allow IntSetting's to be set with a colon`: Unit =
     object Settings extends SettingGroup:
       val foo = IntSetting(RootSetting, "foo", "foo", 80)
-    import Settings._
+    import Settings.*
 
     def check(args: List[String]) = {
       val summary = processArguments(args, processAll = true)
@@ -253,8 +254,6 @@ class SettingsTests:
     assertTrue(summary.warnings.forall(_.contains("updated")))
 
   @Test def `dir option also warns`: Unit =
-    import java.nio.file.Paths
-    import io.PlainFile, PlainFile.*
     val abc: PlainFile = Paths.get("a", "b", "c").toPlainFile
     object Settings extends SettingGroup:
       val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
@@ -274,7 +273,7 @@ class SettingsTests:
       val bar = BooleanSetting(RootSetting, "bar", "bar", initialValue = true)
       val baz = BooleanSetting(RootSetting, "baz", "baz", initialValue = false)
       val qux = BooleanSetting(RootSetting, "qux", "qux", initialValue = false)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
     val summary = processArguments(args, processAll = true)
@@ -289,7 +288,7 @@ class SettingsTests:
   @Test def `flag can't be set with separate arg`: Unit =
     object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", initialValue = false)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo", "false")
     val summary = processArguments(args, processAll = true)
@@ -320,7 +319,7 @@ class SettingsTests:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
 
-      import Settings._
+      import Settings.*
 
       Files.write(file1, "test1".getBytes())
       Files.write(file2, "test2".getBytes())
@@ -343,7 +342,7 @@ class SettingsTests:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
-      import Settings._
+      import Settings.*
 
       Files.write(file, "test".getBytes())
       val fileStateBefore = String(Files.readAllBytes(file))
@@ -369,7 +368,7 @@ class SettingsTests:
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
 
-    import Settings._
+    import Settings.*
     Using.resource(Files.createTempDirectory("testDir")): dir =>
 
       val args = List(
@@ -473,6 +472,25 @@ class SettingsTests:
     import Settings.*
     assertThrows[AssertionError](_.getMessage.contains("replaced by")):
       flag
+
+  @Test def `Ignored setting shifts args`: Unit =
+    object Settings extends SettingGroup:
+      val foo = BooleanSetting(RootSetting, "foo", "foo", ignoreInvalidArgs = true, preferPrevious = true)
+      val bar = BooleanSetting(RootSetting, "bar", "bar")
+      val baz = OutputSetting(RootSetting, "out", "dir", "A file", default = Paths.get("out", "baz").toPlainFile,
+        ignoreInvalidArgs = true, preferPrevious = true)
+    import Settings.*
+    Using.resource(createTempDirectory("testDir")): dir =>
+      val out = createDirectory(dir.resolve("x"))
+      val args = List("-out", out.toString, "-out", s"$dir/y", "-foo:true", "-foo:false", "-bar:true")
+      val summary = processArguments(args, processAll = true)
+      assertTrue(summary.errors.mkString(","), summary.errors.isEmpty)
+      assertEquals(1, summary.warnings.size)
+      assertEquals("Ignoring conflicting value for Boolean flag -foo", summary.warnings.head)
+      assertEquals(1L, Files.list(dir).count) // second -out is ignored, no dir/y exists
+      withProcessedArgs(summary):
+        assertTrue(foo.value)
+        assertTrue(bar.value)
 
   // use the supplied summary for evaluating settings
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)

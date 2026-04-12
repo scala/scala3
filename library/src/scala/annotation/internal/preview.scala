@@ -5,7 +5,7 @@ import language.experimental.captureChecking
 
 /** An annotation that can be used to mark a definition as preview.
  *
- *  @see [[https://dotty.epfl.ch/docs/reference/other-new-features/preview-defs]]
+ *  @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/preview-defs]]
  *  @syntax markdown
  */
 private[scala] final class preview(message: String) extends StaticAnnotation:

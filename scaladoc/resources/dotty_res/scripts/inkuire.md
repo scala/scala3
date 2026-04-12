@@ -41,7 +41,7 @@ Web worker can send different messages:
 ## Input format
 
 Signature format accepted by Inkuire is pretty much a Scala curried function. With some minor changes:
-- Types with names as single letters or single letters with digits are considered by default type variables. But other type variables can be declared with [polymorphic function types syntax](https://dotty.epfl.ch/docs/reference/new-types/polymorphic-function-types.html).
+- Types with names as single letters or single letters with digits are considered by default type variables. But other type variables can be declared with [polymorphic function types syntax](https://nightly.scala-lang.org/docs/reference/new-types/polymorphic-function-types.html).
 - `_` is treated as sort of wildcard, so matches to any type on any position. So searching for any one-argument function from `Int` can be done like this: `Int => _`.
 
 Some example signatures with expected (not exclusive)results:

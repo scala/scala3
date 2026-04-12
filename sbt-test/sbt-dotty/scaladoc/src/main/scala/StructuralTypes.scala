@@ -1,7 +1,7 @@
 package example
 
 /**
-  * Structural Types: https://dotty.epfl.ch/docs/reference/changed-features/structural-types.html
+  * Structural Types: https://nightly.scala-lang.org/docs/reference/changed-features/structural-types.html
   */
 object StructuralTypes {
 

@@ -209,9 +209,8 @@ final class AnyAccumulator[A]
     ans
   }
 
-  /**
-   * Copies the elements in this `AnyAccumulator` to a specified collection. Example use:
-   * `acc.to(Vector)`.
+  /** Copies the elements in this `AnyAccumulator` to a specified collection. Example use:
+   *  `acc.to(Vector)`.
    */
   override def to[C1](factory: Factory[A, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)

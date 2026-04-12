@@ -1,0 +1,42 @@
+-- [E161] Naming Error: tests/neg-custom-args/captures/i25025.scala:8:10 -----------------------------------------------
+8 |trait Foo[c^,d^]: // error
+  |          ^
+  |          capture-set parameter c clashes with member value c of the same name
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg-custom-args/captures/i25025.scala:14:7 -----------------------------------------------
+14 |  type c^ // error
+   |       ^
+   |       capture-set member c clashes with member method c of the same name
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg-custom-args/captures/i25025.scala:17:10 ----------------------------------------------
+17 |trait Baz[c^]: // error
+   |          ^
+   |          capture-set parameter c clashes with member variable c of the same name
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg-custom-args/captures/i25025.scala:3:12 -----------------------------------------------
+3 |def foo[c^](c: AnyRef^): AnyRef^{c} = ??? // error
+  |            ^^^^^^^^^^
+  |            c clashes with capture-set parameter of the same name
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg-custom-args/captures/i25025.scala:4:12 -----------------------------------------------
+4 |def bar[c^](c: AnyRef^): Int = 0 // error
+  |            ^^^^^^^^^^
+  |            c clashes with capture-set parameter of the same name
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg-custom-args/captures/i25025.scala:5:20 -----------------------------------------------
+5 |def baz(c: AnyRef^)[c^](d: AnyRef^): AnyRef^{c} = d  // error
+  |                    ^
+  |                    capture-set parameter c clashes with term parameter of the same name
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg-custom-args/captures/i25025.scala:6:20 -----------------------------------------------
+6 |def bro(c: AnyRef^)[c^](d: AnyRef^): AnyRef^{c} = c  // error
+  |                    ^
+  |                    capture-set parameter c clashes with term parameter of the same name
+  |
+  | longer explanation available when compiling with `-explain`

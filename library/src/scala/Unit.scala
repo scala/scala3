@@ -10,10 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// DO NOT EDIT, CHANGES WILL BE LOST
-// This auto-generated code can be modified in "project/GenerateAnyVals.scala".
-// Afterwards, running "sbt generateSources" regenerates this source file.
-
 package scala
 
 import scala.language.`2.13`
@@ -49,8 +45,8 @@ object Unit extends AnyValCompanion {
    *  The result of successfully unboxing a value is `()`.
    *
    *  @param  x   the scala.runtime.BoxedUnit to be unboxed.
-   *  @throws     ClassCastException  if the argument is not a scala.runtime.BoxedUnit
    *  @return     the Unit value ()
+   *  @throws     ClassCastException  if the argument is not a scala.runtime.BoxedUnit
    */
   def unbox(x: java.lang.Object): Unit = x.asInstanceOf[scala.runtime.BoxedUnit]
 

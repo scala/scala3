@@ -283,6 +283,8 @@ object Tokens extends TokensCommon {
 
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
+  final val acceptOutdentTokens = BitSet(RBRACE, RPAREN, RBRACKET) | statCtdTokens
+
   final val canStartIndentTokens: BitSet =
     statCtdTokens | BitSet(COLONeol, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
 

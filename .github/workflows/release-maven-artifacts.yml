@@ -7,9 +7,6 @@ on:
         required: true
         type: string
 
-env:
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-
 jobs:
   release-maven-artifacts:
     runs-on: ubuntu-latest
@@ -29,7 +26,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Import Scala PGP Key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@v7
         with:
           gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
           passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}

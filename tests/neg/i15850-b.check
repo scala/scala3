@@ -1,0 +1,4 @@
+-- Error: tests/neg/i15850-b.scala:9:4 ---------------------------------------------------------------------------------
+9 |def crash(x: Level7): Unit = () // error
+  |    ^
+  |    Method signature is too long for the JVM

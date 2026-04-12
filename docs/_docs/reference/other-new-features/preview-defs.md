@@ -14,7 +14,7 @@ The biggest difference of preview features compared to experimental features is 
 A definition compiled in preview mode (using the `-preview` flag) is not marked as a preview definition itself.
 This behavior allows to use preview features transitively in other compilation units without explicitly enabled preview mode, as long as it does not directly reference APIs or features marked as preview.
 
-The [`@preview`](https://scala-lang.org/api/3.x/scala/annotation/internal/preview.html) annotation is used to mark Scala 3 standard library APIs currently available under preview mode.
+The [`@preview`](https://github.com/scala/scala3/blob/3.8.2/library/src/scala/annotation/internal/preview.scala) annotation is used to mark Scala 3 standard library APIs currently available under preview mode.
 The rules for `@preview` are similar to [`@experimental`](https://scala-lang.org/api/3.x/scala/annotation/experimental.html) when it comes to accessing, subtyping, overriding or overloading definitions marked with this annotation - all of these can only be performed in compilation units that enable preview mode.
 
 ```scala

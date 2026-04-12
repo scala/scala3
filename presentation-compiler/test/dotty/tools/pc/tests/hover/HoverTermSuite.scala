@@ -2,8 +2,8 @@ package dotty.tools.pc.tests.hover
 
 import dotty.tools.pc.base.BaseHoverSuite
 
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class HoverTermSuite extends BaseHoverSuite:
 
@@ -611,7 +611,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin
     )
 
-  @Test def `i20560`=
+  @Test def `i20560` =
     check(
       "val re@@s = tests.macros.Macro20560.loadJavaSqlDriver",
       """```scala
@@ -620,10 +620,10 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin
     )
 
-  @Test def `i20560-2`=
+  @Test def `i20560-2` =
     check(
       "val re@@s = tests.macros.Macro20560.loadJavaSqlInexisting",
-      "", // crashes in the Macro; no type info
+      "" // crashes in the Macro; no type info
     )
 
   @Test def `import-rename` =
@@ -644,7 +644,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |
         |```scala
         |val tt: AB[Int, String]
-        |```""".stripMargin,
+        |```""".stripMargin
     )
 
   @Test def `import-rename2` =
@@ -665,8 +665,8 @@ class HoverTermSuite extends BaseHoverSuite:
         |
         |```scala
         |def test(d: S[Int], f: S[Char]): AB[Int, String]
-        |```""".stripMargin,
-  )
+        |```""".stripMargin
+    )
 
   @Test def `import-no-rename` =
     check(
@@ -697,7 +697,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |
         |}""".stripMargin,
       """def member: Int""".stripMargin.hover
-  )
+    )
 
   @Test def `dealias-type-members-in-structural-types2`: Unit =
     check(
@@ -712,7 +712,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |    ()
         |""".stripMargin,
       """yy: A{type T = Int}""".stripMargin.hover
-  )
+    )
 
   @Test def `right-assoc-extension`: Unit =
     check(
@@ -731,7 +731,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |  val x = ?@@??
         |""".stripMargin,
       """def ???: Nothing""".stripMargin.hover
-  )
+    )
 
   @Test def `named-tuples`: Unit =
     check(
@@ -760,7 +760,6 @@ class HoverTermSuite extends BaseHoverSuite:
       "name: String".hover
     )
 
-
   @Test def `named-tuples3`: Unit =
     check(
       """|def hello = (path = ".", num = 5)
@@ -773,7 +772,6 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "def test: (path : String, num : Int, line : Int)".hover
     )
-
 
   @Test def `named-tuples4`: Unit =
     check(
@@ -812,7 +810,7 @@ class HoverTermSuite extends BaseHoverSuite:
          |  def parse(key: String) = Foo.va@@lueOf("b")
          |
          |""".stripMargin,
-         "def valueOf($name: String): Foo".hover
+      "def valueOf($name: String): Foo".hover
     )
 
   @Test def `i7460` =
@@ -820,7 +818,7 @@ class HoverTermSuite extends BaseHoverSuite:
       """|package tests.macros
          |def m = Macros7460.foo.sub@@string(2, 4)
          |""".stripMargin,
-         "def substring(x$0: Int, x$1: Int): String".hover
+      "def substring(x$0: Int, x$1: Int): String".hover
     )
 
   @Test def `i7460-2` =
@@ -828,7 +826,7 @@ class HoverTermSuite extends BaseHoverSuite:
       """|package tests.macros
          |def m = Macros7460.bar.sub@@string(2, 4)
          |""".stripMargin,
-         "def substring(x$0: Int, x$1: Int): String".hover
+      "def substring(x$0: Int, x$1: Int): String".hover
     )
 
   @Test def `multiple-valdefs-1` =

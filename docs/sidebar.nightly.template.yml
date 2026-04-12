@@ -15,6 +15,7 @@ subsection:
           - page: contributing/issues/cause.md
           - page: contributing/issues/areas.md
       - index: contributing/debugging/debugging.md
+        directory: debugging
         subsection:
           - page: contributing/debugging/ide-debugging.md
           - page: contributing/debugging/inspection.md
@@ -60,5 +61,6 @@ subsection:
       - page: internals/gadts.md
       - page: internals/coverage.md
       - page: internals/best-effort-compilation.md
+      - page: internals/syntax-3.1.md
   - page: release-notes-0.1.2.md  # Referenced from https://www.scala-lang.org/blog/2017/05/31/first-dotty-milestone-release.html
     hidden: true

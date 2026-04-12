@@ -9,7 +9,7 @@ import Decorators.*
 import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
-import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
+import util.{Chars, NoSourcePosition, Property, SourceFile, SourcePosition, SrcPos}
 import config.{Feature, Config}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion.*
@@ -51,6 +51,7 @@ object desugar {
   val PatternVar: Property.Key[Unit] = Property.StickyKey()
 
   /** An attachment key for Trees originating in for-comprehension, such as tupling of assignments.
+   * (In practice it's also used for general pattern definitions, e.g., `val (a, _, (b, _)) = foo()`)
    */
   val ForArtifact: Property.Key[Unit] = Property.StickyKey()
 
@@ -59,14 +60,21 @@ object desugar {
    */
   val ContextBoundParam: Property.Key[Unit] = Property.StickyKey()
 
-  /** Marks a poly fcuntion apply method, so that we can handle adding evidence parameters to them in a special way
+  /** Marks a poly function apply method, so that we can handle adding evidence parameters to them in a special way
    */
   val PolyFunctionApply: Property.Key[Unit] = Property.StickyKey()
 
   /** An attachment key to indicate that an Apply is created as a last `map`
-   *  scall in a for-comprehension.
+   *  call in a for-comprehension.
    */
   val TrailingForMap: Property.Key[Unit] = Property.StickyKey()
+
+  /** An attachment key to indicate that an Apply (`map` or `flatMap`)
+   *  in a for-comprehension has a nested tupling operation that no longer
+   *  generates an extra `map` call. That call would select the other overload
+   *  of `Map#map` and change the result to `List`. `DropForMap` warns about it.
+   */
+  val TuplingMigrationForMap: Property.Key[Unit] = Property.StickyKey()
 
   val WasTypedInfix: Property.Key[Unit] = Property.StickyKey()
 
@@ -214,9 +222,8 @@ object desugar {
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
     val valName = normalizeName(vdef, tpt).asTermName
-    var mods1 = vdef.mods
 
-    val vdef1 = cpy.ValDef(vdef)(name = valName).withMods(mods1)
+    val vdef1 = cpy.ValDef(vdef)(name = valName).withMods(vdef.mods)
 
     if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
@@ -1115,7 +1122,7 @@ object desugar {
         }
       }
       if mods.isAllOf(Given | Inline | Transparent) then
-        report.error("inline given instances cannot be trasparent", cdef)
+        report.error("inline given instances cannot be transparent", cdef)
       var classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
       val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
       if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
@@ -1201,63 +1208,69 @@ object desugar {
     }
   }
 
-  def extMethod(mdef: DefDef, extParamss: List[ParamClause])(using Context): DefDef =
+  def extMethod(mdef: DefDef, extParamss: List[ParamClause])(using Context): DefDef = {
+    def finish(problem: String = "", pos: SrcPos = NoSourcePosition) =
+      if !problem.isEmpty then
+        report.error(em"right-associative extension method $problem", pos)
+      extParamss ++ mdef.paramss
+
+    def rightAssocParams = {
+      val (rightTyParams, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
+
+      paramss match
+        case (rightParam @ ValDefs(vparam :: Nil)) :: paramss if !vparam.mods.is(Given) =>
+          // must be a single parameter without `given` flag for rassoc rewrite
+          // we merge the extension parameters with the method parameters,
+          // swapping the operator arguments:
+          // e.g.
+          //   extension [A](using B)(c: C)(using D)
+          //     def %:[E](f: F)(g: G)(using H): Res = ???
+          // will be encoded as
+          //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
+          //
+          // If you change the names in the clauses below, also change them in right-associative-extension-methods.md
+          val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+
+          val names = (for ps <- mdef.paramss; p <- ps yield p.name).toSet[Name]
+
+          val tt = new untpd.UntypedTreeTraverser:
+            def traverse(tree: Tree)(using Context): Unit = tree match
+              case tree: Ident if names.contains(tree.name) =>
+                finish(s"cannot have a forward reference to ${tree.name}", tree.srcPos)
+              case _ => traverseChildren(tree)
+
+          for ts <- leftParamAndTrailingUsing; t <- ts do
+            tt.traverse(t)
+
+          leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss
+        case ValDefs(vparam :: _) :: _ =>
+          if vparam.mods.is(Given) then
+            // no explicit value parameters, so not an infix operator.
+            finish()
+          else
+            finish("must start with a single parameter, consider a tupled parameter instead", mdef.srcPos)
+        case _ =>
+          // no value parameters, so not an infix operator.
+          finish()
+    }
+
     cpy.DefDef(mdef)(
       name = normalizeName(mdef, mdef.tpt).asTermName,
       paramss =
         if mdef.name.isRightAssocOperatorName then
-          val (rightTyParams, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
-
-          paramss match
-            case rightParam :: paramss1 => // `rightParam` must have a single parameter and without `given` flag
-
-              def badRightAssoc(problem: String, pos: SrcPos) =
-                report.error(em"right-associative extension method $problem", pos)
-                extParamss ++ mdef.paramss
-
-              rightParam match
-                case ValDefs(vparam :: Nil) =>
-                  if !vparam.mods.is(Given) then
-                    // we merge the extension parameters with the method parameters,
-                    // swapping the operator arguments:
-                    // e.g.
-                    //   extension [A](using B)(c: C)(using D)
-                    //     def %:[E](f: F)(g: G)(using H): Res = ???
-                    // will be encoded as
-                    //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
-                    //
-                    // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
-                    val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
-
-                    val names = (for ps <- mdef.paramss; p <- ps yield p.name).toSet[Name]
-
-                    val tt = new untpd.UntypedTreeTraverser:
-                      def traverse(tree: Tree)(using Context): Unit = tree match
-                        case tree: Ident if names.contains(tree.name) =>
-                          badRightAssoc(s"cannot have a forward reference to ${tree.name}", tree.srcPos)
-                        case _ => traverseChildren(tree)
-
-                    for ts <- leftParamAndTrailingUsing; t <- ts do
-                      tt.traverse(t)
-
-                    leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
-                  else
-                    badRightAssoc("cannot start with using clause", mdef.srcPos)
-                case _ =>
-                  badRightAssoc("must start with a single parameter", mdef.srcPos)
-            case _ =>
-              // no value parameters, so not an infix operator.
-              extParamss ++ mdef.paramss
+          rightAssocParams
         else
-          extParamss ++ mdef.paramss
+          finish()
     ).withMods(mdef.mods | ExtensionMethod)
+  }
+  end extMethod
 
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
-    ext.methods map {
+    ext.methods.map:
       case exp: Export => exp
       case mdef: DefDef => defDef(extMethod(mdef, ext.paramss))
-    }
+      case _ => EmptyTree // we ignore all the other trees. Error was reported during parsing.
   }
   /** Transforms
    *
@@ -1335,26 +1348,29 @@ object desugar {
       case _ => body
     cpy.PolyFunction(tree)(tree.targs, stripped(tree.body)).asInstanceOf[PolyFunction]
 
+  /** Apply function-level parameter flags such as `given` and `erased` to term parameters. */
+  private def addFunctionParamFlags(params: List[ValDef], funFlags: FlagSet, erasedParams: List[Boolean])(using Context): List[ValDef] =
+    val commonFlags = funFlags.toTermFlags & GivenOrImplicit
+    params.zipWithConserve(erasedParams): (param, isErased) =>
+      val flags = commonFlags | (if isErased then Erased else EmptyFlags)
+      if flags.isEmpty then param else param.withAddedFlags(flags)
+
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
    */
   def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = (tree: @unchecked) match
     case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) =>
-      val paramFlags = fun match
+      val vparams0 = vparamTypes.zipWithIndex.map {
+        case (p: ValDef, _) => p
+        case (p, n) => makeSyntheticParameter(n + 1, p)
+      }.toList
+      val vparams = fun match
         case fun: FunctionWithMods =>
           // TODO: make use of this in the desugaring when pureFuns is enabled.
           // val isImpure = funFlags.is(Impure)
-
-          // Function flags to be propagated to each parameter in the desugared method type.
-          val givenFlag = fun.mods.flags.toTermFlags & Given
-          fun.erasedParams.map(isErased => if isErased then givenFlag | Erased else givenFlag)
+          addFunctionParamFlags(vparams0, fun.mods.flags, fun.erasedParams)
         case _ =>
-          vparamTypes.map(_ => EmptyFlags)
-
-      val vparams = vparamTypes.lazyZip(paramFlags).zipWithIndex.map {
-        case ((p: ValDef, paramFlags), n) => p.withAddedFlags(paramFlags)
-        case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
-      }.toList
+          vparams0
 
       RefinedTypeTree(ref(defn.PolyFunctionType), List(
         DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
@@ -1442,11 +1458,12 @@ object desugar {
         ids.map(expand(_, false))
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-      pats1 map (makePatDef(pdef, mods, _, rhs))
+      pats1.map: pat =>
+        makePatDef(pdef, pat, rhs)
     }
   }
 
-  /** The selector of a match, which depends of the given `checkMode`.
+  /** The selector of a match, which depends on the given `checkMode`.
    *  @param  sel  the original selector
    *  @return if `checkMode` is
    *           - None              :  sel @unchecked
@@ -1463,28 +1480,16 @@ object desugar {
        | IrrefutableGenFrom => sel.withAttachment(CheckIrrefutable, checkMode)
       // TODO: use `pushAttachment` and investigate duplicate attachment
 
-  case class TuplePatternInfo(arity: Int, varNum: Int, wildcardNum: Int)
-  object TuplePatternInfo:
-    def apply(pat: Tree)(using Context): TuplePatternInfo = pat match
-      case Tuple(pats) =>
-        var arity = 0
-        var varNum = 0
-        var wildcardNum = 0
-        pats.foreach: p =>
-          arity += 1
-          p match
-            case id: Ident if !isBackquoted(id) =>
-              if id.name.isVarPattern then
-                varNum += 1
-                if id.name == nme.WILDCARD then
-                  wildcardNum += 1
-            case _ =>
-        TuplePatternInfo(arity, varNum, wildcardNum)
-      case _ =>
-        TuplePatternInfo(-1, -1, -1)
-  end TuplePatternInfo
-
-  /** If `pat` is a variable pattern,
+  /** Desugars `pat = rhs` where `pat` is a pattern.
+   *
+   *  The `original` tree determines the `span` of the overall pattern def.
+   *  `given` patterns are allowed if it is a `GenAlias` but not a `PatDef`.
+   *  Modifiers derive from a `PatDef`, or from the pattern if it is a definition.
+   *
+   *  Outputs simpler desugaring if possible, e.g.,
+   *  `(a, b) = (x, y)` does not need the full generalizability of `(a, _, c) = foo()`.
+   *
+   *  If `pat` is a variable pattern,
    *
    *    val/var/lazy val p = e
    *
@@ -1492,136 +1497,182 @@ object desugar {
    *   val/var/lazy val p = e  ==>  val/var/lazy val x_1 = (e: @unchecked) match (case p => (x_1))
    *
    *   in case there are zero or more than one variables in pattern
-   *   val/var/lazy p = e  ==>  private[this] synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
+   *   val/var/lazy p = e  ==>
+   *     private[this] synthetic [lazy] val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
    *                   val/var/def x_1 = t$._1
    *                   ...
    *                   val/var/def x_N = t$._N
    *  If the original pattern variable carries a type annotation, so does the corresponding
    *  ValDef or DefDef.
    */
-  def makePatDef(original: Tree, mods: Modifiers, pat: Tree, rhs: Tree)(using Context): Tree = pat match {
-    case IdPattern(id, tpt) =>
-      val id1 =
-        if id.name == nme.WILDCARD
-        then cpy.Ident(id)(WildcardParamName.fresh())
-        else id
-      derivedValDef(original, id1, tpt, rhs, mods)
-    case _ =>
-
-      def filterWildcardGivenBinding(givenPat: Bind): Boolean =
-        givenPat.name != nme.WILDCARD
-
-      def errorOnGivenBinding(bind: Bind)(using Context): Boolean =
-        report.error(
-          em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
-              |please bind to an identifier and use an alias given.""", bind)
-        false
-
-      val tuplePatternInfo = TuplePatternInfo(pat)
-
-      // When desugaring a PatDef in general, we use pattern matching on the rhs
-      // and collect the variable values in a tuple, then outside the match,
-      // we destructure the tuple to get the individual variables.
-      // We can achieve two kinds of tuple optimizations if the pattern is a tuple
-      // of simple variables or wildcards:
-      // 1. Full optimization:
-      //    If the rhs is known to produce a literal tuple of the same arity,
-      //    we can directly fetch the values from the tuple.
-      //    For example: `val (x, y) = if ... then (1, "a") else (2, "b")` becomes
-      //    `val $1$ = if ...; val x = $1$._1; val y = $1$._2`.
-      // 2. Partial optimization:
-      //    If the rhs can be typed as a tuple and matched with correct arity, we can
-      //    return the tuple itself in the case if there are no more than one variable
-      //    in the pattern, or return the the value if there is only one variable.
-
-      val fullTupleOptimizable =
-        val isMatchingTuple: Tree => Boolean = {
-          case Tuple(es) => tuplePatternInfo.varNum == es.length && !hasNamedArg(es)
-          case _ => false
-        }
-        tuplePatternInfo.arity > 0
-        && tuplePatternInfo.arity == tuplePatternInfo.varNum
-        && forallResults(rhs, isMatchingTuple)
-
-      val partialTupleOptimizable =
-        tuplePatternInfo.arity > 0
-        && tuplePatternInfo.arity == tuplePatternInfo.varNum
-        // We exclude the case where there is only one variable,
-        // because it should be handled by `makeTuple` directly.
-        && tuplePatternInfo.wildcardNum < tuplePatternInfo.arity - 1
-
-      val inAliasGenerator = original match
-        case _: GenAlias => true
-        case _ => false
-
-      val vars: List[VarInfo] =
-        if fullTupleOptimizable || partialTupleOptimizable then // include `_`
+  def makePatDef(original: PatDef | GenAlias, pat: Tree, rhs: Tree)(using Context): Tree = {
+    // First, get the modifiers from the tree, or none if the tree doesn't have any
+    val mods =
+      original match
+        case patDef: PatDef => patDef.mods
+        case genAlias =>
           pat match
-            case Tuple(pats) => pats.map { case id: Ident => (id, TypeTree()) }
-        else
-          getVariables(
-            tree = pat,
-            shouldAddGiven =
-              if inAliasGenerator then
-                filterWildcardGivenBinding
-              else
-                errorOnGivenBinding
-          ) // no `_`
-
-      val ids = for ((named, tpt) <- vars) yield Ident(named.name)
-
-      val matchExpr =
-        if fullTupleOptimizable then rhs
-        else
-          val caseDef =
-            if partialTupleOptimizable then
-              val tmpTuple = UniqueName.fresh()
-              // Replace all variables with wildcards in the pattern
-              val pat1 = pat match
-                case Tuple(pats) =>
-                  val wildcardPats = pats.map(p => Ident(nme.WILDCARD).withSpan(p.span))
-                  Tuple(wildcardPats).withSpan(pat.span)
-              CaseDef(
-                Bind(tmpTuple, pat1),
-                EmptyTree,
-                Ident(tmpTuple).withAttachment(ForArtifact, ())
-              )
-            else CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
-          Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
-
-      vars match {
-        case Nil if !mods.is(Lazy) =>
-          matchExpr
-        case (named, tpt) :: Nil =>
-          derivedValDef(original, named, tpt, matchExpr, mods)
-        case _ =>
-          val tmpName = UniqueName.fresh()
-          val patMods =
-            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
-          val firstDef =
-            ValDef(tmpName, TypeTree(), matchExpr)
-              .withSpan(pat.span.union(rhs.span)).withMods(patMods)
-          val useSelectors = vars.length <= 22
-          def selector(n: Int) =
-            if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
-            else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(n)) :: Nil)
-          val restDefs =
-            for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
-            yield
-              if mods.is(Lazy) then
-                DefDef(named.name.asTermName, Nil, tpt, selector(n))
-                  .withMods(mods &~ Lazy)
-                  .withSpan(named.span)
-                  .withAttachment(PatternVar, ())
-              else
-                valDef(
-                  ValDef(named.name.asTermName, tpt, selector(n))
-                    .withMods(mods)
-                    .withSpan(named.span)
-                    .withAttachment(PatternVar, ())
-                )
-          flatTree(firstDef :: restDefs)
-      }
+            case defTree: DefTree => defTree.mods
+            case _ => Modifiers()
+    val span = original.span
+    val givenPatternsAllowed = original.isInstanceOf[GenAlias]
+    // Then, check the simplest case: a single identifier bound to the RHS,
+    pat match {
+      case IdPattern(id, tpt) =>
+        // with the caveat that we may need a fresh name to replace a wildcard.
+        val id1 =
+          if id.name == nme.WILDCARD
+          then cpy.Ident(id)(WildcardParamName.fresh())
+          else id
+        derivedValDef(span, id1, tpt, rhs, mods)
+      case _ =>
+        // Otherwise, we need a more general approach.
+        // Start by listing the variables in the pattern.
+        def generalGetVariables = getVariables(pat, b =>
+          if givenPatternsAllowed then
+            b.name != nme.WILDCARD
+          else
+            report.error(em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
+                             |please bind to an identifier and use an alias given.""", b)
+            false
+        )
+        // We can optimize the lowering depending on the pattern and RHS
+        enum Optimization:
+          // "Simple tuple" optimization:
+          // If we have a tuple LHS with a one-to-one mapping from LHS to RHS tuple elements,
+          // possibly including wildcards, we can use the RHS as-is with `._1` etc. without using `match`.
+          // For instance, `val (a, b, _) = (1, 2, 3)`. (but patterns like `Extract(x = y)` or `(a, (b, _))` don't work)
+          // Exception:
+          // This optimization doesn't work in the presence of things that can be deconstructed as tuples but aren't,
+          // such as named tuples, since we would need to know the item names to access them later,
+          // and we haven't run the typer yet so all we can do is syntactically check if the RHS is a non-named tuple,
+          // e.g., `if x then (1, 2) else (3, 4)` is OK.
+          // In this case, `variables` may contain wildcard names, which we'll ignore when destructuring.
+          // (Future work: We could obtain field names for named tuple literals and use them)
+          case SimpleTuple
+          // "Matchable tuple" optimization:
+          // Otherwise, we decompose the RHS to have just the parts we care about.
+          // For instance, `val Extractor(name = x) = 42` turns into `42 match { case Extractor(name = x) => x }`,
+          // and `val (a, (b, _), (_, e)) = foo()` turns into `foo() match { case (a, (b, _), (_, e)) => (a, b, e) }`.
+          // If we know the RHS can be matched with a tuple pattern, even if it's a named tuple,
+          // we can simplify the match we emit to not have any variable patterns and just use the type directly.
+          // In this case too, `variables` may contain wildcard names.
+          // Exception:
+          // This optimization cannot be used in the presence of the `@unchecked` annotation,
+          // since given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
+          // but `val x: List[B @unchecked] = a: @unchecked` is not.
+          // So we cannot desugar the first one into `(a, 1) match { $1 @ (_: List[B @unchecked], _) => $1 }`
+          // because that loses track of the unchecked-ness.
+          case MatchableTuple
+          // If neither optimization applies, we do the fully general `match`.
+          // (Future work: We could try to find an "extractor" for each variable in the LHS&RHS,
+          //                 e.g., `(a, _, (b, _)) = (1, 2, (3, 4))` can obviously be handled without a `match`)
+          case None
+        val (opt, variables) = pat match {
+          case TuplePattern(pats, _) =>
+            // We want to include wildcards for the optimizations, so we can't use `IdPattern` which excludes them
+            val allVariables = pats.map {
+              case id: Ident if isVarPattern(id) => Some(id, TypeTree())
+              case Typed(id: Ident, tpt) if isVarPattern(id) => Some((id, tpt))
+              case _ => None
+            }.flatten
+            if allVariables.size == pats.size then
+              def isMatchingTuple(t: Tree) = t match {
+                case Tuple(elems) => pats.size == elems.length && !hasNamedArg(elems)
+                case _ => false
+              }
+              if forallResults(rhs, isMatchingTuple) then (Optimization.SimpleTuple, allVariables)
+              else if !rhs.isInstanceOf[Annotated] then (Optimization.MatchableTuple, allVariables)
+              else (Optimization.None, generalGetVariables)
+            else
+              (Optimization.None, generalGetVariables)
+          case _ => (Optimization.None, generalGetVariables)
+        }
+        // Now that we have necessary info, define the actual RHS of the resulting assignment.
+        // We attach `ForArtifact` to tupling so that linting doesn't take it as a usage of variables.
+        val loweredRhs = opt match
+          // In the simple tuple case, we use the RHS as-is.
+          case Optimization.SimpleTuple =>
+            rhs
+          // In the matchable tuple case, we use a pattern but replace all names in it with wildcards,
+          // name the overall pattern, and use that name.
+          case Optimization.MatchableTuple =>
+            val tmpTuple = UniqueName.fresh()
+            val tupled = Ident(tmpTuple).withAttachment(ForArtifact, ())
+            val caseDef = CaseDef(Bind(tmpTuple, pat), EmptyTree, tupled)
+            Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+          // In the general case, we must name each individual item we want to extract.
+          case Optimization.None =>
+            val ids = for (n, _) <- variables yield Ident(n.name)
+            val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
+            Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+        // Finally, we can return the lowered pat def.
+        variables match
+          // If there are no items at all in the LHS, we don't need any assignment, unless the LHS is lazy.
+          // (e.g., if we have `val (_, _) = foo()` we can lower to `foo()`,
+          // but `lazy val (_, _) = foo()` cannot do that)
+          // (we could special case "lazy with only wildcards" to lower to nothing,
+          // but that does not seem like a common thing to do, since it's entirely pointless)
+          case Nil if !mods.is(Lazy) =>
+            loweredRhs
+          // If there's a single non-wildcard variable in the LHS, lower to a single assignment.
+          case (named, tpt) :: Nil =>
+            derivedValDef(span, named, tpt, loweredRhs, mods)
+          // With more than one item, we need the more general case:
+          // lower to one assignment for the tuple of items, and one assignment per item to extract the value.
+          // e.g., for `val (a, (b, _)) = foo()` we'll get
+          // `val $0 = foo() match { case (a, (b, _)) => (a, b) }; val a = $0._1; val b = $0._2`.
+          case _ =>
+            // ... except we have one more optimization up our sleeve:
+            // if we're in the "simple tuple" case and the RHS is also a tuple, for `val (a, b) = (1, 2)` we can emit `val a = 1; val b = 2`.
+            // We don't do this if there are any types or wildcards involved, since those can require conversions or handling side-effects.
+            val (firstDef, splitRhs) = rhs match
+              case TuplePattern(elems, TypeTree()) if opt == Optimization.SimpleTuple
+                                                   && elems.size == variables.size
+                                                   && !pat.isInstanceOf[Typed]
+                                                   && variables.forall((n, _) => n.name != nme.WILDCARD) =>
+                (Nil, elems)
+              case _ =>
+                // Start with the assignment to the tuple:
+                // create a fresh name,
+                val tmpName = UniqueName.fresh()
+                // make sure we mark it as "synthetic" so, e.g., the field for `class C { val (a, b) = (1, 2) }`
+                // does not leak into the API,
+                val patMods = (mods & Lazy) | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
+                // when optimizing use the declared type of the tuple to preserve information
+                val tupType = pat match
+                  case TuplePattern(_, tpt) if opt != Optimization.None => tpt
+                  case _ => TypeTree()
+                // and define the assignment.
+                val firstDef =
+                  ValDef(tmpName, tupType, loweredRhs)
+                    .withSpan(pat.span.union(rhs.span))
+                    .withMods(patMods)
+                (List(firstDef), tmpName)
+              // Then write each assignment, keeping in mind we need special selection if we exceed the max tuple arity
+              val useSelectors = variables.length <= Definitions.MaxTupleArity
+              def selector(idx: Int) = splitRhs match
+                case elems: List[Tree] => elems(idx)
+                case tmpName: TermName if useSelectors => Select(Ident(tmpName), nme.selectorName(idx))
+                case tmpName: TermName => Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
+              // and translating to a `def` or `val` as needed depending on laziness.
+              val restDefs =
+                for ((named, tpt), idx) <- variables.zipWithIndex if named.name != nme.WILDCARD
+                yield
+                  if mods.is(Lazy) then
+                    DefDef(named.name.asTermName, Nil, tpt, selector(idx))
+                      .withMods(mods &~ Lazy)
+                      .withSpan(named.span)
+                      .withAttachment(PatternVar, ())
+                  else
+                    valDef(
+                      ValDef(named.name.asTermName, tpt, selector(idx))
+                        .withMods(mods)
+                        .withSpan(named.span)
+                        .withAttachment(PatternVar, ())
+                  )
+              flatTree(firstDef ++ restDefs)
+    }
   }
 
   /** Expand variable identifier x to x @ _ */
@@ -1982,12 +2033,23 @@ object desugar {
       flags =
         if params.nonEmpty && params.head.mods.is(Given) then SyntheticTermParam | Given
         else SyntheticTermParam)
+
+    def paramIsUsed(name: Name, body: Tree): Boolean =
+      val acc = new UntypedTreeAccumulator[Boolean]:
+        def apply(x: Boolean, t: Tree)(using Context) =
+          if x then true
+          else t match
+            case Ident(id) => id == name
+            case _ => foldOver(x, t)
+      acc(false, body)
+
     def selector(n: Int) =
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
     val vdefs =
-      params.zipWithIndex.map {
-        case (param, idx) =>
+      params.zipWithIndex.collect {
+        case (param, idx) if param.name != nme.WILDCARD &&
+          (!param.name.is(WildcardParamName) || paramIsUsed(param.name, body)) =>
           ValDef(param.name, param.tpt, selector(idx))
             .withSpan(param.span)
             .withAttachment(UntupledParam, ())
@@ -2017,24 +2079,18 @@ object desugar {
         if augmenting then paramNamesOrNil.map(ContextFunctionParamName.fresh(_))
         else paramNamesOrNil
       else List.fill(formals.length)(ContextFunctionParamName.fresh())
-    val params = for (tpt, pname) <- formals.zip(paramNames) yield
-      ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
+    val params0 = for (tpt, pname) <- formals.zip(paramNames) yield
+      ValDef(pname, tpt, EmptyTree).withFlags(Param)
+    val params = addFunctionParamFlags(params0, Given, erasedParams)
     FunctionWithMods(params, body, Modifiers(Given), erasedParams)
 
-  private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
+  private def derivedValDef(originalSpan: Span, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) =
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
       .withMods(mods)
-      .withSpan(original.span.withPoint(named.span.start))
+      .withSpan(originalSpan.withPoint(named.span.start))
       .withAttachment(PatternVar, ())
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
-  }
-
-  @unused
-  private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceFile) =
-    DefDef(named.name.asTermName, Nil, tpt, rhs)
-      .withMods(mods)
-      .withSpan(original.span.withPoint(named.span.start))
 
   /** Main desugaring method */
   def apply(tree: Tree, pt: Type = NoType)(using Context): Tree = {
@@ -2125,7 +2181,7 @@ object desugar {
        */
       def makeLambda(gen: GenFrom, body: Tree): Tree = gen.pat match {
         case IdPattern(named, tpt) if gen.checkMode != GenCheckMode.FilterAlways =>
-          Function(derivedValDef(gen.pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
+          Function(derivedValDef(gen.pat.span, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
           val matchCheckMode =
             if (gen.checkMode == GenCheckMode.Check || gen.checkMode == GenCheckMode.CheckAndFilter) MatchCheck.IrrefutableGenFrom
@@ -2266,6 +2322,9 @@ object desugar {
         then
           aply.putAttachment(TrailingForMap, ())
 
+      extension (trees: List[Tree]) inline def spanOfGenAlias() =
+        trees.span(_.isInstanceOf[GenAlias]).asInstanceOf[(List[GenAlias], List[Tree])]
+
       enums match {
         case Nil if sourceVersion.enablesBetterFors => body
         case (gen: GenFrom) :: Nil =>
@@ -2275,27 +2334,26 @@ object desugar {
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
-          val (valeqs, suffix) = rest.span(_.isInstanceOf[GenAlias])
+          val (valeqs, suffix) = rest.spanOfGenAlias()
           // possible aliases followed by a generator or end of for, when betterFors.
           // exclude value definitions with a given pattern (given T = x)
           val better = sourceVersion.enablesBetterFors
             && suffix.headOption.forall(_.isInstanceOf[GenFrom])
-            && !valeqs.exists(a => isNestedGivenPattern(a.asInstanceOf[GenAlias].pat))
+            && !valeqs.exists(a => isNestedGivenPattern(a.pat))
           if better then
             val cont = makeFor(mapName, flatMapName, enums = rest, body)
             val selectName =
               if suffix.exists(_.isInstanceOf[GenFrom]) then flatMapName
               else mapName
-            Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+            val app = Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+            if valeqs.lengthIs > 1 then app.withAttachment(TuplingMigrationForMap, ())
+            else app
           else
-            val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
+            val pats = valeqs.map(_.pat)
             val (defpat0, id0) = makeIdPat(gen.pat)
             val (defpats, ids) = pats.map(makeIdPat).unzip
-            val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map: (valeq, defpat, rhs) =>
-              val mods = defpat match
-                case defTree: DefTree => defTree.mods
-                case _ => Modifiers()
-              makePatDef(valeq, mods, defpat, rhs)
+            val pdefs = valeqs.lazyZip(defpats).map: (valeq, defpat) =>
+              makePatDef(valeq, defpat, valeq.expr)
             val rhs1 =
               val enums = GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil
               val body = Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ()))
@@ -2316,14 +2374,10 @@ object desugar {
             GenFrom(gen.pat, filtered, mode)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
         case enums @ GenAlias(_, _) :: _ if sourceVersion.enablesBetterFors =>
-          val (valeqs, suffix) = enums.span(_.isInstanceOf[GenAlias])
-          val (pats, rhss) = valeqs.map { case GenAlias(pat, rhs) => (pat, rhs) }.unzip
-          val (defpats, ids) = pats.map(makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map: (valeq, defpat, rhs) =>
-            val mods = defpat match
-              case defTree: DefTree => defTree.mods
-              case _ => Modifiers()
-            makePatDef(valeq, mods, defpat, rhs)
+          val (valeqs, suffix) = enums.spanOfGenAlias()
+          val pdefs = valeqs.map: valeq =>
+            val (defpat, _) = makeIdPat(valeq.pat)
+            makePatDef(valeq, defpat, valeq.expr)
           Block(pdefs, makeFor(mapName, flatMapName, enums = suffix, body))
         case _ =>
           EmptyTree //may happen for erroneous input
@@ -2379,12 +2433,16 @@ object desugar {
         makeFor(nme.foreach, nme.foreach, enums, body) `orElse` tree
       case ForYield(enums, body) =>
         makeFor(nme.map, nme.flatMap, enums, body) `orElse` tree
-      case PatDef(mods, pats, tpt, rhs) =>
+      case tree @ PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-        flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
+        flatTree(pats1.map(makePatDef(tree, _, rhs)))
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
-      case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
+      case f: FunctionWithMods if f.hasErasedParams =>
+        makeFunctionWithValDefs(f, pt)
+      case CapturesAndResult(_, parent) =>
+        assert(ctx.reporter.errorsReported)
+        parent
     }
     desugared.withSpan(tree.span)
   }
@@ -2495,7 +2553,7 @@ object desugar {
   }
 
   /** Returns list of all pattern variables, possibly with their types,
-   *  without duplicates
+   *  without duplicates.
    */
   private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
     val buf = ListBuffer.empty[VarInfo]

@@ -39,6 +39,8 @@ metals.sbt
 .scala-build
 sbt-launch.jar
 
+.claude
+
 # Partest
 dotty.jar
 dotty-lib.jar

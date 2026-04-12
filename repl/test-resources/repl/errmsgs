@@ -90,10 +90,11 @@ scala> val x: List[Int] = "foo" :: List(1)
   | longer explanation available when compiling with `-explain`
 1 error found
 scala> while (((  foo ))) {}
--- [E006] Not Found Error: -----------------------------------------------------
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | while (((  foo ))) {}
   |            ^^^
-  |            Not found: foo
+  |            Found:    (foo : Foo)
+  |            Required: Boolean
   |
   | longer explanation available when compiling with `-explain`
 1 error found

@@ -28,37 +28,49 @@ import scala.util.control.NonFatal
 private[process] trait ProcessBuilderImpl {
   self: ProcessBuilder.type =>
 
-  private[process] class DaemonBuilder(underlying: ProcessBuilder) extends AbstractBuilder {
-    final def run(io: ProcessIO): Process = underlying.run(io.daemonized())
+  private[process] final class DaemonBuilder(underlying: ProcessBuilder) extends AbstractBuilder {
+    override def run(io: ProcessIO): Process = underlying.run(io.daemonized())
   }
 
-  private[process] class Dummy(override val toString: String, exitValue: => Int) extends AbstractBuilder {
+  private[process] final class Dummy(override val toString: String, exitValue: => Int) extends AbstractBuilder {
     override def run(io: ProcessIO): Process = new DummyProcess(exitValue)
     override def canPipeTo = true
   }
 
-  private[process] class URLInput(url: URL) extends IStreamBuilder(url.openStream(), url.toString)
-  private[process] class FileInput(file: File) extends IStreamBuilder(new FileInputStream(file), file.getAbsolutePath)
-  private[process] class FileOutput(file: File, append: Boolean) extends OStreamBuilder(new FileOutputStream(file, append), file.getAbsolutePath)
-
-  private[process] class OStreamBuilder(
-    stream: => OutputStream,
-    label: String
-  ) extends ThreadBuilder(label, _ writeInput protect(stream)) {
+  private[process] final class URLInput(url: URL) extends ThreadBuilder(url.toString) {
     override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(url.openStream()))
   }
 
-  private[process] class IStreamBuilder(
-    stream: => InputStream,
-    label: String
-  ) extends ThreadBuilder(label, _ processOutput protect(stream)) {
+  // Because the argument must be call-by-name to re-create the stream every time,
+  // this class should not be reused in a context where the call-by-name argument does something sensitive,
+  // like `url.openStream()`, since otherwise there is a hypothetical possibility of a Java deserialization gadget chain.
+  private[process] final class IStreamBuilder(stream: => InputStream, label: String) extends ThreadBuilder(label) {
     override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(stream))
+  }
+
+  private[process] final class FileInput(file: File) extends ThreadBuilder(file.getAbsolutePath) {
+    override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(new FileInputStream(file)))
+  }
+
+  // Same remark as IStreamBuilder
+  private[process] final class OStreamBuilder(stream: => OutputStream, label: String) extends ThreadBuilder(label) {
+    override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.writeInput(protect(stream))
+  }
+
+  private[process] final class FileOutput(file: File, append: Boolean) extends ThreadBuilder(file.getAbsolutePath) {
+    override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.writeInput(protect(new FileOutputStream(file, append)))
   }
 
   private[process] abstract class ThreadBuilder(
-    override val toString: String,
-    runImpl: ProcessIO => Unit
+    override val toString: String
   ) extends AbstractBuilder {
+
+    def runImpl(io: ProcessIO): Unit
 
     override def run(io: ProcessIO): Process = {
       val success = new LinkedBlockingQueue[Boolean](1)

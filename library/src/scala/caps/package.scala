@@ -6,26 +6,25 @@ import language.experimental.captureChecking
 import annotation.{experimental, compileTimeOnly, retainsCap}
 import annotation.meta.*
 
-/**
- * Base trait for classes that represent capabilities in the
- * [object-capability model](https://en.wikipedia.org/wiki/Object-capability_model).
+/** Base trait for classes that represent capabilities in the
+ *  [object-capability model](https://en.wikipedia.org/wiki/Object-capability_model).
  *
- * A capability is a value representing a permission, access right, resource or effect.
- * Capabilities are typically passed to code as parameters; they should not be global objects.
- * Often, they come with access restrictions such as scoped lifetimes or limited sharing.
+ *  A capability is a value representing a permission, access right, resource or effect.
+ *  Capabilities are typically passed to code as parameters; they should not be global objects.
+ *  Often, they come with access restrictions such as scoped lifetimes or limited sharing.
  *
- * An example is the [[scala.util.boundary.Label Label]] class in [[scala.util.boundary]].
- * It represents a capability in the sense that it gives permission to [[scala.util.boundary.break break]]
- * to the enclosing boundary represented by the `Label`. It has a scoped lifetime, since breaking to
- * a `Label` after the associated `boundary` was exited gives a runtime exception.
+ *  An example is the [[scala.util.boundary.Label Label]] class in [[scala.util.boundary]].
+ *  It represents a capability in the sense that it gives permission to [[scala.util.boundary.break break]]
+ *  to the enclosing boundary represented by the `Label`. It has a scoped lifetime, since breaking to
+ *  a `Label` after the associated `boundary` was exited gives a runtime exception.
  *
- * [[Capability]] has a formal meaning when
- * [[scala.language.experimental.captureChecking Capture Checking]]
- * is turned on.
- * But even without capture checking, extending this trait can be useful for documenting the intended purpose
- * of a class.
+ *  [[Capability]] has a formal meaning when
+ *  [[scala.language.experimental.captureChecking Capture Checking]]
+ *  is turned on.
+ *  But even without capture checking, extending this trait can be useful for documenting the intended purpose
+ *  of a class.
  *
- * Capability has exactly two subtraits: [[SharedCapability Shared]] and [[ExclusiveCapability Exclusive]].
+ *  Capability has exactly two subtraits: [[SharedCapability Shared]] and [[ExclusiveCapability Exclusive]].
  */
 sealed trait Capability extends Any
 
@@ -33,9 +32,9 @@ sealed trait Capability extends Any
  *  qualifiers. Capability classes directly extending `Classifier` are treated
  *  as classifier capbilities.
  *
- * [[Classifier]] has a formal meaning when
- * [[scala.language.experimental.captureChecking Capture Checking]]
- * is turned on. It should not be used outside of capture checking.
+ *  [[Classifier]] has a formal meaning when
+ *  [[scala.language.experimental.captureChecking Capture Checking]]
+ *  is turned on. It should not be used outside of capture checking.
  */
 trait Classifier
 
@@ -47,16 +46,16 @@ object any extends Capability
 @experimental
 object fresh extends Capability
 
-@experimental // TODO: Drop once we bootstrap with 3.8.2
+@experimental // TODO: Drop once we bootstrap with 3.8.4 (is still being used by non-bootstrap compiler)
 @deprecated
 object cap extends Capability
 
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
  *
- * [[SharedCapability]] has a formal meaning when
- * [[scala.language.experimental.captureChecking Capture Checking]]
- * is turned on.
- * During separation checking, shared capabilities are not taken into account.
+ *  [[SharedCapability]] has a formal meaning when
+ *  [[scala.language.experimental.captureChecking Capture Checking]]
+ *  is turned on.
+ *  During separation checking, shared capabilities are not taken into account.
  */
 trait SharedCapability extends Capability, Classifier
 
@@ -66,10 +65,10 @@ type Shared = SharedCapability
 /** Marker trait for capabilities that should only be used by one concurrent process
  *  at a given time. For example, write-access to a shared mutable buffer.
  *
- * [[ExclusiveCapability]] has a formal meaning when
- * [[scala.language.experimental.captureChecking Capture Checking]]
- * is turned on.
- * During separation checking, exclusive usage of marked capabilities will be enforced.
+ *  [[ExclusiveCapability]] has a formal meaning when
+ *  [[scala.language.experimental.captureChecking Capture Checking]]
+ *  is turned on.
+ *  During separation checking, exclusive usage of marked capabilities will be enforced.
  */
 @experimental
 trait ExclusiveCapability extends Capability
@@ -81,9 +80,9 @@ type Exclusive = ExclusiveCapability
  *  the stack. Examples are exceptions, [[scala.util.boundary.Label labels]], [[scala.CanThrow CanThrow]]
  *  or Async contexts.
  *
- * [[Control]] has a formal meaning when
- * [[scala.language.experimental.captureChecking Capture Checking]]
- * is turned on.
+ *  [[Control]] has a formal meaning when
+ *  [[scala.language.experimental.captureChecking Capture Checking]]
+ *  is turned on.
  */
 trait Control extends SharedCapability, Classifier
 
@@ -91,21 +90,20 @@ trait Control extends SharedCapability, Classifier
  *  These  classes typically contain mutable variables and/or update methods.
  */
 @experimental
-trait Stateful extends ExclusiveCapability
+trait Stateful
 
 /** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
  *  extending Separate is created, a fresh `any` is automatically added to the value's capture set.
  */
-@experimental
-trait Separate extends Stateful
+@experimental @deprecated
+trait Separate extends Stateful, ExclusiveCapability
 
-/** Marker trait for classes that are not subject to scoping restrictions of captured capabilities.
- */
+/** Marker trait for classes that are not subject to scoping restrictions of captured capabilities. */
 @experimental
-trait Unscoped extends Stateful, Classifier
+trait Unscoped extends ExclusiveCapability, Classifier
 
 @experimental
-trait Mutable extends Stateful, Separate, Unscoped
+trait Mutable extends Stateful, Unscoped
 
 /** Marker trait for classes with reader methods, typically extended by Mutable classes. */
 @experimental
@@ -143,6 +141,20 @@ object Contains:
 @experimental
 final class reserve extends annotation.StaticAnnotation
 
+/** An annotation for definitions that should not be accessible from code
+ *  compiled under safe mode.
+ */
+@experimental
+@getter @setter @beanGetter @beanSetter @field
+final class rejectSafe(message: String = "") extends scala.annotation.ConstantAnnotation
+
+/** An annotation for definitions that are assumed to be accessible from code
+ *  compiled under safe mode.
+ */
+@experimental
+@getter @setter @beanGetter @beanSetter @field
+final class assumeSafe extends scala.annotation.ConstantAnnotation
+
 /** Allowed only for source versions up to 3.7:
  *  An annotation on parameters `x` stating that the method's body makes
  *  use of the reach capability `x*`. Consequently, when calling the method
@@ -154,8 +166,8 @@ final class reserve extends annotation.StaticAnnotation
 final class use extends annotation.StaticAnnotation
 
 /** A trait that used to allow expressing existential types. Replaced by
-*  root.Result instances.
-*/
+ *  root.Result instances.
+ */
 @experimental
 @deprecated
 sealed trait Exists extends Capability
@@ -169,6 +181,12 @@ object internal:
   @getter @param
   final class consume extends annotation.StaticAnnotation
 
+  /** An annotation on a type indicating that the type was inferred. Added
+   *  during inlining when we want to mark portions of aotherwise explicit type
+   *  as inferred.
+   */
+  final class inferred extends annotation.StaticAnnotation
+
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
    *  info from the parent type, so no intersection needs to be formed.
@@ -177,21 +195,6 @@ object internal:
   @deprecated
   final class refineOverride extends annotation.StaticAnnotation
 
-  /** An annotation used internally for root capability wrappers of `any` that
-   *  represent either Fresh or Result capabilities.
-   *  A capability is encoded as `caps.any @rootCapability(...)` where
-   *  `rootCapability(...)` is a special kind of annotation of type `root.Annot`
-   *  that contains either a hidden set for Fresh instances or a method type binder
-   *  for Result instances.
-   */
-  final class rootCapability extends annotation.StaticAnnotation
-
-  /** An annotation used internally to mark a function type that was
-   *  converted to a dependent function type during setup of inferred types.
-   *  Such function types should not map roots to result variables.
-   */
-  final class inferredDepFun extends annotation.StaticAnnotation
-
   /** An erasedValue issued internally by the compiler. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed
    *  to be a pure expression, hence capability safe. The compiler generates this
@@ -199,8 +202,7 @@ object internal:
    */
   def erasedValue[T]: T = ???
 
-  /** A trait for capabilities representing usage of mutable vars in capture sets.
-   */
+  /** A trait for capabilities representing usage of mutable vars in capture sets. */
   trait Var[T] extends Mutable:
     def get: T
     update def set(x: T): Unit
@@ -216,6 +218,7 @@ end internal
 def freeze(@internal.consume x: Mutable | Array[?]): x.type = x
 
 @experimental
+@rejectSafe("it is unavailable in safe mode")
 object unsafe:
   /** Three usages:
    *
@@ -238,7 +241,7 @@ object unsafe:
    *   3. Allows a field to be declarewd in a class that does not extend Stateful,
    *      and suppresses checks for updates to the field.
    *
-   * @note This should go into annotations. For now it is here, so that we
+   *  @note This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
   @getter @param
@@ -251,8 +254,7 @@ object unsafe:
      */
     def unsafeAssumePure: T = x
 
-  /** A wrapper around code for which separation checks are suppressed.
-   */
+  /** A wrapper around code for which separation checks are suppressed. */
   def unsafeAssumeSeparate(op: Any): op.type = op
 
   /** A wrapper around code for which uses go unrecorded. */

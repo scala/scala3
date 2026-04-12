@@ -57,6 +57,9 @@ object TestConfiguration {
       Properties.dottyRepl,
       Properties.jlineTerminal,
       Properties.jlineReader,
+      Properties.fansi,
+      Properties.pprint,
+      Properties.sourcecode
   ))
 
   lazy val replWithStagingClasspath = 

@@ -98,7 +98,8 @@ class CommunityBuildTestC:
   @Test def specs2 = projects.specs2.run()
 
   @Test def ujson = projects.ujson.run()
-  @Test def upickle = projects.upickle.run()
+  // StackOverflowError in the mill build, temporarily disabled until the problem is investigated
+  // @Test def upickle = projects.upickle.run()
   @Test def utest = projects.utest.run()
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()

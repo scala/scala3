@@ -35,8 +35,7 @@ import scala.util.{ Try, Success, Failure }
  *  Note: Using this method may result in non-deterministic concurrent programs.
  */
 trait Promise[T] {
-  /** Future containing the value of this promise.
-   */
+  /** Future containing the value of this promise. */
   def future: Future[T]
 
   /** Returns whether the promise has already been completed with

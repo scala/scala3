@@ -15,33 +15,31 @@ package scala.runtime
 import scala.language.`2.13`
 import java.lang.invoke._
 
-/**
- * This class is only intended to be called by synthetic `$deserializeLambda$` method that the Scala 2.12
- * compiler will add to classes hosting lambdas.
+/** This class is only intended to be called by synthetic `$deserializeLambda$` method that the Scala 2.12
+ *  compiler will add to classes hosting lambdas.
  *
- * It is not intended to be consumed directly.
+ *  It is not intended to be consumed directly.
  */
 object LambdaDeserializer {
-  /**
-   * Deserializes a lambda by calling `LambdaMetafactory.altMetafactory` to spin up a lambda class
-   * and instantiating this class with the captured arguments.
+  /** Deserializes a lambda by calling `LambdaMetafactory.altMetafactory` to spin up a lambda class
+   *  and instantiating this class with the captured arguments.
    *
-   * A cache may be provided to ensure that subsequent deserialization of the same lambda expression
-   * is cheap, it amounts to a reflective call to the constructor of the previously created class.
-   * However, deserialization of the same lambda expression is not guaranteed to use the same class,
-   * concurrent deserialization of the same lambda expression may spin up more than one class.
+   *  A cache may be provided to ensure that subsequent deserialization of the same lambda expression
+   *  is cheap, it amounts to a reflective call to the constructor of the previously created class.
+   *  However, deserialization of the same lambda expression is not guaranteed to use the same class,
+   *  concurrent deserialization of the same lambda expression may spin up more than one class.
    *
-   * Assumptions:
+   *  Assumptions:
    *  - No additional marker interfaces are required beyond `java.io.Serializable`. These are
    *    not stored in `SerializedLambda`, so we can't reconstitute them.
    *  - No additional bridge methods are passed to `altMetafactory`. Again, these are not stored.
    *
-   * @param lookup      The factory for method handles. Must have access to the implementation method, the
+   *  @param lookup      The factory for method handles. Must have access to the implementation method, the
    *                    functional interface class, and `java.io.Serializable`.
-   * @param cache       A cache used to avoid spinning up a class for each deserialization of a given lambda. May be `null`
-   * @param serialized  The lambda to deserialize. Note that this is typically created by the `readResolve`
+   *  @param cache       A cache used to avoid spinning up a class for each deserialization of a given lambda. May be `null`
+   *  @param serialized  The lambda to deserialize. Note that this is typically created by the `readResolve`
    *                    member of the anonymous class created by `LambdaMetaFactory`.
-   * @return            An instance of the functional interface
+   *  @return            An instance of the functional interface
    */
   def deserializeLambda(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle],
                         targetMethodMap: java.util.Map[String, MethodHandle], serialized: SerializedLambda): AnyRef = {

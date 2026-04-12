@@ -23,7 +23,7 @@ realising the full potential of these ideas. Its main objectives are to
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
@@ -151,14 +151,14 @@ This is the first step in a multi-step process to disallow `_` as wildcards so t
 Lambda parameters with type ascriptions are now required to be enclosed in parentheses. E.g. `x: Int => x * x` is no longer legal, it must be written as `(x: Int) => x * x`. However, you can still write `x => x * x`, that is, if `x` does not have an explicit type ascription.
 
 ## Dottydoc redesign
-The output of [Dottydoc](https://dotty.epfl.ch/docs/usage/dottydoc.html) has been redesigned. It is now fully responsive: every element, including API docs and search, is adapted to both small and big screens.
+The output of [Dottydoc](https://nightly.scala-lang.org/docs/usage/dottydoc.html) has been redesigned. It is now fully responsive: every element, including API docs and search, is adapted to both small and big screens.
 
 The most visible changes are the toolbar and the sidebar. They now have a common darker background, which makes them more readable and helps separating navigation from content. Also, the sidebar is collapsible and has been optimized so that it doesn't glitch when the page loads.
 
 The toolbar's logo can now be set with the `-project-logo` option.
 For instance, `-project-logo dotty-logo.svg` will make `/images/dotty-logo.svg` appear in the toolbar.
 
-[The front page](https://dotty.epfl.ch) has been redesigned too, with a new responsive menu and improved contrast.
+[The front page](https://nightly.scala-lang.org) has been redesigned too, with a new responsive menu and improved contrast.
 
 Overall, every page has been updated with consistent settings of fonts and colors. A more detailed comparison between the new and the old design can be found [here](https://github.com/scala/scala3/pull/7153).
 
@@ -205,7 +205,7 @@ According to `git shortlog -sn --no-merges 0.18.1-RC1..0.19.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

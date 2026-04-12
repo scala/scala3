@@ -39,8 +39,7 @@ object ScalaRunTime {
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
     iterable(coll) drop num
 
-  /** Returns the class object representing an array with element class `clazz`.
-   */
+  /** Returns the class object representing an array with element class `clazz`. */
   def arrayClass(clazz: jClass[_]): jClass[_] = {
     // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
@@ -153,15 +152,15 @@ object ScalaRunTime {
 
   /** Given any Scala value, convert it to a String.
    *
-   * The primary motivation for this method is to provide a means for
-   * correctly obtaining a String representation of a value, while
-   * avoiding the pitfalls of naively calling toString on said value.
-   * In particular, it addresses the fact that (a) toString cannot be
-   * called on null and (b) depending on the apparent type of an
-   * array, toString may or may not print it in a human-readable form.
+   *  The primary motivation for this method is to provide a means for
+   *  correctly obtaining a String representation of a value, while
+   *  avoiding the pitfalls of naively calling toString on said value.
+   *  In particular, it addresses the fact that (a) toString cannot be
+   *  called on null and (b) depending on the apparent type of an
+   *  array, toString may or may not print it in a human-readable form.
    *
-   * @param   arg   the value to stringify
-   * @return        a string representation of arg.
+   *  @param   arg   the value to stringify
+   *  @return        a string representation of arg.
    */
   def stringOf(arg: Any): String = stringOf(arg, scala.Int.MaxValue)
   def stringOf(arg: Any, maxElements: Int): String = {

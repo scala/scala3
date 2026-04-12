@@ -3,7 +3,6 @@ package dotty.tools.pc
 import java.nio.file.Paths
 
 import scala.annotation.tailrec
-
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
@@ -26,18 +25,20 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
 
-/**
- * Tries to calculate edits needed to create a method that will fix missing symbol
- * in all the places that it is possible such as:
- * - apply inside method invocation `method(.., nonExistent(param), ...)` and `method(.., nonExistent, ...)`
- * - method in val definition `val value: DefinedType = nonExistent(param)` and `val value: DefinedType = nonExistent`
- * - simple method call `nonExistent(param)` and `nonExistent`
- * - method call inside a container `container.nonExistent(param)` and `container.nonExistent`
+/** Tries to calculate edits needed to create a method that will fix missing
+ *  symbol in all the places that it is possible such as:
+ *    - apply inside method invocation `method(.., nonExistent(param), ...)` and
+ *      `method(.., nonExistent, ...)`
+ *    - method in val definition `val value: DefinedType = nonExistent(param)`
+ *      and `val value: DefinedType = nonExistent`
+ *    - simple method call `nonExistent(param)` and `nonExistent`
+ *    - method call inside a container `container.nonExistent(param)` and
+ *      `container.nonExistent`
  *
- * @param params position and actual source
- * @param driver Scala 3 interactive compiler driver
- * @param config presentation compiler configuration
- * @param symbolSearch symbol search
+ *  @param params position and actual source
+ *  @param driver Scala 3 interactive compiler driver
+ *  @param config presentation compiler configuration
+ *  @param symbolSearch symbol search
  */
 final class InferredMethodProvider(
     params: OffsetParams,
@@ -101,8 +102,8 @@ final class InferredMethodProvider(
         .mkString(", ")
 
     def printSignature(
-        methodName: Name, 
-        params: List[List[Type]], 
+        methodName: Name,
+        params: List[List[Type]],
         retTypeOpt: Option[Type]
     ): String =
       val retTypeString = retTypeOpt match
@@ -112,7 +113,7 @@ final class InferredMethodProvider(
           else s": $printRetType"
         case _ => ""
 
-      val (paramsString, _) = params.foldLeft(("", 0)){
+      val (paramsString, _) = params.foldLeft(("", 0)) {
         case ((acc, startIdx), paramList) =>
           val printed = s"(${printParams(paramList, startIdx)})"
           (acc + printed, startIdx + paramList.size)
@@ -142,13 +143,14 @@ final class InferredMethodProvider(
         }
       path(blockOrTemplateIndex).sourcePos
 
-    /**
-     * Returns the position to insert the method signature for a container.
-     * If the container has an empty body, the position is the end of the container.
-     * If the container has a non-empty body, the position is the end of the last element in the body. 
-     * 
-     * @param container the container to insert the method signature for
-     * @return the position to insert the method signature for the container and a boolean indicating if the container has an empty body
+    /** Returns the position to insert the method signature for a container. If
+     *  the container has an empty body, the position is the end of the
+     *  container. If the container has a non-empty body, the position is the
+     *  end of the last element in the body.
+     *
+     *  @param container the container to insert the method signature for
+     *  @return the position to insert the method signature for the container
+     *    and a boolean indicating if the container has an empty body
      */
     def insertPositionFor(container: Tree): Option[(SourcePosition, Boolean)] =
       val typeSymbol = container.tpe.widenDealias.typeSymbol
@@ -168,17 +170,20 @@ final class InferredMethodProvider(
           case None => None
       else None
 
-      /**
-      * Extracts type information for a specific parameter in a method signature.
-      * If the parameter is a function type, extracts both the function's argument types 
-      * and return type. Otherwise, extracts just the parameter type.
-      * 
-      * @param methodType the method type to analyze
-      * @param argIndex the index of the parameter to extract information for
-      * @return a tuple of (argument types, return type) where:
-      *         - argument types: Some(List[Type]) if parameter is a function, None otherwise
-      *         - return type: Some(Type) representing either the function's return type or the parameter type itself
-      */
+      /** Extracts type information for a specific parameter in a method
+       *  signature. If the parameter is a function type, extracts both the
+       *  function's argument types and return type. Otherwise, extracts just
+       *  the parameter type.
+       *
+       *  @param methodType the method type to analyze
+       *  @param argIndex the index of the parameter to extract information for
+       *  @return
+       *    a tuple of (argument types, return type) where:
+       *    - argument types: Some(List[Type]) if parameter is a function, None
+       *      otherwise
+       *    - return type: Some(Type) representing either the function's return
+       *      type or the parameter type itself
+       */
     def extractParameterTypeInfo(methodType: Type, argIndex: Int): (Option[List[Type]], Option[Type]) =
       methodType match
         case m @ MethodType(param) =>
@@ -192,7 +197,7 @@ final class InferredMethodProvider(
           else
             (None, Some(m.paramInfos(argIndex)))
         case _ => (None, None)
-    
+
     def signatureEdits(signature: String): List[TextEdit] =
       val pos = insertPosition()
       val indent = indentation(params.text(), pos.start - 1)
@@ -202,7 +207,7 @@ final class InferredMethodProvider(
       List(
         TextEdit(
           lspPos,
-          s"$signature\n$indent",
+          s"$signature\n$indent"
         )
       ) ::: imports
 
@@ -217,52 +222,52 @@ final class InferredMethodProvider(
             List(
               TextEdit(
                 lspPos,
-                s":\n  $indent$signature",
+                s":\n  $indent$signature"
               )
             ) ::: imports
           else
             List(
               TextEdit(
                 lspPos,
-                s"\n$indent$signature",
+                s"\n$indent$signature"
               )
             ) ::: imports
-        case None => 
+        case None =>
           extensionMethodEdits(signature, container)
 
     def extensionMethodEdits(signature: String, container: Tree): List[TextEdit] =
       val containerTypeStr = printType(container.tpe.widenDealias)
-      
+
       val pos = insertPosition()
       val indent = indentation(params.text(), pos.start - 1)
       val extensionSignature = s"extension (x: $containerTypeStr)\n  $indent$signature"
-      
+
       val lspPos = pos.toLsp
       lspPos.setEnd(lspPos.getStart())
 
       List(
         TextEdit(
           lspPos,
-          s"$extensionSignature\n$indent",
+          s"$extensionSignature\n$indent"
         )
       ) ::: imports
 
     path match
-      /**
-       *                 outerArgs
-       *        ---------------------------
-       * method(..., errorMethod(args), ...)
-       * 
+      /** ```
+       *                  outerArgs
+       *         ---------------------------
+       *  method(..., errorMethod(args), ...)
+       *  ```
        */
-      case (id @ Ident(errorMethod)) :: 
-           (apply @ Apply(func, args)) :: 
-            Apply(method, outerArgs) :: 
-            _ if id.symbol == NoSymbol && func == id && method != apply =>
-        
+      case (id @ Ident(errorMethod)) ::
+          (apply @ Apply(func, args)) ::
+          Apply(method, outerArgs) ::
+          _ if id.symbol == NoSymbol && func == id && method != apply =>
+
         val argTypes = args.map(_.typeOpt.widenDealias)
 
         val argIndex = outerArgs.indexOf(apply)
-        val (allArgTypes, retTypeOpt) = 
+        val (allArgTypes, retTypeOpt) =
           extractParameterTypeInfo(method.tpe.widenDealias, argIndex) match
             case (Some(argTypes2), retTypeOpt) => (List(argTypes, argTypes2), retTypeOpt)
             case (None, retTypeOpt) => (List(argTypes), retTypeOpt)
@@ -271,16 +276,16 @@ final class InferredMethodProvider(
 
         signatureEdits(signature)
 
-      /**
+      /** ```
        *              outerArgs
-       *        ---------------------
-       * method(..., errorMethod, ...)
-       * 
+       *         ---------------------
+       *  method(..., errorMethod, ...)
+       *  ```
        */
-      case (id @ Ident(errorMethod)) :: 
-           Apply(method, outerArgs) :: 
-           _ if id.symbol == NoSymbol && method != id =>
-        
+      case (id @ Ident(errorMethod)) ::
+          Apply(method, outerArgs) ::
+          _ if id.symbol == NoSymbol && method != id =>
+
         val argIndex = outerArgs.indexOf(id)
 
         val (argTypes, retTypeOpt) = extractParameterTypeInfo(method.tpe.widenDealias, argIndex)
@@ -290,87 +295,84 @@ final class InferredMethodProvider(
           case None => Nil
 
         val signature = printSignature(errorMethod, allArgTypes, retTypeOpt)
-        
+
         signatureEdits(signature)
 
-      /**
-       *                tpt             body
-       *            -----------   ----------------
-       * val value: DefinedType = errorMethod(args)
-       * 
+      /** ```
+       *              outerArgs
+       *         ---------------------
+       *  method(..., errorMethod, ...)
+       *  ```
        */
-      case (id @ Ident(errorMethod)) :: 
-           (apply @ Apply(func, args)) :: 
-           ValDef(_, tpt, body) :: 
-            _ if id.symbol == NoSymbol && func == id && apply == body =>
-            
+      case (id @ Ident(errorMethod)) ::
+          (apply @ Apply(func, args)) ::
+          ValDef(_, tpt, body) ::
+          _ if id.symbol == NoSymbol && func == id && apply == body =>
+
         val retType = tpt.tpe.widenDealias
         val argTypes = args.map(_.typeOpt.widenDealias)
 
         val signature = printSignature(errorMethod, List(argTypes), Some(retType))
         signatureEdits(signature)
 
-      /**
-       *                tpt          body
-       *            -----------   -----------
-       * val value: DefinedType = errorMethod
-       * 
+      /** ```
+       *                 tpt          body
+       *             -----------   -----------
+       *  val value: DefinedType = errorMethod
+       *
+       *  ```
        */
-      case (id @ Ident(errorMethod)) :: 
-            ValDef(_, tpt, body) :: 
-            _ if id.symbol == NoSymbol && id == body =>
-            
+      case (id @ Ident(errorMethod)) ::
+          ValDef(_, tpt, body) ::
+          _ if id.symbol == NoSymbol && id == body =>
+
         val retType = tpt.tpe.widenDealias
 
         val signature = printSignature(errorMethod, Nil, Some(retType))
         signatureEdits(signature)
 
-      /**
-       * 
-       * errorMethod(args)
-       * 
+      /** ```
+       *  errorMethod(args)
+       *  ```
        */
-      case (id @ Ident(errorMethod)) :: 
-           (apply @ Apply(func, args)) :: 
-            _ if id.symbol == NoSymbol && func == id =>
+      case (id @ Ident(errorMethod)) ::
+          (apply @ Apply(func, args)) ::
+          _ if id.symbol == NoSymbol && func == id =>
 
         val argTypes = args.map(_.typeOpt.widenDealias)
 
         val signature = printSignature(errorMethod, List(argTypes), None)
         signatureEdits(signature)
 
-      /**
-       * 
-       * errorMethod
-       * 
+      /** ```
+       *  errorMethod
+       *  ```
        */
-      case (id @ Ident(errorMethod)) :: 
-           _ if id.symbol == NoSymbol =>
+      case (id @ Ident(errorMethod)) ::
+          _ if id.symbol == NoSymbol =>
 
         val signature = printSignature(errorMethod, Nil, None)
         signatureEdits(signature)
 
-      /**
-       * 
-       * container.errorMethod(args)
-       * 
+      /** ```
+       *  container.errorMethod(args)
+       *  ```
        */
-      case (select @ Select(container, errorMethod)) :: 
-           (apply @ Apply(func, args)) :: 
-            _  if select.symbol == NoSymbol && func == select =>
-        
+      case (select @ Select(container, errorMethod)) ::
+          (apply @ Apply(func, args)) ::
+          _ if select.symbol == NoSymbol && func == select =>
+
         val argTypes = args.map(_.typeOpt.widenDealias)
         val signature = printSignature(errorMethod, List(argTypes), None)
         signatureEditsForContainer(signature, container)
 
-      /**
-       * 
-       * container.errorMethod
-       * 
+      /** ```
+       *  container.errorMethod
+       *  ```
        */
-      case (select @ Select(container, errorMethod)) :: 
-            _  if select.symbol == NoSymbol =>
-        
+      case (select @ Select(container, errorMethod)) ::
+          _ if select.symbol == NoSymbol =>
+
         val signature = printSignature(errorMethod, Nil, None)
         signatureEditsForContainer(signature, container)
 

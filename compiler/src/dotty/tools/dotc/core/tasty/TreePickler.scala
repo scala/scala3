@@ -16,6 +16,7 @@ import Comments.{Comment, docCtx}
 import NameKinds.*
 import StdNames.{nme, tpnme}
 import config.Config
+import config.Feature.sourceVersion
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
@@ -286,7 +287,13 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       withLength:
         pickleType(tpe.parent, richTypes)
         tpe.annot match
-          case ann: CompactAnnotation => pickleType(ann.tpe)
+          case ann: CompactAnnotation =>
+            if sourceVersion.enablesCompactAnnotation then
+              pickleType(ann.tpe)
+            else
+              val atree = ann.oldTree
+              pickleTree(atree)
+              annotatedTypeTrees += atree
           case ann =>
             pickleTree(ann.tree)
             annotatedTypeTrees += ann.tree
@@ -925,8 +932,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       // Such annotations will be reconstituted when unpickling the child class.
       // See tests/pickling/i3149.scala
     case _ if ctx.isBestEffort && !ann.symbol.denot.isError => true
-    case _ =>
-      ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
+    case _ => defn.unpicklableAnnotations.contains(ann.symbol)
   }
 
   def pickleAnnotation(owner: Symbol, mdef: MemberDef, ann: Annotation)(using Context): Unit =

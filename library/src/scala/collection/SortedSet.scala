@@ -53,24 +53,23 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
      with SortedOps[A, C] {
 
   /** The companion object of this sorted set, providing various factory methods.
-    *
-    * @note When implementing a custom collection type and refining `CC` to the new type, this
-    *       method needs to be overridden to return a factory for the new type (the compiler will
-    *       issue an error otherwise).
-    */
+   *
+   *  @note When implementing a custom collection type and refining `CC` to the new type, this
+   *       method needs to be overridden to return a factory for the new type (the compiler will
+   *       issue an error otherwise).
+   */
   def sortedIterableFactory: SortedIterableFactory[CC]
 
   /** Widens the type of this set to its unsorted counterpart. */
   def unsorted: Set[A]
 
-  /**
-    * Creates an iterator that contains all values from this collection
-    * greater than or equal to `start` according to the ordering of
-    * this collection. x.iteratorFrom(y) is equivalent to but will usually
-    * be more efficient than x.from(y).iterator
-    *
-    * @param start The lower-bound (inclusive) of the iterator
-    */
+  /** Creates an iterator that contains all values from this collection
+   *  greater than or equal to `start` according to the ordering of
+   *  this collection. x.iteratorFrom(y) is equivalent to but will usually
+   *  be more efficient than x.from(y).iterator
+   *
+   *  @param start The lower-bound (inclusive) of the iterator
+   */
   def iteratorFrom(start: A): Iterator[A]
   
   @deprecated("Use `iteratorFrom` instead.", "2.13.0")
@@ -80,15 +79,15 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
   def lastKey: A = last
 
   /** Finds the smallest element larger than or equal to a given key.
-    * @param key The given key.
-    * @return `None` if there is no such node.
-    */
+   *  @param key The given key.
+   *  @return `None` if there is no such node.
+   */
   def minAfter(key: A): Option[A] = rangeFrom(key).headOption
 
   /** Finds the largest element less than a given key.
-    * @param key The given key.
-    * @return `None` if there is no such node.
-    */
+   *  @param key The given key.
+   *  @return `None` if there is no such node.
+   */
   def maxBefore(key: A): Option[A] = rangeUntil(key).lastOption
 
   override def min[B >: A](implicit ord: Ordering[B]): A =
@@ -115,35 +114,35 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
   }
 
   /** Builds a new sorted collection by applying a function to all elements of this $coll.
-    *
-    *  @param f      the function to apply to each element.
-    *  @tparam B     the element type of the returned collection.
-    *  @return       a new $coll resulting from applying the given function
-    *                `f` to each element of this $coll and collecting the results.
-    */
+   *
+   *  @tparam B     the element type of the returned collection.
+   *  @param f      the function to apply to each element.
+   *  @return       a new $coll resulting from applying the given function
+   *                `f` to each element of this $coll and collecting the results.
+   */
   def map[B](f: A => B)(implicit @implicitNotFound(SortedSetOps.ordMsg) ev: Ordering[B]): CC[B] =
     sortedIterableFactory.from(new View.Map(this, f))
 
   /** Builds a new sorted collection by applying a function to all elements of this $coll
-    *  and using the elements of the resulting collections.
-    *
-    *  @param f      the function to apply to each element.
-    *  @tparam B     the element type of the returned collection.
-    *  @return       a new $coll resulting from applying the given collection-valued function
-    *                `f` to each element of this $coll and concatenating the results.
-    */
+   *  and using the elements of the resulting collections.
+   *
+   *  @tparam B     the element type of the returned collection.
+   *  @param f      the function to apply to each element.
+   *  @return       a new $coll resulting from applying the given collection-valued function
+   *                `f` to each element of this $coll and concatenating the results.
+   */
   def flatMap[B](f: A => IterableOnce[B]^)(implicit @implicitNotFound(SortedSetOps.ordMsg) ev: Ordering[B]): CC[B] =
     sortedIterableFactory.from(new View.FlatMap(this, f))
 
   /** Returns a $coll formed from this $coll and another iterable collection
-    *  by combining corresponding elements in pairs.
-    *  If one of the two collections is longer than the other, its remaining elements are ignored.
-    *
-    *  @param   that  The iterable providing the second half of each result pair
-    *  @tparam  B     the type of the second half of the returned pairs
-    *  @return        a new $coll containing pairs consisting of corresponding elements of this $coll and `that`.
-    *                 The length of the returned collection is the minimum of the lengths of this $coll and `that`.
-    */
+   *  by combining corresponding elements in pairs.
+   *  If one of the two collections is longer than the other, its remaining elements are ignored.
+   *
+   *  @tparam  B     the type of the second half of the returned pairs
+   *  @param   that  The iterable providing the second half of each result pair
+   *  @return        a new $coll containing pairs consisting of corresponding elements of this $coll and `that`.
+   *                 The length of the returned collection is the minimum of the lengths of this $coll and `that`.
+   */
   def zip[B](that: IterableOnce[B]^)(implicit @implicitNotFound(SortedSetOps.zipOrdMsg) ev: Ordering[(A @uncheckedVariance, B)]): CC[(A @uncheckedVariance, B)] = // sound bcs of VarianceNote
     sortedIterableFactory.from(that match {
       case that: Iterable[B] => new View.Zip(this, that)
@@ -151,14 +150,14 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
     })
 
   /** Builds a new sorted collection by applying a partial function to all elements of this $coll
-    *  on which the function is defined.
-    *
-    *  @param pf     the partial function which filters and maps the $coll.
-    *  @tparam B     the element type of the returned collection.
-    *  @return       a new $coll resulting from applying the given partial function
-    *                `pf` to each element on which it is defined and collecting the results.
-    *                The order of the elements is preserved.
-    */
+   *  on which the function is defined.
+   *
+   *  @tparam B     the element type of the returned collection.
+   *  @param pf     the partial function which filters and maps the $coll.
+   *  @return       a new $coll resulting from applying the given partial function
+   *                `pf` to each element on which it is defined and collecting the results.
+   *                The order of the elements is preserved.
+   */
   def collect[B](pf: scala.PartialFunction[A, B]^)(implicit @implicitNotFound(SortedSetOps.ordMsg) ev: Ordering[B]): CC[B] =
     sortedIterableFactory.from(new View.Collect(this, pf))
 }
@@ -168,9 +167,9 @@ object SortedSetOps {
   private[collection] final val zipOrdMsg = "No implicit Ordering[${B}] found to build a SortedSet[(${A}, ${B})]. You may want to upcast to a Set[${A}] first by calling `unsorted`."
 
   /** Specialize `WithFilter` for sorted collections
-    *
-    * @define coll sorted collection
-    */
+   *
+   *  @define coll sorted collection
+   */
   class WithFilter[+A, +IterableCC[_], +CC[X] <: SortedSet[X]](
     self: SortedSetOps[A, CC, ?] & IterableOps[A, IterableCC, ?],
     p: A => Boolean

@@ -1,9 +1,8 @@
 package dotty.tools.vulpix
 
+import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-
-import scala.io.Source
-import scala.util.Using
+import scala.util.Properties.{javaSpecVersion, versionNumberString}
 
 import java.io.File
 import java.lang.System.{lineSeparator => EOL}
@@ -23,24 +22,44 @@ object FileDiff {
           |    > mv $actualFile $expectFile
       """.stripMargin
 
-  def check(sourceTitle: String, outputLines: Seq[String], checkFile: String): Option[String] = {
-    val checkLines =
-      if (!(new File(checkFile)).exists) Nil
-      else Using(Source.fromFile(checkFile, StandardCharsets.UTF_8.name))(_.getLines().toList).get
+  //at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:257)
+  private val frame = """\s+at [^(]+\([^:]+:(\d+)\)""".r
 
-    if (!matches(outputLines, checkLines)) Some(
-      s"""|Output from '$sourceTitle' did not match check file. Actual output:
-          |${outputLines.mkString(EOL)}
-          |""".stripMargin + "\n")
+  def check(sourceTitle: String, outputLines: Seq[String], checkFile: String): Option[String] = {
+    val path = Paths.get(checkFile)
+    if Files.exists(path) then
+      var stacked = false
+      val expected = Files.readAllLines(path).asScala
+      val actuals =
+        if javaSpecVersion == "25" && versionNumberString.startsWith("3.8.") then
+          outputLines.filter(!_.startsWith("WARNING:")) // ignore Unsafe warnings due to lazy vals
+        else
+          outputLines
+      val matched =
+        expected.corresponds(actuals): (expected, actual) =>
+          matches(actual, expected) && {
+            val framed = expected.endsWith(")") && frame.matches(expected)
+            if framed then
+              stacked = true
+            !framed
+          }
+      if stacked then
+        Some(s"Check file $checkFile includes a stack trace, which is brittle!")
+      else if matched then
+        None
+      else
+        Some(s"""|Output from '$sourceTitle' did not match check file. Actual output:
+                 |${outputLines.mkString(EOL)}
+                 |""".stripMargin + "\n")
     else None
   }
 
   def matches(actual: String, expect: String): Boolean = {
-      val actual1 = actual.stripLineEnd
-      val expect1  = expect.stripLineEnd
+    val actual1 = actual.stripLineEnd
+    val expect1 = expect.stripLineEnd
+    def matchesWindowsPath = File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
 
-      // handle check file path mismatch on windows
-      actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
+    actual1 == expect1 || matchesWindowsPath // handle path mismatch on windows
   }
 
   def matches(actual: Seq[String], expect: Seq[String]): Boolean = {

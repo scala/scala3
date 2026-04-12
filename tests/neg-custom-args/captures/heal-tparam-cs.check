@@ -4,7 +4,7 @@
    |Capability `c` outlives its scope: it leaks into outer capture set 's1 which is owned by value test1.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (c: Capp^'s2) ->'s3 () ->{c} Unit
+   |Found:    (c: Capp^) ->'s2 () ->{c} Unit
    |Required: (c: Capp^) => () ->'s1 Unit
    |
    |where:    => refers to a root capability created in value test1 when checking argument to parameter op of method localCap
@@ -16,11 +16,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:15:13 -------------------------------
 15 |    localCap { c =>  // error
    |    ^
-   |    Found:    (x$0: Capp^'s4) ->'s5 () ->{x$0} Unit
+   |    Found:    (x$0: Capp^'s3) ->'s4 () ->{x$0} Unit
    |    Required: (c: Capp^) -> () ->{any} Unit
    |
-   |    Note that capability `x$0` is not included in capture set {any}
-   |    because (x$0 : Capp^'s4) is not visible from any in value test2.
+   |    Note that capability `x$0` cannot flow into capture set {any}
+   |    because (x$0 : Capp^'s3) is not visible from any in value test2.
    |
    |    where:    ^   refers to the root capability caps.any
    |              any is a root capability in the type of value test2
@@ -32,10 +32,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:25:13 -------------------------------
 25 |    localCap { c =>  // error
    |    ^
-   |    Found:    (x$0: Capp^'s6) ->'s7 () ->{x$0} Unit
+   |    Found:    (x$0: Capp^'s5) ->'s6 () ->{x$0} Unit
    |    Required: (c: Capp^{io}) -> () ->{net} Unit
    |
-   |    Note that capability `x$0` is not included in capture set {net}.
+   |    Note that capability `x$0` cannot flow into capture set {net}.
    |
 26 |      (c1: Capp^{io}) => () => { c1.use() }
 27 |    }
@@ -47,7 +47,7 @@
    |          Found:    () ->{io} Unit
    |          Required: () -> Unit
    |
-   |          Note that capability `io` is not included in capture set {}.
+   |          Note that capability `io` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/heal-tparam-cs.scala:44:10 -------------------------------
@@ -56,6 +56,6 @@
    |          Found:    () ->{io} Unit
    |          Required: () -> Unit
    |
-   |          Note that capability `io` is not included in capture set {}.
+   |          Note that capability `io` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

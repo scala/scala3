@@ -27,8 +27,7 @@ object Arrays {
     arr
   }
 
-  /** Creates an array of a reference type T.
-   */
+  /** Creates an array of a reference type T. */
   def newArray[Arr](componentType: Class[?], @unused returnType: Class[Arr], dimensions: Array[Int]): Arr =
     jlr.Array.newInstance(componentType, dimensions*).asInstanceOf[Arr]
 }

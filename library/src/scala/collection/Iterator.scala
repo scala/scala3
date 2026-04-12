@@ -22,106 +22,106 @@ import scala.runtime.Statics
 import caps.unsafe.untrackedCaptures
 
 /** Iterators are data structures that allow to iterate over a sequence
-  * of elements. They have a `hasNext` method for checking
-  * if there is a next element available, and a `next` method
-  * which returns the next element and advances the iterator.
-  *
-  * An iterator is mutable: most operations on it change its state. While it is often used
-  * to iterate through the elements of a collection, it can also be used without
-  * being backed by any collection (see constructors on the companion object).
-  *
-  * It is of particular importance to note that, unless stated otherwise, ''one should never
-  * use an iterator after calling a method on it''. The two most important exceptions
-  * are also the sole abstract methods: `next` and `hasNext`.
-  *
-  * Both these methods can be called any number of times without having to discard the
-  * iterator. Note that even `hasNext` may cause mutation -- such as when iterating
-  * from an input stream, where it will block until the stream is closed or some
-  * input becomes available.
-  *
-  * Consider this example for safe and unsafe use:
-  *
-  * {{{
-  * def f[A](it: Iterator[A]) = {
-  *   if (it.hasNext) {            // Safe to reuse "it" after "hasNext"
-  *     it.next()                  // Safe to reuse "it" after "next"
-  *     val remainder = it.drop(2) // it is *not* safe to use "it" again after this line!
-  *     remainder.take(2)          // it is *not* safe to use "remainder" after this line!
-  *   } else it
-  * }
-  * }}}
-  *
-  * @define mayNotTerminateInf
-  *  Note: may not terminate for infinite iterators.
-  * @define preservesIterator
-  *  The iterator remains valid for further use whatever result is returned.
-  * @define consumesIterator
-  *  After calling this method, one should discard the iterator it was called
-  *  on. Using it is undefined and subject to change.
-  * @define consumesAndProducesIterator
-  *  After calling this method, one should discard the iterator it was called
-  *  on, and use only the iterator that was returned. Using the old iterator
-  *  is undefined, subject to change, and may result in changes to the new
-  *  iterator as well.
-  * @define consumesTwoAndProducesOneIterator
-  *  After calling this method, one should discard the iterator it was called
-  *  on, as well as the one passed as a parameter, and use only the iterator
-  *  that was returned. Using the old iterators is undefined, subject to change,
-  *  and may result in changes to the new iterator as well.
-  * @define consumesOneAndProducesTwoIterators
-  *  After calling this method, one should discard the iterator it was called
-  *  on, and use only the iterators that were returned. Using the old iterator
-  *  is undefined, subject to change, and may result in changes to the new
-  *  iterators as well.
-  * @define coll iterator
-  */
+ *  of elements. They have a `hasNext` method for checking
+ *  if there is a next element available, and a `next` method
+ *  which returns the next element and advances the iterator.
+ *
+ *  An iterator is mutable: most operations on it change its state. While it is often used
+ *  to iterate through the elements of a collection, it can also be used without
+ *  being backed by any collection (see constructors on the companion object).
+ *
+ *  It is of particular importance to note that, unless stated otherwise, ''one should never
+ *  use an iterator after calling a method on it''. The two most important exceptions
+ *  are also the sole abstract methods: `next` and `hasNext`.
+ *
+ *  Both these methods can be called any number of times without having to discard the
+ *  iterator. Note that even `hasNext` may cause mutation -- such as when iterating
+ *  from an input stream, where it will block until the stream is closed or some
+ *  input becomes available.
+ *
+ *  Consider this example for safe and unsafe use:
+ *
+ *  ```
+ *  def f[A](it: Iterator[A]) = {
+ *   if (it.hasNext) {            // Safe to reuse "it" after "hasNext"
+ *     it.next()                  // Safe to reuse "it" after "next"
+ *     val remainder = it.drop(2) // it is *not* safe to use "it" again after this line!
+ *     remainder.take(2)          // it is *not* safe to use "remainder" after this line!
+ *   } else it
+ *  }
+ *  ```
+ *
+ *  @define mayNotTerminateInf
+ *  Note: may not terminate for infinite iterators.
+ *  @define preservesIterator
+ *  The iterator remains valid for further use whatever result is returned.
+ *  @define consumesIterator
+ *  After calling this method, one should discard the iterator it was called
+ *  on. Using it is undefined and subject to change.
+ *  @define consumesAndProducesIterator
+ *  After calling this method, one should discard the iterator it was called
+ *  on, and use only the iterator that was returned. Using the old iterator
+ *  is undefined, subject to change, and may result in changes to the new
+ *  iterator as well.
+ *  @define consumesTwoAndProducesOneIterator
+ *  After calling this method, one should discard the iterator it was called
+ *  on, as well as the one passed as a parameter, and use only the iterator
+ *  that was returned. Using the old iterators is undefined, subject to change,
+ *  and may result in changes to the new iterator as well.
+ *  @define consumesOneAndProducesTwoIterators
+ *  After calling this method, one should discard the iterator it was called
+ *  on, and use only the iterators that were returned. Using the old iterator
+ *  is undefined, subject to change, and may result in changes to the new
+ *  iterators as well.
+ *  @define coll iterator
+ */
 trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Iterator[A]] {
   self: Iterator[A]^ =>
 
   /** Checks if there is a next element available.
-    *
-    * @return `true` if there is a next element, `false` otherwise
-    * @note   Reuse: $preservesIterator
-    */
+   *
+   *  @return `true` if there is a next element, `false` otherwise
+   *  @note   Reuse: $preservesIterator
+   */
   def hasNext: Boolean
 
   @deprecated("hasDefiniteSize on Iterator is the same as isEmpty", "2.13.0")
   @`inline` override final def hasDefiniteSize = isEmpty
 
   /** Returns the next element and advance the iterator.
-    *
-    * @throws NoSuchElementException if there is no next element.
-    * @return the next element.
-    * @note   Reuse: Advances the iterator, which may exhaust the elements. It is valid to
-    *         make additional calls on the iterator.
-    */
+   *
+   *  @return the next element.
+   *  @throws NoSuchElementException if there is no next element.
+   *  @note   Reuse: Advances the iterator, which may exhaust the elements. It is valid to
+   *         make additional calls on the iterator.
+   */
   @throws[NoSuchElementException]
   def next(): A
 
   @inline final def iterator = this
 
   /** Wraps the value of `next()` in an option.
-    *
-    * @return `Some(next)` if a next element exists, `None` otherwise.
-    */
+   *
+   *  @return `Some(next)` if a next element exists, `None` otherwise.
+   */
   def nextOption(): Option[A] = if (hasNext) Some(next()) else None
 
   /** Tests whether this iterator contains a given value as an element.
-    *  $mayNotTerminateInf
-    *
-    *  @param elem  the element to test.
-    *  @return     `true` if this iterator produces some value that is
-    *               is equal (as determined by `==`) to `elem`, `false` otherwise.
-    *  @note        Reuse: $consumesIterator
-    */
+   *  $mayNotTerminateInf
+   *
+   *  @param elem  the element to test.
+   *  @return     `true` if this iterator produces some value that is
+   *               is equal (as determined by `==`) to `elem`, `false` otherwise.
+   *  @note        Reuse: $consumesIterator
+   */
   def contains(elem: Any): Boolean = exists(_ == elem)    // Note--this seems faster than manual inlining!
 
   /** Creates a buffered iterator from this iterator.
-    *
-    *  @see [[scala.collection.BufferedIterator]]
-    *  @return  a buffered iterator producing the same values as this iterator.
-    *  @note    Reuse: $consumesAndProducesIterator
-    */
+   *
+   *  @see [[scala.collection.BufferedIterator]]
+   *  @return  a buffered iterator producing the same values as this iterator.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def buffered: BufferedIterator[A]^{this} = new AbstractIterator[A] with BufferedIterator[A] {
     private var hd: A = compiletime.uninitialized
     private var hdDefined: Boolean = false
@@ -185,7 +185,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
      *  The by-name argument is evaluated for each fill element.
      *
      *  @param x The element that will be appended to the last segment, if necessary.
-     *  @return  The same iterator, and ''not'' a new iterator.
+     *  @return  The same iterator, and *not* a new iterator.
      *  @note    This method mutates the iterator it is called on, which can be safely used afterwards.
      *  @note    This method is mutually exclusive with `withPartial`.
      *  @group Configuration
@@ -207,7 +207,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
      *  A partial segment is either retained or dropped, per the flag.
      *
      *  @param x `true` if partial segments may be returned, `false` otherwise.
-     *  @return  The same iterator, and ''not'' a new iterator.
+     *  @return  The same iterator, and *not* a new iterator.
      *  @note    This method mutates the iterator it is called on, which can be safely used afterwards.
      *  @note    This method is mutually exclusive with `withPadding`.
      *  @group Configuration
@@ -290,9 +290,9 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
   /** A copy of this $coll with an element value appended until a given target length is reached.
    *
+   *  @tparam B      the element type of the returned $coll.
    *  @param   len   the target length
    *  @param   elem  the padding value
-   *  @tparam B      the element type of the returned $coll.
    *  @return a new $coll consisting of
    *          all elements of this $coll followed by the minimal number of occurrences of `elem` so
    *          that the resulting collection has a length of at least `len`.
@@ -334,7 +334,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
   /** Returns an iterator which groups this iterator into fixed size
    *  blocks.  Example usages:
-   *  {{{
+   *  ```
    *    // Returns List(List(1, 2, 3), List(4, 5, 6), List(7)))
    *    (1 to 7).iterator.grouped(3).toList
    *    // Returns List(List(1, 2, 3), List(4, 5, 6))
@@ -343,7 +343,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *    // Illustrating that withPadding's argument is by-name.
    *    val it2 = Iterator.iterate(20)(_ + 5)
    *    (1 to 7).iterator.grouped(3).withPadding(it2.next).toList
-   *  }}}
+   *  ```
    *
    *  @note Reuse: $consumesAndProducesIterator
    */
@@ -360,7 +360,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *  result entirely.
    *
    *  Example usages:
-   *  {{{
+   *  ```
    *    // Returns List(ArraySeq(1, 2, 3), ArraySeq(2, 3, 4), ArraySeq(3, 4, 5))
    *    (1 to 5).iterator.sliding(3).toList
    *    // Returns List(ArraySeq(1, 2, 3, 4), ArraySeq(4, 5))
@@ -371,7 +371,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *    // Illustrating that withPadding's argument is by-name.
    *    val it2 = Iterator.iterate(20)(_ + 5)
    *    (1 to 5).iterator.sliding(4, 3).withPadding(it2.next).toList
-   *  }}}
+   *  ```
    *
    *  @param size the number of elements per group
    *  @param step the distance between the first elements of successive
@@ -421,15 +421,15 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   def scanRight[B](z: B)(op: (A, B) => B): Iterator[B]^{this, op} = ArrayBuffer.from(this).scanRight(z)(op).iterator
 
   /** Finds index of the first element satisfying some predicate after or at some start index.
-    *
-    *  $mayNotTerminateInf
-    *
-    *  @param  p     the predicate used to test elements.
-    *  @param  from   the start index
-    *  @return the index `>= from` of the first element of this $coll that satisfies the predicate `p`,
-    *           or `-1`, if none exists.
-    *  @note   Reuse: $consumesIterator
-    */
+   *
+   *  $mayNotTerminateInf
+   *
+   *  @param  p     the predicate used to test elements.
+   *  @param  from   the start index
+   *  @return the index `>= from` of the first element of this $coll that satisfies the predicate `p`,
+   *           or `-1`, if none exists.
+   *  @note   Reuse: $consumesIterator
+   */
   def indexWhere(p: A => Boolean, from: Int = 0): Int = {
     var i = math.max(from, 0)
     val dropped = drop(from)
@@ -441,27 +441,27 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   }
 
   /** Returns the index of the first occurrence of the specified
-    *  object in this iterable object.
-    *  $mayNotTerminateInf
-    *
-    *  @param  elem  element to search for.
-    *  @return the index of the first occurrence of `elem` in the values produced by this iterator,
-    *          or -1 if such an element does not exist until the end of the iterator is reached.
-    *  @note   Reuse: $consumesIterator
-    */
+   *  object in this iterable object.
+   *  $mayNotTerminateInf
+   *
+   *  @param  elem  element to search for.
+   *  @return the index of the first occurrence of `elem` in the values produced by this iterator,
+   *          or -1 if such an element does not exist until the end of the iterator is reached.
+   *  @note   Reuse: $consumesIterator
+   */
   def indexOf[B >: A](elem: B): Int = indexOf(elem, 0)
 
   /** Returns the index of the first occurrence of the specified object in this iterable object
-    *  after or at some start index.
-    *  $mayNotTerminateInf
-    *
-    *  @param elem element to search for.
-    *  @param from the start index
-    *  @return the index `>= from` of the first occurrence of `elem` in the values produced by this
-    *          iterator, or -1 if such an element does not exist until the end of the iterator is
-    *          reached.
-    *  @note   Reuse: $consumesIterator
-    */
+   *  after or at some start index.
+   *  $mayNotTerminateInf
+   *
+   *  @param elem element to search for.
+   *  @param from the start index
+   *  @return the index `>= from` of the first occurrence of `elem` in the values produced by this
+   *          iterator, or -1 if such an element does not exist until the end of the iterator is
+   *          reached.
+   *  @note   Reuse: $consumesIterator
+   */
   def indexOf[B >: A](elem: B, from: Int): Int = {
     var i = 0
     while (i < from && hasNext) {
@@ -509,16 +509,16 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   }
 
   /** Creates an iterator over all the elements of this iterator that
-    *  satisfy the predicate `p`. The order of the elements
-    *  is preserved.
-    *
-    *  '''Note:''' `withFilter` is the same as `filter` on iterators. It exists so that
-    *  for-expressions with filters work over iterators.
-    *
-    *  @param p the predicate used to test values.
-    *  @return  an iterator which produces those values of this iterator which satisfy the predicate `p`.
-    *  @note    Reuse: $consumesAndProducesIterator
-    */
+   *  satisfy the predicate `p`. The order of the elements
+   *  is preserved.
+   *
+   *  **Note:** `withFilter` is the same as `filter` on iterators. It exists so that
+   *  for-expressions with filters work over iterators.
+   *
+   *  @param p the predicate used to test values.
+   *  @return  an iterator which produces those values of this iterator which satisfy the predicate `p`.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def withFilter(p: A => Boolean): Iterator[A]^{this, p} = filter(p)
 
   def collect[B](pf: PartialFunction[A, B]^): Iterator[B]^{this, pf} = new AbstractIterator[B] with (A => B) {
@@ -551,24 +551,22 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     def next() = if (hasNext) { status = 0/*Seek*/; hd } else Iterator.empty.next()
   }
 
-  /**
-    *  Builds a new iterator from this one without any duplicated elements on it.
-    *  @return iterator with distinct elements
-    *
-    *  @note   Reuse: $consumesIterator
-    */
+  /** Builds a new iterator from this one without any duplicated elements on it.
+   *  @return iterator with distinct elements
+   *
+   *  @note   Reuse: $consumesIterator
+   */
   def distinct: Iterator[A]^{this} = distinctBy(identity)
 
-  /**
-    *  Builds a new iterator from this one without any duplicated elements as determined by `==` after applying
-    *  the transforming function `f`.
-    *
-    *  @param f The transforming function whose result is used to determine the uniqueness of each element
-    *  @tparam B the type of the elements after being transformed by `f`
-    *  @return iterator with distinct elements
-    *
-    *  @note   Reuse: $consumesIterator
-    */
+  /** Builds a new iterator from this one without any duplicated elements as determined by `==` after applying
+   *  the transforming function `f`.
+   *
+   *  @tparam B the type of the elements after being transformed by `f`
+   *  @param f The transforming function whose result is used to determine the uniqueness of each element
+   *  @return iterator with distinct elements
+   *
+   *  @note   Reuse: $consumesIterator
+   */
   def distinctBy[B](f: A -> B): Iterator[A]^{this} = new AbstractIterator[A] {
 
     private val traversedValues = mutable.HashSet.empty[B]
@@ -691,11 +689,10 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       else Iterator.empty.next()
   }
 
-  /**
-    * @inheritdoc
-    *
-    * @note    Reuse: $consumesOneAndProducesTwoIterators
-    */
+  /** @inheritdoc
+   *
+   *  @note    Reuse: $consumesOneAndProducesTwoIterators
+   */
   def span(p: A => Boolean): (Iterator[A]^{this, p}, Iterator[A]^{this, p}) = {
     /*
      * Giving a name to following iterator (as opposed to trailing) because
@@ -847,8 +844,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   /** Checks whether corresponding elements of the given iterable collection
    *  compare equal (with respect to `==`) to elements of this $coll.
    *
-   *  @param that  the collection to compare
    *  @tparam B    the type of the elements of collection `that`.
+   *  @param that  the collection to compare
    *  @return `true` if both collections contain equal elements in the same order, `false` otherwise.
    */
   def sameElements[B >: A](that: IterableOnce[B]^): Boolean = {
@@ -861,18 +858,18 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   }
 
   /** Creates two new iterators that both iterate over the same elements
-    *  as this iterator (in the same order).  The duplicate iterators are
-    *  considered equal if they are positioned at the same element.
-    *
-    *  Given that most methods on iterators will make the original iterator
-    *  unfit for further use, this methods provides a reliable way of calling
-    *  multiple such methods on an iterator.
-    *
-    *  @return a pair of iterators
-    *  @note   The implementation may allocate temporary storage for elements
-    *          iterated by one iterator but not yet by the other.
-    *  @note   Reuse: $consumesOneAndProducesTwoIterators
-    */
+   *  as this iterator (in the same order).  The duplicate iterators are
+   *  considered equal if they are positioned at the same element.
+   *
+   *  Given that most methods on iterators will make the original iterator
+   *  unfit for further use, this methods provides a reliable way of calling
+   *  multiple such methods on an iterator.
+   *
+   *  @return a pair of iterators
+   *  @note   The implementation may allocate temporary storage for elements
+   *          iterated by one iterator but not yet by the other.
+   *  @note   Reuse: $consumesOneAndProducesTwoIterators
+   */
   def duplicate: (Iterator[A]^{this}, Iterator[A]^{this}) = {
     val gap = new scala.collection.mutable.Queue[A]
     var ahead: (Iterator[A]^{this}) | Null = null
@@ -909,15 +906,15 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   }
 
   /** Returns this iterator with patched values.
-    * Patching at negative indices is the same as patching starting at 0.
-    * Patching at indices at or larger than the length of the original iterator appends the patch to the end.
-    * If more values are replaced than actually exist, the excess is ignored.
-    *
-    *  @param from       The start index from which to patch
-    *  @param patchElems The iterator of patch values
-    *  @param replaced   The number of values in the original iterator that are replaced by the patch.
-    *  @note           Reuse: $consumesTwoAndProducesOneIterator
-    */
+   *  Patching at negative indices is the same as patching starting at 0.
+   *  Patching at indices at or larger than the length of the original iterator appends the patch to the end.
+   *  If more values are replaced than actually exist, the excess is ignored.
+   *
+   *  @param from       The start index from which to patch
+   *  @param patchElems The iterator of patch values
+   *  @param replaced   The number of values in the original iterator that are replaced by the patch.
+   *  @note           Reuse: $consumesTwoAndProducesOneIterator
+   */
   def patch[B >: A](from: Int, patchElems: Iterator[B]^, replaced: Int): Iterator[B]^{this, patchElems} =
     new AbstractIterator[B] {
       // TODO We should be able to prove that origElems is safe even though it is
@@ -995,11 +992,11 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates a target $coll from an existing source collection
-    *
-    * @param source Source collection
-    * @tparam A the type of the collection’s elements
-    * @return a new $coll with the elements of `source`
-    */
+   *
+   *  @tparam A the type of the collection’s elements
+   *  @param source Source collection
+   *  @return a new $coll with the elements of `source`
+   */
   override def from[A](source: IterableOnce[A]^): Iterator[A]^{source} = source.iterator
 
   /** The iterator which produces no values. */
@@ -1017,20 +1014,20 @@ object Iterator extends IterableFactory[Iterator] {
   override def apply[A](xs: A*): Iterator[A] = xs.iterator
 
   /**
-    * @return A builder for $Coll objects.
-    * @tparam A the type of the ${coll}’s elements
-    */
+   *  @tparam A the type of the ${coll}’s elements
+   *  @return A builder for $Coll objects.
+   */
   def newBuilder[A]: Builder[A, Iterator[A]] =
     new ImmutableBuilder[A, Iterator[A]](empty[A]) {
       override def addOne(elem: A): this.type = { elems = elems ++ single(elem); this }
     }
 
   /** Creates iterator that produces the results of some element computation a number of times.
-    *
-    *  @param   len  the number of elements returned by the iterator.
-    *  @param   elem the element computation
-    *  @return  An iterator that produces the results of `n` evaluations of `elem`.
-    */
+   *
+   *  @param   len  the number of elements returned by the iterator.
+   *  @param   elem the element computation
+   *  @return  An iterator that produces the results of `n` evaluations of `elem`.
+   */
   override def fill[A](len: Int)(elem: => A): Iterator[A]^{elem} = new AbstractIterator[A] {
     private var i = 0
     override def knownSize: Int = (len - i) max 0
@@ -1041,11 +1038,11 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates an iterator producing the values of a given function over a range of integer values starting from 0.
-    *
-    *  @param  end The number of elements returned by the iterator
-    *  @param  f   The function computing element values
-    *  @return An iterator that produces the values `f(0), ..., f(n -1)`.
-    */
+   *
+   *  @param  end The number of elements returned by the iterator
+   *  @param  f   The function computing element values
+   *  @return An iterator that produces the values `f(0), ..., f(n -1)`.
+   */
   override def tabulate[A](end: Int)(f: Int => A): Iterator[A]^{f} = new AbstractIterator[A] {
     private var i = 0
     override def knownSize: Int = (end - i) max 0
@@ -1056,18 +1053,17 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates an infinite-length iterator which returns successive values from some start value.
-
-    *  @param start the start value of the iterator
-    *  @return      the iterator producing the infinite sequence of values `start, start + 1, start + 2, ...`
-    */
+   *  @param start the start value of the iterator
+   *  @return      the iterator producing the infinite sequence of values `start, start + 1, start + 2, ...`
+   */
   def from(start: Int): Iterator[Int] = from(start, 1)
 
   /** Creates an infinite-length iterator returning values equally spaced apart.
-    *
-    *  @param start the start value of the iterator
-    *  @param step  the increment between successive values
-    *  @return      the iterator producing the infinite sequence of values `start, start + 1 * step, start + 2 * step, ...`
-    */
+   *
+   *  @param start the start value of the iterator
+   *  @param step  the increment between successive values
+   *  @return      the iterator producing the infinite sequence of values `start, start + 1 * step, start + 2 * step, ...`
+   */
   def from(start: Int, step: Int): Iterator[Int] = new AbstractIterator[Int] {
     private var i = start
     def hasNext: Boolean = true
@@ -1075,20 +1071,20 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates nn iterator returning successive values in some integer interval.
-    *
-    *  @param start the start value of the iterator
-    *  @param end   the end value of the iterator (the first value NOT returned)
-    *  @return      the iterator producing values `start, start + 1, ..., end - 1`
-    */
+   *
+   *  @param start the start value of the iterator
+   *  @param end   the end value of the iterator (the first value NOT returned)
+   *  @return      the iterator producing values `start, start + 1, ..., end - 1`
+   */
   def range(start: Int, end: Int): Iterator[Int] = range(start, end, 1)
 
   /** An iterator producing equally spaced values in some integer interval.
-    *
-    *  @param start the start value of the iterator
-    *  @param end   the end value of the iterator (the first value NOT returned)
-    *  @param step  the increment value of the iterator (must be positive or negative)
-    *  @return      the iterator producing values `start, start + step, ...` up to, but excluding `end`
-    */
+   *
+   *  @param start the start value of the iterator
+   *  @param end   the end value of the iterator (the first value NOT returned)
+   *  @param step  the increment value of the iterator (must be positive or negative)
+   *  @return      the iterator producing values `start, start + step, ...` up to, but excluding `end`
+   */
   def range(start: Int, end: Int, step: Int): Iterator[Int] = new AbstractIterator[Int] {
     if (step == 0) throw new IllegalArgumentException("zero step")
     private var i = start
@@ -1114,11 +1110,11 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates an infinite iterator that repeatedly applies a given function to the previous result.
-    *
-    *  @param start the start value of the iterator
-    *  @param f     the function that's repeatedly applied
-    *  @return      the iterator producing the infinite sequence of values `start, f(start), f(f(start)), ...`
-    */
+   *
+   *  @param start the start value of the iterator
+   *  @param f     the function that's repeatedly applied
+   *  @return      the iterator producing the infinite sequence of values `start, f(start), f(f(start)), ...`
+   */
   def iterate[T](start: T)(f: T => T): Iterator[T]^{f} = new AbstractIterator[T] {
     private var first = true
     private var acc = start
@@ -1132,23 +1128,23 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates an Iterator that uses a function `f` to produce elements of type `A`
-    * and update an internal state of type `S`.
-    *
-    * @param init State initial value
-    * @param f    Computes the next element (or returns `None` to signal
-    *             the end of the collection)
-    * @tparam A   Type of the elements
-    * @tparam S   Type of the internal state
-    * @return an `Iterator` that produces elements using `f` until `f` returns `None`
-    */
+   *  and update an internal state of type `S`.
+   *
+   *  @tparam A   Type of the elements
+   *  @tparam S   Type of the internal state
+   *  @param init State initial value
+   *  @param f    Computes the next element (or returns `None` to signal
+   *             the end of the collection)
+   *  @return an `Iterator` that produces elements using `f` until `f` returns `None`
+   */
   override def unfold[A, S](init: S)(f: S => Option[(A, S)]): Iterator[A]^{f} = new UnfoldIterator(init)(f)
 
   /** Creates an infinite-length iterator returning the results of evaluating an expression.
-    *  The expression is recomputed for every element.
-    *
-    *  @param elem the element computation.
-    *  @return the iterator containing an infinite number of results of evaluating `elem`.
-    */
+   *  The expression is recomputed for every element.
+   *
+   *  @param elem the element computation.
+   *  @return the iterator containing an infinite number of results of evaluating `elem`.
+   */
   def continually[A](elem: => A): Iterator[A]^{elem} = new AbstractIterator[A] {
     def hasNext = true
     def next() = elem
@@ -1237,8 +1233,8 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates a delegating iterator capped by a limit count. Negative limit means unbounded.
-    *  Lazily skip to start on first evaluation.  Avoids daisy-chained iterators due to slicing.
-    */
+   *  Lazily skip to start on first evaluation.  Avoids daisy-chained iterators due to slicing.
+   */
   private[scala] final class SliceIterator[A](val underlying: Iterator[A]^, start: Int, limit: Int) extends AbstractIterator[A] {
     private var remaining = limit
     private var dropping  = start
@@ -1296,8 +1292,8 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   /** Creates an iterator that uses a function `f` to produce elements of
-    * type `A` and update an internal state of type `S`.
-    */
+   *  type `A` and update an internal state of type `S`.
+   */
   private final class UnfoldIterator[A, S](init: S)(f: S => Option[(A, S)]) extends AbstractIterator[A] {
     private var state: S = init
     private var nextResult: Option[(A, S)] | Null = null

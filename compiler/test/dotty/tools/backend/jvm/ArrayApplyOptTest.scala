@@ -1,13 +1,14 @@
 package dotty.tools
 package backend.jvm
 
+import dotty.DottyBytecodeTest
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
-import scala.tools.asm.Opcodes._
+import scala.tools.asm.Opcodes.*
 
 class ArrayApplyOptTest extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
 
   @Test def testArrayEmptyGenericApply = {
     test("Array[String]()", List(Op(ICONST_0), TypeOp(ANEWARRAY, "java/lang/String"), Op(POP), Op(RETURN)))
@@ -141,7 +142,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
   private def test(code: String, expectedInstructions: List[Any])= {
     val source =
       s"""class Foo {
-         | import Foo._
+         | import Foo.*
          | def test: Unit = $code
          |}
          |object Foo {

@@ -21,19 +21,18 @@ import scala.collection.convert.impl._
 import scala.reflect.ClassTag
 import scala.util.hashing.MurmurHash3
 
-/**
-  *  A collection representing `Array[T]`. Unlike `ArrayBuffer` it is always backed by the same
-  *  underlying `Array`, therefore it is not growable or shrinkable.
-  *
-  *  @tparam T    type of the elements in this wrapped array.
-  *
-  *  @define Coll `ArraySeq`
-  *  @define coll wrapped array
-  *  @define orderDependent
-  *  @define orderDependentFold
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+/** A collection representing `Array[T]`. Unlike `ArrayBuffer` it is always backed by the same
+ *  underlying `Array`, therefore it is not growable or shrinkable.
+ *
+ *  @tparam T    type of the elements in this wrapped array.
+ *
+ *  @define Coll `ArraySeq`
+ *  @define coll wrapped array
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 @SerialVersionUID(3L)
 sealed abstract class ArraySeq[T]
   extends AbstractSeq[T]
@@ -54,16 +53,18 @@ sealed abstract class ArraySeq[T]
   override def empty: ArraySeq[T] = ArraySeq.empty(using elemTag.asInstanceOf[ClassTag[T]])
 
   /** The tag of the element type. This does not have to be equal to the element type of this ArraySeq. A primitive
-    * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
-    * or subtype of the element type. */
+   *  ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
+   *  or subtype of the element type. 
+   */
   def elemTag: ClassTag[?]
 
   /** Updates element at given index. */
   def update(@deprecatedName("idx", "2.13.0") index: Int, elem: T): Unit
 
   /** The underlying array. Its element type does not have to be equal to the element type of this ArraySeq. A primitive
-    * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
-    * or subtype of the element type. */
+   *  ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
+   *  or subtype of the element type. 
+   */
   def array: Array[?]
 
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[T, S]): S & EfficientSplit
@@ -97,8 +98,7 @@ sealed abstract class ArraySeq[T]
   }
 }
 
-/** A companion object used to create instances of `ArraySeq`.
-  */
+/** A companion object used to create instances of `ArraySeq`. */
 @SerialVersionUID(3L)
 object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   val untagged: SeqFactory[ArraySeq] = new ClassTagSeqFactory.AnySeqDelegate(self)
@@ -111,17 +111,16 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
 
   def newBuilder[A : ClassTag]: Builder[A, ArraySeq[A]] = ArrayBuilder.make[A].mapResult(make)
 
-  /**
-   * Wraps an existing `Array` into a `ArraySeq` of the proper primitive specialization type
-   * without copying.
+  /** Wraps an existing `Array` into a `ArraySeq` of the proper primitive specialization type
+   *  without copying.
    *
-   * Note that an array containing boxed primitives can be converted to a `ArraySeq` without
-   * copying. For example, `val a: Array[Any] = Array(1)` is an array of `Object` at runtime,
-   * containing `Integer`s. An `ArraySeq[Int]` can be obtained with a cast:
-   * `ArraySeq.make(a).asInstanceOf[ArraySeq[Int]]`. The values are still
-   * boxed, the resulting instance is an [[ArraySeq.ofRef]]. Writing
-   * `ArraySeq.make(a.asInstanceOf[Array[Int]])` does not work, it throws a `ClassCastException`
-   * at runtime.
+   *  Note that an array containing boxed primitives can be converted to a `ArraySeq` without
+   *  copying. For example, `val a: Array[Any] = Array(1)` is an array of `Object` at runtime,
+   *  containing `Integer`s. An `ArraySeq[Int]` can be obtained with a cast:
+   *  `ArraySeq.make(a).asInstanceOf[ArraySeq[Int]]`. The values are still
+   *  boxed, the resulting instance is an [[ArraySeq.ofRef]]. Writing
+   *  `ArraySeq.make(a.asInstanceOf[Array[Int]])` does not work, it throws a `ClassCastException`
+   *  at runtime.
    */
   def make[T](x: Array[T]): ArraySeq[T] = ((x: @unchecked) match {
     case null              => null

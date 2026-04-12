@@ -116,14 +116,14 @@ object Mixin {
 class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd.*
 
-  /** Infos before erasure of the generated mixin forwarders.
+  /** Infos before erasure of generated mixin trees.
    *
-   *  These will be used to generate Java generic signatures of the mixin
-   *  forwarders. Normally we use the types before erasure; we cannot do that
-   *  for mixin forwarders since they are created after erasure, and therefore
+   *  These will be used to generate Java generic signatures.
+   *  Normally we use the types before erasure; we cannot do that
+   *  for mixin trees since they are created after erasure, and therefore
    *  their type history does not have anything recorded for before erasure.
    */
-  val mixinForwarderGenericInfos = MutableSymbolMap[Type]()
+  val mixinGenericInfos = MutableSymbolMap[Type]()
 
   override def phaseName: String = Mixin.name
 
@@ -296,7 +296,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             else
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
-          transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
+          val forwarder = mkForwarderSym(getter.asTerm)
+          val erased = atPhase(erasurePhase) { cls.thisType.memberInfo(getter) }
+          mixinGenericInfos(forwarder) = erased
+          transformFollowing(DefDef(forwarder, rhs))
         }
         else if wasOneOf(getter, ParamAccessor) then
           // mixin parameter field is defined by an override; evaluate the argument and throw it away
@@ -312,11 +315,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
 
     def mixinForwarders(mixin: ClassSymbol): List[Tree] =
-      for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
-      yield {
+      for meth <- mixin.info.decls.filter(d => needsMixinForwarder(mixin, d))
+      yield
         util.Stats.record("mixin forwarders")
         transformFollowing(DefDef(mkMixinForwarderSym(meth.asTerm), forwarderRhsFn(meth)))
-      }
 
     def mkMixinForwarderSym(target: TermSymbol): TermSymbol =
       val sym = mkForwarderSym(target, extraFlags = MixedIn)
@@ -332,7 +334,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         // incorrect Java signature. (This could be improved by generating dedicated
         // bridges, but we don't go that far; scalac doesn't either.)
         if TypeErasure.transformInfo(target, infoBeforeErasure) =:= sym.info then
-          mixinForwarderGenericInfos(sym) = infoBeforeErasure
+          mixinGenericInfos(sym) = infoBeforeErasure
       sym
 
     cpy.Template(impl)(

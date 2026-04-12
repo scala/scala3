@@ -8,7 +8,7 @@ object Test1:
     logFile.close()
     result
 
-  private val later = usingLogFile { f => () => f.write(0) }  // error
+  private val later = usingLogFile { f => () => f.write(0) }  // was error, now OK
   later()
 
 object Test2:

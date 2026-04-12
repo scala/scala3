@@ -109,8 +109,17 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: ThisType if !printDebug =>
-        if (tp.cls.isAnonymousClass) keywordStr("this")
-        if (tp.cls.is(ModuleClass)) fullNameString(tp.cls.sourceModule)
+        val cls = tp.cls
+        if cls.isAnonymousClass then
+          keywordStr("this")
+        else if cls.is(ModuleClass) then
+          if cls.isStatic then
+            fullNameString(tp.cls.sourceModule)
+          else cls.owner.thisType match
+            case tp: SingletonType =>
+              toTextRef(tp) ~ "." ~ nameString(cls)
+            case _ => // owner is a term, just print the name
+              nameString(cls)
         else super.toTextRef(tp)
       case tp: TermRef if !printDebug =>
         if tp.symbol.is(Package) then fullNameString(tp.symbol)
@@ -333,7 +342,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         try toText(tp.ref)
         catch case ex: Throwable => "..."
       case sel: cc.PathSelectionProto =>
-        "?.{ " ~ toText(sel.select.symbol) ~ "}"
+        "?.{ " ~ toText(sel.selector) ~ "}"
       case AnySelectionProto =>
         "a type that can be selected or applied"
       case tp: SelectionProto =>
@@ -1166,6 +1175,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected override def annotText(sym: Symbol): Text =
     if sym == defn.ConsumeAnnot then "consume" else super.annotText(sym)
+
+  protected override def specialAnnotText(sym: ClassSymbol, tp: Type): Text =
+    if sym == defn.ConsumeAnnot then keywordText("consume ").provided(tp.hasAnnotation(sym))
+    else super.specialAnnotText(sym, tp)
 
   protected def modText(mods: untpd.Modifiers, sym: Symbol, kw: String, isType: Boolean): Text = { // DD
     val suppressKw = if (enclDefIsClass) mods.isAllOf(LocalParam) else mods.is(Param)

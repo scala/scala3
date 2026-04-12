@@ -14,24 +14,24 @@
 -- [E204] Syntax Warning: tests/neg/infix-named-args.scala:2:15 --------------------------------------------------------
 2 |  def f = 42 + (x = 1) // error // werror
   |               ^^^^^^^
-  |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
+  |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single named tuple argument.
   |To avoid this warning, either remove the argument names or use dotted selection.
   |This can be rewritten automatically under -rewrite -source 3.7-migration.
 -- [E204] Syntax Warning: tests/neg/infix-named-args.scala:5:26 --------------------------------------------------------
 5 |  def g = new C() `multi` (x = 42, y = 27) // werror
   |                          ^^^^^^^^^^^^^^^^
-  |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
+  |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single named tuple argument.
   |To avoid this warning, either remove the argument names or use dotted selection.
   |This can be rewritten automatically under -rewrite -source 3.7-migration.
 -- [E204] Syntax Warning: tests/neg/infix-named-args.scala:6:21 --------------------------------------------------------
 6 |  def h = new C() ** (x = 42, y = 27) // werror
   |                     ^^^^^^^^^^^^^^^^
-  |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
+  |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single named tuple argument.
   |To avoid this warning, either remove the argument names or use dotted selection.
   |This can be rewritten automatically under -rewrite -source 3.7-migration.
 -- [E204] Syntax Warning: tests/neg/infix-named-args.scala:13:18 -------------------------------------------------------
 13 |  def f = this ** (x = 2) // werror
    |                  ^^^^^^^
-   |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
+   |Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single named tuple argument.
    |To avoid this warning, either remove the argument names or use dotted selection.
    |This can be rewritten automatically under -rewrite -source 3.7-migration.

@@ -17,9 +17,7 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 import scala.collection.{SortedMapFactory, SortedMapFactoryDefaults}
 
-/**
-  * Base type for mutable sorted map collections
-  */
+/** Base type for mutable sorted map collections */
 trait SortedMap[K, V]
   extends collection.SortedMap[K, V]
     with Map[K, V]
@@ -31,25 +29,25 @@ trait SortedMap[K, V]
   override def sortedMapFactory: SortedMapFactory[SortedMap] = SortedMap
 
   /** The same sorted map with a given default function.
-    *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
-    *  are not affected by `withDefault`.
-    *
-    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
-    *
-    *  @param d     the function mapping keys to values, used for non-present keys
-    *  @return      a wrapper of the map with a default value
-    */
+   *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
+   *  are not affected by `withDefault`.
+   *
+   *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
+   *
+   *  @param d     the function mapping keys to values, used for non-present keys
+   *  @return      a wrapper of the map with a default value
+   */
   override def withDefault(d: K -> V): SortedMap[K, V] = new SortedMap.WithDefault[K, V](this, d)
 
   /** The same map with a given default value.
-    * Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
-    * are not affected by `withDefaultValue`.
-    *
-    * Invoking transformer methods (e.g. `map`) will not preserve the default value.
-    *
-    * @param d default value used for non-present keys
-    * @return a wrapper of the map with a default value
-    */
+   *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
+   *  are not affected by `withDefaultValue`.
+   *
+   *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
+   *
+   *  @param d default value used for non-present keys
+   *  @return a wrapper of the map with a default value
+   */
   override def withDefaultValue(d: V): SortedMap[K, V] = new SortedMap.WithDefault[K, V](this, _ => d)
 }
 

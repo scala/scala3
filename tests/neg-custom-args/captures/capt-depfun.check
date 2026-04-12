@@ -4,7 +4,7 @@
    |                                         Found:    Str^{} ->{ac*} Str^{y, z}
    |                                         Required: Str^{y, z} => Str^{y, z}
    |
-   |                                         Note that capability `y` is not included in capture set {}.
+   |                                         Note that capability `y` cannot flow into capture set {}.
    |
    |                                         where:    => refers to a root capability in the type of value dc
    |

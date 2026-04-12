@@ -33,7 +33,7 @@ Using the command line through explicit parameters:
 scala -S 3.nightly -language:experimental.captureChecking
 ```
 or when reading from a file:
-```scala
+```scala sc:nocompile
 // foo.scala:
 //> using scala 3.nightly
 import language.experimental.captureChecking

@@ -1,7 +1,7 @@
 package example
 
 /**
-  * Intersection Types: https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html
+  * Intersection Types: https://nightly.scala-lang.org/docs/reference/new-types/intersection-types.html
   */
 object IntersectionTypes {
 

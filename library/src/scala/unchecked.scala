@@ -26,13 +26,13 @@ import scala.language.`2.13`
  *  at runtime.  In most cases one can and should address the
  *  warning instead of suppressing it.
  *
- *  {{{
+ *  ```
  *    // This would normally warn "match is not exhaustive"
  *    // because `None` is not covered.
  *    def f(x: Option[String]) = (x: @unchecked) match { case Some(y) => y }
  *    // This would normally warn "type pattern is unchecked"
  *    // but here will blindly cast the head element to String.
  *    def g(xs: Any) = xs match { case x: List[String @unchecked] => x.head }
- *  }}}
+ *  ```
  */
 final class unchecked extends scala.annotation.Annotation {}

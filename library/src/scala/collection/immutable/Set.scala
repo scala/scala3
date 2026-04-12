@@ -29,31 +29,31 @@ trait Set[A] extends Iterable[A]
 }
 
 /** Base trait for immutable set operations
-  *
-  * @define coll immutable set
-  * @define Coll `immutable.Set`
-  */
+ *
+ *  @define coll immutable set
+ *  @define Coll `immutable.Set`
+ */
 transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   extends collection.SetOps[A, CC, C] {
 
   /** Creates a new set with an additional element, unless the element is
-    *  already present.
-    *
-    *  @param elem the element to be added
-    *  @return a new set that contains all elements of this set and that also
-    *          contains `elem`.
-    */
+   *  already present.
+   *
+   *  @param elem the element to be added
+   *  @return a new set that contains all elements of this set and that also
+   *          contains `elem`.
+   */
   def incl(elem: A): C
 
   /** Alias for `incl`. */
   override final def + (elem: A): C = incl(elem) // like in collection.Set but not deprecated
 
   /** Creates a new set with a given element removed from this set.
-    *
-    *  @param elem the element to be removed
-    *  @return a new set that contains all elements of this set but that does not
-    *          contain `elem`.
-    */
+   *
+   *  @param elem the element to be removed
+   *  @return a new set that contains all elements of this set but that does not
+   *          contain `elem`.
+   */
   def excl(elem: A): C
 
   /** Alias for `excl`. */
@@ -63,11 +63,11 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
     foldLeft(empty)((result, elem) => if (that contains elem) result else result + elem)
 
   /** Creates a new $coll from this $coll by removing all elements of another
-    *  collection.
-    *
-    *  @param that the collection containing the elements to remove.
-    *  @return a new $coll with the given elements removed, omitting duplicates.
-    */
+   *  collection.
+   *
+   *  @param that the collection containing the elements to remove.
+   *  @return a new $coll with the given elements removed, omitting duplicates.
+   */
   def removedAll(that: IterableOnce[A]^): C = that.iterator.foldLeft[C](coll)(_ - _)
 
   /** Alias for removedAll. */
@@ -87,11 +87,10 @@ transparent trait StrictOptimizedSetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   }
 }
 
-/**
-  * $factoryInfo
-  * @define coll immutable set
-  * @define Coll `immutable.Set`
-  */
+/** $factoryInfo
+ *  @define coll immutable set
+ *  @define Coll `immutable.Set`
+ */
 @SerialVersionUID(3L)
 object Set extends IterableFactory[Set] {
 
@@ -360,8 +359,8 @@ object Set extends IterableFactory[Set] {
 abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A]
 
 /** Builder for Set.
-  * $multipleResults
-  */
+ *  $multipleResults
+ */
 private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
   private var elems: Set[A] = Set.empty
   private var switchedToHashSetBuilder: Boolean = false

@@ -81,15 +81,15 @@ case class TemplateFile(
       val path = Some(Paths.get(file.getAbsolutePath))
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
       val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get), scala.io.Codec.UTF8)
-      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
+      (snippet: SnippetSource, argOverride: Option[SnippetCompilerArg]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
           val compilerData = SnippetCompilerData(
             "staticsitesnippet",
             SnippetCompilerData.Position(configOffset - 1, 0)
           )
-          ssctx.snippetChecker.checkSnippet(str, Some(compilerData), arg, lineOffset, sourceFile).collect {
+          ssctx.snippetChecker.checkSnippet(snippet, Some(compilerData), arg, sourceFile, 0).collect {
               case r: SnippetCompilationResult if !r.isSuccessful =>
-                r.reportMessages()(using ssctx.outerCtx)
+                ssctx.bufferSnippetMessages(r.messages)
                 r
               case r => r
           }
@@ -117,13 +117,14 @@ case class TemplateFile(
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
       // Snippet compiler currently supports markdown only
-      val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
+      val markdownOptions = defaultMarkdownOptions(showSnippetName(file))
+      val parser: Parser = Parser.builder(markdownOptions).build()
       val parsedMd = parser.parse(rendered).pipe { md =>
         FlexmarkSnippetProcessor.processSnippets(md, None, snippetCheckingFunc)(using ssctx.outerCtx)
       }.pipe { md =>
         FlexmarkSectionWrapper(md)
       }
-      HtmlRenderer.builder(defaultMarkdownOptions).build().render(parsedMd)
+      HtmlRenderer.builder(markdownOptions).build().render(parsedMd)
 
     // If we have a layout template, we need to embed rendered content in it. Otherwise, we just leave the content as is.
     layoutTemplate match {

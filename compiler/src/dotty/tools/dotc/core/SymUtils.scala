@@ -42,8 +42,8 @@ class SymUtils:
     }
 
     /** All traits implemented by a class, except for those inherited through the superclass.
-    *  The empty list if `self` is a trait.
-    */
+     *  The empty list if `self` is a trait.
+     */
     def mixins(using Context): List[ClassSymbol] =
       if (self.is(Trait)) Nil
       else directlyInheritedTraits
@@ -126,6 +126,8 @@ class SymUtils:
         i"constructor of ${self.owner.sanitizedDescription}"
       else if self.isAnonymousFunction then
         i"anonymous function of type ${self.info}"
+      else if self.is(ModuleClass) then
+        self.sourceModule.sanitizedDescription
       else if self.name.toString.contains('$') then
         self.owner.sanitizedDescription
       else

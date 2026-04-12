@@ -8,7 +8,9 @@ import collection.mutable
 import reporting.Message
 import Contexts.Context
 import Types.MethodType
-import Symbols.Symbol
+import Symbols.{Symbol, ClassSymbol}
+import util.{SimpleIdentitySet, EqHashMap}
+import Capabilities.Capability
 
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
@@ -41,6 +43,10 @@ class CCState:
     myMapVars = false
     try op finally myMapVars = saved
 
+  // Recursion brake for tryInclude and accountsFor
+
+  private var triedCapabilities: SimpleIdentitySet[Capability] = SimpleIdentitySet.empty
+
   // ------ Iteration count of capture checking run
 
   private var iterCount = 0
@@ -53,6 +59,7 @@ class CCState:
 
   def start(): Unit =
     iterCount = 1
+    fieldsWithExplicitTypes.clear()
 
   private var mySepCheck = false
 
@@ -94,6 +101,24 @@ class CCState:
   private var collapseLocalCaps: Boolean = false
 
   private var discardUses: Boolean = false
+
+  // ------- Caches for symbols --------------------------------------------------
+
+  /* A cache for CaptureOps.useSet */
+  private[cc] val useSetCache: EqHashMap[Symbol, CaptureSet] = EqHashMap()
+
+  /** A cache that stores for each class the classifiers of all LocalCap instances
+   *  in the types of its fields and the fields that contribute such LocalCap instances.
+   */
+  val localCapClassifiersAndFieldsCache: EqHashMap[Symbol, (List[ClassSymbol], List[Symbol])] = EqHashMap()
+
+  /** A map from class symbols in the current compilation unit to those of their fields
+   *  that have an explicit type given. Used in `captureSetImpliedByFields`
+   *  to avoid forcing fields with inferred types prematurely. The test file
+   *  where this matters is i24335.scala. The precise failure scenario which
+   *  this avoids is described in #24335.
+   */
+  val fieldsWithExplicitTypes: EqHashMap[ClassSymbol, List[Symbol]] = EqHashMap()
 
 object CCState:
 
@@ -156,5 +181,19 @@ object CCState:
 
   /** Should uses not be recorded in markFree? */
   def discardUses(using Context): Boolean = ccState.discardUses
+
+  /** Perform `op` unless operation has been tried on `c` before.
+   *  This is needed to prevent infinite recursions in methods like
+   *  tryInclude and accountsFor. The relation from capability to capability
+   *  in its underling set can have cycles, for instance when capability objects
+   *  are mutually dependent. We need to avoid going through such cycles more than once.
+   */
+  inline def ifNotTried(c: Capability)(inline op: Boolean)(using Context): Boolean =
+    val ccs = ccState
+    val tried = ccs.triedCapabilities
+    !tried.contains(c) && {
+      ccs.triedCapabilities = tried + c
+      try op finally ccs.triedCapabilities = tried
+    }
 
 end CCState
