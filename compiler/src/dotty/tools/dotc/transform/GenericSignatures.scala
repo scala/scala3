@@ -333,8 +333,17 @@ object GenericSignatures {
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
             if (vcBoxing == ValueClassBoxing.Unbox) {
-              val underlying = ValueClasses.underlyingOfValueClass(sym.asClass).asSeenFrom(tp, sym)
-              jsig(underlying, toplevel = toplevel)
+              val underlying = ValueClasses.underlyingOfValueClass(sym.asClass)
+              val seenUnderlying = underlying.asSeenFrom(tp, sym)
+              // For binary compatibility with Scala 2, as documented in TypeErasure,
+              // we need to use the boxed version of value classes' underlying type.
+              // The end-to-end binary compatibility is checked by tests/run/i8001
+              // There is a more targeted test for generic signatures at tests/run/i24276
+              val compatibleUnderlying =
+                if seenUnderlying.isPrimitiveValueType then defn.boxedType(seenUnderlying)
+                else if underlying.derivesFrom(defn.ArrayClass) then erasure(underlying)
+                else seenUnderlying
+              jsig(compatibleUnderlying, toplevel = toplevel)
             } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
