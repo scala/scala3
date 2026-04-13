@@ -175,7 +175,7 @@ trait BCodeIdiomatic(using Context) {
       recipe: String,
       argTypes: Seq[asm.Type],
       constants: Seq[String],
-      ts: CoreBTypes
+      ts: WellKnownBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",

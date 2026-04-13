@@ -26,7 +26,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
       case Apply(TypeApply(fun, _), args) =>
-      val monitor = locals.makeLocal(ts.ObjectRef, "monitor", defn.ObjectType, tree.span)
+      val monitor = locals.makeLocal(bTypes.ObjectRef, "monitor", defn.ObjectType, tree.span)
       val monCleanup = new asm.Label
 
       // if the synchronized block returns a result, store it in a local variable.
@@ -36,7 +36,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
       genLoadQualifier(fun)
-      bc.dup(ts.ObjectRef)
+      bc.dup(bTypes.ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)
 
@@ -186,7 +186,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
         for (CaseDef(pat, _, caseBody) <- catches) yield {
           pat match {
             case Typed(Ident(nme.WILDCARD), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
-            case Ident(nme.WILDCARD)              => NamelessEH(ts.jlThrowableRef,  caseBody)
+            case Ident(nme.WILDCARD)              => NamelessEH(bTypes.jlThrowableRef,  caseBody)
             case Bind(_, _)                       => BoundEH   (pat.symbol, caseBody)
           }
         }
@@ -343,7 +343,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
         nopIfNeeded(startTryBody)
         val finalHandler = currProgramPoint() // version of the finally-clause reached via unhandled exception.
         protect(startTryBody, finalHandler, finalHandler, null)
-        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(ts.jlThrowableRef, "exc", defn.ThrowableType, finalizer.span))
+        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(bTypes.jlThrowableRef, "exc", defn.ThrowableType, finalizer.span))
         bc.store(eIdx, eTK)
         emitFinalizer(finalizer, null, isDuplicate = true)
         bc.load(eIdx, eTK)

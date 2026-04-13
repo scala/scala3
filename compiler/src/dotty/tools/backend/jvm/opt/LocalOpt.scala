@@ -151,7 +151,7 @@ import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
 class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner,
-               ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile,
+               ts: WellKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                settings: OptimizerSettings) {
 
   import LocalOptImpls.*
@@ -540,7 +540,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
           a.length - 2 == b.length && a(0) == 'L' && a.last == ';' && a.regionMatches(1, b, 0, b.length) ||
           b.length - 2 == a.length && b(0) == 'L' && b.last == ';' && b.regionMatches(1, a, 0, a.length)
       }
-      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ts.ObjectRef.internalName) || {
+      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, "java/lang/Object") || {
         val aType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN)
         val bType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)
         // TODO instead of getOrElse, we should bubble the warning up...
@@ -595,16 +595,17 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
               val frame = typeAnalyzer.frameAt(ti)
               frame.getValue(frame.stackTop)
             })
-            if (isSubType(valueDesc, ti.desc)) {
-              if (opc == CHECKCAST) {
-                toReplace(ti) = Nil
-              } else if (valueNullness == NotNullValue) {
-                toReplace(ti) = List(getPop(1), new InsnNode(ICONST_1))
+            if valueDesc != "Lnull;" then
+              if (isSubType(valueDesc, ti.desc)) {
+                if (opc == CHECKCAST) {
+                  toReplace(ti) = Nil
+                } else if (valueNullness == NotNullValue) {
+                  toReplace(ti) = List(getPop(1), new InsnNode(ICONST_1))
+                }
+              } else if (opc == INSTANCEOF && isUnrelated(valueDesc, ti.desc)) {
+                // the two types are unrelated, so the instance check is known to fail
+                toReplace(ti) = List(getPop(1), new InsnNode(ICONST_0))
               }
-            } else if (opc == INSTANCEOF && isUnrelated(valueDesc, ti.desc)) {
-              // the two types are unrelated, so the instance check is known to fail
-              toReplace(ti) = List(getPop(1), new InsnNode(ICONST_0))
-            }
           }
         }
 

@@ -30,10 +30,11 @@ import dotty.tools.backend.ScalaPrimitives
 import opt.CallGraph
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
-              val callGraph: CallGraph, val ts: CoreBTypes,
+              val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
               val generatedClassHandler: GeneratedClassHandler)(using Context) {
   private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
-    val ts: CoreBTypes = CodeGen.this.ts
+    val bTypeLoader: BTypeLoader = CodeGen.this.bTypeLoader
+    val bTypes: WellKnownBTypes = CodeGen.this.bTypes
 
     def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit =
       callGraph.callsitePositions.get(m) = pos match {

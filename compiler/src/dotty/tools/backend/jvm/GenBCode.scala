@@ -37,7 +37,7 @@ class GenBCode extends Phase { self =>
   private var _backendUtils: BackendUtils | Null = null
   def backendUtils(using Context): BackendUtils = {
     if _backendUtils eq null then
-      _backendUtils = BackendUtils(bTypes)
+      _backendUtils = BackendUtils(wellKnownBTypes)
     _backendUtils.nn
   }
 
@@ -69,17 +69,26 @@ class GenBCode extends Phase { self =>
   private var _bTypesFromClassfile: BTypesFromClassfile | Null = null
   def bTypesFromClassfile(using Context): BTypesFromClassfile = {
     if _bTypesFromClassfile eq null then
-      _bTypesFromClassfile = BTypesFromClassfile(byteCodeRepository, bTypes)
+      _bTypesFromClassfile = BTypesFromClassfile(byteCodeRepository, bTypeLoader)
     _bTypesFromClassfile.nn
   }
 
-  private var _bTypes: CoreBTypes | Null = null
-  def bTypes(using Context): CoreBTypes = {
-    if _bTypes eq null then
+  private var _bTypeLoader: BTypeLoader | Null = null
+  def bTypeLoader(using Context): BTypeLoader = {
+    if _bTypeLoader eq null then
       // lazy load to break the circular dependency
       def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
-      _bTypes = CoreBTypesFromSymbols(frontendAccess, primitives, inlineInfoLoader)(using ctx)
-    _bTypes.nn
+      _bTypeLoader = BTypeLoader(primitives, inlineInfoLoader)
+    _bTypeLoader.nn
+  }
+
+  private var _wellKnownBTypes: WellKnownBTypes | Null = null
+  def wellKnownBTypes(using Context): WellKnownBTypes = {
+    if _wellKnownBTypes eq null then
+      // lazy load to break the circular dependency
+      def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
+      _wellKnownBTypes = WellKnownBTypes(frontendAccess, bTypeLoader)(using ctx)
+    _wellKnownBTypes.nn
   }
 
   private var _callGraph: CallGraph | Null = null
@@ -92,7 +101,7 @@ class GenBCode extends Phase { self =>
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, backendUtils, bTypes)
+      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, backendUtils, bTypeLoader, wellKnownBTypes)
     _postProcessor.nn
   }
 
@@ -120,7 +129,7 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, callGraph, bTypes, generatedClassHandler)
+      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, callGraph, bTypeLoader, wellKnownBTypes, generatedClassHandler)
     _codeGen.nn
   }
 

@@ -23,7 +23,7 @@ import scala.tools.asm.{Handle, Opcodes, Type}
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
  * instance.
  */
-class BackendUtils(val ts: CoreBTypes) {
+class BackendUtils(val ts: WellKnownBTypes) {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -122,27 +122,6 @@ class BackendUtils(val ts: CoreBTypes) {
 
   private lazy val serializedLamdaObjDesc = {
     MethodBType(ts.jliSerializedLambdaRef :: Nil, ts.ObjectRef).descriptor
-  }
-
-  /**
-   * Visit the class node and collect all referenced nested classes.
-   */
-  def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
-    val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
-      def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
-        ts.classBTypeFromInternalName(internalName).get.info.nestedClasses
-
-      def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-        val c = ts.classBTypeFromInternalName(internalName).get
-        Option.when(c.isNestedClass)(c)
-      }
-
-      def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
-        // don't crash on invalid generic signatures
-      }
-    }
-    c.visit(classNode)
-    (c.declaredInnerClasses, c.referredInnerClasses)
   }
 
   /*

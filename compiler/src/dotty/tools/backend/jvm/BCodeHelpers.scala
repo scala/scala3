@@ -44,7 +44,7 @@ import dotty.tools.dotc.config.ScalaSettingsProperties
  */
 trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends BCodeIdiomatic {
 
-  val ts: CoreBTypes
+  val bTypeLoader: BTypeLoader
 
   protected lazy val classfileVersion: Int =
     val releaseValue = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
@@ -131,7 +131,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = cw.visitAnnotation(ts.typeDescriptor(typ), isRuntimeVisible(annot))
+        val av = cw.visitAnnotation(bTypeLoader.typeDescriptor(typ), isRuntimeVisible(annot))
         emitAssocs(av, assocs)
       }
 
@@ -142,7 +142,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = mw.visitAnnotation(ts.typeDescriptor(typ), isRuntimeVisible(annot))
+        val av = mw.visitAnnotation(bTypeLoader.typeDescriptor(typ), isRuntimeVisible(annot))
         emitAssocs(av, assocs)
       }
 
@@ -153,7 +153,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = fw.visitAnnotation(ts.typeDescriptor(typ), isRuntimeVisible(annot))
+        val av = fw.visitAnnotation(bTypeLoader.typeDescriptor(typ), isRuntimeVisible(annot))
         emitAssocs(av, assocs)
       }
 
@@ -175,7 +175,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, ts.typeDescriptor(typ), isRuntimeVisible(annot))
+        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, bTypeLoader.typeDescriptor(typ), isRuntimeVisible(annot))
         emitAssocs(pannVisitor, assocs)
       }
 
@@ -205,12 +205,12 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
             case StringTag =>
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-            case ClazzTag => av.visit(name, ts.typeToTypeKind(TypeErasure.erasure(const.typeValue)).toASMType)
+            case ClazzTag => av.visit(name, bTypeLoader.typeToTypeKind(TypeErasure.erasure(const.typeValue)).toASMType)
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
         case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnum) =>
-          val edesc = ts.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
+          val edesc = bTypeLoader.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         // Handle final val aliases to Java enum values.
@@ -221,7 +221,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
             case _ => false
         } =>
           val enumRef = atPhase(erasurePhase)(t.symbol.info.finalResultType.asInstanceOf[TermRef])
-          val edesc = ts.typeDescriptor(enumRef)
+          val edesc = bTypeLoader.typeDescriptor(enumRef)
           val evalue = enumRef.termSymbol.javaSimpleName
           av.visitEnum(name, edesc, evalue)
         case t: SeqLiteral =>
@@ -262,7 +262,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
         case t @ Apply(constr, args) if t.tpe.classSymbol.is(JavaAnnotation) =>
           val typ = t.tpe.classSymbol.denot.info
           val assocs = assocsFromApply(t)
-          val desc = ts.typeDescriptor(typ) // the class descriptor of the nested annotation class
+          val desc = bTypeLoader.typeDescriptor(typ) // the class descriptor of the nested annotation class
           val nestedVisitor = av.visitAnnotation(name, desc)
           emitAssocs(nestedVisitor, assocs)
 
@@ -368,9 +368,9 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      * must-single-thread
      */
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean): Unit = {
-      val moduleName     = ts.internalName(module)
+      val moduleName     = bTypeLoader.internalName(module)
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(ts.toTypeKind)
+      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(bTypeLoader.toTypeKind)
       // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,
@@ -389,7 +389,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       val (throws, others) = m.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
-      val jReturnType = ts.toTypeKind(methodInfo.resultType)
+      val jReturnType = bTypeLoader.toTypeKind(methodInfo.resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
       val mirrorMethodName = m.javaSimpleName
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
@@ -415,7 +415,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
 
       mirrorMethod.visitCode()
 
-      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, ts.symDescriptor(module))
+      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, bTypeLoader.symDescriptor(module))
 
       var index = 0
       for(jparamType <- paramJavaTypes) {
@@ -424,7 +424,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
         index += jparamType.size
       }
 
-      mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, ts.asmMethodType(m).descriptor, false)
+      mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, bTypeLoader.asmMethodType(m).descriptor, false)
       mirrorMethod.visitInsn(jReturnType.typedOpcode(asm.Opcodes.IRETURN))
 
       mirrorMethod.visitMaxs(0, 0) // just to follow protocol, dummy arguments
@@ -497,7 +497,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      */
     def getExceptions(excs: List[Annotation]): List[String] = {
       for (case ThrownException(exc) <- excs.distinct)
-      yield ts.internalName(TypeErasure.erasure(exc).classSymbol)
+      yield bTypeLoader.internalName(TypeErasure.erasure(exc).classSymbol)
     }
   } // end of trait BCForwardersGen
 
@@ -549,8 +549,8 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       assert(moduleClass.is(ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
       this.cunit = cunit
-      val bType      = ts.mirrorClassBTypeFromSymbol(moduleClass)
-      val moduleName = ts.internalName(moduleClass) // + "$"
+      val bType      = bTypeLoader.mirrorClassBTypeFromSymbol(moduleClass)
+      val moduleName = bTypeLoader.internalName(moduleClass) // + "$"
       val mirrorName = bType.internalName
       val mirrorClass = new asm.tree.ClassNode
       if !BCodeUtils.checkConstantStringLength(mirrorName) then
@@ -561,7 +561,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
         bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,
-        ts.ObjectRef.internalName,
+        bTypeLoader.ObjectRef.internalName,
         EMPTY_STRING_ARRAY
       )
 
@@ -606,7 +606,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      * must-single-thread
      */
     def legacyAddCreatorCode(clinit: asm.MethodVisitor, cnode: asm.tree.ClassNode, thisName: String): Unit = {
-      val androidCreatorType = ts.getClassBType(AndroidCreatorClass)
+      val androidCreatorType = bTypeLoader.getClassBType(AndroidCreatorClass)
       val tdesc_creator = androidCreatorType.descriptor
 
       cnode.visitField(

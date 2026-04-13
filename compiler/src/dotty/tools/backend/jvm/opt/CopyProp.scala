@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.BackendUtils.*
 
 import scala.tools.asm
 
-class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, settings: OptimizerSettings) {
+class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: WellKnownBTypes, settings: OptimizerSettings) {
 
   private val modulesAllowSkipInitialization =
     if settings.optAllowSkipCoreModuleInit then backendUtils.modulesAllowSkipInitialization else Set.empty

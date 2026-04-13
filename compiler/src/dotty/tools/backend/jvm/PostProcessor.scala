@@ -21,16 +21,16 @@ import scala.util.chaining.scalaUtilChainingOps
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(private val frontendAccess: PostProcessorFrontendAccess,
-                    private val byteCodeRepository: BCodeRepository, private val bTypesFromClassfile: BTypesFromClassfile,
-                    private val callGraph: CallGraph,
-                    private val backendUtils: BackendUtils, private val ts: CoreBTypes)(using Context) {
+class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
+                    byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
+                    callGraph: CallGraph, backendUtils: BackendUtils,
+                    bTypeLoader: BTypeLoader, bTypes: WellKnownBTypes)(using Context) {
 
   private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, optSettings)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, ts, bTypesFromClassfile, optSettings)
+  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, optSettings)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   given FileWriters.ReadOnlyContext = FileWriters.ReadOnlyContext.eager
   private val classfileWriter: FileWriters.ClassfileWriter = {
@@ -133,10 +133,9 @@ class PostProcessor(private val frontendAccess: PostProcessorFrontendAccess,
   }
 
   private def setInnerClasses(classNode: ClassNode): Unit = {
-    import backendUtils.{collectNestedClasses, addInnerClasses}
     classNode.innerClasses.nn.clear()
-    val (declared, referred) = collectNestedClasses(classNode)
-    addInnerClasses(classNode, declared, referred)
+    val (declared, referred) = bTypeLoader.collectNestedClasses(classNode)
+    backendUtils.addInnerClasses(classNode, declared, referred)
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
@@ -164,9 +163,9 @@ class PostProcessor(private val frontendAccess: PostProcessorFrontendAccess,
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
       // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
-      val a = ts.classBTypeFromInternalName(inameA).get
-      val b = ts.classBTypeFromInternalName(inameB).get
-      val lub = a.jvmWiseLUB(b)
+      val a = bTypeLoader.classBTypeFromInternalName(inameA).get
+      val b = bTypeLoader.classBTypeFromInternalName(inameB).get
+      val lub = a.jvmWiseLUB(b, bTypes)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
