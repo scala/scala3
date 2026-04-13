@@ -263,8 +263,8 @@ object Inlines:
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
     
     tmpl.body.foreach {
-        case innerClass: TypeDef if innerClass.symbol.isClass => report.error("Inline traits may not define inner classes or traits.", innerClass.srcPos)
-        case _ =>
+      case innerClass: TypeDef if innerClass.symbol.isClass => report.error("Inline traits may not define inner classes or traits.", innerClass.srcPos)
+      case _ =>
     }
     
     val body1 = tmpl.body.flatMap {
