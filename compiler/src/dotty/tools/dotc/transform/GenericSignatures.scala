@@ -333,8 +333,8 @@ object GenericSignatures {
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
             if (vcBoxing == ValueClassBoxing.Unbox) {
-              val erasedUnderlying = fullErasure(tp)
-              jsig(erasedUnderlying, toplevel = toplevel)
+              val underlying = ValueClasses.underlyingOfValueClass(sym.asClass).asSeenFrom(tp, sym)
+              jsig(underlying, toplevel = toplevel)
             } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
