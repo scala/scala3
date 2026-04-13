@@ -1012,7 +1012,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
     }
 
-    def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination): Unit
+    def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination)(using Context): Unit
 
   } // end of class PlainSkelBuilder
 

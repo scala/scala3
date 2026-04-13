@@ -9,7 +9,6 @@ import scala.tools.asm
 import scala.tools.asm.{Handle, Opcodes}
 import BCodeHelpers.InvokeStyle
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Constants.*
 import dotty.tools.dotc.core.Flags.{Label as LabelFlag, *}
 import dotty.tools.dotc.core.Types.*
@@ -34,7 +33,7 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
 
   val bTypes: WellKnownBTypes
 
@@ -46,7 +45,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     private object DesugaredSelect {
       private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
-      def cached(i: Ident): Option[tpd.Select] = {
+      def cached(i: Ident)(using Context): Option[tpd.Select] = {
         var found = desugared.get(i.tpe)
         if (found == null) {
           tpd.desugarIdent(i) match {
@@ -59,7 +58,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         Option(found)
       }
 
-      def unapply(s: tpd.Tree): Option[(Tree, Name)] = {
+      def unapply(s: tpd.Tree)(using Context): Option[(Tree, Name)] = {
         s match {
           case t: tpd.Select => Some((t.qualifier, t.name))
           case t: Ident => cached(t).map(c => (c.qualifier, c.name))
@@ -92,7 +91,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
      * Two main cases: `tree` is an assignment,
      * otherwise an `adapt()` to UNIT is performed if needed.
      */
-    def genStat(tree: Tree): Unit = {
+    def genStat(tree: Tree)(using Context): Unit = {
       lineNumber(tree)
 
       tree match {
@@ -137,7 +136,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     }
 
     /* Generate code for primitive arithmetic operations. */
-    def genArithmeticOp(tree: Tree, code: Int): BType = tree match{
+    def genArithmeticOp(tree: Tree, code: Int)(using Context): BType = tree match {
       case Apply(fun @ DesugaredSelect(larg, _), args) =>
       var resKind = tpeTK(larg)
 
@@ -194,7 +193,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     }
 
     /* Generate primitive array operations. */
-    def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match{
+    def genArrayOp(tree: Tree, code: Int, expectedType: BType)(using Context): BType = tree match {
 
       case Apply(DesugaredSelect(arrayObj, _), args) =>
       import ScalaPrimitivesOps.*
@@ -231,7 +230,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       generatedType
     }
 
-    def genLoadIfTo(tree: If, expectedType: BType, dest: LoadDestination): BType = tree match{
+    def genLoadIfTo(tree: If, expectedType: BType, dest: LoadDestination)(using Context): BType = tree match {
       case If(condp, thenp, elsep) =>
 
       val success = new asm.Label
@@ -272,7 +271,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       end if
     }
 
-    def genPrimitiveOp(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
+    def genPrimitiveOp(tree: Apply, expectedType: BType)(using Context): BType = (tree: @unchecked) match {
       case Apply(fun @ DesugaredSelect(receiver, _), _) =>
       val sym = tree.symbol
 
@@ -310,18 +309,18 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       )
     }
 
-    def genLoad(tree: Tree): BType = {
+    def genLoad(tree: Tree)(using Context): BType = {
       val generatedType = tpeTK(tree)
       genLoad(tree, generatedType)
       generatedType
     }
 
     /* Generate code for trees that produce values on the stack */
-    def genLoad(tree: Tree, expectedType: BType): Unit =
+    def genLoad(tree: Tree, expectedType: BType)(using Context): Unit =
       genLoadTo(tree, expectedType, LoadDestination.FallThrough)
 
     /* Generate code for trees that produce values, sent to a given `LoadDestination`. */
-    def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination): Unit =
+    def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination)(using Context): Unit =
       var generatedType = expectedType
       var generatedDest = LoadDestination.FallThrough
 
@@ -502,7 +501,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         genAdaptAndSendToDest(generatedType, expectedType, dest)
     end genLoadTo
 
-    def genAdaptAndSendToDest(generatedType: BType, expectedType: BType, dest: LoadDestination): Unit =
+    def genAdaptAndSendToDest(generatedType: BType, expectedType: BType, dest: LoadDestination)(using Context): Unit =
       if generatedType != expectedType then
         adapt(generatedType, expectedType)
 
@@ -536,17 +535,19 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     /*
      * must-single-thread
      */
-    def fieldLoad( field: Symbol, hostClass: Symbol = null): Unit = fieldOp(field, isLoad = true,  hostClass)
+    def fieldLoad( field: Symbol, hostClass: Symbol | Null = null)(using Context): Unit =
+      fieldOp(field, isLoad = true,  hostClass)
 
     /*
      * must-single-thread
      */
-    def fieldStore(field: Symbol, hostClass: Symbol = null): Unit = fieldOp(field, isLoad = false, hostClass)
+    def fieldStore(field: Symbol, hostClass: Symbol | Null = null)(using Context): Unit =
+      fieldOp(field, isLoad = false, hostClass)
 
     /*
      * must-single-thread
      */
-    private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol): Unit = {
+    private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol | Null)(using Context): Unit = {
       val useSpecificReceiver = specificReceiver != null && !field.isScalaStatic
 
       val owner      = bTypeLoader.internalName(if (useSpecificReceiver) specificReceiver else field.owner)
@@ -567,7 +568,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
      *   must-single-thread
      * Otherwise it's safe to call from multiple threads.
      */
-    private def genConstant(const: Constant, pos: SrcPos): Unit = {
+    private def genConstant(const: Constant, pos: SrcPos)(using Context): Unit = {
       (const.tag: @switch) match {
 
         case BooleanTag => bc.boolconst(const.booleanValue)
@@ -617,7 +618,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       }
     }
 
-    private def genLabeledTo(tree: Labeled, expectedType: BType, dest: LoadDestination): BType = tree match {
+    private def genLabeledTo(tree: Labeled, expectedType: BType, dest: LoadDestination)(using Context): BType = tree match {
       case Labeled(bind, expr) =>
 
       val labelSym = bind.symbol
@@ -636,7 +637,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       end if
     }
 
-    private def genReturn(r: Return): Unit = {
+    private def genReturn(r: Return)(using Context): Unit = {
       val expr: Tree = r.expr
       val fromSym: Symbol = if (r.from.symbol.is(LabelFlag)) r.from.symbol else NoSymbol
 
@@ -674,7 +675,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       }
     } // end of genReturn()
 
-    def genWhileDo(tree: WhileDo): LoadDestination = tree match{
+    def genWhileDo(tree: WhileDo)(using Context): LoadDestination = tree match {
       case WhileDo(cond, body) =>
 
       val isInfinite = cond == tpd.EmptyTree
@@ -704,7 +705,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         LoadDestination.FallThrough
     }
 
-    def genTypeApply(t: TypeApply): BType = (t: @unchecked) match {
+    def genTypeApply(t: TypeApply)(using Context): BType = (t: @unchecked) match {
       case TypeApply(fun@DesugaredSelect(obj, _), targs) =>
 
         val sym = fun.symbol
@@ -744,7 +745,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     } // end of genTypeApply()
 
 
-    private def mkArrayConstructorCall(arr: ArrayBType, app: Apply, args: List[Tree]) = {
+    private def mkArrayConstructorCall(arr: ArrayBType, app: Apply, args: List[Tree])(using Context) = {
       val dims     = arr.dimension
       var elemKind = arr.elementType
       val argsSize = args.length
@@ -768,7 +769,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     }
 
 
-    private def genApply(app: Apply, expectedType: BType): BType = {
+    private def genApply(app: Apply, expectedType: BType)(using Context): BType = {
       var generatedType = expectedType
       lineNumber(app)
       app match {
@@ -913,7 +914,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       generatedType
     } // end of genApply()
 
-    private def genArrayValue(av: tpd.JavaSeqLiteral): BType = {
+    private def genArrayValue(av: tpd.JavaSeqLiteral)(using Context): BType = {
       val tpt = av.tpe match {
         case JavaArrayType(elem) => elem
         case _ =>
@@ -925,7 +926,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       genArray(av.elems, tpt)
     }
 
-    private def genArray(elems: List[Tree], elemType: Type): BType = {
+    private def genArray(elems: List[Tree], elemType: Type)(using Context): BType = {
       val elmKind       = bTypeLoader.toTypeKind(elemType)
       val generatedType = ArrayBType(elmKind)
 
@@ -965,7 +966,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false)
       bc.jmethod.visitInsn(asm.Opcodes.ATHROW)
 
-    private def genMatchTo(tree: Match, expectedType: BType, dest: LoadDestination): BType = tree match {
+    private def genMatchTo(tree: Match, expectedType: BType, dest: LoadDestination)(using Context): BType = tree match {
       case Match(selector, cases) =>
       lineNumber(tree)
 
@@ -1150,7 +1151,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       generatedType
     }
 
-    def genBlockTo(tree: Block, expectedType: BType, dest: LoadDestination): Unit = tree match {
+    def genBlockTo(tree: Block, expectedType: BType, dest: LoadDestination)(using Context): Unit = tree match {
       case Block(stats, expr) =>
 
       val savedScope = varsInScope
@@ -1173,7 +1174,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       }
     end emitLocalVarScopes
 
-    def adapt(from: BType, to: BType): Unit = {
+    def adapt(from: BType, to: BType)(using Context): Unit = {
       if (from == bTypes.srNothingRef) {
         /* There are two possibilities for from being Nothing: emitting a "throw e" expressions and
          * loading a (phantom) value of type Nothing.
@@ -1249,7 +1250,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     }
 
     /* Emit code to Load the qualifier of `tree` on top of the stack. */
-    def genLoadQualifier(tree: Tree): BType = {
+    def genLoadQualifier(tree: Tree)(using Context): BType = {
       lineNumber(tree)
       tree match {
         case DesugaredSelect(qualifier, _) => genLoad(qualifier)
@@ -1264,7 +1265,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       }
     }
 
-    def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit =
+    def genLoadArguments(args: List[Tree], btpes: List[BType])(using Context): Unit =
       @tailrec def loop(args: List[Tree], btpes: List[BType]): Unit =
         args match
           case arg :: args1 =>
@@ -1281,7 +1282,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       stack.restoreSize(savedStackSize)
     end genLoadArguments
 
-    def genLoadModule(tree: Tree): BType = {
+    def genLoadModule(tree: Tree)(using Context): BType = {
       val module = (
         if (!tree.symbol.is(PackageClass)) tree.symbol
         else tree.symbol.info.member(nme.PACKAGE).symbol match {
@@ -1294,7 +1295,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       symInfoTK(module)
     }
 
-    def genLoadModule(module: Symbol): Unit = {
+    def genLoadModule(module: Symbol)(using Context): Unit = {
       def inStaticMethod = methSymbol != null && methSymbol.isStaticMember
       if (claszSymbol == module.moduleClass && jMethodName != "readResolve" && !inStaticMethod) {
         mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
@@ -1343,7 +1344,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
      *
      * use `invokedynamic` with `StringConcatFactory`
      */
-    def genStringConcat(tree: Tree): BType = {
+    def genStringConcat(tree: Tree)(using Context): BType = {
       lineNumber(tree)
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x
@@ -1438,7 +1439,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
      * invocation instruction, otherwise `method.owner`. A specific receiver class is needed to
      * prevent IllegalAccessError in some virtual and super calls (aladdin bug 455, i22628).
      */
-    private def genCallMethod(method: Symbol, style: InvokeStyle, pos: Positioned | Null = null, specificReceiver: Symbol = null): BType = {
+    private def genCallMethod(method: Symbol, style: InvokeStyle, pos: Positioned | Null = null, specificReceiver: Symbol | Null = null)(using Context): BType = {
       val methodOwner = method.owner
 
       // the class used in the invocation's method descriptor in the classfile
@@ -1511,7 +1512,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     } // end of genCallMethod()
 
     /* Generate the scala ## method. */
-    def genScalaHash(tree: Tree): BType = {
+    def genScalaHash(tree: Tree)(using Context): BType = {
       genLoad(tree, bTypes.ObjectRef)
       genCallMethod(NoSymbol, InvokeStyle.Static) // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
     }
@@ -1520,7 +1521,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
      * Returns a list of trees that each should be concatenated, from left to right.
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
-    def liftStringConcat(tree: Tree): List[Tree] = tree match {
+    def liftStringConcat(tree: Tree)(using Context): List[Tree] = tree match {
       case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
@@ -1597,7 +1598,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
      * Generate code for conditional expressions.
      * The jump targets success/failure of the test are `then-target` and `else-target` resp.
      */
-    private def genCond(tree: Tree, success: asm.Label, failure: asm.Label, targetIfNoJump: asm.Label): Unit = {
+    private def genCond(tree: Tree, success: asm.Label, failure: asm.Label, targetIfNoJump: asm.Label)(using Context): Unit = {
 
       def genComparisonOp(l: Tree, r: Tree, code: Int): Unit = {
         val op = testOpForPrimitive(code)
@@ -1694,7 +1695,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
      * @param l       left-hand-side  of the '=='
      * @param r       right-hand-side of the '=='
      */
-    def genEqEqPrimitive(l: Tree, r: Tree, success: asm.Label, failure: asm.Label, targetIfNoJump: asm.Label): Unit = {
+    def genEqEqPrimitive(l: Tree, r: Tree, success: asm.Label, failure: asm.Label, targetIfNoJump: asm.Label)(using Context): Unit = {
 
       /* True if the equality comparison is between values that require the use of the rich equality
        * comparator (scala.runtime.Comparator.equals). This is the case when either side of the
@@ -1770,7 +1771,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
     def genSynchronized(tree: Apply, expectedType: BType): BType
     def genLoadTry(tree: Try): BType
 
-    def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
+    def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol)(using Context): BType = {
       import java.lang.invoke.LambdaMetafactory.{FLAG_BRIDGES, FLAG_SERIALIZABLE}
 
       report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
@@ -1876,8 +1877,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
    *  create for Java-defined classes as well as for Java annotations
    *  which we represent as classes.
    */
-  private def isEmittedInterface(sym: Symbol): Boolean = sym.is(Trait) ||
-    sym.is(JavaDefined) && (toDenot(sym).isAnnotation || sym.is(ModuleClass) && (sym.companionClass.is(PureInterface)) || sym.companionClass.is(Trait))
-
+  private def isEmittedInterface(sym: Symbol)(using Context): Boolean =
+    sym.is(Trait) ||
+      sym.is(JavaDefined) && (toDenot(sym).isAnnotation || sym.is(ModuleClass) && (sym.companionClass.is(PureInterface)) || sym.companionClass.is(Trait))
 
 }
