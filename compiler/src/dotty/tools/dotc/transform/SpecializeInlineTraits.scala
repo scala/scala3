@@ -64,33 +64,34 @@ class SpecializeInlineTraits extends MacroTransform, SymTransformer {
       case _ =>
     }
 
-  // private def makeTraitFromInnerClass(innerClass: TypeDef)(using Context): TypeDef =
-  //   val TypeDef(name, tmpl: Template) = innerClass: @unchecked
-  //   val newInnerParents = tmpl.parents.mapConserve(ConcreteParentStripper.apply)
-  //   val tmpl1 = cpy.Template(tmpl)(parents = newInnerParents) // TODO .withType(???)
-  //   val newTrait = cpy.TypeDef(innerClass)(name = SpecializeInlineTraits.newInnerClassName(name), rhs = tmpl1)
-  //   newTrait.symbol.setFlag(Synthetic)
-  //   newTrait
-  // end makeTraitFromInnerClass
+  /* private def makeTraitFromInnerClass(innerClass: TypeDef)(using Context): TypeDef =
+    val TypeDef(name, tmpl: Template) = innerClass: @unchecked
+    val newInnerParents = tmpl.parents.mapConserve(ConcreteParentStripper.apply)
+    val tmpl1 = cpy.Template(tmpl)(parents = newInnerParents) // TODO .withType(???)
+    val newTrait = cpy.TypeDef(innerClass)(name = SpecializeInlineTraits.newInnerClassName(name), rhs = tmpl1)
+    newTrait.symbol.setFlag(Synthetic)
+    newTrait
+  end makeTraitFromInnerClass
 
-  // private def makeTypeFromInnerClass(parentSym: Symbol, innerClass: TypeDef, newTraitSym: Symbol)(using Context): TypeDef =
-  //   val upperBound = innerClass.symbol.primaryConstructor.info match {
-  //     case _: MethodType =>
-  //       newTraitSym.typeRef
-  //     case poly: PolyType =>
-  //       HKTypeLambda(poly.paramNames)(tl => poly.paramInfos, tl => newTraitSym.typeRef.appliedTo(tl.paramRefs.head))
-  //   }
-  //   val newTypeSym = newSymbol(
-  //     owner = parentSym,
-  //     name = newTraitSym.name.asTypeName,
-  //     flags = innerClass.symbol.flags & (Private | Protected) | Synthetic,
-  //     info = TypeBounds.upper(upperBound),
-  //     privateWithin = innerClass.symbol.privateWithin,
-  //     coord = innerClass.symbol.coord,
-  //     nestingLevel = innerClass.symbol.nestingLevel,
-  //   ).asType
-  //   TypeDef(newTypeSym)
-  // end makeTypeFromInnerClass
+  private def makeTypeFromInnerClass(parentSym: Symbol, innerClass: TypeDef, newTraitSym: Symbol)(using Context): TypeDef =
+    val upperBound = innerClass.symbol.primaryConstructor.info match {
+      case _: MethodType =>
+        newTraitSym.typeRef
+      case poly: PolyType =>
+        HKTypeLambda(poly.paramNames)(tl => poly.paramInfos, tl => newTraitSym.typeRef.appliedTo(tl.paramRefs.head))
+    }
+    val newTypeSym = newSymbol(
+      owner = parentSym,
+      name = newTraitSym.name.asTypeName,
+      flags = innerClass.symbol.flags & (Private | Protected) | Synthetic,
+      info = TypeBounds.upper(upperBound),
+      privateWithin = innerClass.symbol.privateWithin,
+      coord = innerClass.symbol.coord,
+      nestingLevel = innerClass.symbol.nestingLevel,
+    ).asType
+    TypeDef(newTypeSym)
+  end makeTypeFromInnerClass
+  */
 
   private object ConcreteParentStripper extends TreeAccumulator[Tree] {
     def apply(tree: Tree)(using Context): Tree = apply(tree, tree)
