@@ -3796,26 +3796,27 @@ final class CannotBeIncluded(
 
     def needsUseStr =
       if target.isAlwaysEmpty && (targetOwner.isClass || targetOwner.isConstructor) then
-        val (uses, loc) =
+        val (suffix, loc) =
           if targetOwner.isClass
-          then ("uses", targetOwner)
-          else ("uses_init", targetOwner.owner)
+          then ("", targetOwner)
+          else (" initially", targetOwner.owner)
+        def useStr(c: Capability) = c.showAsCapability ++ suffix
         val usedStr = added match
-          case added: Capability => i"${added.showAsCapability}"
-          case added: CaptureSet => i"${added.elems.toList.map(_.showAsCapability).mkString(", ")}"
+          case added: Capability => i"${useStr(added)}"
+          case added: CaptureSet => i"${added.elems.toList.map(useStr).mkString(", ")}"
 
         if loc.isPackageObject then
           i"""
             |
-            |The top-level definitions should be wrapped in an object with a $uses clause:
+            |The top-level definitions should be wrapped in an object with a uses clause:
             |
-            |    $uses $usedStr"""
+            |    uses $usedStr"""
         else
           i"""
             |
-            |External uses should be declared explicitly with a $uses clause in $loc:
+            |External uses should be declared explicitly with a uses clause in $loc:
             |
-            |    $uses $usedStr"""
+            |    uses $usedStr"""
       else ""
 
     def notesStr: String = notes.map(_.render).mkString

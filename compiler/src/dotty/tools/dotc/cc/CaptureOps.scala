@@ -813,10 +813,9 @@ extension (sym: Symbol) {
         case _ =>
           if sym.is(Package)
             || (sym.isClass || sym.isConstructor) && !sym.isExemptFromExplicitChecks
-            // If `sym` does not have a `uses` clause (or `uses_init` for constructors)
-            // set its capture set to the empty set, unless it is local to the current
-            // compilation unit. For local classes and constructors we infer their
-            // use set.
+            // If `sym` does not have a `uses` clause, set its capture set to the empty set,
+            // unless it is local to the current compilation unit.
+            // For local classes and constructors we infer their use set.
           then CaptureSet.empty
           else CaptureSet.Var(sym, nestedOK = false)
     )

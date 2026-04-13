@@ -1504,8 +1504,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               if cl == defn.AnyClass then i"of unclassified type ${fld.info}"
               else i"classified as ${cl.typeRef}"
             report.error(
-              em"""$cls is classied as ${cls.classifier.typeRef} but has a field ${fld.name}
-                  |$fldClassifier.
+              em"""$cls is classied as ${cls.classifier.typeRef} but has a field ${fld.name} $fldClassifier.
                   |Field classifiers have to conform to the classifier of the containing class.""",
               cls.srcPos)
       // (2)

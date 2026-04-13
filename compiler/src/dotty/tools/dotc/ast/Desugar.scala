@@ -668,7 +668,7 @@ object desugar {
     val impl @ Template(constr0, _, self, _) = cdef.rhs: @unchecked
     val className = normalizeName(cdef, impl).asTypeName
     val parents = impl.parents
-    val (implDerived, implUses) = impl.derived.partition(getRetainsAnnot(_).isEmpty)
+    val (implDerived, implUses) = impl.derived.span(!_.isInstanceOf[UseRef])
     val mods = cdef.mods
     val companionMods = mods
         .withFlags((mods.flags & (AccessFlags | Final)).toCommonFlags)
@@ -677,17 +677,14 @@ object desugar {
 
     var defaultGetters: List[Tree] = Nil
 
-    /** If there is a uses or uses_init clause, convert it to a @retains annotation
-     *  and add it to `mods`.
-     *  @param  idx  the index in implUses that describes the clause as a CapSet^{...}
-     *               reference: 0 for `uses...`, 1 for `uses_init...`
-     */
-    def addImplUse(mods: Modifiers, idx: 0 | 1): Modifiers =
-      if implUses.nonEmpty then
-        val retains = getRetainsAnnot(implUses(idx))
-        if isEmptyRetainsAnnot(retains) then mods
-        else mods.withAddedAnnotation(retains)
-      else mods
+    /** If there is a uses clause, collect the references with matching `initially`
+     *  and, if there are some, turn them to a @retains annotation and add it to `mods`.
+      */
+    def addImplUse(mods: Modifiers, initially: Boolean): Modifiers =
+      val uses = implUses.collect:
+        case UseRef(ref, `initially`) => ref
+      if uses.isEmpty then mods
+      else mods.withAddedAnnotation(makeRetainsAnnot(uses, tpnme.retains))
 
     def decompose(ddef: Tree): DefDef = ddef match {
       case meth: DefDef => meth
@@ -771,7 +768,7 @@ object desugar {
         derived.withAnnotations(Nil)
 
     val constr = cpy.DefDef(constr1)(paramss = joinParams(constrTparams, constrVparamss))
-      .withMods(addImplUse(constr1.mods, 1))
+      .withMods(addImplUse(constr1.mods, initially = true))
 
     if enumTParams.nonEmpty then
       defaultGetters = defaultGetters.map:
@@ -1132,7 +1129,7 @@ object desugar {
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
           newBody)
-      ).withMods(addImplUse(classMods, 0))
+      ).withMods(addImplUse(classMods, initially = false))
     }
 
     // install the watch on classTycon

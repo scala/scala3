@@ -325,10 +325,10 @@ def test(): Unit =
 ```
 Here, the initialization of `D` accesses the capability `out`. Therefore, the function value `() => D()` has type `() ->{out} D`.
 
-The capabilities accessed during initialization of a class can be declared in the class with a `uses_init` clause, like this:
+The capabilities accessed during initialization of a class can be declared in the class with a `uses` clause, where each accessed capability is followed by `initially`, like this:
 
 ```scala sc-compile-with:classes-external-context
-class D() uses_init out:
+class D() uses out initially:
   val str: String =
     out.println("str was initialized")
     "abc"
@@ -338,17 +338,33 @@ def test(): Unit =
   ()
 //}
 ```
-A `uses_init` clause must be given if a class that is visible in other compilation units accesses capabilities during initialization. Like for `uses` clauses, this is to support separate compilation where we need to know the use set of a class instance creation without analyzing the internals of the class.
+If a class uses a capability initially in its constructor and also retains it for further
+use in the created instance, the capability appears twice in the `uses` clause, once with `initially`
+and once without.
+
+```scala sc-compile-with:classes-external-context
+class D() uses out initially, out:
+  val str: String =
+    out.println("str was initialized")
+    "abc"
+  def print() = out.println(str)
+//{
+def test(): Unit =
+  val _: () ->{out} D^{out} = () => D()
+  ()
+//}
+```
+A `uses` clause must be given if a class that is visible in other compilation units accesses capabilities during initialization. Like for regular `uses` clauses, this is to support separate compilation where we need to know the use set of a class instance creation without analyzing the internals of the class.
 
 **Syntax**
 
-`uses` clauses come after `extends` and `derives` clauses. `uses_init` clauses come after `uses` clauses.
+A `uses` clause comes after `extends` and `derives` clauses.
 
 ```
 InheritClauses    ::=  [‘extends’ ConstrApps]
                        [‘derives’ QualId {‘,’ QualId}]
-                       [‘uses’ CaptureRef {‘,’ CaptureRef}]
-                       [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
+                       [‘uses’ UseRef {‘,’ UseRef}]
+UseRef            ::=  CaptureRef [‘initially’]
 ```
 
 
