@@ -13,8 +13,8 @@ package grandParentWithArgs:
     def foo(): T = x
     def foooo(): T = y
 
-  inline trait Parent[T, U](x: T, z: U) extends GrandParent[U]:
-    def bar(a: T) = (a, x, y)
+  inline trait Parent[T, U](w: T, z: U) extends GrandParent[U]:
+    def bar(a: T) = (a, w, y)
 
   class C extends Parent("Hello", 1234), GrandParent(5678, 9)
 
