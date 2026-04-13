@@ -110,7 +110,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
         case EmptyTree => ()
         case PackageDef(_, stats) => stats.foreach(genClassDefs)
         case ValDef(_, _, _) => () // module val not emitted
-        case td: TypeDef => frontendAccess.frontendSynch(genClassDef(td))
+        case td: TypeDef => genClassDef(td)
       }
 
     genClassDefs(ctx.compilationUnit.tpdTree)

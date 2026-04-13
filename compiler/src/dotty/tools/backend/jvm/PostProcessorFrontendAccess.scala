@@ -19,7 +19,7 @@ final class PostProcessorFrontendAccess(val ctx: Context) {
 
   private val frontendLock: AnyRef = new Object()
 
-  def frontendSynch[T](x: => T): T = frontendLock.synchronized(x)
+  private[PostProcessorFrontendAccess] def frontendSynch[T](x: => T): T = frontendLock.synchronized(x)
 
   def perRunLazy[T](init: => T): Lazy[T] = new SynchronizedLazy(this, init)
 }
