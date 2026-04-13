@@ -154,7 +154,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
             case POS => () // nothing
             case NEG => bc.neg(resKind)
             case NOT => bc.genPrimitiveNot(resKind)
-            case _ => abort(s"Unknown unary operation: ${fun.symbol.showFullName} code: $code")
+            case _ => throw new AssertionError(s"Unknown unary operation: ${fun.symbol.showFullName} code: $code")
           }
 
         // binary operation
@@ -183,11 +183,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
 
             case LSL | LSR | ASR => bc.genPrimitiveShift(code, resKind)
 
-            case _                   => abort(s"Unknown primitive: ${fun.symbol}[$code]")
+            case _                   => throw new AssertionError(s"Unknown primitive: ${fun.symbol}[$code]")
           }
 
         case _ =>
-          abort(s"Too many arguments for primitive function: $tree")
+          throw new AssertionError(s"Too many arguments for primitive function: $tree")
       }
       lineNumber(tree)
       resKind
@@ -200,7 +200,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       import ScalaPrimitivesOps.*
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
-      val elementType = bTypes.typeOfArrayOp.getOrElse[BType](code, abort(s"Unknown operation on arrays: $tree code: $code"))
+      val elementType = bTypes.typeOfArrayOp.getOrElse[BType](code, throw new AssertionError(s"Unknown operation on arrays: $tree code: $code"))
 
       var generatedType = expectedType
 
@@ -305,7 +305,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         genCoercion(code)
         coercionTo(code)
       }
-      else abort(
+      else throw new AssertionError(
         s"Primitive operation not handled yet: ${sym.showFullName}(${fun.symbol.name}) at: ${tree.span}"
       )
     }
@@ -369,7 +369,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
           generatedDest = LoadDestination.Throw
 
         case New(tpt) =>
-          abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
+          throw new AssertionError(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
                 "  Call was genLoad" + ((tree, expectedType)))
 
         case t @ Closure(env, call, tpt) =>
@@ -494,7 +494,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         case t: TypeApply => // dotty specific
           generatedType = genTypeApply(t)
 
-        case _ => abort(s"Unexpected tree in genLoad: $tree/${tree.getClass} at: ${tree.span}")
+        case _ => throw new AssertionError(s"Unexpected tree in genLoad: $tree/${tree.getClass} at: ${tree.span}")
       }
 
       // emit conversion and send to the right destination
@@ -613,7 +613,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
               mnode.visitLdcInsn("<type name too long>")
               report.error("Type name is too long for the JVM", pos)
 
-        case _ => abort(s"Unknown constant value: $const")
+        case _ => throw new AssertionError(s"Unknown constant value: $const")
       }
     }
 
@@ -711,7 +711,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         val cast =
           if (sym == defn.Any_isInstanceOf) false
           else if (sym == defn.Any_asInstanceOf) true
-          else abort(s"Unexpected type application $fun[sym: ${sym.showFullName}] in: $t")
+          else throw new AssertionError(s"Unexpected type application $fun[sym: ${sym.showFullName}] in: $t")
         val l = tpeTK(obj)
         val r = tpeTK(targs.head)
         genLoadQualifier(fun)
@@ -730,7 +730,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
           }
         }
         else if (r.isPrimitive && cast) {
-          abort(s"Erasure should have added an unboxing operation to prevent this cast. Tree: $t")
+          throw new AssertionError(s"Erasure should have added an unboxing operation to prevent this cast. Tree: $t")
         }
         else if (r.isPrimitive) {
           bc.isInstance(bTypes.boxedClassOfPrimitive(r.asPrimitiveBType))
@@ -836,7 +836,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
               genCallMethod(ctor, InvokeStyle.Special, app)
 
             case _ =>
-              abort(s"Cannot instantiate $tpt of kind: $generatedType")
+              throw new AssertionError(s"Cannot instantiate $tpt of kind: $generatedType")
           }
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
@@ -1011,10 +1011,10 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
                   flatKeys ::= value.intValue
                   targets  ::= switchBlockPoint
                 case _ =>
-                  abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
+                  throw new AssertionError(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
               }
             case _ =>
-              abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
+              throw new AssertionError(s"Invalid pattern in Match node: $tree at: ${tree.span}")
           }
         }
 
@@ -1077,11 +1077,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
                     Some(newCase :: existingCasesOpt.getOrElse(Nil))
                   }
                 case _ =>
-                  abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
+                  throw new AssertionError(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
               }
 
             case _ =>
-              abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
+              throw new AssertionError(s"Invalid pattern in Match node: $tree at: ${tree.span}")
           }
         }
 
@@ -1260,7 +1260,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
               assert(t.symbol.owner == this.claszSymbol)
               UNIT
           }
-        case _                    => abort(s"Unknown qualifier $tree")
+        case _                    => throw new AssertionError(s"Unknown qualifier $tree")
       }
     }
 
@@ -1285,8 +1285,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
       val module = (
         if (!tree.symbol.is(PackageClass)) tree.symbol
         else tree.symbol.info.member(nme.PACKAGE).symbol match {
-          case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
-          case s        => abort(s"SI-5604: found package class where package object expected: $tree")
+          case NoSymbol => throw new AssertionError(s"SI-5604: Cannot use package as value: $tree")
+          case s        => throw new AssertionError(s"SI-5604: found package class where package object expected: $tree")
         }
       )
       lineNumber(tree)
@@ -1807,8 +1807,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives)(using ctx: Context) exte
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
         samMethods match {
           case x :: Nil => x.symbol
-          case Nil => abort(s"${functionalInterface.show} is not a functional interface. It doesn't have abstract methods")
-          case xs => abort(s"${functionalInterface.show} is not a functional interface. " +
+          case Nil => throw new AssertionError(s"${functionalInterface.show} is not a functional interface. It doesn't have abstract methods")
+          case xs => throw new AssertionError(s"${functionalInterface.show} is not a functional interface. " +
             s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")
         }
       }

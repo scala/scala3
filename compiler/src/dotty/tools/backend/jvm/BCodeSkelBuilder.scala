@@ -163,8 +163,6 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
 
     def tpeTK(tree: Tree): BType = { bTypeLoader.toTypeKind(tree.tpe) }
 
-    override def getCurrentCUnit(): CompilationUnit = { cunit }
-
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
     def genPlainClass(cd0: TypeDef) = (cd0: @unchecked) match {
@@ -481,7 +479,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     def findJumpDest(labelSym: Symbol): (BType, LoadDestination) = {
       assert(labelSym.is(Label), s"trying to map a non-label symbol to an asm.Label, at: ${labelSym.span}")
       jumpDest.getOrElse(labelSym, {
-        abort(s"unknown label symbol, for label at: ${labelSym.span}")
+        throw new AssertionError(s"unknown label symbol, for label at: ${labelSym.span}")
       })
     }
 
@@ -730,7 +728,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
             gen(tree.constr)
           tree.body.foreach(gen)
 
-        case _ => abort(s"Illegal tree in gen: $tree")
+        case _ => throw new AssertionError(s"Illegal tree in gen: $tree")
       }
     }
 

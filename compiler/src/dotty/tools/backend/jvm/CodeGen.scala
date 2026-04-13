@@ -32,7 +32,7 @@ import opt.CallGraph
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
               val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
               val generatedClassHandler: GeneratedClassHandler)(using Context) {
-  private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+  private class Impl(using Context) extends BCodeHelpers, BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
     val bTypeLoader: BTypeLoader = CodeGen.this.bTypeLoader
     val bTypes: WellKnownBTypes = CodeGen.this.bTypes
 
