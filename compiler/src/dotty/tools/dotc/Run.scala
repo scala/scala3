@@ -38,6 +38,7 @@ import Run.Progress
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
+import dotty.tools.io.FileWriters
 import dotty.tools.dotc.util.chaining.*
 import java.util.{Timer, TimerTask}
 
@@ -288,6 +289,26 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     _asyncTasty = Some(async)
     () => async.cancel()
 
+  /** Wait for async TASTy operations (including Zinc callbacks like
+   *  `apiPhaseCompleted`/`dependencyPhaseCompleted`) to complete and relay any
+   *  buffered reports. This must happen before we return to Zinc, which calls
+   *  `getCycleResultOnce` immediately after. See scala/scala3#25774.
+   */
+  private def syncAsyncTasty()(using Context): Unit =
+    for
+      async <- _asyncTasty
+      bufferedReporter <- async.sync()
+      report <- bufferedReporter.resetReports()
+    do
+      import reporting.Diagnostic
+      report match
+        case FileWriters.Report.Error(msg, pos) =>
+          ctx.reporter.report(Diagnostic.Error(msg(ctx), pos))
+        case FileWriters.Report.Warning(msg, pos) =>
+          ctx.reporter.report(Diagnostic.Warning(msg(ctx), pos))
+        case FileWriters.Report.Log(msg) =>
+          ctx.reporter.report(Diagnostic.Info(msg, NoSourcePosition))
+
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
    */
@@ -419,11 +440,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
     cancelAsyncTasty()
-    // Wait for async TASTy operations (including Zinc callbacks like
-    // apiPhaseCompleted/dependencyPhaseCompleted) to complete. This must happen
-    // before we return to Zinc, which calls getCycleResultOnce immediately after.
-    // See https://github.com/scala/scala3/issues/25774
-    _asyncTasty.foreach(_.sync())
+    syncAsyncTasty()
 
     suppressions.runFinished()
     ctx.reporter.finalizeReporting()
