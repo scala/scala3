@@ -43,6 +43,14 @@ class SpecializeInlineTraits extends MacroTransform, SymTransformer {
         val tree2 = if Inlines.needsInlining(tree1) then Inlines.inlineParentInlineTraits(tree1) else tree1
         super.transform(tree2) // We may need to inline inline traits into the bodies of methods defined inside inline traits.
       case tree: TypeDef if Inlines.needsInlining(tree) =>
+        if tree.symbol.isAllOf(Trait, butNot = Inline) then
+          val problemParents = tree.symbol.info.parents.filter(
+            p => p.classSymbol.isInlineTrait 
+                 && p.classSymbol.primaryConstructor.paramSymss.exists(paramList => paramList.nonEmpty && paramList.head.isTerm)
+          )
+          problemParents.foreach( p =>
+            report.error(s"Only parameterless inline traits may be extended by ordinary traits. Make ${tree.symbol} inline or remove inline ${p.typeSymbol}'s parameter list.", tree.srcPos)
+          )
         val tree1 = super.transform(tree).asInstanceOf[TypeDef]
         if tree1.tpe.isError then tree1
         else if tree1.symbol.isInlineTrait then 

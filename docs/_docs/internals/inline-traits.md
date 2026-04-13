@@ -34,7 +34,7 @@ use primitive types instead of `Object`. These can be used in situations where t
 ## Solution
 An inline trait is defined just like a normal trait, but with an `inline` modifier.
 
-Inline traits may be extended by objects, classes or other inline traits, *but not by ordinary traits*.
+Inline traits may be freely extended by objects, classes or other inline traits. An inline trait may also be extended by an ordinary trait, but only if the inline trait does not take parameters [***].
 
 The following is an example of the use of an `inline trait`.
 
@@ -219,6 +219,24 @@ inline trait Counter extends Iterator:
 Narrowing `current` to the type of the initializer here would give it type `0`. This makes the increment operation in `next()` illegal.
 
 - Inline methods defined inside an inline trait are inlined directly when the body is inlined. This means that they do not exist in the inline receivers. They are then deleted from the inline trait.
+
+[***] Why?
+Consider:
+```scala
+inline trait A[T](x: T):
+    val y = x
+trait B extends A[Int]
+class C extends A[Int](10), B
+```
+After inlining, `B.y` is defined in terms of `B.A$$x` (the inlined copy of the parameter accessor of `x`), but this is undefined as we don't have the parameter value in `B`.
+In `C` this is not a problem as we have the parameter value `10`. Even if we try to provide the value by leaving `A$$x` abstract and overriding in `C`
+this will not work as `B.A$$x` will still be undefined.
+
+Therefore there is no case in which this could be useful, and it is likely to cause confusion, so we ban it. 
+However, there is a reasonable case for `trait extends inline trait` in general, to control the inlining and reduce code duplication so we allow
+this pattern if the inline trait has no parameters.
+
+Note that this restriction does not block `inline trait extends trait` or `inline trait extends class` which are allowed without restriction.
 
 ## Benefits of inline traits
 We can now do the following with no boxing and unboxing:
