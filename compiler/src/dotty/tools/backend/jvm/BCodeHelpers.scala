@@ -252,10 +252,10 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
           // see http://www.scala-lang.org/sid/10 (Storage of pickled Scala signatures in class files)
           // also JVMS Sec. 4.7.16.1 The element_value structure and JVMS Sec. 4.4.7 The CONSTANT_Utf8_info Structure.
           if (sb.fitsInOneString) {
-            av.visit(name, BCodeAsmCommon.strEncode(sb))
+            av.visit(name, BCodeUtils.strEncode(sb))
           } else {
             val arrAnnotV: asm.AnnotationVisitor = av.visitArray(name)
-            for(arg <- BCodeAsmCommon.arrEncode(sb)) { arrAnnotV.visit(name, arg) }
+            for(arg <- BCodeUtils.arrEncode(sb)) { arrAnnotV.visit(name, arg) }
             arrAnnotV.visitEnd()
           }          // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
   */

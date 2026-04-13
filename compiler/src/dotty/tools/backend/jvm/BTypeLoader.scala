@@ -4,7 +4,7 @@ package jvm
 
 import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
-import dotty.tools.backend.jvm.BCodeAsmCommon.isAnonymousOrLocalClass
+import dotty.tools.backend.jvm.BCodeUtils.isAnonymousOrLocalClass
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, requiredClass}
@@ -24,7 +24,7 @@ import scala.tools.asm.tree.ClassNode
 
 class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader]) {
   // It's OK to cache BType-related fields because all Contexts that go through here share their defns
-  
+
   // Concurrent maps because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
   private val classBTypeCache: ConcurrentHashMap[InternalName, ClassBType] =
@@ -42,7 +42,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
   private var srNothingRefLazy: ClassBType | Null = null
   private var srNullRefLazy: ClassBType | Null = null
 
-  
+
   def ObjectRef(using Context): ClassBType =
     if objectRefLazy eq null then
       objectRefLazy = classBTypeFromSymbol(defn.ObjectClass)

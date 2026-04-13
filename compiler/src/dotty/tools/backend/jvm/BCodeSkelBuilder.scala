@@ -354,8 +354,8 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      BCodeAsmCommon.enclosingMethodAttribute(claszSymbol, bTypeLoader.internalName, bTypeLoader.asmMethodType(_).descriptor) match {
-        case Some(BCodeAsmCommon.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
+      BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.internalName, bTypeLoader.asmMethodType(_).descriptor) match {
+        case Some(BCodeUtils.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
           cnode.visitOuterClass(className, methodName, methodDescriptor)
         case _ => ()
       }
