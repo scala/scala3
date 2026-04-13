@@ -3,12 +3,9 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-import scala.annotation.threadUnsafe
 import scala.tools.asm
 import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
-import scala.compiletime.uninitialized
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations.*
@@ -551,9 +548,6 @@ trait BCodeHelpers extends BCodeIdiomatic {
   /* builder of mirror classes */
   class JMirrorBuilder extends JCommonBuilder {
 
-    private var cunit: CompilationUnit = uninitialized
-    def getCurrentCUnit(): CompilationUnit = cunit
-
     /* Generate a mirror class for a top-level module. A mirror class is a class
      *  containing only static methods that forward to the corresponding method
      *  on the MODULE instance of the given Scala object.  It will only be
@@ -562,10 +556,9 @@ trait BCodeHelpers extends BCodeIdiomatic {
      *
      *  must-single-thread
      */
-    def genMirrorClass(moduleClass: Symbol, cunit: CompilationUnit)(using Context): asm.tree.ClassNode = {
+    def genMirrorClass(moduleClass: Symbol)(using Context): asm.tree.ClassNode = {
       assert(moduleClass.is(ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
-      this.cunit = cunit
       val bType      = bTypeLoader.mirrorClassBTypeFromSymbol(moduleClass)
       val moduleName = bTypeLoader.internalName(moduleClass) // + "$"
       val mirrorName = bType.internalName
@@ -583,8 +576,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       )
 
       if (BackendUtils.emitSource) {
-        mirrorClass.visitSource("" + cunit.source.file.name,
-                                null /* SourceDebugExtension */)
+        mirrorClass.visitSource("" + ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
       val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Module)) moduleClass.companionClass else moduleClass.companionModule)

@@ -1,15 +1,11 @@
 package dotty.tools.backend.jvm
 
 
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-import dotty.tools.dotc.interfaces
-import dotty.tools.dotc.report
-
-import java.util.Optional
+import dotty.tools.dotc.{CompilationUnit, interfaces, report, util}
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.core.*
 import Contexts.*
@@ -22,7 +18,6 @@ import dotty.tools.dotc.core.tasty.TastyUnpickler
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.util
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.util.NoSourcePosition
 import SymbolUtils.given
@@ -62,7 +57,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
         val mainClassNode = genClass(cd)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
-          else if sym.companionClass == NoSymbol then genMirrorClass(sym, ctx.compilationUnit)
+          else if sym.companionClass == NoSymbol then mirrorCodeGen.genMirrorClass(sym)
           else
             report.log(s"No mirror class for module with linked class: ${sym.fullName}", NoSourcePosition)
             null
@@ -146,10 +141,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
     val b = new impl.SyncAndTryBuilder
     b.genPlainClass(cd)
     b.cnode
-  }
-
-  private def genMirrorClass(classSym: Symbol, unit: CompilationUnit)(using Context): ClassNode = {
-    mirrorCodeGen.genMirrorClass(classSym, unit)
   }
 
 }

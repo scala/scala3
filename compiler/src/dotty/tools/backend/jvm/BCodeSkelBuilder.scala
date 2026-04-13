@@ -8,7 +8,6 @@ import scala.collection.{immutable, mutable}
 import scala.tools.asm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeTypeMap
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
