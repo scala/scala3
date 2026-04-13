@@ -197,8 +197,7 @@ object Capabilities:
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useLocalCapLevels && !CCState.collapseLocalCaps then
-        val refOwner = ref.levelOwner
-        ccOwner.isContainedIn(refOwner)
+        ccOwner.isContainedIn(ref.levelOwner.widenOwner(skipModules = true))
         || classifier.derivesFrom(defn.Caps_Unscoped)
       else ref.core match
         case ResultCap(_) | _: ParamRef => false
@@ -558,27 +557,20 @@ object Capabilities:
 
     final def ccOwner(using Context): Symbol = computeOwner(mapUnscoped = false)
 
-    final def visibility(using Context): Symbol = this match
-      case self: LocalCap => adjustOwner(computeOwner(mapUnscoped = true))
-      case _ =>
-        val vis = computeOwner(mapUnscoped = true)
-        if vis.is(Param) then vis.owner else vis
-
     /** The symbol that represents the level closest-enclosing ccOwner.
      *  Symbols representing levels are
-     *   - class symbols, but not inner (non-static) module classes
+     *   - class symbols
      *   - method symbols, but not accessors or constructors
      *  For Unscoped LocalCaps the level owner is the top-level class.
      */
     final def levelOwner(using Context): Symbol =
-      adjustOwner(computeOwner(mapUnscoped = true))
+      computeOwner(mapUnscoped = true).widenOwner(skipModules = false)
 
-    final def adjustOwner(owner: Symbol)(using Context): Symbol =
-      if !owner.exists
-        || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
-        || owner.is(Flags.Method, butNot = Flags.Accessor)
-      then owner
-      else adjustOwner(owner.owner)
+    final def visibility(using Context): Symbol =
+      val vis = computeOwner(mapUnscoped = true)
+      this match
+        case self: LocalCap => vis.widenOwner(skipModules = false)
+        case _ => if vis.is(Param) then vis.owner else vis
 
     /** Tests whether the capability derives from capability class `cls`. */
     def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = this match

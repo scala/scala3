@@ -91,6 +91,17 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and
       case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), CaptureDefs.captureRootName) => true
       case _ => false
 
+  // Recognizes `caps.fresh` — the existentially-bound capability for function type
+  // results (see scoped-capabilities.md). Analogous to `isCaptureRoot` for `caps.cap`.
+  // Matches all prefix variants the compiler may produce in TASTY.
+  def isFreshCap: Boolean =
+    import qctx.reflect.*
+    tpe match
+      case TermRef(ThisType(TypeRef(NoPrefix(), "caps")), CaptureDefs.freshCapName) => true
+      case TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "caps"), CaptureDefs.freshCapName) => true
+      case TermRef(TermRef(TermRef(TermRef(NoPrefix(), "_root_"), "scala"), "caps"), CaptureDefs.freshCapName) => true
+      case _ => false
+
   // NOTE: There's something horribly broken with Symbols, and we can't rely on tests like .isContextFunctionType either,
   // so we do these lame string comparisons instead.
   def isImpureFunction1: Boolean = tpe.typeSymbol.fullName == "scala.ImpureFunction1"
@@ -215,6 +226,16 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
       case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false
   if traverse(typ0) then Some(buffer.toList) else None
 end decomposeCaptureRefs
+
+def retainedCaptureRefs(using qctx: Quotes)(annot: qctx.reflect.Term): Option[List[qctx.reflect.TypeRepr]] =
+  import qctx.reflect._
+  if annot.tpe.typeSymbol == CaptureDefs.retainsCap then
+    Some(CaptureDefs.captureRoot.termRef :: Nil)
+  else if annot.tpe.typeSymbol.isRetains then
+    annot.tpe.typeArgs match
+      case CaptureSetType(refs) :: Nil => Some(refs)
+      case _ => None
+  else None
 
 object CaptureSetType:
   def unapply(using qctx: Quotes)(tt: qctx.reflect.TypeRepr): Option[List[qctx.reflect.TypeRepr]] = decomposeCaptureRefs(tt)

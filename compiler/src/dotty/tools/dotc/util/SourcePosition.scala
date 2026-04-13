@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package util
 
+import scala.annotation.tailrec
 
 import printing.{Showable, Printer}
 import printing.Texts.*
@@ -9,8 +10,11 @@ import core.Contexts.Context
 import Spans.{Span, NoSpan}
 import scala.annotation.internal.sharable
 
-/** A source position is comprised of a span and a source file */
-case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition = NoSourcePosition)
+/** A source position is comprised of a span and a source file.
+ *
+ *  `outer` must not be `NoSourcePosition`. It should be `null` instead (the default).
+ */
+case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition | Null = null)
 extends SrcPos, interfaces.SourcePosition, Showable:
 
   def sourcePos(using Context) = this
@@ -65,8 +69,8 @@ extends SrcPos, interfaces.SourcePosition, Showable:
   def focus   : SourcePosition = withSpan(span.focus)
   def toSynthetic: SourcePosition = withSpan(span.toSynthetic)
 
-  def outermost: SourcePosition =
-    if (outer eq null) || outer == NoSourcePosition then this else outer.outermost
+  @tailrec final def outermost: SourcePosition =
+    if outer == null then this else outer.outermost
 
   /** Inner most position that is contained within the `outermost` position.
    *  Most precise position that comes from the call site.
@@ -74,7 +78,7 @@ extends SrcPos, interfaces.SourcePosition, Showable:
   def nonInlined: SourcePosition = {
     val om = outermost
     def rec(self: SourcePosition): SourcePosition =
-      if om.contains(self) then self else rec(self.outer)
+      if om.contains(self) || self.outer == null then self else rec(self.outer)
     rec(this)
   }
 

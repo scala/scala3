@@ -27,12 +27,22 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
+  // Temporary fix for https://github.com/scala/scala3/issues/25116
+  // until `pprint` special-cases these.
+  // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
+  private val forcedToStringClasses = Set(
+    "scala.collection.immutable.LazyList",
+    "scala.collection.immutable.LazyListIterable",
+    "scala.collection.mutable.StringBuilder" // not technically needed but quite ugly to print as an iterable of characters
+  )
+
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
     def fallback() =
       pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
         .plainText
     try
+      if value != null && forcedToStringClasses(value.getClass.getName) then return value.toString
       // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
       // however PPrint works by runtime type testing to deconstruct values. This is
       // sensitive to which classloader instantiates the object under test, i.e.
@@ -62,8 +72,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       )
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
-      case ex: ClassNotFoundException => fallback()
-      case ex: NoSuchMethodException  => fallback()
+      // Only use the fallback when not debugging, so we catch problems in unit tests
+      case ex: ClassNotFoundException if !ctx.debug => fallback()
+      case ex: NoSuchMethodException if !ctx.debug => fallback()
   }
 
 

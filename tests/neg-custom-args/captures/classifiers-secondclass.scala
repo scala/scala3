@@ -38,8 +38,8 @@ object Levels:
       f.read() // ok
       parReduce(1 to 1000): (a, b) =>
         a * b * f.read()    // ok
-      parReduce(1 to 1000): (a, b) => // error
-        f.write(42)         // the error stems from here
+      parReduce(1 to 1000): (a, b) =>
+        f.write(42)         // error, the error stems from here
         a + b + f.read()    // ok
       f.write(42)           // ok, unrestricted access to file
 
@@ -50,12 +50,11 @@ object Levels:
         g.read() // ok
         parReduce(1 to 1000): (a, b) =>
           a * b * f.read() + g.read() // ok
-        parReduce(1 to 1000): (a, b) => // error
-          f.write(42)         // the error stems from here
+        parReduce(1 to 1000): (a, b) =>
+          f.write(42)         // error, the error stems from here
           a + b + f.read() + g.read() // ok
-        parReduce(1 to 1000): (a, b) => // error
-          g.write(42)         // the error stems from here
+        parReduce(1 to 1000): (a, b) =>
+          g.write(42)         // error, the error stems from here
           0
         f.write(42)           // ok, unrestricted access to file
         g.write(42)           // ok, unrestricted access to file
-

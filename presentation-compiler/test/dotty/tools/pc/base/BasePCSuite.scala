@@ -42,7 +42,7 @@ abstract class BasePCSuite extends PcAssertions:
   )
 
   lazy val presentationCompiler: PresentationCompiler =
-    val myclasspath: Seq[Path] = TestResources.classpath
+    val myclasspath: Seq[Path] = TestResources.classpath ++ additionalClasspath
     val scalacOpts = scalacOptions(myclasspath)
     val search = new MockSymbolSearch(
       testingWorkspaceSearch,
@@ -80,6 +80,7 @@ abstract class BasePCSuite extends PcAssertions:
 
   protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
     immutable.Seq.empty
+  protected def additionalClasspath: Seq[Path] = Nil
   protected def mockEntries: MockEntries = new MockEntries {}
 
   def params(code: String, filename: String = "A.scala"): (String, Int) =

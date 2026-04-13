@@ -14,6 +14,7 @@ import Names.*, StdNames.*, ast.Trees.*, ast.{tpd, untpd}
 import Symbols.*, Contexts.*
 import util.Spans.*
 import Parsers.Parser
+import dotty.tools.dotc.ast.tpd.TreeOps
 
 /** This class builds instance of `Tree` that represent XML.
  *
@@ -69,7 +70,13 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   // convenience methods
   private def LL[A](x: A*): List[List[A]] = List(x.toList)
-  private def const(x: Any) = Literal(Constant(x))
+  // Changing type to String causes a compiler crash in pickler phase,
+  // so we leave it as Any for now.
+  private def const(x: Any) =
+    val lit = Literal(Constant(x))
+    if ctx.explicitNulls && x == null
+    then TypeApply(Select(lit, nme.asInstanceOf_), TypeTree(defn.StringType) :: Nil)
+    else lit
   private def wild                          = Ident(nme.WILDCARD)
   private def wildStar                      = Ident(tpnme.WILDCARD_STAR)
   private def _scala(name: Name)            = scalaDot(name)

@@ -142,7 +142,8 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends Inspector:
     )
     "scala" -> aM.copy(
       kind = Kind.Class(Nil, Nil),
-      members = objectMembers
+      members = objectMembers,
+      modifiers = defn.ObjectClass.getExtraModifiers()
     )
 
 object ScaladocTastyInspector:
@@ -169,7 +170,12 @@ object ScaladocTastyInspector:
         val withNewMembers = p1.withNewMembers(p2.members)
         if withNewMembers.docs.isEmpty then withNewMembers.withDocs(p2.docs) else withNewMembers
       )
-      basePck.withMembers((basePck.members ++ rest).sortBy(_.name))
+      // Deduplicate members coming from different parser instances by a stable key:
+      // (location, member fullName, kind name).
+      val combined = basePck.members ++ rest
+      val keyed = combined.groupBy(m => (m.dri.location, m.fullName, m.kind.name))
+      val uniqueMembers = keyed.values.map(g => g.find(_.docs.nonEmpty).getOrElse(g.head)).toList.sortBy(_.name)
+      basePck.withMembers(uniqueMembers)
     }.toList -> inspector.rootDoc
 
 end ScaladocTastyInspector
@@ -194,7 +200,6 @@ case class TastyParser(
     defn.AnyClass,
     defn.MatchableClass,
     defn.ScalaPackage.typeMember("AnyKind"),
-    defn.AnyValClass,
     defn.NullClass,
     defn.NothingClass,
     defn.ScalaPackage.typeMember("Singleton"),

@@ -901,7 +901,7 @@ object Regex {
   private[matching] trait Replacement {
     protected def matcher: Matcher
 
-    private val sb = new java.lang.StringBuffer // StringBuffer for JDK 8 compatibility
+    private val sb = new java.lang.StringBuilder
 
     // Appends the remaining input and returns the result text.
     def replaced = {

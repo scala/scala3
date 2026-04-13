@@ -369,6 +369,7 @@ object Contexts {
 
     /** Is current phase after TyperPhase? */
     final def isAfterTyper = base.isAfterTyper(phase)
+    final def isAfterInlining = base.isAfterInlining(phase)
     final def isTyper = base.isTyper(phase)
 
     /** Is this a context for the members of a class definition? */
@@ -442,6 +443,14 @@ object Contexts {
         .fresh
         .setScope(this.scope)
     }
+
+    /** Is this a super call context?
+     *  This is the case if we are in a primary constructor and
+     *  the outer context has as owner the owner of the enclosing class.
+     *  The enclosing class is `owner.owner`, hence `outer.owner == owner.owner.owner`.
+     */
+    def isSuperCallContext: Boolean =
+      owner.isPrimaryConstructor && outer.owner == owner.owner.owner
 
     /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
@@ -952,6 +961,7 @@ object Contexts {
       // In non-interactive mode, always create a fresh platform to preserve original behavior.
       if _platform == null || !ctx.mode.is(Mode.Interactive) then
         _platform = newPlatform
+      platform.init()
       definitions.init()
     }
 

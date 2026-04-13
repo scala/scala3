@@ -666,8 +666,25 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  foo(4@@2)
         |}
       """.stripMargin,
-      """|conv[T](e: T): Text[T]
-         |        ^^^^
+      """|foo[T](e: Text[T]): T
+         |       ^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `implicit-conv1` =
+    check(
+      """
+        |class Foo
+        |class Bar
+        |object Baz {
+        |  implicit def foo2bar(foo: Foo): Bar = ???
+        |
+        |  def takesBar(bar: Bar) = ()
+        |  takesBar(new Fo@@o)
+        |}
+        |""".stripMargin,
+      """|takesBar(bar: Bar): Unit
+         |         ^^^^^^^^
          |""".stripMargin
     )
 

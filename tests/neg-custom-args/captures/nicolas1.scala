@@ -7,5 +7,5 @@ def nextInt(max: Int): Rand ?-> Int =
   r ?=> r.range(0, max)
 
 def oneOf[A](head: Rand ?=> A, tail: (Rand ?=> A)*): Rand ?->{head} A =
-  val all: Seq[Rand ?->{head, tail*} A] = head +: tail // error
-  all(nextInt(all.length))
+  val all: Seq[Rand ?->{head, tail*} A] = head +: tail
+  all(nextInt(all.length)) // error

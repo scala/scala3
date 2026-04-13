@@ -73,7 +73,7 @@ abstract class AccessProxies {
 
     /** The name of the accessor for definition with given `name` in given `site` */
     def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName
-    def needsAccessor(sym: Symbol)(using Context): Boolean
+    def needsAccessor(refTree: RefTree | Apply | TypeApply)(using Context): Boolean
 
     def ifNoHost(reference: RefTree)(using Context): Tree = {
       assert(false, i"no host found for $reference with ${reference.symbol.showLocated} from ${ctx.owner}")
@@ -155,7 +155,7 @@ abstract class AccessProxies {
 
     /** Replace tree with a reference to an accessor if needed */
     def accessorIfNeeded(tree: Tree)(using Context): Tree = tree match {
-      case tree: RefTree if needsAccessor(tree.symbol) =>
+      case tree: RefTree if needsAccessor(tree) =>
         if (tree.symbol.isConstructor) {
           report.error("Cannot use private constructors in inline methods. You can use @publicInBinary to make constructor accessible in inline methods.", tree.srcPos)
           tree // TODO: create a proper accessor for the private constructor

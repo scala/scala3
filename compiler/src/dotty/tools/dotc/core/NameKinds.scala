@@ -179,7 +179,7 @@ object NameKinds {
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
     def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
-      case DerivedName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
+      case DerivedName(underlying, info: this.NumberedInfo) if info.kind.tag == this.tag => Some((underlying, info.num))
       case _ => None
     }
     protected def skipSeparatorAndNum(name: SimpleName, separator: String): Int =

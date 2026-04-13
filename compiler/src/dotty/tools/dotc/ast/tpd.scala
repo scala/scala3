@@ -2,21 +2,19 @@ package dotty.tools
 package dotc
 package ast
 
-import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
-import typer.ProtoTypes
 import core.*
-import Scopes.newScope
-import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*, NameOps.*
-import Symbols.*, StdNames.*, Annotations.*, Trees.*, Symbols.*
-import Decorators.*, DenotTransformers.*
-import collection.{immutable, mutable}
-import util.{Property, SourceFile}
-import config.Printers.typr
-import NameKinds.{TempResultName, OuterSelectName}
-import typer.ConstFold
+import Annotations.*, Constants.*, Contexts.*, Decorators.*, DenotTransformers.*
+import Flags.*, NameKinds.{OuterSelectName, TempResultName}, NameOps.*, Names.*
+import Symbols.*, StdNames.*, Trees.*, Types.*
+import typer.{ConstFold, ProtoTypes}
+import transform.{Erasure, ExplicitOuter}
+import config.{Feature, Printers}
+import Printers.typr
+import util.{Property, SourceFile, Spans}
+import Spans.*
 
 import scala.annotation.tailrec
-import scala.collection.mutable.ListBuffer
+import scala.collection.{immutable, mutable}
 import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
@@ -276,10 +274,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         (rtp, tparams :: paramss)
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
-        val previousParamRefs: ListBuffer[TermRef] =
+        val previousParamRefs: mutable.ListBuffer[TermRef] =
           // It is ok to assign `null` here.
           // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
-          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
+          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: mutable.ListBuffer[TermRef] | Null).uncheckedNN
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
@@ -421,7 +419,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         if (head.isRef(defn.AnyClass)) defn.AnyRefType :: parents else head :: parents
       }
       else parents
-    val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1, coord = coord)
+    var flags = Synthetic | Final
+    if Feature.ccEnabled then flags |= CaptureChecked
+    val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, flags, parents1, coord = coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
     val cdef = ClassDef(cls, DefDef(constr), body(cls), Nil, adaptVarargs)
     Block(cdef :: Nil, New(cls.typeRef, Nil))
@@ -1239,7 +1239,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     inline def flattenedMapConserve(inline f: Tree => Tree): List[Tree] =
       @tailrec
-      def loop(mapped: ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree]): List[Tree] =
+      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree]): List[Tree] =
         if pending.isEmpty then
           if mapped == null then unchanged
           else mapped.prependToList(unchanged)
@@ -1250,7 +1250,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           if head1 eq head0 then
             loop(mapped, unchanged, pending.tail)
           else
-            val buf = if mapped == null then new ListBuffer[Tree] else mapped
+            val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
             var xc = unchanged
             while xc ne pending do
               buf += xc.head

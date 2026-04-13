@@ -23,7 +23,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
 
   val source = Source.fromFile(s"${BuildInfo.test_testcasesSourceRoot}/tests/$testName.scala")
 
-  val snippetsCount = source.getLines.filter(_.indexOf("```scala") != -1).size
+  val snippetsCount = source.getLines.filter(l => l.indexOf("```scala") != -1 && !l.contains("sc-hidden")).size
 
   def report(str: String) = s"""|In test $testName:
                                 |$str""".stripMargin

@@ -57,14 +57,21 @@ trait ClassPath {
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
-   * return source files, tasty files,.
+   * return source files or tasty files.
    *
    * This method is used by the classfile parser. When parsing a Java class, its own inner classes
    * are entered with a `ClassfileLoader` that parses the classfile returned by this method.
    * It is also used in the backend, by the inliner, to obtain the bytecode when inlining from the
    * classpath. It's also used by scalap.
    */
-  def findClassFile(className: String): Option[AbstractFile]
+  def findClassFile(className: String): Option[AbstractFile] =
+    findClassFileAndModuleFile(className, findModule = false).map(_._1)
+
+  /** Same as `findClassFile`, but also returns the corresponding module-info class file if there is any. */
+  def findClassFileAndModuleFile(className: String): Option[(AbstractFile, Option[AbstractFile])] =
+    findClassFileAndModuleFile(className, findModule = true)
+
+  def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])]
 
   def asClassPathStrings: Seq[String]
 

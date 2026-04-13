@@ -25,7 +25,7 @@ import vulpix.{TestConfiguration, TestFlags}
  *  and running scripted REPL tests with them on the claspath.
  */
 object ShadowingTests:
-  def classpath = TestConfiguration.basicClasspath + File.pathSeparator + shadowDir
+  def classpath = TestConfiguration.replClassPath + File.pathSeparator + shadowDir
   def options = ReplTest.commonOptions ++ Array("-classpath", classpath)
   def shadowDir = dir.toAbsolutePath.toString
 
@@ -59,7 +59,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
   /** Run a scripted REPL test with the compilation artifacts of `shadowed` on the classpath */
   def shadowedScriptedTest(name: String, shadowed: String, script: String): Unit =
     compileShadowed(shadowed)
-    testScript(name, script.linesIterator.toList)
+    testScript(name, script)
 
   /** Compile the given source text and output to the shadow dir on the classpath */
   private def compileShadowed(src: String): Unit =
@@ -99,13 +99,13 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |1 error found
          |
          |scala> new C(13).c
-         |val res0: Int = 13
+         |val res1: Int = 13
          |
          |scala> class C { val c = 42 }
          |// defined class C
          |
          |scala> new C().c
-         |val res1: Int = 42
+         |val res2: Int = 42
          |""".stripMargin
   )
 
@@ -124,7 +124,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |
          |scala> foo
          |val res0: Int = 3
-         |""".stripMargin.linesIterator.toList
+         |""".stripMargin
     )
 
     ShadowingTests.createSubDir("x")
@@ -135,7 +135,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |
          |scala> if (true) x else y
          |val res0: Int | String = 42
-         |""".stripMargin.linesIterator.toList
+         |""".stripMargin
     )
 
     ShadowingTests.createSubDir("util")
@@ -153,6 +153,6 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |scala> import util.Try
          |scala> new Try
          |val res0: Try = you've gotta try!
-         |""".stripMargin.linesIterator.toList
+         |""".stripMargin
     )
 end ShadowingTests

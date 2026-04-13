@@ -33,6 +33,13 @@ abstract class Lifter {
   /** The corresponding lifter for pass-by-name arguments */
   protected def exprLifter: Lifter = NoLift
 
+  private def lifterFor(paramType: Type): Lifter =
+    if paramType.isInstanceOf[ExprType] then exprLifter else this
+
+  /** Returns true if the argument would be lifted for the given parameter type. */
+  def wouldLift(arg: tpd.Tree, paramType: Type)(using Context): Boolean =
+    !paramType.hasAnnotation(defn.InlineParamAnnot) && !lifterFor(paramType).noLift(arg)
+
   /** The flags of a lifted definition */
   protected def liftedFlags: FlagSet = EmptyFlags
 
@@ -92,8 +99,7 @@ abstract class Lifter {
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map: (arg, name, tp) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
-            val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
-            lifter.liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
+            lifterFor(tp).liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }
@@ -174,7 +180,6 @@ object LiftImpure extends LiftImpure
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
-  override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
 
@@ -213,12 +218,6 @@ object LiftCoverage extends LiftImpure {
     val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
     tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
   }
-}
-
-/** Lift all impure or complex arguments to `def`s */
-object LiftToDefs extends LiftComplex {
-  override def liftedFlags: FlagSet = Method
-  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.DefDef = tpd.DefDef(sym, rhs)
 }
 
 /** Lifter for eta expansion */

@@ -118,7 +118,7 @@ object Typer {
    *  apply of a function class?
    */
   private[typer] def isSyntheticApply(tree: tpd.Tree): Boolean = tree match {
-    case tree: tpd.Select => tree.hasAttachment(InsertedApply)
+    case _: (tpd.Select | tpd.Apply) => tree.hasAttachment(InsertedApply)
     case TypeApply(fn, targs) => isSyntheticApply(fn) && targs.forall(_.isInstanceOf[tpd.InferredTypeTree])
     case _ => false
   }
@@ -343,11 +343,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         imp.importSym.info match
           case ImportType(expr) =>
             val pre = expr.tpe
-            val denot0 = pre.memberBasedOnFlags(name, required, excluded)
+            def findMember(excluded: FlagSet) =
+              if ctx.isJava then
+                ctx.javaFindMember(name, pre, lookInCompanion = true, required, excluded)
+              else
+                pre.memberBasedOnFlags(name, required, excluded)
+            val denot0 = findMember(excluded)
             var accessibleDenot = denot0.accessibleFrom(pre)(using refctx)
             if !accessibleDenot.exists && denot0.hasAltWith(_.symbol.is(Private)) then
-              accessibleDenot = pre.memberBasedOnFlags(name, required, excluded | Private)
-                .accessibleFrom(pre)(using refctx)
+              accessibleDenot =
+                findMember(excluded | Private).accessibleFrom(pre)(using refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the context of the import scope
             if accessibleDenot.exists then
@@ -1440,8 +1445,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def lhs1 = adapt(lhsCore, LhsProto, locked)
 
         def reassignmentToVal =
-          report.error(ReassignmentToVal(lhsCore.symbol.name, pt), tree.srcPos)
-          cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
+          val adapted = lhs1
+          val name = lhs match
+            case nt: NameTree => nt.name  // respects import rename
+            case _ => adapted.symbol.name // other LHS such as X.x += y
+          report.error(ReassignmentToVal(name, pt), tree.srcPos)
+          cpy.Assign(tree)(lhsCore, typed(tree.rhs, adapted.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
           sym.isMutableVar ||
@@ -1529,7 +1538,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               typedDynamicAssign(tree, pt)
             case tpe =>
               reassignmentToVal
-        }
+          }
     }
 
   def typedBlockStats(stats: List[untpd.Tree])(using Context): (List[tpd.Tree], Context) =
@@ -2714,10 +2723,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typed(tree.tpt, AnyTypeConstructorProto)
 
     val tparams = tpt1.tpe.dealiasKeepAnnotsAndOpaques.typeParams
-     if tpt1.tpe.isError then
-       val args1 = tree.args.mapconserve(typedType(_))
-       assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
-     else if (tparams.isEmpty) {
+    if tpt1.tpe.isError then
+      val args1 = tree.args.mapconserve(typedType(_))
+      assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
+    else if (tparams.isEmpty) {
       report.error(TypeDoesNotTakeParameters(tpt1.tpe, tree.args), tree.srcPos)
       tpt1
     }
@@ -2763,22 +2772,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               (arg, tparamBounds)
             else
               (arg, WildcardType)
-          if (desugaredArg.isType)
-            arg match {
-              case untpd.WildcardTypeBoundsTree()
-              if tparam.paramInfo.isLambdaSub &&
-                 tpt1.tpe.typeParamSymbols.nonEmpty =>
-                // An unbounded `_` automatically adapts to type parameter bounds. This means:
-                // If we have wildcard application C[?], where `C` is a class replace
-                // with C[? >: L <: H] where `L` and `H` are the bounds of the corresponding
-                // type parameter in `C`.
-                // The transform does not apply for patterns, where empty bounds translate to
-                // wildcard identifiers `_` instead.
-                TypeTree(tparamBounds).withSpan(arg.span)
-              case _ =>
-                typedType(desugaredArg, argPt, mapPatternBounds = true)
-            }
-          else desugaredArg.withType(UnspecifiedErrorType)
+          arg match {
+            case untpd.WildcardTypeBoundsTree()
+            if tparam.paramInfo.isLambdaSub &&
+                tpt1.tpe.typeParamSymbols.nonEmpty =>
+              // An unbounded `_` automatically adapts to type parameter bounds. This means:
+              // If we have wildcard application C[?], where `C` is a class replace
+              // with C[? >: L <: H] where `L` and `H` are the bounds of the corresponding
+              // type parameter in `C`.
+              // The transform does not apply for patterns, where empty bounds translate to
+              // wildcard identifiers `_` instead.
+              TypeTree(tparamBounds).withSpan(arg.span)
+            case _ =>
+              val typedArg = typedType(desugaredArg, argPt, mapPatternBounds = true)
+              if typedArg.isType then typedArg
+              else desugaredArg.withType(UnspecifiedErrorType)
+          }
         }
         args.zipWithConserve(tparams)(typedArg)
       }
@@ -3080,7 +3089,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedExpr(_, tpt1.tpe.widenExpr)
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     postProcessInfo(vdef1, sym)
-    vdef1.setDefTree
+    if (!ctx.isAfterInlining) vdef1.setDefTree
 
     migrate(ImplicitToGiven.valDef(vdef1))
 
@@ -3104,6 +3113,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     completeAnnotations(ddef, sym)
     val paramss1 = paramss.nestedMapConserve(typed(_)).asInstanceOf[List[ParamClause]]
     for case ValDefs(vparams) <- paramss1 do
+      if !ctx.isAfterTyper && !sym.is(Synthetic) then
+        vparams.foldLeft(mutable.Set.empty[Name]): (seen, p) =>
+          if seen(p.name) then
+            report.error(em"parameter name must be distinct from deprecated name", p.srcPos)
+          for annot <- p.symbol.getAnnotation(defn.DeprecatedNameAnnot) do
+            val nm = annot.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+            if seen(nm) then
+              report.error(em"deprecated parameter name must be distinct from other names", annot.tree.srcPos)
+            seen.addOne(nm)
+          seen.addOne(p.name)
       checkNoForwardDependencies(vparams)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
@@ -3174,10 +3193,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def checkThisConstrCall(tree: Tree): Unit = tree match
           case app: Apply if untpd.isSelfConstrCall(app) =>
             if !sym.is(Synthetic)
-              && sym.span.exists && app.symbol.span.exists && sym.span.start <= app.symbol.span.start
+              && sym.span.exists
+              && app.symbol.span.exists
+              && sym.span.start <= app.symbol.span.start
+              && tree.span.exists && !tree.span.isSynthetic
             then
               report.error("secondary constructor must call a preceding constructor", app.srcPos)
-          case Block(call :: _, _) => checkThisConstrCall(call)
+          case Block(call :: _, expr) =>
+            checkThisConstrCall(call)
+            checkThisConstrCall(expr)
           case _ =>
 
         checkThisConstrCall(rhs1)
@@ -3207,7 +3231,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
     mdef.ensureHasSym(sym)
-    mdef.setDefTree
+    if (!ctx.isAfterInlining) mdef.setDefTree
+    else mdef
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = ctx.profiler.onTypedDef(sym) {
     val TypeDef(name, rhs) = tdef
@@ -3365,7 +3390,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val superCls = cls.superClass
           superCls.exists && superCls.asClass.baseClasses.contains(m.symbol.owner)
 
-        def givenImpl(mbr: TermRef): ValDef =
+        def givenImpl(mbr: TermRef): ValDef | EmptyTree.type =
           val dcl = mbr.symbol
           val target = dcl.info.asSeenFrom(cls.thisType, dcl.owner)
           val constr = cls.primaryConstructor
@@ -3403,7 +3428,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 cpy.Select(id)(This(cls), id.name)
               case _ =>
                 super.transform(tree)
-          ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
+
+          rhs.tpe match
+            case tp: NamedType
+              if tp.prefix.typeSymbol == cls
+              && tp.name == mbr.name
+              && !tp.typeSymbol.is(Method)
+            =>
+              report.error(
+                em"""Inferred implementation of the deferred ${dcl.showLocated} is self-recursive.
+                    |An implementing given needs to be written explicitly.""",
+                cdef.srcPos)
+              EmptyTree
+            case _ =>
+              ValDef(impl, anchorParams.transform(rhs)).withSpan(impl.span.endPos)
         end givenImpl
 
         val givenImpls =

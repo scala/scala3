@@ -164,7 +164,7 @@ private[immutable] class IntMapKeyIterator[V](it: IntMap[V]) extends IntMapItera
 import IntMap._
 
 /** Specialised immutable map structure for integer keys, based on
- *  [Fast Mergeable Integer Maps](https://ittc.ku.edu/~andygill/papers/IntMap98.pdf)
+ *  [Fast Mergeable Integer Maps](https://www.researchgate.net/publication/2806412_Fast_Mergeable_Integer_Maps)
  *  by Okasaki and Gill. Essentially a trie based on binary digits of the integers.
  *
  *  **Note:** This class is as of 2.8 largely superseded by HashMap.

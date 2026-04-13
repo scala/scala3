@@ -13,7 +13,7 @@ import dotc.config.CommandLineParser.tokenize
 import dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotc.core.Contexts.*
 import dotc.core.Decorators.*
-import dotc.core.Phases.{unfusedPhases, typerPhase}
+import dotc.core.Phases.{unfusedPhases, typerPhase, checkCapturesPhase}
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags.*
 import dotc.core.Mode
@@ -32,7 +32,7 @@ import dotc.reporting.Diagnostic
 import dotc.util.Spans.Span
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
-import dotc.config.CompilerCommand
+import dotc.config.{CompilerCommand, Feature}
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
 import dotty.tools.repl.ScalaClassLoader.*
 
@@ -304,6 +304,25 @@ class ReplDriver(settings: Array[String],
     state.copy(context = run.runContext)
   }
 
+  /** Add a language feature to rootCtx so subsequent parses and compilations see it. */
+  private def enableLanguageFeature(feature: String): Unit =
+    val summary = rootCtx.settings.processArguments(List(s"-language:$feature"), true, rootCtx.settingsState)
+    rootCtx = rootCtx.fresh.setSettings(summary.sstate)
+
+  /** Detect global language imports in parsed trees and enable them in rootCtx
+   *  so subsequent parses and compilations see them (i16250).
+   */
+  private def propagateLanguageImports(trees: List[untpd.Tree]): Unit =
+    import dotc.core.NameKinds.QualifiedName
+    for case untpd.Import(expr, selectors) <- trees do
+      untpd.languageImport(expr) match
+        case Some(prefix) =>
+          for case untpd.ImportSelector(untpd.Ident(imported), untpd.EmptyTree, _) <- selectors do
+            val qual = QualifiedName(prefix, imported.asTermName)
+            if Feature.globalLanguageImports.contains(qual) then
+              enableLanguageFeature(qual.toString)
+        case _ =>
+
   private def stripBackTicks(label: String) =
     if label.startsWith("`") && label.endsWith("`") then
       label.drop(1).dropRight(1)
@@ -340,11 +359,11 @@ class ReplDriver(settings: Array[String],
         state
 
       case parsed: Parsed if parsed.trees.nonEmpty =>
-          compile(parsed, state)
+        propagateLanguageImports(parsed.trees)
+        compile(parsed, state)
 
       case SyntaxErrors(_, errs, _) =>
-        displayErrors(errs)
-        state
+        displayErrors(errs, state)
 
       case cmd: Command =>
         interpretCommand(cmd)
@@ -422,7 +441,7 @@ class ReplDriver(settings: Array[String],
   private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(using state: State): (State, Seq[Diagnostic]) = {
     given Context = state.context
 
-    def resAndUnit(denot: Denotation) = {
+    def resAndUnit(denot: Denotation)(using Context) = {
       import scala.util.{Success, Try}
       val sym = denot.symbol
       val name = sym.name.show
@@ -433,7 +452,7 @@ class ReplDriver(settings: Array[String],
       name.startsWith(str.REPL_RES_PREFIX) && hasValidNumber && sym.info == defn.UnitType
     }
 
-    def extractAndFormatMembers(symbol: Symbol): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
+    def extractAndFormatMembers(symbol: Symbol)(using Context): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
       val info = symbol.info
       val defs =
         info.bounds.hi.finalResultType
@@ -484,13 +503,17 @@ class ReplDriver(settings: Array[String],
     def isSyntheticCompanion(sym: Symbol) =
       sym.is(Module) && sym.is(Synthetic)
 
-    def typeDefs(sym: Symbol): Seq[Diagnostic] = sym.info.memberClasses
+    def typeDefs(sym: Symbol)(using Context): Seq[Diagnostic] = sym.info.memberClasses
       .collect {
         case x if !isSyntheticCompanion(x.symbol) && !x.symbol.name.isReplWrapperName =>
           rendering.renderTypeDef(x)
       }
 
-    atPhase(typerPhase.next) {
+    val renderPhase =
+      if Feature.ccEnabledSomewhere && checkCapturesPhase.exists
+      then checkCapturesPhase
+      else typerPhase.next
+    atPhase(renderPhase) {
       // Display members of wrapped module:
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)
@@ -620,7 +643,7 @@ class ReplDriver(settings: Array[String],
         case "" => out.println(s":type <expression>")
         case _  =>
           compiler.typeOf(expr)(using newRun(state)).fold(
-            displayErrors,
+            errs => displayErrors(errs, state),
             res => out.println(res)  // result has some highlights
           )
       }
@@ -631,7 +654,7 @@ class ReplDriver(settings: Array[String],
         case "" => out.println(s":doc <expression>")
         case _  =>
           compiler.docOf(expr)(using newRun(state)).fold(
-            displayErrors,
+            errs => displayErrors(errs, state),
             res => out.println(res)
           )
       }
@@ -680,8 +703,8 @@ class ReplDriver(settings: Array[String],
   }
 
   /** shows all errors nicely formatted */
-  private def displayErrors(errs: Seq[Diagnostic])(using state: State): State = {
-    errs.foreach(printDiagnostic)
+  private def displayErrors(errs: Seq[Diagnostic], state: State): State = {
+    errs.foreach(printDiagnostic(_)(using state))
     state
   }
 

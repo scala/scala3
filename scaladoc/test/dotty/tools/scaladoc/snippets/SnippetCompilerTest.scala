@@ -63,4 +63,25 @@ class SnippetCompilerTest {
     assertMessageLevelPresent(warningSnippet, MessageLevel.Warning)
     //No test for Info
   }
+
+  // i16250: global language imports should be hoisted outside the snippet wrapper
+  @Test
+  def snippetGlobalLanguageImports: Unit = {
+    assertSuccessfulCompilation(
+      """|import language.experimental.pureFunctions
+         |val x: Int -> Int = (a: Int) => a
+         |""".stripMargin)
+    assertSuccessfulCompilation(
+      """|import language.experimental.captureChecking
+         |def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x
+         |""".stripMargin)
+    assertSuccessfulCompilation(
+      """|import language.experimental.separationChecking
+         |def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x
+         |""".stripMargin)
+    assertSuccessfulCompilation(
+      """|import language.experimental.safe
+         |def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x
+         |""".stripMargin)
+  }
 }

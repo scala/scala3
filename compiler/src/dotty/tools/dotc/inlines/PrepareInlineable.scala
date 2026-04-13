@@ -63,17 +63,27 @@ object PrepareInlineable {
        *  and it is not part of the tree that gets inlined. The latter test is implemented
        *  by excluding all symbols properly contained in the inline method.
        *
+       *  Protected definitions do not need an accessor if they refer to symbols
+       *  inherited by a class defined inside of the inline method.
+       *
        *  Constant vals don't need accessors since they are inlined in FirstTransform.
        *  Inline methods don't need accessors since they are inlined in Typer.
        *
        *  When creating accessors for staged/quoted code we only need to create accessors
        *  for the code that is staged. This excludes code at level 0 (except if it is inlined).
        */
-      def needsAccessor(sym: Symbol)(using Context): Boolean =
+      def needsAccessor(refTree: RefTree | TypeApply | Apply)(using Context): Boolean =
+        def referencesInlineContainedClassDef(tree: Tree): Boolean = tree match
+          case Apply(qual, _) => referencesInlineContainedClassDef(qual)
+          case TypeApply(qual, _) => referencesInlineContainedClassDef(qual)
+          case Select(qual, _) => qual.symbol.isContainedIn(inlineSym)
+          case _ => false
+        val sym = refTree.symbol
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
         !sym.hasPublicInBinary &&
+        !(sym.is(Protected) && referencesInlineContainedClassDef(refTree)) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
         (Inlines.inInlineMethod || StagingLevel.level > 0)
@@ -103,7 +113,7 @@ object PrepareInlineable {
      */
     class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
-        case tree: RefTree if needsAccessor(tree.symbol) =>
+        case tree: RefTree if needsAccessor(tree) =>
           if (tree.symbol.isConstructor) {
             report.error("Private constructors used in inline methods require @publicInBinary", tree.srcPos)
             tree
@@ -151,8 +161,8 @@ object PrepareInlineable {
     class MakeInlineablePassing(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
 
       def preTransform(tree: Tree)(using Context): Tree = tree match {
-        case _: Apply | _: TypeApply | _: RefTree
-        if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
+        case tree: (Apply | TypeApply | RefTree)
+        if needsAccessor(tree) && tree.isTerm && !tree.symbol.isConstructor =>
           val refPart = funPart(tree)
           val argss = allArgss(tree)
           val qual = qualifier(refPart)

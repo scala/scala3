@@ -34,7 +34,6 @@ concurrency:
 
 env:
   DOTTY_CI_RUN: true
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 # In this file, we set `--cpu-shares 4096` on every job. This might seem useless
 # since it means that every container has the same weight which should be
@@ -166,7 +165,7 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: scala.msi
           path: .
@@ -279,5 +278,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.2
+      - uses: VirtusLab/scala-cli-setup@v1.12.5
       - run: scala-cli format --check

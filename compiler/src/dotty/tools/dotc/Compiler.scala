@@ -9,7 +9,7 @@ import Phases.Phase
 import transform.*
 import backend.jvm.GenBCode
 import localopt.{StringInterpolatorOpt, DropForMap}
-import semanticdb.ExtractSemanticDB.{ExtractSemanticInfo, AppendDiagnostics as AppendSemanticDiagnostics}
+import semanticdb.ExtractSemanticDB.ExtractSemanticInfo
 import dotty.tools.dotc.transform.ReplaceInlinedTraitSymbols
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -40,7 +40,7 @@ class Compiler {
          CheckShadowing()) ::       // Check for shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
-    List(ExtractSemanticInfo()) ::  // Extract info into .semanticdb files
+    List(new semanticdb.ExtractSemanticInfo) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
@@ -93,7 +93,7 @@ class Compiler {
     List(new cc.Setup) ::            // Preparations for check captures phase, enabled under captureChecking
     List(new cc.CheckCaptures) ::    // Check captures, enabled under captureChecking
     List(CheckUnused.PostPatMat()) :: // Check for unused elements and report
-    List(AppendSemanticDiagnostics()) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
+    List(new semanticdb.AppendDiagnostics) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.

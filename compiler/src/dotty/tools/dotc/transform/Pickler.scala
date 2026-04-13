@@ -261,7 +261,7 @@ class Pickler extends Phase {
     if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX)
     else cls.binaryClassName
 
-  override def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     val isBestEffort = ctx.reporter.errorsReported || ctx.usedBestEffortTasty
     pickling.println(i"unpickling in run ${ctx.runId}")
@@ -296,7 +296,7 @@ class Pickler extends Phase {
         captureChecked = Feature.ccEnabled,
         withPureFuns = Feature.pureFunsEnabled,
         isJava = isJavaAttr,
-        isOutline = isOutline
+        isOutline = isOutline,
       )
 
       val pickler = new TastyPickler(cls, isBestEffortTasty = isBestEffort)

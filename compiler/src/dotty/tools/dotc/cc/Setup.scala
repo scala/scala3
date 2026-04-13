@@ -40,14 +40,6 @@ trait SetupAPI:
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
-  /** A map from currently compiled class symbols to those of their fields
-   *  that have an explicit type given. Used in `captureSetImpliedByFields`
-   *  to avoid forcing fields with inferred types prematurely. The test file
-   *  where this matters is i24335.scala. The precise failure scenario which
-   *  this avoids is described in #24335.
-   */
-  def fieldsWithExplicitTypes: collection.Map[ClassSymbol, List[Symbol]]
-
   /** Used for error reporting:
    *  Maps mutable variables to the symbols that capture them (in the
    *  CheckCaptures sense, i.e. symbol is referred to from a different method
@@ -177,7 +169,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
         symd.copySymDenotation(info = fluidify(sym.info))
-      else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
+      else if symd.owner.isTerm
+        || symd.is(CaptureChecked)
+        || symd.owner.is(CaptureChecked)
+        || symd.is(ModuleVal) && symd.moduleClass.is(CaptureChecked)
+      then
         val newFlags = newFlagsFor(symd)
         val newInfo = mappedInfo
         if sym.isClass then
@@ -292,7 +288,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def transformInferredType(tp: Type)(using Context): Type =
+  private def transformInferredType(tp: Type, typeArgFormal: Type = NoType)(using Context): Type =
     def mapInferred(inCaptureRefinement: Boolean): TypeMap = new TypeMap with SetupTypeMap:
       override def toString = "map inferred"
 
@@ -344,7 +340,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         addVar(
           addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
           ctx.owner,
-          isRefining = inCaptureRefinement)
+          isRefining = inCaptureRefinement,
+          typeArgFormal = typeArgFormal)
     end mapInferred
 
     try
@@ -484,6 +481,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               makeUnchecked(this(parent))
             else if ann.symbol == defn.InferredAnnot then
               transformInferredType(parent)
+                // typeArgFormal is NoType here since we are inferring inside an argument, not at the toplevel
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
@@ -531,8 +529,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  val fieldsWithExplicitTypes: mutable.HashMap[ClassSymbol, List[Symbol]] = mutable.HashMap()
-
   val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
 
   val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
@@ -544,11 +540,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Transform type of tree, and remember the transformed type as the type of the tree
      *  @pre !(boxed && sym.exists)
      */
-    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
+    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType)(using Context): Unit =
       if !tree.hasNuType then
         var transformed =
           if tree.isInferred || sym.is(ModuleVal)
-          then transformInferredType(tree.tpe)
+          then transformInferredType(tree.tpe, typeArgFormal)
           else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
@@ -611,12 +607,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
-          for case arg: TypeTree <- args do
+          val formals = fn.tpe.widen match
+            case tl: TypeLambda => tl.paramInfos
+            case _ => args.map(_ => NoType)
+          for case (arg: TypeTree, formal) <- args.lazyZip(formals) do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
                 globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
-            else
-              transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
+              else
+                transformTT(arg, NoSymbol, boxed = true, typeArgFormal = formal) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
@@ -745,7 +744,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree @ TypeDef(_, impl: Template) =>
         val cls: ClassSymbol = tree.symbol.asClass
 
-        fieldsWithExplicitTypes(cls) =
+        ccState.fieldsWithExplicitTypes(cls) =
           for
             case vd @ ValDef(_, tpt: TypeTree, _) <- impl.body
             if !tpt.isInferred && vd.symbol.exists && !vd.symbol.is(NonMember)
@@ -871,7 +870,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   - If type is a capturing type that has already a capture set variable or has
    *     the universal capture set, it does not need a variable.
    */
-  def needsVariable(tp: Type)(using Context): Boolean = {
+  def needsVariable(tp: Type)(using Context): Boolean =
     tp.typeParams.isEmpty && tp.match
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
@@ -895,7 +894,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(parent)
       case _ =>
         false
-  }.showing(i"can have inferred capture $tp = $result", captDebug)
 
   /** Add a capture set variable or <fluid> set to `tp` if necessary.
    *  Dealias `tp` (but keep annotations and opaque types) if doing
@@ -903,13 +901,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  @param tp     the type to add a capture set to
    *  @param added  A function producing the added capture set from a set of initial elements.
    */
-  def decorate(tp: Type, added: CaptureSet.Refs => CaptureSet)(using Context): Type =
+  def decorate(tp: Type, added: CaptureSet.Refs => CaptureSet, typeArgFormal: Type = NoType)(using Context): Type = {
     if tp.typeSymbol == defn.FromJavaObjectSymbol then
       // For capture checking, we assume Object from Java is the same as Any
       tp
     else
+      def formalIsPure = typeArgFormal match
+        case bounds: TypeBounds =>
+          val ub = bounds.hi
+          !ub.isAny && ub.captureSet.isAlwaysEmpty
+        case _ => false
       def maybeAdd(target: Type, fallback: Type) =
-        if needsVariable(target) then
+        if needsVariable(target) && !formalIsPure then
           target match
             case CapturingType(_, CaptureSet.Fluid) =>
               target
@@ -920,13 +923,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fallback
       val dealiased = tp.dealiasKeepAnnotsAndOpaques
       if dealiased ne tp then
-        val transformed = transformInferredType(dealiased)
+        val transformed = transformInferredType(dealiased, typeArgFormal)
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)
       else maybeAdd(tp, tp)
+  }
 
   /** Add a capture set variable to `tp` if necessary. */
-  private def addVar(tp: Type, owner: Symbol, isRefining: Boolean)(using Context): Type =
-    decorate(tp, CaptureSet.ProperVar(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining))
+  private def addVar(tp: Type, owner: Symbol, isRefining: Boolean, typeArgFormal: Type = NoType)(using Context): Type =
+    decorate(tp, CaptureSet.ProperVar(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining), typeArgFormal)
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types
