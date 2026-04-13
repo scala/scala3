@@ -156,7 +156,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       //   )
       //   mixin.parentSyms.exists(
       //     parentSym => parentSym.isInlineTrait && parentSym.info.decls.exists(d => {
-      //       d.name == getter.name || getter.name ++ str.INLINE_TRAIT_ERASED_PRIVATE_SUFFIX == d.name.expandedName(parentSym)}) 
+      //       d.name == getter.name) 
       //   )
 
 
@@ -303,8 +303,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           parentSym => parentSym.info.decls//.exists(d => d.name == getter.name || getter.name == d.name.expandedName(parentSym)) 
         )
         mixin.parentSyms.exists(
-          parentSym => parentSym.isInlineTrait && parentSym.info.decls.exists(d => {
-            d.name == getter.name || getter.name ++ str.INLINE_TRAIT_ERASED_PRIVATE_SUFFIX == d.name.expandedName(parentSym)}) 
+          parentSym => parentSym.isInlineTrait && parentSym.info.decls.exists(d => d.name == getter.name) 
         )
 
       for

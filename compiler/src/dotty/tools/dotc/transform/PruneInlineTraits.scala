@@ -20,36 +20,37 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
   override def description: String = PruneInlineTraits.description
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if isDeletable(sym) then sym.copySymDenotation(initFlags = (sym.flags ^ Private) | Deferred | Protected, name = sym.name ++ str.INLINE_TRAIT_ERASED_PRIVATE_SUFFIX)
-    else if isEraseable(sym) then sym.copySymDenotation(initFlags = sym.flags | Deferred)
-    else if sym.isInlineTrait then sym.copySymDenotation(initFlags = sym.flags | PureInterface | NoInits)
+    if isEraseable(sym) then sym.copySymDenotation(initFlags = sym.flags | Deferred)
+    else if sym.isInlineTrait then
+      val clsInfo = sym.asClass.classInfo
+      val clsInfo2 = clsInfo.derivedClassInfo(decls = 
+          clsInfo.decls.filteredScope(!isDeletable(_))
+      )
+      sym.copySymDenotation(initFlags = sym.flags | PureInterface | NoInits, info = clsInfo2)
     else sym
-    
-  override def transformValDef(tree: ValDef)(using Context): Tree = 
-    if isDeletable(tree.symbol) || isEraseable(tree.symbol) then cpy.ValDef(tree)(rhs = EmptyTree)
-    else tree
 
-  override def transformDefDef(tree: DefDef)(using Context): Tree =
-    if isDeletable(tree.symbol) || isEraseable(tree.symbol) then cpy.DefDef(tree)(rhs = EmptyTree)
-    else tree
+  override def transformTemplate(tree: Template)(using Context): Tree = 
+    cpy.Template(tree)(body = tree.body.flatMap({
+      case stmt: ValDef if isEraseable(stmt.symbol) => Some(cpy.ValDef(stmt)(rhs = EmptyTree))
+      case stmt: DefDef if isEraseable(stmt.symbol) => Some(cpy.DefDef(stmt)(rhs = EmptyTree))
+      case stmt: (ValDef | DefDef) if isDeletable(stmt.symbol) => None
+      case stmt => Some(stmt)
+    }))
 
   private def isEraseable(sym: SymDenotation)(using Context): Boolean =
     !sym.isType
     && !sym.isConstructor
     && !sym.is(Param)
     && !sym.is(ParamAccessor)
-    && !sym.is(Private)
+    && !sym.is(Local)
     && !sym.isLocalDummy
+    && sym.exists
     && sym.owner.isInlineTrait
 
-  // We also must erase private symbols because they can contain problematic defintions such 
-  // as inline functions which need to be inlined (see tests/pos/inline-trait-private-nested-inline-must-delete.scala)
-  // It's hard to delete the actual symbol and we can't leave it private and deferred/with no definition
-  // Thus we settle for making it protected, deferred (no definition) and giving it a mangled name/
   private def isDeletable(sym: SymDenotation)(using Context): Boolean = 
     !sym.isType
-    && sym.is(Private)
     && sym.owner.isInlineTrait
+    && (sym.is(Local) || sym.is(Inline))
     && !sym.is(Param)
     && !sym.is(ParamAccessor)
 }

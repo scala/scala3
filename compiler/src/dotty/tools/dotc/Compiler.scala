@@ -75,7 +75,8 @@ class Compiler {
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new RefChecks,              // Various checks mostly related to abstract members and overriding
-         new DropForMap) ::          // Drop unused trailing map calls in for comprehensions
+         new DropForMap,             // Drop unused trailing map calls in for comprehensions
+         new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
@@ -99,8 +100,7 @@ class Compiler {
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s and f string interpolators by rewriting them to string concatenations or formats
          new DropBreaks) ::          // Optimize local Break throws by rewriting them
-    List(new PruneInlineTraits,      // Remove right-hand side of definitions in inline traits
-         new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
+    List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
