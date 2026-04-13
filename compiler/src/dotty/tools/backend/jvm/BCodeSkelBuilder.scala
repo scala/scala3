@@ -30,9 +30,7 @@ import tpd.*
  *  @version 1.0
  *
  */
-trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
-
-  lazy val NativeAttr: Symbol = requiredClass[scala.native]
+trait BCodeSkelBuilder extends BCodeHelpers {
 
   final class BTypesStack:
     // Anecdotally, growing past 16 to 32 is common; growing past 32 is rare
@@ -127,7 +125,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
    *   - `genSynchronized()
    *   - `jumpDest` , `cleanups` , `labelDefsAtOrUnder`
    */
-  abstract class PlainSkelBuilder(cunit: CompilationUnit)
+  abstract class PlainSkelBuilder
     extends BCClassGen
     with    BCAnnotGen
     with    JAndroidBuilder
@@ -151,21 +149,21 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
-    def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
+    def paramTKs(app: Apply, take: Int = -1)(using Context): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
       funSym.info.firstParamTypes.map(bTypeLoader.toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
-    def symInfoTK(sym: Symbol): BType = {
+    def symInfoTK(sym: Symbol)(using Context): BType = {
       bTypeLoader.toTypeKind(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
-    def tpeTK(tree: Tree): BType = { bTypeLoader.toTypeKind(tree.tpe) }
+    def tpeTK(tree: Tree)(using Context): BType = { bTypeLoader.toTypeKind(tree.tpe) }
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef) = (cd0: @unchecked) match {
+    def genPlainClass(cd0: TypeDef)(using Context) = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
 
@@ -301,7 +299,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def initJClass(jclass: asm.ClassVisitor): Unit = {
+    private def initJClass(jclass: asm.ClassVisitor)(using Context): Unit = {
 
       val ps = claszSymbol.info.parents
       val superClass: String = if (ps.isEmpty) bTypeLoader.ObjectRef.internalName else bTypeLoader.internalName(ps.head.typeSymbol)
@@ -349,7 +347,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (BackendUtils.emitSource) {
-        cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
+        cnode.visitSource(ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
       BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.internalName, bTypeLoader.asmMethodType(_).descriptor) match {
@@ -386,7 +384,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def fabricateStaticInitAndroid(): Unit = {
+    private def fabricateStaticInitAndroid()(using Context): Unit = {
 
       val clinit: asm.MethodVisitor = cnode.visitMethod(
         asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
@@ -403,20 +401,17 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       clinit.visitMaxs(0, 0) // just to follow protocol, dummy arguments
       clinit.visitEnd()
     }
-    
-    private lazy val TransientAttr = requiredClass[scala.transient]
-    private lazy val VolatileAttr = requiredClass[scala.volatile]
 
-    private def javaFieldFlags(sym: Symbol) = {
+    private def javaFieldFlags(sym: Symbol)(using Context) = {
       import asm.Opcodes.*
       import GenBCodeOps.addFlagIf
       BCodeUtils.javaFlags(sym)
-        .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
-        .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
+        .addFlagIf(sym.hasAnnotation(defn.TransientAnnot), ACC_TRANSIENT)
+        .addFlagIf(sym.hasAnnotation(defn.VolatileAnnot), ACC_VOLATILE)
         .addFlagIf(!sym.is(Mutable), ACC_FINAL)
     }
 
-    def addClassField(f: Symbol): Unit = {
+    def addClassField(f: Symbol)(using Context): Unit = {
       val javagensig = getGenericSignature(f, claszSymbol)
       val flags = javaFieldFlags(f)
 
@@ -434,7 +429,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       emitAnnotations(jfield, f.annotations)
     }
 
-    def addClassFields(): Unit =
+    def addClassFields()(using Context): Unit =
       /*  Non-method term members are fields, except for module members. Module
        *  members can only happen on .NET (no flatten) for inner traits. There,
        *  a module symbol is generated (transformInfo in mixin) which is used
@@ -470,13 +465,13 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      *  corresponding expected type. The `LoadDestination` can never be `FallThrough` here.
      */
     var jumpDest: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] = null
-    def registerJumpDest(labelSym: Symbol, expectedType: BType, dest: LoadDestination): Unit = {
+    def registerJumpDest(labelSym: Symbol, expectedType: BType, dest: LoadDestination)(using Context): Unit = {
       assert(labelSym.is(Label), s"trying to register a jump-dest for a non-label symbol, at: ${labelSym.span}")
       assert(dest != LoadDestination.FallThrough, s"trying to register a FallThrough dest for label, at: ${labelSym.span}")
       assert(!jumpDest.contains(labelSym), s"trying to register a second jump-dest for label, at: ${labelSym.span}")
       jumpDest += (labelSym -> (expectedType, dest))
     }
-    def findJumpDest(labelSym: Symbol): (BType, LoadDestination) = {
+    def findJumpDest(labelSym: Symbol)(using Context): (BType, LoadDestination) = {
       assert(labelSym.is(Label), s"trying to map a non-label symbol to an asm.Label, at: ${labelSym.span}")
       jumpDest.getOrElse(labelSym, {
         throw new AssertionError(s"unknown label symbol, for label at: ${labelSym.span}")
@@ -556,31 +551,31 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       /* Make a fresh local variable, ensuring a unique name.
        * The invoker must make sure inner classes are tracked for the sym's tpe.
        */
-      def makeLocal(tk: BType, name: String, tpe: Type, pos: Span): Symbol = {
+      def makeLocal(tk: BType, name: String, tpe: Type, pos: Span)(using Context): Symbol = {
 
         val locSym = newSymbol(methSymbol, name.toTermName, Synthetic, tpe, NoSymbol, pos)
         makeLocal(locSym, tk)
         locSym
       }
 
-      def makeLocal(locSym: Symbol): Local = {
+      def makeLocal(locSym: Symbol)(using Context): Local = {
         makeLocal(locSym, symInfoTK(locSym))
       }
 
-      def getOrMakeLocal(locSym: Symbol): Local = {
+      def getOrMakeLocal(locSym: Symbol)(using Context): Local = {
         // `getOrElse` below has the same effect as `getOrElseUpdate` because `makeLocal()` adds an entry to the `locals` map.
         slots.getOrElse(locSym, makeLocal(locSym))
       }
 
-      def reuseLocal(sym: Symbol, loc: Local): Unit =
+      def reuseLocal(sym: Symbol, loc: Local)(using Context): Unit =
         val existing = slots.put(sym, loc)
         if (existing.isDefined)
           report.error("attempt to create duplicate local var.", ctx.source.atSpan(sym.span))
 
-      def reuseThisSlot(sym: Symbol): Unit =
+      def reuseThisSlot(sym: Symbol)(using Context): Unit =
         reuseLocal(sym, Local(symInfoTK(sym), sym.javaSimpleName, 0, sym.is(Synthetic)))
 
-      private def makeLocal(sym: Symbol, tk: BType): Local = {
+      private def makeLocal(sym: Symbol, tk: BType)(using Context): Local = {
         assert(nxtIdx != -1, "not a valid start index")
         val loc = Local(tk, sym.javaSimpleName, nxtIdx, sym.is(Synthetic))
         val existing = slots.put(sym, loc)
@@ -640,7 +635,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         case labnode: asm.tree.LabelNode => (labnode.getLabel == lbl);
         case _ => false } )
     }
-    def lineNumber(tree: Tree): Unit = {
+    def lineNumber(tree: Tree)(using Context): Unit = {
       @tailrec
       def getNonLabelNode(a: asm.tree.AbstractInsnNode): asm.tree.AbstractInsnNode = a match {
         case a: asm.tree.LabelNode => getNonLabelNode(a.getPrevious)
@@ -669,7 +664,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     }
 
     // on entering a method
-    def resetMethodBookkeeping(dd: DefDef) = {
+    def resetMethodBookkeeping(dd: DefDef)(using Context) = {
       val rhs = dd.rhs
       locals.reset(isStaticMethod = methSymbol.isStaticMember)
       jumpDest = immutable.Map.empty
@@ -688,7 +683,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
 
     /* ---------------- top-down traversal invoking ASM Tree API along the way ---------------- */
 
-    def gen(tree: Tree): Unit = {
+    def gen(tree: Tree)(using Context): Unit = {
       tree match {
         case tpd.EmptyTree => ()
 
@@ -735,7 +730,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def initJMethod(flags: Int, params: List[Symbol]): Unit = {
+    private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
@@ -767,7 +762,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
 
     } // end of method initJMethod
 
-    private def genTraitConstructorDefDef(dd: DefDef): Unit =
+    private def genTraitConstructorDefDef(dd: DefDef)(using Context): Unit =
       val statifiedDef = makeStatifiedDefDef(dd)
       genDefDef(statifiedDef)
 
@@ -785,7 +780,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      *  static def foo($self: Enclosing, x: Int): String = $self.toString() + x
      *  }}}
      */
-    private def makeStatifiedDefDef(dd: DefDef): DefDef =
+    private def makeStatifiedDefDef(dd: DefDef)(using Context): DefDef =
       val origSym = dd.symbol.asTerm
       val newSym = BackendUtils.makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
@@ -806,7 +801,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         ).transform(dd.rhs)
       })
 
-    private def genStaticForwarderForDefDef(dd: DefDef): Unit =
+    private def genStaticForwarderForDefDef(dd: DefDef)(using Context): Unit =
       val forwarderDef = makeStaticForwarder(dd)
       genDefDef(forwarderDef)
 
@@ -821,7 +816,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      * in subtraits and subclasses, since the whole point of this forward is to
      * encode super calls.
      */
-    private def makeStaticForwarder(dd: DefDef): DefDef =
+    private def makeStaticForwarder(dd: DefDef)(using Context): DefDef =
       // !!!
       // This logic is somewhat duplicated in the inline info definition, which is not very clean,
       // but remember to change it there if you make changes here
@@ -835,7 +830,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
 
-    def genDefDef(dd: DefDef): Unit = {
+    def genDefDef(dd: DefDef)(using Context): Unit = {
       val rhs = dd.rhs
       val vparamss = dd.termParamss
       // the only method whose implementation is not emitted: getClass()
@@ -867,7 +862,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         return
       }
 
-      val isNative         = methSymbol.hasAnnotation(NativeAttr)
+      val isNative         = methSymbol.hasAnnotation(defn.NativeAnnot)
       val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.is(Trait) && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
       val flags =
         import GenBCodeOps.addFlagIf
@@ -963,7 +958,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      *
      *  TODO document, explain interplay with `fabricateStaticInitAndroid()`
      */
-    private def appendToStaticCtor(): Unit = {
+    private def appendToStaticCtor()(using Context): Unit = {
 
       def insertBefore(
             location: asm.tree.AbstractInsnNode,

@@ -58,7 +58,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
       try
         val sym = cd.symbol
         val sourceFile = ctx.compilationUnit.source.file
-        val mainClassNode = genClass(cd, ctx.compilationUnit)
+        val mainClassNode = genClass(cd)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
           else if sym.companionClass == NoSymbol then genMirrorClass(sym, ctx.compilationUnit)
@@ -140,8 +140,8 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
     }
   }
 
-  private def genClass(cd: TypeDef, unit: CompilationUnit): ClassNode = {
-    val b = new impl.SyncAndTryBuilder(unit)
+  private def genClass(cd: TypeDef): ClassNode = {
+    val b = new impl.SyncAndTryBuilder
     b.genPlainClass(cd)
     b.cnode
   }
