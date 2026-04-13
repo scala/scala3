@@ -280,7 +280,7 @@ object StdNames {
     final val SignatureATTR: N                    = "Signature"
     final val SourceFileATTR: N                   = "SourceFile"
     final val SyntheticATTR: N                    = "Synthetic"
-
+    final val PermittedSubclassesATTR: N          = "PermittedSubclasses"
 
 // ----- Term names -----------------------------------------
 

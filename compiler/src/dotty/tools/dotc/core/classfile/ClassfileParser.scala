@@ -894,6 +894,7 @@ class ClassfileParser(
     var exceptions: List[NameOrString] = Nil
     var annotations: List[Annotation] = Nil
     var namedParams: Map[Int, TermName] = Map.empty
+    var permittedSubclasses: List[NameOrString] = Nil
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
         val sig = this.sig
@@ -918,6 +919,14 @@ class ClassfileParser(
         val cls = getClassSymbol(ex.name)
         sym.addAnnotation(ThrowsAnnotation(cls.asClass))
       }
+
+      permittedSubclasses.foreach { child =>
+        val cls = getClassSymbol(child.name)
+        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
+          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
+          .withSpan(NoSpan)
+          ))
+        }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
@@ -994,6 +1003,14 @@ class ClassfileParser(
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
             report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
+          }
+
+        case tpnme.PermittedSubclassesATTR =>
+          sym.setFlag(Flags.Sealed)
+          val numberOfClasses = in.nextChar
+          for (n <- 0 until numberOfClasses) {
+            val childName = pool.getClassName(in.nextChar.toInt)
+            res.permittedSubclasses ::= childName
           }
 
         case _ =>

@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i22298.scala:20:2 ---------------------------------------------
+20 |  sealedJava match { // warn
+   |  ^^^^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: _: java.lang.constant.AsTypeMethodHandleDesc
+   |
+   | longer explanation available when compiling with `-explain`
