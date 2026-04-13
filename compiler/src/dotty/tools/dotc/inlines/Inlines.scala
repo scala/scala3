@@ -284,6 +284,9 @@ object Inlines:
 
   def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
     cls match {
+      case cls @ tpd.TypeDef(_, impl: Template) if cls.symbol.owner.ownersIterator.exists(_.isInlineTrait) => // TODO: We can relax this if we use a seen list to avoid cycles
+        report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
+        cls
       case cls @ tpd.TypeDef(_, impl: Template) =>
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val newDefs = inContext(ctx.withOwner(cls.symbol)) {
