@@ -47,21 +47,21 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
   /**
-   * Generate ASM ClassNodes for classes found in a compilation unit. The resulting classes are
+   * Generate ASM ClassNodes for classes found in the context's compilation unit. The resulting classes are
    * passed to the `generatedClassHandler`.
    */
-  def genUnit(unit: CompilationUnit)(using ctx: Context): Unit = {
+  def genUnit()(using ctx: Context): Unit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
 
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
-        val sourceFile = unit.source.file
-        val mainClassNode = genClass(cd, unit)
+        val sourceFile = ctx.compilationUnit.source.file
+        val mainClassNode = genClass(cd, ctx.compilationUnit)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
-          else if sym.companionClass == NoSymbol then genMirrorClass(sym, unit)
+          else if sym.companionClass == NoSymbol then genMirrorClass(sym, ctx.compilationUnit)
           else
             report.log(s"No mirror class for module with linked class: ${sym.fullName}", NoSourcePosition)
             null
@@ -76,17 +76,17 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
               sourceClassName = sym.javaClassName,
               position = sym.srcPos.sourcePos,
               isArtifact = isArtifact,
-              onFileCreated = onFileCreated(classNode, sym, unit.source)
+              onFileCreated = onFileCreated(classNode, sym, ctx.compilationUnit.source)
             )
 
         registerGeneratedClass(mainClassNode, isArtifact = false)
         registerGeneratedClass(mirrorClassNode, isArtifact = true)
       catch
         case ex: TypeError =>
-          report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", cd.sourcePos)
+          report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
-      for (binary <- unit.pickled.get(claszSymbol.asClass)) {
+      for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
         generatedTasty += GeneratedTasty(store, binary)
         val tasty =
           val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
@@ -112,9 +112,9 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
         case td: TypeDef => frontendAccess.frontendSynch(genClassDef(td))
       }
 
-    genClassDefs(unit.tpdTree)
+    genClassDefs(ctx.compilationUnit.tpdTree)
     generatedClassHandler.process(
-      GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList)
+      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
     )
   }
 

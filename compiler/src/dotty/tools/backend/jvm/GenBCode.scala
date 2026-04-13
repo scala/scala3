@@ -139,7 +139,7 @@ class GenBCode extends Phase { self =>
       .ctx
       .setCompilationUnit(ctx.compilationUnit)
     }
-    codeGen.genUnit(ctx.compilationUnit)
+    codeGen.genUnit()
     (ctx.compilerCallback: CompilerCallback | Null) match {
       case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
       case null => ()

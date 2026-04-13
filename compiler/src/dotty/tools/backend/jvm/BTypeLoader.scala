@@ -5,7 +5,6 @@ package jvm
 import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
 import dotty.tools.backend.jvm.BCodeUtils.isAnonymousOrLocalClass
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, requiredClass}
 import dotty.tools.dotc.core.Contexts.*
@@ -19,7 +18,6 @@ import dotty.tools.dotc.report
 
 import scala.annotation.tailrec
 import scala.tools.asm
-import scala.tools.asm.Handle
 import scala.tools.asm.tree.ClassNode
 
 class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader]) {
@@ -135,7 +133,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
 
   private def assertClassNotArrayNotPrimitive(sym: Symbol)(using Context): Unit = {
     assertClassNotArray(sym)
-    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, sym)
+    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, s"Found ${sym} while compiling ${ctx.compilationUnit.source.file.name}")
   }
 
   /**
