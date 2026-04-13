@@ -29,15 +29,21 @@ import scala.annotation.unchecked.uncheckedOverride
  *  To sort instances by one or more member variables, you can take advantage
  *  of these built-in orderings using [[Ordering.by]] and [[Ordering.on]]:
  *
- *  ```
+ *  ```scala sc:compile
  *  import scala.util.Sorting
  *  val pairs = Array(("a", 5, 2), ("c", 3, 1), ("b", 1, 3))
  *
  *  // sort by 2nd element
- *  Sorting.quickSort(pairs)(Ordering.by[(String, Int, Int), Int](_._2))
+ *  {
+ *    given Ordering[(String, Int, Int)] = Ordering.by[(String, Int, Int), Int](_._2)
+ *    Sorting.quickSort(pairs)
+ *  }
  *
  *  // sort by the 3rd element, then 1st
- *  Sorting.quickSort(pairs)(Ordering[(Int, String)].on(x => (x._3, x._1)))
+ *  {
+ *    given Ordering[(String, Int, Int)] = Ordering.by[(String, Int, Int), (Int, String)](x => (x._3, x._1))
+ *    Sorting.quickSort(pairs)
+ *  }
  *  ```
  *
  *  An `Ordering[T]` is implemented by specifying the [[compare]] method,
@@ -47,7 +53,7 @@ import scala.annotation.unchecked.uncheckedOverride
  *
  *  For example:
  *
- *  ```
+ *  ```scala sc:compile
  *  import scala.util.Sorting
  *
  *  case class Person(name:String, age:Int)
@@ -57,7 +63,8 @@ import scala.annotation.unchecked.uncheckedOverride
  *  object AgeOrdering extends Ordering[Person] {
  *   def compare(a:Person, b:Person) = a.age.compare(b.age)
  *  }
- *  Sorting.quickSort(people)(AgeOrdering)
+ *  given Ordering[Person] = AgeOrdering
+ *  Sorting.quickSort(people)
  *  ```
  *
  *  This trait and [[scala.math.Ordered]] both provide this same functionality, but
@@ -134,8 +141,8 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
   /** Given f, a function from U into T, creates an Ordering[U] whose compare
    *  function is equivalent to:
    *
-   *  ```
-   *  def compare(x:U, y:U) = Ordering[T].compare(f(x), f(y))
+  *  ```scala sc:compile
+  *  def compare[U, T: Ordering](x: U, y: U, f: U => T) = Ordering[T].compare(f(x), f(y))
    *  ```
    */
   def on[U](f: U => T): Ordering[U] = new Ordering[U] {
@@ -147,7 +154,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  or else the result of `other`s compare function.
    *
    *  @example
-   *  ```
+  *  ```scala sc:compile
    *  case class Pair(a: Int, b: Int)
    *
    *  val pairOrdering = Ordering.by[Pair, Int](_.a)
@@ -165,15 +172,15 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  function returns the result of this Ordering's compare function,
    *  if it is non-zero, or else a result equivalent to:
    *
-   *  ```
-   *  Ordering[S].compare(f(x), f(y))
+  *  ```scala sc:compile
+  *  def compare[T, S: Ordering](x: T, y: T, f: T => S) = Ordering[S].compare(f(x), f(y))
    *  ```
    *
    *  This function is equivalent to passing the result of `Ordering.by(f)`
    *  to `orElse`.
    *
    *  @example
-   *  ```
+  *  ```scala sc:compile
    *  case class Pair(a: Int, b: Int)
    *
    *  val pairOrdering = Ordering.by[Pair, Int](_.a)
@@ -302,8 +309,9 @@ object Ordering extends LowPriorityOrderingImplicits {
      *  implicit `Ordering` exists to the class which creates infix operations.
      *  With it imported, you can write methods as follows:
      *
-     *  ```
-     *  def lessThan[T: Ordering](x: T, y: T) = x < y
+    *  ```scala sc:compile
+    *  import scala.math.Ordering.Implicits.*
+    *  def lessThan[T: Ordering](x: T, y: T) = x < y
      *  ```
      */
     implicit def infixOrderingOps[T](x: T)(implicit ord: Ordering[T]): Ordering[T]#OrderingOps = new ord.OrderingOps(x)
@@ -325,8 +333,8 @@ object Ordering extends LowPriorityOrderingImplicits {
   /** Given f, a function from T into S, creates an Ordering[T] whose compare
    *  function is equivalent to:
    *
-   *  ```
-   *  def compare(x:T, y:T) = Ordering[S].compare(f(x), f(y))
+  *  ```scala sc:compile
+  *  def compare[T, S: Ordering](x: T, y: T, f: T => S) = Ordering[S].compare(f(x), f(y))
    *  ```
    *
    *  This function is an analogue to Ordering.on where the Ordering[S]
@@ -404,7 +412,7 @@ object Ordering extends LowPriorityOrderingImplicits {
    *  `Float.NaN == Float.NaN` all yield `false`, analogous `None` in `flatMap`.
    *
    *
-   *  ```
+  *  ```scala sc:compile
    *  List(0.0F, 1.0F, 0.0F / 0.0F, -1.0F / 0.0F).sorted      // List(-Infinity, 0.0, 1.0, NaN)
    *  List(0.0F, 1.0F, 0.0F / 0.0F, -1.0F / 0.0F).min         // -Infinity
    *  implicitly[Ordering[Float]].lt(0.0F, 0.0F / 0.0F)       // true
@@ -501,7 +509,7 @@ object Ordering extends LowPriorityOrderingImplicits {
    *  which brings back the `java.lang.Double.compare` semantics for all operations.
    *  The default extends `TotalOrdering`.
    *
-   *  ```
+  *  ```scala sc:compile
    *  List(0.0, 1.0, 0.0 / 0.0, -1.0 / 0.0).sorted      // List(-Infinity, 0.0, 1.0, NaN)
    *  List(0.0, 1.0, 0.0 / 0.0, -1.0 / 0.0).min         // -Infinity
    *  implicitly[Ordering[Double]].lt(0.0, 0.0 / 0.0)   // true

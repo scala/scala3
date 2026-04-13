@@ -34,7 +34,7 @@ import scala.language.implicitConversions
  *  [[scala.math.PartiallyOrdered]] is an alternative to this trait for partially ordered data.
  *
  *  For example, create a simple class that implements `Ordered` and then sort it with [[scala.util.Sorting]]:
- *  ```
+ *  ```scala sc:compile
  *  case class OrderedClass(n:Int) extends Ordered[OrderedClass] {
  *   def compare(that: OrderedClass) =  this.n - that.n
  *  }

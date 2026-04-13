@@ -665,7 +665,7 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *  `[start;end)`, where start is the target BigDecimal.  The step
    *  must be supplied via the "by" method of the returned object in order
    *  to receive the fully constructed range.  For example:
-   *  ```
+  *  ```scala sc:compile
    *  val partial = BigDecimal(1.0) to 2.0       // not usable yet
    *  val range = partial by 0.01                // now a NumericRange
    *  val range2 = BigDecimal(0) to 1.0 by 0.01  // all at once of course is fine too
