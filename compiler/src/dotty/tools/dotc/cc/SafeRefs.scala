@@ -6,7 +6,7 @@ import core.*
 import Symbols.*
 import Annotations.*
 import util.Spans.NoSpan
-import util.SrcPos
+import util.{Property, SrcPos}
 import Contexts.Context
 import Constants.Constant
 import Decorators.*
@@ -20,6 +20,8 @@ import typer.ProtoTypes.SelectionProto
 
 /** Check whether references from safe mode should be allowed */
 object SafeRefs {
+  
+  val SkipAnnotsInType: Property.Key[Unit] = Property.Key()
 
   val assumedSafePackages = List(
     "scala", "scala.runtime", "scala.collection.immutable", "scala.compiletime.ops",
@@ -195,7 +197,7 @@ object SafeRefs {
     checkNotRejected(ann.symbol, errpos)
 
   def checkSafeAnnots(sym: Symbol)(using Context): Unit =
-    if Feature.safeEnabled then
+    if Feature.safeEnabled && !sym.is(Synthetic) then
       for ann <- sym.annotations do
         checkSafeAnnot(ann, sym.srcPos)
 
@@ -203,6 +205,6 @@ object SafeRefs {
     def checkAnnotatedType(tp: Type) = tp match
       case AnnotatedType(tp, ann) => checkSafeAnnot(ann, tree.srcPos)
       case _ =>
-    if Feature.safeEnabled then
+    if Feature.safeEnabled && !tree.hasAttachment(SkipAnnotsInType) then
       tree.tpe.foreachPart(checkAnnotatedType(_))
 }
