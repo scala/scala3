@@ -1847,8 +1847,10 @@ trait Implicits:
 
     /** All available implicits, without ranking */
     def allImplicits: Set[SearchSuccess] = {
-      val contextuals = ctx.implicits.eligible(wildProto).map(tryImplicit(_, contextual = true))
-      val inscope = implicitScope(wildProto).eligible.map(tryImplicit(_, contextual = false))
+      val contextualPending = ctx.implicits.eligible(wildProto)
+      val contextuals = contextualPending.map(tryImplicit(_, contextual = true)(contextualPending))
+      val inscopePending = implicitScope(wildProto).eligible
+      val inscope = inscopePending.map(tryImplicit(_, contextual = false)(inscopePending))
       (contextuals.toSet ++ inscope).collect {
         case success: SearchSuccess => success
       }
