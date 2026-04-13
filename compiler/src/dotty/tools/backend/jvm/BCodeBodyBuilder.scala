@@ -1768,8 +1768,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     }
 
 
-    def genSynchronized(tree: Apply, expectedType: BType): BType
-    def genLoadTry(tree: Try): BType
+    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType
+    def genLoadTry(tree: Try)(using Context): BType
 
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol)(using Context): BType = {
       import java.lang.invoke.LambdaMetafactory.{FLAG_BRIDGES, FLAG_SERIALIZABLE}

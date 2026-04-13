@@ -18,13 +18,13 @@ import tpd.*
  *  @version 1.0
  *
  */
-trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
+trait BCodeSyncAndTry extends BCodeBodyBuilder {
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */
   class SyncAndTryBuilder extends PlainBodyBuilder {
 
-    def genSynchronized(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
+    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType = (tree: @unchecked) match {
       case Apply(TypeApply(fun, _), args) =>
       val monitor = locals.makeLocal(bTypes.ObjectRef, "monitor", defn.ObjectType, tree.span)
       val monCleanup = new asm.Label
@@ -178,7 +178,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
      *    - "exception-handler-version-of-finally-block" respectively.
      *
      */
-    def genLoadTry(tree: Try): BType = tree match {
+    def genLoadTry(tree: Try)(using Context): BType = tree match {
       case Try(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
@@ -448,7 +448,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
     }
 
     /* `tmp` (if non-null) is the symbol of the local-var used to preserve the result of the try-body, see `guardResult` */
-    private def emitFinalizer(finalizer: Tree, tmp: Symbol, isDuplicate: Boolean): Unit = {
+    private def emitFinalizer(finalizer: Tree, tmp: Symbol, isDuplicate: Boolean)(using Context): Unit = {
       var saved: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] = null
       if (isDuplicate) {
         saved = jumpDest
@@ -463,7 +463,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
     }
 
     /* Does this tree have a try-catch block? */
-    private def mayCleanStack(tree: Tree): Boolean = tree.find { // TODO: use existsSubTree
+    private def mayCleanStack(tree: Tree)(using Context): Boolean = tree.find { // TODO: use existsSubTree
       case Try(_, _, _) => true
       case _ => false
     }.isDefined
