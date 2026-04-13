@@ -31,12 +31,12 @@ import opt.CallGraph
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
               val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
-              val generatedClassHandler: GeneratedClassHandler)(using Context) {
-  private class Impl(using Context) extends BCodeHelpers, BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+              val generatedClassHandler: GeneratedClassHandler) {
+  private class Impl extends BCodeHelpers, BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
     val bTypeLoader: BTypeLoader = CodeGen.this.bTypeLoader
     val bTypes: WellKnownBTypes = CodeGen.this.bTypes
 
-    def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit =
+    def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
       callGraph.callsitePositions.get(m) = pos match {
         case p: Positioned => p.sourcePos
         case null => NoSourcePosition
@@ -140,13 +140,13 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
     }
   }
 
-  private def genClass(cd: TypeDef): ClassNode = {
+  private def genClass(cd: TypeDef)(using Context): ClassNode = {
     val b = new impl.SyncAndTryBuilder
     b.genPlainClass(cd)
     b.cnode
   }
 
-  private def genMirrorClass(classSym: Symbol, unit: CompilationUnit): ClassNode = {
+  private def genMirrorClass(classSym: Symbol, unit: CompilationUnit)(using Context): ClassNode = {
     mirrorCodeGen.genMirrorClass(classSym, unit)
   }
 

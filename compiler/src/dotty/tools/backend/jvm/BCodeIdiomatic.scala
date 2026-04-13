@@ -3,11 +3,11 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-
 import scala.tools.asm
 import scala.annotation.switch
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
+import dotty.tools.dotc.core.Contexts.Context
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -18,7 +18,7 @@ import dotty.tools.dotc.ast.Positioned
  */
 trait BCodeIdiomatic {
 
-  def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit
+  def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
   val INSTANCE_CONSTRUCTOR_NAME = "<init>"
@@ -337,23 +337,23 @@ trait BCodeIdiomatic {
     final def rem(tk: BType): Unit = { emitPrimitive(JCodeMethodN.remOpcodes, tk) } // can-multi-thread
 
     // can-multi-thread
-    final def invokespecial(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null): Unit = {
+    final def invokespecial(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
       emitInvoke(Opcodes.INVOKESPECIAL, owner, name, desc, itf, pos)
     }
     // can-multi-thread
-    final def invokestatic(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null): Unit = {
+    final def invokestatic(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
       emitInvoke(Opcodes.INVOKESTATIC, owner, name, desc, itf, pos)
     }
     // can-multi-thread
-    final def invokeinterface(owner: String, name: String, desc: String, pos: Positioned | Null): Unit = {
+    final def invokeinterface(owner: String, name: String, desc: String, pos: Positioned | Null)(using Context): Unit = {
       emitInvoke(Opcodes.INVOKEINTERFACE, owner, name, desc, itf = true, pos)
     }
     // can-multi-thread
-    final def invokevirtual(owner: String, name: String, desc: String, pos: Positioned | Null): Unit = {
+    final def invokevirtual(owner: String, name: String, desc: String, pos: Positioned | Null)(using Context): Unit = {
       emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false, pos)
     }
 
-    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null): Unit = {
+    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
       val node = new MethodInsnNode(opcode, owner, name, desc, itf)
       jmethod.instructions.add(node)
       recordCallsitePosition(node, pos)
