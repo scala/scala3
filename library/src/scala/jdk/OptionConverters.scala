@@ -31,17 +31,17 @@ import java.util.{Optional, OptionalDouble, OptionalInt, OptionalLong}
  *
  *  Example usage:
  *
- *  ```
- *   import scala.jdk.OptionConverters._
- *   val a = Option("example").toJava      // Creates java.util.Optional[String] containing "example"
- *   val b = (None: Option[String]).toJava // Creates an empty java.util.Optional[String]
- *   val c = a.toScala                     // Back to Option("example")
- *   val d = b.toScala                     // Back to None typed as Option[String]
- *   val e = Option(2.7).toJava            // java.util.Optional[Double] containing boxed 2.7
- *   val f = Option(2.7).toJavaPrimitive   // java.util.OptionalDouble containing 2.7 (not boxed)
- *   val g = f.toScala                     // Back to Option(2.7)
- *   val h = f.toJavaGeneric               // Same as e
- *   val i = e.toJavaPrimitive             // Same as f
+ *  ```scala sc:compile
+ *  import scala.jdk.OptionConverters.*
+ *  val a = Option("example").toJava      // Creates java.util.Optional[String] containing "example"
+ *  val b = (None: Option[String]).toJava // Creates an empty java.util.Optional[String]
+ *  val c = a.toScala                     // Back to Option("example")
+ *  val d = b.toScala                     // Back to None typed as Option[String]
+ *  val e = Option(2.7).toJava            // java.util.Optional[Double] containing boxed 2.7
+ *  val f = Option(2.7).toJavaPrimitive   // java.util.OptionalDouble containing 2.7 (not boxed)
+ *  val g = f.toScala                     // Back to Option(2.7)
+ *  val h = f.toJavaGeneric               // Same as e
+ *  val i = e.toJavaPrimitive             // Same as f
  *  ```
  */
 object OptionConverters {

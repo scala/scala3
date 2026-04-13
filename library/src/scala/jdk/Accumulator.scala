@@ -38,18 +38,15 @@ import scala.language.implicitConversions
  *  Note: to run the example, start the Scala REPL with `scala -Yrepl-class-based` to avoid
  *  deadlocks, see [[https://github.com/scala/bug/issues/9076]].
  *
- *  ```
- *   scala> import scala.jdk.StreamConverters._
- *   import scala.jdk.StreamConverters._
+ *  ```scala sc:compile
+ *  import scala.jdk.StreamConverters.*
  *
- *   scala> def isPrime(n: Int): Boolean = !(2 +: (3 to Math.sqrt(n).toInt by 2) exists (n % _ == 0))
- *   isPrime: (n: Int)Boolean
+ *  def isPrime(n: Int): Boolean = n > 1 && !(2 +: (3 to Math.sqrt(n).toInt by 2)).exists(n % _ == 0)
  *
- *   scala> val intAcc = (1 to 10000).asJavaParStream.filter(isPrime).toScala(scala.jdk.Accumulator)
- *   intAcc: scala.jdk.IntAccumulator = IntAccumulator(1, 3, 5, 7, 11, 13, 17, 19, ...
- *
- *   scala> val stringAcc = (1 to 100).asJavaParStream.mapToObj("<>" * _).toScala(Accumulator)
- *   stringAcc: scala.jdk.AnyAccumulator[String] = AnyAccumulator(<>, <><>, <><><>, ...
+ *  val intAcc = (1 to 10000).asJavaParStream.filter(isPrime).toScala(scala.jdk.Accumulator)
+ *  // intAcc: scala.jdk.IntAccumulator = IntAccumulator(1, 3, 5, 7, 11, 13, 17, 19, ...
+ *  val stringAcc = (1 to 100).asJavaParStream.mapToObj("<>" * _).toScala(Accumulator)
+ *  // stringAcc: scala.jdk.AnyAccumulator[String] = AnyAccumulator(<>, <><>, <><><>, ...
  *  ```
  *
  *  There are two possibilities to process elements of a primitive Accumulator without boxing:
@@ -151,18 +148,15 @@ abstract class Accumulator[@specialized(Double, Int, Long) A, +CC[X] <: mutable.
  *  the implicit [[Accumulator.AccumulatorFactoryShape]] instance is used to build a specialized
  *  Accumulator according to the element type:
  *
- *  ```
- *   scala> val intAcc = Accumulator(1,2,3)
- *   intAcc: scala.collection.convert.IntAccumulator = IntAccumulator(1, 2, 3)
- *
- *   scala> val anyAccc = Accumulator("K")
- *   anyAccc: scala.collection.convert.AnyAccumulator[String] = AnyAccumulator(K)
- *
- *   scala> val intAcc2 = List(1,2,3).to(Accumulator)
- *   intAcc2: scala.jdk.IntAccumulator = IntAccumulator(1, 2, 3)
- *
- *   scala> val anyAcc2 = List("K").to(Accumulator)
- *   anyAcc2: scala.jdk.AnyAccumulator[String] = AnyAccumulator(K)
+ *  ```scala sc:compile
+ *  val intAcc = Accumulator(1, 2, 3)
+ *  // intAcc: scala.collection.convert.IntAccumulator = IntAccumulator(1, 2, 3)
+ *  val anyAcc = Accumulator("K")
+ *  // anyAccc: scala.collection.convert.AnyAccumulator[String] = AnyAccumulator(K)
+ *  val intAcc2 = List(1, 2, 3).to(Accumulator)
+ *  // intAcc2: scala.jdk.IntAccumulator = IntAccumulator(1, 2, 3)
+ *  val anyAcc2 = List("K").to(Accumulator)
+ *  // anyAcc2: scala.jdk.AnyAccumulator[String] = AnyAccumulator(K)
  *  ```
  *
  *  @define coll Accumulator
@@ -260,7 +254,7 @@ object Accumulator {
    *  @param   elem the element computation
    *  @return  An $coll that contains the results of `n1 x n2` evaluations of `elem`.
    */
-  def fill[A, C](n1: Int, n2: Int)(elem: => A)(implicit canAccumulate: AccumulatorFactoryShape[A, C]): AnyAccumulator[C] = 
+  def fill[A, C](n1: Int, n2: Int)(elem: => A)(implicit canAccumulate: AccumulatorFactoryShape[A, C]): AnyAccumulator[C] =
     fill(n1)(fill(n2)(elem)(using canAccumulate))(using AccumulatorFactoryShape.anyAccumulatorFactoryShape[C])
 
   /** Produces a three-dimensional $coll containing the results of some element computation a number of times.
@@ -355,7 +349,7 @@ object Accumulator {
    *  @param xss the collections that are to be concatenated.
    *  @return the concatenation of all the collections.
    */
-  def concat[A, C](xss: Iterable[A]*)(implicit canAccumulate: AccumulatorFactoryShape[A, C]): C = 
+  def concat[A, C](xss: Iterable[A]*)(implicit canAccumulate: AccumulatorFactoryShape[A, C]): C =
     if (xss.isEmpty) canAccumulate.empty
     else {
       val b = canAccumulate.factory.newBuilder
