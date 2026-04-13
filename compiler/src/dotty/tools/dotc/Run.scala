@@ -419,6 +419,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
     cancelAsyncTasty()
+    // Wait for async TASTy operations (including Zinc callbacks like
+    // apiPhaseCompleted/dependencyPhaseCompleted) to complete. This must happen
+    // before we return to Zinc, which calls getCycleResultOnce immediately after.
+    // See https://github.com/scala/scala3/issues/25774
+    _asyncTasty.foreach(_.sync())
 
     suppressions.runFinished()
     ctx.reporter.finalizeReporting()
