@@ -1168,12 +1168,12 @@ class TreeUnpickler(reader: TastyReader,
              .map(_.changeOwner(localDummy, constr.symbol)))
         else parents
 
+      val statsStart = currentAddr
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
       if cls.isInlineTrait then
-        val statsStart = currentAddr
         cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
           val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
