@@ -573,4 +573,5 @@ This proposal
 
 
 <!-- # the following things are banned... -->
-<!-- # Can S: Not Spec appear as [T: Spec]? How exactly we are going to transport through generic code - reste un peu à voir -->
+<!-- # Can S: Not Spec appear as [T: Spec]? How exactly we are going to transport through generic code - need to think about it -->
+<!-- TODO: Add rules about "material specialization" / "partial specializations" -->

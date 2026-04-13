@@ -112,7 +112,7 @@ def fun(x: B) =
 ```
 - Inline traits may define private members, and these are handled specially: [2]
     - Private fields in the inline trait are inlined as private fields with a mangled name in the inline receiver. This ensures they do not collide with privates inherited from other inline traits.
-    - The private fields are then no longer accessible in the inline trait, as it is transformed into a pure interface. We can't however easily delete them; therefore they are name-mangled and converted to protected to allow them to exist without a definition.   
+    - The private fields are then no longer accessible in the inline trait, as it is transformed into a pure interface, so we delete them.
 
 ```scala
 inline trait A(b: Boolean):
@@ -125,7 +125,6 @@ Is converted to:
 
 ```scala
 inline trait A(b: Boolean):
-    protected val x$inline_trait_erased_private#4481: Int
     def foo(): Int
 
 class B extends A(true):
@@ -143,7 +142,7 @@ inline trait B:
 
 class C extends A, B
 ```
-However, an inline receiver may not define a member whose name collides with the name of an inlined public member from a parent inline trait, unless the override modifier is used. This reflects the behaviour of ordinary traits.
+<!-- However, an inline receiver may not define a member whose name collides with the name of an inlined public member from a parent inline trait, unless the override modifier is used. This reflects the behaviour of ordinary traits.
 ```scala
 inline trait A:
     def foo = "Hello World"
@@ -152,8 +151,39 @@ inline trait B:
     def foo = "Bonjour"
 
 class C extends A, B:
-    def foo = "Bonjour2" // Must be override.
+    def foo = "Bonjour2"``` // Must be override.TODO: At the moment we allow this but should fix --> 
+
+- inline traits may define inline members (e.g. `inline def`, `inline val`). References to these are inlined as the body of the trait is inlined into the inline receiver, but the members themselves are not inlined and are deleted from the parent trait. E.g.:
+```scala
+inline trait A:
+    inline val x = 1
+
+class B extends A:
+    def f = x
+``` 
+becomes:
+```scala
+inline trait A
+class B extends A:
+    def f = 1
 ```
+<!-- TOOD: Is this really the behaviour that we want? -->
+
+- There is the potential for name clashes between members / parameters of inline traits and parameters / members of inline receivers. These are handled in the following way:
+
+| Inline Trait Member Type              | Inline Receiver Member Type                  | Behaviour       | Justification                                                                                                                                                                                                          | Same as `trait` |
+|---------------------------------------|----------------------------------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
+| `val` / `var` incl. `val`/`var` param | `val` / `var` incl. `val` / `var` param      | Needs `override`| As above                                                                                                                                                                                                               |  ❌ (ordinary trait will warn on this; we allow it with no warning)           |
+| `val` / `var` incl. `val`/`var` param | Primary constructor (local) param            | Not allowed     | We cannot rename the constructor param because users may specify it by name when constructing the class, and we can't have a conflict with the generated parameter accessor, yet the parameter accessor and parameter must have the same name.                                          | ❌                |
+| `val` / `var` incl. `val`/`var` param | Method                                       | Not allowed     | As normal traits, without `override` will be told "needs override"; with `override` will be told "not a stable immutable value"                                                                                        | ✅              |
+| Primary ctor (local) param            | `val` / `var` incl. `val` / `var` param      | Allowed         | We need to inline the generated parameter accessors into the receiver, but these are renamed (prefixed with the inline trait name) when doing so, therefore fine. This does not affect the name in the original trait. | ✅              |
+| Primary ctor (local) param            | Primary constructor (local) param            | Allowed         | We need to inline the generated parameter accessors into the receiver, but these are renamed (prefixed with the inline trait name) when doing so, therefore fine. This does not affect the name in the original trait. | ✅               |
+| Primary ctor (local) param            | Method                                       | Allowed         | We need to inline the generated parameter accessors into the receiver, but these are renamed (prefixed with the inline trait name) when doing so, therefore fine. This does not affect the name in the original trait. | ✅               |
+| Method                                | `val` / `var` incl. `val` / `var` param      | Allowed                | | ❌ `trait` requires `override` TODO: CHANGE SO WE MATCH? |
+| Method                                | Primary constructor (local) param            | Allowed unless sig match  | We have the same issue as with  `val`/`var` params if the signature matches, so we need to ban it. Otherwise we allow it as in `trait`. | ❌ |
+| Method                                | Method                                       | Allowed                | | ❌ `trait` requires `override` TODO: CHANGE SO WE MATCH? |
+| Type                                  | Type                                         | Allowed            | Usual rules apply | ✅ |
+
 - Inline receivers may not access the parameters of their parents (these are private):
 ```scala
 inline trait A(x: Int)
@@ -187,6 +217,8 @@ inline trait Counter extends Iterator:
   def next(): Int = current += 1
 ```
 Narrowing `current` to the type of the initializer here would give it type `0`. This makes the increment operation in `next()` illegal.
+
+- Inline methods defined inside an inline trait are inlined directly when the body is inlined. This means that they do not exist in the inline receivers. They are then deleted from the inline trait.
 
 ## Benefits of inline traits
 We can now do the following with no boxing and unboxing:
@@ -238,16 +270,22 @@ This problem is addressed via `Specialized` traits; see the accompanying documen
 
 ## Interaction with other language features
 
-| Language feature         | Is currently supported inside inline traits? |
-|--------------------------|----------------------------------------------|
-| Methods                  | ✅                                           |
-| `val` / `var` Properties | ✅                                           |
-| Private properies |              ❌                              | <!-- TODO: Surely this is less than ideal - see inline-trait-body-private-name-collision.scala -->
-| `type`s                  | ✅                                           |
-| Inner classes/traits            | ❌                                    |
-| Opaque types             | ❌                                           |
-| Self types               | ❌                                           |
-| Inheritance (of inline traits) | Only allowed by classes and inline traits | 
+| Language feature                    | Is currently supported inside inline traits? |
+|-------------------------------------|----------------------------------------------|
+| Methods                             | ✅                                           |
+| `val` / `var` Properties            | ✅                                           |
+| Non-local private members[*]        | ❌                                           |
+| `type`s                             | ✅                                           |
+| Inner classes/traits                | ❌                                           |
+| Opaque types                        | ❌                                           |
+| Self types                          | ❌                                           |
+| Inheritance (of inline traits)      | Only allowed by classes and inline traits    |
+| Instantiation of inline traits [**] | ❌                                           |
+
+[*] That is, members which are labelled private and accessed from within the class on other instances of the class.
+Local private members (members with the same access patterns as the former `private[this]`) are allowed.
+
+[**] While inline traits may not define inner classes as direct members, they may have methods which themsleves define classes. This is permitted only if the classes do not extend from an inline trait. In particular this means that methods of inline traits may not create anonymous instances of inline traits e.g. `new A() {}`. The only exception to this is if the trait being instantiated (`A` here) is `Specialized`, because the instantiation will not produce an anonymous class inside the trait (see the document on Specialized traits).
 
 ## Processing of inline traits in the compiler
 Inline traits in user code are inlined in the phase `specializeInlineTraits`. The phase `replaceInlinedTraitSymbols`
@@ -268,3 +306,4 @@ This behaviour is the same as that in Timothée's thesis except for the followin
  - He allows inline traits to contain inner classes in principle, however in practice they don't work which is why we ban them.
  - We specialize types of member accesses on e.g. Numeric
  - He in principle allows traits to extend inline traits although it doesn't work that well; we think we probably want to forbid this.
+ - We also fix a number of bugs in the implementation, some of which have a minor effect on the processing and interaction with the rest of the compiler phases, e.g. we apply pruneInlineTraits slightly earlier than in the original implementation to avoid spurious warnings with -Wsafe-init.
