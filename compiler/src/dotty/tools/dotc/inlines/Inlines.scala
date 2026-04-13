@@ -300,7 +300,14 @@ object Inlines:
               (inlinedDefs1, childDefs)
           }
         }
-        val impl1 = cpy.Template(impl)(body = newDefs._1 ::: newDefs._2)
+        val newbody = newDefs._1 ::: newDefs._2
+        val paramAccessors = newbody.filter(_.symbol.is(ParamAccessor))
+        
+        for pacc <- paramAccessors
+            otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
+        do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
+
+        val impl1 = cpy.Template(impl)(body = newbody)
         cpy.TypeDef(cls)(rhs = impl1)
       case _ =>
         cls
