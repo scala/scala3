@@ -13,7 +13,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.Constants.*
-import dotty.tools.dotc.core.Contexts.{ctx, *}
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
@@ -29,10 +29,8 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.dotc.transform.ElimErasedValueType
 import dotty.tools.dotc.transform.Mixin
-import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 import tpd.*
-import SymbolUtils.given
 import dotty.tools.dotc.config.ScalaSettingsProperties
 
 /*

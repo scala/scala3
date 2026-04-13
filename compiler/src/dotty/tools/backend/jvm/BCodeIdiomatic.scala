@@ -7,8 +7,6 @@ import scala.language.unsafeNulls
 import scala.tools.asm
 import scala.annotation.switch
 import scala.tools.asm.tree.MethodInsnNode
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.report
 import dotty.tools.dotc.ast.Positioned
 
 /*
@@ -18,7 +16,7 @@ import dotty.tools.dotc.ast.Positioned
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic(using Context) {
+trait BCodeIdiomatic {
 
   def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit
 
@@ -89,7 +87,7 @@ trait BCodeIdiomatic(using Context) {
 
     def jmethod: asm.tree.MethodNode
 
-    import asm.Opcodes;
+    import asm.Opcodes
 
     final def emit(opc: Int): Unit = { jmethod.visitInsn(opc) }
 
@@ -104,7 +102,7 @@ trait BCodeIdiomatic(using Context) {
         jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
         jmethod.visitInsn(Opcodes.LXOR)
       } else {
-        abort(s"Impossible to negate an $kind")
+        throw new AssertionError(s"Impossible to negate an $kind")
       }
     end genPrimitiveNot
 
@@ -421,7 +419,7 @@ trait BCodeIdiomatic(using Context) {
       i = 1
       while (i < keys.length) {
         if (keys(i-1) == keys(i)) {
-          abort("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
         }
         i += 1
       }
@@ -538,11 +536,6 @@ trait BCodeIdiomatic(using Context) {
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
-    }
-
-    def abort(msg: String): Nothing = {
-      report.error(msg)
-      throw new RuntimeException(msg)
     }
 
   } // end of class JCodeMethodN
