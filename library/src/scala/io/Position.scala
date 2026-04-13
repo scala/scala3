@@ -31,12 +31,19 @@ import annotation.nowarn
  *  the undefined position is 0:   `encode(0,0) == 0`
  *  encodings are non-negative :   `encode(line,column) >= 0`
  *  position order is preserved:
+ *  ```scala sc:compile sc-name:lines-and-columns
+ *  val line1 = 1
+ *  val column1 = 2
+ *  val line2 = 1
+ *  val column2 = 3
  *  ```
+ *  ```scala sc-compile-with:lines-and-columns
  *  (line1 <= line2) || (line1 == line2 && column1 <= column2)
  *  ```
  *  implies
- *  ```
- *  encode(line1,column1) <= encode(line2,column2)
+ *  ```scala sc-compile-with:lines-and-columns
+ *  import scala.io.Position.encode
+ *  encode(line1, column1) <= encode(line2, column2)
  *  ```
  */
 @deprecated("this class will be removed", "2.10.0")
