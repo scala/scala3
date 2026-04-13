@@ -938,9 +938,7 @@ object Checking {
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros
-        || name == Feature.captureChecking
-        || name == Feature.separationChecking
+        name == Feature.scala2macros || Feature.nonViralExperimentalFeatures.contains(name)
       trees.filter {
         case Import(qual, selectors) =>
           languageImport(qual) match
@@ -1539,6 +1537,8 @@ trait Checking {
       else tree
     else if !cls.derivesFrom(defn.AnnotationClass) then
       errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
+    else if cls == defn.AssumeSafeAnnot && Feature.safeEnabled then
+      errorTree(tree, em"@assumeSafe cannot be used in safe mode")
     else tree
 
   /** Check arguments of compiler-defined annotations */

@@ -26,15 +26,10 @@
 48 |    LzyList(1, 2, 3).map { x => f.write(x); x * x }
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reference-cc.scala:58:8 ----------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/reference-cc.scala:58:22 -------------------------------
 58 |    try () => xs.map(f).sum  // error TODO improve error message
-   |        ^^^^^^^^^^^^^^^^^^^
-   |Found:    () ->{canThrow$1} Double
-   |Required: () ->{any} Double
+   |                      ^
+   |                      Reference `canThrow$1` is not included in the allowed capture set {any}
+   |                      of an enclosing function literal with expected type () => Double.
    |
-   |Note that capability `canThrow$1` cannot flow into capture set {any}
-   |because (canThrow$1 : CanThrow[LimitExceeded]) in an enclosing try expression is not visible from any in method escaped.
-   |
-   |where:    any is a root capability in the result type of method escaped
-   |
-   | longer explanation available when compiling with `-explain`
+   |                      where:    any is a root capability in the result type of method escaped

@@ -30,7 +30,7 @@ enum CompletionSource:
   case NamedArgKind
   case AutoFillKind
   case FileSystemMemberKind
-  case IvyImportKind
+  case CoursierKind
   case InterpolatorKind
   case MatchCompletionKind
   case CaseKeywordKind
@@ -282,13 +282,14 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.File
 
-  case class IvyImport(
+  case class Coursier(
       label: String,
       override val insertText: Option[String],
-      override val range: Option[Range]
+      override val range: Option[Range],
+      isVersionCompletion: Boolean = false
   ) extends CompletionValue:
     override val filterText: Option[String] = insertText
-    override def completionItemDataKind: Integer = CompletionSource.IvyImportKind.ordinal
+    override def completionItemDataKind: Integer = CompletionSource.CoursierKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Folder
 

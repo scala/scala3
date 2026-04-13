@@ -14,8 +14,6 @@ permissions:
 
 jobs:
   build:
-    env:
-      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
     runs-on: ubuntu-latest
     if: "github.event_name == 'merge_group'
          || (    github.event_name == 'pull_request'
@@ -62,6 +60,12 @@ jobs:
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
+      - name: Upload scaladoc output
+        uses: actions/upload-artifact@v7
+        with:
+          name: scaladoc-output
+          path: scaladoc/output/scala3
+
   validate-docs:
     runs-on: ubuntu-latest
     steps:
@@ -69,10 +73,51 @@ jobs:
         uses: actions/checkout@v6
 
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.2
+      - uses: VirtusLab/scala-cli-setup@v1.12.3
 
       - name: Validate docs sidebars
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
+
+  validate-generated-docs:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download scaladoc output
+        uses: actions/download-artifact@v8
+        with:
+          name: scaladoc-output
+          path: ./scaladoc-output/
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install html-proofer
+        run: gem install html-proofer
+
+      - name: Check if docs/ was modified
+        id: docs-changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if git diff --name-only "$BASE" HEAD | grep -q '^docs/'; then
+            echo "modified=true" >> $GITHUB_OUTPUT
+          else
+            echo "modified=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate documentation links
+        run: ./project/scripts/validateScaladocLinks.sh scaladoc-output --checkExternalLinks=${{ steps.docs-changed.outputs.modified }}
+
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest
@@ -97,3 +142,44 @@ jobs:
 
       - name: Test sourcelinks to stdlib
         run: true # ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test
+
+  check-error-code-snippets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: coursier/cache-action@v8
+      - uses: VirtusLab/scala-cli-setup@v1.11
+        with:
+          jvm: temurin:17
+          apps: sbt
+      - name: Publish compiler locally
+        run: |
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "SCALA_VERSION=$version" >> $GITHUB_ENV
+          echo "Would test snippets using Scala $version"
+
+          # Publish locally minimal set of artifacts that would be required to test snippets
+          sbt "set every doc := new File(\"unused\");\
+               scala3-bootstrapped/publishLocal
+              "
+      - name: Test error code snippets
+        shell: bash
+        run: scala-cli test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+
+      - name: "[On failure] Print reproduction/fix steps"
+        if: failure()
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          Snippets validation for error codes failed
+
+          If you've modified messages of positions of error codes, you might need to update the expected outputs, to do it run: following command:
+          scala -S ${{ env.SCALA_VERSION }} project/scripts/checkErrorCodeSnippets.scala --with-compiler --main-class=updateAllErrorCodeOutputs
+
+          Single error code validation can be performed using:
+          scala -S ${{ env.SCALA_VERSION }} project/scripts/checkErrorCodeSnippets.scala --with-compiler -- docs/_docs/reference/error-codes/E001.md [--verbose --update-output]
+
+          To check the validation use dedicated test suite:
+          scala test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+
+          See ./docs/.ai/skill/add-error-code-docs.md for local skill for adding new error code docs.
+          EOF

@@ -10,18 +10,13 @@
    |        where:    any is a root capability classified as SharedCapability in the type of variable v
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:11:8 ------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/scope-extrusions.scala:11:8 ----------------------------
 11 |    w = g  // error
    |        ^
-   |        Found:    () ->{x} Unit
-   |        Required: () ->{any} Unit
-   |
-   |        Note that capability `x` cannot flow into capture set {any}
-   |        because (x : IO) in method f1 is not visible from any in variable w.
+   |        Reference `x` is not included in the allowed capture set {any}
+   |        of an enclosing function literal with expected type () => Unit.
    |
    |        where:    any is a root capability in the type of variable w
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:20:11 -----------------------------
 20 |  withFile(io => io)         // error
    |           ^^^^^^^^

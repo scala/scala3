@@ -569,13 +569,13 @@ object Predef extends LowPriorityImplicits {
   extension (inline x: AnyRef | Null)
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `eq` rather than only `==`. This is needed because `Null` no longer has
-     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. 
+     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`.
      */
     inline infix def eq(inline y: AnyRef | Null): Boolean =
       x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `ne` rather than only `!=`. This is needed because `Null` no longer has
-     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. 
+     *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`.
      */
     inline infix def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)

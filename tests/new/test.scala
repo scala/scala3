@@ -1,4 +1,13 @@
-trait FileSystem:
-  def read(): Unit
-def process(fs: FileSystem^): Unit =
-  val f: () -> Unit = () => fs.read()  // Error: fs cannot flow into {}
+package test
+
+object Console:
+  val out: java.io.PrintStream^ = System.out
+  def println(s: String) = out.println(s)
+
+
+object Test:// uses Console uses_init Console:
+  Console.println("hello")
+
+  def f() =
+    Console.println("hello")
+

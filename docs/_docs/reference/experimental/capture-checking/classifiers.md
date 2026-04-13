@@ -13,16 +13,16 @@ other capabilities. Or might want to allow mutation, but no other side effects. 
 
 For instance, the `scala.caps` package defines a classifier trait called `Control`,
 like this:
-```scala
+```scala sc:nocompile
   trait Control extends SharedCapability, Classifier
 ```
 The [Gears library](https://lampepfl.github.io/gears/) then defines a capability class `Async` which extends `Control`.
 
-```scala
+```scala sc:nocompile
   trait Async extends Control
 ```
 Unlike normal inheritance, classifiers also restrict the capture set of a capability. For instance, say we have a function
-```scala
+```scala sc:nocompile
   def f(using async: Async^) = body
 ```
 (the `^` is as usual redundant here since `Async` is a capability trait).
@@ -37,7 +37,7 @@ Classifiers are unique: a class cannot extend directly or transitively at the sa
 ### Predefined Classifiers
 
 The `caps` object defines the `Classifier` trait itself and some traits that extend it:
-```scala
+```scala sc:nocompile
 trait Classifier
 
 sealed trait Capability
@@ -85,7 +85,7 @@ Consider the following problem: The `Try.apply` method takes in its `body` param
 the `get` method of a `Try` object. What should a capability-aware signature of `Try` be?
 
 The body passed to `Try.apply` can have arbitrary effects, so it can retain arbitrary capabilities. Yet the resulting `Try` object will retain only those capabilities of `body` which are classified as `Control`. So the signature of `Try.apply` should look like this:
-```scala
+```scala sc:nocompile
 object Try:
   def apply[T](body: => T): Try[T]^{body.only[Control]}
 ```
@@ -104,7 +104,7 @@ Then the result of `Try { expr }` would have type `Try^{async}`. We drop `io` si
 `io`'s type is a `Capability` class that does not extend `Control`.
 
 If `expr` would use an additional capability `proc: () => Unit`, then `proc` would also show up in the result capture set. Since `proc` is fully effect-polymorphic, we can't exclude that it retains `Control` capabilities, so we have to keep it in the restricted capture set. These elements are shown together in the following example:
-```scala
+```scala sc:nocompile
 class IO extends caps.SharedCapability
 class Async extends caps.Control
 

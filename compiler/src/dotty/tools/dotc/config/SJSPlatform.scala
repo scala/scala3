@@ -12,10 +12,13 @@ object SJSPlatform {
     ctx.platform.asInstanceOf[SJSPlatform]
 }
 
-class SJSPlatform()(using Context) extends JavaPlatform {
+class SJSPlatform extends JavaPlatform {
 
   /** Scala.js-specific definitions. */
   val jsDefinitions: JSDefinitions = new JSDefinitions()
+
+  override def init()(using Context): Unit =
+    jsDefinitions.init()
 
   /** Is the SAMType `cls` also a SAM under the rules of the Scala.js back-end? */
   override def isSam(cls: ClassSymbol)(using Context): Boolean =

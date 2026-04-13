@@ -1,0 +1,34 @@
+-- [E173] Reference Error: tests/neg/i25442/protected-constructors.scala:7:22 ------------------------------------------
+7 |class C extends B(new A(1)) // error
+  |                      ^
+  |   constructor A cannot be accessed as a member of protectedCtors.A from class C.
+  |     protected constructor A can only be accessed from class C in package protectedCtors or one of its subclasses.
+-- [E173] Reference Error: tests/neg/i25442/protected-constructors.scala:10:22 -----------------------------------------
+10 |class E extends D(new D(1)) // error
+   |                      ^
+   | constructor D cannot be accessed as a member of protectedCtors.D from class E.
+   |   protected constructor D can only be accessed from class E in package protectedCtors or one of its subclasses.
+-- Error: tests/neg/i25442/protected-constructors.scala:18:24 ----------------------------------------------------------
+18 |class J extends G(new F(1)) // error: protected primary in super args
+   |                        ^
+   |                        too many arguments for constructor F in class F: (): protectedCtors.F
+-- [E173] Reference Error: tests/neg/i25442/protected-constructors.scala:22:14 -----------------------------------------
+22 |  val k = new A(1) // error
+   |              ^
+   | constructor A cannot be accessed as a member of protectedCtors.A from class K.
+   |   protected constructor A can only be accessed from class K in package protectedCtors or one of its subclasses.
+-- [E173] Reference Error: tests/neg/i25442/protected-constructors.scala:27:28 -----------------------------------------
+27 |class N extends M(() => new A(2)) // error
+   |                            ^
+   | constructor A cannot be accessed as a member of protectedCtors.A from class N.
+   |   protected constructor A can only be accessed from class N in package protectedCtors or one of its subclasses.
+-- [E173] Reference Error: tests/neg/i25442/test.scala:7:15 ------------------------------------------------------------
+7 |  def t2 = new I(42) // error
+  |               ^
+  |               constructor I cannot be accessed as a member of I from class M.
+  |                 protected constructor I can only be accessed from class M or one of its subclasses.
+-- [E173] Reference Error: tests/neg/i25442/test.scala:8:35 ------------------------------------------------------------
+8 |  def this(x: Int) = { this(); new I(x) } // error
+  |                                   ^
+  |                             constructor I cannot be accessed as a member of I from class M.
+  |                               protected constructor I can only be accessed from class M or one of its subclasses.

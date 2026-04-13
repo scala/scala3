@@ -31,7 +31,7 @@ object Phases {
   @sharable object NoPhase extends Phase {
     override def exists: Boolean = false
     def phaseName: String = "<no phase>"
-    def run(using Context): Unit = unsupported("run")
+    protected def run(using Context): Unit = unsupported("run")
     def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
   }
 
@@ -55,13 +55,13 @@ object Phases {
 
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
-      def run(using Context): Unit = unsupported("run")
+      protected def run(using Context): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
       def phaseName: String = "terminal"
-      def run(using Context): Unit = unsupported("run")
+      protected def run(using Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(using Context): SingleDenotation =
         unsupported("transform")
       override def lastPhaseId(using Context): Int = id
@@ -139,7 +139,7 @@ object Phases {
      *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
     final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
-
+      myRecheckPhaseIds = 0L
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
       phasess.foreach(p => p match {
@@ -337,6 +337,8 @@ object Phases {
     }
 
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
+    final def isAfterInlining(phase: Phase): Boolean =
+      inliningPhase != NoPhase && phase.id > inliningPhase.id
     final def isTyper(phase: Phase): Boolean = phase.id == typerPhase.id
   }
 
@@ -395,8 +397,11 @@ object Phases {
       val lastJavaPhase = if ctx.settings.XjavaTasty.value then sbtExtractAPIPhase else typerPhase
       lastJavaPhase <= this
 
-    /** @pre `isRunnable` returns true */
-    def run(using Context): Unit
+    /**
+     * Run for each compilation unit by `runOn`.
+     * @pre `isRunnable` returns true
+     */
+    protected def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
@@ -407,6 +412,7 @@ object Phases {
       val doCheckJava = skipIfJava && !isAfterLastJavaPhase
       for unit <- units do ctx.profiler.onUnit(this, unit):
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
+        val previousTyperState = unitCtx.typerState.snapshot()
         if ctx.run.enterUnit(unit) then
           try
             if doCheckJava && unit.typedAsJava then
@@ -416,6 +422,7 @@ object Phases {
             buf += unitCtx.compilationUnit
           catch
             case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
+              unitCtx.typerState.resetTo(previousTyperState)
             case ex: Throwable if !ctx.run.enrichedErrorMessage =>
               println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
               throw ex

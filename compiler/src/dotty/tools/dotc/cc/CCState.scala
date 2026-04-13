@@ -8,8 +8,8 @@ import collection.mutable
 import reporting.Message
 import Contexts.Context
 import Types.MethodType
-import Symbols.Symbol
-import util.SimpleIdentitySet
+import Symbols.{Symbol, ClassSymbol}
+import util.{SimpleIdentitySet, EqHashMap}
 import Capabilities.Capability
 
 /** Capture checking state, which is known to other capture checking components */
@@ -59,6 +59,7 @@ class CCState:
 
   def start(): Unit =
     iterCount = 1
+    fieldsWithExplicitTypes.clear()
 
   private var mySepCheck = false
 
@@ -100,6 +101,24 @@ class CCState:
   private var collapseLocalCaps: Boolean = false
 
   private var discardUses: Boolean = false
+
+  // ------- Caches for symbols --------------------------------------------------
+
+  /* A cache for CaptureOps.useSet */
+  private[cc] val useSetCache: EqHashMap[Symbol, CaptureSet] = EqHashMap()
+
+  /** A cache that stores for each class the classifiers of all LocalCap instances
+   *  in the types of its fields and the fields that contribute such LocalCap instances.
+   */
+  val localCapClassifiersAndFieldsCache: EqHashMap[Symbol, (List[ClassSymbol], List[Symbol])] = EqHashMap()
+
+  /** A map from class symbols in the current compilation unit to those of their fields
+   *  that have an explicit type given. Used in `captureSetImpliedByFields`
+   *  to avoid forcing fields with inferred types prematurely. The test file
+   *  where this matters is i24335.scala. The precise failure scenario which
+   *  this avoids is described in #24335.
+   */
+  val fieldsWithExplicitTypes: EqHashMap[ClassSymbol, List[Symbol]] = EqHashMap()
 
 object CCState:
 

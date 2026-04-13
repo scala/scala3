@@ -83,7 +83,7 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this set provisionally solved, so that another cc run might unfreeze it? */
   def isProvisionallySolved(using Context): Boolean
 
-  /** An optional owner, or NoSymbol if none exists. Used for diagnstics
+  /** An optional owner, or NoSymbol if none exists. Used for diagnostics
    */
   def owner: Symbol
 
@@ -993,6 +993,10 @@ object CaptureSet:
     def withDescription(description: String): this.type =
       this.description = this.description.join(" and ", description)
       this
+
+    /** A Var with the given elems and the same owner as this Var. Used for error diagnsotcis. */
+    def withElems(elems: Refs): Var =
+      Var(owner, elems, nestedOK)
 
     /** Adds variables to the ShownVars context property if that exists, which
      *  establishes a record of all variables printed in an error message.

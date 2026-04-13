@@ -78,7 +78,7 @@ class ReplCompilerTests extends ReplTest:
       assertEquals(1, summon[State].imports.size)
       run("""mutable.Map("one" -> 1)""")
       assertEquals(
-        "val res0: mutable.Map[String, Int] = HashMap(one -> 1)",
+        """val res0: mutable.Map[String, Int] = HashMap("one" -> 1)""",
         storedOutput().trim
       )
     }
@@ -342,7 +342,7 @@ class ReplCompilerTests extends ReplTest:
     state
   } andThen {
     run("a")   // `a` should retain its original binding
-    assertEquals("val res0: Int = 1234", storedOutput().trim)
+    assertEquals("val res2: Int = 1234", storedOutput().trim)
   }
 
   @Test def i4416_imports = initially {
@@ -492,23 +492,181 @@ class ReplCompilerTests extends ReplTest:
     assertTrue(all.head.startsWith("-- [E103] Syntax Error"))
     assertTrue(all.exists(_.trim().startsWith("|  Illegal start of statement: this modifier is not allowed here")))
 
-  @Test def `i16250a`: Unit = initially:
-    val hints = List(
-      "this language import is not allowed in the REPL",
-      "To use this language feature, include the flag `-language:experimental.captureChecking` when starting the REPL"
-    )
-    run("import language.experimental.captureChecking")
-    val all = lines()
-    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+  @Test def `i16250a`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Verify capture checking syntax is accepted in subsequent inputs
+      run("def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x")
+      assertEquals(
+        "def foo[C^](x: AnyRef^{C}): AnyRef^{x}",
+        storedOutput().trim)
 
-  @Test def `i16250b`: Unit = initially:
-    val hints = List(
-      "this language import is not allowed in the REPL",
-      "To use this language feature, include the flag `-language:experimental.pureFunctions` when starting the REPL"
-    )
-    run("import language.experimental.pureFunctions")
-    val all = lines()
-    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+  @Test def `i16250b`: Unit =
+    initially:
+      run("import language.experimental.pureFunctions")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Pure function arrow syntax requires pureFunctions
+      run("val f: Int -> Int = (x: Int) => x + 1")
+      assertTrue(storedOutput().trim.startsWith("val f: Int -> Int = Lambda$"))
+
+  @Test def `i16250c`: Unit =
+    initially:
+      run("import language.experimental.separationChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // separationChecking implies captureChecking
+      run("def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x")
+      assertEquals(
+        "def foo[C^](x: AnyRef^{C}): AnyRef^{x}",
+        storedOutput().trim)
+
+  @Test def `i16250d`: Unit =
+    initially:
+      run("import language.experimental.safe")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // safe implies captureChecking
+      run("def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x")
+      assertEquals(
+        "def foo[C^](x: AnyRef^{C}): AnyRef^{x}",
+        storedOutput().trim)
+
+  @Test def `i16250e cc inferred capture sets on function types`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Return type is inferred — capture set {a} should still be displayed
+      run("def mkFn(a: AnyRef^) = () => a.toString()")
+      assertEquals(
+        "def mkFn(a: AnyRef^): () ->{a} String",
+        storedOutput().trim)
+
+  @Test def `cc pretty print capturing types`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Multiple captures in a set
+      run("def withCaps(a: AnyRef^, b: AnyRef^): AnyRef^{a, b} = a")
+      assertEquals(
+        "def withCaps(a: AnyRef^, b: AnyRef^): AnyRef^{a, b}",
+        storedOutput().trim)
+
+  @Test def `cc pretty print arrows with capture sets`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Function type with named capture set in arrow
+      run("def impureFn(a: AnyRef^)(f: Int ->{a} Int): Int = f(0)")
+      assertEquals(
+        "def impureFn(a: AnyRef^)(f: Int ->{a} Int): Int",
+        storedOutput().trim)
+
+  @Test def `cc pretty print by-name with captures`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      run("def byName(a: AnyRef^)(f: ->{a} Int): Int = f")
+      assertEquals(
+        "def byName(a: AnyRef^)(f: () ?->{a} Int): Int",
+        storedOutput().trim)
+
+  @Test def `cc pretty print read-only captures`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.Mutable")
+    .andThen:
+      storedOutput() // discard
+      run("class Ref(var x: Int) extends Mutable; def readRef(r: Ref^{caps.any.rd}): Int = r.x")
+      assertEquals(
+        "// defined class Ref\ndef readRef(r: Ref^{any.rd}): Int",
+        storedOutput().trim)
+
+  @Test def `cc pretty print classifier restricted`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.{SharedCapability, Classifier}")
+    .andThen:
+      storedOutput() // discard
+      run("trait Control extends SharedCapability, Classifier; def restricted(f: () ->{caps.any.only[Control]} Unit): Unit = f()")
+      assertEquals(
+        "// defined trait Control\ndef restricted(f: () ->{any.only[Control]} Unit): Unit",
+        storedOutput().trim)
+
+  @Test def `cc pretty print capset var with bounds`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      // Vals must have capability type so they can be tracked
+      run("val a: AnyRef^ = new Object; val b: AnyRef^ = new Object; def bounded[C^ <: {a, b}](x: AnyRef^{C}): AnyRef^{C} = x")
+      val out = storedOutput().trim
+      // Output starts with val lines containing runtime object hashes; assert on the def line
+      assertTrue(s"expected bounded capset def, got: $out",
+        out.contains("def bounded[C^ <: {a, b}](x: AnyRef^{C}): AnyRef^{C}"))
+
+  @Test def `cc pretty print consume param`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      run("def sink(consume x: AnyRef^): Unit = ()")
+      assertEquals(
+        "def sink(consume x: Object^): Unit",
+        storedOutput().trim)
+
+  @Test def `cc pretty print pure arrows`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      run("def pure(f: Int -> Int): Int = f(0); def pureNoArgs(f: () -> Int): Int = f()")
+      assertEquals(
+        "def pure(f: Int -> Int): Int\ndef pureNoArgs(f: () -> Int): Int",
+        storedOutput().trim)
+
+  @Test def `cc pretty print context function with captures`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      run("def ctxFn(a: AnyRef^)(f: AnyRef^{a} ?=> Int): Int = f(using a)")
+      assertEquals(
+        "def ctxFn(a: AnyRef^)(f: (AnyRef^{a}) ?=> Int): Int",
+        storedOutput().trim)
+
+  @Test def `cc pretty print path-dependent captures`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      assertEquals("", storedOutput().trim)
+      run("trait Nested { val c: AnyRef^; val next: Nested }; def pathDep(n: Nested^)(g: AnyRef^{n.c} => Any): Any = g(n.c)")
+      assertEquals(
+        "// defined trait Nested\ndef pathDep(n: Nested^)(g: AnyRef^{n.c} => Any): Any",
+        storedOutput().trim)
+
+  @Test def `cc pretty print fresh in result type`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.{Mutable, fresh}")
+    .andThen:
+      storedOutput() // discard
+      run("class Ref(var x: Int) extends Mutable; lazy val mkRef: () -> Ref^{fresh} = ???")
+      assertEquals(
+        "// defined class Ref\nlazy val mkRef: () -> Ref^{fresh}",
+        storedOutput().trim)
+
+  @Test def `i16250 nested global language imports error`: Unit = initially:
+    for feature <- List("captureChecking", "pureFunctions", "separationChecking", "safe") do
+      run(s"def test = { import language.experimental.$feature; 1 }")
+      assertTrue(s"expected toplevel error for $feature",
+        storedOutput().contains("this language import is only allowed at the toplevel"))
 
   @Test def `i22844 regression colon eol`: Unit = initially:
     run:
@@ -541,6 +699,18 @@ class ReplCompilerTests extends ReplTest:
   @Test def `i24142 abbreviated commands still work`: Unit = initially:
     run(":he")
     assertTrue(storedOutput().contains("The REPL has several commands available"))
+
+  @Test def `i25116 LazyList printing`: Unit = initially:
+    run:
+      """
+      |lazy val foo = println(23)
+      |foo #:: LazyList.empty
+      |""".stripMargin
+    val expected = List(
+      "lazy val foo: Unit",
+      "val res0: LazyList[Unit] = LazyList(<not computed>)"
+    )
+    assertEquals(expected, lines())
 
 object ReplCompilerTests:
 

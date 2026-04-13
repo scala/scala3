@@ -1,0 +1,24 @@
+-- Error: tests/neg-custom-args/captures/safemode-1/safe_2.scala:13:2 --------------------------------------------------
+13 |  println("hello") // error
+   |  ^^^^^^^
+   |  Cannot refer to method println from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-1/safe_2.scala:15:10 -------------------------------------------------
+15 |  val u = Unsafe() // error
+   |          ^^^^^^
+   |Cannot refer to class Unsafe from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe
+-- Error: tests/neg-custom-args/captures/safemode-1/safe_2.scala:16:9 --------------------------------------------------
+16 |  Unsafe.foo() // error
+   |  ^^^^^^^^^^
+   |Cannot refer to method foo from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe
+-- Error: tests/neg-custom-args/captures/safemode-1/safe_2.scala:18:8 --------------------------------------------------
+18 |  scala.Console.out.println("!") // error
+   |  ^^^^^^^^^^^^^
+   |  Cannot refer to object Console from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-1/safe_2.scala:22:6 --------------------------------------------------
+22 |    x.a.foo()   // error
+   |    ^^^
+   |    Cannot refer to value a from safe code since it is tagged @rejectSafe
+-- Error: tests/neg-custom-args/captures/safemode-1/safe_2.scala:24:4 --------------------------------------------------
+24 |    bam()  // error
+   |    ^
+   |    Cannot refer to value a from safe code since it is tagged @rejectSafe

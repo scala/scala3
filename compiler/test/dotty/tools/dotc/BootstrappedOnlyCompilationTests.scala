@@ -4,10 +4,7 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass }
-import org.junit.Assert._
-import org.junit.Assume._
-import org.junit.Ignore
+import org.junit.{AfterClass, Ignore, Test}
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
@@ -97,7 +94,7 @@ class BootstrappedOnlyCompilationTests {
   // Negative tests ------------------------------------------------------------
 
   @Test def negMacros: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
+    given TestGroup = TestGroup("negMacros")
     compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros"))
       .checkExpectedErrors()
   }
@@ -114,8 +111,8 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted))
-      .checkRuns()
+    val compilationTest = withCoverage(compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted)))
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
   }
 
   @Test def runWithCompiler: Unit = {
@@ -129,7 +126,8 @@ class BootstrappedOnlyCompilationTests {
       if scala.util.Properties.isWin then basicTests
       else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
 
-    aggregateTests(tests*).checkRuns()
+    val compilationTest = withCoverage(aggregateTests(tests*))
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
   }
 
   @Ignore @Test def runScala2LibraryFromTasty: Unit = {
@@ -144,19 +142,10 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runBootstrappedOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
-    aggregateTests(
+    val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
-    ).checkRuns()
-  }
-
-  @Test def posBootstrappedOnly: Unit = {
-    given TestGroup = TestGroup("compilePosBootstrappedOnly")
-    compileFilesInDir("tests/pos-bootstrapped", defaultOptions).checkCompile()
-  }
-
-  @Test def warnBootstrappedOnly: Unit = {
-    given TestGroup = TestGroup("compileWarnBootstrappedOnly")
-    compileFilesInDir("tests/warn-bootstrapped", defaultOptions).checkWarnings()
+    ))
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
   }
 
   // Pickling Tests ------------------------------------------------------------
@@ -220,7 +209,7 @@ class BootstrappedOnlyCompilationTests {
   }
 }
 
-object BootstrappedOnlyCompilationTests extends ParallelTesting {
+object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 100.seconds

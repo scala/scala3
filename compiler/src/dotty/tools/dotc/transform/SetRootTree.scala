@@ -17,6 +17,7 @@ class SetRootTree extends Phase {
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
 
+  // public accessibility, not protected as in Phase, because this is called from Namer
   override def run(using Context): Unit = {
     val tree = ctx.compilationUnit.tpdTree
     traverser.traverse(tree)

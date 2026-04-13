@@ -4,11 +4,11 @@
    |                                 expression expected but [31mmatch[0m found
    |
    | longer explanation available when compiling with `-explain`
--- [E040] Syntax Error: tests/neg/i23729.scala:18:6 --------------------------------------------------------------------
+-- Error: tests/neg/i23729.scala:18:6 ----------------------------------------------------------------------------------
 18 |      case Empty => Nil // error poor recovery
    |      ^^^^
-   |      'def' expected, but 'case' found
--- [E040] Syntax Error: tests/neg/i23729.scala:19:6 --------------------------------------------------------------------
+   |      end of extension method expected but 'case' found
+-- Error: tests/neg/i23729.scala:19:6 ----------------------------------------------------------------------------------
 19 |      case Node(_, l, _) => l.start :+ Left // error poor recovery
    |      ^^^^
-   |      'def' expected, but 'case' found
+   |      end of extension method expected but 'case' found

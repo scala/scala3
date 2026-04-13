@@ -16,6 +16,27 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |io.circul""".stripMargin
     )
 
+  @Test def `simple-lib-name` =
+    checkSubset(
+      """|//> using dep "org.scala-lang::scala@@
+         |package A
+         |""".stripMargin,
+      """|scala3-library
+         |""".stripMargin,
+    )
+
+  @Test def `ordering` =
+    check(
+      """|//> using dep "org.scala@@
+         |package A
+         |""".stripMargin,
+      """|org.scala-debugger
+         |org.scala-lang
+         |org.scala-lang-osgi
+         |""".stripMargin,
+      filter = a => a.contains("scala-lang") || a.contains("scala-debugger")
+    )
+
   @Test def `multiple-deps` =
     checkEdit(
       """|// Multiple using lib
@@ -138,6 +159,16 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|io.circe
          |io.circul""".stripMargin
+    )
+
+  @Test def `lexicographic-order` =
+    checkSubset(
+      """|//> using dep "org.scala-lang@@"
+         |package A
+         |""".stripMargin,
+      """|org.scala-lang
+         |org.scala-lang-osgi
+         |""".stripMargin
     )
 
   @Ignore

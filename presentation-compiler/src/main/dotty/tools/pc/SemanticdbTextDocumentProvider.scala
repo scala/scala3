@@ -9,11 +9,7 @@ import scala.meta.internal.mtags.MD5
 import scala.util.Properties
 
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.semanticdb.ExtractSemanticDB
-import dotty.tools.dotc.semanticdb.Language
-import dotty.tools.dotc.semanticdb.Schema
-import dotty.tools.dotc.semanticdb.TextDocument
-import dotty.tools.dotc.semanticdb.internal.SemanticdbOutputStream
+import dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.util.SourceFile
 
 class SemanticdbTextDocumentProvider(
@@ -32,8 +28,6 @@ class SemanticdbTextDocumentProvider(
       SourceFile.virtual(filePath.toString(), validCode)
     )
     val tree = driver.currentCtx.run.nn.units.head.tpdTree
-    val extractor = ExtractSemanticDB.Extractor()
-    extractor.traverse(tree)(using driver.currentCtx)
     val path = workspace
       .flatMap { workspacePath =>
         scala.util.Try(workspacePath.relativize(filePath)).toOption
@@ -44,19 +38,6 @@ class SemanticdbTextDocumentProvider(
       }
       .getOrElse(filePath.toString())
 
-    val document = TextDocument(
-      schema = Schema.SEMANTICDB4,
-      language = Language.SCALA,
-      uri = path.nn,
-      text = sourceCode,
-      md5 = MD5.compute(sourceCode),
-      symbols = extractor.symbolInfos.toList,
-      occurrences = extractor.occurrences.toList
-    )
-    val byteStream = new ByteArrayOutputStream()
-    val out = SemanticdbOutputStream.newInstance(byteStream)
-    document.writeTo(out)
-    out.flush()
-    byteStream.toByteArray().nn
+    semanticdb.textDocumentBytes(tree, path.nn, sourceCode)(using driver.currentCtx)
 
 end SemanticdbTextDocumentProvider

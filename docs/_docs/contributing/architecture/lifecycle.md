@@ -15,7 +15,7 @@ Customisation is provided by extending the [Compiler] class, which maintains an 
 list of [phases][Phases], and how to [run][Run] them. Each interaction with a compiler
 creates a new run, which is a complete iteration of the compiler's phases over a list
 of input sources. Each run has the capability to create new definitions or
-invalidate older ones, and `dotc` can [track these changes over time](../architecture/time.md).
+invalidate older ones, and `dotc` can [track these changes over time](time.md).
 
 #### Runs
 During a run, the input sources are converted to [compilation units][CompilationUnit] (i.e. the abstraction of
@@ -32,12 +32,12 @@ the compiler are:
 - `erasure`, which retypes a more simplified program into one that has the same types as the JVM.
 - `genBCode`, the JVM backend, which converts erased compiler trees into Java bytecode format.
 
-[You can read more about phases here](../architecture/phases.md#phase-categories).
+[You can read more about phases here](phases.md#phase-categories).
 
 #### Drivers
 
 The core compiler also requires a lot of state to be initialised before use, such as [settings][ScalaSettings]
-and the [Context](../architecture/context.md). For convenience, the [Driver] class contains high level functions for
+and the [Context](context.md). For convenience, the [Driver] class contains high level functions for
 configuring the compiler and invoking it programatically. The object [Main] inherits from `Driver`
 and is invoked by the `scalac` script.
 

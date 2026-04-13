@@ -516,11 +516,10 @@ object Array {
 
     var n = 0
     var i = start
-    while (if (step < 0) end < i else i < end) {
+    while n < array.length do
       array(n) = i
       i += step
       n += 1
-    }
     array
   }
 

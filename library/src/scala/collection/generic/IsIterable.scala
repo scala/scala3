@@ -21,30 +21,28 @@ import caps.unsafe.untrackedCaptures
  *  methods that should be applicable both to existing Scala collections (i.e.,
  *  types extending `Iterable`) as well as other (potentially user-defined)
  *  types that could be converted to a Scala collection type. This trait
- *  makes it possible to treat Scala collections and types that can be implicitly
- *  converted to a collection type uniformly. For example, one can provide
- *  extension methods that work both on collection types and on `String`s (`String`s
- *  do not extend `Iterable`, but can be converted to `Iterable`)
+ *  makes it possible to uniformly treat Scala collections and types that can be implicitly
+ *  converted to a collection type. For example, one can provide
+ *  extension methods that work both on collection types and on `String`s. (`String`s
+ *  do not extend `Iterable`, but can be converted to `Iterable`.)
  *
  *  `IsIterable` provides three members:
  *
  *  1. type member `A`, which represents the element type of the target `Iterable[A]`
- *  1. type member `C`, which represents the type returned by transformation operations that preserve the collection’s elements type
+ *  1. type member `C`, which represents the type returned by transformation operations that preserve the collection’s element type
  *  1. method `apply`, which provides a way to convert between the type we wish to add extension methods to, `Repr`, and `IterableOps[A, Iterable, C]`.
  *
  *  ### Usage
  *
- *  One must provide `IsIterable` as an implicit parameter type of an implicit
- *  conversion. Its usage is shown below. Our objective in the following example
- *  is to provide a generic extension method `mapReduce` to any type that extends
- *  or can be converted to `Iterable`. In our example, this includes
- *  `String`.
+ *  One must provide `IsIterable` as an implicit parameter of the extension method.
+ *  Its usage is shown below. Our objective in the following example
+ *  is to provide a generic extension method `mapReduce` for any type that extends
+ *  or can be converted to `Iterable`, such as `String`.
  *
  *  ```
- *    import scala.collection.{Iterable, IterableOps}
  *    import scala.collection.generic.IsIterable
  *
- *    class ExtensionMethods[Repr, I <: IsIterable[Repr]](coll: Repr, it: I) {
+ *    extension [Repr, I <: IsIterable[Repr]](coll: Repr)(using it: I)
  *      def mapReduce[B](mapper: it.A => B)(reducer: (B, B) => B): B = {
  *        val iter = it(coll).iterator
  *        var res = mapper(iter.next())
@@ -52,54 +50,34 @@ import caps.unsafe.untrackedCaptures
  *          res = reducer(res, mapper(iter.next()))
  *        res
  *      }
- *    }
- *
- *    implicit def withExtensions[Repr](coll: Repr)(implicit it: IsIterable[Repr]): ExtensionMethods[Repr, it.type] =
- *      new ExtensionMethods(coll, it)
  *
  *  // See it in action!
  *  List(1, 2, 3).mapReduce(_ * 2)(_ + _) // res0: Int = 12
  *  "Yeah, well, you know, that's just, like, your opinion, man.".mapReduce(x => 1)(_ + _) // res1: Int = 59
  *  ```
  *
- *  Here, we begin by creating a class `ExtensionMethods` which contains our
- *  `mapReduce` extension method.
+ *  The extension method takes a receiver `coll` of type `Repr`, where
+ *  `Repr` typically represents the collection type, and an argument `it` of a subtype of `IsIterable[Repr]`.
  *
- *  Note that `ExtensionMethods` takes a constructor argument `coll` of type `Repr`, where
- *  `Repr` represents (typically) the collection type, and an argument `it` of a subtype of `IsIterable[Repr]`.
  *  The body of the method starts by converting the `coll` argument to an `IterableOps` in order to
  *  call the `iterator` method on it.
- *  The remaining of the implementation is straightforward.
+ *  The rest of the implementation is straightforward.
  *
- *  The `withExtensions` implicit conversion makes the `mapReduce` operation available
- *  on any type `Repr` for which it exists an implicit `IsIterable[Repr]` instance.
- *  Note how we keep track of the precise type of the implicit `it` argument by using the
- *  `it.type` singleton type, rather than the wider `IsIterable[Repr]` type. We do that
- *  so that the information carried by the type members `A` and `C` of the `it` argument
- *  is not lost.
- *
- *  When the `mapReduce` method is called on some type of which it is not
- *  a member, implicit search is triggered. Because implicit conversion
- *  `withExtensions` is generic, it will be applied as long as an implicit
- *  value of type `IsIterable[Repr]` can be found. Given that the
- *  `IsIterable` companion object contains implicit members that return values of type
- *  `IsIterable`, this requirement is typically satisfied, and the chain
- *  of interactions described in the previous paragraph is set into action.
- *  (See the `IsIterable` companion object, which contains a precise
- *  specification of the available implicits.)
- *
- *  *Note*: Currently, it's not possible to combine the implicit conversion and
- *  the class with the extension methods into an implicit class due to
- *  limitations of type inference.
+ *  The `mapReduce` extension method is available
+ *  on any type `Repr` for which there is an implicit `IsIterable[Repr]` instance.
+ *  The companion object for `IsIterable` provides an instance for types
+ *  that are already an `IterableOps`.
  *
  *  ### Implementing `IsIterable` for New Types
  *
- *  One must simply provide an implicit value of type `IsIterable`
- *  specific to the new type, or an implicit conversion which returns an
- *  instance of `IsIterable` specific to the new type.
+ *  For a custom type, one need only provide an implicit value of type `IsIterable`
+ *  that specifies the element type, the collection type, and an implementation
+ *  of `apply` that converts the collection to an `IterableOps`.
  *
- *  Below is an example of an implementation of the `IsIterable` trait
- *  where the `Repr` type is `Range`.
+ *  Below is an example implementation of the `IsIterable` trait
+ *  where the `Repr` type is `Range`. In practice, `IsIterable[Range]` is already provided by
+ *  the implicit value for any `IterableOps`, as for `List` in the previous example.
+ *  Similarly, the instance for `String` was available because the library provides an `IsSeq[String]`.
  *
  *  ```
  *  implicit val rangeRepr: IsIterable[Range] { type A = Int; type C = IndexedSeq[Int] } =
@@ -109,17 +87,14 @@ import caps.unsafe.untrackedCaptures
  *     def apply(coll: Range): IterableOps[Int, IndexedSeq, IndexedSeq[Int]] = coll
  *   }
  *  ```
- *
- *  (Note that in practice the `IsIterable[Range]` instance is already provided by
- *  the standard library, and it is defined as an `IsSeq[Range]` instance)
  */
 transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
 
   /** The type returned by transformation operations that preserve the same elements
    *  type (e.g. `filter`, `take`).
    *
-   *  In practice, this type is often `Repr` itself, excepted in the case
-   *  of `SeqView[A]` (and other `View[A]` subclasses), where it is “only” `View[A]`.
+   *  In practice, this type is often `Repr` itself, except in the case
+   *  of `SeqView[A]` (and other `View[A]` subclasses), where it is `View[A]`.
    */
   type C
 

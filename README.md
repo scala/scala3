@@ -1,8 +1,9 @@
-Dotty
+Scala 3
 =====
-[![Dotty CI](https://github.com/scala/scala3/workflows/Dotty/badge.svg?branch=main)](https://github.com/scala/scala3/actions?query=branch%3Amain)
+[![Scala 3 CI](https://github.com/scala/scala3/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/scala/scala3/actions/workflows/ci.yaml?query=branch%3Amain)
 [![Join the chat at https://discord.com/invite/scala](https://img.shields.io/discord/632150470000902164)](https://discord.com/invite/scala)
-[![Revved up by Develocity](https://img.shields.io/badge/Revved%20up%20by-Develocity-06A0CE?logo=Gradle&labelColor=02303A)](https://develocity.scala-lang.org)
+
+This is the home of the [Scala 3](https://www.scala-lang.org) standard library, compiler, and language spec.
 
 * [Documentation](https://docs.scala-lang.org/scala3/)
 
@@ -25,7 +26,8 @@ How to Contribute
 =================
 * [Getting Started as Contributor](https://docs.scala-lang.org/scala3/guides/contribution/contribution-intro.html)
 * [Issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+* [Policy regarding usage of LLM-based tools in contributions to the Scala project](LLM_POLICY.md)
 
 License
 =======
-Dotty is licensed under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+Scala 3 is licensed under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)

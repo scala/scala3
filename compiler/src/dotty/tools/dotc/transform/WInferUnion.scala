@@ -20,7 +20,10 @@ class WInferUnion extends MiniPhase {
 
   override def transformTypeApply(tree: tpd.TypeApply)(using Context): tpd.Tree =
     val inferredOrTypes = tree.args.find: tpt =>
-      tpt.isInstanceOf[InferredTypeTree] && tpt.tpe.stripTypeVar.isInstanceOf[OrType]
+      tpt.isInstanceOf[InferredTypeTree]
+      && tpt.tpe.stripTypeVar.match
+          case tp: OrType if tp.isSoft => true
+          case _ => false
     inferredOrTypes.foreach: tpt =>
       report.warning(
         InferUnionWarning(tpt.tpe.stripTypeVar),
