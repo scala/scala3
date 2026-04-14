@@ -1,9 +1,8 @@
 package dotty.tools.scaladoc
 package site
 
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.`type`.TypeReference;
+import _root_.tools.jackson.dataformat.yaml.YAMLMapper;
+import _root_.tools.jackson.core.`type`.TypeReference;
 import scala.jdk.CollectionConverters._
 import java.util.Optional
 import scala.beans._
@@ -79,7 +78,7 @@ object Sidebar:
 
   def load(content: String | java.io.File)(using CompilerContext): Sidebar.Category =
     import scala.util.Try
-    val mapper = ObjectMapper(YAMLFactory())
+    val mapper = YAMLMapper.builder().configureForJackson2().build()
     def readValue = content match
       case s: String => mapper.readValue(s, RawInputTypeRef)
       case f: java.io.File => mapper.readValue(f, RawInputTypeRef)

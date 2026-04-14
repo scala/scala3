@@ -7,7 +7,7 @@ import java.nio.file._
 import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
 import java.util.function.Function
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import _root_.tools.jackson.databind.ObjectMapper
 
 import org.eclipse.lsp4j
 
