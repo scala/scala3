@@ -40,35 +40,12 @@ class SnippetCompiler(
 
   private def newRun(using ctx: Context): Run = scala3Compiler.newRun
 
-  private def additionalMessages(
-    wrappedSnippet: WrappedSnippet,
-    arg: SnippetCompilerArg,
-    sourceFile: SourceFile,
-    context: Context
-  ): Seq[SnippetCompilerMessage] = {
-      Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
-        SnippetCompilerMessage(
-          Some(Position(SourcePosition(sourceFile, NoSpan), wrappedSnippet.outerLineOffset)),
-          "Snippet should not compile but compiled successfully", MessageLevel.Error)
-      ).toList
-  }
-
-  private def isSuccessful(arg: SnippetCompilerArg, context: Context): Boolean = {
-    if arg.flag == SCFlags.Fail then context.reporter.hasErrors
-      else !context.reporter.hasErrors
-  }
-
-  private def missingExpectedErrorsMessage(arg: SnippetCompilerArg): Seq[SnippetCompilerMessage] =
-    Option.when(arg.flag == SCFlags.Fail)(
-      SnippetCompilerMessage(None, "No errors found when compiling snippet", MessageLevel.Error)
-    ).toList
-
   def compile(
     snippet: SnippetSource,
     wrappedSnippet: WrappedSnippet,
     arg: SnippetCompilerArg,
     sourceFile: SourceFile
-  ): SnippetCompilationResult = {
+  ): SnippetCompilationResult =
     val baseContext = SnippetDriver.currentCtx.fresh
       .setSetting(
         SnippetDriver.currentCtx.settings.outputDir,
@@ -87,33 +64,34 @@ class SnippetCompiler(
 
     val diagnostics = context.reporter.pendingMessages(using context)
     val observed = SnippetExpectations.observe(diagnostics, wrappedSnippet, sourceFile)
-    val shouldVerifyDiagnostics = arg.verifyDiagnostics
-    val expected =
-      if shouldVerifyDiagnostics then SnippetExpectations.parse(snippet, sourceFile)
-      else SnippetExpectations.Parsed(Nil, Nil)
-    val diagnosticMessages =
-      if shouldVerifyDiagnostics then SnippetExpectations.validate(expected, observed, sourceFile)
-      else Nil
-    val failMessages =
-      if shouldVerifyDiagnostics && expected.expectedErrors == 0 && !context.reporter.hasErrors then
-        missingExpectedErrorsMessage(arg)
-      else Nil
-    val compatibilityMessages =
-      if !shouldVerifyDiagnostics then
-        additionalMessages(wrappedSnippet, arg, sourceFile, context)
-      else Nil
-    val validationMessages = diagnosticMessages ++ failMessages ++ compatibilityMessages
-    val expectationDriven = shouldVerifyDiagnostics
-    val hasMismatches = validationMessages.exists(_.level == MessageLevel.Error)
-    val messages =
-      if expectationDriven && hasMismatches then validationMessages
-      else observed.map(_.message) ++ validationMessages
-    val succeeded =
-      if expectationDriven then
-        !hasMismatches
+
+    val (messages, succeeded) =
+      if arg.verifyDiagnostics then
+        val expected = SnippetExpectations.parse(snippet, sourceFile)
+        val validation = SnippetExpectations.validate(expected, observed, sourceFile)
+        val failCheck =
+          if arg.flag == SCFlags.Fail && expected.expectedErrors == 0 && !context.reporter.hasErrors then
+            List(SnippetCompilerMessage(None, "No errors found when compiling snippet", MessageLevel.Error))
+          else Nil
+        val errors = validation ++ failCheck
+        val hasMismatches = errors.exists(_.level == MessageLevel.Error)
+        val msgs =
+          if hasMismatches then errors
+          else observed.map(_.message) ++ errors
+        val ok = !hasMismatches
           && (arg.flag != SCFlags.Fail || context.reporter.hasErrors || expected.expectedErrors > 0)
-      else isSuccessful(arg, context)
+        (msgs, ok)
+      else
+        val failMsg = Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
+          SnippetCompilerMessage(
+            Some(Position(SourcePosition(sourceFile, NoSpan), wrappedSnippet.outerLineOffset)),
+            "Snippet should not compile but compiled successfully", MessageLevel.Error)
+        )
+        val msgs = observed.map(_.message) ++ failMsg
+        val ok =
+          if arg.flag == SCFlags.Fail then context.reporter.hasErrors
+          else !context.reporter.hasErrors
+        (msgs, ok)
 
     val t = Option.when(!context.reporter.hasErrors)(target)
     SnippetCompilationResult(wrappedSnippet, succeeded, t, messages)
-  }
