@@ -1906,13 +1906,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           // Additionally, it can be useful to be able to learn a type of a symbol using some indirect prefix,
           // even if that symbol is not a direct member of that prefix, but a nested one.
           def isTypeRelatedToThePassedMember = {
+            import scala.util.boundary
+
             // the symbol will not exist for LambdaTypes,
             // which don't seem to be supported by asSeenFrom anyway
             // (but don't seem to cause crashes, and return no-op member.info,
             // which we might not have access other ways).
             val selfSymExists = self.typeSymbol.exists
             val isLambdaType = self.isInstanceOf[LambdaType]
-            import scala.util.boundary
             (!selfSymExists && isLambdaType) ||
             (selfSymExists && boundary {
               var checked: Symbol = member
@@ -1934,7 +1935,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-          println("memInfo " + member.info)
+
           memberInfo.asSeenFrom(self, member.owner) match
             case dotc.core.Types.ClassInfo(prefix, sym, _, _, _) =>
               // We do not want to expose ClassInfo in the reflect API, instead we change it to a TypeRef,
