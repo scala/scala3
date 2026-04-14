@@ -28,6 +28,7 @@ import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.util.Spans.NoCoord
+import dotty.tools.dotc.report
 
 object QuotesImpl {
 
@@ -1904,9 +1905,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           //     (and failed dotty compilation tests)
           // Additionally, it can be useful to be able to learn a type of a symbol using some indirect prefix,
           // even if that symbol is not a direct member of that prefix, but a nested one.
-          def isTypeRelatedToThePassedMember =
+          def isTypeRelatedToThePassedMember = {
+            // the symbol will not exist for LambdaTypes,
+            // which don't seem to be supported by asSeenFrom anyway
+            // (but don't seem to cause crashes, and return no-op member.info,
+            // which we might not have access other ways).
+            val selfSymExists = self.typeSymbol.exists
+            val isLambdaType = self.isInstanceOf[LambdaType]
             import scala.util.boundary
-            boundary {
+            (!selfSymExists && isLambdaType) ||
+            (selfSymExists && boundary {
               var checked: Symbol = member
               while(checked.exists) {
                 if self.derivesFrom(checked)
@@ -1916,8 +1924,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                 checked = checked.owner
               }
               boundary.break(false)
-            }
-          xCheckMacroAssert(isTypeRelatedToThePassedMember, s"$member is not a member of ${self.show}")
+            })
+          }
+          xCheckMacroWarning(isTypeRelatedToThePassedMember, s"$member is not a valid member of ${self.show}. Returned type might not be the one expected.")
 
           // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
           val memberInfo =
@@ -1925,7 +1934,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-
+          println("memInfo " + member.info)
           memberInfo.asSeenFrom(self, member.owner) match
             case dotc.core.Types.ClassInfo(prefix, sym, _, _, _) =>
               // We do not want to expose ClassInfo in the reflect API, instead we change it to a TypeRef,
@@ -3541,6 +3550,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     private inline def xCheckMacroAssert(inline cond: Boolean, inline msg: String): Unit =
       if xCheckMacro && !cond then
         xCheckMacroAssertFail(msg)
+
+    private inline def xCheckMacroWarning(inline cond: Boolean, inline msg: String): Unit =
+      if xCheckMacro && !cond then
+        val error = new AssertionError()
+        if !yDebugMacro then
+          // start stack trace at the place where the user called the reflection method
+          error.setStackTrace(
+            error.getStackTrace
+              .dropWhile(_.getClassName().startsWith("scala.quoted.runtime.impl")))
+        val stackTrace = error.getStackTrace().map(_.toString).mkString("\n")
+        report.warning(s"$msg\n${stackTrace}")
 
     private def xCheckMacroAssertFail(msg: String): Unit =
       val error = new AssertionError(msg)
