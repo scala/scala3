@@ -1926,7 +1926,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               boundary.break(false)
             })
           }
-          xCheckMacroWarning(isTypeRelatedToThePassedMember, s"$member is not a valid member of ${self.show}. Returned type might not be the one expected.")
+          xCheckMacroAssert(isTypeRelatedToThePassedMember, s"$member is not a valid member of ${self.show}")
 
           // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
           val memberInfo =
@@ -3550,17 +3550,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     private inline def xCheckMacroAssert(inline cond: Boolean, inline msg: String): Unit =
       if xCheckMacro && !cond then
         xCheckMacroAssertFail(msg)
-
-    private inline def xCheckMacroWarning(inline cond: Boolean, inline msg: String): Unit =
-      if xCheckMacro && !cond then
-        val error = new AssertionError()
-        if !yDebugMacro then
-          // start stack trace at the place where the user called the reflection method
-          error.setStackTrace(
-            error.getStackTrace
-              .dropWhile(_.getClassName().startsWith("scala.quoted.runtime.impl")))
-        val stackTrace = error.getStackTrace().map(_.toString).mkString("\n")
-        report.warning(s"$msg\n${stackTrace}")
 
     private def xCheckMacroAssertFail(msg: String): Unit =
       val error = new AssertionError(msg)
