@@ -166,7 +166,7 @@ class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec[Int](elems
   def length: Int = elems.length
   def apply(i: Int): Int = elems(i)
 
-  def scalarProduct(other: Vec[Int]): Int =
+  def scalarProduct(other: Vec$sp$Int): Int =
     require(this.length == other.length)
     var result = Vec$$num.fromInt(0)
     for i <- 0 until length do
