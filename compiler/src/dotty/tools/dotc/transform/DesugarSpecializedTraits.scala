@@ -79,7 +79,8 @@ class DesugarSpecializedTraits extends MacroTransform:
         parents,
         NoType, // TODO: What happens if the creator of the specialized inline trait provides a self type? 
         specialization.traitSymbol.privateWithin,
-        // TODO: Do we need a compUnit info?
+        specialization.traitSymbol.coord,
+        specialization.traitSymbol.compilationUnitInfo
       )
 
       // Create type parameters for new trait
@@ -139,7 +140,8 @@ class DesugarSpecializedTraits extends MacroTransform:
         parents,
         NoType, // TODO: What happens if the creator of the specialized inline trait provides a self type? 
         specialization.traitSymbol.privateWithin,
-        // TODO: Do we need a compUnit info?
+        specialization.traitSymbol.coord,
+        specialization.traitSymbol.compilationUnitInfo
       ).entered
 
     // TODO: Do we want to share some code with the newSpecializedInterfaceTrait and buildInterfaceTraitTree?
