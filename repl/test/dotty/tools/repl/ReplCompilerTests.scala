@@ -662,6 +662,126 @@ class ReplCompilerTests extends ReplTest:
         "// defined class Ref\nlazy val mkRef: () -> Ref^{fresh}",
         storedOutput().trim)
 
+  @Test def `cc uses clause on nested class`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      storedOutput() // discard
+      // Inner class uses the outer's capability — should be able to call methods on it
+      run("class Outer(val io: AnyRef^) { class Inner uses io { def doIt: String = io.toString } }")
+      assertEquals("// defined class Outer", storedOutput().trim)
+
+  @Test def `cc uses clause with initially`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.SharedCapability")
+    .andThen:
+      storedOutput() // discard
+      // `uses c initially` means c is only available in the constructor, not in methods
+      run("class Stream extends SharedCapability { def println(): Unit = () }")
+    .andThen:
+      storedOutput() // discard
+      run("object Console extends SharedCapability { val out: Stream = new Stream(); def println(): Unit = out.println() }")
+    .andThen:
+      storedOutput() // discard
+      // uses Console initially: constructor can use Console, methods cannot
+      run("object Greeter uses Console initially { Console.println(); def greet(): Unit = () }")
+      assertEquals("// defined object Greeter", storedOutput().trim)
+
+  @Test def `cc Mutable class with update def`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.Mutable")
+    .andThen:
+      storedOutput() // discard
+      run("class Ref(init: Int) extends Mutable { private var current = init; def get: Int = current; update def put(x: Int): Unit = current = x }")
+      assertEquals(
+        "// defined class Ref",
+        storedOutput().trim)
+
+  @Test def `cc Mutable class pretty print update method`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.Mutable")
+    .andThen:
+      storedOutput() // discard
+      // Define a Mutable class and a function that takes a mutable ref
+      run("class Ref(init: Int) extends Mutable { private var current = init; def get: Int = current; update def put(x: Int): Unit = current = x }")
+    .andThen:
+      storedOutput() // discard
+      run("def setRef(r: Ref^)(v: Int): Unit = r.put(v)")
+      assertEquals(
+        "def setRef(r: Ref^)(v: Int): Unit",
+        storedOutput().trim)
+
+  @Test def `cc consume def on method`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.Mutable")
+    .andThen:
+      storedOutput() // discard
+      run("trait Sink extends Mutable { consume def close: Unit }")
+      assertEquals(
+        "// defined trait Sink",
+        storedOutput().trim)
+
+  @Test def `cc type member Cap^`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      storedOutput() // discard
+      run("trait Reactor { type Cap^; def handler: () ->{Cap} Unit }")
+      assertEquals(
+        "// defined trait Reactor",
+        storedOutput().trim)
+
+  @Test def `cc pretty print consume def on method`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.Mutable")
+    .andThen:
+      storedOutput() // discard
+      run("trait Sink extends Mutable { consume def close: Unit; consume def transfer: Sink^ }")
+    .andThen:
+      assertEquals("// defined trait Sink", storedOutput().trim)
+      run("def closeSink(consume s: Sink^): Unit = s.close")
+      assertEquals("def closeSink(consume s: Sink^): Unit", storedOutput().trim)
+
+  @Test def `cc pretty print type member Cap^`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+    .andThen:
+      storedOutput() // discard
+      run("trait Reactor { type Cap^; def handler: () ->{Cap} Unit }")
+      assertEquals(
+        "// defined trait Reactor",
+        storedOutput().trim)
+
+  @Test def `cc pretty print ExclusiveCapability with consume val`: Unit =
+    initially:
+      run("import language.experimental.captureChecking")
+      run("import caps.{Mutable, ExclusiveCapability}")
+    .andThen:
+      storedOutput() // discard
+      run("class Ref(init: Int) extends Mutable { private var current = init; def get: Int = current; update def put(x: Int): Unit = current = x }")
+    .andThen:
+      storedOutput() // discard
+      run("class Owned(consume val inner: Ref^) extends ExclusiveCapability")
+      assertEquals(
+        "// defined class Owned",
+        storedOutput().trim)
+
+  @Test def `cc separation checking accepts valid code`: Unit =
+    initially:
+      run("import language.experimental.separationChecking")
+    .andThen:
+      storedOutput() // discard
+      // separationChecking implies captureChecking; verify CC syntax works
+      run("def foo[C^](x: AnyRef^{C}): AnyRef^{x} = x")
+      assertEquals(
+        "def foo[C^](x: AnyRef^{C}): AnyRef^{x}",
+        storedOutput().trim)
+
   @Test def `i16250 nested global language imports error`: Unit = initially:
     for feature <- List("captureChecking", "pureFunctions", "separationChecking", "safe") do
       run(s"def test = { import language.experimental.$feature; 1 }")
