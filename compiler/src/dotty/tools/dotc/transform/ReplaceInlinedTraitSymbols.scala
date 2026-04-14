@@ -41,4 +41,8 @@ class ReplaceInlinedTraitSymbols extends MiniPhase:
   override def runsAfterGroupsOf: Set[String] = Set("specializeInlineTraits")
 object ReplaceInlinedTraitSymbols:
   val name: String = "replaceInlinedTraitSymbols"
-  val description: String = "Replace symbols referring to inline trait members with resulting inlined member symbols"
+  val description: String = "Replace symbols referring to inline trait members with resulting inlined member symbols. Also replace bridge method calls with specialized method calls for specialized traits."
+  /* We need to replace symbols referring to inlined methods / members because otherwise we will still point
+     to the parent symbol (this was resolved before we generated the new symbols) and so we won't get the efficiency gain.
+     See tests/pos/inline-trait-return-ref.scala. We also need to do this outside the inline traits themselves (i.e. in
+     the whole program - see tests/pos/inline-trait-parent-ref.scala) */

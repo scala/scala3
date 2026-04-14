@@ -233,6 +233,7 @@ class DesugarSpecializedTraits extends MacroTransform:
           }
 
         // Replace class Bar extends Foo[Int](params) with class Bar extends Foo$sp$Int(params)
+        // TODO: Why do we still have this case if we don't allow this pattern? 
         // Note: We always drop the evidence params when creating these new specialized traits so we know that there are none, but we may need to revisit this if we decide we do want to copy the evidence parameters over
         case Apply(TypeApply(fun@Select(New(tpt), init), args), ev) if fun.symbol.isConstructor => 
           val spec = Specialization(fun.symbol.owner, args)
@@ -271,7 +272,38 @@ class DesugarSpecializedTraits extends MacroTransform:
               }
             )
 
-            cpy.Template(impl)(body = impl.body.map(transform(_)))
+            // If a class has a specialized member which was overriding a parent member, this override is lost because we specialize the types.
+            // E.g. def foo(Vec$sp$Int) cannot override def foo(Vec[Int]) because signatures must match exactly for overriding.
+            // However, specialized trait is based on the invariant that ∀T. T <: Foo[Int] => T <: Foo$sp$Int (and note that the reverse <= holds trivially by inheritance).
+            // This means it is safe to build bridge methods which simply apply the relevant casts so that we satisfy the interface, although we don't expect to call these.
+            def isMapped(t: Type) = mapType(t) != t
+            
+            val bridgeMethods = impl.body.collect {
+              case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && (ddef.termParamss.exists(params => params.exists(p => isMapped(p.symbol.info)) || isMapped(ddef.symbol.localReturnType))) => 
+                val bridgeSym = ddef.symbol.copy().entered
+                val rhsFun: List[List[Tree]] => Tree = 
+                  newParamss => 
+                    This(impl.symbol.owner.asClass).select(ddef.symbol)
+                    .appliedToArgss(
+                      newParamss.map(
+                        params => params.map(p => p.cast(mapType(p.symbol.info)))
+                      )
+                    ).cast(ddef.symbol.localReturnType)
+                ddef.symbol.flags = ddef.symbol.flags &~ Flags.Override
+                // Any callers of the original method will have been redirected to the bridge method because it has a signature match with the method they were calling
+                // We want to force them to call the original method, since we know they can.
+                ctx.inlineTraitState.registerInlinedSymbol(bridgeSym, ddef.symbol, impl.symbol.owner.thisType.widenDealias)
+                DefDef(bridgeSym.asTerm, rhsFun)
+
+              case vdef: ValDef if isMapped(vdef.symbol.info) => 
+                vdef.symbol.flags = vdef.symbol.flags &~ Flags.Override
+                val bridgeSym = vdef.symbol.copy().entered
+                ctx.inlineTraitState.registerInlinedSymbol(bridgeSym, vdef.symbol, impl.symbol.owner.thisType.widenDealias)
+                ValDef(bridgeSym.asTerm, This(impl.symbol.owner.asClass).select(vdef.symbol).cast(vdef.symbol.info))
+            }
+            val mappedbody = impl.body.map(transform(_))
+
+            cpy.Template(impl)(body = mappedbody ::: bridgeMethods)
           case tree => super.transform(tree)
         }
       }
