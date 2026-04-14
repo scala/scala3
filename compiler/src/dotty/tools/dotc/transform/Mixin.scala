@@ -6,7 +6,6 @@ import core.*
 import MegaPhase.*
 import Contexts.*
 import Flags.*
-
 import Symbols.*
 import SymDenotations.*
 import Types.*
@@ -18,7 +17,6 @@ import NameKinds.*
 import NameOps.*
 import Phases.erasurePhase
 import ast.Trees.*
-
 import dotty.tools.dotc.transform.sjs.JSSymUtils.isJSType
 
 object Mixin {
@@ -299,9 +297,11 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
           val forwarder = mkForwarderSym(getter.asTerm)
-          if !getter.is(Module) then
-            val erased = atPhase(erasurePhase) { cls.thisType.memberInfo(getter) }
-            mixinGenericInfos(forwarder) = erased
+          // Store the unerased form for generic signature use later,
+          // but only if it's not private (which we must check at erasure time, as here we've removed that flag already),
+          // since otherwise it might refer to private classes
+          if atPhase(erasurePhase) { !getter.is(Private) } then
+            mixinGenericInfos(forwarder) = atPhase(erasurePhase) { cls.thisType.memberInfo(getter) }
           transformFollowing(DefDef(forwarder, rhs))
         }
         else if wasOneOf(getter, ParamAccessor) then
