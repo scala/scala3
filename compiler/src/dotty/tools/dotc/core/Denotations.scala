@@ -1022,13 +1022,9 @@ object Denotations {
     final def first: SingleDenotation = this
     final def last: SingleDenotation = this
 
-    def matchesOrSpecialized(other: SingleDenotation)(using Context): Boolean = 
-      symbol.hasTargetName(other.symbol.targetName)
-      && matchesLoosely(other, allowSpecializations = true)
-
     def matches(other: SingleDenotation)(using Context): Boolean =
       symbol.hasTargetName(other.symbol.targetName)
-      && matchesLoosely(other, allowSpecializations =  false)
+      && matchesLoosely(other)
 
     /** `matches` without a target name check.
      *
@@ -1038,7 +1034,7 @@ object Denotations {
      *  erasure (see i8615b, i9109b), Erasure takes care of adding any necessary
      *  bridge to make this work at runtime.
      */
-    def matchesLoosely(other: SingleDenotation, alwaysCompareTypes: Boolean = false, allowSpecializations: Boolean = false)(using Context): Boolean =
+    def matchesLoosely(other: SingleDenotation, alwaysCompareTypes: Boolean = false)(using Context): Boolean =
       if isType then true
       else
         val thisLanguage = SourceLanguage(symbol)
@@ -1046,7 +1042,7 @@ object Denotations {
         val commonLanguage = SourceLanguage.commonLanguage(thisLanguage, otherLanguage)
         val sig = signature(commonLanguage)
         val otherSig = other.signature(commonLanguage)
-        sig.matchDegree(otherSig, allowSpecializations) match
+        sig.matchDegree(otherSig) match
           case FullMatch =>
             !alwaysCompareTypes || info.matches(other.info)
           case MethodNotAMethodMatch =>

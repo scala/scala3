@@ -995,7 +995,7 @@ object RefChecks {
 
       def isSignatureMatch(sym: Symbol) = sym.isType || {
         val self = clazz.thisType
-        sym.asSeenFrom(self).matchesOrSpecialized(member.asSeenFrom(self))
+        sym.asSeenFrom(self).matches(member.asSeenFrom(self))
         && !incompatibleRepeatedParam(sym, member)
       }
 
