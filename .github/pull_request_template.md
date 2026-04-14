@@ -26,10 +26,11 @@
 
 ## How was the solution tested?
 
-<!-- 
-  If automated tests are included, mention it.
-  If they are not, explain why and how the solution was tested.
--->
+<!-- Tick exactly one of these boxes. Exceptions must have a very good reason. -->
+
+- [ ] Covered by existing tests (e.g., for refactorings)
+- [ ] New automated tests (including the issue's reproducer, if applicable)
+- [ ] Manual tests described below (in enough detail that someone unfamiliar with this can still follow)
 
 ## Additional notes
 
