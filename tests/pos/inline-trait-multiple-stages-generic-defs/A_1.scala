@@ -6,4 +6,5 @@ inline trait A[T](x: T):
   val j: T
   var k: T = x
 
-  inline def b(a: T): T = x
+  inline val property = x
+  inline def method(a: T): T = x
