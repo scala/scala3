@@ -161,7 +161,7 @@ class Vec$impl$Int(elems: Array[T]) extends Vec[Int](elems), Vec$sp$Int
 After inlining `Vec[Int]` the expanded class looks like this:
 ```scala
 class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec[Int](elems), Vec$sp$Int:
-  private val Vec$$num: Numeric.IntIsIntegral // Methods converted to primitive operations without boxing
+  private val Vec$$num: Numeric.IntIsIntegral
 
   def length: Int = elems.length
   def apply(i: Int): Int = elems(i)
