@@ -59,7 +59,8 @@ object TestConfiguration {
       Properties.jlineReader,
       Properties.fansi,
       Properties.pprint,
-      Properties.sourcecode
+      Properties.sourcecode,
+      Properties.scalaXml
   ))
 
   lazy val replWithStagingClasspath = 
