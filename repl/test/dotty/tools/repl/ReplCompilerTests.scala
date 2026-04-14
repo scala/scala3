@@ -510,7 +510,7 @@ class ReplCompilerTests extends ReplTest:
       assertEquals("", storedOutput().trim)
       // Pure function arrow syntax requires pureFunctions
       run("val f: Int -> Int = (x: Int) => x + 1")
-      assertTrue(storedOutput().trim.startsWith("val f: Int -> Int = Lambda$"))
+      assertTrue("(?s)val f: Int -> Int = Lambda[$/].*".r.matches(storedOutput()))
 
   @Test def `i16250c`: Unit =
     initially:
