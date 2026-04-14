@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 package site
 
+import _root_.tools.jackson.databind.DeserializationFeature;
 import _root_.tools.jackson.dataformat.yaml.YAMLMapper;
 import _root_.tools.jackson.core.`type`.TypeReference;
 import scala.jdk.CollectionConverters._
@@ -30,6 +31,15 @@ object Sidebar:
     def this() = this("", "", "", JList(), "", false)
 
   private object RawInputTypeRef extends TypeReference[RawInput]
+
+  /** Jackson 3 leaves absent YAML scalars as `null`; this code expects "" / empty list. */
+  private def coalesceRawInputNulls(r: RawInput): Unit =
+    if r.title == null then r.title = ""
+    if r.page == null then r.page = ""
+    if r.index == null then r.index = ""
+    if r.directory == null then r.directory = ""
+    if r.subsection == null then r.subsection = JList()
+    else r.subsection.asScala.foreach(coalesceRawInputNulls)
 
   private def toSidebar(r: RawInput, content: String | java.io.File)(using CompilerContext): Sidebar = r match
     case RawInput(title, page, index, subsection, dir, hidden) if page.nonEmpty && index.isEmpty && subsection.isEmpty() =>
@@ -78,7 +88,9 @@ object Sidebar:
 
   def load(content: String | java.io.File)(using CompilerContext): Sidebar.Category =
     import scala.util.Try
-    val mapper = YAMLMapper.builder().configureForJackson2().build()
+    val mapper = YAMLMapper.builder()
+      .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+      .build()
     def readValue = content match
       case s: String => mapper.readValue(s, RawInputTypeRef)
       case f: java.io.File => mapper.readValue(f, RawInputTypeRef)
@@ -89,7 +101,7 @@ object Sidebar:
           report.warn(schemaMessage, e)
           new RawInput()
         },
-        identity
+        r => { coalesceRawInputNulls(r); r }
       )
     toSidebar(root, content) match
       case c: Sidebar.Category => c

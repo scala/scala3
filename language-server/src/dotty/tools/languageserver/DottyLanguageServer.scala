@@ -7,7 +7,7 @@ import java.nio.file._
 import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
 import java.util.function.Function
 
-import _root_.tools.jackson.databind.ObjectMapper
+import _root_.tools.jackson.databind.json.JsonMapper
 
 import org.eclipse.lsp4j
 
@@ -68,7 +68,8 @@ class DottyLanguageServer extends LanguageServer
     if myDrivers == null then
       assert(rootUri != null, "`drivers` cannot be called before `initialize`")
       val configFile = new File(new URI(rootUri + '/' + IDE_CONFIG_FILE))
-      val configs: List[ProjectConfig] = (new ObjectMapper).readValue(configFile, classOf[Array[ProjectConfig]]).toList
+      val configs: List[ProjectConfig] =
+        JsonMapper.builder().build().readValue(configFile, classOf[Array[ProjectConfig]]).toList
 
       val defaultFlags = List("-color:never" /*, "-Yplain-printer","-Yprint-pos"*/)
 

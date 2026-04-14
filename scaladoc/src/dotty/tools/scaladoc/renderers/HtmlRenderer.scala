@@ -52,10 +52,10 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     super.render()
 
   private def serializeSideMenu() =
-    import _root_.tools.jackson.databind.*
+    import _root_.tools.jackson.databind.json.JsonMapper
     import _root_.tools.jackson.databind.node.ObjectNode
     import _root_.tools.jackson.databind.node.StringNode
-    val mapper = new ObjectMapper();
+    val mapper = JsonMapper.builder().build()
 
     def serializePage(page: Page): ObjectNode =
       import scala.jdk.CollectionConverters.SeqHasAsJava
