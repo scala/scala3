@@ -319,7 +319,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
           // Mixins are resolved _after_ erasure, so we cannot simply ask for "the information before erasure" for these,
           // since that information never existed.
           // Thus, we first check if the symbol was specifically marked as having generic information,
-          if sym.is(MixedIn) then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(sym) match
+          mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(sym) match
             // and if so, we use it.
             case Some(genericInfo) => return genericInfo
             case _ => ()
