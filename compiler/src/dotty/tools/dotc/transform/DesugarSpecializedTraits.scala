@@ -208,7 +208,6 @@ class DesugarSpecializedTraits extends MacroTransform:
     }
 
     private def replaceSpecializedSymbolsMap(specializations: SpecializedTraitCache) =
-      // Use the TreeTypeMap to replace instances (can we do this without accidentally replacing the definitions? I think it should be ok)
       val typeMap = new TypeMap:
         def apply(t: Type) = t match {
           case Specialization(spec) => 
