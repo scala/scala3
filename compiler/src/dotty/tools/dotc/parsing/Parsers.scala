@@ -687,9 +687,14 @@ object Parsers {
         atSpan(in.offset):
           val name = ident()
           in.nextToken()
-          if location.inPattern && in.token == INDENT then
-            in.currentRegion = in.currentRegion.outer
-            in.nextToken()
+          // Named pattern arguments don't support indented blocks,
+          // so drop the indent region added after '=' and ignore the indent token.
+          if location.inPattern && in.token == INDENT && !in.currentRegion.isOutermost then
+            in.currentRegion match
+              case Indented(_, EQUALS, outer) =>
+                in.currentRegion = outer
+                in.nextToken()
+              case _ =>
           NamedArg(name, op())
       else op()
 
