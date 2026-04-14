@@ -21,6 +21,11 @@ import typer.ProtoTypes.SelectionProto
 /** Check whether references from safe mode should be allowed */
 object SafeRefs {
 
+  val assumedSafePackages = List(
+    "scala", "scala.runtime", "scala.collection.immutable", "scala.compiletime.ops",
+    "scala.math", "scala.util", "java.math", "java.time",
+  )
+
   private def rejectSafe(sym: Symbol)(using Context): Unit =
     if !sym.infoOrCompleter.isInstanceOf[StubInfo] then
       sym.addAnnotation(Annotation(defn.RejectSafeAnnot, List(Literal(Constant(""))), NoSpan))
@@ -85,15 +90,15 @@ object SafeRefs {
       "getPackage", "getPackageName", "getPermittedSubclasses", "getProtectionDomain", "getRecordComponents",
       "getResource", "getResourceAsStream", "getSigners", "getTypeParameters", "getTypeName",
       "newInstance", "cast", "toGenericString"))
-    assumeSafe("java.util.Locale")
-    assumeSafe("java.util.Random")
-    assumeSafe("java.util.UUID")
+    assumeSafe("java.util.Locale", except = List("setDefault"))
+    assumeSafe("java.util.TimeZone", except = List("setDefault", "setID", "setRawOffset"))
+    assumeSafe("java.util.UUID", except = List("randomUIID"))
     assumeSafe("java.util.Objects")
     assumeSafe("java.util.Optional")
     assumeSafe("java.util.OptionalInt")
     assumeSafe("java.util.OptionalLong")
     assumeSafe("java.util.OptionalDouble")
-    assumeSafe("java.util.TimeZone")
+
     rejectSafe("scala.Console")
     rejectSafe("scala.unchecked")
     rejectSafe("scala.annotation.unchecked.uncheckedOverride")
