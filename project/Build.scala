@@ -1089,6 +1089,7 @@ object Build {
           (Compile / sourceManaged).value
         }
         val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
+        val testExternalDeps = (ThisProject / Test / externalDependencyClasspath).value
         Seq(
           s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
           s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
@@ -1106,6 +1107,7 @@ object Build {
           s"-Ddotty.tests.classes.pprint=${findArtifactPath(externalDeps, "pprint_3")}",
           s"-Ddotty.tests.classes.fansi=${findArtifactPath(externalDeps, "fansi_3")}",
           s"-Ddotty.tests.classes.sourcecode=${findArtifactPath(externalDeps, "sourcecode_3")}",
+          s"-Ddotty.tests.classes.scalaXml=${findArtifactPath(testExternalDeps, "scala-xml_2.13")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
