@@ -2,6 +2,7 @@ package dotty.tools
 package repl
 
 import scala.language.unsafeNulls
+import scala.io.AnsiColor
 
 import dotc.core.Contexts.*
 import dotc.parsing.Scanners.Scanner
@@ -48,7 +49,7 @@ class JLineTerminal extends java.io.Closeable {
   private val history = new DefaultHistory
 
   private def magenta(str: String)(using Context) =
-    if (ctx.settings.color.value != "never") Console.MAGENTA + str + Console.RESET
+    if (ctx.settings.color.value != "never") AnsiColor.MAGENTA + str + AnsiColor.RESET
     else str
   protected def promptStr = "scala"
   private def prompt(using Context)        = magenta(s"\n$promptStr> ")
@@ -108,15 +109,18 @@ class JLineTerminal extends java.io.Closeable {
    */
   def withMonitoringCtrlC[T](handler: () => Unit)(block: => T): T = {
     @volatile var monitoring = true
-    val terminalReader = terminal.reader()
 
     val monitorThread = new Thread(() => {
+      // Important: `terminal.reader()` is not thread-safe and cannot be used here!
       while (monitoring) {
-        val ch =
-          try terminalReader.read(1) // timeout after 1ms so the loop gets a chance to check `monitoring`
-          catch { case _: Exception => -1 } // Ignore all read errors, just continue
-
-        if (ch == 3 /* Ctrl-C is ASCII 0x03 */ && monitoring) handler()
+        try System.in.synchronized {
+          if (System.in.available() > 0) {
+            System.in.mark(1)
+            val ch = System.in.read()
+            System.in.reset()
+            if (ch == 3 /* Ctrl-C is ASCII 0x03 */ && monitoring) handler()
+          }
+        } catch { case _: Exception => () } // don't bring down the thread even if weird things happen
       }
     }, "REPL-CtrlC-Monitor")
     monitorThread.setDaemon(true)
