@@ -28,6 +28,7 @@
 
 <!-- Tick exactly one of these boxes. Exceptions must have a very good reason. -->
 
+- [ ] Non-code change, no tests needed
 - [ ] Covered by existing tests (e.g., for refactorings)
 - [ ] New automated tests (including the issue's reproducer, if applicable)
 - [ ] Manual tests described below (in enough detail that someone unfamiliar with this can still follow)
