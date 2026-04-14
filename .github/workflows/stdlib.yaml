@@ -358,44 +358,6 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: Run SBT scripted tests
         run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (2)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (3)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (4)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (5)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (6)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (7)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (8)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (9)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (10)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (11)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (12)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (13)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (14)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (15)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (16)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (17)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (18)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (19)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
-      - name: Run SBT scripted tests (20)
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
 
   community_build_a:
     runs-on: ubuntu-latest
