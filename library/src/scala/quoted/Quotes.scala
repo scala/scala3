@@ -8,7 +8,7 @@ import scala.reflect.TypeTest
 /** Current Quotes in scope
  *
  *  Usage:
- *  ```scala
+ *  ```scala sc:compile
  *  import scala.quoted.*
  *  def myExpr[T](using Quotes): Expr[T] = {
  *     import quotes.reflect.*
@@ -24,14 +24,15 @@ transparent inline def quotes(using q: Quotes): q.type = q
  *  It contains the low-level Typed AST API metaprogramming API.
  *  This API does not have the static type guarantees that `Expr` and `Type` provide.
  *  `Quotes` are generated from an enclosing `${ ... }` or `scala.staging.run`. For example:
- *  ```scala sc:nocompile
+ *  ```scala sc:compile
  *  import scala.quoted.*
- *  inline def myMacro: Expr[T] =
- *    ${ /* (quotes: Quotes) ?=> */ myExpr }
- *  def myExpr(using Quotes): Expr[T] =
- *    '{ f(${ /* (quotes: Quotes) ?=> */ myOtherExpr }) }
- *  }
- *  def myOtherExpr(using Quotes): Expr[U] = '{ ... }
+ *  inline def myMacro[T]: T =
+ *    ${ myMacroExpr[T] }
+ *  def myMacroExpr[T: Type](using Quotes): Expr[T] =
+ *    '{ f[T](${ myOtherExpr[Int] }) }
+ *  def myOtherExpr[U: Type](using Quotes): Expr[U] =
+ *    '{ ??? : U }
+ *  def f[T](x: Int): T = ???
  *  ```
  */
 
@@ -105,7 +106,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *  Provides all functionality related to AST-based metaprogramming.
    *
    *  Usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  import scala.quoted.*
    *  def f(expr: Expr[Int])(using Quotes) =
    *    import quotes.reflect.*
@@ -535,7 +536,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def parents: List[Tree /* Term | TypeTree */]
         /** Self-type of the class
          *
-         *  ```scala
+         *  ```scala sc:compile
          *  //{
          *  type T
          *  //}
@@ -547,7 +548,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def self: Option[ValDef]
         /** Statements within the class
          *
-         *  ```scala
+         *  ```scala sc:compile
          *  class C {
          *    ??? // statements
          *  }
@@ -620,7 +621,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** List of leading type parameters or Nil if the method does not have leading type parameters.
          *
          *  Note: Non leading type parameters can be found in extension methods such as
-         *  ```scala
+         *  ```scala sc:compile
          *  //{
          *  type A
          *  type T
@@ -634,7 +635,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  Returns all parameter clauses if there are no leading type parameters.
          *
          *  Non leading type parameters can be found in extension methods such as
-         *  ```scala
+         *  ```scala sc:compile
          *  //{
          *  type T
          *  type A
@@ -1204,7 +1205,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The `fun` part of an (implicit) application like `fun(args)`
          *
          *  It may be a partially applied method:
-         *  ```scala
+         *  ```scala sc:compile
          *  def f(x1: Int)(x2: Int) = ???
          *  f(1)(2)
          *  ```
@@ -1215,7 +1216,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The arguments (implicitly) passed to the method
          *
          *  The `Apply` may be a partially applied method:
-         *  ```scala
+         *  ```scala sc:compile
          *  def f(x1: Int)(x2: Int) = ???
          *  f(1)(2)
          *  ```
@@ -1256,7 +1257,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The `fun` part of an (inferred) type application like `fun[Args]`
          *
          *  It may be a partially applied method:
-         *  ```scala
+         *  ```scala sc:compile
          *  //{
          *  type T
          *  //}
@@ -1274,7 +1275,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The (inferred) type arguments passed to the method
          *
          *  The `TypeApply` may be a partially applied method:
-         *  ```scala
+         *  ```scala sc:compile
          *  //{
          *  type T
          *  //}
@@ -1691,7 +1692,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *   arguments `1, 2` of `List.apply(1, 2)` can be represented as follows:
      *
      *
-     *  ```scala
+     *  ```scala sc:compile
      *  //{
      *  import scala.quoted._
      *  def inQuotes(using Quotes) = {
@@ -2448,7 +2449,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  `[X1, ..., Xn]` are represented with `TypeParamClause` and `(x1: X1, ..., xn: Xx)` are represented with `TermParamClause`
      *
      *  `ParamClause` encodes the following enumeration
-     *  ```scala
+     *  ```scala sc:compile
      *  //{
      *  import scala.quoted.*
      *  def inQuotes(using Quotes) = {
@@ -2702,7 +2703,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Converts this `TypeRepr` to an `Type[?]`
          *
          *  Usage:
-         *  ```scala
+         *  ```scala sc:compile
          *  //{
          *  import scala.quoted.*
          *  def f(using Quotes) = {
@@ -3105,7 +3106,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Type of a by-name definition of type `=>T`.
      *
      *  May represent by-name parameter such as `thunk` in
-     *  ```scala
+     *  ```scala sc:compile
      *  //{
      *  type T
      *  //}
@@ -3113,7 +3114,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  ```
      *
      *  May also represent a the return type of a parameterless method definition such as
-     *  ```scala
+     *  ```scala sc:compile
      *    def foo: Int = ???
      *  ```
      */
@@ -4069,7 +4070,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  This method returns the module symbol. The module class can be accessed calling `moduleClass` on this symbol.
        *
        *  Example usage:
-       *  ```scala
+       *  ```scala sc:compile
        *  //{
        *  given Quotes = ???
        *  import quotes.reflect.*
@@ -4091,7 +4092,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  Block(modDef.toList, callRun)
        *  ```
        *  constructs the equivalent to
-       *  ```scala
+       *  ```scala sc:compile
        *  //{
        *  given Quotes = ???
        *  import quotes.reflect.*
@@ -4484,7 +4485,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  Changes the owner under which the definition in a quote are created.
          *
          *  Usages:
-         *  ```scala
+         *  ```scala sc:compile
          *  def rhsExpr(using q: Quotes): Expr[Unit] =
          *    import q.reflect.*
          *    '{ val y = ???; (y, y) }
@@ -4495,7 +4496,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *    ValDef(sym, Some(rhs))
          *  ```
          *
-         *  ```scala
+         *  ```scala sc:compile
          *  //{
          *  def inQuotes(using q: Quotes) = {
          *    import q.reflect.*
@@ -5112,7 +5113,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Customizable Tree accumulator.
      *
      *  Usage:
-     *  ```scala
+     *  ```scala sc:compile
      *  //{
      *  def inQuotes(using q: Quotes) = {
      *    import q.reflect.*
@@ -5225,7 +5226,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Customizable tree traverser.
      *
      *  Usage:
-     *  ```scala
+     *  ```scala sc:compile
      *  //{
      *  def inQuotes(using q: Quotes) = {
      *    import q.reflect.*
@@ -5251,7 +5252,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Customizable tree mapper.
      *
      *  Usage:
-     *  ```scala
+     *  ```scala sc:compile
      *  //{
      *  def inQuotes(using q: Quotes) = {
      *    import q.reflect.*

@@ -17,7 +17,7 @@ object Varargs {
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
    *
    *  Usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  //{
    *  def f(using Quotes) = {
    *    import quotes.reflect.*
@@ -36,10 +36,10 @@ object Varargs {
   /** Matches a literal sequence of expressions and returns a sequence of expressions.
    *
    *  Usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
-   *    case Varargs(argVarargs) => ???
+   *    case Varargs(argVarargs) => Expr(argVarargs.size)
    *      // argVarargs: Seq[Expr[Int]]
    *
    */

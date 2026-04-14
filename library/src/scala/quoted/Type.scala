@@ -28,7 +28,7 @@ object Type:
    *  Returns `None` if the type is not a singleton constant type.
    *
    *  Example usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
@@ -52,7 +52,7 @@ object Type:
    *  Returns `None` if the type is not a tuple singleton constant types.
    *
    *  Example usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
