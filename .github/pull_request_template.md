@@ -20,4 +20,4 @@ Not at all
 New automated tests (including the issue's reproducer, if applicable)
 Covered by existing tests (this is a refactoring)
 Non-code change, no tests needed
-Manual tests described below (in enough detail that someone unfamiliar with this can still follow)
+Manual tests because writing automated tests is impractical, described below (in detail)
