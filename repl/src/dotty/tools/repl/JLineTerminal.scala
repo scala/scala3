@@ -3,7 +3,6 @@ package repl
 
 import scala.language.unsafeNulls
 import scala.io.AnsiColor
-
 import dotc.core.Contexts.*
 import dotc.parsing.Scanners.Scanner
 import dotc.parsing.Tokens.*
@@ -16,14 +15,10 @@ import org.jline.reader.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
-import org.jline.terminal.Attributes
-import org.jline.terminal.Attributes.ControlChar
+import org.jline.terminal.Terminal.Signal
 import org.jline.utils.AttributedString
 
 class JLineTerminal extends java.io.Closeable {
-  // import java.util.logging.{Logger, Level}
-  // Logger.getLogger("org.jline").setLevel(Level.FINEST)
-
   private val terminal =
     val builder = TerminalBuilder.builder()
     if System.getenv("TERM") == "dumb" then
@@ -34,17 +29,6 @@ class JLineTerminal extends java.io.Closeable {
       // This option is used at https://github.com/jline/jline3/blob/894b5e72cde28a551079402add4caea7f5527806/terminal/src/main/java/org/jline/terminal/TerminalBuilder.java#L528.
       builder.dumb(true)
     builder.build()
-  
-  // Save original attributes before entering raw mode
-  private val originalAttributes = terminal.getAttributes
-
-  // Disable VINTR so Ctrl-C is not converted to SIGINT by the tty driver, then enter raw mode
-  // This disables special character processing so Ctrl-C is passed through as 0x03
-  val noIntr = new Attributes(originalAttributes)
-  noIntr.setControlChar(ControlChar.VINTR, 0)
-  terminal.setAttributes(noIntr)
-  terminal.enterRawMode()
-
 
   private val history = new DefaultHistory
 
@@ -101,37 +85,16 @@ class JLineTerminal extends java.io.Closeable {
   }
 
   def close(): Unit =
-    try terminal.setAttributes(originalAttributes)
-    finally terminal.close()
+    terminal.close()
 
   /** Execute a block while monitoring for Ctrl-C keypresses.
    *  Calls the handler when Ctrl-C is detected during block execution.
    */
   def withMonitoringCtrlC[T](handler: () => Unit)(block: => T): T = {
-    @volatile var monitoring = true
-
-    val monitorThread = new Thread(() => {
-      // Important: `terminal.reader()` is not thread-safe and cannot be used here!
-      while (monitoring) {
-        try System.in.synchronized {
-          if (System.in.available() > 0) {
-            System.in.mark(1)
-            val ch = System.in.read()
-            System.in.reset()
-            if (ch == 3 /* Ctrl-C is ASCII 0x03 */ && monitoring) handler()
-          }
-        } catch { case _: Exception => () } // don't bring down the thread even if weird things happen
-      }
-    }, "REPL-CtrlC-Monitor")
-    monitorThread.setDaemon(true)
-    monitorThread.start()
-
-    try block
-    finally {
-      monitoring = false
-      Thread.interrupted() // clear any interrupted flag so the `join` below doesn't explode
-      monitorThread.join()
-    }
+    terminal.handle(Signal.INT, _ => handler())
+    val res = block
+    terminal.handle(Signal.INT, _ => ())
+    res
   }
 
   /** Provide syntax highlighting */
@@ -192,7 +155,7 @@ class JLineTerminal extends java.io.Closeable {
 
 
           // we need to enclose the last backtick, which unclosed produces ERROR token
-          if (token == ERROR && input(start) == '`') then
+          if token == ERROR && input(start) == '`' then
             lastBacktickErrorStart = Some(start)
           else
             lastBacktickErrorStart = None

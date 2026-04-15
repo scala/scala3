@@ -79,7 +79,7 @@ case class State(objectIndex: Int,
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
-                 out: PrintStream = Console.out,
+                 out: PrintStream = System.out,
                  classLoader: Option[ClassLoader] = None,
                  extraPredef: String = "") extends Driver:
 
