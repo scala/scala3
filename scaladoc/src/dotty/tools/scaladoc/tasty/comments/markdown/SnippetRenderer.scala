@@ -68,32 +68,6 @@ object SnippetRenderer:
       }
     }.getOrElse(snippetLines)
 
-  private def wrapLineInBetween(startSymbol: Option[String], endSymbol: Option[String], line: SnippetLine): SnippetLine =
-    val startIdx = startSymbol.map(s => line.content.indexOf(s))
-    val endIdx = endSymbol.map(s => line.content.indexOf(s))
-    (startIdx, endIdx) match
-      case (Some(idx), None) =>
-        val (code, comment) = line.content.splitAt(idx)
-        comment match
-          case _ if code.forall(_.isWhitespace) =>
-            line.withClass("hideable")
-          case _ if comment.last == '\n' =>
-            line.copy(content = code + s"""<span class="hideable">${comment.dropRight(1)}</span>${"\n"}""")
-          case _  =>
-            line.copy(content = code + s"""<span class="hideable">$comment</span>""")
-      case (None, Some(idx)) =>
-        val (comment, code) = line.content.splitAt(idx+endSymbol.get.size)
-        comment match
-          case _ if code.forall(_.isWhitespace) =>
-            line.withClass("hideable")
-          case _ =>
-            line.copy(content = s"""<span class="hideable">$comment</span>""" + code)
-      case (Some(startIdx), Some(endIdx)) =>
-        val (tmp, end) = line.content.splitAt(endIdx+endSymbol.get.size)
-        val (begin, comment) = tmp.splitAt(startIdx)
-        line.copy(content = begin + s"""<span class="hideable">$comment</span>""" + end)
-      case _ => line
-
   private def reindexLines(lines: Seq[SnippetLine]) =
     lines.zipWithIndex.map {
       case (line, newIdx) => line.copy(lineNo = newIdx)
