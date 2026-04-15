@@ -52,6 +52,9 @@ abstract class Lifter {
   protected def liftedExprType(expr: Tree)(using Context): Type =
     expr.tpe.widen.deskolemized
 
+  /** Hook for lifters that need to record or mark freshly created lifted defs. */
+  protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
+
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
@@ -63,10 +66,12 @@ abstract class Lifter {
         // Lifted definitions will be added to a local block, so they need to be
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
-      defs += liftedDef(lifted, expr)
+      val liftedTree = liftedDef(lifted, expr)
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
         .setDefTree
+      onLiftedDef(liftedTree)
+      defs += liftedTree
       ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
@@ -192,6 +197,7 @@ object LiftCoverage extends LiftImpure {
 
   // Property indicating whether we're currently lifting the arguments of an application
   private val LiftingArgs = new Property.Key[Boolean]
+  val CoverageLiftedTemp = Property.StickyKey[Unit]()
 
   private inline def liftingArgs(using Context): Boolean =
     ctx.property(LiftingArgs).contains(true)
@@ -202,26 +208,31 @@ object LiftCoverage extends LiftImpure {
   /** Variant of `noLift` for the arguments of applications.
    *  To produce the right coverage information (especially in case of exceptions), we must lift:
    *  - all the applications, except the erased ones
-   *
-   *  Simple references (Ident, Select on non-application qualifier, This, Literal, New)
-   *  don't need lifting: they don't throw exceptions and don't have observable side effects
-   *  that need to be ordered relative to the coverage call.  Lifting them would create
-   *  synthetic ValDefs that interfere with later compiler phases (e.g., separation checking
-   *  in capture checking would treat them as new capability-hiding definitions).
    */
   private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
     arg match
+      case arg if isUnsafeAssumeSeparate(arg) => true
       case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
       case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
       case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
       case tpd.Typed(expr, _) => noLiftArg(expr)
-      case _: tpd.Ident | _: tpd.This | _: tpd.Literal | _: tpd.New => true
-      case tpd.Select(qual, _) => noLiftArg(qual)
       case _ => super.noLift(arg)
 
-  private def isUnsafeAssumeSeparate(tree: tpd.Tree)(using Context): Boolean = tree match
-    case tree: tpd.Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
+  def isUnsafeAssumeSeparate(tree: tpd.Tree)(using Context): Boolean = tree match
+    case tree: tpd.Apply =>
+      tree.symbol == defn.Caps_unsafeAssumeSeparate
+      || isUnsafeAssumeSeparate(tree.fun)
+    case tpd.Select(qual, _) => isUnsafeAssumeSeparate(qual)
+    case tpd.Block(_, expr) => isUnsafeAssumeSeparate(expr)
+    case tpd.Inlined(_, _, expr) => isUnsafeAssumeSeparate(expr)
+    case tpd.Typed(expr, _) => isUnsafeAssumeSeparate(expr)
     case _ => false
+
+  def isCoverageLiftedTemp(sym: Symbol)(using Context): Boolean =
+    sym.defTree.hasAttachment(CoverageLiftedTemp)
+
+  override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
+    tree.putAttachment(CoverageLiftedTemp, ())
 
   override def noLift(expr: tpd.Tree)(using Context) =
     if liftingArgs then noLiftArg(expr)

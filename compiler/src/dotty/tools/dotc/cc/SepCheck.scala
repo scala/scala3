@@ -10,6 +10,7 @@ import CaptureSet.{Refs, emptyRefs, HiddenSet}
 import NameKinds.WildcardParamName
 import config.Printers.capt
 import StdNames.nme
+import typer.LiftCoverage
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
@@ -599,15 +600,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case _ =>
   end checkAssign
 
-  /** Is `tree` a reference to a synthetic local val (e.g., a temporary
-   *  introduced by coverage argument lifting)?  Such references are just
-   *  aliases for the lifted expression and should not be checked for
-   *  separation—their capabilities were already checked at the original site.
+  /** Is `tree` a coverage-lifted local temp or a reference to one?
+   *  These aliases are identified through the attachment set by `LiftCoverage`,
+   *  not by broad synthetic checks.
    */
-  private def isSyntheticLocalRef(tree: Tree)(using Context): Boolean = tree match
-    case tree: Ident =>
-      val sym = tree.symbol
-      sym.is(Synthetic) && sym.owner.isTerm && !sym.isOneOf(TermParamOrAccessor)
+  private def isCoverageLiftedTemp(tree: Tree)(using Context): Boolean = tree match
+    case tree: ValDef => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
+    case tree: Ident => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
     case _ => false
 
   /** 1. Check that the capabilities used at `tree` don't overlap with
@@ -616,7 +615,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    */
   def checkUse(tree: Tree)(using Context): Unit =
     val used = tree.markedFree.elems
-    if !used.isEmpty && !isSyntheticLocalRef(tree) then
+    if !used.isEmpty && !isCoverageLiftedTemp(tree) then
       capt.println(i"check use $tree: $used")
       val usedPeaks = used.allPeaks
       if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
@@ -993,19 +992,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           checkApply(tree, argss.flatten, app, deps, resultPeaks)
     recur(app, Nil)
 
-  /** Is `tree` an application of `caps.unsafe.unsafeAssumeSeparate`?
-   *  Also looks through:
-   *   - Block wrappers (introduced by coverage instrumentation)
-   *   - Select nodes (e.g., `.apply` inserted when calling the function result)
-   *   - curried applications (e.g., `unsafeAssumeSeparate(f)(cc)` where the
-   *     outer Apply's fun is itself an unsafeAssumeSeparate application)
-   */
+  /** Is `tree` an application of `caps.unsafe.unsafeAssumeSeparate`? */
   def isUnsafeAssumeSeparate(tree: Tree)(using Context): Boolean = tree match
-    case tree: Apply =>
-      tree.symbol == defn.Caps_unsafeAssumeSeparate
-      || isUnsafeAssumeSeparate(tree.fun)
-    case Select(qual, _) => isUnsafeAssumeSeparate(qual)
-    case Block(_, expr) => isUnsafeAssumeSeparate(expr)
+    case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
     case _ => false
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
@@ -1015,9 +1004,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
    *  application as right hand sides.
-   *  Also excluded are synthetic local val definitions (e.g., temporaries created
-   *  by coverage argument lifting), which are just aliases that don't introduce
-   *  real capability hiding.
+   *  Also excluded are local temps marked by `LiftCoverage`, which are aliases
+   *  introduced solely to preserve coverage evaluation order.
    *  Hidden sets of checked definitions are added to `defsShadow`.
    */
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
@@ -1025,7 +1013,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if !sym.isOneOf(TermParamOrAccessor)
        && !sym.needsResultRefinement
        && !isUnsafeAssumeSeparate(tree.rhs)
-       && !(tree.isInstanceOf[ValDef] && sym.is(Synthetic) && sym.owner.isTerm)
+       && !isCoverageLiftedTemp(tree)
     then
       checkType(tree.tpt, sym)
       capt.println(i"sep check def $sym: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
