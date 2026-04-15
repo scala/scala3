@@ -799,6 +799,7 @@ extension (sym: Symbol) {
     sym.isLocalToCompilationUnit
     || sym.isScalaDocSnippet
     || sym.name.isReplWrapperName
+    || sym.isConstructor && sym.owner.name.isReplWrapperName
     || ctx.owner.enclosingPackageClass.isEmptyPackage
         && !sym.ownersIterator.takeWhile(!_.is(Package))
             .exists(_.hasAnnotation(defn.AssumeSafeAnnot))
