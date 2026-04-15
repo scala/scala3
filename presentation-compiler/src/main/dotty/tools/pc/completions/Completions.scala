@@ -80,15 +80,20 @@ class Completions(
         if appl.fun == funSel && sel == fun => false
     case _ => true
 
-  private lazy val isDerivingTemplate = adjustedPath match
+  private lazy val isDerivingOrContextBound = adjustedPath match
     /* In case of `class X derives TC@@` we shouldn't add `[]`
      */
     case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
       val pos = completionPos.toSourcePosition
       !templ.derived.exists(_.sourcePos.contains(pos))
+    /* In case of `def demo[F[_]: TC@@]` or `def demo[F[_]: {TC1, TC@@}]`
+     * we shouldn't add `[]` as we are in a context bound position.
+     */
+    case Ident(_) :: (_: untpd.ContextBounds) :: _ => false
+    case Ident(_) :: (_: untpd.ContextBoundTypeTree) :: _ => false
     case _ => true
 
-  private lazy val shouldAddSuffix = shouldAddSnippet && isContinuedApply && isDerivingTemplate
+  private lazy val shouldAddSuffix = shouldAddSnippet && isContinuedApply && isDerivingOrContextBound
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
