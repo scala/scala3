@@ -91,10 +91,9 @@ class JLineTerminal extends java.io.Closeable {
    *  Calls the handler when Ctrl-C is detected during block execution.
    */
   def withMonitoringCtrlC[T](handler: () => Unit)(block: => T): T = {
-    terminal.handle(Signal.INT, _ => handler())
-    val res = block
-    terminal.handle(Signal.INT, _ => ())
-    res
+    val previousHandler = terminal.handle(Signal.INT, _ => handler())
+    try block
+    finally terminal.handle(Signal.INT, previousHandler)
   }
 
   /** Provide syntax highlighting */
