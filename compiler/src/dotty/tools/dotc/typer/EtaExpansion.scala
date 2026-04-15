@@ -202,9 +202,12 @@ object LiftCoverage extends LiftImpure {
   /** Variant of `noLift` for the arguments of applications.
    *  To produce the right coverage information (especially in case of exceptions), we must lift:
    *  - all the applications, except the erased ones
-   *  - all the impure arguments
    *
-   * There's no need to lift the other arguments.
+   *  Simple references (Ident, Select on non-application qualifier, This, Literal, New)
+   *  don't need lifting: they don't throw exceptions and don't have observable side effects
+   *  that need to be ordered relative to the coverage call.  Lifting them would create
+   *  synthetic ValDefs that interfere with later compiler phases (e.g., separation checking
+   *  in capture checking would treat them as new capability-hiding definitions).
    */
   private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
     arg match
@@ -212,10 +215,17 @@ object LiftCoverage extends LiftImpure {
       case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
       case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
       case tpd.Typed(expr, _) => noLiftArg(expr)
+      case _: tpd.Ident | _: tpd.This | _: tpd.Literal | _: tpd.New => true
+      case tpd.Select(qual, _) => noLiftArg(qual)
       case _ => super.noLift(arg)
 
+  private def isUnsafeAssumeSeparate(tree: tpd.Tree)(using Context): Boolean = tree match
+    case tree: tpd.Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
+    case _ => false
+
   override def noLift(expr: tpd.Tree)(using Context) =
-    if liftingArgs then noLiftArg(expr) else super.noLift(expr)
+    if liftingArgs then noLiftArg(expr)
+    else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
 
   /** Preserve singleton precision for lifted coverage temps when the underlying value is a
    *  compile-time constant (same notion ConstFold uses), so constant re-folding after lifting
