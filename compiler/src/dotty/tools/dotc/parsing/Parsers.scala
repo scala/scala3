@@ -2327,16 +2327,19 @@ object Parsers {
 
     /** ContextBound      ::=  Type [`as` id] */
     def contextBound(pname: TypeName): Tree =
+      val start = in.offset
       val t = toplevelTyp(inContextBound = true)
       val ownName =
         if isIdent(nme.as) && sourceVersion.enablesNewGivens then
           in.nextToken()
           ident()
         else EmptyTermName
-      val res = ContextBoundTypeTree(t, pname, ownName)
-      if t.span.exists then
-        res.withSpan(Span(t.span.start, end = in.lastOffset, point = t.span.end))
-      else res
+      ContextBoundTypeTree(t, pname, ownName)
+        .withSpan:
+          if t.span.exists then
+            Span(t.span.start, end = in.lastOffset, point = t.span.end)
+          else
+            Span(start, end = in.lastOffset, point = start)
 
     /** ContextBounds     ::= ContextBound [`:` ContextBounds]
      *                      | `{` ContextBound {`,` ContextBound} `}`
