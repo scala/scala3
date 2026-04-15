@@ -131,7 +131,7 @@ object HoverProvider:
           templ.derived.find(_.sourcePos.contains(pos)).collect {
             case ident if ident.tpe != null => ident.symbol -> ident.tpe.nn
           }
-        case other =>
+        case _ =>
           None
 
       def report =
