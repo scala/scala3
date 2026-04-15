@@ -28,7 +28,6 @@ import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.util.Spans.NoCoord
-import dotty.tools.dotc.report
 
 object QuotesImpl {
 
@@ -1905,17 +1904,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           //     (and failed dotty compilation tests)
           // Additionally, it can be useful to be able to learn a type of a symbol using some indirect prefix,
           // even if that symbol is not a direct member of that prefix, but a nested one.
-          def isTypeRelatedToThePassedMember = {
+          def isTypeRelatedToThePassedMember =
             import scala.util.boundary
-
-            // the symbol will not exist for LambdaTypes,
+            // the symbol for `self` will not exist for LambdaTypes,
             // which don't seem to be supported by asSeenFrom anyway
-            // (but don't seem to cause crashes, and return no-op member.info,
-            // which we might not have access other ways).
-            val selfSymExists = self.typeSymbol.exists
+            // (but also don't seem to cause crashes, and return no-op member.info,
+            // which we might not be able to access otherwise, so we need to allow this).
             val isLambdaType = self.isInstanceOf[LambdaType]
-            (!selfSymExists && isLambdaType) ||
-            (selfSymExists && boundary {
+            isLambdaType || boundary {
               var checked: Symbol = member
               while(checked.exists) {
                 if self.derivesFrom(checked)
@@ -1925,9 +1921,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                 checked = checked.owner
               }
               boundary.break(false)
-            })
-          }
-          xCheckMacroAssert(isTypeRelatedToThePassedMember, s"$member is not a valid member of ${self.show}")
+            }
+
+          xCheckMacroAssert(isTypeRelatedToThePassedMember, s"$member is not a member of ${self.show}")
 
           // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
           val memberInfo =
