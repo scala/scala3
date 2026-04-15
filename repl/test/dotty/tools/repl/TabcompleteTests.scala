@@ -248,10 +248,8 @@ class TabcompleteTests extends ReplTest {
   }
 
   // i25790: tab completion with CC enabled
-  // Disabled: completions return empty when CC is enabled due to a
-  // pre-existing issue in the completion engine (not a regression).
-  // @Test
-  def `i25790 cc tab complete` =
+  // i25790: tab completion with CC enabled
+  @Test def `i25790 cc tab complete` =
     initially {
       run("import language.experimental.captureChecking")
     } andThen {
