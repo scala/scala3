@@ -8,9 +8,9 @@ Fixes #XYZ
 
 <!-- Pick one; refer to https://github.com/scala/scala3/blob/main/LLM_POLICY.md for details -->
 
-Extensively
-Moderately
-Minimally
+Extensively, for ...
+Moderately, for ...
+Minimally, for ...
 Not at all
 
 ## How was the solution tested?
