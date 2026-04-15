@@ -506,8 +506,11 @@ object Completion:
       if qual.symbol.is(Package) then
         directMemberCompletions(adjustedQual)
       else if qual.typeOpt.hasSimpleKind then
+        def safeExtensionCompletions =
+          try extensionCompletions(adjustedQual)
+          catch case _: TypeError => Map.empty
         implicitConversionMemberCompletions(adjustedQual) ++
-        extensionCompletions(adjustedQual) ++
+        safeExtensionCompletions ++
         directMemberCompletions(adjustedQual) ++
         namedTupleCompletions(adjustedQual)
       else
@@ -737,7 +740,7 @@ object Completion:
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions
     } catch case NonFatal(ex) =>
-      logger.warning(
+      logger.fine(
         s"Exception when searching for implicit conversions:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
       )
       Set.empty

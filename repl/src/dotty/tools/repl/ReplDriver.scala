@@ -2,6 +2,7 @@ package dotty.tools
 package repl
 
 import scala.language.unsafeNulls
+import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
@@ -649,10 +650,13 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":type <expression>")
         case _  =>
-          compiler.typeOf(expr)(using newRun(state)).fold(
-            errs => displayErrors(errs, state),
-            res => out.println(res)  // result has some highlights
-          )
+          try
+            compiler.typeOf(expr)(using newRun(state)).fold(
+              errs => displayErrors(errs, state),
+              res => out.println(res)  // result has some highlights
+            )
+          catch case NonFatal(ex) =>
+            out.println(s"Error: ${ex.getMessage}")
       }
       state
 
@@ -660,10 +664,13 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":doc <expression>")
         case _  =>
-          compiler.docOf(expr)(using newRun(state)).fold(
-            errs => displayErrors(errs, state),
-            res => out.println(res)
-          )
+          try
+            compiler.docOf(expr)(using newRun(state)).fold(
+              errs => displayErrors(errs, state),
+              res => out.println(res)
+            )
+          catch case NonFatal(ex) =>
+            out.println(s"Error: ${ex.getMessage}")
       }
       state
 
