@@ -13,7 +13,7 @@ class C {
 
 object Test:
   def main(args: Array[String]): Unit =
-    classOf[C].getMethods.filter(_.getName.startsWith("func")).foreach(m =>
+    classOf[C].getMethods.filter(_.getName.startsWith("func")).sortBy(_.getName).foreach(m =>
       println(m)
       println(m.toGenericString)
     )
