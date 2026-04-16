@@ -158,8 +158,7 @@ abstract class AnyValManifest[T <: AnyVal](override val toString: String) extend
     case _                    => false
   }
   override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-  @transient
-  override val hashCode = System.identityHashCode(this)
+  override def hashCode = System.identityHashCode(this)
 }
 
 /** `ManifestFactory` defines factory methods for manifests.
@@ -405,8 +404,7 @@ object ManifestFactory {
   private abstract class PhantomManifest[T](_runtimeClass: Predef.Class[?],
                                             override val toString: String) extends ClassTypeManifest[T](None, _runtimeClass, Nil) {
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-    @transient
-    override val hashCode = System.identityHashCode(this)
+    override def hashCode = System.identityHashCode(this)
   }
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
