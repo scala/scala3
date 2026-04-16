@@ -103,7 +103,7 @@ case class ScalaPresentationCompiler(
       case (PcConvertToNamedLambdaParameters.codeActionId, _) =>
         compilerAccess.withNonInterruptableCompiler(List.empty[l.TextEdit].asJava, params.token) {
           access => PcConvertToNamedLambdaParameters(access.compiler(), params).convertToNamedLambdaParameters
-        }(params.toQueryContext)
+        }(using params.toQueryContext)
       case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
 
   private def failedFuture[T](e: Throwable): CompletableFuture[T] =
@@ -153,7 +153,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       new PcSemanticTokensProvider(driver, params).provide().asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def inlayHints(
       params: InlayHintsParams
@@ -166,7 +166,7 @@ case class ScalaPresentationCompiler(
       new PcInlayHintsProvider(driver, params, search)
         .provide()
         .asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def getTasty(
       targetUri: URI,
@@ -192,7 +192,7 @@ case class ScalaPresentationCompiler(
         folderPath,
         completionItemPriority
       ).completions()
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   def definition(params: OffsetParams): CompletableFuture[DefinitionResult] =
     compilerAccess.withInterruptableCompiler(
@@ -201,7 +201,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       PcDefinitionProvider(driver, params, search).definitions()
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def typeDefinition(
       params: OffsetParams
@@ -212,7 +212,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       PcDefinitionProvider(driver, params, search).typeDefinitions()
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   def documentHighlight(
       params: OffsetParams
@@ -223,7 +223,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       PcDocumentHighlightProvider(driver, params).highlights.asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def references(
       params: ReferencesRequest
@@ -245,7 +245,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       new InferExpectedType(search, driver, params).infer().asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   def shutdown(): Unit =
     compilerAccess.shutdown()
@@ -317,7 +317,7 @@ case class ScalaPresentationCompiler(
       )
         .autoImports(isExtension)
         .asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   def implementAbstractMembers(
       params: OffsetParams
@@ -334,7 +334,7 @@ case class ScalaPresentationCompiler(
         search,
         config
       )
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def insertInferredType(
       params: OffsetParams
@@ -347,7 +347,7 @@ case class ScalaPresentationCompiler(
       new InferredTypeProvider(params, pc.compiler(), config, search)
         .inferredTypeEdits()
         .asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   def insertInferredMethod(
       params: OffsetParams
@@ -360,7 +360,7 @@ case class ScalaPresentationCompiler(
       new InferredMethodProvider(params, pc.compiler(), config, search)
         .inferredMethodEdits()
         .asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def inlineValue(
       params: OffsetParams
@@ -370,7 +370,7 @@ case class ScalaPresentationCompiler(
       .withInterruptableCompiler(empty, params.token()) { pc =>
         new PcInlineValueProvider(pc.compiler(), params)
           .getInlineTextEdits()
-      }(params.toQueryContext))
+      }(using params.toQueryContext))
       .thenApply {
         case Right(edits: List[TextEdit]) => edits.asJava
         case Left(error: String) => throw new DisplayableException(error)
@@ -412,7 +412,7 @@ case class ScalaPresentationCompiler(
           params,
           argIndices
         ).convertToNamedArguments
-      }(params.toQueryContext))
+      }(using params.toQueryContext))
       .thenApplyAsync {
         case Left(error: String) => throw new DisplayableException(error)
         case Right(edits: List[l.TextEdit]) => edits.asJava
@@ -441,7 +441,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       HoverProvider.hover(params, driver, search, config.hoverContentType())
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
   end hover
 
   def prepareRename(
@@ -455,7 +455,7 @@ case class ScalaPresentationCompiler(
       Optional.ofNullable(
         PcRenameProvider(driver, params, None).prepareRename().orNull
       )
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   def rename(
       params: OffsetParams,
@@ -467,7 +467,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       PcRenameProvider(driver, params, Some(name)).rename().asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   def newInstance(
       buildTargetIdentifier: String,
@@ -487,7 +487,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       SignatureHelpProvider.signatureHelp(driver, params, search)
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def didChange(
       params: VirtualFileParams
@@ -498,7 +498,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       DiagnosticProvider(driver, params).diagnostics().asJava
-    }(params.toQueryContext)
+    }(using params.toQueryContext)
 
   override def didClose(uri: URI): Unit =
     compilerAccess.withNonInterruptableCompiler(
