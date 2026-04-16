@@ -1363,32 +1363,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           curEnv = saved
       }
 
-    def isScalaDocSnippet(sym: Symbol)(using Context): Boolean =
-      sym.is(ModuleClass)
-      && (sym.sourceModule.name == nme.Snippet)
-      && sym.owner.is(Package)
-      && sym.owner.name.toString.contains("snippet")
-
-    /** Is symbol exempt from checking that its type or uses clause must
-     *  be given explicitly? This is the case for symbols that are not
-     *  visible outside the compilation unit where they are defined,
-     *  and also for two pragmatic exemptions, explained below.
-     */
-    def isExemptFromExplicitChecks(sym: Symbol)(using Context): Boolean =
-      sym.isLocalToCompilationUnit
-      || isScalaDocSnippet(sym)
-      || sym.name.isReplWrapperName
-      || ctx.owner.enclosingPackageClass.isEmptyPackage
-        // We make an exception for symbols in the empty package.
-        // these could theoretically be accessed from other files in the empty package, but
-        // usually it would be too annoying to require explicit types.
-      || sym.name.is(DefaultGetterName)
-        // Default getters are exempted since otherwise it would be
-        // too annoying. This is a hole since a defualt getter's result type
-        // might leak into a type variable.
-      || sym.needsResultRefinement
-        // If we refine the result type anyway, the inferred type does not matter.
-
     /** Two tests for member definitions with inferred types:
      *
      *   1. If val or def definition with inferred (result) type is visible
@@ -1436,7 +1410,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree.tpt match
         case tpt: InferredTypeTree =>
           // Test point (1) of doc comment above
-          if !isExemptFromExplicitChecks(sym) then // Symbols that can't be seen outside the compilation unit can have inferred types
+          if !sym.isExemptFromExplicitChecks // Symbols that can't be seen outside the compilation unit can have inferred types
+              && !sym.needsResultRefinement  // If we refine the result type anyway, the inferred type does not matter
+          then // Symbols that can't be seen outside the compilation unit can have inferred types
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
               withGlobalCapAsRoot:
@@ -1489,8 +1465,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   |Field classifiers have to conform to the classifier of the containing class.""",
               cls.srcPos)
       // (2)
-      if !isExemptFromExplicitChecks(cls)
-          && !cls.derivesFrom(defn.Caps_Capability)
+      if !cls.isExemptFromExplicitChecks
+          && !cls.derivesFromCapability
           && capFields.nonEmpty
       then
         val fields =
