@@ -900,15 +900,38 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
 
 /** Drop retains annotations in the inferred type if CC is not enabled
  *  or transform them into retains annotations with Nothing (i.e. empty set) as
- *   argument if CC is enabled (we need to do that to keep by-name status).
+ *  argument if CC is enabled (we need to do that to keep by-name status).
+ *  Retains are preserved as-is when they reference a named capture-set type parameter
+ *  symbol (e.g. `T^{C}` where `C: CapSet^`): those references are load-bearing for
+ *  capture-polymorphic lambdas and cannot be recovered after being rewritten to
+ *  `Nothing`. Retains whose refs are anonymous TypeParamRefs — e.g. the bound of an
+ *  un-named polymorphic lambda type parameter — are still cleaned up, since keeping
+ *  them would leave orphan parameter references in the annotation tree when pickled.
+ *  See i25830.
  */
 class CleanupRetains(using Context) extends TypeMap:
+
+  // LambdaType binders we are currently inside of. Any TypeParamRef bound by one
+  // of these is still valid when this type is serialized (its binder will be on
+  // the pickler stack). TypeParamRefs bound by an outer binder would be orphan.
+  private var inScope: List[LambdaType] = Nil
+
+  private def isPreservableCapSetRef(tp: Type): Boolean = tp match
+    case tp: TypeParamRef => tp.derivesFromCapSet && inScope.contains(tp.binder)
+    case _ => false
+
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
         if annot.symbol == defn.RetainsCapAnnot then tp
+        else if annot.retainedType.retainedElementsRaw.exists(isPreservableCapSetRef) then
+          tp.derivedAnnotatedType(this(parent), annot)
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
+    case tp: LambdaType =>
+      val saved = inScope
+      inScope = tp :: inScope
+      try mapOver(tp) finally inScope = saved
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific

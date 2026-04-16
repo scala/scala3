@@ -338,14 +338,39 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       def innerApply(tp: Type) =
         val tp1 = tp match
+          case AnnotatedType(parent, annot: RetainingAnnotation)
+          if annot.retainedType.retainedElementsRaw.exists(_.derivesFromCapSet) =>
+            // Preserve retains annotations that reference capture-set type parameters
+            // (e.g. `File^{C}` where `C: CapSet^`). Process the parent but strip the
+            // fresh empty variable that `addVar` would attach, then re-attach the
+            // original retains set so the reference to `C` survives later type-arg
+            // substitution. Without this, `{C}` would be silently erased to `{}`.
+            // See i25830.
+            val parent1 = apply(parent) match
+              case CapturingType(p, refs) if refs.elems.isEmpty && !refs.isConst => p
+              case other => other
+            // `toCaptureSet` can throw when an element isn't a well-formed capability
+            // — mirrors `decomposeCapturingType` in CapturingType.scala. Fall back to
+            // the plain parent in that case.
+            try CapturingType(parent1, annot.toCaptureSet)
+            catch case _: IllegalCaptureRef => parent1
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
             // Drop explicit retains and @inferred annotations
             apply(parent)
           case tp: TypeLambda =>
-            // Don't recurse into parameter bounds, just cleanup any stray retains annotations
+            // Don't recurse into parameter bounds, just cleanup any stray retains
+            // annotations. Retains on CapSet-derived parts are meaningful (they encode
+            // the `CapSet^{any}` upper bound of a capture-set type parameter `[C^]`)
+            // and must be preserved so that `{C}` is a valid reference in the body.
+            // See i25830.
+            def cleanBound(bnd: Type): Type = bnd match
+              case bnd: TypeBounds =>
+                bnd.derivedTypeBounds(cleanBound(bnd.lo), cleanBound(bnd.hi))
+              case _ =>
+                if bnd.derivesFromCapSet then bnd else bnd.dropAllRetains
             tp.derivedLambdaType(
-              paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
+              paramInfos = tp.paramInfos.mapConserve(cleanBound(_).bounds),
               resType = this(tp.resType))
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
@@ -899,6 +924,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
         && !refs.isUniversal  // if refs is {caps.any}, an added variable would not change anything
+        && !refs.elems.exists(_.coreType.derivesFromCapSet)
+          // Don't wrap a const set that references a capture-set type parameter in a
+          // fresh variable: the resulting Var's elements would no longer track the
+          // original ParamRef across type-argument substitution. See i25830.
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
