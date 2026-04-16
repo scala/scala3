@@ -3,6 +3,8 @@ package dotc
 package core
 package tasty
 
+import scala.util.control.NonFatal
+
 import dotty.tools.tasty.TastyFormat.*
 import dotty.tools.tasty.besteffort.BestEffortTastyFormat.ERRORtype
 import dotty.tools.tasty.TastyBuffer.*
@@ -401,12 +403,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           pickleModifiers(sym, mdef)
         }
       catch
-        case ex: Throwable =>
+        case NonFatal(ex)
           if !ctx.settings.XnoEnrichErrorMessages.value
-            && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
+            && handleRecursive.underlyingStackOverflowOrNull(ex) != null =>
             throw StackSizeExceeded(mdef)
-          else
-            throw ex
       if sym.is(Method) && sym.owner.isClass then
         profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
       for docCtx <- ctx.docCtx do

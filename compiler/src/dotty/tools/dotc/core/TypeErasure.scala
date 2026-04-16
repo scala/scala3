@@ -933,8 +933,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       try erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
         case _: WildcardType => WildcardType
         case elem => JavaArrayType(elem)
-      catch case ex: Throwable =>
-        handleRecursive("erase array type", tp.show, ex)
+      catch case ex: Throwable => handleRecursive("erase array type", tp.show, ex)
   }
 
   private def erasePair(tp: Type)(using Context): Type = {

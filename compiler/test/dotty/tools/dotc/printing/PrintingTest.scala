@@ -12,7 +12,6 @@ import reporting.TestReporter
 
 import java.io.*
 import java.nio.file.{Path => JPath}
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.charset.StandardCharsets
 
 import interfaces.Diagnostic.INFO
@@ -21,6 +20,7 @@ import dotty.tools.io.Directory
 import scala.io.Source
 import org.junit.Test
 import scala.util.Using
+import scala.util.control.NonFatal
 import java.io.File
 
 class PrintingTest {
@@ -43,7 +43,7 @@ class PrintingTest {
     try {
       Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
     } catch {
-      case e: Throwable =>
+      case NonFatal(e) =>
         println(s"Compile $path exception:")
         e.printStackTrace()
     }

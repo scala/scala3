@@ -14,6 +14,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.util.control.NonFatal
+
 /** This class implements errors which are thrown whenever an
  *  object doesn't match any pattern of a pattern matching
  *  expression.
@@ -28,7 +30,7 @@ final class MatchError(@transient obj: Any) extends RuntimeException {
     else
       try s"$obj ($ofClass)"
       catch {
-        case _: Throwable => "an instance " + ofClass
+        case NonFatal(_) => "an instance " + ofClass
       }
   }
 

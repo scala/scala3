@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package printing
 
+import scala.util.control.NonFatal
+
 import core.*
 import Constants.*
 import Texts.*
@@ -340,7 +342,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(elemtp) ~ "[]"
       case tp: LazyRef if !printDebug =>
         try toText(tp.ref)
-        catch case ex: Throwable => "..."
+        catch case NonFatal(_) => "..."
       case sel: cc.PathSelectionProto =>
         "?.{ " ~ toText(sel.selector) ~ "}"
       case AnySelectionProto =>

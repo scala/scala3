@@ -7,6 +7,7 @@ import config.*
 import printing.Formatting.*
 
 import scala.compiletime.*
+import scala.util.control.NonFatal
 
 /** Exposes the {{{ trace("question") { op } }}} syntax.
  *
@@ -126,7 +127,7 @@ trait TraceSyntax:
         case ex: runtime.NonLocalReturnControl[T @unchecked] =>
           finalize(trailing(ex.value))
           throw ex
-        case ex: Throwable =>
+        case NonFatal(ex) =>
           val msg = s"<== $q = <missing> (with exception $ex)"
           finalize(msg)
           throw ex

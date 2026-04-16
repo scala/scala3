@@ -17,6 +17,7 @@ import config.Printers.{cyclicErrors, noPrinter}
 import collection.mutable
 
 import scala.annotation.constructorOnly
+import scala.util.control.NonFatal
 
 abstract class TypeError(using creationContext: Context) extends Exception(""):
 
@@ -47,7 +48,7 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
 
   /** Uses creationContext to produce the message */
   override def getMessage: String =
-    try toMessage.message catch case ex: Throwable => "TypeError"
+    try toMessage.message catch case NonFatal(t) => "TypeError"
 
 object TypeError:
   def apply(msg: Message)(using Context) = new TypeError:

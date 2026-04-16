@@ -13,6 +13,7 @@ import dotty.tools.io.Directory
 
 import java.io.*
 import java.nio.file.{Path => JPath}
+import scala.util.control.NonFatal
 
 import org.junit.Test
 
@@ -31,7 +32,7 @@ class PatmatExhaustivityTest {
     try {
       Main.process((options ::: opts ::: files.map(_.toString)).toArray, reporter, null)
     } catch {
-      case e: Throwable =>
+      case NonFatal(e) =>
         e.printStackTrace(printWriter)
     }
 

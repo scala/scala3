@@ -413,7 +413,7 @@ object Phases {
           catch
             case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
               unitCtx.typerState.resetTo(previousTyperState)
-            case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+            case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
               println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
               throw ex
           finally ctx.run.advanceUnit()

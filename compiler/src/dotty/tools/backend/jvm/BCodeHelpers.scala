@@ -10,6 +10,7 @@ import scala.tools.asm.AnnotationVisitor
 import scala.tools.asm.ClassWriter
 import scala.collection.mutable
 import scala.compiletime.uninitialized
+import scala.util.control.NonFatal
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
@@ -663,13 +664,13 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     def wrap(body: => Unit): Unit = {
       try body
       catch {
-        case ex: Throwable =>
+        case NonFatal(t) =>
           report.error(
             em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
                  |signature: $sig
                  |if this is reproducible, please report bug at https://github.com/scala/scala3/issues
                """, sym.sourcePos)
-          throw ex
+          throw t
       }
     }
 

@@ -6,8 +6,8 @@ import org.junit.Assert.*
 import scala.annotation.unused
 import scala.reflect.ClassTag
 import scala.util.control.ControlThrowable
+import scala.util.control.NonFatal
 
-@deprecated("ThreadDeath is deprecated on JDK 20", "")
 class UsingTest {
   import UsingTest.*
 
@@ -37,22 +37,10 @@ class UsingTest {
       }
     }
 
-    check(new UsingVMError(_), behavior = UseIsThrown, allowsSuppression = true)
     check(new UsingLinkageError(_), onLinkage, allowsSuppression = true)
-    check(_ => new UsingInterruption, onInterruption, allowsSuppression = true)
     check(new UsingControl(_), onControl, allowsSuppression = false)
     check(new UsingError(_), onException, allowsSuppression = true)
     check(new UsingException(_), onException, allowsSuppression = true)
-  }
-
-  @Test
-  def resourceThrowingVMError(): Unit = {
-    genericResourceThrowing(
-      new VMErrorResource,
-      onLinkage = CloseIsThrown,
-      onInterruption = CloseIsThrown,
-      onControl = CloseIsThrown,
-      onException = CloseIsThrown)
   }
 
   @Test
@@ -131,22 +119,10 @@ class UsingTest {
       }
     }
 
-    check(new UsingVMError(_), behavior = UseIsThrown, allowsSuppression = true)
     check(new UsingLinkageError(_), onLinkage, allowsSuppression = true)
-    check(_ => new UsingInterruption, onInterruption, allowsSuppression = true)
     check(new UsingControl(_), onControl, allowsSuppression = false)
     check(new UsingError(_), onException, allowsSuppression = true)
     check(new UsingException(_), onException, allowsSuppression = true)
-  }
-
-  @Test
-  def usingThrowingVMError(): Unit = {
-    genericUsingThrowing(
-      new VMErrorResource,
-      onLinkage = CloseIsThrown,
-      onInterruption = CloseIsThrown,
-      onControl = CloseIsThrown,
-      onException = CloseIsThrown)
   }
 
   @Test
@@ -225,22 +201,10 @@ class UsingTest {
       }
     }
 
-    check(new UsingVMError(_), behavior = UseIsThrown, allowsSuppression = true)
     check(new UsingLinkageError(_), onLinkage, allowsSuppression = true)
-    check(_ => new UsingInterruption, onInterruption, allowsSuppression = true)
     check(new UsingControl(_), onControl, allowsSuppression = false)
     check(new UsingError(_), onException, allowsSuppression = true)
     check(new UsingException(_), onException, allowsSuppression = true)
-  }
-
-  @Test
-  def managerThrowingVMError(): Unit = {
-    genericManagerThrowing(
-      new VMErrorResource,
-      onLinkage = CloseIsThrown,
-      onInterruption = CloseIsThrown,
-      onControl = CloseIsThrown,
-      onException = CloseIsThrown)
   }
 
   @Test
@@ -317,7 +281,7 @@ class UsingTest {
      |   |- ClosingError
      |- ClosingException
      */
-    assertThrowableClass[ClosingVMError](vmError)
+    assertThrowableClass[ClosingControl](vmError)
     val firstLevelSuppressed = vmError.getSuppressed
     assertEquals(firstLevelSuppressed.length, 2)
     val usingException = firstLevelSuppressed(0)
@@ -339,7 +303,7 @@ class UsingTest {
      |   |- ClosingControl
      |- ClosingException
      */
-    assertThrowableClass[ClosingVMError](vmError)
+    assertThrowableClass[ClosingControl](vmError)
 
     val firstLevelSuppressed = vmError.getSuppressed
     assertEquals(firstLevelSuppressed.length, 2)
@@ -387,10 +351,8 @@ class UsingTest {
   def resourceMultiplePropagatesCorrectlyComplex(): Unit = {
     val vmError = catchThrowable {
       Using.resource(new ExceptionResource) { _ =>
-        Using.resource(new VMErrorResource) { _ =>
-          Using.resource(new ErrorResource) { _ =>
-            throw new UsingException("nested `Using.resource`")
-          }
+        Using.resource(new ErrorResource) { _ =>
+          throw new UsingException("nested `Using.resource`")
         }
       }
     }
@@ -405,15 +367,13 @@ class UsingTest {
   def resourceMultiplePropagatesCorrectlyExtremelyComplex(): Unit = {
     val vmError = catchThrowable {
       Using.resource(new ExceptionResource) { _ =>
-        Using.resource(new VMErrorResource) { _ =>
-          Using.resource(new ControlResource) { _ =>
-            Using.resource(new ErrorResource) { _ =>
-              Using.resource(new LinkageResource) { _ =>
-                Using.resource(new ExceptionResource) { _ =>
-                  Using.resource(new InterruptionResource) { _ =>
-                    Using.resource(new ErrorResource) { _ =>
-                      throw new UsingException("nested `Using.resource`")
-                    }
+        Using.resource(new ControlResource) { _ =>
+          Using.resource(new ErrorResource) { _ =>
+            Using.resource(new LinkageResource) { _ =>
+              Using.resource(new ExceptionResource) { _ =>
+                Using.resource(new InterruptionResource) { _ =>
+                  Using.resource(new ErrorResource) { _ =>
+                    throw new UsingException("nested `Using.resource`")
                   }
                 }
               }
@@ -450,10 +410,8 @@ class UsingTest {
   def usingMultiplePropagatesCorrectlyComplex(): Unit = {
     val vmError = catchThrowable {
       Using(new ExceptionResource) { _ =>
-        Using(new VMErrorResource) { _ =>
-          Using(new ErrorResource) { _ =>
-            throw new UsingException("nested `Using`")
-          }.get
+        Using(new ErrorResource) { _ =>
+          throw new UsingException("nested `Using`")
         }.get
       }.get
     }
@@ -468,15 +426,13 @@ class UsingTest {
   def usingMultiplePropagatesCorrectlyExtremelyComplex(): Unit = {
     val vmError = catchThrowable {
       Using(new ExceptionResource) { _ =>
-        Using(new VMErrorResource) { _ =>
-          Using(new ControlResource) { _ =>
-            Using(new ErrorResource) { _ =>
-              Using(new LinkageResource) { _ =>
-                Using(new ExceptionResource) { _ =>
-                  Using(new InterruptionResource) { _ =>
-                    Using(new ErrorResource) { _ =>
-                      throw new UsingException("nested `Using`")
-                    }.get
+        Using(new ControlResource) { _ =>
+          Using(new ErrorResource) { _ =>
+            Using(new LinkageResource) { _ =>
+              Using(new ExceptionResource) { _ =>
+                Using(new InterruptionResource) { _ =>
+                  Using(new ErrorResource) { _ =>
+                    throw new UsingException("nested `Using`")
                   }.get
                 }.get
               }.get
@@ -513,8 +469,7 @@ class UsingTest {
     val vmError = catchThrowable {
       Using.Manager { m =>
         @unused val _r1 = m(new ExceptionResource)
-        @unused val _r2 = m(new VMErrorResource)
-        @unused val _r3 = m(new ErrorResource)
+        @unused val _r2 = m(new ErrorResource)
         throw new UsingException("`Using.Manager`")
       }
     }
@@ -530,13 +485,12 @@ class UsingTest {
     val vmError = catchThrowable {
       Using.Manager { m =>
         @unused val _r1 = m(new ExceptionResource)
-        @unused val _r2 = m(new VMErrorResource)
-        @unused val _r3 = m(new ControlResource)
-        @unused val _r4 = m(new ErrorResource)
-        @unused val _r5 = m(new LinkageResource)
-        @unused val _r6 = m(new ExceptionResource)
-        @unused val _r7 = m(new InterruptionResource)
-        @unused val _r8 = m(new ErrorResource)
+        @unused val _r2 = m(new ControlResource)
+        @unused val _r3 = m(new ErrorResource)
+        @unused val _r4 = m(new LinkageResource)
+        @unused val _r5 = m(new ExceptionResource)
+        @unused val _r6 = m(new InterruptionResource)
+        @unused val _r7 = m(new ErrorResource)
         throw new UsingException("`Using.Manager`")
       }
     }
@@ -722,14 +676,10 @@ class UsingTest {
   }
 }
 
-@deprecated("ThreadDeath is deprecated on JDK 20", "")
 object UsingTest {
-  final class ClosingVMError(message: String) extends VirtualMachineError(message)
-  final class UsingVMError(message: String) extends VirtualMachineError(message)
   final class ClosingLinkageError(message: String) extends LinkageError(message)
   final class UsingLinkageError(message: String) extends LinkageError(message)
   type ClosingInterruption = InterruptedException
-  type UsingInterruption = ThreadDeath
   final class ClosingControl(message: String) extends ControlThrowable(message)
   final class UsingControl(message: String) extends ControlThrowable(message)
   final class ClosingError(message: String) extends Error(message)
@@ -749,7 +699,6 @@ object UsingTest {
     override final def close(): Unit = throw t("closing " + getClass.getSimpleName)
   }
 
-  final class VMErrorResource extends CustomResource(new ClosingVMError(_))
   final class LinkageResource extends CustomResource(new ClosingLinkageError(_))
   final class InterruptionResource extends CustomResource(new ClosingInterruption(_))
   final class ControlResource extends CustomResource(new ClosingControl(_))
@@ -781,7 +730,7 @@ object UsingTest {
       thunk
       throw new AssertionError("unreachable")
     } catch {
-      case t: Throwable => t
+      case NonFatal(t) => t
     }
   }
 
@@ -791,7 +740,7 @@ object UsingTest {
   def useWrapped(resource: => BaseResource, t: String => Throwable): Throwable =
     try Using(resource)(opThrowing(t)).failed.get
     catch {
-      case t: Throwable => t
+      case NonFatal(t) => t
     }
 
   def useManager(resource: => BaseResource, t: String => Throwable): Throwable =
@@ -801,7 +750,7 @@ object UsingTest {
         opThrowing(t)(r)
       }.failed.get
     } catch {
-      case t: Throwable => t // this is awful
+      case NonFatal(t) => t // this is awful
     }
 
   private def opThrowing(t: String => Throwable): BaseResource => Nothing =

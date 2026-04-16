@@ -1,5 +1,7 @@
 package scala.util
 
+import scala.util.control.NonFatal
+
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertSame, assertTrue}
 
@@ -296,7 +298,7 @@ class TryTest {
     val res = try {
       t.fold(_ => throw new Exception("bar"), "Returns " + _)
     } catch {
-      case e: Throwable => "Throws " + e
+      case NonFatal(e) => "Throws " + e
     }
     assertEquals("Throws java.lang.Exception: bar", res)
   }

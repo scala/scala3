@@ -2388,7 +2388,7 @@ object SymDenotations {
         }
       }
       catch {
-        case ex: Throwable =>
+        case NonFatal(ex) =>
           tp match
             case tp: CachedType => btrCache.remove(tp)
             case _ =>
@@ -2429,8 +2429,7 @@ object SymDenotations {
         names
       }
       catch {
-        case ex: Throwable =>
-          handleRecursive("member names", i"of $this", ex)
+        case ex: Throwable => handleRecursive("member names", i"of $this", ex)
       }
     }
 

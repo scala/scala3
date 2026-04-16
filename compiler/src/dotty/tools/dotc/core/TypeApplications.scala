@@ -400,8 +400,7 @@ class TypeApplications(val self: Type) extends AnyVal {
               catch
                 case ex: IndexOutOfBoundsException =>
                   AppliedType(self, args)
-                case ex: Throwable =>
-                  handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
+                case ex: Throwable => handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
 
             else AppliedType(self, args)
           }

@@ -328,7 +328,7 @@ object FileWriters {
         catch {
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave a empty of half-written classfile around after an interrupt
-            catch { case _: Throwable => () }
+            catch { case _: java.io.IOException => () }
             throw ex
         }
         os.close()

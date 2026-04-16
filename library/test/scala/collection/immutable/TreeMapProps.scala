@@ -7,6 +7,8 @@ import Arbitrary.*
 import util.*
 import Buildable.*
 
+import scala.util.control.NonFatal
+
 object TreeMapProps extends Properties("TreeMap") {
   def genTreeMap[A: {Arbitrary, Ordering}, B: Arbitrary]: Gen[TreeMap[A, B]] =
     for {
@@ -37,7 +39,7 @@ object TreeMapProps extends Properties("TreeMap") {
     val values = (1 to highest).reverse
     val subject = TreeMap(values zip values*)
     val it = subject.iterator
-    try { while (it.hasNext) it.next(); true } catch { case _: Throwable => false }
+    try { while (it.hasNext) it.next(); true } catch { case NonFatal(_) => false }
   }
 
   property("sorted") = forAll { (subject: TreeMap[Int, String]) => (subject.size >= 3) ==> {

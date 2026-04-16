@@ -39,13 +39,13 @@ class Driver {
       catch
         case ex: FatalError =>
           report.error(ex.getMessage) // signals that we should fail compilation.
-        case ex: Throwable if ctx.usedBestEffortTasty =>
+        case NonFatal(ex) if ctx.usedBestEffortTasty =>
           report.bestEffortError(ex, "Some best-effort tasty files were not able to be read.")
           throw ex
         case ex: TypeError if !runOrNull.enrichedErrorMessage =>
           println(runOrNull.enrichErrorMessage(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
-        case ex: Throwable if !runOrNull.enrichedErrorMessage =>
+        case NonFatal(ex) if !runOrNull.enrichedErrorMessage =>
           println(runOrNull.enrichErrorMessage(s"Exception while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
     ctx.reporter

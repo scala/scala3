@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 import scala.annotation.internal.sharable
 import compiletime.uninitialized
 
@@ -185,7 +186,7 @@ object FileUtils {
             }
           }
         } catch {
-          case t: Throwable =>
+          case NonFatal(t) =>
             asyncStatus.tryFailure(t)
             throw t
         }

@@ -3,6 +3,7 @@ package dotc
 package core
 
 import scala.reflect.Typeable
+import scala.util.control.NonFatal
 
 import Types.*, Contexts.*, Symbols.*, Constants.*, Decorators.*
 import config.Printers.typr
@@ -84,8 +85,8 @@ object TypeEval:
       def runConstantOp[T](op: => T)(using Constant.ValueToConstant[T]): Type =
         val result =
           try op
-          catch case e: Throwable =>
-            throw TypeError(em"${e.getMessage}")
+          catch case NonFatal(t) =>
+            throw TypeError(em"${t.getMessage}")
         ConstantType(Constant.fromValue(result))
 
       def fieldsOf: Option[Type] =

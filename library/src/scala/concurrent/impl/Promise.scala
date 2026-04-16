@@ -483,7 +483,7 @@ private[concurrent] object Promise {
       val e = _ec
       try e.nn.execute(this) /* Safe publication of _arg, _fun, _ec */
       catch {
-        case t: Throwable =>
+        case NonFatal(t) =>
           _fun = null // allow to GC
           _arg = null // see above
           _ec  = null // see above again
@@ -558,7 +558,7 @@ private[concurrent] object Promise {
         if (resolvedResult ne null)
           tryComplete0(get(), resolvedResult.asInstanceOf[Try[T]]) // T is erased anyway so we won't have any use for it above
       } catch {
-        case t: Throwable => handleFailure(t, ec)
+        case NonFatal(t) => handleFailure(t, ec)
       }
     }
   }
