@@ -8,6 +8,8 @@ trait M1[F] {
   type X[a, b] = F
   def category: Category[X] = null
   def category1: Category[Tuple2] = null
+  type Tuple2Alias = Tuple2
+  def category1b: Category[Tuple2Alias] = null
 }
 
 // The second trait is needed to make sure there's a forwarder generated in C.
@@ -24,13 +26,13 @@ trait M2[F] { self: M1[F] =>
 abstract class C extends M1[Float] with M2[Float]
 
 object Test {
-  def t(c: Class[_]) = {
+  def t(c: Class[?]) = {
     val ms = c.getMethods.filter(_.getName.startsWith("category"))
     println(ms.map(_.toGenericString).sorted.mkString("\n"))
   }
   def main(args: Array[String]): Unit = {
     t(classOf[C])
-    t(classOf[M1[_]])
-    t(classOf[M2[_]])
+    t(classOf[M1[?]])
+    t(classOf[M2[?]])
   }
 }
