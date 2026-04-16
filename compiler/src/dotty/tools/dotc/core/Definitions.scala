@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingAnnotation}
+import cc.{CaptureSet, RetainingAnnotation, SafeRefs}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -1528,8 +1528,12 @@ class Definitions {
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
   @tu lazy val assumedSafePackages: Set[Symbol] =
-    Set(OpsPackageClass, ScalaPackageClass, ScalaCollectionImmutablePackageClass, ScalaRuntimePackageClass,
-        ScalaMathPackageClass, ScalaUtilPackageClass, JavaMathPackageClass, JavaTimePackageClass)
+    SafeRefs.assumedSafePackages
+      .map(requiredPackage)
+      .filter(!_.info.isInstanceOf[StubInfo])
+      .map(_.moduleClass)
+      .toSet
+    + OpsPackageClass
 
   @tu lazy val capsErasedValueMethods =
     Set(Caps_erasedValue, Caps_unsafeErasedValue)
