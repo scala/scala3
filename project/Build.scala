@@ -1628,6 +1628,9 @@ object Build {
       // Silence `using` clause warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
+      // Silence AnyRefMap deprecation warnings in the scalajs-ir sources
+      Compile / compile / scalacOptions +=
+        "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1749,6 +1752,9 @@ object Build {
       // Silence `using` clause warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
+      // Silence AnyRefMap deprecation warnings in the scalajs-ir sources
+      Compile / compile / scalacOptions +=
+        "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory

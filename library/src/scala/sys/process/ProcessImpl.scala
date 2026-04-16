@@ -13,12 +13,10 @@
 package scala.sys.process
 
 import scala.language.`2.13`
-import processInternal._
-
+import processInternal.*
 import java.util.concurrent.LinkedBlockingQueue
 import java.io.{PipedInputStream, PipedOutputStream}
-
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 
 private[process] trait ProcessImpl {
   self: Process.type =>
@@ -193,6 +191,7 @@ private[process] trait ProcessImpl {
     private def ioHandler(e: IOException): Unit = e.printStackTrace()
   }
 
+  @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSource(label: => String) extends PipeThread(isSink = false, () => label) {
     setName(s"PipeSource($label)-$getName")
     protected val pipe = new PipedOutputStream
@@ -216,6 +215,7 @@ private[process] trait ProcessImpl {
     }
     def done() = source.put(None)
   }
+  @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSink(label: => String) extends PipeThread(isSink = true, () => label) {
     setName(s"PipeSink($label)-$getName")
     protected val pipe = new PipedInputStream

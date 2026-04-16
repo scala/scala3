@@ -274,7 +274,7 @@ object ScalaRunTime {
 
   /** stringOf formatted for use in a repl result. */
   def replStringOf(arg: Any, maxElements: Int): String =
-    stringOf(arg, maxElements) match {
+    (stringOf(arg, maxElements): String | Null) match {
       case null => "null toString"
       case s if s.indexOf('\n') >= 0 => "\n" + s + "\n"
       case s => s + "\n"

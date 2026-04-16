@@ -532,9 +532,6 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
       case MINUTES      => bounded(max_min)
       case HOURS        => bounded(max_h)
       case DAYS         => bounded(max_d)
-      case _ =>
-        val v = DAYS.convert(length, unit)
-        -max_d <= v && v <= max_d
     }, "Duration is limited to +-(2^63-1)ns (ca. 292 years)")
 
   def toNanos: Long               = unit.toNanos(length)
