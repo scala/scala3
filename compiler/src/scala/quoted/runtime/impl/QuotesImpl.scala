@@ -1906,7 +1906,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           // even if that symbol is not a direct member of that prefix, but a nested one.
           def isTypeRelatedToThePassedMember =
             import scala.util.boundary
-            boundary {
+            // the symbol for `self` will not exist for LambdaTypes,
+            // which don't seem to be supported by asSeenFrom anyway
+            // (but also don't seem to cause crashes, and return no-op member.info,
+            // which we might not be able to access otherwise, so we need to allow this).
+            val isLambdaType = self.isInstanceOf[LambdaType]
+            isLambdaType || boundary {
               var checked: Symbol = member
               while(checked.exists) {
                 if self.derivesFrom(checked)
@@ -1917,6 +1922,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               }
               boundary.break(false)
             }
+
           xCheckMacroAssert(isTypeRelatedToThePassedMember, s"$member is not a member of ${self.show}")
 
           // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
