@@ -1466,7 +1466,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               cls.srcPos)
       // (2)
       if !cls.isExemptFromExplicitChecks
-          && !cls.derivesFromCapability
+          && !cls.derivesFrom(defn.Caps_Capability)
           && capFields.nonEmpty
       then
         val fields =
