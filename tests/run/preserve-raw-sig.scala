@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (JVM-only test about generic signatures)
+
 trait Factory[+CC[_, _]]
 
 trait Map[K, +V]:
