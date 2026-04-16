@@ -1396,13 +1396,15 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      conforms to the expected type where all inferred capture sets are dropped.
      *      This ensures that if files compile separately, they will also compile
      *      in a joint compilation.
-     *   2. If a val has an inferred type with a terminal capability in its span capset,
-     *      check that it this capability is subsumed by the capset that was inferred
+     *   2. If a val has an inferred type with a terminal capability in its capture set,
+     *      check that this capability is subsumed by the capset that was inferred
      *      for the class from its other fields via `captureSetImpliedByFields`.
      *      That capset is defined to take into account all fields but is computed
      *      only from fields with explicitly given types in order to avoid cycles.
      *      See comment on Setup.fieldsWithExplicitTypes. So we have to make sure
      *      that fields with inferred types would not change that capset.
+     *      REPL wrapper objects are exempt since they are invisible to the user
+     *      and should not impose explicit type requirements on REPL definitions.
      */
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type = {
       val sym = tree.symbol
@@ -1451,6 +1453,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             cls.isPackageObject && cls.enclosingPackageClass.isEmptyPackage
           if sym.owner.isClass
               && !isToplevelDefsInEmptyPackage(sym.owner)
+              && !sym.owner.name.isReplWrapperName // REPL wrappers are invisible to the user
               && contributesLocalCapToClass(sym)
               && !CaptureSet.isAssumedPure(sym)
           then
