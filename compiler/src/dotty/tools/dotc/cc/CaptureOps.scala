@@ -784,6 +784,12 @@ extension (sym: Symbol) {
   def isDisallowedInCapset(using Context): Boolean =
     sym.isOneOf(if ccConfig.strictMutability then Method else UnstableValueFlags)
 
+  def isScalaDocSnippet(using Context): Boolean =
+    sym.is(ModuleClass)
+    && (sym.sourceModule.name == nme.Snippet)
+    && sym.owner.is(Package)
+    && sym.owner.name.toString.contains("snippet")
+
   /** Is symbol exempt from checking that its type or uses clause must
    *  be given explicitly? This is the case for symbols that are not
    *  visible outside the compilation unit where they are defined,
@@ -791,13 +797,20 @@ extension (sym: Symbol) {
    */
   def isExemptFromExplicitChecks(using Context): Boolean =
     sym.isLocalToCompilationUnit
+    || sym.isScalaDocSnippet
+    || sym.name.isReplWrapperName
+    || sym.isConstructor && sym.owner.name.isReplWrapperName
     || ctx.owner.enclosingPackageClass.isEmptyPackage
-      // We make an exception for symbols in the empty package.
-      // these could theoretically be accessed from other files in the empty package, but
-      // usually it would be too annoying to require explicit types.
+        && !sym.ownersIterator.takeWhile(!_.is(Package))
+            .exists(_.hasAnnotation(defn.AssumeSafeAnnot))
+      // We make an exception for symbols in the empty package unless they are
+      // compiled in safe mode or wrapped in @assumeSafe. These could theoretically
+      // be accessed from other files in the empty package, but usually it would
+      // be too annoying to require explicit types. @assumeSafe symbols are not exempt,
+      // since for them precise recording of capabilities is essential.
     || sym.name.is(DefaultGetterName)
       // Default getters are exempted since otherwise it would be
-      // too annoying. This is a hole since a defualt getter's result type
+      // too annoying. This is a hole since a default getter's result type
       // might leak into a type variable.
 
   /** If `sym` is a method or a non-static inner class, a capture set
