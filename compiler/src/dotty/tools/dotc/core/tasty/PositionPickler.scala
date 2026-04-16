@@ -48,7 +48,7 @@ object PositionPickler:
       val content = source.content()
       buf.writeNat(content.count(_ == '\n') + 1) // number of lines
       var lastIndex = content.indexOf('\n')
-      buf.writeNat(lastIndex)//(if lastIndex != -1 then lastIndex else content.length) // size of first line
+      buf.writeNat(if lastIndex != -1 then lastIndex else content.length) // size of first line
       while lastIndex != -1 do
         val nextIndex = content.indexOf('\n', lastIndex + 1)
         val end = if nextIndex != -1 then nextIndex else content.length
