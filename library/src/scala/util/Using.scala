@@ -219,7 +219,7 @@ object Using {
       try {
         op(this)
       } catch {
-        case NonFatal(t) =>
+        case t: Throwable =>
           toThrow = t
           null.asInstanceOf[A] // compiler doesn't know `finally` will throw
       } finally {
@@ -231,7 +231,7 @@ object Using {
           rs = rs.tail
           try resource.release()
           catch {
-            case NonFatal(t) =>
+            case t: Throwable =>
               if (toThrow == null) toThrow = t
               else toThrow = preferentiallySuppress(toThrow, t)
           }
@@ -280,6 +280,7 @@ object Using {
   private def preferentiallySuppress(primary: Throwable, secondary: Throwable): Throwable = {
     @annotation.nowarn("cat=deprecation")  // avoid warning on mention of ThreadDeath
     def score(t: Throwable): Int = t match {
+      case _: VirtualMachineError                   => 4 // very bad idea but preserved for compatibility
       case _: LinkageError                          => 3
       case _: InterruptedException | _: ThreadDeath => 2
       case _: ControlThrowable                      => -1 // below everything
@@ -313,14 +314,14 @@ object Using {
     try {
       body(resource)
     } catch {
-      case NonFatal(t) =>
+      case t: Throwable =>
         toThrow = t
         null.asInstanceOf[A] // compiler doesn't know `finally` will throw
     } finally {
       if (toThrow eq null) releasable.release(resource)
       else {
         try releasable.release(resource)
-        catch { case NonFatal(other) => toThrow = preferentiallySuppress(toThrow, other) }
+        catch { case other: Throwable => toThrow = preferentiallySuppress(toThrow, other) }
         finally throw toThrow
       }
     }
