@@ -236,7 +236,7 @@ case class ScalaPresentationCompiler(
       PcReferencesProvider(driver, params)
         .references()
         .asJava
-    }(params.file().toQueryContext)
+    }(using params.file().toQueryContext)
 
   def inferExpectedType(params: OffsetParams): CompletableFuture[ju.Optional[String]] =
     compilerAccess.withInterruptableCompiler(
@@ -267,7 +267,7 @@ case class ScalaPresentationCompiler(
         .info(symbol)
         .map(_.asJava)
         .asJava
-    }(emptyQueryContext)
+    }(using emptyQueryContext)
 
   def semanticdbTextDocument(
       filename: URI,
@@ -281,7 +281,7 @@ case class ScalaPresentationCompiler(
       val driver = access.compiler()
       val provider = SemanticdbTextDocumentProvider(driver, folderPath)
       provider.textDocument(filename, code)
-    }(virtualFile.toQueryContext)
+    }(using virtualFile.toQueryContext)
 
   def completionItemResolve(
       item: l.CompletionItem,
@@ -293,7 +293,7 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       CompletionItemResolver.resolve(item, symbol, search, config)(using driver.currentCtx)
-    }(emptyQueryContext)
+    }(using emptyQueryContext)
 
   def autoImports(
       name: String,
@@ -392,7 +392,7 @@ case class ScalaPresentationCompiler(
         )
           .extractMethod()
           .asJava
-    }(range.toQueryContext)
+    }(using range.toQueryContext)
 
   override def convertToNamedArguments(
       params: OffsetParams,
@@ -428,7 +428,7 @@ case class ScalaPresentationCompiler(
           pc.compiler(),
           params
         ).selectionRange().asJava
-      }(params.asScala.headOption.map(_.toQueryContext).getOrElse(emptyQueryContext))
+      }(using params.asScala.headOption.map(_.toQueryContext).getOrElse(emptyQueryContext))
     }
   end selectionRange
 
@@ -504,7 +504,7 @@ case class ScalaPresentationCompiler(
     compilerAccess.withNonInterruptableCompiler(
       (),
       EmptyCancelToken
-    ) { access => access.compiler().close(uri) }(emptyQueryContext)
+    ) { access => access.compiler().close(uri) }(using emptyQueryContext)
 
   override def withExecutorService(
       executorService: ExecutorService
