@@ -152,7 +152,9 @@ object SymbolLoaders {
       def enterScanned(unit: CompilationUnit)(using Context) = {
 
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
-          val ok = filePath == path
+          // Ignore empty packages so we don't warn on top-level package objects
+          // (such as `package object scala` in the top-level "package.scala" of the compiler itself)
+          val ok = filePath == path.filter(_ != nme.EMPTY_PACKAGE)
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
