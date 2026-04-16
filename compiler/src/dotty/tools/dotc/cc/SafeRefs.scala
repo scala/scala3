@@ -58,6 +58,7 @@ object SafeRefs {
   def init()(using Context): Unit =
     assumeSafe("scala.Predef", except = List("print", "println", "printf"))
     assumeSafe("scala.runtime.coverage.Invoker")
+    assumeSafe("scala.util.Properties", except = List("setProp", "clearProp", "main"))
     assumeSafe("java.lang.Object")
     assumeSafe("java.lang.Boolean")
     assumeSafe("java.lang.Byte")
@@ -98,6 +99,7 @@ object SafeRefs {
     assumeSafe("java.util.OptionalInt")
     assumeSafe("java.util.OptionalLong")
     assumeSafe("java.util.OptionalDouble")
+    assumeSafe("scala.reflect.ClassTag")
 
     rejectSafe("scala.Console")
     rejectSafe("scala.unchecked")
@@ -105,6 +107,9 @@ object SafeRefs {
     rejectSafe("scala.annotation.unchecked.uncheckedStable")
     rejectSafe("scala.annotation.unchecked.uncheckedVariance")
     rejectSafe("scala.annotation.unchecked.uncheckedCaptures")
+    rejectSafe("scala.util.DynamicVariable")
+    rejectSafe("scala.util.Using") // todo capture check Using
+
     // Reject mutable classes in scala.runtime
     rejectSafe("scala.runtime.BooleanRef")
     rejectSafe("scala.runtime.ByteRef")
