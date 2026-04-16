@@ -214,14 +214,19 @@ object GenericSignatures {
             else builder.append('*')
           case hkt: HKTypeLambda =>
             hkt.resultType match
-              case a: AppliedType if hkt.paramInfos.forall(i => i.lo.isNothingType && i.hi.isAny) =>
-                // instead of emitting `X<j.l.Object>`, emit just `X` as a raw type if it's a class;
-                // this helps with Java compat in cases where the exact generic arguments were erased
-                if a.tycon.dealias.typeSymbol.isClass then
-                  jsig(a.tycon)
+              case a: AppliedType =>
+                if hkt.paramInfos.forall(i => i.lo.isNothingType && i.hi.isAny) then
+                  // For unbounded arguments, instead of emitting `X<j.l.Object>`,
+                  // emit just `X` as a raw type if it's a class;
+                  // this helps with Java compat in cases where the exact generic arguments were erased
+                  if a.tycon.dealias.typeSymbol.isClass then
+                    jsig(a.tycon)
+                  else
+                    // but if it's an HKT, we cannot represent that in a Java generic signature, so emit a wildcard
+                    builder.append("*")
                 else
-                  // but if it's an HKT, we cannot represent that in a Java generic signature, so emit a wildcard
-                  builder.append("*")
+                  // For bounded arguments, we can't translate it cleanly so emit an erased type
+                  jsig(erasure(a.tycon))
               case res if res.isPrimitiveValueType =>
                 // value classes cannot appear as generic arguments
                 jsig(defn.boxedType(res))
