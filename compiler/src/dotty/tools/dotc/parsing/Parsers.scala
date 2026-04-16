@@ -3859,7 +3859,7 @@ object Parsers {
                 syntaxError(em"`using` expected")
               val (firstParamMod, paramsAreNamed) =
                 var mods = EmptyModifiers
-                if in.lookahead.isColon then
+                if in.token != INTERPOLATIONID && in.lookahead.isColon then
                   (mods, true)
                 else if isConsume then (mods, true)
                 else
