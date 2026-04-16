@@ -69,7 +69,7 @@ class TastyBuffer(initialSize: Int) {
    */
   def writeNat(x: Int): Unit = {
     if (x < 0) {
-      throw new PickleException(s"Expected a natural (nonnegative) number to write, but got: $x")
+      throw new IllegalArgumentException(s"Expected a natural (nonnegative) number to write, but got: $x")
     }
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
   }
@@ -88,7 +88,7 @@ class TastyBuffer(initialSize: Int) {
    */
   def writeLongNat(x: Long): Unit = {
     if (x < 0) {
-      throw new PickleException(s"Expected a natural (nonnegative) number to write, but got: $x")
+      throw new IllegalArgumentException(s"Expected a natural (nonnegative) number to write, but got: $x")
     }
     def writePrefix(x: Long): Unit = {
       val y = x >>> 7
