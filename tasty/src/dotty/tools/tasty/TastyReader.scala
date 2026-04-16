@@ -97,7 +97,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     if (bp - ogBp > 9) {
       throw new UnpickleException(s"Expected a long nat, but read too many bytes (${bp - ogBp})")
     }
-    assert(x < 0, "We read <= 9 groups of 7 bits so x must be nonnegative here")
+    assert(x >= 0, "We read <= 9 groups of 7 bits so x must be nonnegative here")
     x
   }
 
