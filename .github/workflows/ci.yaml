@@ -276,5 +276,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.5
+      - uses: VirtusLab/scala-cli-setup@v1.13.0
       - run: scala-cli format --check
