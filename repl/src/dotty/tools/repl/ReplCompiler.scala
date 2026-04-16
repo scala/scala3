@@ -115,15 +115,21 @@ class ReplCompiler extends Compiler:
       }
 
   /** Compute the type of `expr` using the full compilation pipeline,
-   *  which includes capture checking phases. This ensures that the
+   *  until the capture checking phases. This ensures that the
    *  displayed type reflects capture annotations.
    */
   private def typeOfWithCC(expr: String)(using state: State): Either[List[Diagnostic], String] =
     val src = SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), expr)
     ParseResult(src) match
       case parsed: Parsed =>
-        val compileState = state.copy(context = state.context.withSource(parsed.source))
-        compile(parsed)(using compileState).fold(
+        // Stop after CC — we only need types, not bytecode.
+        // Save/restore phases since YstopAfter truncates the shared array.
+        val ccCtx = state.context.fresh
+          .setSource(parsed.source)
+          .setSetting(state.context.settings.YstopAfter, List("cc"))
+        val compileState = state.copy(context = ccCtx)
+        val savedPhases = state.context.base.savePhaseState()
+        try compile(parsed)(using compileState).fold(
           (errs, _) => Left(errs),
           (unit, newState) =>
             given Context = newState.context
@@ -148,6 +154,7 @@ class ReplCompiler extends Compiler:
                   src.atSpan(Span(0, expr.length)))))
             }
         )
+        finally state.context.base.restorePhaseState(savedPhases)
       case SyntaxErrors(_, errs, _) => Left(errs)
       case _ => Left(List(new Diagnostic.Error(
         s"Couldn't parse '$expr' to valid scala",
