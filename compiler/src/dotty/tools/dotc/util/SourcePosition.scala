@@ -17,7 +17,7 @@ import scala.annotation.internal.sharable
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition | Null = null)
 extends SrcPos, interfaces.SourcePosition, Showable:
 
-  def sourcePos(using Context) = this
+  def sourcePos(using Context) = WrappedSourceFile.sourcePos(source, span)
 
   /** Is `that` a source position contained in this source position?
    *  `outer` is not taken into account. */
