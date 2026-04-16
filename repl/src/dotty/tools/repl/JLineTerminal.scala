@@ -33,6 +33,9 @@ class JLineTerminal extends java.io.Closeable {
   private val history = new DefaultHistory
 
   private def magenta(str: String)(using Context) =
+    // Deliberately do not use these properties on `Console` to avoid initializing it,
+    // and thus capturing stdin/stdout/stderr state in its `Console.in/out/err` properties,
+    // since the REPL may wish to change the std streams before giving control to the user.
     if (ctx.settings.color.value != "never") AnsiColor.MAGENTA + str + AnsiColor.RESET
     else str
   protected def promptStr = "scala"
