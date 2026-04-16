@@ -71,6 +71,38 @@ class TypeTests extends ReplTest:
         output.nonEmpty && !output.contains("error"))
     }
 
+  // Type inference for capabilities in the REPL should work without
+  // explicit type annotations, even though vals are wrapped in objects.
+  @Test def `cc type inference for capabilities` =
+    initially {
+      run("import language.experimental.captureChecking")
+      run("import caps.*")
+    } andThen {
+      storedOutput()
+      run("class File extends SharedCapability")
+    } andThen {
+      assertEquals("// defined class File", storedOutput().trim)
+      run(":type File()")
+    } andThen {
+      assertEquals("File^", storedOutput().trim)
+      run("val x = File()")
+    } andThen {
+      assertTrue(storedOutput().trim.startsWith("val x: File^"))
+      run("class Logger(f: File^) extends SharedCapability")
+    } andThen {
+      assertEquals("// defined class Logger", storedOutput().trim)
+      run("val l = Logger(x)")
+    } andThen {
+      val lOut = storedOutput().trim
+      assertTrue(s"expected Logger with captures, got: $lOut",
+        lOut.contains("Logger") && lOut.contains("{") && lOut.contains("x"))
+      run(":type l")
+    } andThen {
+      assertEquals("Logger{val f: File^{x}}^{l}", storedOutput().trim)
+      run(":type Logger(x)")
+      assertEquals("Logger{val f: File^{x}}^{any, x}", storedOutput().trim)
+    }
+
   // :type should display inferred capture sets on function types
   @Test def `cc type command shows capture set on function` =
     initially {
