@@ -138,10 +138,10 @@ class LogicalPackagesProvider(sourcePath: String)(using Context){
    * Return all Scala and Java sources from the given sourcepath string.
    */
   private def allSources(srcPath: String): Seq[AbstractFile] = {
-    val entries =  ClassPath.split(srcPath).map(Path(_))
+    val entries = ClassPath.split(srcPath).map(Path(_))
     def isRelevantFile(path: Path) =
       path.ext == FileExtension.Scala || path.ext == FileExtension.Java
-    // avoid using IO operation, assume standard extensions, Metals sends files so no sense chaking for directories eagerly
+    // avoid using IO operation, assume standard extensions, Metals sends files so no sense checking for directories eagerly
     val rootDirs = entries.filter(f => !isRelevantFile(f))
     val rootFiles = for {
       e <- entries

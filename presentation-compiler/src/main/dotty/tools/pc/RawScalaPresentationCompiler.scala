@@ -77,7 +77,7 @@ case class RawScalaPresentationCompiler(
     val classpathFlags = List("-classpath", classpath.mkString(File.pathSeparator))
     val sourcePathFiles = sourcePath.get().asScala
     val sourcePathFlags = if sourcePathFiles.size > 0 && config.sourcePathMode() != SourcePathMode.DISABLED then
-      List("-YlogicalPackageLoading", "-sourcepath", sourcePathFiles.mkString(File.pathSeparator))
+      List("-Ylogical-package-loading", "-sourcepath", sourcePathFiles.mkString(File.pathSeparator))
     else Nil
     filteredOptions ++
       defaultFlags ++

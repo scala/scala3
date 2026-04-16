@@ -1,6 +1,7 @@
 package dotty.tools.dotc.interactive
 
 import scala.collection.mutable
+import dotty.tools.io.AbstractFile
 
 /**
  * Represent a package and its contents in a way that's close to the file system.
@@ -65,7 +66,7 @@ class ParsedLogicalPackage(
    *
    * The return type is a sequence and not a Set in order to have deterministic runs
    */
-  def sources: Seq[String] = directSources.toSeq.distinct
+  def sources: Seq[AbstractFile] = directSources.toSeq.distinct.flatMap(name => Option(AbstractFile.getFile(name)))
 
   override def toString(): String =
     s"package $name(${packages.size} packages and ${sources.size} files)"

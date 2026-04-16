@@ -62,7 +62,7 @@ class CompletionSourcepathSuite extends BaseCompletionSuite:
   override protected val sourcePath: Seq[Path] = Seq(sourcepathDir, singleSourcepathFile)
 
   override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
-    Seq("-YlogicalPackageLoading")
+    Seq("-Ylogical-package-loading")
 
   @Test def `class-from-sourcepath` =
     check(

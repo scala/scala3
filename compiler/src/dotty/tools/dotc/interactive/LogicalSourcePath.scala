@@ -12,7 +12,6 @@ import dotty.tools.io.ClassPath
 import java.io.File
 import java.net.URL
 import java.nio.file.Path
-import scala.collection.mutable
 
 /**
  * A ClassPath implementation that can find sources regardless of the directory where they're declared.
@@ -45,7 +44,7 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
       case None => Seq.empty[SourceFileEntry]
 
   private def sourcesIn(pkg: LogicalPackage) =
-    pkg.sources.map(p => SourceFileEntry(AbstractFile.getFile(p)))
+    pkg.sources.map(p => SourceFileEntry(p))
 
   private def packagesIn(pkg: LogicalPackage, prefix: String) =
     val pre = if (prefix.isEmpty) prefix else s"$prefix."

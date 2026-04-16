@@ -28,8 +28,8 @@ class ClassPathFactory {
   def sourcesInPath(path: String)(using Context): List[ClassPath] =
     // We also accept files in case of YlogicalPackageLoading
     if ctx.settings.sourcepath.value.nonEmpty && ctx.settings.YlogicalPackageLoading.value then
-      val rootPackage: LogicalPackage = new LogicalPackagesProvider(ctx.settings.sourcepath.value).root
-      List(new LogicalSourcePath(ctx.settings.sourcepath.value, rootPackage))
+      val rootPackage: LogicalPackage = new LogicalPackagesProvider(path).root
+      List(new LogicalSourcePath(path, rootPackage))
     else
       for
         file <- expandPath(path, expandStar = false)
