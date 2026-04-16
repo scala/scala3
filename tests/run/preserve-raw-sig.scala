@@ -1,7 +1,10 @@
-trait MapFactory[+CC[_, _]]
+trait Factory[+CC[_, _]]
 
 trait Map[K, +V]:
-  def mapFactory: MapFactory[Map] = ???
+  def mapFactory: Factory[Map] = ???
+
+class Other:
+  def tupleFactory: Factory[Tuple2] = ???
 
 object Test:
   def main(args: Array[String]): Unit =
@@ -9,3 +12,9 @@ object Test:
       println(m)
       println(m.toGenericString)
     )
+    println("---")
+    classOf[Other].getMethods.filter(_.getName == "tupleFactory").foreach(m =>
+      println(m)
+      println(m.toGenericString)
+    )
+

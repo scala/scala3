@@ -214,7 +214,7 @@ object GenericSignatures {
             else builder.append('*')
           case hkt: HKTypeLambda =>
             hkt.resultType match
-              case a: AppliedType if hkt.paramInfos.forall(i => i.lo == defn.NothingType && i.hi == defn.AnyType) =>
+              case a: AppliedType if hkt.paramInfos.forall(i => i.lo.isNothingType && i.hi.isAny) =>
                 // instead of emitting `X<j.l.Object>`, emit just `X` as a raw type;
                 // this helps with Java compat in cases where the exact generic arguments were erased
                 jsig(a.tycon)
