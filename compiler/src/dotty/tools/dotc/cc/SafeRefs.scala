@@ -15,6 +15,7 @@ import SymDenotations.*
 import Flags.*
 import Types.*
 import config.Feature
+import config.Printers.capt
 import typer.ProtoTypes.SelectionProto
 
 /** Check whether references from safe mode should be allowed */
@@ -69,15 +70,9 @@ object SafeRefs {
     assumeSafe("java.lang.String")
     assumeSafe("java.lang.Throwable")
     assumeSafe("java.lang.Void")
-    assumeSafe("java.util.Locale")
-    assumeSafe("java.util.Random")
-    assumeSafe("java.util.UUID")
-    assumeSafe("java.util.Objects")
-    assumeSafe("java.util.Optional")
-    assumeSafe("java.util.OptionalInt")
-    assumeSafe("java.util.OptionalLong")
-    assumeSafe("java.util.OptionalDouble")
-    assumeSafe("java.util.TimeZone")
+    assumeSafe("java.lang.Exception")
+    assumeSafe("java.lang.CharSequence")
+    assumeSafe("java.lang.Comparable")
     assumeSafe("java.lang.Class", except = List(
       "accessFlags", "asSubclass", "cast", "describeConstable",
       "descriptorString", "desiredAssertionStatus", "forName", "forPrimitiveName", "getAnnotatedInterfaces",
@@ -90,6 +85,15 @@ object SafeRefs {
       "getPackage", "getPackageName", "getPermittedSubclasses", "getProtectionDomain", "getRecordComponents",
       "getResource", "getResourceAsStream", "getSigners", "getTypeParameters", "getTypeName",
       "newInstance", "cast", "toGenericString"))
+    assumeSafe("java.util.Locale")
+    assumeSafe("java.util.Random")
+    assumeSafe("java.util.UUID")
+    assumeSafe("java.util.Objects")
+    assumeSafe("java.util.Optional")
+    assumeSafe("java.util.OptionalInt")
+    assumeSafe("java.util.OptionalLong")
+    assumeSafe("java.util.OptionalDouble")
+    assumeSafe("java.util.TimeZone")
     rejectSafe("scala.Console")
     rejectSafe("scala.unchecked")
     rejectSafe("scala.annotation.unchecked.uncheckedOverride")
@@ -151,7 +155,7 @@ object SafeRefs {
 
     val (sym, checkLater) = tree match
       case tree: New =>
-        (tree.tpt.symbol, false)
+        (tree.tpt.tpe.classSymbol, false)
       case tree: RefTree =>
         val checkLater =
           !tree.symbol.is(Method)
@@ -171,6 +175,8 @@ object SafeRefs {
         && !isSafe(sym)
     then
       fail(sym, "it is neither compiled in safe mode nor tagged with @assumedSafe", tree.srcPos)
+    else
+      capt.println(i"checked safe $tree, $sym, $checkLater")
   }
 
   private def checkSafeAnnot(ann: Annotation, pos: SrcPos)(using Context): Unit =
