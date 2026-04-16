@@ -4,11 +4,11 @@ import sbt._
  *  to ensure the same version of the dependency is used in all projects
  */
 object Dependencies {
-  private val jacksonVersion = "2.15.1"
+  private val jacksonVersion = "3.1.2"
   val `jackson-databind` =
-    "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
+    "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val `jackson-dataformat-yaml` =
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+    "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
   // Freeze on 0.62.x as 0.64.0 requires Java 11
   private val flexmarkVersion = "0.62.2"
