@@ -911,27 +911,30 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
  */
 class CleanupRetains(using Context) extends TypeMap:
 
-  // LambdaType binders we are currently inside of. Any TypeParamRef bound by one
-  // of these is still valid when this type is serialized (its binder will be on
-  // the pickler stack). TypeParamRefs bound by an outer binder would be orphan.
-  private var inScope: List[LambdaType] = Nil
+  // Enclosing LambdaType binders; a TypeParamRef bound by one of these is
+  // self-contained in this type and safe to pickle. Refs to outer binders
+  // would be orphan, so we still erase their retains to `Nothing`.
+  private var binders: List[LambdaType] = Nil
 
-  private def isPreservableCapSetRef(tp: Type): Boolean = tp match
-    case tp: TypeParamRef => tp.derivesFromCapSet && inScope.contains(tp.binder)
+  // A retained element is preserved iff it is a TypeParamRef, it derives
+  // from CapSet, and its binder is enclosed by this traversal.
+  private def isLocalCapSetParam(tp: Type): Boolean = tp match
+    case ref: TypeParamRef =>
+      ref.derivesFromCapSet && binders.contains(ref.binder)
     case _ => false
 
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
         if annot.symbol == defn.RetainsCapAnnot then tp
-        else if annot.retainedType.retainedElementsRaw.exists(isPreservableCapSetRef) then
+        else if annot.retainedType.retainedElementsRaw.exists(isLocalCapSetParam) then
           tp.derivedAnnotatedType(this(parent), annot)
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
     case tp: LambdaType =>
-      val saved = inScope
-      inScope = tp :: inScope
-      try mapOver(tp) finally inScope = saved
+      val saved = binders
+      binders = tp :: binders
+      try mapOver(tp) finally binders = saved
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific
