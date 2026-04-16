@@ -2,7 +2,7 @@ package dotty.tools
 package repl
 
 import scala.language.unsafeNulls
-
+import scala.io.AnsiColor
 import dotc.core.Contexts.*
 import dotc.parsing.Scanners.Scanner
 import dotc.parsing.Tokens.*
@@ -15,14 +15,10 @@ import org.jline.reader.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
-import org.jline.terminal.Attributes
-import org.jline.terminal.Attributes.ControlChar
+import org.jline.terminal.Terminal.Signal
 import org.jline.utils.AttributedString
 
 class JLineTerminal extends java.io.Closeable {
-  // import java.util.logging.{Logger, Level}
-  // Logger.getLogger("org.jline").setLevel(Level.FINEST)
-
   private val terminal =
     val builder = TerminalBuilder.builder()
     if System.getenv("TERM") == "dumb" then
@@ -33,22 +29,14 @@ class JLineTerminal extends java.io.Closeable {
       // This option is used at https://github.com/jline/jline3/blob/894b5e72cde28a551079402add4caea7f5527806/terminal/src/main/java/org/jline/terminal/TerminalBuilder.java#L528.
       builder.dumb(true)
     builder.build()
-  
-  // Save original attributes before entering raw mode
-  private val originalAttributes = terminal.getAttributes
-
-  // Disable VINTR so Ctrl-C is not converted to SIGINT by the tty driver, then enter raw mode
-  // This disables special character processing so Ctrl-C is passed through as 0x03
-  val noIntr = new Attributes(originalAttributes)
-  noIntr.setControlChar(ControlChar.VINTR, 0)
-  terminal.setAttributes(noIntr)
-  terminal.enterRawMode()
-
 
   private val history = new DefaultHistory
 
   private def magenta(str: String)(using Context) =
-    if (ctx.settings.color.value != "never") Console.MAGENTA + str + Console.RESET
+    // Deliberately do not use these properties on `Console` to avoid initializing it,
+    // and thus capturing stdin/stdout/stderr state in its `Console.in/out/err` properties,
+    // since the REPL may wish to change the std streams before giving control to the user.
+    if (ctx.settings.color.value != "never") AnsiColor.MAGENTA + str + AnsiColor.RESET
     else str
   protected def promptStr = "scala"
   private def prompt(using Context)        = magenta(s"\n$promptStr> ")
@@ -100,34 +88,18 @@ class JLineTerminal extends java.io.Closeable {
   }
 
   def close(): Unit =
-    try terminal.setAttributes(originalAttributes)
-    finally terminal.close()
+    terminal.close()
 
   /** Execute a block while monitoring for Ctrl-C keypresses.
    *  Calls the handler when Ctrl-C is detected during block execution.
    */
   def withMonitoringCtrlC[T](handler: () => Unit)(block: => T): T = {
-    @volatile var monitoring = true
-    val terminalReader = terminal.reader()
-
-    val monitorThread = new Thread(() => {
-      while (monitoring) {
-        val ch =
-          try terminalReader.read(1) // timeout after 1ms so the loop gets a chance to check `monitoring`
-          catch { case _: Exception => -1 } // Ignore all read errors, just continue
-
-        if (ch == 3 /* Ctrl-C is ASCII 0x03 */ && monitoring) handler()
-      }
-    }, "REPL-CtrlC-Monitor")
-    monitorThread.setDaemon(true)
-    monitorThread.start()
-
+  // If you change Ctrl+C handling in any way, such as by trying to read/peek from stdin for Ctrl+C,
+  // make sure you manually check that reading from, e.g., `Console.in` still works!
+  // Remember that the user can use stdin from code they enter into the REPL, we do not have exclusive access to it.
+    val previousHandler = terminal.handle(Signal.INT, _ => handler())
     try block
-    finally {
-      monitoring = false
-      Thread.interrupted() // clear any interrupted flag so the `join` below doesn't explode
-      monitorThread.join()
-    }
+    finally terminal.handle(Signal.INT, previousHandler)
   }
 
   /** Provide syntax highlighting */
@@ -188,7 +160,7 @@ class JLineTerminal extends java.io.Closeable {
 
 
           // we need to enclose the last backtick, which unclosed produces ERROR token
-          if (token == ERROR && input(start) == '`') then
+          if token == ERROR && input(start) == '`' then
             lastBacktickErrorStart = Some(start)
           else
             lastBacktickErrorStart = None
