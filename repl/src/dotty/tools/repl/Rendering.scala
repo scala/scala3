@@ -33,7 +33,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   private val forcedToStringClasses = Set(
     "scala.collection.immutable.LazyList",
     "scala.collection.immutable.LazyListIterable",
-    "scala.collection.mutable.StringBuilder" // not technically needed but quite ugly to print as an iterable of characters
+    "scala.collection.mutable.StringBuilder", // not technically needed but quite ugly to print as an iterable of characters
+    "scala.xml.Elem" // Temporary fix for https://github.com/scala/scala3/issues/25691
   )
 
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {

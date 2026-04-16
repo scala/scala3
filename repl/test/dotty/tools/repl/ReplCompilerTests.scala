@@ -712,6 +712,17 @@ class ReplCompilerTests extends ReplTest:
     )
     assertEquals(expected, lines())
 
+  @Test def `i25691 scala xml printing`: Unit = initially:
+    run:
+      """
+      |import scala.xml.*
+      |<foo/>
+      |""".stripMargin
+    val expected = List(
+      "val res0: Elem = <foo/>"
+    )
+    assertEquals(expected, lines())
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
