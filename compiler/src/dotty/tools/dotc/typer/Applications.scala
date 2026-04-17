@@ -555,7 +555,7 @@ trait Applications extends Compatibility {
 
     /** Convert a `TypedArg` to a `tpd.Tree` when applicable, otherwise `null`.
      *  Used to thread typed argument trees through dependent substitution (e.g.
-     *  for stable `ENodeParamRef` allocation in qualifier substitution).
+     *  for stable `ENodeVar` allocation in qualifier substitution).
      */
     protected def argToTree(arg: TypedArg): Tree | Null
 

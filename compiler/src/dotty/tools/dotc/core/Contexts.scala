@@ -934,12 +934,12 @@ object Contexts {
     /** Qualified types stats, initialized in `initialize()`. */
     var qualifiedTypesStats: qualified_types.QualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = false)
 
-    /** Per-run counter for allocating unique negative `ENodeParamRef`
-     *  indices used to represent argument references inside qualifiers.
-     *  Indices are stored in a sticky attachment on the argument tree
-     *  (see `QualifiedTypes.QualifierSkolemIndex`) so they stay stable
-     *  across re-type-checks. Reset in `initialize()` to avoid stale
-     *  entries across runs.
+    /** Per-run counter for allocating unique indices for `ENodeVar`s of
+     *  kind `Skolem` — used to represent argument references inside
+     *  qualifiers. Indices are stored in a sticky attachment on the
+     *  argument tree (see `QualifiedTypes.QualifierSkolemIndex`) so they
+     *  stay stable across re-type-checks. Reset in `initialize()` to avoid
+     *  stale entries across runs.
      */
     var qualifierSkolemIndexCounter: qualified_types.QualifierSkolemIndexCounter = qualified_types.QualifierSkolemIndexCounter()
 
