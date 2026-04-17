@@ -1,0 +1,6 @@
+-- [E172] Type Error: tests/neg/nested-tvar-explanation.scala:8:21 -----------------------------------------------------
+8 |def test = foo(min(3)) // error
+  |                     ^
+  |                     No given instance of type W was found for parameter w of method min
+  |
+  |                     where:    W is a type variable with constraint <: Ord[V] & Double
