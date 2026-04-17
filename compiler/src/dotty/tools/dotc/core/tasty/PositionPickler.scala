@@ -3,15 +3,15 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.TastyFormat.{PositionsSection, SOURCE}
+import dotty.tools.tasty.TastyFormat.{SOURCE, PositionsSection}
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.*
+
 import ast.*
 import Trees.WithLazyFields
-import util.{NoSource, SourceFile}
+import util.{SourceFile, NoSource}
 import core.*
-import Annotations.*
-import Decorators.*
+import Annotations.*, Decorators.*
 import collection.mutable
 import util.Spans.*
 import reporting.Message

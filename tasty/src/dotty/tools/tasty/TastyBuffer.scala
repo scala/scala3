@@ -64,8 +64,8 @@ class TastyBuffer(initialSize: Int) {
     length += n
   }
 
-  /** Write a 31-bit natural (nonnegative) integer number in big endian format, base 128, stored as octets.
-   *  All octets but the last have bit 0x80 unset.
+  /** Write a 31-bit natural (nonnegative) integer number in big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def writeNat(x: Int): Unit = {
     if (x < 0) {
@@ -74,17 +74,17 @@ class TastyBuffer(initialSize: Int) {
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
   }
 
-  /** Write a 32-bit integer number in 2's complement big endian format, base 128, stored as octets.
-   *  All octets but the last have bit 0x80 unset.
+  /** Write a 32-bit integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def writeInt(x: Int): Unit =
     writeLongInt(x)
 
   /**
-   * Write a 63-bit natural (nonnegative) number in big endian format, base 128, stored as octets.
-   * All octets but the last have bit 0x80 unset.
+   * Write a 63-bit natural (nonnegative) number in big endian format, base 128, each digit being a byte.
+   * All bytes except the last one have bit 0x80 unset.
    * Note that the binary representation of LongNat is identical to Nat
-   * if the long value is in the range Int.MIN_VALUE to Int.MAX_VALUE.
+   * if the long value is in the range 0 to Int.MAX_VALUE.
    */
   def writeLongNat(x: Long): Unit = {
     if (x < 0) {
@@ -100,8 +100,8 @@ class TastyBuffer(initialSize: Int) {
     writeByte(((x & 0x7f) | 0x80).toInt)
   }
 
-  /** Write a 64-bit long integer number in 2's complement big endian format, base 128, stored as octets.
-   *  All octets but the last have bit 0x80 unset. */
+  /** Write a 64-bit long integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset. */
   def writeLongInt(x: Long): Unit = {
     def writePrefix(x: Long): Unit = {
       val y = x >> 7

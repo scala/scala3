@@ -58,8 +58,8 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     result
   }
 
-  /** Read a 31-bit natural (nonnegative) integer number in big endian format, base 128, stored as octets.
-   *  All octets but the last have bit 0x80 unset.
+  /** Read a 31-bit natural (nonnegative) integer number in big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def readNat(): Int = {
     val l = readLongNat()
@@ -69,8 +69,8 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     l.toInt
   }
 
-  /** Read a 32-bit integer number in 2's complement big endian format, base 128, stored as octets.
-   *  All octets but the last have bit 0x80 unset.
+  /** Read a 32-bit integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def readInt(): Int = {
     val l = readLongInt()
@@ -81,8 +81,8 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     i
   }
 
-  /** Read a 63-bit natural (nonnegative) number in big endian format, base 128, stored as octets.
-   *  All octets but the last have bit 0x80 unset.
+  /** Read a 63-bit natural (nonnegative) number in big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def readLongNat(): Long = {
     val ogBp = bp
@@ -101,8 +101,8 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     x
   }
 
-  /** Read a 64-bit long integer number in 2's complement big endian format, base 128, stored as octets.
-   *  All octets but the last have bit 0x80 unset.
+  /** Read a 64-bit long integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def readLongInt(): Long = {
     val ogBp = bp
