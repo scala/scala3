@@ -30,6 +30,7 @@ object StdNames {
     inline val SPECIALIZED_TRAIT_SUFFIX = "$sp$"
     inline val SPECIALIZED_TRAIT_IMPL_SUFFIX = "$impl$"
     inline val SPECIALIZED_TRAIT_TYPE_SEP = "$"
+    inline val SPECIALIZED_METHOD_TARGET_NAME_SUFFIX = "$spec"
 
     inline val REPL_SESSION_LINE  = "rs$line$"
     inline val REPL_ASSIGN_SUFFIX = "$assign"

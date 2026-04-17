@@ -36,6 +36,8 @@ import dotty.tools.dotc.transform.DesugarSpecializedTraits.isSpecializationOf
 import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.DesugarSpecializedTraits.isImplementationOf
 import dotty.tools.dotc.core.Flags.InlineTrait
+import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.core.Constants.Constant
 
 class DesugarSpecializedTraits extends MacroTransform:
 
@@ -248,15 +250,36 @@ class DesugarSpecializedTraits extends MacroTransform:
           yield AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs) // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
         }.getOrElse(tree)
 
+        // Select a method which is specialized; we need to make sure we call the specialized version
+        case sel@Select(qualifier, name) if typeMap(sel.symbol.info) != sel.symbol.info => 
+          Select(qualifier, name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
         case tree => tree
       }
       
       new TreeTypeMap(typeMap, treeMap) {
         override def transform(tree: Tree)(using Context): Tree = tree match { // HACK: This seems to do what we want but I don't understand why we don't do this by default? Surely we should apply transformDefs over template body?
           case dd@DefDef(name, paramss, tpt, preRhs) => 
-            val transformedDef = super.transform(dd)
-            transformedDef.symbol.info = mapType(transformedDef.symbol.info)
-            transformedDef
+            val transformedDef = super.transform(dd).asInstanceOf[DefDef]
+            
+            if transformedDef.symbol.info != mapType(transformedDef.symbol.info) then
+              val specializedSymbol = newSymbol(
+                transformedDef.symbol.owner,
+                transformedDef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX,
+                transformedDef.symbol.flags &~ Flags.Override,
+                info = mapType(transformedDef.symbol.info),
+                transformedDef.symbol.privateWithin,
+                transformedDef.symbol.coord,
+                transformedDef.symbol.nestingLevel
+              ).entered
+
+              val rhsFun: List[List[Tree]] => Tree = paramss =>
+                val oldParamSyms = transformedDef.paramss.flatten.map(_.symbol)
+                val newParamSyms = paramss.flatten.map(_.symbol)
+                transformedDef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(transformedDef.symbol, specializedSymbol)
+
+              DefDef(specializedSymbol.asTerm, rhsFun)
+            else
+              transformedDef
 
           case impl@Template(constr, preParentsOrDerived, self, _) => 
             impl.parents.foreach(p => 
@@ -279,8 +302,8 @@ class DesugarSpecializedTraits extends MacroTransform:
             def isMapped(t: Type) = mapType(t) != t
             
             val bridgeMethods = impl.body.collect {
-              case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && (ddef.termParamss.exists(params => params.exists(p => isMapped(p.symbol.info)) || isMapped(ddef.symbol.localReturnType))) => 
-                val bridgeSym = ddef.symbol.copy().entered
+              // TODO: Probably can just do this isMapped on the whole type.
+              case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && (ddef.termParamss.exists(params => params.exists(p => isMapped(p.symbol.info))) || isMapped(ddef.symbol.localReturnType)) => 
                 val rhsFun: List[List[Tree]] => Tree = 
                   newParamss => 
                     This(impl.symbol.owner.asClass).select(ddef.symbol)
@@ -289,14 +312,12 @@ class DesugarSpecializedTraits extends MacroTransform:
                         params => params.map(p => p.cast(mapType(p.symbol.info)))
                       )
                     ).cast(ddef.symbol.localReturnType)
-                ddef.symbol.flags = ddef.symbol.flags &~ Flags.Override
                 // Any callers of the original method will have been redirected to the bridge method because it has a signature match with the method they were calling
-                // We want to force them to call the original method, since we know they can.
-                ctx.inlineTraitState.registerInlinedSymbol(bridgeSym, ddef.symbol, impl.symbol.owner.thisType.widenDealias)
-                DefDef(bridgeSym.asTerm, rhsFun)
+                DefDef(ddef.symbol.asTerm, rhsFun)
 
               case vdef: ValDef if isMapped(vdef.symbol.info) => 
                 vdef.symbol.flags = vdef.symbol.flags &~ Flags.Override
+                vdef.symbol.setTargetName(vdef.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
                 val bridgeSym = vdef.symbol.copy().entered
                 ctx.inlineTraitState.registerInlinedSymbol(bridgeSym, vdef.symbol, impl.symbol.owner.thisType.widenDealias)
                 ValDef(bridgeSym.asTerm, This(impl.symbol.owner.asClass).select(vdef.symbol).cast(vdef.symbol.info))
