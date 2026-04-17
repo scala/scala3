@@ -14,7 +14,7 @@ import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import util.Property
 import transform.Splicer
 import config.Feature
-import qualified_types.QualifiedType
+import qualified_types.{QualifiedType, QualifiedTypes}
 
 trait TypeAssigner {
   import tpd.*
@@ -280,15 +280,23 @@ trait TypeAssigner {
    *  skolemizing the argument type if it is not stable and `pref` occurs in `tp`.
    *  If skolemization happens the new SkolemType is passed to `recordSkolem`
    *  provided the latter is non-null.
+   *
+   *  When `argTree` is provided and skolemization is needed, occurrences of
+   *  `pref` inside `@qualified` annotations are first replaced with a stable
+   *  `ENodeParamRef` whose index is attached to `argTree` (so the same index
+   *  is reused across re-type-checks). The remaining occurrences (outside
+   *  qualifiers) are substituted with the fresh `SkolemType` as before.
    */
   def safeSubstParam(tp: Type, pref: ParamRef, argType: Type,
-      recordSkolem: (SkolemType => Unit) | Null = null)(using Context): Type =
+      recordSkolem: (SkolemType => Unit) | Null = null,
+      argTree: Tree | Null = null)(using Context): Type =
     val tp1 = tp.substParam(pref, argType)
     if (tp1 eq tp) || argType.isStable then tp1
     else
-      val narrowed = SkolemType(argType.widen)
+      val widened = argType.widen
+      val narrowed = SkolemType(widened)
       if recordSkolem != null then recordSkolem(narrowed)
-      tp.substParam(pref, narrowed)
+      QualifiedTypes.substParamInQualifiers(tp, pref, widened, argTree).substParam(pref, narrowed)
 
   /** Substitute types of all arguments `args` for corresponding `params` in `tp`.
    *  The number of parameters `params` may exceed the number of arguments.
@@ -298,7 +306,7 @@ trait TypeAssigner {
   private def safeSubstParams(tp: Type, params: List[ParamRef],
       args: List[Tree], skolems: SkolemBuffer)(using Context): Type = args match
     case arg :: args1 =>
-      val tp1 = safeSubstParam(tp, params.head, arg.tpe, sk => skolems += ((arg, sk)))
+      val tp1 = safeSubstParam(tp, params.head, arg.tpe, sk => skolems += ((arg, sk)), argTree = arg)
       safeSubstParams(tp1, params.tail, args1, skolems)
     case Nil =>
       tp

@@ -553,6 +553,12 @@ trait Applications extends Compatibility {
     /** Turn a typed tree into an argument */
     protected def treeToArg(arg: Tree): Arg
 
+    /** Convert a `TypedArg` to a `tpd.Tree` when applicable, otherwise `null`.
+     *  Used to thread typed argument trees through dependent substitution (e.g.
+     *  for stable `ENodeParamRef` allocation in qualifier substitution).
+     */
+    protected def argToTree(arg: TypedArg): Tree | Null
+
     /** Check that argument corresponds to type `formal` and
      *  possibly add it to the list of adapted arguments
      */
@@ -853,7 +859,7 @@ trait Applications extends Compatibility {
                   // stray parameter references. Test case is i23266.scala.
                 && typeOfArg(argTyped).exists
                   // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
+            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped), argTree = argToTree(argTyped)))
             else formals1
 
           def missingArg(n: Int): Unit =
@@ -967,6 +973,8 @@ trait Applications extends Compatibility {
     type Result = Unit
 
     def applyKind = ApplyKind.Regular
+
+    protected def argToTree(arg: TypedArg): Tree | Null = null
 
     protected def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) match
       case ref: TermRef if ref.denot.isOverloaded =>
@@ -1118,6 +1126,7 @@ trait Applications extends Compatibility {
     override val applyKind: ApplyKind)(using Context)
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
+    protected def argToTree(arg: Tree): Tree | Null = arg
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
     protected var liftedDefs: mutable.ListBuffer[Tree] | Null = null
