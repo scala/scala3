@@ -61,6 +61,9 @@
    |
    |where:    =>  refers to a root capability in the type of parameter p1
    |          =>² refers to a root capability created in anonymous function of type (p2²: () ->{p1, any} Unit): Unit when checking argument to parameter p1 of method par
+   |          any is the root capability caps.any
+   |          p2  is a parameter in an anonymous function in method test
+   |          p2² is a reference to a value parameter
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:24:9 ----------------------------------------------------
 24 |  bar(c)(c) // error separation
    |         ^

@@ -221,18 +221,19 @@ object Message:
         case ref: Capability     => ref.isTerminalCapability
       }
 
-      val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
-        val res: List[(String, Recorded)] = kvs match {
-          case (key, entry :: Nil) =>
-            if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
-          case (key, entries) =>
-            for (alt <- entries) yield {
-              val tickedString = record(key.str, key.isType, alt)
-              (tickedString, alt)
-            }
-        }
-        res // help the inferencer out
-      }.sortBy(_._1)
+      def collectToExplain(): List[(String, Recorded)] =
+        seen.toList.flatMap { kvs =>
+          val res: List[(String, Recorded)] = kvs match {
+            case (key, entry :: Nil) =>
+              if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
+            case (key, entries) =>
+              for (alt <- entries) yield {
+                val tickedString = record(key.str, key.isType, alt)
+                (tickedString, alt)
+              }
+          }
+          res // help the inferencer out
+        }.sortBy(_._1)
 
       def columnar(parts: List[(String, String)]): List[String] =
         lazy val maxLen = parts.map(_._1.length).max
@@ -240,14 +241,19 @@ object Message:
           val variable = hl(leader)
           s"""$variable${" " * (maxLen - leader.length)} $trailer"""
 
-      // Group keys with the same Recorded entry together. We can't use groupBy here
-      // since we want to maintain the order in which entries first appear in the
-      //  original list.
-      val toExplainGrouped: List[(Recorded, List[String])] =
-        for entry <- toExplain.map(_._2).distinct
-        yield (entry, for (key, e) <- toExplain if e == entry yield key)
-      val explainParts = toExplainGrouped.map:
-        (entry, keys) => (keys.mkString(" and "), explanation(entry, keys))
+      // Rendering an explanation may record new entries (e.g. a type variable's
+      // constraint mentioning another type variable). Iterate to a fixed point.
+      val explained = collection.mutable.LinkedHashMap.empty[Recorded, (List[String], String)]
+      var prev = -1
+      while prev != explained.size do
+        prev = explained.size
+        val toExplain = collectToExplain()
+        for entry <- toExplain.map(_._2).distinct if !explained.contains(entry) do
+          val keys = for (key, e) <- toExplain if e == entry yield key
+          explained(entry) = (keys, explanation(entry, keys))
+
+      val explainParts = explained.values.toList.map:
+        (keys, expl) => (keys.mkString(" and "), expl)
       val explainLines = columnar(explainParts)
       if (explainLines.isEmpty) "" else i"where:    $explainLines%\n          %\n"
     end explanations

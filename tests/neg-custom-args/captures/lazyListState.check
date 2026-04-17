@@ -6,5 +6,8 @@
    |
    |               where:    ^     refers to a root capability in the type of value tail
    |                         fresh is a root capability associated with the result type of -> LazyListIterable[A²]^²
+   |                         A     is a type in class Cons
+   |                         A²    is a type in trait State
+   |                         ^²    refers to a root capability in the result type of method tail
    |
    | longer explanation available when compiling with `-explain`

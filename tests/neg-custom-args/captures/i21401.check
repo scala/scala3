@@ -9,6 +9,9 @@
    |
    |where:    ^   refers to a root capability created in anonymous function of type (x²: IO^²): IO^² of parameter parameter x of method $anonfun
    |          any is a root capability created in value a
+   |          ^²  refers to the root capability caps.any
+   |          x   is a parameter in an anonymous function in method test2
+   |          x²  is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------

@@ -33,7 +33,10 @@
    |Note that capability `innerIO` cannot flow into capture set {any}
    |because (innerIO : IO^) in an enclosing function is not visible from any in value r.
    |
-   |where:    ^   refers to a root capability created in anonymous function of type (innerIO²: IO^²): Unit of parameter parameter innerIO of method $anonfun
-   |          any is a root capability in the type of value r
+   |where:    ^        refers to a root capability created in anonymous function of type (innerIO²: IO^²): Unit of parameter parameter innerIO of method $anonfun
+   |          any      is a root capability in the type of value r
+   |          ^²       refers to the root capability caps.any
+   |          innerIO  is a parameter in an anonymous function in method test1
+   |          innerIO² is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`

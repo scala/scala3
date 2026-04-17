@@ -15,7 +15,9 @@
    |
    |Note that capability `any.rd` cannot flow into capture set {}.
    |
-   |where:    any is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{fresh.rd, ll}
+   |where:    any   is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{fresh.rd, ll}
+   |          ^     refers to the root capability caps.any
+   |          fresh is a root capability associated with the result type of (ll: Test.LL^): Test.LL^{fresh.rd, ll}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/indirect-avoid.scala:32:4 --------------------------------
@@ -34,4 +36,6 @@
    |Fields capturing a root capability need to be given an explicit type unless the capability is already
    |subsumed by the computed capability of the enclosing class.
    |
-   |where:    any is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{fresh.rd, ll}
+   |where:    any   is a root capability created in value x1 when instantiating method filterImpl1's type (ll: Test.LL^): Test.LL^{fresh.rd, ll}
+   |          ^     refers to the root capability caps.any
+   |          fresh is a root capability associated with the result type of (ll: Test.LL^): Test.LL^{fresh.rd, ll}

@@ -32,10 +32,12 @@
   |
   |Note that capability `any²` cannot flow into capture set {any}.
   |
-  |where:    ^    refers to the root capability caps.any
-  |          ^²   refers to a root capability classified as Control in the type of value local²
-  |          any  is a root capability classified as Control created in object test when checking argument to parameter label of method break
-  |          any² is a root capability classified as Control in the type of value local
+  |where:    ^      refers to the root capability caps.any
+  |          ^²     refers to a root capability classified as Control in the type of value local²
+  |          any    is a root capability classified as Control created in object test when checking argument to parameter label of method break
+  |          any²   is a root capability classified as Control in the type of value local
+  |          local  is a value locally defined in object test
+  |          local² is a value locally defined in object test
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boundary.scala:5:4 ---------------------------------------

@@ -50,5 +50,6 @@
    |        method tail of type -> lazylists.LazyList[Nothing]^{fresh} has incompatible type
    |
    |      where:    fresh is a root capability associated with the result type of -> lazylists.LazyList[Nothing]^
+   |                ^     refers to a root capability in the result type of method tail
    |
    | longer explanation available when compiling with `-explain`

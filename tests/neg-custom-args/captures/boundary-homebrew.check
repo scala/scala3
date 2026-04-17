@@ -8,5 +8,8 @@
    |
    |where:    ^   refers to a root capability created in method test
    |          any is a root capability created in anonymous function of type (using l1²: boundary.Label[boundary.Label[Int]^²]^²): boundary.Label[Int]^² of parameter parameter l1 of method $anonfun
+   |          ^²  refers to the root capability caps.any
+   |          l1  is a parameter in an anonymous function in method test
+   |          l1² is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`

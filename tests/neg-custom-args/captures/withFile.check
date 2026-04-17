@@ -42,6 +42,9 @@
    |
    |where:    ^   refers to a root capability created in anonymous function of type (f²: Test2.File^²): Test2.Box[Test2.File^²] of parameter parameter f of method $anonfun
    |          any is a root capability created in value later4
+   |          ^²  refers to the root capability caps.any
+   |          f   is a parameter in an anonymous function in object Test2
+   |          f²  is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/withFile.scala:16:20 ----------------------------------------------------------

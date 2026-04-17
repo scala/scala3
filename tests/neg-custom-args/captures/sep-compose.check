@@ -126,3 +126,5 @@
    |  The two sets overlap at               : {a, io}
    |
    |where:    => refers to a root capability created in anonymous function of type (x²: () ->{a} Unit): Unit when checking argument to parameter x of method seq8
+   |          x  is a parameter in an anonymous function in method test
+   |          x² is a reference to a value parameter

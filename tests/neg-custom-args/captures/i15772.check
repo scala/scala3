@@ -21,15 +21,17 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:33 ---------------------------------------
 35 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                             ^^^^^^^
-   |      Found:    (C{val arg: C^}^{any} => Unit) -> Unit
-   |      Required: (C => Unit) =>² Unit
+   |    Found:    (C{val arg: C^}^{any} => Unit) -> Unit
+   |    Required: (C => Unit) =>² Unit
    |
-   |      Note that capability `any` cannot flow into capture set {}.
+   |    Note that capability `any` cannot flow into capture set {}.
    |
-   |      where:    =>  refers to the root capability caps.any
-   |                =>² refers to a root capability in the type of value boxed2
-   |                ^   refers to a root capability in the type of value arg
-   |                any is a root capability created in value boxed2 when instantiating method c's type -> C^{fresh}
+   |    where:    =>    refers to the root capability caps.any
+   |              =>²   refers to a root capability in the type of value boxed2
+   |              ^     refers to a root capability in the type of value arg
+   |              any   is a root capability created in value boxed2 when instantiating method c's type -> C^{fresh}
+   |              fresh is a root capability associated with the result type of -> C^²
+   |              ^²    refers to a root capability in the result type of method c
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:46:2 ----------------------------------------

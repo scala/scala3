@@ -6,5 +6,7 @@
    |
    |                   where:    F  is a type in class StreamPullOps with bounds <: [_²] =>> Any
    |                             F2 is a type in method flatMapOutput with bounds >: [x] =>> F[x] and <: [x] =>> Any
+   |                             _  is a type in method flatMapOutput
+   |                             _² is a type variable
    |
    | longer explanation available when compiling with `-explain`

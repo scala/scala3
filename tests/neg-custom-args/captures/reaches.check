@@ -41,6 +41,9 @@
    |
    |where:    ^   refers to a root capability created in anonymous function of type (x²: File^²): File^² of parameter parameter x of method $anonfun
    |          any is a root capability in the type of value id
+   |          ^²  refers to the root capability caps.any
+   |          x   is a parameter in an anonymous function in method attack2
+   |          x²  is a reference to a value parameter
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:71:27 --------------------------------------
@@ -51,7 +54,9 @@
    |
    |Note that capability `any` cannot flow into capture set {id*}.
    |
-   |where:    any is a root capability created in value f1 when instantiating function value id's type (x: File^): File^{fresh}
+   |where:    any   is a root capability created in value f1 when instantiating function value id's type (x: File^): File^{fresh}
+   |          ^     refers to the root capability caps.any
+   |          fresh is a root capability associated with the result type of (x: File^): File^{fresh}
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------

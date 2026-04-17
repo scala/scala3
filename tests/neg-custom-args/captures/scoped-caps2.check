@@ -35,8 +35,10 @@
   |Note that capability `any` cannot flow into capture set {any²}
   |because any in an enclosing function is not visible from any² in value _$4.
   |
-  |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
-  |          any² is a root capability classified as SharedCapability in the type of value _$4
+  |where:    any   is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
+  |          any²  is a root capability classified as SharedCapability in the type of value _$4
+  |          ^     refers to the root capability caps.any
+  |          fresh is a root capability associated with the result type of (x: C^): C^{fresh}
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:15:18 ---------------------------------
@@ -62,7 +64,9 @@
    |Note that capability `any` cannot flow into capture set {any²}
    |because any in an enclosing function is not visible from any² in value _$8.
    |
-   |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
-   |          any² is a root capability classified as SharedCapability in the type of value _$8
+   |where:    any   is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
+   |          any²  is a root capability classified as SharedCapability in the type of value _$8
+   |          ^     refers to the root capability caps.any
+   |          fresh is a root capability associated with the result type of (x: C^): C^{fresh}
    |
    | longer explanation available when compiling with `-explain`

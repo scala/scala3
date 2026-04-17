@@ -4,3 +4,4 @@
   |                     No given instance of type W was found for parameter w of method min
   |
   |                     where:    W is a type variable with constraint <: Ord[V] & Double
+  |                               V is a type variable
