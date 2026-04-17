@@ -94,9 +94,25 @@ class C extends B, A[Int](1):
     override def x = 1
     override def foo = x
 ```
-While it is not immediately obvious why permitting inline traits to be inlined into other inline traits is useful (we could simply
-inline everything into the first class/object in the hierarchy, it becomes advantageous when we bring in the `Specialized` annotation; see the accompanying document).
+[!] This may be surprising compared to inline methods, as calls to inline methods from other inline methods are only inlined
+when the outer inline method is inlined. While it is not immediately obvious why permitting inline traits to be inlined into other inline traits is useful (we could simply
+inline everything into the first receiver which is not inline in the hierarchy), it becomes advantageous when we bring in the `Specialized` annotation; see the accompanying document.
+Of course, patterns creating cycles of inlining are banned:
 
+```scala
+inline trait C[S]:
+   def v(x: S): S = x
+   def w: Unit = 
+      val x = new D[S] {}
+      println("w")
+
+inline trait D[S]:
+   def v(x: S): S = x
+   def w: Unit = 
+      val x = new C[S] {}
+      println("w")
+
+```
 
 Furthermore:
 - References to members of inline traits accessed on inline receivers point to the inlined version, to ensure we avoid unnecessary boxing: [1]
