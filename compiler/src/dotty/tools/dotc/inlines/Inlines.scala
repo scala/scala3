@@ -296,12 +296,16 @@ object Inlines:
         val newDefs = inContext(ctx.withOwner(cls.symbol)) {
           inlineTraitAncestors(cls).foldLeft((List.empty[Tree], impl.body)){
             case ((inlineDefs, childDefs), parent) =>
-              val parentTraitInliner = InlineParentTrait(parent)
-              val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
-              val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
-              cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
-
-              (inlinedDefs1, childDefs)
+              if cls.symbol.ownersIterator.contains(parent.symbol) then
+                // TODO: This appears at the inline trait D line rather than the line corresponding to the inlining - should we be worried ? 
+                report.error("Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.", cls.sourcePos)
+                (inlineDefs, childDefs)
+              else
+                val parentTraitInliner = InlineParentTrait(parent)
+                val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
+                val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
+                cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
+                (inlinedDefs1, childDefs)
           }
         }
         val newbody = newDefs._1 ::: newDefs._2
@@ -948,7 +952,7 @@ object Inlines:
 
         val symbolMap = mutable.Map[Symbol, Symbol]()
         // TODO make version of inlined that does not return bindings?
-        val rhs1 = Inlined(tpd.ref(parentSym), Nil, inlined(rhs)._2).withSpan(parent.span)
+        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parentSym.span), Nil, inlined(rhs)._2).withSpan(parent.span)
         val ttmap = TreeTypeMap(treeMap = {
           case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) => 
             val newSym = tree.symbol.copy()
