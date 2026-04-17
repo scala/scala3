@@ -1201,7 +1201,9 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
    *  @param hd the head element of the cons cell
    *  @param tl the tail lazy list of the cons cell
    */
-  @inline private def eagerCons[A](hd: A, tl: LazyListIterable[A]^): LazyListIterable[A]^{tl} = new LazyListIterable[A](hd, tl)
+  @inline private def eagerCons[A](hd: A, tl: LazyListIterable[A]^): LazyListIterable[A]^{tl} =
+    new LazyListIterable[A](hd, tl).asInstanceOf[LazyListIterable[A]^{tl}]
+      // SAFETY: cc gets confused by private secondary constructor here
 
   private val anyToMarker: Any -> Any = _ => Statics.pfMarker
 

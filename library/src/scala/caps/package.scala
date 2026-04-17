@@ -201,6 +201,13 @@ object internal:
   @deprecated
   final class refineOverride extends annotation.StaticAnnotation
 
+  /** An internal annotation placed on a parameter of a secondary constructor
+   *  that gets forwarded indirectly or directly to a parameter of the
+   *  corresponding primary constructor.
+   *  @param parmName   the name of the primary constructor parameter
+   */
+  final class paramAlias(paramName: String) extends annotation.StaticAnnotation
+
   /** An erasedValue issued internally by the compiler. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed
    *  to be a pure expression, hence capability safe. The compiler generates this

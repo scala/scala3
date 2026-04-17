@@ -570,10 +570,6 @@ extension (cls: ClassSymbol) {
    *  @return  the implied capture set, and the list of fields contributing to it
    */
   def capturesImpliedByFields(core: Type)(using Context): (refs: CaptureSet, fields: List[Symbol]) = {
-    var infos: List[String] = Nil
-    def pushInfo(msg: => String) =
-      if ctx.settings.YccVerbose.value then infos = msg :: infos
-
     def knownFields(cls: ClassSymbol) =
       ccState.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
         .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
@@ -606,20 +602,20 @@ extension (cls: ClassSymbol) {
     def localCap(fields: List[Symbol]) =
       LocalCap(Origin.NewInstance(core, fields))
 
-    var implied = impliedClassifiers(cls)
+    var impliedClss = impliedClassifiers(cls)
     if cls.typeRef.isStatefulType(varsOnly = true) then
-      implied = dominators(cls.classifier :: Nil, implied)
-    val fields = contributingFields(cls)
-    val impliedSet = ccState.localCapClassifiersAndFieldsCache.getOrElseUpdate(cls, (implied, fields)) match
-      case (Nil, _) =>
+      impliedClss = dominators(cls.classifier :: Nil, impliedClss)
+    val contributing = contributingFields(cls)
+    val impliedSet = impliedClss match
+      case Nil =>
         CaptureSet.empty
-      case (cl :: Nil, fields) =>
-        val result = localCap(fields)
+      case cl :: Nil =>
+        val result = localCap(contributing)
         result.hiddenSet.adoptClassifier(cl)
-        maybeRO(result, fields).singletonCaptureSet
-      case (_, fields) =>
-        maybeRO(localCap(fields), fields).singletonCaptureSet
-    (impliedSet, fields)
+        maybeRO(result, contributing).singletonCaptureSet
+      case _ =>
+        maybeRO(localCap(contributing), contributing).singletonCaptureSet
+    (impliedSet, contributing)
   }
 
   def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =
