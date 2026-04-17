@@ -911,26 +911,21 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
  */
 class CleanupRetains(using Context) extends TypeMap:
 
-  // Enclosing LambdaType binders; a TypeParamRef bound by one of these is
-  // self-contained in this type and safe to pickle. Refs to outer binders
-  // would be orphan, so we still erase their retains to `Nothing`.
+  // LambdaTypes entered during the traversal of the *current* tpe only —
+  // outer binders from the surrounding source are not here.
   private var binders: List[LambdaType] = Nil
 
-  // A retained element is preserved when it references a capture-set type
-  // parameter that is meaningful for the tpe we are cleaning:
-  //  - A TypeParamRef whose binder lambda is inside the current traversal; or
-  //  - A TypeRef to a cap-set type parameter symbol, when either:
-  //     (i) we are currently inside a LambdaType in this tpe (so the tpe
-  //         itself is a polymorphic structure — preserve is load-bearing);
-  //     (ii) its owner is an anonymous function (the curried poly lambda
-  //          value case: inner closure tpt has no own LambdaType but the
-  //          outer $anonfun's C is the referenced symbol).
-  // Refs not fitting either condition (e.g. a free ref to a named method's
-  // type param in an inferred TypeApply arg — see nicolas1.scala,
-  // cap-paramlists5.scala) stay erased to `Nothing`.
   private def isLocalCapSetParam(tp: Type): Boolean = tp match
+    // Proper scope check: the ref's binder must sit inside the current tpe.
     case ref: TypeParamRef =>
       ref.derivesFromCapSet && binders.contains(ref.binder)
+    // A TypeRef has no .binder, so two heuristics stand in:
+    //  - owner is an anonymous function: the ref points at an enclosing
+    //    $anonfun's C (curried poly-lambda value, inner closure tpt).
+    //  - binders.nonEmpty: the tpe itself has a LambdaType structure, so
+    //    preserving an outer cap-set ref inside it is load-bearing.
+    // Refs to a named method's type param sitting in a non-poly inferred
+    // tpe stay erased — see nicolas1.scala, cap-paramlists5.scala.
     case ref: TypeRef if ref.derivesFromCapSet =>
       val sym = ref.symbol
       sym.isType && (binders.nonEmpty || sym.owner.isAnonymousFunction)
