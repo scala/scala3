@@ -42,9 +42,64 @@ class JLineTerminal extends java.io.Closeable {
 
   private val history = new DefaultHistory
   private val userInputHistory = new DefaultHistory
-  private val userInputBytes = mutable.Queue.empty[Int]
-  private var inputState = InputState.Wait
   @volatile private var monitoringThread: Thread | Null = null
+
+  /** Encapsulates the mutable input state behind synchronized accessors. */
+  private object inputQueue:
+    private val bytes = mutable.Queue.empty[Int]
+    private var state = InputState.Wait
+
+    /** Blocks until the state is no longer Wait. Returns the active state. */
+    def waitUntilActive(): InputState = synchronized {
+      while state == InputState.Wait do wait()
+      state
+    }
+
+    /** Dequeues one byte if available, returns Some(-1) if closed,
+     *  or None after setting Wait to signal the caller should read a line. */
+    def pollByte(): Option[Int] = synchronized {
+      if bytes.nonEmpty then Some(bytes.dequeue())
+      else if state == InputState.Closed then Some(-1)
+      else
+        state = InputState.Wait
+        notifyAll()
+        None
+    }
+
+    def enqueueChar(ch: Int, encoding: java.nio.charset.Charset): Unit = synchronized {
+      val encoded = String.valueOf(ch.toChar).getBytes(encoding)
+      encoded.foreach(b => bytes.enqueue(b & 0xff))
+      notifyAll()
+    }
+
+    def enqueueBytes(data: Array[Byte]): Unit = synchronized {
+      data.foreach(b => bytes.enqueue(b & 0xff))
+    }
+
+    def drainTo(buf: Array[Byte], offset: Int, maxLen: Int): Int = synchronized {
+      val n = math.min(maxLen, bytes.length)
+      for i <- 0 until n do
+        buf(offset + i) = bytes.dequeue().toByte
+      n
+    }
+
+    def signalClosed(): Unit = synchronized {
+      state = InputState.Closed
+      notifyAll()
+    }
+
+    def reset(): Unit = synchronized {
+      bytes.clear()
+      state = InputState.Monitor
+      notifyAll()
+    }
+
+    def resumeMonitoring(): Unit = synchronized {
+      if state != InputState.Closed then
+        state = InputState.Monitor
+      notifyAll()
+    }
+  end inputQueue
 
   private val userInput = new InputStream {
     override def read(): Int =
@@ -57,14 +112,7 @@ class JLineTerminal extends java.io.Closeable {
         if first == -1 then -1
         else
           bytes(offset) = first.toByte
-          val copied =
-            synchronized {
-              val extra = math.min(length - 1, userInputBytes.length)
-              for idx <- 0 until extra do
-                bytes(offset + idx + 1) = userInputBytes.dequeue().toByte
-              extra
-            }
-          copied + 1
+          inputQueue.drainTo(bytes, offset + 1, length - 1) + 1
   }
 
   private val userLineReader =
@@ -148,76 +196,36 @@ class JLineTerminal extends java.io.Closeable {
   }
 
   def close(): Unit =
-    signalClosed()
+    inputQueue.signalClosed()
     // Defensive: normally withMonitoringCtrlC joins and nulls the thread,
     // but if close() is called during an abnormal exit, clean up here.
     monitoringThread match
       case thread: Thread =>
         Thread.interrupted() // clear interrupt flag in case user code interrupted this thread
         thread.join()
-      case _ =>
+      case null =>
     try terminal.setAttributes(originalAttributes)
     finally terminal.close()
 
   def userInputStream: InputStream =
     userInput
 
-  private def waitForMonitoringState(): InputState = synchronized {
-    while inputState == InputState.Wait do wait()
-    inputState
-  }
-
-  private def enqueueInputChar(ch: Int): Unit = synchronized {
-    val bytes = String.valueOf(ch.toChar).getBytes(terminal.encoding())
-    bytes.foreach(b => userInputBytes.enqueue(b & 0xff))
-    notifyAll()
-  }
-
-  private def signalClosed(): Unit = synchronized {
-    inputState = InputState.Closed
-    notifyAll()
-  }
-
-  private def resetUserInputState(): Unit = synchronized {
-    userInputBytes.clear()
-    inputState = InputState.Monitor
-    notifyAll()
-  }
-
-  private def resumeMonitoring(): Unit = synchronized {
-    if inputState != InputState.Closed then
-      inputState = InputState.Monitor
-    notifyAll()
-  }
-
   private def readUserInputByte(): Int = {
     while true do
-      val nextByte =
-        synchronized {
-          if userInputBytes.nonEmpty then Some(userInputBytes.dequeue())
-          else if inputState == InputState.Closed then Some(-1)
-          else
-            inputState = InputState.Wait
-            notifyAll()
-            None
-        }
-
-      nextByte match
+      inputQueue.pollByte() match
         case Some(value) => return value
         case None =>
           try
             val line = userLineReader.readLine("")
             val lineBytes = (line + System.lineSeparator()).getBytes(terminal.encoding())
-            synchronized {
-              lineBytes.foreach(b => userInputBytes.enqueue(b & 0xff))
-            }
+            inputQueue.enqueueBytes(lineBytes)
           catch
             case _: EndOfFileException =>
               return -1
             case _: UserInterruptException =>
               throw new InterruptedIOException()
           finally
-            resumeMonitoring()
+            inputQueue.resumeMonitoring()
 
     -1
   }
@@ -233,17 +241,18 @@ class JLineTerminal extends java.io.Closeable {
     // external signals, e.g. `kill -INT`.
     val previousHandler = terminal.handle(Signal.INT, _ => handler())
     val reader = terminal.reader()
-    resetUserInputState()
+    inputQueue.reset()
+    val encoding = terminal.encoding()
     val thread = new Thread(() =>
-      while waitForMonitoringState() == InputState.Monitor do
+      while inputQueue.waitUntilActive() == InputState.Monitor do
         val ch =
           try reader.read(100L)
           catch case _: Exception => -1
 
         if ch == NonBlockingReader.READ_EXPIRED then ()
-        else if ch == NonBlockingReader.EOF || ch == -1 then signalClosed()
+        else if ch == NonBlockingReader.EOF || ch == -1 then inputQueue.signalClosed()
         else if ch == 3 then handler()
-        else enqueueInputChar(ch)
+        else inputQueue.enqueueChar(ch, encoding)
     , "REPL-CtrlC-Monitor")
     monitoringThread = thread
     thread.setDaemon(true)
@@ -251,7 +260,7 @@ class JLineTerminal extends java.io.Closeable {
 
     try block
     finally {
-      signalClosed()
+      inputQueue.signalClosed()
       Thread.interrupted() // clear interrupted flag so join below doesn't explode
       thread.join()
       monitoringThread = null
