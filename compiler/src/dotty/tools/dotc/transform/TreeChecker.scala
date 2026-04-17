@@ -757,6 +757,7 @@ object TreeChecker {
       assert((tp1 eq tp2) || (tp1 <:< tp2), {
         val mismatch = TypeMismatch(tp1, tp2, None)
         i"""|Type Mismatch (while checking $step):
+            |Position: ${tree.srcPos.sourcePos.showLineColumn}
             |${mismatch.message}${mismatch.explanation}
             |tree = $tree ${tree.className}""".stripMargin
       })
