@@ -69,7 +69,7 @@ enum ENode extends Showable:
       case Lambda(paramTps, retTp, body) =>
         paramTps.zipWithIndex.forall: (tp, index) =>
           tp match
-            case ENodeParamRef(i) => i < index
+            case ENodeVar(ENodeVarKind.BoundParam, i) => i < index
             case _ => true
       case _ => true
   )
@@ -92,10 +92,11 @@ enum ENode extends Showable:
           printTp(tp.tref) + ".this"
         case tp: TypeVar =>
           tp.origin.paramName.toString()
-        case tp: ENodeParamRef if tp.index < 0 =>
-          s"(sk${-tp.index}: ${printTp(tp.rawUnderlying)})"
-        case tp: ENodeParamRef =>
-          s"arg${tp.index}"
+        case tp: ENodeVar =>
+          tp.kind match
+            case ENodeVarKind.BoundParam => s"arg${tp.index}"
+            case ENodeVarKind.OpenedParam => s"(op${tp.index}: ${printTp(tp.rawUnderlying)})"
+            case ENodeVarKind.Skolem => s"(sk${tp.index}: ${printTp(tp.rawUnderlying)})"
         case tp: AppliedType =>
           val argsString = tp.args.map(printTp).mkString(", ")
           s"${printTp(tp.tycon)}[$argsString]"
@@ -351,7 +352,7 @@ enum ENode extends Showable:
   private class SubstEParamsMap(from: Int, to: List[Type])(using Context) extends TypeMap:
     override def apply(tp: Type): Type =
       tp match
-        case ENodeParamRef(i) if i >= from && i < from + to.length => to(i - from)
+        case ENodeVar(ENodeVarKind.BoundParam, i) if i >= from && i < from + to.length => to(i - from)
         case tp @ AnnotatedType(parent, annot @ QualifiedAnnotation(qualifier)) =>
           // Use substEParamRefs on the qualifier lambda to properly shift
           // de Bruijn indices and avoid substituting bound variables.
@@ -408,26 +409,24 @@ enum ENode extends Showable:
   // -----------------------------------
 
   /** Like `tpd.singleton`, but produces a placeholder tree for types that
-   *  contain skolem-originated `ENodeParamRef`s (which cannot be represented
-   *  as real trees). When converting back, `ENodeParamRef`s with negative
-   *  indices are mapped back to the original `SkolemType` instances via the
-   *  per-unit `QualifierSkolemMap`.
+   *  contain `SkolemType`s or free `ENodeVar`s (which cannot be represented
+   *  as real trees).
    *
    *  This is fine because these trees only appear inside `@qualified`
    *  annotations where only the type matters.
    */
   private def singletonOrPlaceholder(tp: Type)(using Context): tpd.Tree =
-    def hasSkolemOrFreeParamRef(tp: Type): Boolean = tp match
+    def hasSkolemOrFreeVar(tp: Type): Boolean = tp match
       case tp: SkolemType => true
-      case tp: ENodeParamRef => tp.index < 0
-      case tp: TermRef => hasSkolemOrFreeParamRef(tp.prefix)
+      case tp: ENodeVar => tp.isFree
+      case tp: TermRef => hasSkolemOrFreeVar(tp.prefix)
       case _ => false
     tp.dealias match
       case tp: SkolemType =>
         tpd.ref(defn.Predef_undefined).withType(tp)
-      case tp: ENodeParamRef if tp.index < 0 =>
+      case tp: ENodeVar if tp.isFree =>
         tpd.ref(defn.Predef_undefined).withType(tp)
-      case tp: TermRef if hasSkolemOrFreeParamRef(tp) =>
+      case tp: TermRef if hasSkolemOrFreeVar(tp) =>
         tpd.ref(defn.Predef_undefined).withType(tp)
       case tp => tpd.singleton(tp)
 
@@ -507,18 +506,15 @@ enum ENode extends Showable:
           )
 
 object ENode:
-  /** The types allowed in `Atom` nodes. `SkolemType` is excluded because
-   *  it has identity-based equality; skolems are converted to `ENodeParamRef`
-   *  by the `ENode.singleton` smart constructor.
-   */
-  type AtomType = TermRef | ThisType | ConstantType | TermParamRef | ENodeParamRef | SkolemType
+  /** The types allowed in `Atom` nodes. */
+  type AtomType = TermRef | ThisType | ConstantType | TermParamRef | ENodeVar | SkolemType
 
   /** Smart constructor that builds an ENode from a `SingletonType`.
    *
    *  - `TermRef`s with non-trivial prefixes are decomposed into
    *    `Select(singleton(prefix), member)`, so that the prefix is shared
    *    structurally rather than wrapped in a fresh skolem each time.
-   *  - Leaf types (`ConstantType`, `ThisType`, `TermParamRef`, `ENodeParamRef`,
+   *  - Leaf types (`ConstantType`, `ThisType`, `TermParamRef`, `ENodeVar`,
    *    `SkolemType`, static `TermRef`s) become `Atom` nodes directly.
    */
   def singleton(tp: SingletonType)(using Context): ENode = tp match
@@ -531,7 +527,7 @@ object ENode:
         case _ =>
           // Non-singleton prefix: wrap in a fresh skolem and decompose
           Select(Atom(SkolemType(pre)), tp.symbol)
-    case tp: (ThisType | ConstantType | TermParamRef | ENodeParamRef | SkolemType) => Atom(tp)
+    case tp: (ThisType | ConstantType | TermParamRef | ENodeVar | SkolemType) => Atom(tp)
 
   /** Like `singleton`, but for types that may not be `SingletonType`s.
    *  Non-singleton types are wrapped in a fresh `SkolemType`.
@@ -768,7 +764,7 @@ object ENode:
 
   def substParamRefs(tp: Type, paramSyms: List[Symbol], paramTps: List[Type])(using Context): Type =
     trace(i"substParamRefs($tp, $paramSyms, $paramTps)", Printers.qualifiedTypes):
-      tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(i)(tp)).toList)
+      tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeVar(ENodeVarKind.BoundParam, i)(tp)).toList)
 
   def selfify(tree: tpd.Tree)(using Context): Option[ENode.Lambda] =
     trace(i"ENode.selfify $tree", Printers.qualifiedTypes):
@@ -777,7 +773,7 @@ object ENode:
           Some(ENode.Lambda(
             List(tree.tpe),
             defn.BooleanType,
-            OpApply(ENode.Op.Equal, List(treeNode, ENode.Atom(ENodeParamRef(0)(tree.tpe))))
+            OpApply(ENode.Op.Equal, List(treeNode, ENode.Atom(ENodeVar(ENodeVarKind.BoundParam, 0)(tree.tpe))))
           ))
         case None => None
 
@@ -843,7 +839,7 @@ object ENode:
               node match
                 case Atom(tp: TermParamRef) if tp.binder eq mt =>
                   args(tp.paramNum)
-                case Atom(ref: ENodeParamRef) if ref.index == 0 =>
+                case Atom(ENodeVar(ENodeVarKind.BoundParam, 0)) =>
                   applyNode
                 case node => node.mapChildren(substBody)
             List(substBody(qualifier.body))
