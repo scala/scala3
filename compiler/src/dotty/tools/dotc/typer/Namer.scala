@@ -1922,7 +1922,8 @@ class Namer { typer: Typer =>
    */
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
-    def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
+    def inferredType = qualified_types.QualifiedTypes.avoidQualifierVars(
+      inferredResultType(mdef, sym, paramss, paramFn, WildcardType))
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
