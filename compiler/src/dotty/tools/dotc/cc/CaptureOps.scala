@@ -917,20 +917,23 @@ class CleanupRetains(using Context) extends TypeMap:
   private var binders: List[LambdaType] = Nil
 
   // A retained element is preserved when it references a capture-set type
-  // parameter that is still in scope for the type we are cleaning — either:
+  // parameter that is meaningful for the tpe we are cleaning:
   //  - A TypeParamRef whose binder lambda is inside the current traversal; or
-  //  - A TypeRef whose symbol is a type parameter of an enclosing anonymous
-  //    function (e.g. the outer `[C^]` of a curried poly lambda value, when
-  //    processing the tpt of the nested inner closure).
-  // Refs to type params of named enclosing methods are deliberately NOT
-  // preserved here — they match the pre-existing CleanupRetains behavior
-  // (otherwise existing neg/pos tests change semantics).
+  //  - A TypeRef to a cap-set type parameter symbol, when either:
+  //     (i) we are currently inside a LambdaType in this tpe (so the tpe
+  //         itself is a polymorphic structure — preserve is load-bearing);
+  //     (ii) its owner is an anonymous function (the curried poly lambda
+  //          value case: inner closure tpt has no own LambdaType but the
+  //          outer $anonfun's C is the referenced symbol).
+  // Refs not fitting either condition (e.g. a free ref to a named method's
+  // type param in an inferred TypeApply arg — see nicolas1.scala,
+  // cap-paramlists5.scala) stay erased to `Nothing`.
   private def isLocalCapSetParam(tp: Type): Boolean = tp match
     case ref: TypeParamRef =>
       ref.derivesFromCapSet && binders.contains(ref.binder)
     case ref: TypeRef if ref.derivesFromCapSet =>
       val sym = ref.symbol
-      sym.isType && sym.owner.isAnonymousFunction
+      sym.isType && (binders.nonEmpty || sym.owner.isAnonymousFunction)
     case _ => false
 
   def apply(tp: Type): Type = tp match
