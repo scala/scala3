@@ -23,8 +23,10 @@ import org.jline.utils.AttributedString
 import org.jline.utils.NonBlockingReader
 
 class JLineTerminal extends java.io.Closeable {
+  // `stdin` alternates between a background Ctrl-C monitor and the foreground
+  // wrapped `System.in` reader. These states track which side currently owns it.
   private enum InputState:
-    case Wait, Monitor, Closed
+    case Monitoring, ForegroundRead, Closed
 
   private val terminal =
     val builder = TerminalBuilder.builder()
@@ -47,21 +49,21 @@ class JLineTerminal extends java.io.Closeable {
   /** Encapsulates the mutable input state behind synchronized accessors. */
   private object inputQueue:
     private val bytes = mutable.Queue.empty[Int]
-    private var state = InputState.Wait
+    private var state = InputState.ForegroundRead
 
-    /** Blocks until the state is no longer Wait. Returns the active state. */
+    /** Blocks until the state is no longer ForegroundRead. Returns the active state. */
     def waitUntilActive(): InputState = synchronized {
-      while state == InputState.Wait do wait()
+      while state == InputState.ForegroundRead do wait()
       state
     }
 
     /** Dequeues one byte if available, returns Some(-1) if closed,
-     *  or None after setting Wait to signal the caller should read a line. */
+     *  or None after handing `stdin` ownership to the foreground reader. */
     def pollByte(): Option[Int] = synchronized {
       if bytes.nonEmpty then Some(bytes.dequeue())
       else if state == InputState.Closed then Some(-1)
       else
-        state = InputState.Wait
+        state = InputState.ForegroundRead
         notifyAll()
         None
     }
@@ -90,13 +92,13 @@ class JLineTerminal extends java.io.Closeable {
 
     def reset(): Unit = synchronized {
       bytes.clear()
-      state = InputState.Monitor
+      state = InputState.Monitoring
       notifyAll()
     }
 
     def resumeMonitoring(): Unit = synchronized {
       if state != InputState.Closed then
-        state = InputState.Monitor
+        state = InputState.Monitoring
       notifyAll()
     }
   end inputQueue
@@ -244,7 +246,7 @@ class JLineTerminal extends java.io.Closeable {
     inputQueue.reset()
     val encoding = terminal.encoding()
     val thread = new Thread(() =>
-      while inputQueue.waitUntilActive() == InputState.Monitor do
+      while inputQueue.waitUntilActive() == InputState.Monitoring do
         val ch =
           try reader.read(100L)
           catch case _: Exception => -1
