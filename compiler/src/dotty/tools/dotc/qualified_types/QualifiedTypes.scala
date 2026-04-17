@@ -89,12 +89,72 @@ object QualifiedTypes:
           val qualifier1 =
             val substMap = new TypeMap:
               def apply(t2: Type): Type =
-                if t2 eq pref then replacement
+                if t2 == pref then replacement
                 else mapOver(t2)
             qualifier.mapTypes(substMap).asInstanceOf[ENode.Lambda]
           QualifiedType(parent1, qualifier1)
         case _ => mapOver(t)
     replaceMap(tp)
+
+  /** Weaken any qualifiers inside `tp` by eliminating free `ENodeVar`s
+   *  (kinds `OpenedParam` and `Skolem`). Sub-expressions of Boolean type that
+   *  contain a free `ENodeVar` are replaced with `true` or `false` depending
+   *  on polarity so that the rewritten qualifier is *weaker* than the
+   *  original (i.e., implied by it).
+   *
+   *  If all free vars cannot be eliminated from the qualifier's body by this
+   *  rewriting (e.g., because they appear outside any Boolean connective),
+   *  the qualifier is dropped entirely, falling back to the parent type.
+   */
+  def avoidQualifierVars(tp: Type)(using Context): Type =
+    if !Feature.qualifiedTypesEnabled then return tp
+    val avoidMap = new TypeMap:
+      def apply(t: Type): Type = t match
+        case QualifiedType(parent, qualifier) =>
+          val parent1 = apply(parent)
+          val body1 = avoidVarsInBody(qualifier.body, positive = true)
+          if containsFreeVar(body1) || isTrueAtom(body1) then
+            // Either we couldn't eliminate all free vars, or the body became
+            // trivially `true` — in both cases drop the qualifier entirely.
+            parent1
+          else if body1 eq qualifier.body then
+            if parent1 eq parent then t else QualifiedType(parent1, qualifier)
+          else
+            QualifiedType(parent1, ENode.Lambda(qualifier.paramTps, qualifier.retTp, body1).asInstanceOf[ENode.Lambda])
+        case _ => mapOver(t)
+    avoidMap(tp)
+
+  /** Recurse through Boolean connectives, replacing sub-expressions that
+   *  contain a free `ENodeVar` with the polarity-appropriate constant
+   *  (`true` in positive position, `false` in negative position).
+   */
+  private def avoidVarsInBody(node: ENode, positive: Boolean)(using Context): ENode =
+    node match
+      case ENode.OpApply(ENode.Op.And, args) =>
+        ENode.OpApply(ENode.Op.And, args.map(avoidVarsInBody(_, positive)))
+      case ENode.OpApply(ENode.Op.Or, args) =>
+        ENode.OpApply(ENode.Op.Or, args.map(avoidVarsInBody(_, positive)))
+      case ENode.OpApply(ENode.Op.Not, List(arg)) =>
+        ENode.OpApply(ENode.Op.Not, List(avoidVarsInBody(arg, !positive)))
+      case _ =>
+        if containsFreeVar(node) then constantAtom(positive)
+        else node
+
+  private def constantAtom(value: Boolean)(using Context): ENode =
+    ENode.Atom(ConstantType(Constant(value)))
+
+  private def isTrueAtom(node: ENode)(using Context): Boolean = node match
+    case ENode.Atom(ConstantType(Constant(true))) => true
+    case _ => false
+
+  private def containsFreeVar(node: ENode)(using Context): Boolean =
+    var found = false
+    node.foreachType: tp =>
+      tp.foreachPart:
+        case tp: ENodeVar if tp.isFree => found = true
+        case tp: SkolemType => found = true
+        case _ =>
+    found
 
   /** Does the type `tp1` imply the qualifier `qualifier2`?
    *
