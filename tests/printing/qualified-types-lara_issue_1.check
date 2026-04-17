@@ -8,31 +8,31 @@
         <<<new Array[Double]:Array[Double]>:([T](_length: Int): Array[T])>:
           ((_length: Int): Array[Double])>
       (<CheckedArray.this.size:Pos>):Array[Double]>
-    def apply(i: Pos with <eparam(0):Pos> < CheckedArray.this.size): Double =
+    def apply(i: Pos with <arg(0):Pos> < CheckedArray.this.size): Double =
       <
         <<<this:(CheckedArray.this : CheckedArray)>.data:Array[Double]>.apply:
           ((i: Int): Double)>
-      (<i:Pos with <eparam(0):Pos> < CheckedArray.this.size>):Double>
-    def update(i: Pos with <eparam(0):Pos> < CheckedArray.this.size, x: Double)
-      : Unit =
+      (<i:Pos with <arg(0):Pos> < CheckedArray.this.size>):Double>
+    def update(i: Pos with <arg(0):Pos> < CheckedArray.this.size, x: Double):
+      Unit =
       <
         <<<this:(CheckedArray.this : CheckedArray)>.data:Array[Double]>.update:
           ((i: Int, x: Double): Unit)>
-      (<i:Pos with <eparam(0):Pos> < CheckedArray.this.size>, <x:Double>):Unit>
+      (<i:Pos with <arg(0):Pos> < CheckedArray.this.size>, <x:Double>):Unit>
   }
   final lazy module val CheckedArray: CheckedArray =
     <<<new CheckedArray:CheckedArray>:((): CheckedArray)>():CheckedArray>
   final module class CheckedArray() extends <<<new Object:Object>:((): Object)>(
     ):Object> { this: CheckedArray.type =>
-    def ofDim(size: Pos):
-      CheckedArray with <eparam(0):CheckedArray>.size == size =
+    def ofDim(size: Pos): CheckedArray with <arg(0):CheckedArray>.size == size
+       =
       <
         <
           <<<new CheckedArray:CheckedArray>:((size: Pos): CheckedArray)>(
             <size:Pos>):CheckedArray>
         .asInstanceOf:([X0]: X0)>
-      [CheckedArray with <eparam(0):CheckedArray>.size == size]:
-        CheckedArray with <eparam(0):CheckedArray>.size == size>
+      [CheckedArray with <arg(0):CheckedArray>.size == size]:
+        CheckedArray with <arg(0):CheckedArray>.size == size>
   }
   case class Matrix(width: Dim, height: Dim) extends
     <<<new Object:Object>:((): Object)>():Object>, Product, Serializable {
@@ -40,10 +40,7 @@
     val height: Dim
     private[this] val size: Int =
       <<Matrix.this.width:Dim> * <Matrix.this.height:Dim>:Int>
-    private[this] val data:
-      CheckedArray with <eparam(0):CheckedArray>.size == <?1:
-        Int with <eparam(0):Int> >= 0>
-     =
+    private[this] val data: CheckedArray =
       <
         {
           val $1$: Pos =
@@ -54,22 +51,21 @@
               <
                 <<CheckedArray:CheckedArray>.ofDim:
                   ((size: Pos):
-                    CheckedArray with <eparam(0):CheckedArray>.size == size)
+                    CheckedArray with <arg(0):CheckedArray>.size == size)
                 >
-              (<$1$:Pos>):
-                CheckedArray with (<eparam(0):CheckedArray>.size == $1$)>
-            .$asInstanceOf:([X0]: X0)>
+              (<$1$:Pos>):CheckedArray with (<arg(0):CheckedArray>.size == $1$)>
+              .$asInstanceOf:([X0]: X0)>
           [
-            CheckedArray with <eparam(0):CheckedArray>.size == <?1:
-              Int with <eparam(0):Int> >= 0>
+            CheckedArray with <arg(0):CheckedArray>.size == <?1:
+              Int with <arg(0):Int> >= 0>
           ]:
-            CheckedArray with <eparam(0):CheckedArray>.size == <?1:
-              Int with <eparam(0):Int> >= 0>
+            CheckedArray with <arg(0):CheckedArray>.size == <?1:
+              Int with <arg(0):Int> >= 0>
           >
         }
       :
-        CheckedArray with <eparam(0):CheckedArray>.size == <?1:
-          Int with <eparam(0):Int> >= 0>
+        CheckedArray with <arg(0):CheckedArray>.size == <?1:
+          Int with <arg(0):Int> >= 0>
       >
     def copy(width: Dim, height: Dim): Matrix =
       <<<new Matrix:Matrix>:((width: Dim, height: Dim): Matrix)>(<width:Dim>,
@@ -100,8 +96,8 @@
   final module class qualified-types-lara_issue_1$package() extends <
     <<new Object:Object>:((): Object)>():Object> {
     this: qualified-types-lara_issue_1$package.type =>
-    type Pos = Int with <eparam(0):Int> >= 0
-    type Dim = Int with <eparam(0):Int> >= 0
+    type Pos = Int with <arg(0):Int> >= 0
+    type Dim = Int with <arg(0):Int> >= 0
   }
 }:<empty>.type>
 

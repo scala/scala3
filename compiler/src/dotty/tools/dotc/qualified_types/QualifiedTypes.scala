@@ -51,19 +51,20 @@ object QualifiedTypes:
    */
   val QualifiedTypeCast: Property.StickyKey[Unit] = Property.StickyKey()
 
-  /** Sticky attachment on an argument tree that records the `ENodeParamRef`
-   *  index allocated for its skolemized version inside qualifiers. Used by
-   *  [[substParamInQualifiers]] to preserve identity across re-type-checks
-   *  (typer / posttyper / Ycheck) — the same argTree always maps to the same
-   *  free-variable index, which is the key invariant that makes the EGraph
-   *  recognize "the same unknown" across phases.
+  /** Sticky attachment on an argument tree that records the `ENodeVar`
+   *  (of kind `Skolem`) index allocated for its skolemized version inside
+   *  qualifiers. Used by [[substParamInQualifiers]] to preserve identity
+   *  across re-type-checks (typer / posttyper / Ycheck) — the same argTree
+   *  always maps to the same skolem index, which is the key invariant that
+   *  makes the EGraph recognize "the same unknown" across phases.
    */
   val QualifierSkolemIndex: Property.StickyKey[Int] = Property.StickyKey()
 
   /** Inside any `@qualified` annotation occurring in `tp`, substitute
-   *  the parameter reference `pref` with an `ENodeParamRef` whose index is
-   *  stable across invocations for the same `argTree` (via a sticky attachment).
-   *  The `argType` is used as the underlying type of the new `ENodeParamRef`.
+   *  the parameter reference `pref` with an `ENodeVar` (of kind `Skolem`)
+   *  whose index is stable across invocations for the same `argTree` (via
+   *  a sticky attachment). The `argType` is used as the underlying type of
+   *  the new `ENodeVar`.
    *
    *  If `argTree` is null, `tp` is returned unchanged (the caller will handle
    *  the substitution outside qualifiers separately).
@@ -80,7 +81,7 @@ object QualifiedTypes:
         val i = ctx.base.qualifierSkolemIndexCounter.fresh()
         argTree.putAttachment(QualifierSkolemIndex, i)
         i
-    val replacement = ENodeParamRef(idx)(argType)
+    val replacement = ENodeVar(ENodeVarKind.Skolem, idx)(argType)
     val replaceMap = new TypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
@@ -207,7 +208,7 @@ object QualifiedTypes:
                   report.warning(em"The qualified type $qualifier cannot be checked at runtime", pos)
                 case QualifiedTypesMode.Silent => ()
               res = false
-            case tp: ENodeParamRef if tp.index < 0 =>
+            case tp: ENodeVar if tp.isFree =>
               mode match
                 case QualifiedTypesMode.Error | QualifiedTypesMode.RuntimeChecks =>
                   report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)
