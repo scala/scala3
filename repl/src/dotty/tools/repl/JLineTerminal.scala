@@ -3,6 +3,9 @@ package repl
 
 import scala.language.unsafeNulls
 import scala.io.AnsiColor
+
+import java.io.{InputStream, InterruptedIOException}
+import scala.collection.mutable
 import dotc.core.Contexts.*
 import dotc.parsing.Scanners.Scanner
 import dotc.parsing.Tokens.*
@@ -14,11 +17,17 @@ import org.jline.reader.Parser.ParseContext
 import org.jline.reader.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
+import org.jline.terminal.Attributes
+import org.jline.terminal.Attributes.ControlChar
 import org.jline.terminal.TerminalBuilder
 import org.jline.terminal.Terminal.Signal
 import org.jline.utils.AttributedString
+import org.jline.utils.NonBlockingReader
 
 class JLineTerminal extends java.io.Closeable {
+  private enum InputState:
+    case Wait, Monitor, Closed
+
   private val terminal =
     val builder = TerminalBuilder.builder()
     if System.getenv("TERM") == "dumb" then
@@ -30,7 +39,65 @@ class JLineTerminal extends java.io.Closeable {
       builder.dumb(true)
     builder.build()
 
+  private val originalAttributes = terminal.getAttributes
+  private val noIntr = new Attributes(originalAttributes)
+  noIntr.setControlChar(ControlChar.VINTR, 0)
+  terminal.setAttributes(noIntr)
+  terminal.enterRawMode()
+
   private val history = new DefaultHistory
+  private val userInputHistory = new DefaultHistory
+  private val userInputBytes = mutable.Queue.empty[Int]
+  private var inputState = InputState.Wait
+  private var monitoringThread: Thread | Null = null
+
+  private val userInput = new InputStream {
+    override def read(): Int =
+      readUserInputByte()
+
+    override def read(bytes: Array[Byte], offset: Int, length: Int): Int =
+      if length == 0 then 0
+      else
+        val first = read()
+        if first == -1 then -1
+        else
+          bytes(offset) = first.toByte
+          val copied =
+            synchronized {
+              val extra = math.min(length - 1, userInputBytes.length)
+              var idx = 0
+              while idx < extra do
+                bytes(offset + idx + 1) = userInputBytes.dequeue().toByte
+                idx += 1
+              extra
+            }
+          copied + 1
+  }
+
+  private val userLineReader =
+    LineReaderBuilder
+      .builder()
+      .terminal(terminal)
+      .history(userInputHistory)
+      .parser(new reader.Parser {
+        private class ParsedLine(val inputLine: String, val inputCursor: Int) extends reader.ParsedLine {
+          def word(): String = inputLine
+          def wordCursor(): Int = inputCursor
+          def wordIndex(): Int = 0
+          def words(): java.util.List[String] = java.util.List.of(inputLine)
+          def line(): String = inputLine
+          def cursor(): Int = inputCursor
+        }
+
+        def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine =
+          new ParsedLine(input, cursor)
+      })
+      .build()
+
+  userLineReader.getKeyMaps.get(LineReader.MAIN).bind(
+    new Widget { override def apply(): Boolean = throw new UserInterruptException("") },
+    "\u0003"
+  )
 
   private def magenta(str: String)(using Context) =
     // Deliberately do not use these properties on `Console` to avoid initializing it,
@@ -88,18 +155,110 @@ class JLineTerminal extends java.io.Closeable {
   }
 
   def close(): Unit =
-    terminal.close()
+    signalClosed()
+    monitoringThread match
+      case thread: Thread =>
+        Thread.interrupted() // clear interrupt flag in case user code interrupted this thread
+        thread.join()
+      case _ =>
+    try terminal.setAttributes(originalAttributes)
+    finally terminal.close()
+
+  def userInputStream: InputStream =
+    userInput
+
+  private def waitForMonitoringState(): InputState = synchronized {
+    while inputState == InputState.Wait do wait()
+    inputState
+  }
+
+  private def enqueueInputChar(ch: Int): Unit = synchronized {
+    val bytes = String.valueOf(ch.toChar).getBytes(terminal.encoding())
+    bytes.foreach(b => userInputBytes.enqueue(b & 0xff))
+    notifyAll()
+  }
+
+  private def signalClosed(): Unit = synchronized {
+    inputState = InputState.Closed
+    notifyAll()
+  }
+
+  private def resetUserInputState(): Unit = synchronized {
+    userInputBytes.clear()
+    inputState = InputState.Monitor
+    notifyAll()
+  }
+
+  private def restoreMonitoringAfterUserInput(): Unit = synchronized {
+    if inputState != InputState.Closed then
+      inputState = InputState.Monitor
+    notifyAll()
+  }
+
+  private def readUserInputByte(): Int = {
+    while true do
+      val nextByte =
+        synchronized {
+          if userInputBytes.nonEmpty then Some(userInputBytes.dequeue())
+          else if inputState == InputState.Closed then Some(-1)
+          else
+            inputState = InputState.Wait
+            notifyAll()
+            None
+        }
+
+      nextByte match
+        case Some(value) => return value
+        case None =>
+          try
+            val line = userLineReader.readLine("")
+            val lineBytes = (line + System.lineSeparator()).getBytes(terminal.encoding())
+            synchronized {
+              lineBytes.foreach(b => userInputBytes.enqueue(b & 0xff))
+            }
+          catch
+            case _: EndOfFileException =>
+              return -1
+            case _: UserInterruptException =>
+              throw new InterruptedIOException()
+          finally
+            restoreMonitoringAfterUserInput()
+
+    -1
+  }
 
   /** Execute a block while monitoring for Ctrl-C keypresses.
    *  Calls the handler when Ctrl-C is detected during block execution.
    */
   def withMonitoringCtrlC[T](handler: () => Unit)(block: => T): T = {
-  // If you change Ctrl+C handling in any way, such as by trying to read/peek from stdin for Ctrl+C,
-  // make sure you manually check that reading from, e.g., `Console.in` still works!
-  // Remember that the user can use stdin from code they enter into the REPL, we do not have exclusive access to it.
+    // If you change Ctrl+C handling in any way, make sure you manually check that
+    // reading from both `System.in` and `Console.in` still works in embedded hosts.
     val previousHandler = terminal.handle(Signal.INT, _ => handler())
+    val reader = terminal.reader()
+    resetUserInputState()
+    val thread = new Thread(() =>
+      while waitForMonitoringState() == InputState.Monitor do
+        val ch =
+          try reader.read(100L)
+          catch case _: Exception => -1
+
+        if ch == NonBlockingReader.READ_EXPIRED then ()
+        else if ch == NonBlockingReader.EOF || ch == -1 then signalClosed()
+        else if ch == 3 then handler()
+        else enqueueInputChar(ch)
+    , "REPL-CtrlC-Monitor")
+    monitoringThread = thread
+    thread.setDaemon(true)
+    thread.start()
+
     try block
-    finally terminal.handle(Signal.INT, previousHandler)
+    finally {
+      signalClosed()
+      Thread.interrupted() // clear interrupted flag so join below doesn't explode
+      thread.join()
+      monitoringThread = null
+      terminal.handle(Signal.INT, previousHandler)
+    }
   }
 
   /** Provide syntax highlighting */
