@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@v6
 
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.3
+      - uses: VirtusLab/scala-cli-setup@v1.13
 
       - name: Validate docs sidebars
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
@@ -148,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.11
+      - uses: VirtusLab/scala-cli-setup@v1.13
         with:
           jvm: temurin:17
           apps: sbt
