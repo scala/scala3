@@ -37,7 +37,6 @@ import dotty.tools.dotc.core.Types.{
   NamedType,
   NoPrefix,
   SingletonType,
-  SkolemType,
   TermParamRef,
   TermRef,
   Type,
@@ -360,8 +359,6 @@ final class EGraph(_ctx: Context):
     trace(s"canonicalize ${show(node)}"):
       representant(unique(
         node match
-          case ENode.Atom(tp: TermRef) if tp.prefix.isInstanceOf[SingletonType] =>
-            normalizeSelect(recur(ENode.Atom(tp.prefix.asInstanceOf[SingletonType])), tp.symbol(using _ctx))
           case ENode.Atom(tp) =>
             node
           case ENode.Constructor(sym) =>

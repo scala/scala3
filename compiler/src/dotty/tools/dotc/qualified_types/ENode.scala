@@ -69,7 +69,7 @@ enum ENode extends Showable:
       case Lambda(paramTps, retTp, body) =>
         paramTps.zipWithIndex.forall: (tp, index) =>
           tp match
-            case ENodeParamRef(i, _) => i < index
+            case ENodeParamRef(i) => i < index
             case _ => true
       case _ => true
   )
@@ -92,6 +92,8 @@ enum ENode extends Showable:
           printTp(tp.tref) + ".this"
         case tp: TypeVar =>
           tp.origin.paramName.toString()
+        case tp: ENodeParamRef if tp.index < 0 =>
+          s"(sk${-tp.index}: ${printTp(tp.rawUnderlying)})"
         case tp: ENodeParamRef =>
           s"arg${tp.index}"
         case tp: AppliedType =>
@@ -225,35 +227,17 @@ enum ENode extends Showable:
     ctx.base.qualifiedTypesStats.record("ENode.mapTypes"):
       mapTypesRec(f)
 
-  /** Ensure all prefixes in a TermRef chain are valid (singleton) types.
-   *  Non-singleton prefixes are wrapped in a SkolemType.
-   */
-  private def ensureValidPrefixes(tp: Type)(using Context): Type = tp match
-    case tp: TermRef =>
-      val pre = tp.prefix
-      val pre1 = ensureValidPrefixes(pre)
-      val pre2 = pre1 match
-        case _: SingletonType | _: NoPrefix.type => pre1
-        case _ => SkolemType(pre1)
-      if pre2 eq pre then tp
-      else TermRef(pre2, tp.designator)
-    case _ => tp
-
   private def mapTypesRec(f: Type => Type)(using Context): ENode =
     this match
       case Atom(tp) =>
-        val mappedTp0 =
+        val mappedTp =
           f(tp) match
             case Range(lo, hi) => hi
-            case mappedTp0 => mappedTp0
-        val mappedTp = ensureValidPrefixes(mappedTp0)
-
+            case mappedTp => mappedTp
         if mappedTp eq tp then
           this
         else
-          mappedTp match
-            case mappedTp: SingletonType => Atom(mappedTp)
-            case _ => Atom(SkolemType(mappedTp))
+          ENode.singleton(mappedTp)
       case Constructor(constr) =>
         this
       case node @ Select(qual, member) =>
@@ -367,7 +351,7 @@ enum ENode extends Showable:
   private class SubstEParamsMap(from: Int, to: List[Type])(using Context) extends TypeMap:
     override def apply(tp: Type): Type =
       tp match
-        case ENodeParamRef(i, _) if i >= from && i < from + to.length => to(i - from)
+        case ENodeParamRef(i) if i >= from && i < from + to.length => to(i - from)
         case tp @ AnnotatedType(parent, annot @ QualifiedAnnotation(qualifier)) =>
           // Use substEParamRefs on the qualifier lambda to properly shift
           // de Bruijn indices and avoid substituting bound variables.
@@ -423,19 +407,28 @@ enum ENode extends Showable:
   // Conversion from E-Nodes to Trees
   // -----------------------------------
 
-  /** Like `tpd.singleton`, but produces a placeholder tree for types with
-   *  skolem prefixes (which cannot be represented as real trees). This is
-   *  fine because these trees only appear inside `@qualified` annotations
-   *  where only the type matters.
+  /** Like `tpd.singleton`, but produces a placeholder tree for types that
+   *  contain skolem-originated `ENodeParamRef`s (which cannot be represented
+   *  as real trees). When converting back, `ENodeParamRef`s with negative
+   *  indices are mapped back to the original `SkolemType` instances via the
+   *  per-unit `QualifierSkolemMap`.
+   *
+   *  This is fine because these trees only appear inside `@qualified`
+   *  annotations where only the type matters.
    */
   private def singletonOrPlaceholder(tp: Type)(using Context): tpd.Tree =
-    def hasSkolemPrefix(tp: Type): Boolean = tp match
+    def hasSkolemOrFreeParamRef(tp: Type): Boolean = tp match
       case tp: SkolemType => true
-      case tp: TermRef => hasSkolemPrefix(tp.prefix)
+      case tp: ENodeParamRef => tp.index < 0
+      case tp: TermRef => hasSkolemOrFreeParamRef(tp.prefix)
       case _ => false
     tp.dealias match
-      case tp: SkolemType => tpd.ref(defn.Predef_undefined).withType(tp)
-      case tp: TermRef if hasSkolemPrefix(tp) => tpd.ref(defn.Predef_undefined).withType(tp)
+      case tp: SkolemType =>
+        tpd.ref(defn.Predef_undefined).withType(tp)
+      case tp: ENodeParamRef if tp.index < 0 =>
+        tpd.ref(defn.Predef_undefined).withType(tp)
+      case tp: TermRef if hasSkolemOrFreeParamRef(tp) =>
+        tpd.ref(defn.Predef_undefined).withType(tp)
       case tp => tpd.singleton(tp)
 
   def toTree(paramRefs: List[Type] = Nil)(using Context): tpd.Tree =
@@ -514,6 +507,40 @@ enum ENode extends Showable:
           )
 
 object ENode:
+  /** The types allowed in `Atom` nodes. `SkolemType` is excluded because
+   *  it has identity-based equality; skolems are converted to `ENodeParamRef`
+   *  by the `ENode.singleton` smart constructor.
+   */
+  type AtomType = TermRef | ThisType | ConstantType | TermParamRef | ENodeParamRef | SkolemType
+
+  /** Smart constructor that builds an ENode from a `SingletonType`.
+   *
+   *  - `TermRef`s with non-trivial prefixes are decomposed into
+   *    `Select(singleton(prefix), member)`, so that the prefix is shared
+   *    structurally rather than wrapped in a fresh skolem each time.
+   *  - Leaf types (`ConstantType`, `ThisType`, `TermParamRef`, `ENodeParamRef`,
+   *    `SkolemType`, static `TermRef`s) become `Atom` nodes directly.
+   */
+  def singleton(tp: SingletonType)(using Context): ENode = tp match
+    case tp: TermRef =>
+      val pre = tp.prefix
+      pre match
+        case _: NoPrefix.type => Atom(tp)
+        case _ if tp.symbol.isStatic => Atom(tp.symbol.termRef)
+        case pre: SingletonType => Select(singleton(pre), tp.symbol)
+        case _ =>
+          // Non-singleton prefix: wrap in a fresh skolem and decompose
+          Select(Atom(SkolemType(pre)), tp.symbol)
+    case tp: (ThisType | ConstantType | TermParamRef | ENodeParamRef | SkolemType) => Atom(tp)
+
+  /** Like `singleton`, but for types that may not be `SingletonType`s.
+   *  Non-singleton types are wrapped in a fresh `SkolemType`.
+   */
+  def singleton(tp: Type)(using Context): ENode = tp match
+    case tp: SingletonType => singleton(tp)
+    case _ =>
+      Atom(SkolemType(tp))
+
   private def isEmptyPrefix(tp: Type): Boolean =
     tp match
       case tp: NoPrefix.type =>
@@ -616,7 +643,7 @@ object ENode:
           Some(valBindings(tree.symbol))
         case tpd.Literal(_) | tpd.Ident(_) | tpd.This(_)
             if tree.tpe.isInstanceOf[SingletonType] && tpd.isIdempotentExpr(tree) =>
-          Some(Atom(substParamRefs(tree.tpe, paramSyms, paramTps).asInstanceOf[SingletonType]))
+          Some(singleton(substParamRefs(tree.tpe, paramSyms, paramTps).asInstanceOf[SingletonType]))
         case tpd.Literal(Constant(null)) => // null does not have a SingletonType
           Some(Atom(ConstantType(Constant(null))))
         case tpd.Select(tpd.New(_), nme.CONSTRUCTOR) =>
@@ -741,7 +768,7 @@ object ENode:
 
   def substParamRefs(tp: Type, paramSyms: List[Symbol], paramTps: List[Type])(using Context): Type =
     trace(i"substParamRefs($tp, $paramSyms, $paramTps)", Printers.qualifiedTypes):
-      tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(i, tp)).toList)
+      tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(i)(tp)).toList)
 
   def selfify(tree: tpd.Tree)(using Context): Option[ENode.Lambda] =
     trace(i"ENode.selfify $tree", Printers.qualifiedTypes):
@@ -750,7 +777,7 @@ object ENode:
           Some(ENode.Lambda(
             List(tree.tpe),
             defn.BooleanType,
-            OpApply(ENode.Op.Equal, List(treeNode, ENode.Atom(ENodeParamRef(0, tree.tpe))))
+            OpApply(ENode.Op.Equal, List(treeNode, ENode.Atom(ENodeParamRef(0)(tree.tpe))))
           ))
         case None => None
 
@@ -776,7 +803,7 @@ object ENode:
           tp.symbol.defTree match
             case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>
               fromTree(valDef.rhs) match
-                case Some(treeNode) => OpApply(ENode.Op.Equal, List(treeNode, Atom(tp))) :: assumptions(treeNode)
+                case Some(treeNode) => OpApply(ENode.Op.Equal, List(treeNode, singleton(tp))) :: assumptions(treeNode)
                 case None => Nil
             case _ => Nil
         case _ => Nil
@@ -784,7 +811,7 @@ object ENode:
   private def typeAssumptions(rootTp: SingletonType)(using Context): List[ENode] =
     def selfify(tp: SingletonType): List[ENode] =
       if tp frozen_=:= rootTp then Nil
-      else List(OpApply(ENode.Op.Equal, List(Atom(tp), Atom(rootTp))))
+      else List(OpApply(ENode.Op.Equal, List(singleton(tp), singleton(rootTp))))
     def recPrefix(tp: SingletonType): List[ENode] =
       tp match
         case TermRef(prefix: SingletonType, _) => termAssumptions(tp) ::: typeAssumptions(prefix)
@@ -828,9 +855,9 @@ object ENode:
   // -----------------------------------
 
   extension (n: Atom)
-    def derived(tp: SingletonType): ENode.Atom =
+    def derived(tp: SingletonType)(using Context): ENode =
       if n.tp eq tp then n
-      else ENode.Atom(tp)
+      else ENode.singleton(tp)
 
   extension (n: Constructor)
     def derived(constr: Symbol): ENode.Constructor =
