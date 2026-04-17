@@ -38,6 +38,7 @@ import dotty.tools.dotc.transform.DesugarSpecializedTraits.isImplementationOf
 import dotty.tools.dotc.core.Flags.InlineTrait
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.util.SrcPos
 
 class DesugarSpecializedTraits extends MacroTransform:
 
@@ -353,6 +354,19 @@ class DesugarSpecializedTraits extends MacroTransform:
     override def transform(tree: Tree)(using Context): Tree = tree
        match { // TODO: Is Package level processing really what we want? Given we are not going to output the classes somewhere else do we not really want either to deepFold the whole tree directly or do a more direct transform?
         case pkg@PackageDef(pid, stats) => // TODO: If we do everything ourselves and match only on the package then we can get rid of the MacroTransform aspect and just have a Phase with the transformPackageDef method.
+          
+          def checkType(t: Type, pos: SrcPos) = t.widen.dealias match {
+            case Specialization.SpecializedEvidence(_) => 
+              report.error(s"Only inline traits and inline functions may take Specialized type parameters", pos)
+            case _ =>
+          }
+
+          tree.foreachSubTree { // TODO: This is not particularly efficient
+            case d@DefDef(name, paramss, tpt, preRhs) if d.symbol.isConstructor && !d.symbol.owner.is(Flags.Inline) => d.paramss.flatten.foreach(p => checkType(p.tpe, d.srcPos))
+            case d@DefDef(name, paramss, tpt, preRhs) if !d.symbol.isConstructor && !d.symbol.is(Flags.Inline) => d.paramss.flatten.foreach(p => checkType(p.tpe, d.srcPos))
+            case _ =>
+          }
+          
           val (stats1, _) = transformStatements(stats, tree.span, SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass)) // TODO: Fix span
           cpy.PackageDef(pkg)(pid, stats1)
       }
@@ -533,7 +547,7 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(usi
 end Specialization
 
 object Specialization:
-  private object SpecializedEvidence {
+  object SpecializedEvidence {
     def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
       case AppliedType(tycon, List(tpeArg)) if tycon =:= ctx.definitions.SpecializedClass.typeRef => Some(tpeArg)
       case _ => None
