@@ -17,6 +17,8 @@ import org.jline.reader.Parser.ParseContext
 import org.jline.reader.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
+import org.jline.terminal.Attributes
+import org.jline.terminal.Attributes.ControlChar
 import org.jline.terminal.TerminalBuilder
 import org.jline.terminal.Terminal.Signal
 import org.jline.utils.AttributedString
@@ -40,6 +42,9 @@ class JLineTerminal extends java.io.Closeable {
     builder.build()
 
   private val originalAttributes = terminal.getAttributes
+  private val noIntrAttributes = new Attributes(originalAttributes)
+  noIntrAttributes.setControlChar(ControlChar.VINTR, 0)
+  terminal.setAttributes(noIntrAttributes)
   terminal.enterRawMode()
 
   private val history = new DefaultHistory
