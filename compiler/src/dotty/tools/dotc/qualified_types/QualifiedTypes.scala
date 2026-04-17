@@ -33,9 +33,11 @@ import dotty.tools.dotc.core.Types.{
   ErrorType,
   MethodType,
   OrType,
+  ParamRef,
   SkolemType,
   TermRef,
   Type,
+  TypeMap,
   TypeProxy
 }
 import dotty.tools.dotc.report
@@ -48,6 +50,50 @@ object QualifiedTypes:
    *  conversions that could not be verified statically.
    */
   val QualifiedTypeCast: Property.StickyKey[Unit] = Property.StickyKey()
+
+  /** Sticky attachment on an argument tree that records the `ENodeParamRef`
+   *  index allocated for its skolemized version inside qualifiers. Used by
+   *  [[substParamInQualifiers]] to preserve identity across re-type-checks
+   *  (typer / posttyper / Ycheck) — the same argTree always maps to the same
+   *  free-variable index, which is the key invariant that makes the EGraph
+   *  recognize "the same unknown" across phases.
+   */
+  val QualifierSkolemIndex: Property.StickyKey[Int] = Property.StickyKey()
+
+  /** Inside any `@qualified` annotation occurring in `tp`, substitute
+   *  the parameter reference `pref` with an `ENodeParamRef` whose index is
+   *  stable across invocations for the same `argTree` (via a sticky attachment).
+   *  The `argType` is used as the underlying type of the new `ENodeParamRef`.
+   *
+   *  If `argTree` is null, `tp` is returned unchanged (the caller will handle
+   *  the substitution outside qualifiers separately).
+   *
+   *  The rest of `tp` (outside qualifier annotations) is unchanged; callers
+   *  typically follow up with a normal `substParam(pref, skolem)` for those
+   *  positions.
+   */
+  def substParamInQualifiers(tp: Type, pref: ParamRef, argType: Type, argTree: tpd.Tree | Null)(using Context): Type =
+    if argTree == null || !Feature.qualifiedTypesEnabled then return tp
+    val idx = argTree.getAttachment(QualifierSkolemIndex) match
+      case Some(i) => i
+      case None =>
+        val i = ctx.base.qualifierSkolemIndexCounter.fresh()
+        argTree.putAttachment(QualifierSkolemIndex, i)
+        i
+    val replacement = ENodeParamRef(idx)(argType)
+    val replaceMap = new TypeMap:
+      def apply(t: Type): Type = t match
+        case QualifiedType(parent, qualifier) =>
+          val parent1 = apply(parent)
+          val qualifier1 =
+            val substMap = new TypeMap:
+              def apply(t2: Type): Type =
+                if t2 eq pref then replacement
+                else mapOver(t2)
+            qualifier.mapTypes(substMap).asInstanceOf[ENode.Lambda]
+          QualifiedType(parent1, qualifier1)
+        case _ => mapOver(t)
+    replaceMap(tp)
 
   /** Does the type `tp1` imply the qualifier `qualifier2`?
    *
@@ -154,6 +200,14 @@ object QualifiedTypes:
         qualifier.foreachType: rootTp =>
           rootTp.foreachPart:
             case tp: SkolemType =>
+              mode match
+                case QualifiedTypesMode.Error | QualifiedTypesMode.RuntimeChecks =>
+                  report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)
+                case QualifiedTypesMode.Warn =>
+                  report.warning(em"The qualified type $qualifier cannot be checked at runtime", pos)
+                case QualifiedTypesMode.Silent => ()
+              res = false
+            case tp: ENodeParamRef if tp.index < 0 =>
               mode match
                 case QualifiedTypesMode.Error | QualifiedTypesMode.RuntimeChecks =>
                   report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)

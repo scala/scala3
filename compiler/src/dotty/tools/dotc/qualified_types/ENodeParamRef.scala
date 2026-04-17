@@ -15,9 +15,17 @@ import dotty.tools.dotc.core.Types.{CachedProxyType, SingletonType, Type}
  *    for free variables
  *  @param underlying Underlying type of the argument
  */
-final case class ENodeParamRef(index: Int, underlying: Type) extends CachedProxyType, SingletonType:
-  override def underlying(using Context): Type = underlying
-  override def computeHash(bs: Binders): Int = doHash(bs, index, underlying)
+final case class ENodeParamRef(index: Int)(_underlying: Type) extends CachedProxyType, SingletonType:
+  override def underlying(using Context): Type = _underlying
+
+  /** The underlying type without requiring a Context. Used when we need to
+   *  inspect the type for printing or for deriving a new ENodeParamRef. */
+  def rawUnderlying: Type = _underlying
+
+  override def computeHash(bs: Binders): Int = doHash(index)
+  override def equals(that: Any): Boolean = that match
+    case that: ENodeParamRef => this.index == that.index
+    case _ => false
   def derivedENodeParamRef(index: Int, underlying: Type): ENodeParamRef =
-    if index == this.index && (underlying eq this.underlying) then this
-    else ENodeParamRef(index, underlying)
+    if index == this.index && (underlying eq _underlying) then this
+    else ENodeParamRef(index)(underlying)

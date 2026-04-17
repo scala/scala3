@@ -934,6 +934,15 @@ object Contexts {
     /** Qualified types stats, initialized in `initialize()`. */
     var qualifiedTypesStats: qualified_types.QualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = false)
 
+    /** Per-run counter for allocating unique negative `ENodeParamRef`
+     *  indices used to represent argument references inside qualifiers.
+     *  Indices are stored in a sticky attachment on the argument tree
+     *  (see `QualifiedTypes.QualifierSkolemIndex`) so they stay stable
+     *  across re-type-checks. Reset in `initialize()` to avoid stale
+     *  entries across runs.
+     */
+    var qualifierSkolemIndexCounter: qualified_types.QualifierSkolemIndexCounter = qualified_types.QualifierSkolemIndexCounter()
+
     /** The standard definitions */
     val definitions: Definitions = new Definitions
 
@@ -952,6 +961,7 @@ object Contexts {
         _platform = newPlatform
       platform.init()
       qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
+      qualifierSkolemIndexCounter = qualified_types.QualifierSkolemIndexCounter()
       definitions.init()
     }
 

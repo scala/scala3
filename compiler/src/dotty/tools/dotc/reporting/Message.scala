@@ -216,7 +216,8 @@ object Message:
             else "is"
           s"$relation ${ref.descr}"
         case ENodeParamRefEntry(ref, _) =>
-          s"is a lambda parameter of type ${ref.underlying.show}"
+          if ref.index >= 0 then s"is a lambda parameter of type ${ref.underlying.show}"
+          else s"is a free variable of type ${ref.underlying.show}"
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
@@ -285,7 +286,7 @@ object Message:
 
     override def enodeLambdaParamName(paramIndex: Int, paramTp: Type): Text =
       if seen.isActive then
-        val entry = ENodeParamRefEntry(qualified_types.ENodeParamRef(paramIndex, paramTp), enodeLambdaDepth - paramIndex)
+        val entry = ENodeParamRefEntry(qualified_types.ENodeParamRef(paramIndex)(paramTp), enodeLambdaDepth - paramIndex)
         seen.record("x", isType = false, entry)
       else
         super.enodeLambdaParamName(paramIndex, paramTp)
