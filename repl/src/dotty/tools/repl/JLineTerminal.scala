@@ -47,14 +47,12 @@ class JLineTerminal extends java.io.Closeable {
   terminal.enterRawMode()
 
   private val history = new DefaultHistory
-  private val userInputHistory = new DefaultHistory
   @volatile private var monitoringThread: Thread | Null = null
 
   private val userLineReader =
     LineReaderBuilder
       .builder()
       .terminal(terminal)
-      .history(userInputHistory)
       .parser(new reader.Parser {
         private class ParsedLine(val inputLine: String, val inputCursor: Int) extends reader.ParsedLine {
           def word(): String = inputLine
