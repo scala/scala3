@@ -36,7 +36,7 @@ class SIP67Tests extends DottyTest:
       sealed trait Foo
 
       object Foo:
-        case object Bar extends Foo
+        object Bar extends Foo
 
       val _ =
         (??? : Foo) match

@@ -1074,7 +1074,7 @@ trait Implicits:
     || locally:
       if strictEquality then
         strictEqualityPatternMatching &&
-          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) &&
+          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
           ltp <:< lift(rtp)
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
