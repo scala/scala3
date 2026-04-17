@@ -30,7 +30,7 @@ class QualifierSolver(using Context):
     // free variables (negative-index ENodeParamRefs), akin to the opening
     // operation in locally-nameless representations. This ensures the shared
     // free variables are never confused with bound variables in nested lambdas.
-    val paramRefs = mostPreciseNode.paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(-i - 1, tp))
+    val paramRefs = mostPreciseNode.paramTps.zipWithIndex.map((tp, i) => ENodeParamRef(-i - 1)(tp))
     impliesRec(node1.body.substEParamRefs(0, paramRefs), node2.body.substEParamRefs(0, paramRefs))
 
   private def impliesRec(node1: ENode, node2: ENode): Boolean =
