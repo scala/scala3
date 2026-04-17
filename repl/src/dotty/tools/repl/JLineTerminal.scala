@@ -5,7 +5,6 @@ import scala.language.unsafeNulls
 import scala.io.AnsiColor
 
 import java.io.{InputStream, InterruptedIOException}
-import scala.collection.mutable
 import dotc.core.Contexts.*
 import dotc.parsing.Scanners.Scanner
 import dotc.parsing.Tokens.*
@@ -287,13 +286,21 @@ class JLineTerminal extends java.io.Closeable {
   }
 }
 
+/** A `System.in` wrapper that lets the REPL monitor raw terminal input for Ctrl-C
+ *  without stealing bytes from user code reading from `System.in` / `Console.in`.
+ *
+ *  The monitor thread peeks at terminal input while REPL code is running. Any
+ *  non-Ctrl-C input it sees is buffered here so later `read()` calls from user
+ *  code observe the same bytes instead of losing them to the monitor.
+ */
 private final class UserInputStream(
   userLineReader: LineReader,
   encoding: java.nio.charset.Charset
 ) extends InputStream {
-  private val bytes = mutable.Queue.empty[Byte]
+  private var bytes = new Array[Byte](16)
+  private var byteCount = 0
   private var state = InputState.ForegroundRead
-
+ 
   /** Blocks until the state is no longer ForegroundRead. Returns the active state. */
   def waitUntilActive(): InputState = synchronized {
     while state == InputState.ForegroundRead do wait()
@@ -302,8 +309,7 @@ private final class UserInputStream(
 
   def enqueueChar(ch: Int): Unit = synchronized {
     val encoded = String.valueOf(ch.toChar).getBytes(encoding)
-    encoded.foreach(bytes.enqueue(_))
-    notifyAll()
+    enqueueBytes(encoded)
   }
 
   def signalClosed(): Unit = synchronized {
@@ -312,7 +318,7 @@ private final class UserInputStream(
   }
 
   def startMonitoring(): Unit = synchronized {
-    bytes.clear()
+    byteCount = 0
     state = InputState.Monitoring
     notifyAll()
   }
@@ -324,24 +330,41 @@ private final class UserInputStream(
   }
 
   private def enqueueBytes(data: Array[Byte]): Unit = synchronized {
-    data.foreach(bytes.enqueue(_))
+    ensureCapacity(byteCount + data.length)
+    Array.copy(data, 0, bytes, byteCount, data.length)
+    byteCount += data.length
   }
 
   private def pollByte(): Option[Int] = synchronized {
-    if bytes.nonEmpty then Some(bytes.dequeue() & 0xff)
+    if byteCount > 0 then
+      val value = bytes(0) & 0xff
+      removePrefix(1)
+      Some(value)
     else if state == InputState.Closed then Some(-1)
     else
       state = InputState.ForegroundRead
-      notifyAll()
       None
   }
 
   private def drainTo(buf: Array[Byte], offset: Int, maxLen: Int): Int = synchronized {
-    val n = math.min(maxLen, bytes.length)
-    for i <- 0 until n do
-      buf(offset + i) = bytes.dequeue()
+    val n = math.min(maxLen, byteCount)
+    Array.copy(bytes, 0, buf, offset, n)
+    removePrefix(n)
     n
   }
+
+  private def ensureCapacity(required: Int): Unit =
+    if required > bytes.length then
+      var newSize = bytes.length
+      while newSize < required do newSize *= 2
+      val newBytes = new Array[Byte](newSize)
+      Array.copy(bytes, 0, newBytes, 0, byteCount)
+      bytes = newBytes
+
+  private def removePrefix(n: Int): Unit =
+    byteCount -= n
+    if byteCount > 0 then
+      Array.copy(bytes, n, bytes, 0, byteCount)
 
   private def readUserInputByte(): Int = {
     while true do
