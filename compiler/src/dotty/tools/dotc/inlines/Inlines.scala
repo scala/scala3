@@ -27,6 +27,10 @@ import util.Spans.{Span, spanCoord}
 import dotty.tools.dotc.core.Periods.PhaseId
 import dotty.tools.dotc.util.chaining.*
 import NameOps.expandedName
+import dotty.tools.dotc.core.Annotations.ConcreteBodyAnnotation
+import dotty.tools.dotc.core.Annotations.LazyBodyAnnotation
+import dotty.tools.dotc.core.Scopes.EmptyScope
+import dotty.tools.dotc.core.Scopes.MutableScope
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -284,9 +288,9 @@ object Inlines:
 
   def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
     cls match {
-      case cls @ tpd.TypeDef(_, impl: Template) if cls.symbol.owner.ownersIterator.exists(_.isInlineTrait) => // TODO: We can relax this if we use a seen list to avoid cycles
-        report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
-        cls
+      // case cls @ tpd.TypeDef(_, impl: Template) if cls.symbol.owner.ownersIterator.exists(_.isInlineTrait) => // TODO: We can relax this if we use a seen list to avoid cycles
+      //   report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
+      //   cls
       case cls @ tpd.TypeDef(_, impl: Template) =>
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val newDefs = inContext(ctx.withOwner(cls.symbol)) {
@@ -941,8 +945,46 @@ object Inlines:
       if rhs.isEmpty then
         rhs
       else
+
+        val symbolMap = mutable.Map[Symbol, Symbol]()
         // TODO make version of inlined that does not return bindings?
-        Inlined(tpd.ref(parentSym), Nil, inlined(rhs)._2).withSpan(parent.span)
+        val rhs1 = Inlined(tpd.ref(parentSym), Nil, inlined(rhs)._2).withSpan(parent.span)
+        val ttmap = TreeTypeMap(treeMap = {
+          case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) => 
+            val newSym = tree.symbol.copy()
+            newSym.info = ClassInfo(tree.symbol.owner.thisType, newSym.asClass, tree.symbol.asClass.parentTypes, Scopes.newScope)
+
+            val newConstructorSymbol = tree.symbol.primaryConstructor.copy(owner = newSym)
+            val rt = newSym.typeRef.appliedTo(newSym.typeParams.map(_.typeRef))
+            def resultType(tpe: Type): Type = tpe match {
+                case mt @ MethodType(paramNames) => mt.derivedLambdaType(paramNames, mt.paramInfos, rt)
+                case pt : PolyType => pt.derivedLambdaType(pt.paramNames, pt.paramInfos, resultType(pt.resType))
+            }
+            newConstructorSymbol.info = resultType(newConstructorSymbol.info)
+            newConstructorSymbol.info = PolyType.fromParams(newConstructorSymbol.owner.typeParams, newConstructorSymbol.info)
+
+            val childSyms = tree.symbol.info.decls
+              .filter(sym => tmpl.body.exists(vddef => vddef.symbol == sym))
+              .map(_.copy(owner = newSym))
+            childSyms.foreach(p => p.entered)
+            newConstructorSymbol.entered
+
+            val tmpl1 = tmpl.changeOwner(tree.symbol, newSym)
+
+            val rhsFun: List[List[Tree]] => Tree =
+              paramss =>
+                val oldParamSyms = tmpl1.constr.paramss.flatten.map(_.symbol)
+                val newParamSyms = paramss.flatten.map(_.symbol)
+                tmpl1.constr.rhs.subst(oldParamSyms, newParamSyms)
+
+            val ctor = tpd.DefDef(newConstructorSymbol.asTerm, rhsFun)
+            symbolMap(tree.symbol) = newSym
+            tpd.ClassDefWithParents(newSym.asClass, ctor, tmpl1.parents, tmpl1.body)
+          case tree => tree
+        })
+
+        val rhs2 = ttmap(rhs1)
+        TreeTypeMap(substFrom = symbolMap.keys.toList, substTo = symbolMap.values.toList)(rhs2)
 
     private class ParamAccessorsMapper:
       private val paramAccessorsTrees: mutable.Map[Symbol, Map[Name, Tree]] = mutable.Map.empty
