@@ -1,0 +1,32 @@
+[[syntax trees at end of                     typer]] // tests/printing/qualified-types-avoidance.scala
+package example {
+  final lazy module val qualified-types-avoidance$package:
+    example.qualified-types-avoidance$package =
+    new example.qualified-types-avoidance$package()
+  final module class qualified-types-avoidance$package() extends Object() {
+    this: example.qualified-types-avoidance$package.type =>
+    def id(x: Int): Int @qualified[Int]((r: Int) => r == x) =
+      runtimeChecked[Int](x)
+    def impure(): Int = 42
+    def test(): Int =
+      {
+        val c: Int =
+          {
+            val $1$: Int = example.impure()
+            example.id($1$).$asInstanceOf[Int with arg(0) == ?1]
+          }
+        val d: Int =
+          {
+            val u: Int = example.impure()
+            example.id(u).$asInstanceOf[Int with arg(0) == ?2]
+          }
+        def inferred(): Int =
+          {
+            val $2$: Int = example.impure()
+            example.id($2$).$asInstanceOf[Int with arg(0) == ?3]
+          }
+        c + d + inferred()
+      }
+  }
+}
+
