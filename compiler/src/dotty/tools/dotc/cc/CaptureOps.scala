@@ -916,11 +916,21 @@ class CleanupRetains(using Context) extends TypeMap:
   // would be orphan, so we still erase their retains to `Nothing`.
   private var binders: List[LambdaType] = Nil
 
-  // A retained element is preserved iff it is a TypeParamRef, it derives
-  // from CapSet, and its binder is enclosed by this traversal.
+  // A retained element is preserved when it references a capture-set type
+  // parameter that is still in scope for the type we are cleaning — either:
+  //  - A TypeParamRef whose binder lambda is inside the current traversal; or
+  //  - A TypeRef whose symbol is a type parameter of an enclosing anonymous
+  //    function (e.g. the outer `[C^]` of a curried poly lambda value, when
+  //    processing the tpt of the nested inner closure).
+  // Refs to type params of named enclosing methods are deliberately NOT
+  // preserved here — they match the pre-existing CleanupRetains behavior
+  // (otherwise existing neg/pos tests change semantics).
   private def isLocalCapSetParam(tp: Type): Boolean = tp match
     case ref: TypeParamRef =>
       ref.derivesFromCapSet && binders.contains(ref.binder)
+    case ref: TypeRef if ref.derivesFromCapSet =>
+      val sym = ref.symbol
+      sym.isType && sym.owner.isAnonymousFunction
     case _ => false
 
   def apply(tp: Type): Type = tp match
