@@ -283,9 +283,10 @@ trait TypeAssigner {
    *
    *  When `argTree` is provided and skolemization is needed, occurrences of
    *  `pref` inside `@qualified` annotations are first replaced with a stable
-   *  `ENodeParamRef` whose index is attached to `argTree` (so the same index
-   *  is reused across re-type-checks). The remaining occurrences (outside
-   *  qualifiers) are substituted with the fresh `SkolemType` as before.
+   *  `ENodeVar` (of kind `Skolem`) whose index is attached to `argTree` (so
+   *  the same index is reused across re-type-checks). The remaining
+   *  occurrences (outside qualifiers) are substituted with the fresh
+   *  `SkolemType` as before.
    */
   def safeSubstParam(tp: Type, pref: ParamRef, argType: Type,
       recordSkolem: (SkolemType => Unit) | Null = null,
