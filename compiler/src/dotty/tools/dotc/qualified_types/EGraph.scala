@@ -412,16 +412,17 @@ final class EGraph(_ctx: Context):
     fn match
       case ENode.Lambda(paramTps, _, body) if args.length == paramTps.length =>
         // Lambda paramTps are in reverse (de Bruijn) order: index 0 = last
-        // source parameter. Reverse args so that ENodeParamRef(i) maps to
-        // the correct Apply argument.
+        // source parameter. Reverse args so that ENodeVar(BoundParam, i) maps
+        // to the correct Apply argument.
         val reversedArgs = args.reverse
         // depth tracks how many inner-lambda params are in scope,
-        // so that outer ENodeParamRef indices are shifted accordingly.
+        // so that outer bound-param indices are shifted accordingly.
         def subst(node: ENode, depth: Int = 0): ENode =
           canonicalize(
             node match
-              case ENode.Atom(ref: ENodeParamRef) if ref.index >= depth && ref.index - depth < reversedArgs.length =>
-                reversedArgs(ref.index - depth)
+              case ENode.Atom(ENodeVar(ENodeVarKind.BoundParam, i))
+                  if i >= depth && i - depth < reversedArgs.length =>
+                reversedArgs(i - depth)
               case ENode.Atom(_) => node
               case ENode.Constructor(_) => node
               case ENode.Select(qual, member) =>

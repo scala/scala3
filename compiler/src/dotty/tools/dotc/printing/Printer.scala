@@ -22,7 +22,7 @@ abstract class Printer {
   private var prec: Precedence = GlobalPrec
 
   /** Current nesting depth of ENode.Lambda nodes during printing.
-   *  Used to compute binding levels for ENodeParamRef disambiguation.
+   *  Used to compute binding levels for ENodeVar disambiguation.
    */
   var enodeLambdaDepth: Int = 0
 
