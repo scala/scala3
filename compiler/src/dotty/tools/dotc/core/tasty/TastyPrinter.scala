@@ -214,7 +214,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       sb.append(s"  lines: ${lineSizes.length}\n")
       sb.append(s"  line sizes:\n")
       val windowSize = 20
-      for window <-posUnpickler.lineSizes.sliding(windowSize, windowSize) do
+      for window <- lineSizes.sliding(windowSize, windowSize) do
         sb.append("     ").append(window.mkString(", ")).append("\n")
       // sb.append(posUnpickler.lineSizes.mkString("  line sizes: ", ", ", "\n"))
       sb.append("  positions:\n")
