@@ -820,12 +820,8 @@ object TreeChecker {
       // Accept NoType <:< NoType as true
       assert((tp1 eq tp2) || (tp1 <:< tp2), {
         val mismatch = TypeMismatch(tp1, tp2, None)
-        val posStr =
-          val sp = tree.srcPos.sourcePos
-          if sp.exists then s"${sp.source}:${sp.line + 1}:${sp.column + 1}"
-          else "<no position>"
         i"""|Type Mismatch (while checking $step):
-            |Position: $posStr
+            |Position: ${tree.srcPos.sourcePos.showLineColumn}
             |${mismatch.message}${mismatch.explanation}
             |tree = $tree ${tree.className}""".stripMargin
       })
