@@ -281,33 +281,42 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   /** populated when this run needs to write pipeline TASTy files. */
   def asyncTasty: Option[AsyncTastyHolder] = _asyncTasty
 
-  private def initializeAsyncTasty()(using Context): () => Unit =
+  private def initializeAsyncTasty()(using Context): Unit =
     // should we provide a custom ExecutionContext?
     // currently it is just used to call the `apiPhaseCompleted` and `dependencyPhaseCompleted` callbacks in Zinc
     import scala.concurrent.ExecutionContext.Implicits.global
-    val async = AsyncTastyHolder.init
-    _asyncTasty = Some(async)
-    () => async.cancel()
+    _asyncTasty = Some(AsyncTastyHolder.init)
 
   /** Wait for async TASTy operations (including Zinc callbacks like
    *  `apiPhaseCompleted`/`dependencyPhaseCompleted`) to complete and relay any
    *  buffered reports. This must happen before we return to Zinc, which calls
    *  `getCycleResultOnce` immediately after. See scala/scala3#25774.
+   *
+   *  On errors, cancels any pending async work first so this method does not block
+   *  (e.g. if the write task was never scheduled because Pickler failed early).
    */
   private def syncAsyncTasty()(using Context): Unit =
-    for
-      async <- _asyncTasty
-      bufferedReporter <- async.sync()
-      report <- bufferedReporter.resetReports()
-    do
-      import reporting.Diagnostic
-      report match
-        case FileWriters.Report.Error(msg, pos) =>
-          ctx.reporter.report(Diagnostic.Error(msg(ctx), pos))
-        case FileWriters.Report.Warning(msg, pos) =>
-          ctx.reporter.report(Diagnostic.Warning(msg(ctx), pos))
-        case FileWriters.Report.Log(msg) =>
-          ctx.reporter.report(Diagnostic.Info(msg, NoSourcePosition))
+    for async <- _asyncTasty do
+      // If compilation failed, the executor thread's write task may never have been
+      // scheduled — cancel to resolve the pending promise and unblock sync().
+      // On success, do NOT cancel: the executor thread must complete so that
+      // apiPhaseCompleted is called and Zinc can start downstream projects early.
+      // See scala/scala3#25797.
+      if ctx.reporter.hasErrors then
+        async.cancel()
+
+      for
+        bufferedReporter <- async.sync()
+        report <- bufferedReporter.resetReports()
+      do
+        import reporting.Diagnostic
+        report match
+          case FileWriters.Report.Error(msg, pos) =>
+            ctx.reporter.report(Diagnostic.Error(msg(ctx), pos))
+          case FileWriters.Report.Warning(msg, pos) =>
+            ctx.reporter.report(Diagnostic.Warning(msg(ctx), pos))
+          case FileWriters.Report.Log(msg) =>
+            ctx.reporter.report(Diagnostic.Info(msg, NoSourcePosition))
 
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
@@ -433,13 +442,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
-    val cancelAsyncTasty: () => Unit =
-      if !myAsyncTastyWritten && Phases.picklerPhase.exists && !ctx.settings.XearlyTastyOutput.isDefault then
-        initializeAsyncTasty()
-      else () => {}
+    if !myAsyncTastyWritten && Phases.picklerPhase.exists && !ctx.settings.XearlyTastyOutput.isDefault then
+      initializeAsyncTasty()
 
     showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
-    cancelAsyncTasty()
     syncAsyncTasty()
 
     suppressions.runFinished()
