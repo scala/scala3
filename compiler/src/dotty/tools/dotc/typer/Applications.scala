@@ -332,14 +332,7 @@ object Applications {
   end UnapplyArgs
 
   def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
-    if (defs != null && defs.nonEmpty)
-      val stats = defs.toList
-      val avoided = TypeOps.avoid(tree.tpe, stats.map(_.symbol))
-      val expr =
-        if (avoided ne tree.tpe) && avoided.isValueType then tree.cast(TypeTree(avoided, inferred = true))
-        else tree
-      tpd.Block(stats, expr)
-    else tree
+    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
   /** Optionally, if `sym` is a symbol created by `resolveMapped`, i.e. representing
    *  a mapped alternative, the original prefix of the alternative and the number of
@@ -1129,7 +1122,7 @@ trait Applications extends Compatibility {
     protected def argToTree(arg: Tree): Tree | Null = arg
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
-    protected var liftedDefs: mutable.ListBuffer[Tree] | Null = null
+    private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
     private var myNormalizedFun: Tree = fun
     init()
 
@@ -1287,60 +1280,8 @@ trait Applications extends Compatibility {
     app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto,
     resultType: Type)(using Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
-
-    import qualified_types.{QualifiedType, QualifiedTypes}
-
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg =
-      proto.typedArg(arg, formal)
-
-    /** The set of parameter indices whose arguments need to be lifted to val
-     *  defs because they are referred to (via TermParamRef) from a qualifier
-     *  in another parameter type or the result type, or because their own
-     *  type contains a qualifier (self-referencing case).
-     *  Empty when qualified types are not enabled.
-     */
-    private lazy val qualifiedArgsToLift: immutable.BitSet =
-      methType match
-        case mt: MethodType if Feature.qualifiedTypesEnabled =>
-          val refs = new mutable.BitSet
-          // Collect TermParamRefs that appear inside qualifiers.
-          def collectFromType(tp: Type): Unit =
-            tp.foreachPart:
-              case QualifiedType(_, qualifier) =>
-                qualifier.foreachType: tp =>
-                  tp.foreachPart:
-                    case TermParamRef(`mt`, n) => refs += n
-                    case _ =>
-              case _ => ()
-          for (info, i) <- mt.paramInfos.zipWithIndex do
-            // If a param's own type has a qualifier, it needs to be stable.
-            if QualifiedTypes.containsQualifier(info) then
-              refs += i
-            collectFromType(info)
-          // Only inspect the immediate result type; nested MethodType/PolyType
-          // results belong to subsequent parameter lists and will be handled
-          // by their own ApplyToUntyped instance.
-          if !mt.resultType.isInstanceOf[LambdaType] then
-            collectFromType(mt.resultType)
-          refs.toImmutable
-        case _ =>
-          immutable.BitSet.empty
-
-    override protected def maybeLiftQualifiedArg(arg: Tree, n: Int): Tree =
-      if qualifiedArgsToLift.contains(n) && !isInAnnotationDeep then
-        if liftedDefs == null then liftedDefs = new mutable.ListBuffer[Tree]
-        LiftUnstable.lift(liftedDefs.nn, arg)
-      else
-        arg
-
-    /** Check if any enclosing context has `Mode.InAnnotation` set. This is
-     *  needed because `FunProto.typedArg` retracts `InAnnotation`, so the
-     *  current context may not have it even when we are inside an annotation.
-     */
-    private def isInAnnotationDeep(using ctx: Context): Boolean =
-      ctx != null && (ctx.mode.is(Mode.InAnnotation)
-      || (ctx.outer ne ctx) && isInAnnotationDeep(using ctx.outer))
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
