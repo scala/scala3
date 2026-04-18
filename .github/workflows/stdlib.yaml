@@ -357,7 +357,10 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Run SBT scripted tests
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
+        run: |
+          for i in $(seq 1 50); do
+            ./project/scripts/sbt scala3-bootstrapped/scripted
+          done
 
   community_build_a:
     runs-on: ubuntu-latest
