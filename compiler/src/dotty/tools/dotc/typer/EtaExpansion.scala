@@ -58,7 +58,7 @@ abstract class Lifter {
   protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
     ref(lifted.termRef)
 
-  private[typer] def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
@@ -194,9 +194,6 @@ class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
 }
 object LiftComplex extends LiftComplex
-
-object LiftUnstable extends Lifter:
-  def noLift(expr: tpd.Tree)(using Context): Boolean = expr.tpe.isStable
 
 
 /** Lifter for eta expansion */
