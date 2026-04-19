@@ -461,8 +461,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: qualified_types.ENodeVar =>
         val kindPrefix = tp.kind match
           case qualified_types.ENodeVarKind.BoundParam => "arg"
-          case qualified_types.ENodeVarKind.OpenedParam => "op"
-          case qualified_types.ENodeVarKind.Skolem => "sk"
+          case qualified_types.ENodeVarKind.OpenedParam => "openedArg"
+          case qualified_types.ENodeVarKind.Skolem => "skolem"
         if ctx.settings.XprintTypes.value then
           "<" ~ kindPrefix ~ "(" ~ tp.index.toString ~ "):" ~ toText(tp.rawUnderlying) ~ ">"
         else
