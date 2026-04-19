@@ -114,6 +114,7 @@ class Compiler {
          new ParamForwarding,        // Add forwarders for aliases of superclass parameters
          new TupleOptimizations,     // Optimize generic operations on tuples
          new LetOverApply,           // Lift blocks from receivers of applications
+         qualified_types.LiftArgs(), // Lift arguments appearing in runtime checks of qualified types
          new ArrayConstructors,      // Intercept creation of (non-generic) arrays and intrinsify.
          new SimplifySynchronized) ::// Simplify `synchronized` blocks when they surround a method body
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
