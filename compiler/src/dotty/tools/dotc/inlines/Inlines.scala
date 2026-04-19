@@ -296,7 +296,7 @@ object Inlines:
         val newDefs = inContext(ctx.withOwner(cls.symbol)) {
           inlineTraitAncestors(cls).foldLeft((List.empty[Tree], impl.body)){
             case ((inlineDefs, childDefs), parent) =>
-              if cls.symbol.ownersIterator.contains(parent.symbol) then
+              if cls.symbol.ownersIterator.contains(symbolFromParent(parent)) then
                 // TODO: This appears at the inline trait D line rather than the line corresponding to the inlining - should we be worried ? 
                 report.error("Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.", cls.sourcePos)
                 (inlineDefs, childDefs)
