@@ -192,6 +192,9 @@ class LiftComplex extends Lifter {
 }
 object LiftComplex extends LiftComplex
 
+object LiftUnstable extends Lifter:
+  def noLift(expr: tpd.Tree)(using Context): Boolean = expr.tpe.isStable
+
 
 /** Lifter for eta expansion */
 object EtaExpansion extends LiftImpure {

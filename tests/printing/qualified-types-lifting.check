@@ -1,18 +1,3 @@
--- [E008] Not Found Error: tests/printing/qualified-types-lifting.scala:15:26 --
-15 |  greaterThan(impure(), 3.runtimeChecked)
-   |                        ^^^^^^^^^^^^^^^^
-   |value runtimeChecked is not a member of Int.
-   |An extension method was tried, but could not be fully constructed:
-   |
-   |    runtimeChecked[Int](3)
-   |
-   |    failed with:
-   |
-   |        The qualified type (x: Int) => x > x² cannot be checked at runtime
-   |        
-   |        where:    x  is a lambda parameter of type Int
-   |                  x² is a free variable of type Int
-   |        
 [[syntax trees at end of                     typer]] // tests/printing/qualified-types-lifting.scala
 package example {
   final lazy module val qualified-types-lifting$package:
@@ -35,14 +20,21 @@ package example {
     def impure(): Int = 42
     def test(): Unit =
       {
-        example.greaterThan(example.impure(), 3.runtimeChecked)
+        example.greaterThan(example.impure(),
+          {
+            val ev$2: Int = runtimeChecked[Int](3)
+            if ev$2.isInstanceOf[Int with arg(0) > skolem(1)] then
+              ev$2.asInstanceOf[Int with arg(0) > skolem(1)] else
+              throw new IllegalArgumentException()
+          }
+        )
         example.qualifiedResult(example.impure(), 3)
         example.noQualifier(example.impure(), 3)
         example.qualifiedSelf(
           {
-            val ev$2: Int = runtimeChecked[Int](example.impure())
-            if ev$2.isInstanceOf[Int with arg(0) > 0] then
-              ev$2.asInstanceOf[Int with arg(0) > 0] else
+            val ev$3: Int = runtimeChecked[Int](example.impure())
+            if ev$3.isInstanceOf[Int with arg(0) > 0] then
+              ev$3.asInstanceOf[Int with arg(0) > 0] else
               throw new IllegalArgumentException()
           }
         )

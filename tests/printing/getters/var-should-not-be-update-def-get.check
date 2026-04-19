@@ -1,4 +1,4 @@
-[[syntax trees at end of MegaPhase{pruneErasedDefs, uninitialized, inlinePatterns, vcInlineMethods, seqLiterals, intercepted, getters, specializeFunctions, specializeTuples, collectNullableFields, elimOuterSelect, resolveSuper, functionXXLForwarders, paramForwarding, genericTuples, letOverApply, arrayConstructors}]] // tests/printing/getters/var-should-not-be-update-def-get.scala
+[[syntax trees at end of MegaPhase{pruneErasedDefs, uninitialized, inlinePatterns, vcInlineMethods, seqLiterals, intercepted, getters, specializeFunctions, specializeTuples, collectNullableFields, elimOuterSelect, resolveSuper, functionXXLForwarders, paramForwarding, genericTuples, letOverApply, liftArgsInRuntimeQualifiers, arrayConstructors}]] // tests/printing/getters/var-should-not-be-update-def-get.scala
 package <empty> {
   import scala.language.experimental.captureChecking
   trait Foo() extends Object, scala.caps.Mutable {
