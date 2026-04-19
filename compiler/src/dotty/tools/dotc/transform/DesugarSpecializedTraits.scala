@@ -307,7 +307,7 @@ class DesugarSpecializedTraits extends MacroTransform:
             val bridgeMethods = impl.body.collect {
               case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && isMapped(ddef.symbol.info) => 
                 // Any callers of the original method will have been redirected to the bridge method because it has a signature match with the method they were calling            
-                val x = cpy.DefDef(ddef)(
+                val ddef2 = cpy.DefDef(ddef)(
                   rhs=
                     This(impl.symbol.owner.asClass).select(ddef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
                     .appliedToArgss(
@@ -315,10 +315,10 @@ class DesugarSpecializedTraits extends MacroTransform:
                         params => params.map(p => 
                           ref(p.symbol).cast(mapType(p.symbol.info)))
                       )
-                    ).cast(mapType(ddef.symbol.localReturnType))
+                    ).cast(ddef.symbol.localReturnType)
                 )
-                x.symbol.rawParamss = x.paramss.nestedMap(_.symbol)
-                x
+                ddef2.symbol.rawParamss = ddef2.paramss.nestedMap(_.symbol)
+                ddef2
                 
               case vdef: ValDef if vdef.symbol.allOverriddenSymbols.nonEmpty && isMapped(vdef.symbol.info) => 
                 println("VDEF")
