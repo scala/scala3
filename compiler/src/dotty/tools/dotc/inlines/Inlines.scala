@@ -903,7 +903,10 @@ object Inlines:
       // TODO: We might only need to do this to evidence params but tbh I can't see much harm in applying it when we want to? 
       if (rhs.tpe.exists && !vdef.symbol.isMutableVar) // we can't narrow vars because e.g. var current = 0 would be narrowed to type 0 but someone may letter set i
         inlinedSym.info = rhs.tpe
-      tpd.ValDef(inlinedSym.asTerm, rhs).withSpan(parent.span)
+
+      val rhs1 = rhs.changeNonLocalOwners(inlinedSym) // if rhs.symbol.exists then rhs.changeOwner(rhs.symbol.owner, inlinedSym) else rhs
+
+      tpd.ValDef(inlinedSym.asTerm, rhs1).withSpan(parent.span)
 
     private def inlinedDefDef(ddef: DefDef, inlinedSym: Symbol)(using Context): DefDef =
       val rhsFun: List[List[Tree]] => Tree =
@@ -953,6 +956,10 @@ object Inlines:
         val symbolMap = mutable.Map[Symbol, Symbol]()
         // TODO make version of inlined that does not return bindings?
         val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parentSym.span), Nil, inlined(rhs)._2).withSpan(parent.span)
+        
+        // In case of nested inline trait inlines, because BodyAnnotation is out of date,
+        // body inlined misses nested expansion, but we have the symbols for the items that should be there
+        // Remove them so that they can be inlined prperly later.
         val ttmap = TreeTypeMap(treeMap = {
           case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) => 
             val newSym = tree.symbol.copy()
@@ -966,6 +973,8 @@ object Inlines:
             }
             newConstructorSymbol.info = resultType(newConstructorSymbol.info)
             newConstructorSymbol.info = PolyType.fromParams(newConstructorSymbol.owner.typeParams, newConstructorSymbol.info)
+
+            symbolMap(tree.symbol.primaryConstructor) = newConstructorSymbol
 
             val childSyms = tree.symbol.info.decls
               .filter(sym => tmpl.body.exists(vddef => vddef.symbol == sym))
