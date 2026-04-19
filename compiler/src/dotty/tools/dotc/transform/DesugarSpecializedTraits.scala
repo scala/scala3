@@ -224,14 +224,14 @@ class DesugarSpecializedTraits extends MacroTransform:
 
       def treeMap(tree: Tree): Tree = tree match {
         // Replace (anonymous class version of) new Foo[Int] {} with new Foo$impl$Int.asInstanceOf[Foo$sp$Int] 
-        case Block(List(TypeDef(anon, Template(_, parentCalls: List[Tree], _, _))),  
+        case Block(List(an@TypeDef(anon, Template(_, parentCalls: List[Tree], _, _))),  
                   Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass =>
           parentCalls match {
             case _ :+ Apply(Apply(tpe, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
               val spec = Specialization.unapply(t.tpe).get
               { // We don't replace non-specialized anonymous class instantiations e.g. new Foo[T] where T is defined in the enclosing scope.
                 for (specializedSymbol <- specializations.getImplementationSymbol(spec))
-                yield Typed(Apply(Apply(Select(New(ref(specializedSymbol)),ctor), ctorArgs), ev), t)
+                yield Typed(Apply(Apply(Select(New(ref(specializedSymbol)),ctor), ctorArgs.map(_.changeNonLocalOwners(an.symbol.owner))), ev), t)
               }.getOrElse(tree)
             case _ => tree
           }
