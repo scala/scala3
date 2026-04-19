@@ -969,7 +969,9 @@ object Inlines:
 
             val childSyms = tree.symbol.info.decls
               .filter(sym => tmpl.body.exists(vddef => vddef.symbol == sym))
-              .map(_.copy(owner = newSym))
+              .tapEach(sym => symbolMap(sym) = sym.copy(owner = newSym))
+              .map(symbolMap)
+
             childSyms.foreach(p => p.entered)
             newConstructorSymbol.entered
 
@@ -988,7 +990,10 @@ object Inlines:
         })
 
         val rhs2 = ttmap(rhs1)
-        TreeTypeMap(substFrom = symbolMap.keys.toList, substTo = symbolMap.values.toList)(rhs2)
+        TreeTypeMap(substFrom = symbolMap.keys.toList,
+                    substTo = symbolMap.values.toList,
+                    oldOwners = symbolMap.keys.toList,
+                    newOwners = symbolMap.values.toList)(rhs2)
 
     private class ParamAccessorsMapper:
       private val paramAccessorsTrees: mutable.Map[Symbol, Map[Name, Tree]] = mutable.Map.empty
