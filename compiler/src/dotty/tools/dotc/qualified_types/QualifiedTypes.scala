@@ -96,7 +96,6 @@ object QualifiedTypes:
         case _ => mapOver(t)
     replaceMap(tp)
 
-
   def ensureNoLocalRefsInQualifier(tp: Type, localSyms: List[Symbol])(using Context): Type =
     if !Feature.qualifiedTypesEnabled then return tp
     val avoidMap = new TypeMap:
@@ -250,15 +249,12 @@ object QualifiedTypes:
   private def adaptByMode(tree: Tree, pt: Type, mode: QualifiedTypesMode)(using Context): Tree =
     mode match
       case QualifiedTypesMode.RuntimeChecks =>
-        if checkContainsSkolem(pt, tree.srcPos, mode) then
-          tpd.evalOnce(tree): e =>
-            If(
-              e.isInstance(pt),
-              e.asInstance(pt),
-              Throw(New(defn.IllegalArgumentExceptionType, List()))
-            )
-        else
-          tree.withType(ErrorType(em""))
+        tpd.evalOnce(tree): e =>
+          If(
+            e.isInstance(pt),
+            e.asInstance(pt),
+            Throw(New(defn.IllegalArgumentExceptionType, List()))
+          )
       case QualifiedTypesMode.Warn =>
         report.warning(em"Qualified type conversion from ${tree.tpe} to $pt cannot be verified statically", tree.srcPos)
         tree.cast(pt).withAttachment(QualifiedTypeCast, ())
@@ -274,33 +270,3 @@ object QualifiedTypes:
       case AndType(tp1, tp2) => containsQualifier(tp1) || containsQualifier(tp2)
       case OrType(tp1, tp2) => containsQualifier(tp1) || containsQualifier(tp2)
       case _ => false
-
-  def checkContainsSkolem(
-      tp: Type,
-      pos: SrcPos,
-      mode: QualifiedTypesMode = QualifiedTypesMode.Error
-  )(using Context): Boolean =
-    var res = true
-    tp.foreachPart:
-      case QualifiedType(_, qualifier) =>
-        qualifier.foreachType: rootTp =>
-          rootTp.foreachPart:
-            case tp: SkolemType =>
-              mode match
-                case QualifiedTypesMode.Error | QualifiedTypesMode.RuntimeChecks =>
-                  report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)
-                case QualifiedTypesMode.Warn =>
-                  report.warning(em"The qualified type $qualifier cannot be checked at runtime", pos)
-                case QualifiedTypesMode.Silent => ()
-              res = false
-            case tp: ENodeVar if tp.isFree =>
-              mode match
-                case QualifiedTypesMode.Error | QualifiedTypesMode.RuntimeChecks =>
-                  report.error(em"The qualified type $qualifier cannot be checked at runtime", pos)
-                case QualifiedTypesMode.Warn =>
-                  report.warning(em"The qualified type $qualifier cannot be checked at runtime", pos)
-                case QualifiedTypesMode.Silent => ()
-              res = false
-            case _ => ()
-      case _ => ()
-    res
