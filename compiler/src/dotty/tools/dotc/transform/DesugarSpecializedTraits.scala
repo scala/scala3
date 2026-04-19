@@ -39,6 +39,7 @@ import dotty.tools.dotc.core.Flags.InlineTrait
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.core.Decorators.nestedMap
 
 class DesugarSpecializedTraits extends MacroTransform:
 
@@ -262,7 +263,7 @@ class DesugarSpecializedTraits extends MacroTransform:
           case dd@DefDef(name, paramss, tpt, preRhs) => 
             val transformedDef = super.transform(dd).asInstanceOf[DefDef]
             
-            if transformedDef.symbol.info != mapType(transformedDef.symbol.info) then
+            if transformedDef.symbol.info != mapType(transformedDef.symbol.info) && transformedDef.symbol.allOverriddenSymbols.nonEmpty then
               val specializedSymbol = newSymbol(
                 transformedDef.symbol.owner,
                 transformedDef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX,
@@ -301,29 +302,33 @@ class DesugarSpecializedTraits extends MacroTransform:
             // However, specialized trait is based on the invariant that ∀T. T <: Foo[Int] => T <: Foo$sp$Int (and note that the reverse <= holds trivially by inheritance).
             // This means it is safe to build bridge methods which simply apply the relevant casts so that we satisfy the interface, although we don't expect to call these.
             def isMapped(t: Type) = mapType(t) != t
-            
-            val bridgeMethods = impl.body.collect {
-              // TODO: Probably can just do this isMapped on the whole type.
-              case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && (ddef.termParamss.exists(params => params.exists(p => isMapped(p.symbol.info))) || isMapped(ddef.symbol.localReturnType)) => 
-                val rhsFun: List[List[Tree]] => Tree = 
-                  newParamss => 
-                    This(impl.symbol.owner.asClass).select(ddef.symbol)
-                    .appliedToArgss(
-                      newParamss.map(
-                        params => params.map(p => p.cast(mapType(p.symbol.info)))
-                      )
-                    ).cast(ddef.symbol.localReturnType)
-                // Any callers of the original method will have been redirected to the bridge method because it has a signature match with the method they were calling
-                DefDef(ddef.symbol.asTerm, rhsFun)
 
-              case vdef: ValDef if isMapped(vdef.symbol.info) => 
+            val mappedbody = impl.body.map(transform(_))
+            val bridgeMethods = impl.body.collect {
+              case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && isMapped(ddef.symbol.info) => 
+                // Any callers of the original method will have been redirected to the bridge method because it has a signature match with the method they were calling            
+                val x = cpy.DefDef(ddef)(
+                  rhs=
+                    This(impl.symbol.owner.asClass).select(ddef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
+                    .appliedToArgss(
+                      ddef.termParamss.map(
+                        params => params.map(p => 
+                          ref(p.symbol).cast(mapType(p.symbol.info)))
+                      )
+                    ).cast(mapType(ddef.symbol.localReturnType))
+                )
+                x.symbol.rawParamss = x.paramss.nestedMap(_.symbol)
+                x
+                
+              case vdef: ValDef if vdef.symbol.allOverriddenSymbols.nonEmpty && isMapped(vdef.symbol.info) => 
+                println("VDEF")
+                println(vdef.symbol)
                 vdef.symbol.flags = vdef.symbol.flags &~ Flags.Override
                 vdef.symbol.setTargetName(vdef.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
                 val bridgeSym = vdef.symbol.copy().entered
                 ctx.inlineTraitState.registerInlinedSymbol(bridgeSym, vdef.symbol, impl.symbol.owner.thisType.widenDealias)
                 ValDef(bridgeSym.asTerm, This(impl.symbol.owner.asClass).select(vdef.symbol).cast(vdef.symbol.info))
             }
-            val mappedbody = impl.body.map(transform(_))
 
             cpy.Template(impl)(body = mappedbody ::: bridgeMethods)
           case tree => super.transform(tree)
@@ -376,8 +381,6 @@ class DesugarSpecializedTraits extends MacroTransform:
 
     // TODO: Try with just generating new Foo(100) with no function to pass it to and no other references to Foo. this may not work because we might not
     // correctly detect it. 
-
-    // TODO : Is it not better to just delete the Specialized?
 
     private def collectReferencedSpecializations(stats: List[Tree], specializations: SpecializedTraitCache)(using Context): SpecializedTraitCache =
       stats.foldLeft(specializations)((specializations, tree) => {
