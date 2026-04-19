@@ -1922,8 +1922,14 @@ class Namer { typer: Typer =>
    */
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
-    def inferredType = qualified_types.QualifiedTypes.avoidQualifierVars(
-      inferredResultType(mdef, sym, paramss, paramFn, WildcardType))
+    def inferredType =
+      val raw = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
+      // Avoid free ENodeVar skolems for defs and class fields (their types
+      // leak beyond the current scope), but keep them for local vals (still
+      // within the enclosing method body).
+      if sym.is(Method) || sym.owner.isClass then
+        qualified_types.QualifiedTypes.avoidQualifierVars(raw)
+      else raw
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>

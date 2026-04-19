@@ -42,31 +42,12 @@
       <<Matrix.this.width:Dim> * <Matrix.this.height:Dim>:Int>
     private[this] val data: CheckedArray =
       <
-        {
-          val $1$: Pos =
-            <<<<this:(Matrix.this : Matrix)>.size:Int>.asInstanceOf:([X0]: X0)>[
-              Pos]:Pos>
-          <
-            <
-              <
-                <<CheckedArray:CheckedArray>.ofDim:
-                  ((size: Pos):
-                    CheckedArray with <arg(0):CheckedArray>.size == size)
-                >
-              (<$1$:Pos>):CheckedArray with (<arg(0):CheckedArray>.size == $1$)>
-              .$asInstanceOf:([X0]: X0)>
-          [
-            CheckedArray with <arg(0):CheckedArray>.size == <?1:
-              Int with <arg(0):Int> >= 0>
-          ]:
-            CheckedArray with <arg(0):CheckedArray>.size == <?1:
-              Int with <arg(0):Int> >= 0>
-          >
-        }
-      :
-        CheckedArray with <arg(0):CheckedArray>.size == <?1:
-          Int with <arg(0):Int> >= 0>
-      >
+        <<CheckedArray:CheckedArray>.ofDim:
+          ((size: Pos): CheckedArray with <arg(0):CheckedArray>.size == size)>
+      (
+        <<<<this:(Matrix.this : Matrix)>.size:Int>.asInstanceOf:([X0]: X0)>[Pos]
+          :Pos>
+      ):CheckedArray with <arg(0):CheckedArray>.size == <skolem(0):Pos>>
     def copy(width: Dim, height: Dim): Matrix =
       <<<new Matrix:Matrix>:((width: Dim, height: Dim): Matrix)>(<width:Dim>,
         <height:Dim>):Matrix>

@@ -96,6 +96,31 @@ object QualifiedTypes:
         case _ => mapOver(t)
     replaceMap(tp)
 
+
+  def ensureNoLocalRefsInQualifier(tp: Type, localSyms: List[Symbol])(using Context): Type =
+    if !Feature.qualifiedTypesEnabled then return tp
+    val avoidMap = new TypeMap:
+      def apply(t: Type): Type = t match
+        case QualifiedType(parent, qualifier) =>
+          val parent1 = apply(parent)
+          val qualifier1 =
+            val avoidMap = new TypeMap:
+              def apply(t2: Type): Type =
+                t2 match
+                  case tp: TermRef if localSyms.contains(tp.symbol) =>
+                    val idx = tp.symbol.defTree.getAttachment(QualifierSkolemIndex) match
+                      case Some(i) => i
+                      case None =>
+                        val i = ctx.base.qualifierSkolemIndexCounter.fresh()
+                        tp.symbol.defTree.putAttachment(QualifierSkolemIndex, i)
+                        i
+                    ENodeVar(ENodeVarKind.Skolem, idx)(SkolemType(mapOver(tp.underlying)))
+                  case _ => mapOver(t2)
+            qualifier.mapTypes(avoidMap).asInstanceOf[ENode.Lambda]
+          QualifiedType(parent1, qualifier1)
+        case _ => mapOver(t)
+    avoidMap(tp)
+
   /** Weaken any qualifiers inside `tp` by eliminating free `ENodeVar`s
    *  (kinds `OpenedParam` and `Skolem`). Sub-expressions of Boolean type that
    *  contain a free `ENodeVar` are replaced with `true` or `false` depending
