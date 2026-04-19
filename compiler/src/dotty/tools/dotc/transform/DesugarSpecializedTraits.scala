@@ -258,8 +258,25 @@ class DesugarSpecializedTraits extends MacroTransform:
         case tree => tree
       }
       
+      // TODO: Do we acvtually need to worry about these cases if we have enough limitations?
       new TreeTypeMap(typeMap, treeMap) {
         override def transform(tree: Tree)(using Context): Tree = tree match { // HACK: This seems to do what we want but I don't understand why we don't do this by default? Surely we should apply transformDefs over template body?
+          case vd@ValDef(name, tpt, preRhs) =>
+            val transformedDef = super.transform(vd).asInstanceOf[ValDef]
+            if transformedDef.symbol.info != mapType(transformedDef.symbol.info) && transformedDef.symbol.allOverriddenSymbols.nonEmpty then
+              val specializedSymbol = newSymbol(
+                transformedDef.symbol.owner,
+                transformedDef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX,
+                transformedDef.symbol.flags &~ Flags.Override,
+                info = mapType(transformedDef.symbol.info),
+                transformedDef.symbol.privateWithin,
+                transformedDef.symbol.coord,
+                transformedDef.symbol.nestingLevel
+              ).entered
+              ValDef(specializedSymbol.asTerm, transformedDef.rhs.changeOwner(transformedDef.symbol, specializedSymbol))
+            else
+              transformedDef
+          
           case dd@DefDef(name, paramss, tpt, preRhs) => 
             val transformedDef = super.transform(dd).asInstanceOf[DefDef]
             
@@ -321,13 +338,9 @@ class DesugarSpecializedTraits extends MacroTransform:
                 ddef2
                 
               case vdef: ValDef if vdef.symbol.allOverriddenSymbols.nonEmpty && isMapped(vdef.symbol.info) => 
-                println("VDEF")
-                println(vdef.symbol)
-                vdef.symbol.flags = vdef.symbol.flags &~ Flags.Override
-                vdef.symbol.setTargetName(vdef.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
-                val bridgeSym = vdef.symbol.copy().entered
-                ctx.inlineTraitState.registerInlinedSymbol(bridgeSym, vdef.symbol, impl.symbol.owner.thisType.widenDealias)
-                ValDef(bridgeSym.asTerm, This(impl.symbol.owner.asClass).select(vdef.symbol).cast(vdef.symbol.info))
+                cpy.ValDef(vdef)(
+                  rhs = This(impl.symbol.owner.asClass).select(vdef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX).cast(vdef.symbol.info)
+                )
             }
 
             cpy.Template(impl)(body = mappedbody ::: bridgeMethods)
