@@ -425,9 +425,9 @@ enum ENode extends Showable:
       case tp: SkolemType =>
         tpd.ref(defn.Predef_undefined).withType(tp)
       case tp: ENodeVar if tp.isFree =>
-        tpd.ref(defn.Predef_undefined).withType(tp)
+        tpd.ref(defn.Predef_undefined).withType(tp.underlying)
       case tp: TermRef if hasSkolemOrFreeVar(tp) =>
-        tpd.ref(defn.Predef_undefined).withType(tp)
+        tpd.ref(defn.Predef_undefined).withType(tp.underlying)
       case tp => tpd.singleton(tp)
 
   def toTree(paramRefs: List[Type] = Nil)(using Context): tpd.Tree =
