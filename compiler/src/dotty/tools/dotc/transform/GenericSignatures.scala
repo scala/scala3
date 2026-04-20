@@ -510,10 +510,14 @@ object GenericSignatures {
   }
 
   private object RefOrAppliedType {
+    private enum ResolvedAppliedType:
+      case Resolved(t: Type)
+      case NotResolved
+      case Bail
     // In the special case where we see a type parameter applied to type parameters,
     // such as `K[X, Y]` given `[X, Y, K <: Iterable[(X, Y)]]`, we must find its bound
     // and instantiate it, otherwise in our example we end up with `Iterable[X, Y]` which is nonsensical.
-    private def resolveAppliedType(a: AppliedType)(using Context): Option[Type] =
+    private def resolveAppliedType(a: AppliedType)(using Context): ResolvedAppliedType =
       a.tycon match
         case TypeParamRef(binder, paramNum) =>
           binder.paramInfos(paramNum).hi match
@@ -523,10 +527,12 @@ object GenericSignatures {
               // we must trade precision for termination by only resolving one level,
               // otherwise we end up in infinite loops,
               // e.g., in `X[A] <: Thing[X[A]]` or `X[A] <: X[Thing[A]]` we keep resolving `X`.
-              if instantiated.existsPart(_ == a.tycon) then None
-              else Some(instantiated)
-            case _ => None
-        case _ => None
+              // In that case we must completely give up on the genericity, i.e.,
+              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature! 
+              if instantiated.existsPart(_ == a.tycon) then ResolvedAppliedType.Bail
+              else ResolvedAppliedType.Resolved(instantiated)
+            case _ => ResolvedAppliedType.NotResolved
+        case _ => ResolvedAppliedType.NotResolved
 
     def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
       case TypeParamRef(_, _) =>
@@ -538,8 +544,9 @@ object GenericSignatures {
         Some((sym, pre, Nil))
       case a @ AppliedType(pre, args) =>
         resolveAppliedType(a) match
-          case Some(resolved) => unapply(resolved)
-          case _ => Some((pre.typeSymbol, pre, args))
+          case ResolvedAppliedType.Resolved(resolved) => unapply(resolved)
+          case ResolvedAppliedType.NotResolved => Some((pre.typeSymbol, pre, args))
+          case ResolvedAppliedType.Bail => None
       case _ =>
         None
   }

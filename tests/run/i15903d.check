@@ -1,1 +1,1 @@
-scala.collection.Iterable<A>
+interface scala.collection.Iterable
