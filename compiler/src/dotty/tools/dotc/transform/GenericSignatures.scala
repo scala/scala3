@@ -521,11 +521,9 @@ object GenericSignatures {
               val instantiated = hkt.instantiate(a.args).dealias
               // However, since Java doesn't have a way to refer to HKTs in generic signatures,
               // we must trade precision for termination by only resolving one level,
-              // otherwise we end up in infinite loops, e.g., in `X[A] <: Thing[X[A]]` we keep resolving `X -> Thing[X[A]]`.
-              val hasNested = instantiated.existsPart:
-                case AppliedType(TypeParamRef(_, _), nestedArgs) => nestedArgs.exists(a.args.contains)
-                case _ => false
-              if hasNested then None
+              // otherwise we end up in infinite loops,
+              // e.g., in `X[A] <: Thing[X[A]]` or `X[A] <: X[Thing[A]]` we keep resolving `X`.
+              if instantiated.existsPart(_ == a.tycon) then None
               else Some(instantiated)
             case _ => None
         case _ => None
