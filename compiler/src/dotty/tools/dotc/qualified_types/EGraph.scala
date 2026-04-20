@@ -100,8 +100,8 @@ final class EGraph(_ctx: Context):
   val oneIntNode: ENode.Atom = constant(1)
 
   /** Returns the canonical node for the given constant value */
-  def constant(value: Any): ENode.Atom =
-    val node = ENode.Atom(ConstantType(Constant(value))(using _ctx))
+  def constant[T: Constant.ValueToConstant](value: T): ENode.Atom =
+    val node = ENode.Atom(ConstantType(Constant.fromValue(value))(using _ctx))
     idOf.getOrElseUpdate(node, idOf.size)
     index.getOrElseUpdate(node, node).asInstanceOf[ENode.Atom]
 
@@ -510,7 +510,11 @@ final class EGraph(_ctx: Context):
         ENode.OpApply(op, args)
     res
 
-  private def constFoldBinaryOp[T: ClassTag, S](op: ENode.Op, args: List[ENode], fn: (T, T) => S): ENode =
+  private def constFoldBinaryOp[T: ClassTag, S: Constant.ValueToConstant](
+      op: ENode.Op,
+      args: List[ENode],
+      fn: (T, T) => S
+  ): ENode =
     args match
       case List(ENode.Atom(ConstantType(Constant(c1: T))), ENode.Atom(ConstantType(Constant(c2: T)))) =>
         constant(fn(c1, c2))
