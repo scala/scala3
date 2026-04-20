@@ -898,17 +898,58 @@ extension (tp: AnnotatedType) {
 /** A prototype that indicates selection */
 class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
 
-/** Drop retains annotations in the inferred type if CC is not enabled
- *  or transform them into retains annotations with Nothing (i.e. empty set) as
- *   argument if CC is enabled (we need to do that to keep by-name status).
+/** Drop retains annotations in the inferred type if CC is not enabled.
+ *  When CC is enabled: keep only retained refs that are "local" capture-set
+ *  type params/members — `TypeParamRef`s whose binder is in scope, or
+ *  `TypeRef`s whose owner is an enclosing anon function/class. Other refs
+ *  are erased to `Nothing` so Setup's `addVar` can install a widenable
+ *  `Var` (preserving them would pin the set to a `Const` — breaks
+ *  nicolas1). Inside `TypeBounds`, all CapSet-derived refs are preserved
+ *  (bounds are contracts). See i25830.
  */
 class CleanupRetains(using Context) extends TypeMap:
+  private var binders: List[LambdaType] = Nil
+  private var inBound: Boolean = false
+
+  private def isLocalCapSetRef(tp: Type): Boolean = tp match
+    case ref: TypeParamRef =>
+      ref.derivesFromCapSet && (inBound || binders.contains(ref.binder))
+    case ref: TypeRef if ref.derivesFromCapSet && ref.symbol.isType =>
+      val owner = ref.symbol.owner
+      inBound
+      || owner.exists
+         && (owner.isAnonymousFunction || owner.isClass)
+         && ctx.owner.isContainedIn(owner)
+    case _ => false
+
+  private def filterLocal(tp: Type): Type = tp match
+    case OrType(tp1, tp2) =>
+      val tp1f = filterLocal(tp1)
+      val tp2f = filterLocal(tp2)
+      if tp1f.isNothingType then tp2f
+      else if tp2f.isNothingType then tp1f
+      else OrType(tp1f, tp2f, soft = false)
+    case _ =>
+      if isLocalCapSetRef(tp) then tp else defn.NothingType
+
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
         if annot.symbol == defn.RetainsCapAnnot then tp
-        else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
+        else
+          val filtered = filterLocal(annot.retainedType)
+          AnnotatedType(this(parent),
+            if filtered eq annot.retainedType then annot
+            else RetainingAnnotation(annot.symbol.asClass, filtered))
       else this(parent)
+    case tp: LambdaType =>
+      val saved = binders
+      binders = tp :: binders
+      try mapOver(tp) finally binders = saved
+    case tp: TypeBounds =>
+      val saved = inBound
+      inBound = true
+      try mapOver(tp) finally inBound = saved
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific
