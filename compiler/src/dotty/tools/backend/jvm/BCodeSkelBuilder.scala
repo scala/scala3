@@ -332,7 +332,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val flags = BCodeUtils.javaFlags(claszSymbol)
 
-      val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
+      val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner, null)
       val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
                                               else BCodeUtils.checkConstantStringLength(thisName)
       if !lengthOk then
@@ -387,7 +387,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
 
     def addClassField(f: Symbol)(using Context): Unit = {
-      val javagensig = getGenericSignature(f, claszSymbol)
+      val descriptor = symInfoTK(f).descriptor
+      val javagensig = getGenericSignature(f, claszSymbol, descriptor)
       val flags = javaFieldFlags(f)
 
       assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
@@ -396,7 +397,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val jfield = new asm.tree.FieldNode(
         flags,
         f.javaSimpleName,
-        symInfoTK(f).descriptor,
+        descriptor,
         javagensig,
         null // no initial value
       )
@@ -707,7 +708,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
 
-      val jgensig = getGenericSignature(methSymbol, claszSymbol)
+      val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
+      val jgensig = getGenericSignature(methSymbol, claszSymbol, mdesc)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(excs)
 
@@ -715,7 +717,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         if (isMethSymStaticCtor) CLASS_CONSTRUCTOR_NAME
         else jMethodName
 
-      val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
                                         else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
       if !lengthOk then

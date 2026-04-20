@@ -1724,9 +1724,9 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       val clsIn      = dir.lookupName("Foo.class", directory = false).input
       val clsNode    = loadClassNode(clsIn)
-      def testSig(methodName: String, expectedSignature: String) = {
-        val signature = clsNode.methods.asScala.filter(_.name == methodName).map(_.signature)
-        assertEquals(List(expectedSignature), signature)
+      def testSig(methodName: String, expectedDescriptor: String) = {
+        val descriptor = clsNode.methods.asScala.filter(_.name == methodName).map(_.desc)
+        assertEquals(List(expectedDescriptor), descriptor)
       }
       testSig("foo", "()I")
       testSig("bar", "()I")
