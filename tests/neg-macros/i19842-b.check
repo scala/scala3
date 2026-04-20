@@ -9,8 +9,8 @@
   |
   |	at scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:10)
   |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:208)
-  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:286)
-  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:285)
+  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:284)
+  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:283)
   |	at Macros$.makeSerializer(Macro.scala:25)
   |
   |---------------------------------------------------------------------------------------------------------------------
