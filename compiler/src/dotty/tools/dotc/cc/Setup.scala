@@ -338,14 +338,29 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       def innerApply(tp: Type) =
         val tp1 = tp match
+          case AnnotatedType(parent, annot: RetainingAnnotation) =>
+            // Promote CapSet-derived refs preserved by CleanupRetains into a
+            // Const CapturingType; strip any empty Var that `apply(parent)`
+            // would have layered underneath. See i25830.
+            val kept = annot.retainedType.retainedElementsRaw.flatMap: e =>
+              if e.derivesFromCapSet then
+                try e.toCapability :: Nil
+                catch case _: IllegalCaptureRef => Nil
+              else Nil
+            if kept.isEmpty then apply(parent)
+            else
+              val parent1 = apply(parent) match
+                case CapturingType(p, refs) if refs.elems.isEmpty && !refs.isConst => p
+                case other => other
+              CapturingType(parent1, CaptureSet(kept*))
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
-            // Drop explicit retains and @inferred annotations
+            // Drop non-RetainingAnnotation retains (e.g. pickle-read) and @inferred.
             apply(parent)
           case tp: TypeLambda =>
-            // Don't recurse into parameter bounds, just cleanup any stray retains annotations
+            // Leave parameter bounds alone — CleanupRetains already filtered them.
             tp.derivedLambdaType(
-              paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
+              paramInfos = tp.paramInfos,
               resType = this(tp.resType))
           case tp @ RefinedType(parent, rname, rinfo) =>
             val saved = refiningNames
@@ -899,6 +914,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
         && !refs.isUniversal  // if refs is {caps.any}, an added variable would not change anything
+        && !refs.elems.exists(_.coreType.derivesFromCapSet)
+          // Const sets containing capset-param refs must stay Const: a Var's
+          // elements don't rewrite under SubstParamsMap. See i25830.
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
