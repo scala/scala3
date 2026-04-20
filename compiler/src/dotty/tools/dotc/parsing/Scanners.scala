@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.language.unsafeNulls
-
 import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
 import core.StdNames.*, core.Comments.*
 import util.SourceFile
@@ -55,10 +53,10 @@ object Scanners {
     var lineOffset: Offset = -1
 
     /** the name of an identifier */
-    var name: SimpleName = null
+    var name: SimpleName | Null = null
 
     /** the string value of a literal */
-    var strVal: String = null
+    var strVal: String | Null = null
 
     /** the base of a number */
     var base: Int = 0
@@ -76,7 +74,7 @@ object Scanners {
     def isNewLine = token == NEWLINE || token == NEWLINES
     def isStatSep = isNewLine || token == SEMI
     def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
-    def isIdent(name: Name) = token == IDENTIFIER && this.name == name
+    def isIdent(name: Name) = token == IDENTIFIER && (this.name: Name | Null) == (name: Name | Null)
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
@@ -89,7 +87,7 @@ object Scanners {
 
     def isOperator =
       token == BACKQUOTED_IDENT
-      || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+      || token == IDENTIFIER && isOperatorPart(name.nn(name.nn.length - 1))
 
     def isArrow =
       token == ARROW || token == CTXARROW
@@ -152,7 +150,7 @@ object Scanners {
       litBuf.clear()
       target.token = idtoken
       if idtoken == IDENTIFIER then
-        val converted = toToken(target.name)
+        val converted = toToken(target.name.nn)
         if converted != END || (target eq this) then target.token = converted
 
     /** The token for given `name`. Either IDENTIFIER or a keyword. */
@@ -283,7 +281,8 @@ object Scanners {
 
     private def lastKnownIndentWidth: IndentWidth =
       def recur(r: Region): IndentWidth =
-        if r.knownWidth == null then recur(r.enclosing) else r.knownWidth
+        val knownWidth = r.knownWidth
+        if knownWidth == null then recur(r.enclosing) else knownWidth
       recur(currentRegion)
 
     private var skipping = false
@@ -604,7 +603,7 @@ object Scanners {
         case r =>
           indentIsSignificant = indentSyntax
           r.proposeKnownWidth(nextWidth, lastToken)
-          lastWidth = r.knownWidth
+          lastWidth = r.indentWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
       // can emit OUTDENT if line is not non-empty blank line at EOF
@@ -724,7 +723,7 @@ object Scanners {
       case r: Indented
       if !r.isOutermost
           && (acceptOutdentTokens.contains(token)
-              || token == COMMA && r.outer.commasExpectedInEnclosing)
+              || token == COMMA && r.outer.nn.commasExpectedInEnclosing) // nn ok, we are not the outermost region
           && next.token == EMPTY
         =>
           insert(OUTDENT, offset)
@@ -747,7 +746,7 @@ object Scanners {
      *         SEMI + ELSE => ELSE, COLON following id/)/] => COLONfollow
      *  - Insert missing OUTDENTs at EOF
      */
-    def postProcessToken(lastToken: Token, lastName: SimpleName): Unit = {
+    def postProcessToken(lastToken: Token, lastName: SimpleName | Null): Unit = {
       def fuse(tok: Int) = {
         token = tok
         offset = prev.offset
@@ -1163,9 +1162,9 @@ object Scanners {
       if (ch == '`') {
         nextChar()
         finishNamedToken(BACKQUOTED_IDENT, target = this)
-        if (name.length == 0)
+        if (name.nn.length == 0)
           error(em"empty quoted identifier")
-        else if (name == nme.WILDCARD)
+        else if (name.nn == nme.WILDCARD)
           error(em"wildcard invalid as backquoted identifier")
       }
       else error(em"unclosed quoted identifier")
@@ -1227,11 +1226,14 @@ object Scanners {
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
-      && (softModifierNames.contains(name)
-        || name == nme.erased && erasedEnabled
-        || name == nme.tracked && trackedEnabled
-        || name == nme.update && Feature.ccEnabled
-        || name == nme.consume && Feature.ccEnabled)
+      && {
+        val name = this.name.nn
+        (softModifierNames.contains(name)
+          || name == nme.erased && erasedEnabled
+          || name == nme.tracked && trackedEnabled
+          || name == nme.update && Feature.ccEnabled
+          || name == nme.consume && Feature.ccEnabled)
+      }
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
@@ -1619,7 +1621,8 @@ object Scanners {
 
     /** The indentation width, Zero if not known */
     final def indentWidth: IndentWidth =
-      if knownWidth == null then IndentWidth.Zero else knownWidth
+      val known = knownWidth
+      if known == null then IndentWidth.Zero else known
 
     def proposeKnownWidth(width: IndentWidth, lastToken: Token) =
       if knownWidth == null then
@@ -1663,10 +1666,11 @@ object Scanners {
 
     def commasExpectedInEnclosing: Boolean =
       commasExpected || this.match
-        case r: Indented => r.outer.commasExpectedInEnclosing
+        case r: Indented => !r.isOutermost && r.outer.nn.commasExpectedInEnclosing
         case _ => false
 
     def toList: List[Region] =
+      val outer = this.outer
       this :: (if outer == null then Nil else outer.toList)
 
     private def delimiter = this match

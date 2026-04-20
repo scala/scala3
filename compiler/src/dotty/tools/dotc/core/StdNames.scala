@@ -714,7 +714,7 @@ object StdNames {
       final val MINUS_USCORE: N = "-_"
       final val PLUS_USCORE : N = "+_"
 
-      final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
+      final val isUnary: Set[Name | Null] = Set(MINUS, PLUS, TILDE, BANG)
     }
 
     object specializedTypeNames {

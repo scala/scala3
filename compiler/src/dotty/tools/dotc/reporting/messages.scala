@@ -1283,7 +1283,7 @@ extends SyntaxMsg(ExpectedTokenButFoundID):
   def explain(using Context) = s"The soft keyword `$soft` has special meaning only in certain contexts."
 end ExpectedTokenButFoundSoftKeyword
 
-class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(using Context)
+class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name | Null, op2LeftAssoc: Boolean)(using Context)
 extends SyntaxMsg(MixedLeftAndRightAssociativeOpsID) {
   def msg(using Context) =
     val op1Asso: String = if (op2LeftAssoc) "which is right-associative" else "which is left-associative"

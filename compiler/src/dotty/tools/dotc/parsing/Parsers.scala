@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 import scala.annotation.threadUnsafe as tu
 import scala.collection.mutable.ListBuffer
@@ -168,7 +166,7 @@ object Parsers {
      */
     def syntaxError(msg: Message, offset: Int = in.offset): Unit =
       if offset > lastErrorOffset then
-        val length = if offset == in.offset && in.name != null then in.name.show.length else 0
+        val length = if offset == in.offset && in.name != null then in.name.nn.show.length else 0
         syntaxError(msg, Span(offset, offset + length))
         lastErrorOffset = in.offset
 
@@ -255,7 +253,7 @@ object Parsers {
       in.token == AT
       || defIntroTokens.contains(in.token)
       || allowedMods.contains(in.token)
-      || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
+      || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name.nn) // soft modifiers have a name
 
     def isStatSep: Boolean = in.isStatSep
 
@@ -264,8 +262,8 @@ object Parsers {
      *  in a quoted block '{...'
      */
     def isSplice: Boolean =
-      in.token == IDENTIFIER && in.name(0) == '$' && {
-        if in.name.length == 1 then in.lookahead.token == LBRACE
+      in.token == IDENTIFIER && in.name.nn(0) == '$' && {
+        if in.name.nn.length == 1 then in.lookahead.token == LBRACE
         else (staged & StageKind.Quoted) != 0
       }
 
@@ -1168,11 +1166,11 @@ object Parsers {
 
     var opStack: List[OpInfo] = Nil
 
-    def checkAssoc(offset: Token, op1: Name, op2: Name, op2LeftAssoc: Boolean): Unit =
+    def checkAssoc(offset: Token, op1: Name, op2: Name | Null, op2LeftAssoc: Boolean): Unit =
       if (op1.isRightAssocOperatorName == op2LeftAssoc)
         syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
-    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
+    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name | Null, isType: Boolean): Tree = {
       if (opStack != base && precedence(opStack.head.operator.name) == prec)
         checkAssoc(opStack.head.offset, opStack.head.operator.name, op2, leftAssoc)
       def recur(top: Tree): Tree =
@@ -1269,7 +1267,7 @@ object Parsers {
           else t
 
       def recurAtMinPrec(top: Tree): Tree =
-        if isIdent && isOperator && precedence(in.name) == minInfixPrec
+        if isIdent && isOperator && precedence(in.name.nn) == minInfixPrec
            || in.token == MATCH
         then recur(top)
         else top
@@ -1286,7 +1284,7 @@ object Parsers {
     /** Accept identifier and return its name as a term name. */
     def ident(): TermName =
       if (isIdent) {
-        val name = in.name
+        val name = in.name.nn
         if name == nme.CONSTRUCTOR || name == nme.STATIC_CONSTRUCTOR then
           report.error(
             em"""Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden""",
@@ -1408,7 +1406,7 @@ object Parsers {
     def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
       def literalOf(token: Token): Tree = {
         val isNegated = negOffset < in.offset
-        def digits0 = in.removeNumberSeparators(in.strVal)
+        def digits0 = in.removeNumberSeparators(in.strVal.nn)
         def digits = if (isNegated) "-" + digits0 else digits0
         if !inTypeOrSingleton then
           token match {
@@ -1425,8 +1423,8 @@ object Parsers {
           case LONGLIT                        => lit(longFromDigits(digits, in.base))
           case FLOATLIT                       => lit(floatFromDigits(digits))
           case DOUBLELIT | DECILIT | EXPOLIT  => lit(doubleFromDigits(digits))
-          case CHARLIT                        => lit(in.strVal.head)
-          case STRINGLIT | STRINGPART         => lit(in.strVal)
+          case CHARLIT                        => lit(in.strVal.nn.head)
+          case STRINGLIT | STRINGPART         => lit(in.strVal.nn)
           case TRUE                           => lit(true)
           case FALSE                          => lit(false)
           case NULL                           => lit(null)
@@ -1444,7 +1442,7 @@ object Parsers {
       if (inStringInterpolation) {
         val t = in.token match {
           case STRINGLIT | STRINGPART =>
-            val value = in.strVal
+            val value = in.strVal.nn
             atSpan(negOffset, negOffset, negOffset + value.length) { Literal(Constant(value)) }
           case _ =>
             syntaxErrorOrIncomplete(IllegalLiteral())
@@ -1455,13 +1453,14 @@ object Parsers {
       }
       else atSpan(negOffset) {
         if (in.token == QUOTEID)
-          if ((staged & StageKind.Spliced) != 0 && Chars.isIdentifierStart(in.name(0))) {
+          val inName = in.name.nn
+          if ((staged & StageKind.Spliced) != 0 && Chars.isIdentifierStart(inName(0))) {
             val t = atSpan(in.offset + 1) {
-              val tok = in.toToken(in.name)
+              val tok = in.toToken(inName)
               tok match {
                 case TRUE | FALSE | NULL => literalOf(tok)
                 case THIS => This(EmptyTypeIdent)
-                case _ => Ident(in.name)
+                case _ => Ident(inName)
               }
             }
             in.nextToken()
@@ -1480,7 +1479,7 @@ object Parsers {
               if MigrationVersion.Scala2to3.needsPatch then
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
-            atSpan(in.skipToken()) { SymbolLit(in.strVal) }
+            atSpan(in.skipToken()) { SymbolLit(in.strVal.nn) }
         else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
         else {
           val t = literalOf(in.token)
@@ -1528,7 +1527,7 @@ object Parsers {
       if (in.token == STRINGLIT)
         segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
 
-      InterpolatedString(interpolator, segmentBuf.toList)
+      InterpolatedString(interpolator.nn, segmentBuf.toList)
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
@@ -1547,7 +1546,7 @@ object Parsers {
       if in.isNewLine && in.next.token == token then in.nextToken()
 
     def newLinesOptWhenFollowedBy(name: Name): Unit =
-      if in.isNewLine && in.next.token == IDENTIFIER && in.next.name == name then
+      if in.isNewLine && in.next.token == IDENTIFIER && in.next.name.nn == name then
         in.nextToken()
 
     def newLineOptWhenFollowing(p: Int => Boolean): Unit =
@@ -1607,11 +1606,11 @@ object Parsers {
       def matches(stat: T): Boolean = stat match
         case stat: MemberDef if !stat.name.isEmpty =>
           if stat.name == nme.CONSTRUCTOR then in.token == THIS
-          else in.isIdent && in.name == stat.name.toTermName
+          else in.isIdent && in.name.nn == stat.name.toTermName
         case ExtMethods(_, _) =>
-          in.token == IDENTIFIER && in.name == nme.extension
+          in.token == IDENTIFIER && in.name.nn == nme.extension
         case PackageDef(pid: RefTree, _) =>
-          in.isIdent && in.name == pid.name
+          in.isIdent && in.name.nn == pid.name
         case stat: MemberDef if stat.mods.is(Given) => in.token == GIVEN
         case _: PatDef => in.token == VAL
         case _: If => in.token == IF
@@ -2047,13 +2046,13 @@ object Parsers {
       atSpan(in.offset) {
         val inPattern = (staged & StageKind.QuotedPattern) != 0
         val expr =
-          if (in.name.length == 1) {
+          if (in.name.nn.length == 1) {
             in.nextToken()
             val inPattern = (staged & StageKind.QuotedPattern) != 0
             withinStaged(StageKind.Spliced)(inBraces(if inPattern then pattern() else block(simplify = true)))
           }
           else atSpan(in.offset + 1) {
-            val id = Ident(in.name.drop(1))
+            val id = Ident(in.name.nn.drop(1))
             in.nextToken()
             id
           }
@@ -2102,7 +2101,7 @@ object Parsers {
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
       // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
       else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.XkindProjector.value == "underscores" then
-        val identName = in.name.toTypeName ++ nme.USCOREkw
+        val identName = in.name.nn.toTypeName ++ nme.USCOREkw
         val start = in.skipToken()
         in.nextToken()
         Ident(identName).withSpan(Span(start, in.lastOffset, start))
@@ -2412,7 +2411,7 @@ object Parsers {
                   Location.ElseWhere)
             else
               if rewriteToNewSyntax(t.span) then
-                dropParensOrBraces(t.span.start, tokenString(altToken))
+                dropParensOrBraces(t.span.start, tokenString(altToken).nn)
               in.observeIndented()
               return t
         else if in.isNestedStart then
@@ -2886,12 +2885,12 @@ object Parsers {
           if isLiteral then
             literal()
           else if in.isColon then
-            syntaxError(IllegalStartSimpleExpr(tokenString(in.token)))
+            syntaxError(IllegalStartSimpleExpr(tokenString(in.token).nn))
             in.nextToken()
             simpleExpr(location)
           else
             val start = in.lastOffset
-            syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)), expectedOffset)
+            syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token).nn), expectedOffset)
             errorTermTree(start)
       }
       simpleExprRest(t, location, canApply)
@@ -3383,7 +3382,7 @@ object Parsers {
     def infixPattern(): Tree =
       infixOps(
         simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern, ParseKind.Pattern,
-        isOperator = in.name != nme.raw.BAR && !followingIsVararg()
+        isOperator = (in.name: TermName | Null) != (nme.raw.BAR: TermName | Null) && !followingIsVararg()
                      && nextCanFollowOperator(canStartPatternTokens))
 
     /** SimplePattern    ::= PatVar
@@ -3506,7 +3505,7 @@ object Parsers {
         mods.withAddedAnnotation(consumeAnnot)
       else
         val mod = atSpan(in.skipToken()):
-          modOfToken(tok, name)
+          modOfToken(tok, name.nn)
         if mods.isOneOf(mod.flags) then
           syntaxError(RepeatedModifier(mod.flags.flagsString, source, mod.span), mod.span)
         addMod(mods, mod)
@@ -3804,7 +3803,7 @@ object Parsers {
           val name = ident() match
             case nme.using if !in.isColon =>
               val msg = ExpectedTokenButFoundSoftKeyword(expected = COLONop, found = in.token, nme.using, paramModAdvice)
-              val span = Span(in.offset, in.offset + (if in.name != null then in.name.show.length else 0))
+              val span = Span(in.offset, in.offset + (if in.name != null then in.name.nn.show.length else 0))
               val pickOne =
                 if in.token == IDENTIFIER then
                   while in.isSoftModifierInParamModifierPosition do ident() // skip to intended name, discard mods
@@ -3870,8 +3869,8 @@ object Parsers {
                     !impliedMods.is(Given)
                     || startParamTokens.contains(in.token)
                     || isIdent
-                        && (in.name == nme.inline    // inline starts a name binding
-                           || in.name == nme.tracked // tracked starts a name binding under x.modularity
+                        && (in.name.nn == nme.inline    // inline starts a name binding
+                           || in.name.nn == nme.tracked // tracked starts a name binding under x.modularity
                               && in.featureEnabled(Feature.modularity)
                            || in.lookahead.isColon)  // a following `:` starts a name binding
                   (mods, paramsAreNamed)

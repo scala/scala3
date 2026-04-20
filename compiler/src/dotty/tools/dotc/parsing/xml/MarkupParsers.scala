@@ -3,7 +3,6 @@ package dotc
 package parsing
 package xml
 
-import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 import scala.collection.mutable

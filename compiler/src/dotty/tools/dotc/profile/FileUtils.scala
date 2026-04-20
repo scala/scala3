@@ -14,8 +14,6 @@
 
 package dotty.tools.dotc.profile
 
-import scala.language.unsafeNulls
-
 import java.io.{BufferedWriter, IOException, OutputStreamWriter, Writer}
 import java.nio.CharBuffer
 import java.nio.charset.{Charset, CharsetEncoder, StandardCharsets}
@@ -140,7 +138,7 @@ object FileUtils {
     override def close(): Unit = {
       background.ensureProcessed(current)
       background.ensureProcessed(AsyncBufferedWriter.Close)
-      current = null
+      current = null.asInstanceOf[CharBuffer] // deinit for GC
       Await.result(background.asyncStatus.future, Duration.Inf)
       underlying.close()
     }
@@ -152,7 +150,7 @@ object FileUtils {
       //a failure detected will case an Failure, Success indicates a close
       val asyncStatus = Promise[Unit]()
       private val scheduled = new AtomicBoolean
-      @volatile var reuseBuffer: CharBuffer = uninitialized
+      @volatile var reuseBuffer: CharBuffer | Null = null
 
       def ensureProcessed(buffer: CharBuffer): Unit = {
         if (asyncStatus.isCompleted) {

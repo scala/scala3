@@ -214,7 +214,7 @@ object JavaParsers {
     def identForType(): TypeName = ident().toTypeName
     def ident(): Name =
       if (in.token == IDENTIFIER) {
-        val name = in.name
+        val name = in.name.nn
         in.nextToken()
         name
       }
@@ -603,7 +603,7 @@ object JavaParsers {
       * in particular when a `parentToken` is passed to some functions.
       */
     def adaptRecordIdentifier(): Unit =
-      if in.token == IDENTIFIER && in.name == jnme.RECORDid then
+      if in.token == IDENTIFIER && in.name.nn == jnme.RECORDid then
         in.token = RECORD
 
     def termDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] = {
@@ -1089,12 +1089,12 @@ object JavaParsers {
       val constant = in.token match {
         case TRUE      => Some(Constant(!negate))
         case FALSE     => Some(Constant(negate))
-        case CHARLIT   => Some(Constant(in.strVal.charAt(0)))
+        case CHARLIT   => Some(Constant(in.strVal.nn.charAt(0)))
         case INTLIT    => Some(Constant(in.intVal(negate).toInt))
         case LONGLIT   => Some(Constant(in.intVal(negate)))
         case FLOATLIT  => Some(Constant(in.floatVal(negate).toFloat))
         case DOUBLELIT => Some(Constant(in.floatVal(negate)))
-        case STRINGLIT => Some(Constant(in.strVal))
+        case STRINGLIT => Some(Constant(in.strVal.nn))
         case _         => None
       }
       if constant.isDefined then
