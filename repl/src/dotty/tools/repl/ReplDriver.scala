@@ -249,7 +249,15 @@ class ReplDriver(settings: Array[String],
               System.exit(130)  // Standard exit code for SIGINT
             }
         ) {
-          interpret(res)
+          val savedIn = System.in
+          val replIn = terminal.userInputStream
+          try
+            System.setIn(replIn)
+            scala.Console.withIn(replIn) {
+              interpret(res)
+            }
+          finally
+            System.setIn(savedIn)
         }
 
         loop(using newState)()
