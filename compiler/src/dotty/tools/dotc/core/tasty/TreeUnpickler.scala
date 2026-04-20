@@ -3,8 +3,6 @@ package dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
-
 import Comments.docCtx
 import Contexts.*
 import Symbols.*
@@ -96,7 +94,7 @@ class TreeUnpickler(reader: TastyReader,
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  private var roots: Set[SymDenotation] = null
+  private var roots: Set[SymDenotation] = uninitialized
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
@@ -1880,7 +1878,7 @@ class TreeUnpickler(reader: TastyReader,
    */
   class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
 
-    private var myChildren: List[OwnerTree] = null
+    private var myChildren: List[OwnerTree] | Null = null
 
     /** All definitions that have the definition at `addr` as closest enclosing definition */
     def children: List[OwnerTree] = {
@@ -1889,7 +1887,7 @@ class TreeUnpickler(reader: TastyReader,
         reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
         buf.toList
       }
-      myChildren
+      myChildren.nn
     }
 
     /** Find the owner of definition at `addr` */
@@ -1922,7 +1920,8 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     override def toString: String =
-      s"OwnerTree(${addr.index}, ${end.index}, ${if (myChildren == null) "?" else myChildren.mkString(" ")})"
+      val children = myChildren
+      s"OwnerTree(${addr.index}, ${end.index}, ${if (children == null) "?" else children.mkString(" ")})"
   }
 }
 

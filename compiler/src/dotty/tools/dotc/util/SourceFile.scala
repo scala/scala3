@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package util
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.*
 import Spans.*
 import core.Contexts.*
@@ -88,7 +86,7 @@ object WrappedSourceFile:
             regex.findFirstMatchIn(text) match
               case Some(m) =>
                 val sourceStartOffset = sourceFile.nextLine(m.start)
-                val file = ctx.getFile(m.group(1))
+                val file = ctx.getFile(m.group(1).nn)
                 if file.exists then
                   HasHeader(sourceStartOffset, ctx.getSource(file))
                 else
@@ -108,7 +106,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
    * the source is read from Tasty. */
   def content(): Array[Char] = {
     if (myContent == null) myContent = computeContent
-    myContent
+    myContent.nn
   }
 
   private var _maybeInComplete: Boolean = false
@@ -308,10 +306,10 @@ object SourceFile {
   /** Return true if file is a script:
    *  if filename extension is not .scala and has a script header.
    */
-  def isScript(file: AbstractFile | Null, content: Array[Char]): Boolean =
+  def isScript(file: AbstractFile, content: Array[Char]): Boolean =
     ScriptSourceFile.hasScriptHeader(content)
 
-  def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
+  def apply(file: AbstractFile, codec: Codec): SourceFile =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
     // so cope with failure.
     val chars =
@@ -324,7 +322,7 @@ object SourceFile {
     else
       SourceFile(file, chars)
 
-  def apply(file: AbstractFile | Null, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
+  def apply(file: AbstractFile, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

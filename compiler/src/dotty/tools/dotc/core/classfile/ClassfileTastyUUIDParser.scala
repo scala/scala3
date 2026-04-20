@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package core.classfile
 
-import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.core.Contexts.*
@@ -32,7 +31,7 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
     this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)
-    this.pool =  null
+    this.pool = null.asInstanceOf[ConstantPool] // deinit for GC
   }
   catch {
     case e: RuntimeException =>

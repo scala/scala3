@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package plugins
 
-import scala.language.unsafeNulls
-
 import core.*
 import Contexts.*
 import Phases.*
@@ -210,7 +208,7 @@ object Plugin {
   def instantiate(clazz: AnyClass): Plugin = clazz.getConstructor().newInstance().asInstanceOf[Plugin]
 }
 
-class PluginLoadException(val path: String, message: String, cause: Exception) extends Exception(message, cause) {
+class PluginLoadException(val path: String, message: String, cause: Exception | Null) extends Exception(message, cause) {
   def this(path: String, message: String) = this(path, message, null)
 }
 
