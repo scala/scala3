@@ -52,7 +52,9 @@ case class ScalaPresentationCompiler(
     folderPath: Option[Path] = None,
     reportsLevel: ReportLevel = ReportLevel.Info,
     completionItemPriority: CompletionItemPriority = (_: String) => 0,
-    reportContext: ReportContext = EmptyReportContext()
+    reportContext: ReportContext = EmptyReportContext(),
+    sourcePath: ju.function.Supplier[ju.List[Path]] = () => Nil.asJava,
+    semanticdbFileManager: SemanticdbFileManager = SemanticdbFileManager.EMPTY
 ) extends PresentationCompiler:
 
   given ReportContext = reportContext
@@ -122,6 +124,11 @@ case class ScalaPresentationCompiler(
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
     copy(reportsLevel = ReportLevel.fromString(level))
 
+  override def withSemanticdbFileManager(
+      semanticdbFileManager: SemanticdbFileManager
+  ): PresentationCompiler =
+    copy(semanticdbFileManager = semanticdbFileManager)
+
   val compilerAccess: CompilerAccess[StoreReporter, InteractiveDriver] =
     Scala3CompilerAccess(
       config,
@@ -129,13 +136,20 @@ case class ScalaPresentationCompiler(
       () => new Scala3CompilerWrapper(CachingDriver(driverSettings))
     )(using ec)
 
-  val driverSettings =
+  val driverSettings: List[String] =
     val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
     val defaultFlags = List("-color:never")
     val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
-
-    filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
-      .mkString(File.pathSeparator) :: Nil
+    val classpathFlags = List("-classpath", classpath.mkString(File.pathSeparator))
+    val sourcePathFiles = sourcePath.get().asScala
+    val sourcePathFlags = if sourcePathFiles.size > 0 && config.sourcePathMode() != SourcePathMode.DISABLED then
+      List("-Ylogical-package-loading", "-sourcepath", sourcePathFiles.mkString(File.pathSeparator))
+    else Nil
+    filteredOptions ++
+      defaultFlags ++
+      implicitSuggestionTimeout ++
+      classpathFlags ++
+      sourcePathFlags
 
   private def removeDoubleOptions(options: List[String]): List[String] =
     options match
@@ -469,7 +483,21 @@ case class ScalaPresentationCompiler(
       PcRenameProvider(driver, params, Some(name)).rename().asJava
     }(params.toQueryContext)
 
-  def newInstance(
+  override def newInstance(
+      buildTargetIdentifier: String,
+      classpath: ju.List[Path],
+      options: ju.List[String],
+      sourcePath: ju.function.Supplier[ju.List[Path]]
+  ): PresentationCompiler = {
+    copy(
+      buildTargetIdentifier = buildTargetIdentifier,
+      classpath = classpath.asScala.toSeq,
+      options = options.asScala.toList,
+      sourcePath = sourcePath
+    )
+  }
+
+  override def newInstance(
       buildTargetIdentifier: String,
       classpath: ju.List[Path],
       options: ju.List[String]

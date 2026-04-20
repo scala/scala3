@@ -46,7 +46,9 @@ case class RawScalaPresentationCompiler(
     folderPath: Option[Path] = None,
     reportsLevel: ReportLevel = ReportLevel.Info,
     completionItemPriority: CompletionItemPriority = (_: String) => 0,
-    reportContext: ReportContext = EmptyReportContext()
+    reportContext: ReportContext = EmptyReportContext(),
+    sourcePath: ju.function.Supplier[ju.List[Path]] = () => Nil.asJava,
+    semanticdbFileManager: SemanticdbFileManager = SemanticdbFileManager.EMPTY
 ) extends RawPresentationCompiler:
 
   def this() = this("uninitialized-presentation-compiler")
@@ -68,13 +70,20 @@ case class RawScalaPresentationCompiler(
   private val forbiddenOptions = Set("-print-tasty")
   private val forbiddenDoubleOptions = Set.empty[String]
 
-  val driverSettings =
+  val driverSettings: List[String] =
     val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
     val defaultFlags = List("-color:never")
     val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
-
-    filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
-      .mkString(File.pathSeparator) :: Nil
+    val classpathFlags = List("-classpath", classpath.mkString(File.pathSeparator))
+    val sourcePathFiles = sourcePath.get().asScala
+    val sourcePathFlags = if sourcePathFiles.size > 0 && config.sourcePathMode() != SourcePathMode.DISABLED then
+      List("-Ylogical-package-loading", "-sourcepath", sourcePathFiles.mkString(File.pathSeparator))
+    else Nil
+    filteredOptions ++
+      defaultFlags ++
+      implicitSuggestionTimeout ++
+      classpathFlags ++
+      sourcePathFlags
 
   lazy val driver: InteractiveDriver = CachingDriver(driverSettings)
 
@@ -305,6 +314,20 @@ case class RawScalaPresentationCompiler(
   override def newInstance(
       buildTargetIdentifier: String,
       classpath: ju.List[Path],
+      options: ju.List[String],
+      sourcePath: ju.function.Supplier[ju.List[Path]]
+  ): RawPresentationCompiler = {
+    copy(
+      buildTargetIdentifier = buildTargetIdentifier,
+      classpath = classpath.asScala.toSeq,
+      options = options.asScala.toList,
+      sourcePath = sourcePath
+    )
+  }
+
+  override def newInstance(
+      buildTargetIdentifier: String,
+      classpath: ju.List[Path],
       options: ju.List[String]
   ): RawPresentationCompiler =
     copy(
@@ -340,5 +363,10 @@ case class RawScalaPresentationCompiler(
 
   override def withWorkspace(workspace: Path): RawPresentationCompiler =
     copy(folderPath = Some(workspace))
+
+  override def withSemanticdbFileManager(
+      semanticdbFileManager: SemanticdbFileManager
+  ): RawPresentationCompiler =
+    copy(semanticdbFileManager = semanticdbFileManager)
 
 end RawScalaPresentationCompiler
