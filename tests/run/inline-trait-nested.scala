@@ -1,3 +1,6 @@
+// While we don't allow inner nested classes inside inline traits, we do allow creation of anonymous classes inside methods
+// inside inline traits - after all these are just ordinary methods.
+
 inline trait Trait[T]:
     def do_something() = println("Good morning")
   
