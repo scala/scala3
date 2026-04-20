@@ -135,6 +135,15 @@ object TypeApplications {
     }
 
     def apply(t: Type): Type = t match {
+      case t @ AppliedType(tycon, args1) if tycon.isRef(defn.MatchCaseClass) =>
+        // Match-type case patterns and case bodies are both invariant, unsafe
+        // positions for wildcard substitution. Substituting a wildcard here
+        // either makes a pattern spuriously match anything (for a top-level
+        // param in a pattern) or loses the relationship between occurrences
+        // (for a param used multiple times in a body). See issue #21013.
+        // Force nested-level treatment so wildcard substitution is skipped,
+        // leaving the AppliedType to be flagged by `isUnreducibleWild`.
+        t.derivedAppliedType(apply(tycon), args1.mapConserve(arg => atNestedLevel(apply(arg))))
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case t @ RefinedType(parent, name, TypeAlias(info)) =>
