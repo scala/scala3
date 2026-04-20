@@ -488,6 +488,11 @@ private[concurrent] object Promise {
           _arg = null // see above
           _ec  = null // see above again
           handleFailure(t, e.nn)
+        case t: InterruptedException =>
+          _fun = null
+          _arg = null
+          _ec  = null
+          handleFailure(t, e.nn)
       }
 
       this
@@ -495,14 +500,12 @@ private[concurrent] object Promise {
 
     private final def handleFailure(t: Throwable, e: ExecutionContext): Unit = {
       val wasInterrupted = t.isInstanceOf[InterruptedException]
-      if (wasInterrupted || NonFatal(t)) {
-        val completed = tryComplete0(get(), resolve(Failure(t)))
-        if (completed && wasInterrupted) Thread.currentThread.interrupt()
+      val completed = tryComplete0(get(), resolve(Failure(t)))
+      if (completed && wasInterrupted) Thread.currentThread.interrupt()
 
-        // Report or rethrow failures which are unlikely to otherwise be noticed
-        if (_xform == Xform_foreach || _xform == Xform_onComplete || !completed)
-          e.reportFailure(t)
-      } else throw t
+      // Report or rethrow failures which are unlikely to otherwise be noticed
+      if (_xform == Xform_foreach || _xform == Xform_onComplete || !completed)
+        e.reportFailure(t)
     }
 
     // Gets invoked by the ExecutionContext, when we have a value to transform.
@@ -559,6 +562,7 @@ private[concurrent] object Promise {
           tryComplete0(get(), resolvedResult.asInstanceOf[Try[T]]) // T is erased anyway so we won't have any use for it above
       } catch {
         case NonFatal(t) => handleFailure(t, ec)
+        case t: InterruptedException => handleFailure(t, ec)
       }
     }
   }
