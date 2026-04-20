@@ -1155,6 +1155,14 @@ For ´n \geq 1´, it is specified as:
 
 The reduction of an "empty" match type `´X´ match { }` (which cannot be written in user programs) is a compile error.
 
+#### Applications to Wildcard Arguments
+
+Let `´M´` be a _match type alias_ of the form `type ´M´[´a_1´, ..., ´a_n´] = ´X´ match { case ´P_1´ => ´R_1´; ...; case ´P_k´ => ´R_k´ }` (optionally with a declared upper bound).
+An application `´M´[´T_1´, ..., ´T_n´]` where some `´T_i´` is a wildcard type argument is legal only if every such `´a_i´` occurs exclusively in the scrutinee `´X´` — i.e., it does not occur in the declared upper bound, in any pattern `´P_j´`, or in any body `´R_j´`.
+
+If a wildcard is substituted for a parameter that appears in a pattern, the pattern may spuriously match scrutinees that no non-wildcard substitution would match.
+If a wildcard is substituted for a parameter that appears multiple times in a body (or in the declared upper bound), the resulting type loses the identification between those occurrences, which is the same unsoundness as substituting a wildcard for `X` in `[X] =>> (X, X)`.
+
 ### Skolem Types
 
 ```ebnf
