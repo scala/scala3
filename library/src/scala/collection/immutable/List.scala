@@ -23,6 +23,7 @@ import scala.annotation.publicInBinary
 import mutable.{Builder, ListBuffer}
 import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.runtime.Statics.releaseFence
+import scala.annotation.{assumeDecreases, assumeWellFounded}
 
 /** A class for immutable linked lists representing ordered collections
  *  of elements of type `A`.
@@ -80,6 +81,7 @@ import scala.runtime.Statics.releaseFence
  *  @define willNotTerminateInf
  */
 @SerialVersionUID(3L)
+@assumeWellFounded
 sealed abstract class List[+A]
   extends AbstractSeq[A]
     with LinearSeq[A]

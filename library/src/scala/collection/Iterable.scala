@@ -20,6 +20,7 @@ import scala.annotation.nowarn
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.Builder
 import scala.collection.View.{LeftPartitionMapped, RightPartitionMapped}
+import scala.annotation.assumeDecreases
 
 /** Base trait for generic collections.
  *
@@ -228,6 +229,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @return  the first element of this $coll.
    *  @throws NoSuchElementException if the $coll is empty.
    */
+  @assumeDecreases
   def head: A = iterator.next()
 
   /** Optionally selects the first element.
@@ -540,6 +542,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     iterator.sliding(size, step).map(fromSpecific)
 
   /** The rest of the collection without its first element. */
+  @assumeDecreases
   def tail: C^{this} = {
     if (isEmpty) throw new UnsupportedOperationException
     drop(1)

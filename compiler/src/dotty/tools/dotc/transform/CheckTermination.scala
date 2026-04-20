@@ -64,11 +64,7 @@ class CheckTermination extends MiniPhase {
           callStack.find(_ == fn.symbol) match {
             case Some(methodSymbol) =>
               val params = getMethodParams(methodSymbol)
-              val argsSymbols = args.map {
-                case symbol: Symbol => symbol
-                case tree: Tree => tree.symbol
-              }
-              if !areSmaller(argsSymbols, params, methodSymbol) then {
+              if !areSmaller(args, params, methodSymbol) then {
                 report.error(
                   s"${startMethod.name} may not terminate due to (mutually) recursive call.",
                   tree.srcPos
@@ -110,7 +106,15 @@ class CheckTermination extends MiniPhase {
           )
 
         case tree: ValDef =>
-          sizeMap += tree.symbol -> (tree.rhs -> Size.Same)
+          tree.rhs match {
+            case Select(qualifier, _) =>
+              peelSelects(tree.rhs) match {
+                case Some((symbol, isSmaller)) =>
+                  sizeMap += tree.symbol -> (symbol -> (if isSmaller then Size.Smaller else Size.Same))
+                case _ => sizeMap += tree.symbol -> (tree.rhs -> Size.Same)
+              }
+            case _ => sizeMap += tree.symbol -> (tree.rhs -> Size.Same)
+          }
           traverseChildren(tree)
 
         case _ => traverseChildren(tree)
@@ -169,7 +173,31 @@ class CheckTermination extends MiniPhase {
       candidates.filter(getMethodParams(tree.symbol).contains)
     }
 
-    private def areSmaller(args: List[Symbol], params: List[Symbol], methodSymbol: Symbol)(using Context): Boolean = {
+    private def peelSelects(tree: Tree)(using Context): Option[(Symbol, Boolean)] = {
+      def isQualifierSmaller(qualifier: Tree): Option[(Symbol, Boolean)] = {
+        peelSelects(qualifier) match {
+          case Some(symbol, _) =>
+            val tpeSym = symbol.info.typeSymbol
+            val res = tree.symbol.hasAnnotation(defn.AssumeDecreasesAnnot) || {
+              tpeSym.is(Case) && tpeSym.isClass && {
+                val constructorParams = tpeSym.asClass.primaryConstructor
+                  .paramSymss.filter(!_.exists(_.isTypeParam)).head
+                  constructorParams.exists(_.name == tree.symbol.name)
+              }
+            }
+            if res then Some((symbol, res)) else None
+          case None => None
+        }
+      }
+      tree match {
+        case Ident(_) => Some((tree.symbol, false))
+        case Select(qualifier, _) => isQualifierSmaller(qualifier)
+        case Apply(Select(qualifier, _), _) => isQualifierSmaller(qualifier)
+        case _ => None
+      }
+    }
+
+    private def areSmaller(args: List[Symbol | Tree], params: List[Symbol], methodSymbol: Symbol)(using Context): Boolean = {
       def compareSize(arg: Symbol, param: Symbol, decreased: Boolean = false): Size =
         if arg == param then
           if decreased then Size.Smaller else Size.Same
@@ -177,22 +205,34 @@ class CheckTermination extends MiniPhase {
           sizeMap.get(arg) match {
             case None => Size.Unknown
             case Some((result, size)) =>
-              val symbol = result match {
-                case symbol: Symbol => symbol
-                case tree: Tree => tree.symbol
+              val (symbol, isSmaller) = result match {
+                case symbol: Symbol => (symbol, false)
+                case tree: Tree =>
+                  peelSelects(tree) match {
+                    case Some(res) => res
+                    case None => (tree.symbol, false)
+                  }
               }
               size match {
                 case Size.Smaller => compareSize(symbol, param, true)
-                case Size.Same => compareSize(symbol, param, decreased)
+                case Size.Same => compareSize(symbol, param, isSmaller || decreased)
                 case Size.Unknown => Size.Unknown
               }
           }
 
-      def isLexicoDecreasing(argsParams: List[(Symbol, Symbol)]): Boolean =
+      def isLexicoDecreasing(argsParams: List[(Symbol | Tree, Symbol)]): Boolean =
         argsParams match {
           case (arg, param) :: tail =>
-            compareSize(arg, param) match {
-              case Size.Smaller => typeWellFounded(param.info.typeSymbol, arg.srcPos)
+            val (argSymbol, decreased) = arg match {
+              case sym: Symbol => (sym, false)
+              case tree: Tree =>
+                peelSelects(tree) match {
+                  case Some(res) => res
+                  case None => (tree.symbol, false)
+                }
+            }
+            compareSize(argSymbol, param, decreased) match {
+              case Size.Smaller => typeWellFounded(param.info.typeSymbol, argSymbol.srcPos)
               case Size.Same => isLexicoDecreasing(tail)
               case Size.Unknown => false
             }
@@ -235,7 +275,7 @@ class CheckTermination extends MiniPhase {
         val constructorParams = classSym.primaryConstructor.paramSymss.filter(!_.exists(_.isTypeParam)).head
         fields.forall(symbol => symbol.isStableMember && constructorParams.exists(_.name == symbol.name))
 
-      val res = {
+      val res = tpeSym.hasAnnotation(defn.AssumeWellFoundedAnnot) || {
         if tpeSym.is(Sealed) then tpeSym.children.forall(typeWellFounded(_, pos))
         else tpeSym.is(CaseVal) || (tpeSym.is(Case) && tpeSym.isClass && caseClassCheck(tpeSym.asClass))
       }
