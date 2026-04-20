@@ -333,7 +333,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         // not give the same erased type. If it doesn't, we'll just give a completely
         // incorrect Java signature. (This could be improved by generating dedicated
         // bridges, but we don't go that far; scalac doesn't either.)
-        if TypeErasure.transformInfo(target, infoBeforeErasure) =:= sym.info then
+        if ElimErasedValueType.elimEVT(TypeErasure.transformInfo(target, infoBeforeErasure)) =:= sym.info then
           mixinGenericInfos(sym) = infoBeforeErasure
       sym
 

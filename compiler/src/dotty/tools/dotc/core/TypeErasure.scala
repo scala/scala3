@@ -946,7 +946,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   }
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
-   *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
+   *  `PolyType`s are treated. `eraseInfo` maps them to method types, whereas `apply` maps them
    *  to the underlying type.
    */
   def eraseInfo(tp: Type, sym: Symbol)(using Context): Type =
