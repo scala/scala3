@@ -4786,15 +4786,41 @@ object Types extends TypeUtils {
       else super.tryNormalize
 
     /** Is this an unreducible application to wildcard arguments?
-     *  This is the case if tycon is higher-kinded. This means
-     *  it is a subtype of a hk-lambda, but not a match alias.
-     *  (normal parameterized aliases are removed in `appliedTo`).
+     *  This is the case if tycon is higher-kinded and at least one argument
+     *  is a wildcard, *unless* tycon is either:
+     *    - the pseudo match alias `compiletime.ops.int.S`, or
+     *    - a match alias whose wildcard arguments correspond only to type
+     *      parameters that appear solely in the match scrutinee.
+     *  (Normal parameterized aliases are removed in `appliedTo`.)
      *  Applications of higher-kinded type constructors to wildcard arguments
      *  are equivalent to existential types, which are not supported.
+     *
+     *  For match type aliases we restrict the exemption: substituting a
+     *  wildcard for a type parameter is unsound whenever that parameter
+     *  occurs in a pattern (because pattern captures would then see a
+     *  wildcard-refinable type), in a case body, or in the declared upper
+     *  bound. Only parameters used exclusively in the scrutinee are safe,
+     *  since in that case `M[?]` is simply an unreducible match type.
+     *  See issue #21013.
      */
     def isUnreducibleWild(using Context): Boolean =
-      tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
+      tycon.isLambdaSub && hasWildcardArg
         && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
+        && (!isMatchAlias || matchAliasWildcardIsUnsound)
+
+    /** Pre: this is an `isMatchAlias` application with at least one wildcard
+     *  argument. Returns true iff some wildcard is applied to a type parameter
+     *  that occurs outside the scrutinee of the underlying match type (in the
+     *  declared upper bound, any pattern, or any case body).
+     */
+    private def matchAliasWildcardIsUnsound(using Context): Boolean =
+      val lam: HKTypeLambda | Null = tycon match
+        case tr: TypeRef => tr.info match
+          case MatchAlias(l: HKTypeLambda) => l
+          case _ => null
+        case l: HKTypeLambda => l
+        case _ => null
+      lam != null && unsoundMatchAliasWildcardArgs(lam, args)
 
     def tryCompiletimeConstantFold(using Context): Type =
       if myEvalRunId == ctx.runId then myEvalued
@@ -7306,4 +7332,27 @@ object Types extends TypeUtils {
   private val keepIfRefining: AnnotatedType => Context ?=> Boolean = _.isRefining
 
   val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
+
+  /** Does applying `lam` (the HKTypeLambda body of a match alias) to `args`
+   *  yield an unsound wildcard application? The application is unsound iff
+   *  `lam.resType` is a `MatchType` and some wildcard argument (a `TypeBounds`)
+   *  corresponds to a lambda parameter that occurs outside the match scrutinee
+   *  — i.e., in the match's declared upper bound, in any case pattern, or in
+   *  any case body. See issue #21013 for the motivation: substituting `?` for
+   *  a type parameter in such a position is analogous to the classic
+   *  `type U[X] = (X, X); type V = U[?]` unsoundness.
+   */
+  def unsoundMatchAliasWildcardArgs(lam: HKTypeLambda, args: List[Type])(using Context): Boolean =
+    lam.resType match
+      case mt: MatchType =>
+        val collector = new TypeAccumulator[Set[Int]]:
+          def apply(acc: Set[Int], tp: Type): Set[Int] = tp match
+            case tp: TypeParamRef if tp.binder eq lam => acc + tp.paramNum
+            case _ => foldOver(acc, tp)
+        val unsafe = mt.cases.foldLeft(collector(Set.empty, mt.bound))(collector(_, _))
+        unsafe.nonEmpty && args.iterator.zipWithIndex.exists {
+          case (_: TypeBounds, i) => unsafe.contains(i)
+          case _ => false
+        }
+      case _ => false
 }
