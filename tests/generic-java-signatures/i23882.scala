@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 import scala.collection.*
 import scala.caps.Pure
 

@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 object Foo:
     def foo[X, Y, Z](x: X, y: Y)[A](z: Z, a: A): (X, Y, Z, A) = (x, y, z, a)
     def bar[X](x: X)[Y <: x.type](y: Y): (X, Y) = (x, y)

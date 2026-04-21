@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (this is a JVM-only test)
-
 import language.experimental.erasedDefinitions
 
 class CanSerialize extends compiletime.Erased

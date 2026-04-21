@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only test about generic signatures)
-
 import scala.language.higherKinds
 
 class Category[M[_, _]]

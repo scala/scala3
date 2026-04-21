@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 class Foo:
   def bar[B](x: B): x.type = x
 

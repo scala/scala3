@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (this is a JVM-only test)
-
 trait A
 class VC(val self: A) extends AnyVal
 class Z {

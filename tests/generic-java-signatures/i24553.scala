@@ -1,4 +1,3 @@
-// scalajs: --skip
 class Foo:
     val hello = 1337
     val x: hello.type = ???
