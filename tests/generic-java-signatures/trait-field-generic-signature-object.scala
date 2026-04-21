@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only, generic signatures)
-
 trait Foo {
   val foo: Option[String] = ???
 }
