@@ -4786,41 +4786,34 @@ object Types extends TypeUtils {
       else super.tryNormalize
 
     /** Is this an unreducible application to wildcard arguments?
-     *  This is the case if tycon is higher-kinded and at least one argument
-     *  is a wildcard, *unless* tycon is either:
-     *    - the pseudo match alias `compiletime.ops.int.S`, or
-     *    - a match alias whose wildcard arguments correspond only to type
-     *      parameters that appear solely in the match scrutinee.
-     *  (Normal parameterized aliases are removed in `appliedTo`.)
+     *  This is the case if tycon is higher-kinded. This means
+     *  it is a subtype of a hk-lambda. Match aliases are exempt unless the
+     *  wildcard application is unsound; see `unsoundMatchAliasWildcardArgs`.
+     *  (normal parameterized aliases are removed in `appliedTo`).
      *  Applications of higher-kinded type constructors to wildcard arguments
      *  are equivalent to existential types, which are not supported.
-     *
-     *  For match type aliases we restrict the exemption: substituting a
-     *  wildcard for a type parameter is unsound whenever that parameter
-     *  occurs in a pattern (because pattern captures would then see a
-     *  wildcard-refinable type), in a case body, or in the declared upper
-     *  bound. Only parameters used exclusively in the scrutinee are safe,
-     *  since in that case `M[?]` is simply an unreducible match type.
-     *  See issue #21013.
      */
     def isUnreducibleWild(using Context): Boolean =
-      tycon.isLambdaSub && hasWildcardArg
-        && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
-        && (!isMatchAlias || matchAliasWildcardIsUnsound)
+      if !tycon.isLambdaSub || !hasWildcardArg then false
+      else if args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol) then false // S is a pseudo Match Alias
+      else matchAliasLambda match
+        case lam: HKTypeLambda => unsoundMatchAliasWildcardArgs(lam, args)
+        case _ => true
 
-    /** Pre: this is an `isMatchAlias` application with at least one wildcard
-     *  argument. Returns true iff some wildcard is applied to a type parameter
-     *  that occurs outside the scrutinee of the underlying match type (in the
-     *  declared upper bound, any pattern, or any case body).
+    /** If this application is (the eta-expansion of) a match type alias,
+     *  returns the underlying `HKTypeLambda` whose `resType` is a `MatchType`.
+     *  Otherwise returns `NoType`. Used by `isUnreducibleWild` so that sound
+     *  wildcard applications of match aliases (the parameter only appears in
+     *  the scrutinee) can be accepted, while unsound ones are rejected.
      */
-    private def matchAliasWildcardIsUnsound(using Context): Boolean =
-      val lam: HKTypeLambda | Null = tycon match
-        case tr: TypeRef => tr.info match
-          case MatchAlias(l: HKTypeLambda) => l
-          case _ => null
-        case l: HKTypeLambda => l
-        case _ => null
-      lam != null && unsoundMatchAliasWildcardArgs(lam, args)
+    private def matchAliasLambda(using Context): Type = tycon match
+      case tr: TypeRef => tr.info match
+        case MatchAlias(l: HKTypeLambda) => l
+        case _ => NoType
+      case l: HKTypeLambda => l.resType match
+        case _: MatchType => l
+        case _ => NoType
+      case _ => NoType
 
     def tryCompiletimeConstantFold(using Context): Type =
       if myEvalRunId == ctx.runId then myEvalued
