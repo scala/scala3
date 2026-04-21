@@ -152,7 +152,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
        """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).input
+      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
       val meth   = getMethod(clsNode, "test")
 
@@ -333,7 +333,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
 
   def checkApplyAvoidsIntermediateArray(name: String)(source: String): Unit = {
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).input
+      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
       val meth1   = getMethod(clsNode, "meth1")
       val meth2   = getMethod(clsNode, "meth2")

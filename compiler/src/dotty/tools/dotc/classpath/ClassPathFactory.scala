@@ -60,10 +60,10 @@ class ClassPathFactory {
 
   // Internal
   protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
-    val files = for {
+    val files: List[AbstractFile] = for {
       file <- expandPath(path, expand)
       dir <- {
-        def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file)) else None
+        def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None
         Option(AbstractFile.getDirectory(file)).orElse(asImage)
       }
     }
@@ -77,7 +77,7 @@ class ClassPathFactory {
           path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield
-          newClassPath(AbstractFile.getFile(path))
+          newClassPath(AbstractFile.getFile(path).nn) // .nn ok because of Files.exists(path)
       else
         Seq.empty
 

@@ -259,7 +259,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: C
           if (compilerSettings.debug) e.printStackTrace()
           report.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
       }
-      AbstractFile.getFile(path)
+      AbstractFile.getFile(path).nn // we just wrote the file, so it had better exist
     }
 
     override def close(): Unit = ()
