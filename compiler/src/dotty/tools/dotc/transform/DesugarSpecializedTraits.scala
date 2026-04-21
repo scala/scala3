@@ -256,8 +256,7 @@ class DesugarSpecializedTraits extends MacroTransform:
           yield AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs) // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
         }.getOrElse(tree)
 
-        // Select a method which is specialized; we need to make sure we call the specialized version
-        case sel@Select(qualifier, name) if typeMap(sel.symbol.info) != sel.symbol.info => 
+        case sel@Select(qualifier, name) if typeMap(sel.denot.info) != sel.denot.info => 
           Select(qualifier, name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
         case tree => tree
       }
