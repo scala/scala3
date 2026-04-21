@@ -68,7 +68,7 @@ class DesugarSpecializedTraits extends MacroTransform:
       // See ArrayIterator extends Iterator in specialized-trait-collections-example.scala
       val specializations1 = inheritedParents.foldLeft(specializations)((specializations, parent) => 
           parent match {
-            case Specialization(spec) if spec.isSpecialized => (specializations.addInterface(spec)) 
+            case Specialization(spec) if spec.isSpecialized => specializations.addInterface(spec) 
             case _ => specializations
           }
       )
@@ -256,15 +256,28 @@ class DesugarSpecializedTraits extends MacroTransform:
           yield AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs) // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
         }.getOrElse(tree)
 
-        case sel@Select(qualifier, name) if typeMap(sel.denot.info) != sel.denot.info => 
-          Select(qualifier, name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
+        /* case sel@Select(qualifier, name) if typeMap(sel.denot.info) != sel.denot.info => 
+          Select(qualifier, name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX) */
         case tree => tree
       }
       
       // TODO: Do we acvtually need to worry about these cases if we have enough limitations?
       new TreeTypeMap(typeMap, treeMap) {
         override def transform(tree: Tree)(using Context): Tree = tree match { // HACK: This seems to do what we want but I don't understand why we don't do this by default? Surely we should apply transformDefs over template body?
-          case vd@ValDef(name, tpt, preRhs) =>
+          case dd@DefDef(name, paramss, tpt, preRhs) => 
+            val transformedDef = super.transform(dd)
+            transformedDef.symbol.info = mapType(transformedDef.symbol.info)
+            if transformedDef.symbol.allOverriddenSymbols.isEmpty then
+              transformedDef.symbol.flags = transformedDef.symbol.flags &~ Flags.Override
+            transformedDef
+
+          case vd@ValDef(name, tpt, preRhs) => 
+            val transformedDef = super.transform(vd)
+            transformedDef.symbol.info = mapType(transformedDef.symbol.info)
+            if transformedDef.symbol.allOverriddenSymbols.isEmpty then
+              transformedDef.symbol.flags = transformedDef.symbol.flags &~ Flags.Override
+            transformedDef
+          /*case vd@ValDef(name, tpt, preRhs) =>
             val transformedDef = super.transform(vd).asInstanceOf[ValDef]
             if transformedDef.symbol.info != mapType(transformedDef.symbol.info) && transformedDef.symbol.allOverriddenSymbols.nonEmpty then
               val specializedSymbol = newSymbol(
@@ -301,7 +314,7 @@ class DesugarSpecializedTraits extends MacroTransform:
 
               DefDef(specializedSymbol.asTerm, rhsFun)
             else
-              transformedDef
+              transformedDef*/
 
           case impl@Template(constr, preParentsOrDerived, self, _) => 
             impl.parents.foreach(p => 
@@ -317,13 +330,16 @@ class DesugarSpecializedTraits extends MacroTransform:
               }
             )
 
+            /*
             // If a class has a specialized member which was overriding a parent member, this override is lost because we specialize the types.
             // E.g. def foo(Vec$sp$Int) cannot override def foo(Vec[Int]) because signatures must match exactly for overriding.
             // However, specialized trait is based on the invariant that ∀T. T <: Foo[Int] => T <: Foo$sp$Int (and note that the reverse <= holds trivially by inheritance).
             // This means it is safe to build bridge methods which simply apply the relevant casts so that we satisfy the interface, although we don't expect to call these.
             def isMapped(t: Type) = mapType(t) != t
-
+            */
             val mappedbody = impl.body.map(transform(_))
+            
+            /*
             val bridgeMethods = impl.body.collect {
               case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && isMapped(ddef.symbol.info) => 
                 // Any callers of the original method will have been redirected to the bridge method because it has a signature match with the method they were calling            
@@ -344,9 +360,15 @@ class DesugarSpecializedTraits extends MacroTransform:
                 cpy.ValDef(vdef)(
                   rhs = This(impl.symbol.owner.asClass).select(vdef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX).cast(vdef.symbol.info)
                 )
-            }
+            } */
+           
+            /* We need to map parents of non-specialized inline traits (see tests/pos/specialized-trait-partial-complete-specialization-with-return-type.scala, we need 
+            to map the A[Int] reference to A$sp$Int in B's parents) */
+            val mappedparents = impl.parents.map(transform(_))
+            val oldInfo = impl.symbol.owner.info.asInstanceOf[ClassInfo]
+            impl.symbol.owner.info = oldInfo.derivedClassInfo(declaredParents = oldInfo.declaredParents.map(mapType(_)))
 
-            cpy.Template(impl)(body = mappedbody ::: bridgeMethods)
+            cpy.Template(impl)(body = mappedbody, parents = mappedparents)
           case tree => super.transform(tree)
         }
       }
@@ -360,10 +382,44 @@ class DesugarSpecializedTraits extends MacroTransform:
 
       val specializations2 = specializations1.installNewInterfaceSymbols.installNewImplementationSymbols
 
+      // We have Vec$sp$Int extends Vec[Int] in order to do the inlining, but then remove this parent 
+      // afterwards to avoid interface implementation problems (see tests/run/specialized-trait-as-parameter.scala,
+      // tests/run/specialized-trait-as-return-type.scala)
+      extension (classTree: Tree)
+        def updateParents(parentUpdater: List[Type] => List[Type]) = (classTree: @unchecked) match {
+          case td@TypeDef(name, t@Template(constr, preParentsOrDerived, self, preBody)) =>  
+          td.symbol.info = td.symbol.info match {
+            case ci: ClassInfo => ci.derivedClassInfo(declaredParents=parentUpdater(ci.declaredParents)) 
+          }
+          ClassDef(td.symbol.asClass, constr, t.body)
+        } 
+
       // TODO: How do we calculate the spans correctly?
-      val generatedTraitStats1 = generatedTraitStats.map(trtDef => Inlines.inlineParentInlineTraits(Inlines.transformInlineTrait(trtDef.withSpan(span))))
-      val generatedClassStats1 = generatedClassStats.map(clsDef => Inlines.inlineParentInlineTraits(clsDef.withSpan(span)))
+      val ttmap = new TreeTypeMap(treeMap = {
+        case tree: TypeDef if tree.symbol.isInlineTrait =>
+          val tree1 = Inlines.transformInlineTrait(tree)
+          val tree2 = if Inlines.needsInlining(tree1) then Inlines.inlineParentInlineTraits(tree1) else tree1
+          tree2
+        case tree: TypeDef if Inlines.needsInlining(tree) =>
+          Inlines.inlineParentInlineTraits(tree)
+        case t => t
+      })
       
+      // Why does it cause no denotation to happen?
+      val generatedTraitStats1 = generatedTraitStats.map(trtDef => /*Inlines.inlineParentInlineTraits(Inlines.transformInlineTrait(*/ttmap(trtDef.withSpan(span))/*))*/).map:
+        _.updateParents { parents => (parents: @unchecked) match
+          case obj :: original :: parents => obj :: parents
+        }
+  
+      val generatedClassStats1 = generatedClassStats.map(clsDef => /*Inlines.inlineParentInlineTraits(*/ttmap(clsDef.withSpan(span))/*)*/).map:
+        _.updateParents { parents => (parents: @unchecked) match
+          case obj :: traitSp :: originalSpec :: Nil => obj :: traitSp :: Nil 
+        }
+      
+      /* We need to inline recursively throughout generated specialized traits - see tests/run/specialized-trait-requires-inline-trait-inlining.scala */
+      // val generatedTraitStats1 = generatedTraitStats1a.map(ttmap(_))
+      // val generatedClassStats1 = generatedClassStats1a.map(ttmap(_))
+
       if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
         (stats.map(replaceSpecializedSymbolsMap(specializations2)(_)), specializations2)
       else 
@@ -568,7 +624,7 @@ end Specialization
 object Specialization:
   object SpecializedEvidence {
     def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
-      case AppliedType(tycon, List(tpeArg)) if tycon =:= ctx.definitions.SpecializedClass.typeRef => Some(tpeArg)
+      case AppliedType(tycon, List(tpeArg)) if (tycon =:= ctx.definitions.SpecializedClass.typeRef && tpeArg.typeSymbol.isTypeParam) => Some(tpeArg)
       case _ => None
     }
   }
