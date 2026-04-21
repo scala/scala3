@@ -40,6 +40,8 @@ import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.core.Decorators.nestedMap
+import dotty.tools.dotc.core.NameOps.expandedName
+
 
 class DesugarSpecializedTraits extends MacroTransform:
 
@@ -165,8 +167,10 @@ class DesugarSpecializedTraits extends MacroTransform:
           }
 
       val nonTypeParams = specialization.traitSymbol.primaryConstructor.rawParamss.tail
-      val valueParams = nonTypeParams.map(_.map(param => param.copy(owner = init, info = tm(param.info)))) // .map(_.filterNot(isSyntheticEvidence)
-     
+
+      // We need to map the parameter names to avoid a name clash with val params from parents (see tests/pos/specialized-trait-val-parameter.scala)
+      val valueParams = nonTypeParams.map(_.map(param => param.copy(owner = init, info = tm(param.info), name=param.name.expandedName(classSymbol)))) // .map(_.filterNot(isSyntheticEvidence)
+
       init.setParamss(valueParams)
 
       val paramAccessorss = valueParams.map(params => params.map(_.copy(owner = classSymbol, flags= Flags.LocalParamAccessor))) 
