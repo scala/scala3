@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import scala.language.unsafeNulls
-
 import ast.tpd
 import ast.Trees.*
 import config.Printers.macroAnnot as debug
