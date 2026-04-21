@@ -12,7 +12,7 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
   private val fullClasspath = List(
     args.tastyFiles
       .map(_.getAbsolutePath())
-      .map(AbstractFile.getFile(_))
+      .map(AbstractFile.getFile(_).nn)
       .flatMap(t => try TastyFileUtil.getClassPath(t) catch case _: AssertionError => Seq.empty)
       .distinct
       .mkString(sep),
