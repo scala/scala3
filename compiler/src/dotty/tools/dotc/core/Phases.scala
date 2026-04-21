@@ -577,6 +577,7 @@ object Phases {
   def sbtExtractAPIPhase(using Context): Phase          = ctx.base.sbtExtractAPIPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
   def specializeInlineTraitsPhase(using Context): Phase = ctx.base.specializeInlineTraitsPhase
+  def desugarSpecializedTraitsPhase(using Context): Phase = ctx.base.desugarSpecializedTraitsPhase
   def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
   def stagingPhase(using Context): Phase                = ctx.base.stagingPhase
   def splicingPhase(using Context): Phase               = ctx.base.splicingPhase
