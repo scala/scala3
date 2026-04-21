@@ -233,6 +233,26 @@ class CompilationTests {
     ))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
 
+    // The regression test for i25722 has some atypical classpath requirements.
+    // The test consists of (a) one Java nullability annotation, (b) one Java user of the annotation, and (c) two Scala files,
+    // which must be compiled separately. In addition:
+    //   - the output from (a) must be on the classpath while compiling (b)
+    //   - the output from (b) must be on the classpath while compiling (c)
+    //   - the output from (a) _must not_ be on the classpath while compiling (c)
+    locally {
+      val i25722Group = TestGroup("tests/explicit-nulls/special/i25722")
+      val i25722Options = explicitNullsOptions.and("-Yforce-sbt-phases")
+      val outDir1 = Paths.get(defaultOutputDir.getAbsolutePath, i25722Group.name, "Nullable", "annotations", "Nullable/").toString
+      val outDir2 = Paths.get(defaultOutputDir.getAbsolutePath, i25722Group.name, "Foo", "lib", "Foo").toString
+      val tests = List(
+        withCoverage(compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/org/jetbrains/annotations/Nullable.java", i25722Options)(using i25722Group).keepOutput),
+        withCoverage(compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/lib/Foo.java", i25722Options.withClasspath(outDir1))(using i25722Group).keepOutput),
+        withCoverage(compileDir("tests/explicit-nulls/special/25722/scala", i25722Options.withClasspath(outDir2))(using i25722Group).keepOutput)
+      )
+      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos"))
+      tests.foreach(_.delete())
+    }
+
     // locally {
     //   val tests = List(
     //     compileFile("tests/explicit-nulls/flexible-unpickle/pos/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
