@@ -132,7 +132,7 @@ end RecursionOverflow
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive:
-  inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
+  private inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
     var e: Throwable | Null = exc
     while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
     e
