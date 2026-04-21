@@ -13,7 +13,6 @@ import dotty.tools.io.Path
 
 import java.io.File
 import scala.collection.mutable
-import scala.language.unsafeNulls
 import scala.util.control.NonFatal
 
 /**

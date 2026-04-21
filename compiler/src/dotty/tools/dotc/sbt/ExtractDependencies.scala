@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.Path
 import java.util.EnumSet
@@ -370,8 +368,8 @@ class DependencyRecorder {
    *  safely.
    */
   def addUsedRawName(name: Name, includeSealedChildren: Boolean = false)(using Context): Unit = {
-    val fromClass = resolveDependencyFromClass
-    if (fromClass.exists) {
+    val lastFoundCache = resolveDependencyFromClass
+    if (lastFoundCache != null) {
       lastFoundCache.recordName(name, includeSealedChildren)
     }
   }
@@ -437,8 +435,8 @@ class DependencyRecorder {
    *  from the current non-local enclosing class.
   */
   def addClassDependency(toClass: Symbol, context: DependencyContext)(using Context): Unit =
-    val fromClass = resolveDependencyFromClass
-    if (fromClass.exists)
+    val lastFoundCache = resolveDependencyFromClass
+    if (lastFoundCache != null)
       lastFoundCache.addDependency(toClass, context)
 
   private val _foundDeps = new util.EqHashMap[Symbol, FoundDepsInClass]
@@ -531,17 +529,16 @@ class DependencyRecorder {
     }
   }
 
-  private var lastOwner: Symbol = uninitialized
-  private var lastDepSource: Symbol = uninitialized
-  private var lastFoundCache: FoundDepsInClass | Null = uninitialized
+  private var lastOwner: Symbol | Null = null
+  private var lastDepSource: Symbol | Null = null
+  private var lastFoundCache: FoundDepsInClass | Null = null
 
   /** The source of the dependency according to `nonLocalEnclosingClass`
    *  if it exists, otherwise fall back to `responsibleForImports`.
    *
    *  This is backed by a cache which is invalidated when `ctx.owner` changes.
    */
-  private def resolveDependencyFromClass(using Context): Symbol = {
-    import dotty.tools.uncheckedNN
+  private def resolveDependencyFromClass(using Context): FoundDepsInClass | Null = {
     if (lastOwner != ctx.owner) {
       lastOwner = ctx.owner
       val source = nonLocalEnclosingClass
@@ -551,7 +548,10 @@ class DependencyRecorder {
         lastFoundCache = _foundDeps.getOrElseUpdate(fromClass, new FoundDepsInClass)
     }
 
-    lastDepSource
+    if lastDepSource != null && lastDepSource.nn.exists then
+      lastFoundCache
+    else
+      null
   }
 
   /** The closest non-local enclosing class from `ctx.owner`. */
@@ -575,7 +575,7 @@ class DependencyRecorder {
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.
    */
-  private def responsibleForImports(using Context) = {
+  private def responsibleForImports(using Context): Symbol = {
     import tpd.*
     def firstClassOrModule(tree: Tree) = {
       val acc = new TreeAccumulator[Symbol] {
@@ -593,12 +593,12 @@ class DependencyRecorder {
     if (_responsibleForImports == null) {
       val tree = ctx.compilationUnit.tpdTree
       _responsibleForImports = firstClassOrModule(tree)
-      if (!_responsibleForImports.exists)
+      if (!_responsibleForImports.nn.exists)
           report.warning("""|No class, trait or object is defined in the compilation unit.
                             |The incremental compiler cannot record the dependency information in such case.
                             |Some errors like unused import referring to a non-existent class might not be reported.
                             |""".stripMargin, tree.sourcePos)
     }
-    _responsibleForImports
+    _responsibleForImports.nn
   }
 }

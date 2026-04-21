@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
-
 import ExtractDependencies.internalError
 import ast.{Positioned, Trees, tpd}
 import core.*
@@ -137,7 +135,9 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension(FileExtension.Inc).toFile
+      val sourceFileJPath = sourceFile.file.jpath
+      assert(sourceFileJPath != null, s"unexpected null jpath for $sourceFile")
+      val pw = new PrintWriter(File(sourceFileJPath).changeExtension(FileExtension.Inc).toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
@@ -213,7 +213,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
    */
-  private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
+  private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition | Null), api.Structure]
 
   /** This cache is necessary to avoid infinite loops when hashing an inline "Body" annotation.
    *  Its values are transitively seen inline references within a call chain starting from a single "origin" inline
