@@ -5,8 +5,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.net.URL
 import java.io.{ IOException, InputStream, OutputStream, FilterInputStream }
 import java.nio.file.Files
@@ -54,7 +52,7 @@ object ZipArchive {
 }
 import ZipArchive.*
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-abstract class ZipArchive(override val jpath: JPath, release: Option[String]) extends AbstractFile with Equals {
+abstract class ZipArchive(override val jpath: JPath | Null, release: Option[String]) extends AbstractFile with Equals {
   self =>
 
   override def underlyingSource: Option[ZipArchive] = Some(this)
@@ -66,21 +64,21 @@ abstract class ZipArchive(override val jpath: JPath, release: Option[String]) ex
   def absolute: AbstractFile  = unsupported()
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-  sealed abstract class Entry(path: String, val parent: Entry) extends VirtualFile(baseName(path), path) {
+  sealed abstract class Entry(path: String, val parent: Entry | Null) extends VirtualFile(baseName(path), path) {
     // have to keep this name for compat with sbt's compiler-interface
-    def getArchive: ZipFile = null
+    def getArchive: ZipFile | Null = null
     override def underlyingSource: Option[ZipArchive] = Some(self)
-    override def container: Entry = parent
+    override def container: AbstractFile = if parent == null then NoAbstractFile else parent
     override def toString: String = self.path + "(" + path + ")"
   }
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-  class DirEntry(path: String, parent: Entry) extends Entry(path, parent) {
+  class DirEntry(path: String, parent: Entry | Null) extends Entry(path, parent) {
     val entries: mutable.HashMap[String, Entry] = mutable.HashMap()
 
     override def isDirectory: Boolean = true
     override def iterator: Iterator[Entry] = entries.valuesIterator
-    override def lookupName(name: String, directory: Boolean): Entry = {
+    override def lookupName(name: String, directory: Boolean): Entry | Null = {
       if (directory) entries.get(name + "/").orNull
       else entries.get(name).orNull
     }
@@ -116,13 +114,13 @@ abstract class ZipArchive(override val jpath: JPath, release: Option[String]) ex
 final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArchive(jpath, release) {
   private def openZipFile(): ZipFile = try {
     release match {
-      case Some(r) if file.getName.endsWith(".jar") =>
+      case Some(r) if file.nn.getName.endsWith(".jar") =>
         new JarFile(file, true, ZipFile.OPEN_READ, Runtime.Version.parse(r))
       case _ =>
         new ZipFile(file)
     }
   } catch {
-    case ioe: IOException => throw new IOException("Error accessing " + file.getPath, ioe)
+    case ioe: IOException => throw new IOException("Error accessing " + file.nn.getPath, ioe)
   }
 
   private class LazyEntry(
@@ -207,8 +205,11 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
   override def canEqual(other: Any): Boolean = other.isInstanceOf[FileZipArchive]
   override def hashCode(): Int = jpath.hashCode
   override def equals(that: Any): Boolean = that match {
-    case x: FileZipArchive => jpath.toAbsolutePath == x.jpath.toAbsolutePath
-    case _                 => false
+    case x: FileZipArchive =>
+      val xJPath = x.jpath
+      xJPath != null && jpath.toAbsolutePath == xJPath.toAbsolutePath
+    case _ =>
+      false
   }
 
   private var closeables: List[java.io.Closeable] = Nil

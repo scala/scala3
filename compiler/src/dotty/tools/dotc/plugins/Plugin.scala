@@ -142,7 +142,7 @@ object Plugin {
 
     def loadDescriptionFromJar(jarp: Path): Try[String] = {
       // XXX Return to this once we have more ARM support
-      def read(is: InputStream) =
+      def read(is: InputStream | Null) =
         if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
         else fromFile(is, jarp)
 
