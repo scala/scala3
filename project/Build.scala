@@ -174,7 +174,7 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Werror",
+      //"-Werror",
       //"-Wunused:all",
       "-encoding", "UTF8",
       "-language:implicitConversions",

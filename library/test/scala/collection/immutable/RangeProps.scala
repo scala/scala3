@@ -162,7 +162,7 @@ abstract class RangeProps(kind: String) extends Properties("Range "+kind) {
         def compare(x: Int, y: Int): Int = ???
       }
 
-    val rSum = r.sum(mynum)
+    val rSum = r.sum(using mynum)
     val expected = mynum.toInt(r.sum)
 
     (rSum == expected) :| str(r)
