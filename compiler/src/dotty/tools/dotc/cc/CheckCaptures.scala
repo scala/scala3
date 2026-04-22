@@ -1972,7 +1972,10 @@ class CheckCaptures extends Recheck, SymTransformer:
               val resTp =
                 if (aargs1 eq aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
                 else actualShape.derivedFunctionOrMethod(aargs1, ares1)
-              (resTp, CaptureSet(curEnv.captured.elems))
+              curEnv.captured match
+                case cs: CaptureSet.Var => cs.markSolved(provisional = true)
+                case _ =>
+              (resTp, curEnv.captured)
             finally curEnv = saved
           case _ =>
             (actualShape, CaptureSet())
