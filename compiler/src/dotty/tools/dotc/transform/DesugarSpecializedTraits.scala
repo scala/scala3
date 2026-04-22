@@ -664,6 +664,17 @@ object Specialization:
   }
 
   def classSpecializedTypeParams(classSym: Symbol)(using Context): List[Type] = classSym.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
+  
+  def anonymousClassIsSpecialized(tree: Tree)(using Context) = tree match {
+    case TypeDef(anon, Template(_, parentCalls: List[Tree], _, _)) =>
+      parentCalls match {
+        case _ :+ Apply(Apply(t@tpe, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
+          val spec = Specialization.unapply(t.tpe.resultType.resultType)
+          spec.get.hasSpecializedParams
+        case _ => true
+      }
+    case _ => true
+  } 
 end Specialization
 
 // Would be nice to define a Specialization class I think
