@@ -179,7 +179,34 @@ After inlining and pruning of inlined definitions, the `$sp$` trait becomes the 
 inline trait Vec$sp$Int extends Vec[Int]:
   def length: Int
   def apply(x: Int): Int
-  def scalarProduct(other: Vec[T]): Int
+  def scalarProduct(other: Vec$sp$Int): Int
+```
+
+The unspecialized parent types (`Vec[Int]`) are then removed after inlining. This is necessary to avoid interface conflicts with the specialized
+members. In particular, in the above example `def scalarProduct(other: Vec$sp$Int)` does not implement `def scalarProduct(other: Vec[T])` as defined
+in `Vec[T]`. This is not a problem because all instances of `Vec[Int]` are replaced by `Vec$sp$Int` in the whole program, and `Vec[?]` is banned. Therefore,
+there are no situations where a `Vec$sp$Int` may be passed as an argument to a parameter of type `Vec[Int]`. This gives the final result:
+
+```scala
+inline trait Vec$sp$Int extends Vec[Int]:
+  def length: Int
+  def apply(x: Int): Int
+  def scalarProduct(other: Vec$sp$Int): Int
+```
+The same transformation is applied to the `$impl$` classes for the same reason:
+```scala
+class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec$sp$Int:
+  private val Vec$$num: Numeric.IntIsIntegral
+
+  def length: Int = elems.length
+  def apply(i: Int): Int = elems(i)
+
+  def scalarProduct(other: Vec$sp$Int): Int =
+    require(this.length == other.length)
+    var result = Vec$$num.fromInt(0)
+    for i <- 0 until length do
+      result = Vec$$num.plus(result, Vec$$num.times(this(i), other(i)))
+    result
 ```
 
 ## Specialized Traits in the Compiler
@@ -271,40 +298,39 @@ inline trait Seq[T: Specialized](elems: Array[T]) extends Iterable[T]:
   def iterator: Iterator[T] = new ArrayIterator[T](elems) {}
 ```
 
-This generates the following instance traits (after inlining and conversion to pure interfaces):
+This generates the following instance traits (after inlining, conversion to pure interfaces and parent removal):
 
 ```scala
-inline trait Iterator$sp$Int extends Iterator[Int]:
+inline trait Iterator$sp$Int:
   def hasNext: Boolean
   def next(): Int
 
-inline trait ArrayIterator$sp$Int extends ArrayIterator[Int], Iterator$sp$Int
+inline trait ArrayIterator$sp$Int extends Iterator$sp$Int
 
-inline trait Iterable$sp$Int extends Iterable[Int]:
+inline trait Iterable$sp$Int:
   def iterator: Iterator$sp$Int
   def forall(f: Int => Unit): Unit
 
-inline trait Seq$sp$Int extends Seq[Int], Iterable$sp$Int:
+inline trait Seq$sp$Int extends Iterable$sp$Int:
   def length: Int
   def apply(i: Int): Int
 ```
-Note that these traits repeat the parent types of their corresponding inline traits (but with specialization added). For instance, `ArrayIterator$sp$Int` extends `ArrayIterator[Int]` (as we would expect) *as well as* the specialized version of its parent `Iterator$sp$Int`, so the specialized trait may be used in contexts expecting:
+Note that these traits repeat the parent types of their corresponding inline traits (but with specialization added). For instance, `ArrayIterator$sp$Int` extends the specialized version of its parent `Iterator$sp$Int`, so the specialized trait may be used in contexts expecting:
 
-- The specialized trait `ArrayIterator$sp$Int` itself
-- An unspecialized `ArrayIterator` for example `ArrayIterator[T: Numeric]`, or parents thereof, e.g. `Iterator[T: Numeric]`
+- The specialized trait `ArrayIterator$sp$Int` itself (i.e. `ArrayIterator[Int]` in source code)
 - Specialized traits higher in the specialized hierarchy for example `Iterator$sp$Int`.
 
 The specialized implementation classes for `ArrayIterator` and `Seq` are as follows (after inlining; iff `new Seq[Int] {}` and `ArrayIterator[Int] {}` are to be found in the program):
 
 ```scala
-class ArrayIterator$impl$Int(elems: Array[Int]) extends ArrayIterator$sp$Int, ArrayIterator[Int](elems):
+class ArrayIterator$impl$Int(elems: Array[Int]) extends ArrayIterator$sp$Int:
   private var current = 0
   override def hasNext: Boolean =
     current < elems.length
   override def next(): Int =
     try elems(current) finally current += 1
 
-class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int, Seq[Int](elems):
+class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int:
   override def iterator: Iterator$sp$Int = new ArrayIterator$impl$Int(elems)
 
   override def forall(f: Int => Unit): Unit =
@@ -314,20 +340,13 @@ class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int, Seq[Int](elems):
   override def apply(i: Int): Int = elems(i)
 ```
 
-Given that `ArrayIterator$sp$Int` extends `ArrayIterator[Int]`, directly extending `ArrayIterator[Int]` in `ArrayIterator$impl$Int`
-may seem redundant. However, it is necessary in order to pass `elems` to `ArrayIterator[Int]`.
-Traits are not allowed to pass parameters to each other, meaning we could not indirectly pass `elems` via `ArrayIterator$sp$Int`,
-and furthermore we cannot simply leave out the parameter passing (on the basis that we only use the inlined `elems`) and thus
-hope to avoid extending `ArrayIterator[Int]` directly, because extending `ArrayIterator$sp$Int` implies indirectly extending 
-`ArrayIterator[Int]` which is not allowed unless `ArrayIterator[Int]` is also mixed in directly to pass parameters (due to the rules of
-trait parameter passing in Scala 3). 
-
 ## Summary of restrictions on specialized traits
 
 | Behaviour                | Is currently supported in... |
 |--------------------------|-----------------------------------------------|
 | Inheriting from specialized traits | In inline traits or anonymous class instances (for instance creation) only |
 | Taking `Specialized` parameters| Only by inline traits |
+| Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits.  |
 
 
 
