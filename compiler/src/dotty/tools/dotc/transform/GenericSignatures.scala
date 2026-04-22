@@ -353,7 +353,7 @@ object GenericSignatures {
               // `Foo[X]` erases to `X` except that primitives use their boxed type,
               // and `Bar[X]` for `class Bar[A](x: Array[A]) extends AnyVal` erases like the definition-site `Array[A]`.
               // The end-to-end binary compatibility is checked by i8001
-              // There are more targeted test for generic signatures at i24276 and t6344
+              // There are more targeted tests for generic signatures at i24276 and t6344
               val compatibleUnderlying =
                 if seenUnderlying.isPrimitiveValueType && !underlying.isPrimitiveValueType then defn.boxedType(seenUnderlying)
                 else if underlying.derivesFrom(defn.ArrayClass) then erasure(underlying)
