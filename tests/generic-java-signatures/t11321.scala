@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only, generic signatures)
-
 package t11321 {
   final class V(val x: Int) extends AnyVal
   object V { def get: Option[V] = null }

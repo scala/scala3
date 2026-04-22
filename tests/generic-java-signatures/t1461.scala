@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only, generic signatures)
-
 object Test {
   def main(args: Array[String]): Unit = {
     val jl = classOf[Foo].getMethod("jl", classOf[Baz[_]])

@@ -1,8 +1,4 @@
-// scalajs: --skip
-// (JVM-only, generic signatures)
-
 import scala.language.{ postfixOps }
-import scala.reflect.{ClassTag, classTag}
 import java.{ lang => jl }
 
 trait T[A] {
@@ -15,7 +11,15 @@ class Arr {
   def arr1(xs: Array[Int]): List[Int] = xs.toList
   def arr2(xs: Array[jl.Character]): List[jl.Character] = xs.toList
   def arr3(xss: Array[Array[Float]]): Array[Float] = xss map (_.sum)
-  def arr4[T: ClassTag](xss: Array[Array[T]]): Array[T] = xss map (_.head)
+  // This gets a signature like
+  // public <T> java.lang.Object Arr.arr4(java.lang.Object[],scala.reflect.Manifest<T>)
+  //
+  // instead of the more appealing version from the past
+  // public <T> T[] Arr.arr4(T[][],scala.reflect.Manifest<T>)
+  //
+  // because java inflict's its reference-only generic-arrays on us.
+  //
+  def arr4[T: Manifest](xss: Array[Array[T]]): Array[T] = xss map (_.head)
 }
 
 object Test {

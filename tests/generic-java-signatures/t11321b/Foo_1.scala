@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only, generic signatures)
-
 package t11321
 
 class X(val x: String) extends AnyVal
