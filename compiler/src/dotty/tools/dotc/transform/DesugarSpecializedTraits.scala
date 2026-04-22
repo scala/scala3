@@ -392,8 +392,9 @@ class DesugarSpecializedTraits extends MacroTransform:
             case ci: ClassInfo => ci.derivedClassInfo(declaredParents=parentUpdater(ci.declaredParents)) 
           }
           ClassDef(td.symbol.asClass, constr, t.body)
-        } 
+        }
 
+      /* We need to inline recursively throughout generated specialized traits - see tests/run/specialized-trait-requires-inline-trait-inlining.scala */
       // TODO: How do we calculate the spans correctly?
       val ttmap = new TreeTypeMap(treeMap = {
         case tree: TypeDef if tree.symbol.isInlineTrait =>
@@ -416,10 +417,6 @@ class DesugarSpecializedTraits extends MacroTransform:
           case obj :: traitSp :: originalSpec :: Nil => obj :: traitSp :: Nil 
         }
       
-      /* We need to inline recursively throughout generated specialized traits - see tests/run/specialized-trait-requires-inline-trait-inlining.scala */
-      // val generatedTraitStats1 = generatedTraitStats1a.map(ttmap(_))
-      // val generatedClassStats1 = generatedClassStats1a.map(ttmap(_))
-
       if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
         (stats.map(replaceSpecializedSymbolsMap(specializations2)(_)), specializations2)
       else 
