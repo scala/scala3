@@ -1203,6 +1203,8 @@ object Build {
       // Generate library.properties, used by scala.util.Properties
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       Compile / mainClass := None,
+      // Workaround for #25897
+      Compile / compile / scalacOptions += "-Wconf:cat=deprecation&origin=scala\\.collection\\.Iterable\\.stringPrefix:s",
 
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
@@ -1275,6 +1277,8 @@ object Build {
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
+      // Workaround for #25897
+      Compile / compile / scalacOptions += "-Wconf:cat=deprecation&origin=scala\\.collection\\.Iterable\\.stringPrefix:s",
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
@@ -1365,7 +1369,7 @@ object Build {
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
       scalaVersion  := dottyNonBootstrappedVersion,
-      // Add the source directories for the stdlib (non-boostrapped)
+      // Add the source directories for the stdlib (non-bootstrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories ++=
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
@@ -1379,6 +1383,7 @@ object Build {
           Nil
         }
       },
+      Compile / compile / scalacOptions += "-Wconf:any:s",
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,

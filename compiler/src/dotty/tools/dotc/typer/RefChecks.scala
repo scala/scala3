@@ -459,9 +459,9 @@ object RefChecks {
       def overrideDeprecation(annot: Annotation, member: Symbol, other: Symbol): Unit =
         if !CrossVersionChecks.skipDeprecation(member) then
           val message =
-            annot.argumentConstantString(0).filter(!_.isEmpty)
+            annot.argumentConstantString(0).filter(_.nonEmpty)
               .getOrElse(s"${infoString(member)} should be removed or renamed.")
-          val since = annot.argumentConstantString(1).filter(!_.isEmpty).map(" since " + _).getOrElse("")
+          val since = annot.argumentConstantString(1).filter(_.nonEmpty).map(" since " + _).getOrElse("")
           val composed =
             em"""overriding ${infoStringWithLocation(other)} is deprecated$since;
                 |  $message"""
@@ -636,7 +636,7 @@ object RefChecks {
         overrideError("also needs to be declared with @publicInBinary")
       else if !other.isPreview && member.hasAnnotation(defn.PreviewAnnot) then // (1.15)
         overrideError("may not override non-preview member")
-      else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
+      else
         other.getAnnotation(defn.DeprecatedOverridingAnnot).foreach(overrideDeprecation(_, member, other))
     end checkOverride
 

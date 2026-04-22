@@ -53,19 +53,7 @@ class JLineTerminal extends java.io.Closeable {
     LineReaderBuilder
       .builder()
       .terminal(terminal)
-      .parser(new reader.Parser {
-        private class ParsedLine(val inputLine: String, val inputCursor: Int) extends reader.ParsedLine {
-          def word(): String = inputLine
-          def wordCursor(): Int = inputCursor
-          def wordIndex(): Int = 0
-          def words(): java.util.List[String] = java.util.List.of(inputLine)
-          def line(): String = inputLine
-          def cursor(): Int = inputCursor
-        }
-
-        def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine =
-          new ParsedLine(input, cursor)
-      })
+      .parser(new SimpleParser())
       .build()
 
   bindCtrlCInterrupt(userLineReader)
@@ -395,4 +383,18 @@ private final class UserInputStream(
       else
         bytes(offset) = first.toByte
         drainTo(bytes, offset + 1, length - 1) + 1
+}
+
+private final class SimpleParser extends reader.Parser {
+  private class ParsedLine(val inputLine: String, val inputCursor: Int) extends reader.ParsedLine {
+    def word(): String = inputLine
+    def wordCursor(): Int = inputCursor
+    def wordIndex(): Int = 0
+    def words(): java.util.List[String] = java.util.List.of(inputLine)
+    def line(): String = inputLine
+    def cursor(): Int = inputCursor
+  }
+
+  def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine =
+    new ParsedLine(input, cursor)
 }
