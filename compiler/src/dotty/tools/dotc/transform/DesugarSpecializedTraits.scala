@@ -459,15 +459,34 @@ class DesugarSpecializedTraits extends MacroTransform:
               case Specialization(spec) if spec.isSpecialized => specializations.addInterfaceAndImplementation(spec)
               case _ => specializations
             }
-          case Specialization(spec) if (spec.isSpecialized) => 
-            val problematicArguments = spec.specializedTypeArgs.filter {
-              case t: TypeBoundsTree => true
-              case _ => false
+          case Specialization(spec) => 
+            if (spec.isSpecialized) {
+              // Block Vec[?] and similar
+              spec.specializedTypeArgs.filter {
+                case t: TypeBoundsTree => true
+                case _ => false
+              }.foreach: tr => 
+                  report.error("Wildcard types may not be substituted for Specialized type parameters.", tr.srcPos)
+              
+              specializations.addInterface(spec)
+            } else {
+              // Check foo[S: Specialized] <= Vec[S: Specialized]
+              spec.specializedTypeArgs.flatMap(arg => {           // For each type we are using in a Specialized position
+                arg.tpe.widen.dealias.namedPartsWith(part =>      // Find all type params within that type that are not marked as Specialized so we can error
+                  part.typeSymbol.isTypeParam &&
+                  (!(if part.typeSymbol.owner.isClass then part.typeSymbol.owner.primaryConstructor else part.typeSymbol.owner).paramSymss.flatten.exists(
+                    d => d.info match {
+                      case Specialization.SpecializedEvidence(tpeArg) =>
+                        tpeArg.typeSymbol.isTypeParam && tpeArg.typeSymbol.name == part.name
+                      case _ => false
+                    }
+                  ))
+                )
+              }).foreach: tr => 
+                if tr.denot.symbol.srcPos.span.exists then
+                  report.error(s"${tr.typeSymbol} used in a Specialized position, so it must be marked as Specialized at its definition.", tr.denot.symbol.srcPos)
+              specializations
             }
-            if problematicArguments.nonEmpty then
-              problematicArguments.foreach: tr => 
-                report.error("Wildcard types may not be substituted for Specialized type parameters.", tr.srcPos)
-            specializations.addInterface(spec)
           case _ => specializations
         )
       })
@@ -589,14 +608,14 @@ end SpecializedTraitCache
 
 /* Represents an application traitSymbol[typeArguments] */
 class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(using Context): // TODO: Can we get away with List[Type]
-  val specializedTypeParams: List[Type] = Specialization.classSpecializedTypeParams(traitSymbol)
+  val specializedTypeParams: List[Type] = Specialization.classSpecializedTypeParams(traitSymbol) // Type parameters marked with Specialized
   
   private val specializedTypeParamsSet = specializedTypeParams.toSet
   private val paramToArgList = traitSymbol.typeParams.map(_.typeRef.asInstanceOf[Type]).zip(typeArguments)
 
-  val unspecializedTypeParams: List[Type] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._1)
-  val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._2)
-  val unspecializedTypeArgs: List[Tree] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._2)
+  val unspecializedTypeParams: List[Type] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._1) // Type parameters not marked with Specialized
+  val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._2) // Type arguments provided to parameters that are marked with Specialized at their definition
+  val unspecializedTypeArgs: List[Tree] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._2) // Type arguments provided to parameters that are not marked with Specialized at their definition 
 
   val specializedTypeParamsToTypeArgumentsMap: Map[Type, Tree] = paramToArgList.toMap.filter((k, v) => specializedTypeParamsSet(k))
   val specialization: List[Tree] = traitSymbol.typeParams.map(_.typeRef).map(specializedTypeParamsToTypeArgumentsMap.applyOrElse(_, TypeTree(_))) // TODO: Don't really like this name
@@ -611,7 +630,7 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(usi
   // If inline trait Foo[T] has a method taking another Foo[T] there's no point specializing the reference
   // since the resulting sp$T$ would be the same as the starting trait.
   def isSpecialized: Boolean = 
-    hasSpecializedParams && typeArguments.exists(tpt => !tpt.symbol.isTypeParam) //  .zip(traitSymbol.typeParams).forall((t, s) => t.tpe =:= s.typeRef))
+    hasSpecializedParams && typeArguments.exists(!_.tpe.existsPart(_.typeSymbol.isTypeParam)) //) !tpt.symbol.isTypeParam) //  .zip(traitSymbol.typeParams).forall((t, s) => t.tpe =:= s.typeRef))
 
   // Note: We only care about the specialized arguments for equality; a specialization of Vec[A: Specialized, B] with B = Int and one
   // with B = String can be considered to be the same as they use the same specialized trait

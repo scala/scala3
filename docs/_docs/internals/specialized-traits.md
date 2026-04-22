@@ -349,6 +349,49 @@ class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int:
 | Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits.  |
 
 
+## Transportation of Specialized through generic code
+It may surprise you to note that the following is valid scala. The `Numeric` constraint on `T` is only checked when
+a concrete type is provided for `S` (and by extension `T`) when instantiating `T2`. 
+```scala
+inline trait T1[T: Numeric]
+inline trait T2[S] extends T1[S]
+```
+In constrast, we do not allow this type of behaviour for `Specialized`. This is largely to avoid confusion. In particular:
+```scala
+inline trait T1[T: Specialized]
+inline trait T2[S] extends T1[S]
+val x = new T2[Int]() {}
+```
+Should `x` be a Specialized `$impl$` instance or a normal anonymous class? If we naively look at just `S`'s definition we would say no,
+but this is complicated by the fact that the generated anonymous class will also mixin `T1` directly as well as `T2`. Could we specialize
+just for `T1`? This is hard to imagine. Furthermore if we don't specialize, this is also counter intuitive because T1 is then never specialized
+to Int, because we have no specialized instance of trait `T2` to specialize into. Therefore we require users to explicitly transport `Specialized`
+through their code, in the following way:   
+
+```scala
+inline trait T1[T: Specialized]
+
+inline trait T2 extends T1[List[Int]]                           // ok
+inline trait T3[S] extends T1[List[S]]                          // error: S should be specialized
+inline trait T4[S] extends T1[List[List[S]]]                    // error: S should be specialized
+inline trait T5[S: Specialized] extends T1[List[S]]             // ok; should only specialize later
+inline trait T6[T[_], S] extends T1[T[S]]                       // error: T should be specialized // error: S should be specialized
+inline trait T7[T[_]] extends T1[T[Int]]                        // error: T should be specialized
+
+inline def foo1[S](x: T1[List[S]]): Int = 10                    // error: S should be specialized
+inline def foo2(x: T1[List[Int]]): Int = 10                     // ok
+inline def foo3[S](x: T1[List[List[S]]]): Int = 10              // error: S should be specialized
+inline def foo4[S: Specialized](x: T1[List[List[S]]]): Int = 10 // ok
+
+inline def bar1[S] = new T1[List[S]]() {}                       // error: S should be specialized
+inline def bar2 = new T1[List[Int]]() {}                        // ok
+inline def bar3[S] = new T1[List[List[S]]]() {}                 // error: S should be specialized
+inline def bar4[S: Specialized] = new T1[List[List[S]]]() {}    // ok
+```
+Note that in the cases with `List` this restriction is not imposed because of the definition of `List`, but rather simply because we have a 
+type variable `S` which is not marked as Specialized which appears `somewhere inside' a type in a Specialized position. Again this is done to
+avoid confusion. A user extending `T1[List[S]]` would likely expect some degree of specialization to given the definition of `T1`, but this 
+is not possible if `S` is not marked as `Specialized`. 
 
 ## [1] Why are the generated traits inline?
 Consider the following:
