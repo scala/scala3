@@ -109,7 +109,6 @@ class DesugarSpecializedTraits extends MacroTransform:
         2) Returns the correct type corresponding to those type parameters applied */
     private def fixConstructor(init: Symbol, traitOrClassSymbol: ClassSymbol) = 
       val rt = traitOrClassSymbol.typeRef.appliedTo(traitOrClassSymbol.typeParams.map(_.typeRef))
-      println(rt)
       def resultType(tpe: Type): Option[Type] = tpe match {
           case mt @ MethodType(paramNames) => Some(mt.derivedLambdaType(paramNames, mt.paramInfos, resultType(mt.resultType).getOrElse(rt)))
           case pt : PolyType => Some(pt.derivedLambdaType(pt.paramNames, pt.paramInfos, resultType(pt.resType).get))
