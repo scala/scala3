@@ -1,12 +1,12 @@
 C0
 public int C0.v1(int)
-public <A> java.lang.Integer C0.v1(java.lang.Integer)
+public <A> int C0.v1(int)
 public scala.collection.immutable.List C0.v2()
 public <A> scala.collection.immutable.List<Val<A>> C0.v2()
 public int C0.v3()
 public int C0.v3()
 public int C0.v4(int,scala.collection.immutable.List)
-public <A extends java.lang.String> java.lang.Integer C0.v4(java.lang.Integer,scala.collection.immutable.List<Val<A>>)
+public <A extends java.lang.String> int C0.v4(int,scala.collection.immutable.List<Val<A>>)
 
 C1
 public java.lang.Object C1.v1(java.lang.Object)
@@ -62,7 +62,7 @@ public java.lang.String C4B.v4(java.lang.String,scala.collection.immutable.List<
 
 C5
 public java.lang.Object C5.f1(int,java.lang.Object,java.lang.String,java.lang.Object)
-public <A> A C5.f1(java.lang.Integer,java.lang.Object,java.lang.String,A)
+public <A> A C5.f1(int,java.lang.Object,java.lang.String,A)
 public double C5.f2(int,java.lang.Object,java.lang.String,double)
 public double C5.f2(int,java.lang.Object,java.lang.String,double)
 public int C5.f3(java.lang.Integer)
@@ -74,11 +74,11 @@ public int C5.f5(java.lang.Integer)
 
 C6
 public java.lang.Object C6.f1(int,java.lang.Object,java.lang.String,java.lang.Object)
-public A C6.f1(java.lang.Integer,java.lang.Object,java.lang.String,A)
+public A C6.f1(int,java.lang.Object,java.lang.String,A)
 
 C7
 public java.lang.Integer C7.f1(int,java.lang.Object,java.lang.String,java.lang.Integer)
-public java.lang.Integer C7.f1(java.lang.Integer,java.lang.Object,java.lang.String,java.lang.Integer)
+public java.lang.Integer C7.f1(int,java.lang.Object,java.lang.String,java.lang.Integer)
 public java.lang.Object C7.f1(int,java.lang.Object,java.lang.String,java.lang.Object)
 public java.lang.Object C7.f1(int,java.lang.Object,java.lang.String,java.lang.Object)
 
@@ -104,11 +104,11 @@ public static int ValueInt.iplus$extension(int,int,int)
 public Gen ValueInt.plus(Gen,Gen)
 public Gen<java.lang.Object> ValueInt.plus(Gen<java.lang.Object>,Gen<java.lang.Object>)
 public static Gen ValueInt.plus$extension(int,Gen,Gen)
-public static Gen<java.lang.Object> ValueInt.plus$extension(java.lang.Integer,Gen<java.lang.Object>,Gen<java.lang.Object>)
-public int ValueInt.x()
-public int ValueInt.x()
+public static Gen<java.lang.Object> ValueInt.plus$extension(int,Gen<java.lang.Object>,Gen<java.lang.Object>)
 public java.lang.Object ValueInt.x()
 public java.lang.Object ValueInt.x()
+public int ValueInt.x()
+public int ValueInt.x()
 
 RefInt
 public Gen RefInt.plus(Gen,Gen)

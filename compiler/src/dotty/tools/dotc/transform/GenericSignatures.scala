@@ -352,10 +352,10 @@ object GenericSignatures {
               // we need to special cases for polymorphic value classes:
               // `Foo[X]` erases to `X` except that primitives use their boxed type,
               // and `Bar[X]` for `class Bar[A](x: Array[A]) extends AnyVal` erases like the definition-site `Array[A]`.
-              // The end-to-end binary compatibility is checked by tests/run/i8001
-              // There is a more targeted test for generic signatures at tests/run/i24276
+              // The end-to-end binary compatibility is checked by i8001
+              // There are more targeted test for generic signatures at i24276 and t6344
               val compatibleUnderlying =
-                if seenUnderlying.isPrimitiveValueType then defn.boxedType(seenUnderlying)
+                if seenUnderlying.isPrimitiveValueType && !underlying.isPrimitiveValueType then defn.boxedType(seenUnderlying)
                 else if underlying.derivesFrom(defn.ArrayClass) then erasure(underlying)
                 else seenUnderlying
               jsig(compatibleUnderlying, toplevel = toplevel)
