@@ -900,25 +900,35 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
 
 /** Drop retains annotations in the inferred type if CC is not enabled.
  *  When CC is enabled: keep only retained refs that are "local" capture-set
- *  type params/members — `TypeParamRef`s whose binder is in scope, or
- *  `TypeRef`s whose owner is an enclosing anon function/class. Other refs
+ *  params/members — `ParamRef`s whose binder is in the cleaned type, term refs
+ *  owned by an enclosing anonymous function, or `TypeRef`s whose owner is an
+ *  enclosing anon function/class. Other refs
  *  are erased to `Nothing` so Setup's `addVar` can install a widenable
  *  `Var` (preserving them would pin the set to a `Const` — breaks
- *  nicolas1). Inside `TypeBounds`, all CapSet-derived refs are preserved
- *  (bounds are contracts). See i25830.
+ *  nicolas1). Some inferred trees in function bodies still need to widen; callers
+ *  can set `preserveAnonFunctionRefs = false` for those expression-local cleanup
+ *  sites. Inside `TypeBounds`, all CapSet-derived refs are preserved (bounds are
+ *  contracts). See i25830.
  */
-class CleanupRetains(using Context) extends TypeMap:
+class CleanupRetains(preserveAnonFunctionRefs: Boolean = true)(using Context) extends TypeMap:
   private var binders: List[LambdaType] = Nil
   private var inBound: Boolean = false
 
-  private def isLocalCapSetRef(tp: Type): Boolean = tp match
+  private def isLocalRetainedRef(tp: Type): Boolean = tp match
+    case ref: TermParamRef =>
+      preserveAnonFunctionRefs && binders.contains(ref.binder)
+    case ref: TermRef if preserveAnonFunctionRefs =>
+      val owner = ref.symbol.owner
+      owner.exists
+      && owner.isAnonymousFunction
+      && ctx.owner.isContainedIn(owner)
     case ref: TypeParamRef =>
       ref.derivesFromCapSet && (inBound || binders.contains(ref.binder))
     case ref: TypeRef if ref.derivesFromCapSet && ref.symbol.isType =>
       val owner = ref.symbol.owner
       inBound
       || owner.exists
-         && (owner.isAnonymousFunction || owner.isClass)
+         && (owner.isClass || preserveAnonFunctionRefs && owner.isAnonymousFunction)
          && ctx.owner.isContainedIn(owner)
     case _ => false
 
@@ -930,7 +940,7 @@ class CleanupRetains(using Context) extends TypeMap:
       else if tp2f.isNothingType then tp1f
       else OrType(tp1f, tp2f, soft = false)
     case _ =>
-      if isLocalCapSetRef(tp) then tp else defn.NothingType
+      if isLocalRetainedRef(tp) then tp else defn.NothingType
 
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
@@ -1057,4 +1067,3 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
       case _ =>
         foldOver(acc, t)
 end DeepTypeAccumulator
-

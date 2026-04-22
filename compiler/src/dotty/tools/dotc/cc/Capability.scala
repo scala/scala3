@@ -1142,17 +1142,18 @@ object Capabilities:
     GlobalCapToLocal(Origin.Parameter(param)).inverse(tp)
 
   /** The local dual of a result type of a closure type.
-   *  @param binder  the method type of the anonymous function whose result is mapped
+   *  @param binder      the method type of the anonymous function whose result is mapped
+   *  @param paramSyms0  the anonymous function's value parameters corresponding to `binder`
    *  @pre           the context's owner is the anonymous function
    */
-  class Internalize(binder: MethodType)(using Context) extends BiTypeMap:
+  class Internalize(binder: MethodType, paramSyms0: List[Symbol] = Nil)(using Context) extends BiTypeMap:
     thisMap =>
 
     val sym = ctx.owner
     assert(sym.isAnonymousFunction)
-    val paramSyms = atPhase(ctx.phase.prev):
+    val paramSyms = if paramSyms0.nonEmpty then paramSyms0 else atPhase(ctx.phase.prev):
       // We need to ask one phase before since `sym` should not be completed as a side effect.
-      // The result of Internalize is used to se the result type of an anonymous function, and
+      // The result of Internalize is used to set the result type of an anonymous function, and
       // the new info of that function is built with the result.
       sym.paramSymss.head
     val resultToAny = EqHashMap[ResultCap, LocalCap]()

@@ -1189,14 +1189,24 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // result type, in order to propagate constraints into the closure.
                 // Note: We could use adoptCaptures instead, but this seems to give somewhat worse
                 // error messages.
+                def isDirectFunctionType(tp: Type): Boolean = tp.dealias match
+                  case CapturingType(parent, _) => isDirectFunctionType(parent)
+                  case defn.PolyFunctionOf(_) => true
+                  case FunctionOrMethod(_, _) | SAMType(_, _) => true
+                  case _ => false
+                def internalize(mt: MethodType) =
+                  Internalize(mt, params.map(_.symbol))(resType)
                 pt match
+                  case mt: MethodType =>
+                    // Direct function results are checked as their own closures.
+                    // Pushing a dependent function result into the enclosing closure
+                    // makes type-only dependencies look like value captures. See i23727.
+                    if !mt.isResultDependent || !isDirectFunctionType(resType) then
+                      updateResult(internalize(mt))
                   case RefinedType(_, _, mt: MethodType) =>
-                    if !mt.isResultDependent then
-                      // If mt is result dependent we could compensate this by
-                      // internalizing `resType.substParams(mt, params.tpes)`.
-                      // But this tends to give worse error messages, so we refrain
-                      // from doing that and don't update the local result type instead.
-                      updateResult(Internalize(mt)(resType))
+                    // As above, skip direct function-valued dependent results.
+                    if !mt.isResultDependent || !isDirectFunctionType(resType) then
+                      updateResult(internalize(mt))
                   case _ =>
                     updateResult(resType)
             }
