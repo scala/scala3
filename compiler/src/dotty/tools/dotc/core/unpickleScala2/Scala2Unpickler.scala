@@ -1333,7 +1333,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         SingletonTypeTree(readTreeRef())
 
       case SELECTFROMTYPEtree =>
-        // !!! TODO dead code!?
+        // !!! #25895 Dead code!?
         val qualifier = readTreeRef()
         val selector = readTypeNameRef()
         Select(qualifier, selector)

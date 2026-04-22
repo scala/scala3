@@ -469,7 +469,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 writeByte(QUALTHIS)
                 pickleTree(qual.withType(tref))
               case _: ErrorType if ctx.isBestEffort =>
-                pickleTree(qual.asInstanceOf[Tree]) // cast away nullability of tpe, for best-effort
+                if qual.hasType then
+                  pickleTree(qual.asInstanceOf[Tree]) // it has a type, so it's a valid tpd.Tree
+                else
+                  pickleErrorType()
               case _ => pickleCapturedThis
         case Select(qual, name) =>
           name match {
