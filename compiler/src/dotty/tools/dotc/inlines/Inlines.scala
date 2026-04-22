@@ -76,9 +76,23 @@ object Inlines:
           case _ => false
         tree.symbol.name.isUnapplyName && rec(tree)
 
-      isInlineable(tree.symbol)
+      val sym = tree.symbol
+      sym.is(Inline) && sym.hasAnnotation(defn.BodyAnnot)
       && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly]
       && StagingLevel.level == 0
+      && (
+        // Outside of inline method bodies, any inline call may be inlined.
+        !inInlineMethod
+        // Inside inline method bodies, a transparent inline given must still be
+        // expanded at typer so that dependent type members of its result
+        // (e.g. `tc.Out` from `fromVal[Int, Int]`) are known when typing the
+        // enclosing body; otherwise the implicit-argument reference is
+        // non-stable and gets skolemized, making `tc.Out` opaque. See #15798.
+        // Macro-based givens are excluded: eager expansion of their bodies
+        // would run a macro at the def site with abstract types, typically
+        // causing cyclic-macro-dependency errors (see tests/neg-macros/i18695).
+        || (sym.is(Given) && !sym.is(Macro) && needsTransparentInlining(tree))
+      )
       && (
         ctx.phase == Phases.inliningPhase
         || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))
