@@ -463,6 +463,13 @@ class DesugarSpecializedTraits extends MacroTransform:
               case _ => specializations
             }
           case Specialization(spec) if (spec.isSpecialized) => 
+            val problematicArguments = spec.specializedTypeArgs.filter {
+              case t: TypeBoundsTree => true
+              case _ => false
+            }
+            if problematicArguments.nonEmpty then
+              problematicArguments.foreach: tr => 
+                report.error("Wildcard types may not be substituted for Specialized type parameters.", tr.srcPos)
             specializations.addInterface(spec)
           case _ => specializations
         )
