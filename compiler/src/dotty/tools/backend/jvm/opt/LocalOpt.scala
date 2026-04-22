@@ -1212,18 +1212,16 @@ object LocalOptImpls {
             case Some(prev) =>
               val prevOp = prev.getOpcode
               val isIConst = prevOp >= ICONST_M1 && prevOp <= ICONST_5
-              (jump.getOpcode: @switch) match {
-                case IFNULL if prevOp == ACONST_NULL =>
-                  replace(jump, success = true)
-                case IFNONNULL if prevOp == ACONST_NULL =>
-                  replace(jump, success = false)
-                case IFEQ if isIConst =>
-                  replace(jump, success = prevOp == ICONST_0)
-                case IFNE if isIConst =>
-                  replace(jump, success = prevOp != ICONST_0)
-                /* TODO: we also have IFLE, IF_?CMP* and friends, but how likely are they to be profitably optimizeable? */
-                case _ => false
-              }
+              if jump.getOpcode == IFNULL && prevOp == ACONST_NULL then
+                replace(jump, success = true)
+              else if jump.getOpcode == IFNONNULL && prevOp == ACONST_NULL then
+                replace(jump, success = false)
+              else if jump.getOpcode == IFEQ && isIConst then
+                replace(jump, success = prevOp == ICONST_0)
+              else if jump.getOpcode == IFNE && isIConst then
+                replace(jump, success = prevOp != ICONST_0)
+              else /* TODO: we also have IFLE, IF_?CMP* and friends, but how likely are they to be profitably optimizeable? */
+                false
             case _ => false
           }
         case _ => false

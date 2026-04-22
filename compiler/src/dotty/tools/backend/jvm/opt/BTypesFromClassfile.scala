@@ -43,18 +43,19 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
   }
 
   def bTypeForDescriptorFromClassfile(desc: String): Either[OptimizerWarning, BType] = (desc(0): @switch) match {
-    case 'V'                     => Right(UNIT)
-    case 'Z'                     => Right(BOOL)
-    case 'C'                     => Right(CHAR)
-    case 'B'                     => Right(BYTE)
-    case 'S'                     => Right(SHORT)
-    case 'I'                     => Right(INT)
-    case 'F'                     => Right(FLOAT)
-    case 'J'                     => Right(LONG)
-    case 'D'                     => Right(DOUBLE)
-    case '['                     => bTypeForDescriptorFromClassfile(desc.substring(1)).map(ArrayBType.apply)
-    case 'L' if desc.last == ';' => classBTypeFromParsedClassfile(desc.substring(1, desc.length - 1))
-    case _                       => throw new IllegalArgumentException(s"Not a descriptor: $desc")
+    case 'V' => Right(UNIT)
+    case 'Z' => Right(BOOL)
+    case 'C' => Right(CHAR)
+    case 'B' => Right(BYTE)
+    case 'S' => Right(SHORT)
+    case 'I' => Right(INT)
+    case 'F' => Right(FLOAT)
+    case 'J' => Right(LONG)
+    case 'D' => Right(DOUBLE)
+    case '[' => bTypeForDescriptorFromClassfile(desc.substring(1)).map(ArrayBType.apply)
+    case 'L' => if desc.last == ';' then classBTypeFromParsedClassfile(desc.substring(1, desc.length - 1))
+                else throw new IllegalArgumentException(s"Invalid class-like descriptor: $desc")
+    case _   => throw new IllegalArgumentException(s"Not a descriptor: $desc")
   }
 
   /**
