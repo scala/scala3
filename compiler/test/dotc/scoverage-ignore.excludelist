@@ -9,7 +9,6 @@ annotation-named-pararamters
 applied_constructor_types.scala
 capt1.scala
 capture.scala
-catch-sub-cases.scala
 colltest5
 gadt-cast-singleton.scala
 gadt-ycheck.scala
