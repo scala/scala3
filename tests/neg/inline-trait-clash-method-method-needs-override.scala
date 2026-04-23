@@ -2,7 +2,7 @@ inline trait A:
   def x(y: String) = "Hello world"
 
 class C extends A:
-  override def x(y: String) = "Hello world2"
+  def x(y: String) = "Hello world2" // error: Needs override
   
 @main def Test = 
   val v = C()

@@ -31,6 +31,7 @@ import dotty.tools.dotc.core.Annotations.ConcreteBodyAnnotation
 import dotty.tools.dotc.core.Annotations.LazyBodyAnnotation
 import dotty.tools.dotc.core.Scopes.EmptyScope
 import dotty.tools.dotc.core.Scopes.MutableScope
+import dotty.tools.dotc.reporting.OverrideError
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -293,6 +294,22 @@ object Inlines:
       //   report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
       //   cls
       case cls @ tpd.TypeDef(_, impl: Template) =>
+
+
+        // We need to enforce the constraint that vals and defs that override have the `override` modifier
+        // here to ensure that the behaviour is the same as ordinary traits. The usual check only applies
+        // in refChecks which is after pruneInlineTraits so it won't fire for inline traits even though it should. 
+        cls.symbol.info.decls.toList.foreach: decl =>
+          if !decl.is(Override) && decl.allOverriddenSymbols.filterNot(sym => sym.is(Deferred)).nonEmpty then
+            report.error(
+              OverrideError("needs `override` modifier", 
+                            decl.allOverriddenSymbols.toList.head.owner.info,
+                            decl,
+                            decl.allOverriddenSymbols.toList.head,
+                            NoType,
+                            NoType),
+              decl.srcPos
+            )
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val newDefs = inContext(ctx.withOwner(cls.symbol)) {
           inlineTraitAncestors(cls).foldLeft((List.empty[Tree], impl.body)){
