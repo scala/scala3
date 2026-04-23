@@ -386,13 +386,16 @@ private final class UserInputStream(
 }
 
 private final class SimpleParser extends reader.Parser {
-  private class ParsedLine(val inputLine: String, val inputCursor: Int) extends reader.ParsedLine {
+  private class ParsedLine(val inputLine: String, val inputCursor: Int) extends reader.CompletingParsedLine {
     def word(): String = inputLine
     def wordCursor(): Int = inputCursor
     def wordIndex(): Int = 0
     def words(): java.util.List[String] = java.util.List.of(inputLine)
     def line(): String = inputLine
     def cursor(): Int = inputCursor
+    def escape(candidate: CharSequence, complete: Boolean): CharSequence = candidate
+    def rawWordCursor(): Int = inputCursor
+    def rawWordLength(): Int = inputLine.length
   }
 
   def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine =
