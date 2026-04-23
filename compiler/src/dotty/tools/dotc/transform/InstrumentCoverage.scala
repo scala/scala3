@@ -324,6 +324,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * If the tree is empty, return itself and don't instrument.
      */
     private def transformBranch(tree: Tree)(using Context): Tree =
+      transformBranchWithInherited(tree, inheritedProbes = Nil)
+
+    /** Like [[transformBranch]], but runs `inheritedProbes` before the branch probe
+      *  and the transformed body. Used for sub-cases: ancestor case-arm probes are
+      *  emitted at the same successful leaves; see [[instrumentSubMatchWithProbes]].
+      */
+    private def transformBranchWithInherited(tree: Tree, inheritedProbes: List[Apply])(using Context): Tree =
       if tree.isEmpty then
         // - If t.isEmpty then `transform(t) == t` always hold,
         //   so we can avoid calling transform in that case.
@@ -331,7 +338,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       else
         val transformed = transform(tree)
         val coverageCall = createInvokeCall(tree, tree.sourcePos, branch = true)
-        InstrumentedParts.singleExprTree(coverageCall, transformed)
+        val allProbes = inheritedProbes :+ coverageCall
+        allProbes match
+          case single :: Nil => InstrumentedParts.singleExprTree(single, transformed)
+          case multiple => Block(multiple, transformed)
 
     override def transform(tree: Tree)(using Context): Tree =
       inContext(transformCtx(tree)) { // necessary to position inlined code properly
@@ -498,20 +508,54 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
         cpy.DefDef(tree)(tree.name, transformedParamss, tree.tpt, transformedRhs)
 
+    /** Span for coverage UI: end at the guard if present, else the pattern. */
+    private def caseDefUserEndPos(cdef: CaseDef)(using Context): SourcePosition =
+      val pat = cdef.pat
+      val guard = cdef.guard
+      val friendlyEnd = if guard.span.exists then guard.span.end else pat.span.end
+      cdef.sourcePos(using ctx).withSpan(cdef.span.withEnd(friendlyEnd))
+
+    /** Re-instrument a [[SubMatch]] while keeping it a direct sub-match tree.
+      *  Downstream, [[dotty.tools.dotc.transform.PatternMatcher]] matches on
+      *  `CaseDef.body: SubMatch` and [[CaseDef.maybePartial]] checks `isInstanceOf[SubMatch]`;
+      *  wrapping the body in a [[Block]] (as in [[transformBranch]]) would break that.
+      *
+      *  Branch coverage for each case arm is recorded by `inheritedProbes` plus, for each
+      *  sub-case, a probe for that arm; we attach those probes to successful sub-match leaves
+      *  so they do not run when a partial sub-match falls through to the next outer case.
+      */
+    private def instrumentSubMatchWithProbes(sm: SubMatch, inheritedProbes: List[Apply])(using Context): SubMatch =
+      val newSelector = transform(sm.selector)
+      val newCases = sm.cases.map(cdef => transformSubMatchCaseDef(cdef, inheritedProbes))
+      cpy.Match(sm)(newSelector, newCases).asInstanceOf[SubMatch]
+
+    private def transformSubMatchCaseDef(cdef: CaseDef, inheritedProbes: List[Apply])(using Context): CaseDef =
+      val pos = caseDefUserEndPos(cdef)
+      val transformedGuard = transform(cdef.guard)
+      val newBody: Tree = cdef.body match
+        case sm: SubMatch =>
+          val p = createInvokeCall(sm, pos, branch = true)
+          instrumentSubMatchWithProbes(sm, p :: inheritedProbes)
+        case b =>
+          transformBranchWithInherited(b, inheritedProbes)
+      cpy.CaseDef(cdef)(cdef.pat, transformedGuard, newBody)
+
     /** Transforms a `case ...` and instruments the parts that can be. */
     private def transformCaseDef(tree: CaseDef)(using Context): CaseDef =
       val pat = tree.pat
       val guard = tree.guard
-
-      // compute a span that makes sense for the user that will read the coverage results
-      val friendlyEnd = if guard.span.exists then guard.span.end else pat.span.end
-      val pos = tree.sourcePos.withSpan(tree.span.withEnd(friendlyEnd)) // user-friendly span
+      val pos = caseDefUserEndPos(tree)
 
       // recursively transform the guard, but keep the pat
       val transformedGuard = transform(guard)
 
-      // ensure that the body is always instrumented as a branch
-      val instrumentedBody = transformBranch(tree.body)
+      // Sub-case bodies are [[SubMatch]]: keep that shape; see [[instrumentSubMatchWithProbes]].
+      val instrumentedBody: Tree = tree.body match
+        case sm: SubMatch =>
+          val p = createInvokeCall(sm, pos, branch = true)
+          instrumentSubMatchWithProbes(sm, p :: Nil)
+        case b =>
+          transformBranch(b)
 
       cpy.CaseDef(tree)(pat, transformedGuard, instrumentedBody)
 
