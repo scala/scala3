@@ -157,17 +157,6 @@ inline trait B:
     def foo = "Bonjour"
 
 class C extends A, B
-```
-<!-- However, an inline receiver may not define a member whose name collides with the name of an inlined public member from a parent inline trait, unless the override modifier is used. This reflects the behaviour of ordinary traits.
-```scala
-inline trait A:
-    def foo = "Hello World"
-
-inline trait B:
-    def foo = "Bonjour"
-
-class C extends A, B:
-    def foo = "Bonjour2"``` // Must be override.TODO: At the moment we allow this but should fix --> 
 
 - inline traits may define inline members (e.g. `inline def`, `inline val`). References to these are inlined as the body of the trait is inlined into the inline receiver, but the members themselves are not inlined and are deleted from the parent trait. E.g.:
 ```scala
