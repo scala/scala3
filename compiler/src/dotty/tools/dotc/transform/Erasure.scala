@@ -804,8 +804,9 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams =>
+        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
           args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
             if isErased then
               checkPureErased(arg, isArgument = true,
