@@ -28,7 +28,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
   private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
   private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, inliner, ts, bTypesFromClassfile)
   val classfileWriters            = new ClassfileWriters(frontendAccess)
-  val classfileWriter             = classfileWriters.ClassfileWriter()
+  val classfileWriter             = classfileWriters.ClassfileWriter(frontendAccess.compilerSettings.mainClass)
 
 
   private type ClassnamePosition = (String, SourcePosition)

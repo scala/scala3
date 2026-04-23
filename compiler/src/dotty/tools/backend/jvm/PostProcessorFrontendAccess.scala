@@ -21,8 +21,6 @@ sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
 
   def compilerSettings: CompilerSettings
 
-  def getEntryPoints: List[String]
-
   def findClassFileAndModuleFile(name: String): Option[(io.AbstractFile, Option[io.AbstractFile])]
   
   def optimizerWarning(msg: Context ?=> Message, site: String, pos: SrcPos): Unit =
@@ -98,7 +96,7 @@ object PostProcessorFrontendAccess {
 
   }
 
-  class Impl(entryPoints: mutable.HashSet[String])(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
+  class Impl(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
     private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings(using ctx))
 
@@ -152,8 +150,6 @@ object PostProcessorFrontendAccess {
       override def optLogInline: Option[String] = s.YoptLogInline.valueSetByUser
       override def optTrace: Option[String] = s.YoptTrace.valueSetByUser
      }
-
-    override def getEntryPoints: List[String] = entryPoints.toList
 
     /* Create a class path for the backend, based on the given class path.
      * Used to make classes available to the inliner's bytecode repository.
