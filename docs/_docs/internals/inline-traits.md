@@ -308,18 +308,70 @@ This problem is addressed via `Specialized` traits; see the accompanying documen
 |-------------------------------------|----------------------------------------------|
 | Methods                             | ✅                                           |
 | `val` / `var` Properties            | ✅                                           |
-| Non-local private members[*]        | ❌                                           |
+| Non-local private members [3]       | ❌                                           |
 | `type`s                             | ✅                                           |
-| Inner classes/traits                | ❌                                           |
-| Opaque types                        | ❌                                           |
-| Self types                          | ❌                                           |
+| Inner classes/traits                | ❌ [7]                                       |
+| Self types                          | ✅ [6]                                       |
 | Inheritance (of inline traits)      | Only allowed by classes and inline traits    |
-| Instantiation of inline traits [**] | ❌                                           |
+| Instantiation of inline traits [4]  | ✅                                           |
+| Opaque types                        | ✅ [5]                                       |
 
-[*] That is, members which are labelled private and accessed from within the class on other instances of the class.
+[3] That is, members which are labelled private and accessed from within the class on other instances of the class.
 Local private members (members with the same access patterns as the former `private[this]`) are allowed.
 
-[**] While inline traits may not define inner classes as direct members, they may have methods which themsleves define classes. This is permitted only if the classes do not extend from an inline trait. In particular this means that methods of inline traits may not create anonymous instances of inline traits e.g. `new A() {}`. The only exception to this is if the trait being instantiated (`A` here) is `Specialized`, because the instantiation will not produce an anonymous class inside the trait (see the document on Specialized traits).
+[4] As long as this doesn't create a cycle e.g.:
+```scala
+inline trait C[S]: // error: Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.
+   def v(x: S): S = x
+   def w: Unit = 
+      val x = new D[S] {}
+      println("w")
+
+inline trait D[S]: // error: Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.
+   def v(x: S): S = x
+   def w: Unit = 
+      val x = new C[S] {}
+      println("w")
+```
+
+[5] Supported with same behaviour as in normal traits. In particular, the following is completely fine, and will be inlined into B.
+```scala
+inline trait A[T](val x: T):
+    opaque type Special = T
+
+    def getSpecial: Special = x
+    def eatSpecial(y: Special) = "Mmm, that was tasty!" 
+
+class B extends A[Int](100)
+```
+
+In contrast, it is not possible to use inlining to "cheat" opaque types, even though it is tempting to try to argue that
+the opaque type will be inlined into B and therefore its alias should be visible. This is not allowed because type checking
+is performed before inline traits, and this follows the logic that inline traits are an optimisation on top of normal traits,
+rather than a semantic change to them.
+```scala
+inline trait A[T](val x: T):
+    opaque type Special = T
+
+class B extends A[Int](100):
+    def foo: Special = 10  // error: 10 does not conform to Special
+```
+
+[6]
+Self types are supported but are not inlined. We argue this is desirable as it ensures that the behaviour of inline traits
+with self types mirrors that of ordinary traits with self types. Inlining of self types would effectively remove any restictions that
+these self types seek to impose because the subclass would automatically have a matching self type to that of the parent class. This 
+prevents an error from being thrown, irrespective of whether the subclass implements the desired traits.
+Therefore, when using self types on inline traits, the behaviour observed is the following (as in ordinary traits) e.g.:
+```scala
+trait A[T]:
+    this: T1 => 
+
+trait D extends A[Int] // error: self type of D does not conform to that of A
+```
+
+[7]
+While inline traits may not directly define inner classes, they may contain methods which define classes within their bodies.
 
 ## Processing of inline traits in the compiler
 Inline traits in user code are inlined in the phase `specializeInlineTraits`. The phase `replaceInlinedTraitSymbols`

@@ -1,11 +1,11 @@
-inline trait A:
-    opaque type Special = Int
-    inline val b = 10
-    def x: Special = b
+inline trait A[T](val x: T):
+    opaque type Special = T
 
-class B extends A
+    def getSpecial: Special = x
+    def eatSpecial(y: Special) = "Mmm, that was tasty!" 
+
+class B extends A[Int](100)
 
 def foo = 
     val b = B()
-    println(b.x)
- 
+    println(b.eatSpecial(b.getSpecial))

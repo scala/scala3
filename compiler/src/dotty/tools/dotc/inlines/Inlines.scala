@@ -303,6 +303,12 @@ object Inlines:
                 (inlineDefs, childDefs)
               else
                 val parentTraitInliner = InlineParentTrait(parent)
+                
+                // Update self type
+                val newSelfType = cls.symbol.asClass.classDenot.givenSelfType & parentTraitInliner.inlinedSelfType.extractAnnotationsAndOpaqueTypeAliases
+                cls.symbol.info = cls.symbol.asClass.classInfo.derivedClassInfo(selfInfo=newSelfType)
+                
+                // Inline body
                 val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
                 val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
                 cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
@@ -316,7 +322,16 @@ object Inlines:
             otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
         do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
 
-        val impl1 = cpy.Template(impl)(body = newbody)
+        val impl1 = cpy.Template(impl)(body = newbody, 
+          self=
+            if cls.symbol.asClass.classDenot.givenSelfType.exists then
+              cpy.ValDef(impl.self)(tpt=
+              TypeTree(cls.symbol.asClass.classDenot.givenSelfType)
+                                        .withSpan(impl.self.tpt.span.orElse(cls.symbol.span)))
+                                        .withSpan(impl.self.span.orElse(cls.symbol.span))
+                                        .cloneIn(cls.symbol.source)
+            else impl.self
+          )
         cpy.TypeDef(cls)(rhs = impl1)
       case _ =>
         cls
@@ -775,6 +790,9 @@ object Inlines:
     private val childThisType = ctx.owner.thisType
     private val childThisTree = This(ctx.owner.asClass).withSpan(parent.span)
 
+    def inlinedSelfType =
+      inlinerTypeMap(parentSym.asClass.classDenot.givenSelfType)
+
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       paramAccessorsMapper.registerParamValuesOf(parent)
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
@@ -943,7 +961,12 @@ object Inlines:
       inlined(clsDef1)._2.withSpan(clsDef.span)
 
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
-      tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
+      val tdef2 = tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
+      if inlinedSym.isOpaqueAlias then
+        cpy.TypeDef(tdef2)(rhs=TypeTree(inlinedSym.opaqueAlias))
+      else
+        tdef2
+      
 
     private def inlinedRhs(vddef: ValOrDefDef, inlinedSym: Symbol)(using Context): Tree =
       val rhs = vddef.rhs.changeOwner(vddef.symbol, inlinedSym)
