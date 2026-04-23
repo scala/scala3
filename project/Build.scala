@@ -439,7 +439,7 @@ object Build {
     // need the output of that task to compile scaladoc. But we can include it
     // in the `scalaInstance` of the `doc` task which allows us to run
     // `scala3-library-bootstrapped/doc` for example.
-    doc / scalaInstance := {
+    Compile / doc / scalaInstance := {
       val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.data)
       val scalaDoc = (LocalProject("scaladoc") / Compile / packageBin).value
       val docJars = Array(scalaDoc) ++ externalDeps

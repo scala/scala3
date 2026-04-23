@@ -117,7 +117,7 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    extraSbtArgs ++ sbtProps ++ List("-sbt-version", "1.11.5", "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
+    extraSbtArgs ++ sbtProps ++ List("-sbt-version", "1.12.9", "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object SbtCommunityProject:
   def scalacOptions = List(
@@ -134,7 +134,7 @@ object projects:
 
   private def removeRelease8(projects: String*): String =
     projects.map(project =>
-      s"""set $project/Compile/scalacOptions := ($project/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "8")"""
+      s"""set $project/Compile/scalacOptions := ($project/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "-java-output-version" || opt == "8")"""
     ).mkString("; ")
 
   private def aggregateDoc(in: String)(projects: String*) =
@@ -426,7 +426,14 @@ object projects:
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "ciJVM",
+    sbtTestCommand =
+      List(
+        removeRelease8("core.jvm", "example.jvm", "kernel.jvm", "kernelTestkit.jvm", "laws.jvm", "std.jvm", "testkit.jvm", "tests.jvm", "rootJVM", "ioAppTestsJVM", "benchmarks", "graalVMExample"),
+        // repeats code from `removeRelease8`, but oh well, maybe generalize later
+        """set root/ScalaUnidoc/unidoc/scalacOptions := (root/ScalaUnidoc/unidoc/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "-java-output-version" || opt == "8")""",
+        "set ThisBuild / tlFatalWarnings := false",
+        "ciJVM"
+      ).mkString("; "),
     sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
   )
