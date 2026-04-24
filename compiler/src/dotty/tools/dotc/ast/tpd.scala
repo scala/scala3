@@ -472,7 +472,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _ => false
 
   /** A tree representing the same reference as the given type */
-  def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
+  def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree = {
+    def followOuterLinks(t: Tree) = t match {
+      case t: This
+        if ctx.erasedTypes
+        && ctx.owner != defn.RootClass
+        && t.symbol != ctx.owner.enclosingClass
+        && !t.symbol.isStaticOwner
+      =>
+        // after erasure outer paths should be respected
+        ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.classSymbol)
+      case t =>
+        t
+    }
     if tp.isType then TypeTree(tp)
     else if prefixIsElidable(tp) then Ident(tp)
     else if tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass) then
@@ -495,6 +507,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         if needLoad && !res.symbol.isStatic then
           throw TypeError(em"cannot establish a reference to $res")
         res
+  }
 
   def ref(sym: Symbol)(using Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
@@ -513,19 +526,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case _ =>
           tpe
     ref(NamedType(simplifyThisTypePrefix(sym.owner.thisType), sym.name, sym.denot))
-
-  private def followOuterLinks(t: Tree)(using Context) = t match {
-    case t: This
-      if ctx.erasedTypes
-      && ctx.owner != defn.RootClass
-      && t.symbol != ctx.owner.enclosingClass
-      && !t.symbol.isStaticOwner
-    =>
-      // after erasure outer paths should be respected
-      ExplicitOuter.OuterOps(ctx).path(toCls = t.tpe.classSymbol)
-    case t =>
-      t
-  }
 
   def singleton(tp: Type, needLoad: Boolean = true)(using Context): Tree = tp.dealias match {
     case tp: TermRef => ref(tp, needLoad)
