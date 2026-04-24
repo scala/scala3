@@ -531,12 +531,13 @@ object PatternMatcher {
 
     private def caseDefPlan(scrutinee: Symbol, cdef: CaseDef): Plan =
       val CaseDef(pat, guard, body) = cdef
-      val caseDefBodyPlan: Plan = body match
+      def caseDefBodyPlan(body: Tree = body): Plan = body match
+        case Typed(t, _) => caseDefBodyPlan(t)
         case t: SubMatch => subMatchPlan(t)
         case _ => ResultPlan(body)
       val onSuccess: Plan =
-        if guard.isEmpty then caseDefBodyPlan
-        else TestPlan(GuardTest, guard, guard.span, caseDefBodyPlan)
+        if guard.isEmpty then caseDefBodyPlan()
+        else TestPlan(GuardTest, guard, guard.span, caseDefBodyPlan())
       patternPlan(scrutinee, pat, onSuccess)
     end caseDefPlan
 
