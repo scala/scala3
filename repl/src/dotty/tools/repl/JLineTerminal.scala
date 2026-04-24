@@ -154,7 +154,7 @@ class JLineTerminal extends java.io.Closeable {
         else if ch == NonBlockingReader.EOF then userInput.signalClosed()
         else if ch == 3 then handler()
         else
-          // if the user is trying to use stdin and we consumed a character so put it "back" into the reader's buffer,
+          // if the user is trying to use stdin and we consumed a character, put it "back" into the reader's buffer,
           // otherwise the behavior will be nonsensical
           if userLineReader.isReading then
             userLineReader.getBuffer.write(ch.toChar)
