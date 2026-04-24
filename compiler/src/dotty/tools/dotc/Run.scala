@@ -391,6 +391,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
         if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
         else None
 
+      def stopBeforeCC =
+        allPhases.iterator.takeWhile(_ != Phases.checkCapturesPhase).exists: phase =>
+          stopAfter.contains(phase.phaseName)
+
       for phase <- allPhases do
         doEnterPhase(phase)
         val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
@@ -417,7 +421,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
           }
           if !phasesWereAdjusted then
             phasesWereAdjusted = true
-            if !Feature.ccEnabledSomewhere then
+            if !Feature.ccEnabledSomewhere || stopBeforeCC then
               ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase.prev)
               ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase)
             end if
