@@ -345,32 +345,18 @@ class ReplDriver(settings: Array[String],
       }
     else
       given state: State = newRun(state0)
-      def withCaptureCheckingUnlinked[T](op: => T): T =
-        val savedPhases = state.context.base.savePhaseState()
-        try
-          if savedPhases.nonEmpty then
-            inContext(state.context):
-              if checkCapturesPhase.exists then
-                ctx.base.unlinkPhaseAsDenotTransformer(checkCapturesPhase.prev)
-                ctx.base.unlinkPhaseAsDenotTransformer(checkCapturesPhase)
-          op
-        finally
-          state.context.base.restorePhaseState(savedPhases)
-
-      withCaptureCheckingUnlinked {
-        compiler
-          .typeCheck(expr, errorsAllowed = true)
-          .map { (untpdTree, tpdTree) =>
-            val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
-            val unit = CompilationUnit(file)(using state.context)
-            unit.untpdTree = untpdTree
-            unit.tpdTree = tpdTree
-            given Context = state.context.fresh.setCompilationUnit(unit)
-            val srcPos = SourcePosition(file, Span(cursor))
-            try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
-          }
-          .getOrElse(Nil)
-      }
+      compiler
+        .typeCheck(expr, errorsAllowed = true)
+        .map { (untpdTree, tpdTree) =>
+          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
+          val unit = CompilationUnit(file)(using state.context)
+          unit.untpdTree = untpdTree
+          unit.tpdTree = tpdTree
+          given Context = state.context.fresh.setCompilationUnit(unit)
+          val srcPos = SourcePosition(file, Span(cursor))
+          try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
+        }
+        .getOrElse(Nil)
   end completions
 
   protected def interpret(res: ParseResult)(using state: State): State = {

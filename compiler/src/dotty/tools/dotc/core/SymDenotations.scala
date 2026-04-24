@@ -2524,7 +2524,10 @@ object SymDenotations {
           for (sym <- info.decls) { // don't use filter, since that loads classes with `$`s in their name
             val denot = sym.lastKnownDenotation  // don't use `sym.denot`, as this brings forward classes too early
             if (denot.isType && denot.name.isPackageObjectName)
-              pkgObjBuf += sym.asClass.classDenot
+              denot match
+                case clsd: ClassDenotation =>
+                  pkgObjBuf += clsd
+                case _ =>
           }
           pkgObjBuf.toList
         }
