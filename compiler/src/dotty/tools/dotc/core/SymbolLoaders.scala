@@ -437,8 +437,6 @@ abstract class SymbolLoader extends LazyType { self =>
       report.informTime("loaded " + description, start)
     }
     catch {
-      case ex: InterruptedException =>
-        throw ex
       case ex: ClosedByInterruptException =>
         throw new InterruptedException
       case ex: IOException =>

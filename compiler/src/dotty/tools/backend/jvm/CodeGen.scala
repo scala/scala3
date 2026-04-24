@@ -85,8 +85,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
         registerGeneratedClass(mainClassNode, isArtifact = false)
         registerGeneratedClass(mirrorClassNode, isArtifact = true)
       catch
-        case ex: InterruptedException => throw ex
-        case ex: CompilationUnit.SuspendException => throw ex
         case ex: TypeError =>
           report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", cd.sourcePos)
 
