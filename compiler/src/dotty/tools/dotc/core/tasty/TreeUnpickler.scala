@@ -161,7 +161,7 @@ class TreeUnpickler(reader: TastyReader,
         CyclicReference.trace(i"read the definition of ${denot.symbol}$where"):
           try
             atPhaseBeforeTransforms:
-              new TreeReader(reader).readIndexedDef()(
+              new TreeReader(reader.subReader(reader.startAddr, reader.endAddr)).readIndexedDef()(
                 using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           catch
             case ex: CyclicReference => throw ex
