@@ -148,12 +148,20 @@ class JLineTerminal extends java.io.Closeable {
       while userInput.waitUntilActive() == InputState.Monitoring do
         val ch =
           try reader.read(100L)
-          catch case _: Exception => -1
+          catch case _: Exception => NonBlockingReader.READ_EXPIRED
 
         if ch == NonBlockingReader.READ_EXPIRED then ()
         else if ch == NonBlockingReader.EOF then userInput.signalClosed()
         else if ch == 3 then handler()
-        else userInput.enqueueChar(ch)
+        else
+          // if the user is trying to use stdin and we consumed a character so put it "back" into the reader's buffer,
+          // otherwise the behavior will be nonsensical
+          if userLineReader.isReading then
+            userLineReader.getBuffer.write(ch.toChar)
+            userLineReader.callWidget(LineReader.REDRAW_LINE)
+            userLineReader.callWidget(LineReader.REDISPLAY)
+          else
+            userInput.enqueueChar(ch)
     , "REPL-CtrlC-Monitor")
     monitoringThread = thread
     thread.setDaemon(true)
@@ -162,6 +170,7 @@ class JLineTerminal extends java.io.Closeable {
     try block
     finally {
       userInput.signalClosed()
+      reader.close() // ensure the reader isn't stuck waiting for further input
       Thread.interrupted() // clear interrupted flag so join below doesn't explode
       thread.join()
       monitoringThread = null
@@ -362,10 +371,8 @@ private final class UserInputStream(
             val lineBytes = (line + System.lineSeparator()).getBytes(encoding)
             enqueueBytes(lineBytes)
           catch
-            case _: EndOfFileException =>
+            case _: EndOfFileException | _: UserInterruptException | _: InterruptedException =>
               return -1
-            case _: UserInterruptException =>
-              throw new InterruptedIOException()
           finally
             resumeMonitoring()
 
