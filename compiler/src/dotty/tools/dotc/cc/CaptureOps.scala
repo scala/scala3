@@ -899,67 +899,46 @@ extension (tp: AnnotatedType) {
 class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
 
 /** Drop retains annotations in the inferred type if CC is not enabled.
- *  When CC is enabled: keep only retained refs that are "local" capture-set
- *  params/members — `ParamRef`s whose binder is in the cleaned type, term refs
- *  owned by an enclosing anonymous function, or `TypeRef`s whose owner is an
- *  enclosing anon function/class. Other refs
- *  are erased to `Nothing` so Setup's `addVar` can install a widenable
- *  `Var` (preserving them would pin the set to a `Const` — breaks
- *  nicolas1). Some inferred trees in function bodies still need to widen; callers
- *  can set `preserveAnonFunctionRefs = false` for those expression-local cleanup
- *  sites. Inside `TypeBounds`, all CapSet-derived refs are preserved (bounds are
- *  contracts). See i25830.
+ *  When CC is enabled, keep a retained set only if all its elements are
+ *  parameters of a lambda type that is part of the inferred type being cleaned.
+ *  These refs are a stable part of an inferred polymorphic function interface,
+ *  so erasing them would erase the function's capture polymorphism.
+ *
+ *  Retained sets with any other element are still erased to `Nothing`: those
+ *  captures are inferred expression details and need Setup's ordinary capture
+ *  variables instead of a fixed `Const` capture set. In particular, mixed sets
+ *  are not partially kept.
  */
-class CleanupRetains(preserveAnonFunctionRefs: Boolean = true)(using Context) extends TypeMap:
+class CleanupRetains(using Context) extends TypeMap:
   private var binders: List[LambdaType] = Nil
-  private var inBound: Boolean = false
 
-  private def isLocalRetainedRef(tp: Type): Boolean = tp match
+  private def isInCleanedLambdaType(binder: LambdaType): Boolean =
+    binders.exists(_ eq binder)
+
+  private def isRetainedParamRef(tp: Type): Boolean = tp match
     case ref: TermParamRef =>
-      preserveAnonFunctionRefs && binders.contains(ref.binder)
-    case ref: TermRef if preserveAnonFunctionRefs =>
-      val owner = ref.symbol.owner
-      owner.exists
-      && owner.isAnonymousFunction
-      && ctx.owner.isContainedIn(owner)
+      isInCleanedLambdaType(ref.binder)
     case ref: TypeParamRef =>
-      ref.derivesFromCapSet && (inBound || binders.contains(ref.binder))
-    case ref: TypeRef if ref.derivesFromCapSet && ref.symbol.isType =>
-      val owner = ref.symbol.owner
-      inBound
-      || owner.exists
-         && (owner.isClass || preserveAnonFunctionRefs && owner.isAnonymousFunction)
-         && ctx.owner.isContainedIn(owner)
+      ref.derivesFromCapSet && isInCleanedLambdaType(ref.binder)
     case _ => false
 
-  private def filterLocal(tp: Type): Type = tp match
-    case OrType(tp1, tp2) =>
-      val tp1f = filterLocal(tp1)
-      val tp2f = filterLocal(tp2)
-      if tp1f.isNothingType then tp2f
-      else if tp2f.isNothingType then tp1f
-      else OrType(tp1f, tp2f, soft = false)
-    case _ =>
-      if isLocalRetainedRef(tp) then tp else defn.NothingType
+  private def allRetainedRefsAreParams(tp: Type): Boolean =
+    val refs = tp.retainedElementsRaw
+    refs.nonEmpty && refs.forall(isRetainedParamRef)
 
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
         if annot.symbol == defn.RetainsCapAnnot then tp
         else
-          val filtered = filterLocal(annot.retainedType)
           AnnotatedType(this(parent),
-            if filtered eq annot.retainedType then annot
-            else RetainingAnnotation(annot.symbol.asClass, filtered))
+            if allRetainedRefsAreParams(annot.retainedType) then annot
+            else RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
     case tp: LambdaType =>
       val saved = binders
       binders = tp :: binders
       try mapOver(tp) finally binders = saved
-    case tp: TypeBounds =>
-      val saved = inBound
-      inBound = true
-      try mapOver(tp) finally inBound = saved
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific

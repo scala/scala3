@@ -61,3 +61,20 @@
    |
    |where:    =>  refers to a root capability in the type of parameter p1
    |          =>² refers to a root capability created in anonymous function of type (p2²: () ->{p1, any} Unit): Unit when checking argument to parameter p1 of method par
+-- Error: tests/neg-custom-args/captures/sep-curried-par.scala:24:9 ----------------------------------------------------
+24 |  bar(c)(c) // error separation
+   |         ^
+   |Separation failure: argument of type  (c : () => Unit)
+   |to a function of type (() => Unit) ->{c} Unit
+   |corresponds to capture-polymorphic formal parameter v1 of type  () =>² Unit
+   |and hides capabilities  {c}.
+   |Some of these overlap with the captures of the function prefix.
+   |
+   |  Hidden set of current argument        : {c}
+   |  Hidden footprint of current argument  : {c}
+   |  Capture set of function prefix        : {c}
+   |  Footprint set of function prefix      : {c}
+   |  The two sets overlap at               : {c}
+   |
+   |where:    =>  refers to a root capability in the type of parameter c
+   |          =>² refers to a root capability created in method test when checking argument to parameter v1 of method apply

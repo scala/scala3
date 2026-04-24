@@ -552,37 +552,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          def hasAnonFunctionRetainedRef(tp: Type): Boolean =
-            object refs extends TypeAccumulator[Boolean]:
-              def apply(found: Boolean, tp: Type): Boolean =
-                found || (tp match
-                  case AnnotatedType(parent, ann: cc.RetainingAnnotation) =>
-                    ann.retainedType.retainedElementsRaw.exists:
-                      case ref: TermRef =>
-                        ref.symbol.owner.isAnonymousFunction
-                      case ref: TermParamRef =>
-                        true
-                      case ref: TypeRef =>
-                        ref.derivesFromCapSet && ref.symbol.owner.isAnonymousFunction
-                      case _ =>
-                        false
-                    || this(false, parent)
-                  case _ =>
-                    foldOver(false, tp)
-                )
-            refs(false, tp)
-          def cleanupTypeArg(arg: Tree) = arg match
-            case arg: TypeTree
-            if Feature.ccEnabled && arg.isInferred && hasAnonFunctionRetainedRef(arg.tpe) =>
-              arg.withType(transformAnnotsIn(
-                CleanupRetains(preserveAnonFunctionRefs = false)(arg.tpe)))
-            case _ =>
-              arg
-          val transformedArgs = transform(args).mapConserve(cleanupTypeArg)
           val args1 =
             if Feature.ccEnabled && fn.symbol.isInlineMethod
-            then transformedArgs.mapConserve(markInferred)
-            else transformedArgs
+            then transform(args).mapConserve(markInferred)
+            else transform(args)
           val fn1 = fn match
             case sel: Select =>
               transformSelect(sel, args1) // skip the checkUsableAsValue of normal transform

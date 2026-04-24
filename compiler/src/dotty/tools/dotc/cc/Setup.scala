@@ -339,34 +339,31 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def innerApply(tp: Type) =
         val tp1 = tp match
           case AnnotatedType(parent, annot: RetainingAnnotation) =>
-            // Promote refs preserved by CleanupRetains into a
-            // Const CapturingType; strip any empty Var that `apply(parent)`
-            // would have layered underneath. See i25830.
-            val hasCapSetRef = annot.retainedType.retainedElementsRaw.exists(_.derivesFromCapSet)
-            // Keep term refs exact only in mixed sets like `{head, B}`. A plain
-            // inferred `Cap^{cap}` still has to widen so escapes are checked.
-            val kept = annot.retainedType.retainedElementsRaw.flatMap: e =>
-              try
-                e.toCapability match
-                  case _: RootCapability => Nil
-                  case cap if cap.coreType.derivesFromCapSet
-                      || cap.core.isInstanceOf[ParamRef]
-                      || hasCapSetRef && cap.core.isInstanceOf[TermRef] =>
-                    cap :: Nil
-                  case _ => Nil
-              catch case _: IllegalCaptureRef => Nil
-            if kept.isEmpty then apply(parent)
-            else
+            val elems = annot.retainedType.retainedElementsRaw
+            def isRetainedParamRef(elem: Type): Boolean = elem match
+              case _: ParamRef => true
+              case _ => false
+            def promote(caps: List[Capability]) =
+              // Refs preserved by CleanupRetains are part of the inferred
+              // polymorphic function interface. Keep them as a Const
+              // CapturingType and strip the empty Var that `apply(parent)`
+              // would have layered underneath.
               val parent1 = apply(parent) match
                 case CapturingType(p, refs) if refs.elems.isEmpty && !refs.isConst => p
                 case other => other
-              CapturingType(parent1, CaptureSet(kept*))
+              CapturingType(parent1, CaptureSet(caps*))
+            try
+              if elems.nonEmpty && elems.forall(isRetainedParamRef) then
+                promote(elems.map(_.toCapability))
+              else apply(parent)
+            catch case _: IllegalCaptureRef =>
+              apply(parent)
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
             // Drop non-RetainingAnnotation retains (e.g. pickle-read) and @inferred.
             apply(parent)
           case tp: TypeLambda =>
-            // Leave parameter bounds alone — CleanupRetains already filtered them.
+            // Leave parameter bounds alone; CleanupRetains already filtered them.
             tp.derivedLambdaType(
               paramInfos = tp.paramInfos,
               resType = this(tp.resType))
@@ -902,6 +899,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   - If type is a capturing type that has already a capture set variable or has
    *     the universal capture set, it does not need a variable.
    */
+  private def isNonEmptyParamRefSet(refs: CaptureSet)(using Context): Boolean =
+    !refs.elems.isEmpty && refs.elems.forall(_.core.isInstanceOf[ParamRef])
+
   def needsVariable(tp: Type)(using Context): Boolean =
     tp.typeParams.isEmpty && tp.match
       case tp: (TypeRef | AppliedType) =>
@@ -922,10 +922,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
         && !refs.isUniversal  // if refs is {caps.any}, an added variable would not change anything
-        && !refs.elems.exists: elem =>
-          elem.coreType.derivesFromCapSet || elem.core.isInstanceOf[ParamRef]
-          // Const sets containing capset-param or lambda-param refs must stay
-          // Const: a Var's elements don't rewrite under SubstParamsMap. See i25830.
+        // Non-empty Const sets that contain only parameter refs must stay Const:
+        // a Var's elements don't rewrite under SubstParamsMap. See i25830.
+        && !isNonEmptyParamRefSet(refs)
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>
