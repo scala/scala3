@@ -1590,6 +1590,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case block @ Block(stats, expr) if !expr.isInstanceOf[Closure] =>
         val expr1 = ascribeType(expr, pt)
         cpy.Block(block)(stats, expr1).withType(expr1.tpe) // no assignType here because avoid is redundant
+      case m @ Match(selector, cases) if m.isSubMatch =>
+        val newCases = cases.map: cdef =>
+          val newBody = ascribeType(cdef.body, pt)
+          cpy.CaseDef(cdef)(body = newBody).withType(newBody.tpe)
+        cpy.Match(m)(selector, newCases).withType(TypeComparer.lub(newCases.tpes))
       case _ =>
         val target = pt.simplified
         val targetTpt = TypeTree(target, inferred = true)
