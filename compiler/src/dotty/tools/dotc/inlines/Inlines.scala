@@ -32,6 +32,9 @@ import dotty.tools.dotc.core.Annotations.LazyBodyAnnotation
 import dotty.tools.dotc.core.Scopes.EmptyScope
 import dotty.tools.dotc.core.Scopes.MutableScope
 import dotty.tools.dotc.reporting.OverrideError
+import dotty.tools.dotc.typer.RefChecks.OverridingPairsChecker
+import dotty.tools.dotc.typer.ErrorReporting.err
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -265,14 +268,15 @@ object Inlines:
     updatedFlags
 
 
-  def transformInlineTrait(inlineTrait: TypeDef)(using Context): TypeDef =
-    val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
-    
-    tmpl.body.foreach {
+  private def checkInnerClasses(tmpl: Template)(using Context) = 
+    tmpl.body.foreach { 
       case innerClass: TypeDef if innerClass.symbol.isClass => report.error("Inline traits may not define inner classes or traits.", innerClass.srcPos)
       case _ =>
     }
-    
+
+  def checkAndTransformInlineTrait(inlineTrait: TypeDef)(using Context): TypeDef =
+    val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
+    checkInnerClasses(tmpl)
     val body1 = tmpl.body.flatMap {
       /* case innerClass: TypeDef if innerClass.symbol.isClass =>
          val newTrait = makeTraitFromInnerClass(innerClass)
@@ -286,7 +290,48 @@ object Inlines:
     }
     val tmpl1 = cpy.Template(tmpl)(body = body1)
     cpy.TypeDef(inlineTrait)(rhs = tmpl1)
-  end transformInlineTrait
+  end checkAndTransformInlineTrait
+
+
+  private def checkInlineTraitOverrides(clsSym: ClassSymbol)(using Context) = 
+    /* We need to enforce `override` modifier constraints
+       here to ensure that the behaviour is the same as ordinary traits. The usual checks only apply
+      in refChecks which is too late for us. */
+    
+    // TODO: This does cause some code duplication
+    def checkInlineTraitOverride(member: Symbol, other: Symbol) =
+      if !member.is(Override) && !other.is(Deferred) && member.owner == clsSym then
+        report.error(
+          OverrideError("needs `override` modifier", 
+                        other.info,
+                        member,
+                        other,
+                        NoType,
+                        NoType),
+          member.srcPos
+        )
+      else if member.owner != clsSym && other.owner != clsSym
+          && !other.owner.derivesFrom(member.owner)
+          && !(member.isAnyOverride || member.hasAnnotation(defn.UncheckedOverrideAnnot)) 
+          && (!other.is(Deferred) || other.isAllOf(Given | HasDefault)) 
+          && !member.is(Deferred) 
+          && !other.name.is(DefaultGetterName) then
+        
+        report.error(
+          OverrideError(
+            s"${clsSym} inherits conflicting members:\n  "
+            + err.infoString(other, clsSym.asClass.thisType, showLocation = true) + "  and\n  "
+            + err.infoString(member, clsSym.thisType, showLocation = true)
+            + "\n(Note: this can be resolved by declaring an override in " + clsSym + ".)",
+            other.info,
+            member,
+            other,
+            NoType,
+            NoType)
+          ,
+          clsSym.srcPos
+        )
+    OverridingPairsChecker(clsSym, clsSym.thisType).checkAll(checkInlineTraitOverride) 
 
   def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
     cls match {
@@ -294,22 +339,7 @@ object Inlines:
       //   report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
       //   cls
       case cls @ tpd.TypeDef(_, impl: Template) =>
-
-
-        // We need to enforce the constraint that vals and defs that override have the `override` modifier
-        // here to ensure that the behaviour is the same as ordinary traits. The usual check only applies
-        // in refChecks which is after pruneInlineTraits so it won't fire for inline traits even though it should. 
-        cls.symbol.info.decls.toList.foreach: decl =>
-          if !decl.is(Override) && decl.allOverriddenSymbols.filterNot(sym => sym.is(Deferred)).nonEmpty then
-            report.error(
-              OverrideError("needs `override` modifier", 
-                            decl.allOverriddenSymbols.toList.head.owner.info,
-                            decl,
-                            decl.allOverriddenSymbols.toList.head,
-                            NoType,
-                            NoType),
-              decl.srcPos
-            )
+        checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val newDefs = inContext(ctx.withOwner(cls.symbol)) {
           inlineTraitAncestors(cls).foldLeft((List.empty[Tree], impl.body)){
@@ -329,7 +359,9 @@ object Inlines:
                 val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
                 val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
                 cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
-                (inlinedDefs1, childDefs)
+                
+                val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
+                (inlinedDefs1, childDefs1)
           }
         }
         val newbody = newDefs._1 ::: newDefs._2
@@ -812,15 +844,25 @@ object Inlines:
 
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       paramAccessorsMapper.registerParamValuesOf(parent)
-      val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
-      stats.map{
-        case member: MemberDef => Left((member, inlinedSym(member.symbol))) // Private symbols must be entered before the RHSs are inlined
+      val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol) && stat.symbol.is(Deferred))
+
+      stats.map{  // Private symbols must be entered before the RHSs are inlined
+        case member: MemberDef => Left((member, inlinedSym(member.symbol, overriddenDecls)))
         case stat => Right(stat)
       }.map{
         case Left((tree, inlinedSym)) => expandStat(tree, inlinedSym)
         case Right(tree) => inlinedRhs(tree)
       }
     end expandDefs
+
+    def adaptSuperCalls(defs: List[Tree]) = 
+      val ttmap = TreeTypeMap(treeMap = {
+        case sel@Select(Super(qual, mix), name) if sel.symbol.owner == parentSym =>
+          // Either method overridden so needs mangling, or not, in which case call directly by original name.
+          Select(This(ctx.owner.asClass), paramAccessorsMapper.getParamAccessorName(sel.symbol.owner, name).getOrElse(name))
+        case tree => tree
+      })
+      defs.map(ttmap(_))
 
     protected class InlineTraitTypeMap extends InlinerTypeMap {
       override def apply(t: Type) = super.apply(t) match {
@@ -877,13 +919,13 @@ object Inlines:
         inlinedValDef(stat, inlinedSym)
       case stat: DefDef =>
         inlinedDefDef(stat, inlinedSym)
-      case stat @ TypeDef(_, _: Template) =>
-        inlinedClassDef(stat, inlinedSym.asClass)
+      case stat @ TypeDef(_, _: Template) => EmptyTree
+        /* inlinedClassDef(stat, inlinedSym.asClass) */ // Inner classes are not allowed for now.
       case stat: TypeDef =>
         inlinedTypeDef(stat, inlinedSym)
 
-    private def inlinedSym(sym: Symbol, withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
-      val newSym = if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, withoutFlags)
+    private def inlinedSym(sym: Symbol, overriddenDecls: Set[Symbol], withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
+      val newSym = if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, overriddenDecls, withoutFlags)
       ctx.inlineTraitState.registerInlinedSymbol(sym, newSym, ctx.owner.thisType.widenDealias)
       newSym
 
@@ -915,12 +957,13 @@ object Inlines:
           sym
       }
 
-    private def inlinedMemberSym(sym: Symbol, withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
+    private def inlinedMemberSym(sym: Symbol, overriddenDecls: Set[Symbol], withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
       var name = sym.name
       var flags = sym.flags | Synthetic
       if sym.isTermParamAccessor then flags &~= ParamAccessor
-      if sym.is(Local) then
+      if sym.is(Local) || (overriddenDecls.contains(sym)) then
         name = paramAccessorsMapper.registerNewName(sym)
+        flags |= (Private | Local)
       else
         flags |= Override
       sym.copy(
@@ -956,12 +999,14 @@ object Inlines:
             inlinedRhs(ddef1, inlinedSym)
       tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
 
+    /*
     private def inlinedPrimaryConstructorDefDef(ddef: DefDef)(using Context): DefDef =
       // TODO check if symbol must be copied
       val inlinedSym = inlinedMemberSym(ddef.symbol, withoutFlags = Override)
       val constr = inlinedDefDef(ddef, inlinedSym)
       cpy.DefDef(constr)(tpt = TypeTree(defn.UnitType), rhs = EmptyTree)
-
+    */
+    /*
     private def inlinedClassDef(clsDef: TypeDef, inlinedCls: ClassSymbol)(using Context): Tree =
       val TypeDef(_, tmpl: Template) = clsDef: @unchecked
       val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
@@ -976,6 +1021,7 @@ object Inlines:
       }
       val clsDef1 = tpd.ClassDefWithParents(inlinedCls, constr, tmpl.parents, body) // TODO add correct parent tree
       inlined(clsDef1)._2.withSpan(clsDef.span)
+    */
 
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
       val tdef2 = tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)

@@ -39,7 +39,7 @@ class SpecializeInlineTraits extends MacroTransform, SymTransformer {
   override def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: Tree)(using Context): Tree = tree match {
       case tree: TypeDef if tree.symbol.isInlineTrait =>
-        val tree1 = Inlines.transformInlineTrait(tree)
+        val tree1 = Inlines.checkAndTransformInlineTrait(tree)
         val tree2 = if Inlines.needsInlining(tree1) then Inlines.inlineParentInlineTraits(tree1) else tree1
         super.transform(tree2) // We may need to inline inline traits into the bodies of methods defined inside inline traits.
       case tree: TypeDef if Inlines.needsInlining(tree) =>
@@ -53,7 +53,7 @@ class SpecializeInlineTraits extends MacroTransform, SymTransformer {
           )
         val tree1 =
           if tree.symbol.isInlineTrait then 
-            Inlines.inlineParentInlineTraits(Inlines.transformInlineTrait(tree))
+            Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree))
           else Inlines.inlineParentInlineTraits(tree)
         super.transform(tree1)
 
@@ -61,11 +61,12 @@ class SpecializeInlineTraits extends MacroTransform, SymTransformer {
     }
   }
 
-  override def transformSym(symd: SymDenotation)(using Context): SymDenotation =
-    if symd.isClass && symd.owner.isInlineTrait && !symd.is(Module) then
+  override def transformSym(symd: SymDenotation)(using Context): SymDenotation = symd
+   /* if symd.isClass && symd.owner.isInlineTrait && !symd.is(Module) then
       symd.copySymDenotation(name = SpecializeInlineTraits.newInnerClassName(symd.name), initFlags = (symd.flags &~ Final) | Trait)
     else
       symd
+*/
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {

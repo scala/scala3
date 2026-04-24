@@ -400,17 +400,21 @@ class DesugarSpecializedTraits extends MacroTransform:
       extension (classTree: Tree)
         def updateParents(parentUpdater: List[Type] => List[Type]) = (classTree: @unchecked) match {
           case td@TypeDef(name, t@Template(constr, preParentsOrDerived, self, preBody)) =>  
-          td.symbol.info = td.symbol.info match {
-            case ci: ClassInfo => ci.derivedClassInfo(declaredParents=parentUpdater(ci.declaredParents)) 
-          }
-          ClassDef(td.symbol.asClass, constr, t.body)
+            td.symbol.info = td.symbol.info match {
+              case ci: ClassInfo => ci.derivedClassInfo(declaredParents=parentUpdater(ci.declaredParents)) 
+            }
+        }
+
+        def refreshClassDef = (classTree: @unchecked) match {
+          case td@TypeDef(name, t@Template(constr, preParentsOrDerived, self, preBody)) =>  
+            ClassDef(td.symbol.asClass, constr, t.body)
         }
 
       /* We need to inline recursively throughout generated specialized traits - see tests/run/specialized-trait-requires-inline-trait-inlining.scala */
       // TODO: How do we calculate the spans correctly?
       val ttmap = new TreeTypeMap(treeMap = {
         case tree: TypeDef if tree.symbol.isInlineTrait =>
-          val tree1 = Inlines.transformInlineTrait(tree)
+          val tree1 = Inlines.checkAndTransformInlineTrait(tree)
           val tree2 = if Inlines.needsInlining(tree1) then Inlines.inlineParentInlineTraits(tree1) else tree1
           tree2
         case tree: TypeDef if Inlines.needsInlining(tree) =>
@@ -418,21 +422,27 @@ class DesugarSpecializedTraits extends MacroTransform:
         case t => t
       })
       
-      // Why does it cause no denotation to happen?
-      val generatedTraitStats1 = generatedTraitStats.map(trtDef => /*Inlines.inlineParentInlineTraits(Inlines.transformInlineTrait(*/ttmap(trtDef.withSpan(span))/*))*/).map:
-        _.updateParents { parents => (parents: @unchecked) match
-          case obj :: original :: parents => obj :: parents
-        }
-  
-      val generatedClassStats1 = generatedClassStats.map(clsDef => /*Inlines.inlineParentInlineTraits(*/ttmap(clsDef.withSpan(span))/*)*/).map:
-        _.updateParents { parents => (parents: @unchecked) match
-          case obj :: traitSp :: originalSpec :: Nil => obj :: traitSp :: Nil 
-        }
-      
-      if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
+      val generatedTraitStats1 = generatedTraitStats.map(trtDef => ttmap(trtDef.withSpan(span)))
+      val generatedClassStats1 = generatedClassStats.map(clsDef => ttmap(clsDef.withSpan(span)))
+        .tapEach:
+          _.updateParents { parents => (parents: @unchecked) match
+            case obj :: traitSp :: originalSpec :: Nil => obj :: traitSp :: Nil 
+          }
+        .map(refreshClassDef)
+
+      // We need to do this after inlining into the $impl$ classes otherwise we break
+      // overriding/interface implementation rules during the inlining. 
+      val generatedTraitStats1a = generatedTraitStats1
+        .tapEach:
+          _.updateParents { parents => (parents: @unchecked) match
+            case obj :: original :: parents => obj :: parents
+          }
+        .map(refreshClassDef)
+
+      if (generatedTraitStats1a.isEmpty && generatedClassStats1.isEmpty)
         (stats.map(replaceSpecializedSymbolsMap(specializations2)(_)), specializations2)
       else 
-        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, span, specializations2)
+        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1a, span, specializations2)
         val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, span, specializations3)
         (generatedTraitStats2 ++ generatedClassStats2 ++ stats.map(replaceSpecializedSymbolsMap(specializations4)(_)), specializations4)
     }

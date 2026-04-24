@@ -4,8 +4,4 @@ inline trait A:
 inline trait B:
     def foo = "Bonjour"
 
-class C extends A, B
-
-def main = 
-    val x = C()
-    println(x.foo)
+class C extends A, B // error: C inherits conflicting members

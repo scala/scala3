@@ -148,7 +148,7 @@ class B extends A(true):
     private val A$$x: Int = 1
     override def foo(): Int = if this.A$$b then this.A$$x.+(1) else 0
 ```
-- An inline receiver may mix in multiple inline traits with colliding member names. In this case the latest extended trait prevails. In the following example calling `foo` on an instance of `C` will return "Bonjour". This is in contrast to ordinary traits which require the `override` modifier in this case. <!-- TODO: Is this ok? We do it because otherwise they would have to write override on all members in Specialized traits because we mix those in multiple times. I suppose we could add this ourselves? Maybe that's better. -->
+- An inline receiver may mix in multiple inline traits with colliding member names. This follows the same rules as normal traits. In particular, this must usually be disambiguated with an override. 
 ```scala
 inline trait A:
     def foo = "Hello World"
@@ -156,7 +156,17 @@ inline trait A:
 inline trait B:
     def foo = "Bonjour"
 
-class C extends A, B
+class C extends A, B // error: C inherits conflicting members A.foo and B.foo
+```
+A typical way to disambiguate would be using `super`. For example:
+```scala
+class C extends A, B:
+    override def foo = super[A].foo 
+```
+This syntax is supported for inline traits. Note however that as inline traits are converted to pure interfaces it is not possible to make a direct call to the
+method on A or B. Furthermore if we allowed this, specialization would be lost. Therefore, overridden methods are inlined into the inline receiver with a mangled name,
+e.g. `A$$foo$`, `B$$foo` and the `override def foo` in `C` will delegate to one of these methods. Super calls to non-overridden methods are also supported.
+These are transformed to point directly to the corresponding inlined methods with no need for name mangling.
 
 - inline traits may define inline members (e.g. `inline def`, `inline val`). References to these are inlined as the body of the trait is inlined into the inline receiver, but the members themselves are not inlined and are deleted from the parent trait. E.g.:
 ```scala
@@ -380,5 +390,13 @@ This behaviour is the same as that in Timothée's thesis except for the followin
  - We now do replacement of member accesses to point to the inlined versions throughout the whole code, not just in the bodies of inner classes
  - He allows inline traits to contain inner classes in principle, however in practice they don't work which is why we ban them.
  - We specialize types of member accesses on e.g. Numeric
- - He in principle allows traits to extend inline traits although it doesn't work that well; we think we probably want to forbid this.
- - We also fix a number of bugs in the implementation, some of which have a minor effect on the processing and interaction with the rest of the compiler phases, e.g. we apply pruneInlineTraits slightly earlier than in the original implementation to avoid spurious warnings with -Wsafe-init.
+ - He in principle allows traits to extend inline traits although it doesn't work that well; we impose concrete rules on this:
+     - Trait extends inline trait is only allowed if the inline trait is parameterless
+     - Inline trait extends trait is always allowed
+ - We modify some of the rules around overrides and conflicting members in order to make the behaviour more consistent with ordinary traits.
+    In particular we require `override` in a number of locations where previously conflicts were resolved on the basis of "last extending trait wins".
+ - We also fix a number of bugs in the implementation, some of which have a minor effect on the processing and interaction with the rest of the compiler phases, e.g. we apply pruneInlineTraits slightly earlier than in the original implementation to avoid spurious warnings with -Wsafe-init, and we fix flags, and add support for nested inlines.
+ - We also implement some extra inlining such as opaque types, super references, and self types.
+ - We enforce a number of rules that were previously implicit, with proper errors.
+ - We do the RHS type narrowing for vals (not vars) described above as an optimisation
+ - We change the handling of private members in pruning of inline traits (we now delete them completely)
