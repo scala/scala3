@@ -148,12 +148,6 @@ object SymDenotations {
 
     final def completeFrom(completer: LazyType)(using Context): Unit =
       if completer.needsCompletion(this) then
-        def retryAfterNonCyclicFailure(ex: Throwable): Nothing =
-          // If completion aborts unexpectedly, don't leave the denotation stuck
-          // in the in-progress state; otherwise the next lookup reports a fake cycle.
-          if !isCompleted then resetFlag(Touched)
-          throw ex
-
         if (Config.showCompletions) {
           println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
           indent += 1
@@ -168,8 +162,6 @@ object SymDenotations {
             case ex: CyclicReference =>
               println(s"error while completing ${this.debugString}")
               throw ex
-            case NonFatal(ex) =>
-              retryAfterNonCyclicFailure(ex)
           }
           finally {
             indent -= 1
@@ -181,10 +173,7 @@ object SymDenotations {
             if myFlags.is(Touched) then
               throw CyclicReference(this)(using ctx.withOwner(symbol))
             myFlags |= Touched
-            try atPhase(validFor.firstPhaseId)(completer.complete(this))
-            catch
-              case ex: CyclicReference => throw ex
-              case NonFatal(ex) => retryAfterNonCyclicFailure(ex)
+            atPhase(validFor.firstPhaseId)(completer.complete(this))
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
