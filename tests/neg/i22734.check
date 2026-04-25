@@ -1,0 +1,24 @@
+-- Error: tests/neg/i22734.scala:4:7 -----------------------------------------------------------------------------------
+4 |object X extends T // error via refchecks
+  |       ^
+  |       object creation impossible, since def item: String in trait T is not defined
+-- Error: tests/neg/i22734.scala:9:7 -----------------------------------------------------------------------------------
+9 |  case NonItem(other: String) // error
+  |       ^^^^^^^
+  |       class NonItem needs to be abstract, since def item: String in class Foo is not defined
+-- Error: tests/neg/i22734.scala:11:7 ----------------------------------------------------------------------------------
+11 |  case AlsoT extends Foo, T // error missing error
+   |       ^
+   |       object creation impossible, since def item: String in trait T is not defined
+-- Error: tests/neg/i22734.scala:12:7 ----------------------------------------------------------------------------------
+12 |  case Another extends Foo // error missing error
+   |       ^
+   |       object creation impossible, since def item: String in class Foo is not defined
+-- Error: tests/neg/i22734.scala:7:7 -----------------------------------------------------------------------------------
+7 |  case Empty // error via refchecks
+  |       ^
+  |       object creation impossible, since def item: String in class Foo is not defined
+-- Error: tests/neg/i22734.scala:13:7 ----------------------------------------------------------------------------------
+13 |  case Decoy // error missing error
+   |       ^
+   |       object creation impossible, since def item: String in class Foo is not defined
