@@ -342,6 +342,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val elems = annot.retainedType.retainedElementsRaw
             def isRetainedParamRef(elem: Type): Boolean = elem match
               case _: ParamRef => true
+              // CleanupRetains may also preserve capset TypeRefs (e.g. to a
+              // type member of a synthetic poly-function class that aliases an
+              // outer apply method's type parameter).
+              case ref: TypeRef => ref.derivesFromCapSet
               case _ => false
             def promote(caps: List[Capability]) =
               // Refs preserved by CleanupRetains are part of the inferred
