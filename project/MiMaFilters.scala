@@ -52,6 +52,7 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalMethodProblem]("scala.jdk.Accumulator.:++"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.jdk.Accumulator.concat"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.jdk.Accumulator.sizeHint$default$2"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.None.orNull"),
       )
     )
   }
