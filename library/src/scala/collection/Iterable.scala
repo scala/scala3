@@ -849,7 +849,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
     // `this.tail.tail` doesn't compile as `C` is unbounded
     // `Iterable.from(this)` would eagerly copy non-immutable collections
     val it = Iterator.iterate(toIterable: @nowarn("cat=deprecation"))(f).takeWhile(_.nonEmpty)
-    (it ++ Iterator.single(Iterable.empty)).map(fromSpecific)
+    (it ++ Iterator.single(Iterable.empty: Iterable[A]^{this})).map(fromSpecific)
   }
 
   @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
