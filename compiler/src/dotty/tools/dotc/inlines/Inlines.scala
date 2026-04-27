@@ -18,6 +18,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
+import cc.CleanupRetains
 
 import collection.mutable
 import reporting.{NotConstant, trace}
@@ -101,18 +102,36 @@ object Inlines:
    */
   def inlineCall(tree: Tree)(using Context): Tree = ctx.profiler.onInlineCall(tree.symbol):
 
-    if tree.symbol.denot.exists
-      && tree.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
+    /** Strip @retains annotations from inferred types in the call tree.
+     *  Setup expects retains in inferred types to have been cleaned; types
+     *  arriving here from inlining bypass PostTyper's CleanupRetains, so we
+     *  apply a plain (non-poly-literal-aware) cleanup pass here.
+     */
+    val stripRetains = CleanupRetains(ownerWalk = false)
+    val stripper = new TreeTypeMap(
+      treeMap = {
+        case tree: InferredTypeTree =>
+          val stripped = stripRetains(tree.tpe)
+          if stripped ne tree.tpe then tree.withType(stripped)
+          else tree
+        case tree => tree
+      }
+    )
+
+    val tree0 = stripper.transform(tree)
+
+    if tree0.symbol.denot.exists
+      && tree0.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then
-      if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
-      if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
+      if (tree0.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree0)
+      if (tree0.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree0)
 
     if ctx.isAfterTyper then
       // During typer we wait with cross version checks until PostTyper, in order
       // not to provoke cyclic references. See i16116 for a test case.
-      CrossVersionChecks.checkRef(tree.symbol, tree.srcPos)
+      CrossVersionChecks.checkRef(tree0.symbol, tree0.srcPos)
 
-    if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
+    if tree0.symbol.isConstructor then return tree0 // error already reported for the inline constructor definition
 
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary

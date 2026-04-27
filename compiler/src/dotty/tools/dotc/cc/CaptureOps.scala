@@ -913,7 +913,7 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
  *                    Defaults to `NoSourcePosition` for callers that don't need
  *                    to report (UnApply / Bind cleanups in PostTyper).
  */
-class CleanupRetains(reportPos: SrcPos = NoSourcePosition)(using Context) extends TypeMap:
+class CleanupRetains(reportPos: SrcPos = NoSourcePosition, ownerWalk: Boolean = true)(using Context) extends TypeMap:
   // Capset-binding TypeLambdas in scope. Used to recognize valid retain
   // elements during descent and to detect a capture-polymorphic context.
   //
@@ -925,8 +925,11 @@ class CleanupRetains(reportPos: SrcPos = NoSourcePosition)(using Context) extend
   // seeding the binder from `ctx.owner.info` — gated on anon-fn owners so we
   // don't pull enclosing PolyTypes into the scope of an unrelated regular
   // val (e.g. one inside `extension [T, C^]`).
+  //
+  // `ownerWalk = false` is for callers that just want plain erasure
+  // (e.g. inlining) and shouldn't interact with the literal-tpt machinery.
   private var capSetBinders: List[TypeLambda] =
-    if Feature.ccEnabled && ctx.owner.isAnonymousFunction then
+    if ownerWalk && Feature.ccEnabled && ctx.owner.isAnonymousFunction then
       def enclosing(sym: Symbol): List[TypeLambda] =
         if !sym.exists || sym.is(Package) then Nil
         else sym.info match
@@ -945,8 +948,12 @@ class CleanupRetains(reportPos: SrcPos = NoSourcePosition)(using Context) extend
       // Capset param of an in-scope TypeLambda.
       ref.derivesFromCapSet && capSetBinders.exists(_ eq ref.binder)
     case ref: TypeRef =>
-      // Capset typedef aliasing an in-scope binder — for curried literals.
-      ref.derivesFromCapSet && capSetBinders.exists(_.paramRefs.exists(_ =:= ref))
+      // Capset typedef aliasing an in-scope binder — required for curried
+      // literals where inner-fragment visits see the outer binder via a
+      // TypeRef (e.g. `TypeRef(NoPrefix, type C)`) rather than as a
+      // TypeParamRef. `frozen_=:=` matches it against the binder's paramRef
+      // without leaking constraints into type inference.
+      ref.derivesFromCapSet && capSetBinders.exists(_.paramRefs.exists(_ frozen_=:= ref))
     case ref: TermRef =>
       // caps.any only in capset bounds (synthesized `<: CapSet^{any}` for `[C^]`).
       ref.isCapsAnyRef && parent.derivesFromCapSet
@@ -959,7 +966,7 @@ class CleanupRetains(reportPos: SrcPos = NoSourcePosition)(using Context) extend
         else
           val elems = annot.retainedType.retainedElementsRaw
           val keep = elems.nonEmpty && elems.forall(isPreserved(_, parent))
-          // Suppress only the narrow case where the entire retain is a single
+          // Suppress only the narrow case where the entire retains is a single
           // synthesized TypeBounds — `nonDependentResultApprox` (Types.scala)
           // produces these when collapsing a dependent retain into a `range(...)`
           // and an invariant position turns it back into bounds. Anything else
