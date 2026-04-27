@@ -279,14 +279,14 @@ class DesugarSpecializedTraits extends MacroTransform:
           case dd@DefDef(name, paramss, tpt, preRhs) => 
             val transformedDef = super.transform(dd)
             transformedDef.symbol.info = mapType(transformedDef.symbol.info)
-            if transformedDef.symbol.allOverriddenSymbols.isEmpty then
+            if transformedDef.symbol.allOverriddenSymbols.isEmpty && (transformedDef.symbol.owner.isSpecializedTraitInterface || transformedDef.symbol.owner.isSpecializedTraitImplementationClass) then
               transformedDef.symbol.flags = transformedDef.symbol.flags &~ Flags.Override
             transformedDef
 
           case vd@ValDef(name, tpt, preRhs) => 
             val transformedDef = super.transform(vd)
             transformedDef.symbol.info = mapType(transformedDef.symbol.info)
-            if transformedDef.symbol.allOverriddenSymbols.isEmpty then
+            if transformedDef.symbol.allOverriddenSymbols.isEmpty && (transformedDef.symbol.owner.isSpecializedTraitInterface || transformedDef.symbol.owner.isSpecializedTraitImplementationClass) then
               transformedDef.symbol.flags = transformedDef.symbol.flags &~ Flags.Override
             transformedDef
           /*case vd@ValDef(name, tpt, preRhs) =>

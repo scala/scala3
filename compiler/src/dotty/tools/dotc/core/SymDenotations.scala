@@ -647,6 +647,14 @@ object SymDenotations {
     final def isAnonymousClass(using Context): Boolean =
       isClass && initial.name.isAnonymousClassName
 
+    /** Is this symbol an specialized trait interface? */
+    final def isSpecializedTraitInterface(using Context): Boolean =
+      isClass && name.isSpecializedTraitInterfaceName
+
+    /** Is this symbol an specialized trait implementation class? */
+    final def isSpecializedTraitImplementationClass(using Context): Boolean =
+      isClass && name.isSpecializedTraitImplementationName
+
     final def isAnonymousFunction(using Context): Boolean =
       this.symbol.is(Method) && initial.name.isAnonymousFunctionName
 

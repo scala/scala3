@@ -77,6 +77,8 @@ object NameOps {
     def isAnonymousFunctionName: Boolean = name.startsWith(str.ANON_FUN)
     def isUnapplyName: Boolean = name == nme.unapply || name == nme.unapplySeq
     def isRightAssocOperatorName: Boolean = name.lastPart.last == ':'
+    def isSpecializedTraitInterfaceName: Boolean = name.toString.contains(str.SPECIALIZED_TRAIT_SUFFIX)
+    def isSpecializedTraitImplementationName: Boolean = name.toString.contains(str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
 
     /** Does this name match `[{letter | digit} '_'] op`?
       *
