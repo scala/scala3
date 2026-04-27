@@ -2,7 +2,7 @@ package scala
 import language.experimental.erasedDefinitions
 import scala.annotation.nowarn
 
-trait Specialized[T] extends compiletime.Erased
+sealed trait Specialized[T] extends compiletime.Erased
 
 object Specialized:
     /* @nowarn: New anonymous class definition will be duplicated at each inline site, 
