@@ -16,7 +16,7 @@ import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
-import util.{SrcPos, Stats}
+import util.{SrcPos, Stats, NoSourcePosition}
 import reporting.*
 import NameKinds.{WildcardParamName, TempResultName}
 import typer.Applications.{spread, HasSpreads}
@@ -30,14 +30,6 @@ import ast.TreeInfo
 object PostTyper {
   val name: String = "posttyper"
   val description: String = "additional checks and cleanups after type checking"
-
-  /** Sticky attachment placed by PostTyper on the inferred tpt of a val/def
-   *  whose RHS is a capture-polymorphic poly-function literal. Read by
-   *  `cc.CleanupRetains` to decide whether to enable the implementation-
-   *  restriction error: it should fire only on user-written literals, not on
-   *  inferred poly-fn types that come from method calls or aliases.
-   */
-  val IsCapsetPolyFunLiteralTpt: util.Property.StickyKey[Unit] = util.Property.StickyKey()
 
   /** Detect whether `rhs` (or, transitively, any closure body it nests into)
    *  is a capture-polymorphic poly-fn literal — i.e. a closure whose
@@ -127,6 +119,14 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   override def initContext(ctx: FreshContext): Unit =
     initContextCalled = true
     compilingScala2StdLib = Feature.shouldBehaveAsScala2(using ctx)
+
+  /** The set of as-yet untransformed TypeTrees that are the inferred tpt of a val/def
+   *  whose RHS is a capture-polymorphic poly-function literal. Used to direct
+   *  `cc.CleanupRetains` whether to enable the implementation-restriction error:
+   *  it should fire only on user-written literals, not on inferred poly-fn types
+   *  that come from method calls or aliases.
+   */
+  private val hasCapsetPolyFunLiteralRhs = mutable.Set[Tree]()
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -608,7 +608,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkStableSelection(tree.rhs)
           tree1.tpt match
             case tpt: TypeTree if tpt.isInferred && PostTyper.isCapsetPolyFunLiteralRhs(tree.rhs) =>
-              tpt.putAttachment(PostTyper.IsCapsetPolyFunLiteralTpt, ())
+              hasCapsetPolyFunLiteralRhs += tpt
             case _ =>
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
@@ -625,7 +625,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             if !tree.symbol.isAnonymousFunction
                && tpt.isInferred
                && PostTyper.isCapsetPolyFunLiteralRhs(tree.rhs) =>
-              tpt.putAttachment(PostTyper.IsCapsetPolyFunLiteralTpt, ())
+              hasCapsetPolyFunLiteralRhs += tpt
             case _ =>
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
@@ -713,7 +713,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          val tpe = if tree.isInferred then CleanupRetains(tree)(tree.tpe) else tree.tpe
+          def reportPos: SrcPos =
+            if hasCapsetPolyFunLiteralRhs.remove(tree) && Feature.ccEnabled
+            then tree.srcPos
+            else NoSourcePosition
+          val tpe = if tree.isInferred then CleanupRetains(reportPos)(tree.tpe) else tree.tpe
           tree.withType(transformAnnotsIn(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))

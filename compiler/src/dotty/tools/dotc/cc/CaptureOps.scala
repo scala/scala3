@@ -909,11 +909,11 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
  *  literal, an unsupported retain is reported as an implementation
  *  restriction. The supported shape is documented at the report site.
  *
- *  @param tree  the inferred TypeTree being cleaned. Only used to source the
- *               error position. Defaults to `EmptyTree` for callers that
- *               don't need to report (UnApply / Bind cleanups in PostTyper).
+ *  @param reportPos  The source position to use in case of illegal signatures.
+ *                    Defaults to `NoSourcePosition` for callers that don't need
+ *                    to report (UnApply / Bind cleanups in PostTyper).
  */
-class CleanupRetains(tree: Tree = EmptyTree)(using Context) extends TypeMap:
+class CleanupRetains(reportPos: SrcPos = NoSourcePosition)(using Context) extends TypeMap:
   // Capset-binding TypeLambdas in scope. Used to recognize valid retain
   // elements during descent and to detect a capture-polymorphic context.
   //
@@ -938,14 +938,6 @@ class CleanupRetains(tree: Tree = EmptyTree)(using Context) extends TypeMap:
 
   // At most one implementation-restriction error per type tree.
   private var reported = false
-
-  // Source position for the implementation-restriction error. Set when
-  // `tree` carries the IsCapsetPolyFunLiteralTpt attachment, which PostTyper
-  // attaches to the inferred tpt of any val/def whose RHS is a poly-fn
-  // literal — including nested cases like `(i: Int) => { [C^] => ... }`.
-  private val reportPos: SrcPos =
-    if Feature.ccEnabled && tree.hasAttachment(transform.PostTyper.IsCapsetPolyFunLiteralTpt) then tree.srcPos
-    else NoSourcePosition
 
   // Whether to keep a retain element. `parent` is the annotated type.
   private def isPreserved(elem: Type, parent: Type): Boolean = elem match
