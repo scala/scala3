@@ -25,3 +25,8 @@ class File extends SharedCapability
       val localConvert =
         { [C^] => (xs: List[File^{C}]) => xs }
       localConvert[{file}](localFiles)
+
+  // Poly-fn literal nested inside a Function1: fine as long as retains
+  // only mention the literal's own capset binders.
+  val nestedInFunction1 = (i: Int) => { [C^] => (xs: List[File^{C}]) => xs }
+  val resultNested = nestedInFunction1(0)[{x}](files)

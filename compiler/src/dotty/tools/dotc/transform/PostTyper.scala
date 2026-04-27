@@ -39,16 +39,17 @@ object PostTyper {
    */
   val IsCapsetPolyFunLiteralTpt: util.Property.StickyKey[Unit] = util.Property.StickyKey()
 
-  /** Detect whether `rhs` is a capture-polymorphic poly-fn literal — i.e.
-   *  a closure (after desugaring: `Block(DefDef($anonfun, ...), Closure(...))`,
-   *  possibly wrapped in `Block(Nil, _)` from outer braces) whose synthesized
-   *  `$anonfun` carries a `PolyType` with at least one capset binder.
+  /** Detect whether `rhs` (or, transitively, any closure body it nests into)
+   *  is a capture-polymorphic poly-fn literal — i.e. a closure whose
+   *  synthesized `$anonfun` carries a `PolyType` with at least one capset
+   *  binder. The recursion catches cases like `(i: Int) => { [C^] => ... }`,
+   *  where the user-written literal is the body of an outer Function1.
    */
   def isCapsetPolyFunLiteralRhs(rhs: tpd.Tree)(using Context): Boolean = rhs match
     case tpd.closureDef(dd) =>
       dd.symbol.info match
         case pt: PolyType => pt.paramRefs.exists(_.derivesFromCapSet)
-        case _ => false
+        case _ => isCapsetPolyFunLiteralRhs(dd.rhs)
     case _ => false
 }
 

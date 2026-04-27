@@ -49,3 +49,8 @@ def externalInBound() =
 def nestedCapsetBinders() =
   val f = // error
     { [C^] => (xs: List[File^{C}]) => [D^] => (ys: List[File^{C, D}]) => ys }
+
+def literalNestedInFunction1() =
+  val external = File()
+  val f = // error
+    (i: Int) => { [C^] => (xs: List[File^{C, external}]) => xs }
