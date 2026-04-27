@@ -8,6 +8,7 @@ import Names.{Name, TermName}
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.Printers.capt
+import util.{NoSourcePosition, SrcPos}
 import util.Property.Key
 import tpd.*
 import Annotations.Annotation
@@ -898,17 +899,112 @@ extension (tp: AnnotatedType) {
 /** A prototype that indicates selection */
 class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
 
-/** Drop retains annotations in the inferred type if CC is not enabled
- *  or transform them into retains annotations with Nothing (i.e. empty set) as
- *   argument if CC is enabled (we need to do that to keep by-name status).
+/** A TypeMap that strips `@retains` annotations from inferred types,
+ *  preserving only those whose elements describe a stable, capture-polymorphic
+ *  interface (refs to capset binders in scope). Inferred types reach the
+ *  pickler with retains that the user never wrote — this cleanup makes them
+ *  consistent with what the user can actually rely on.
+ *
+ *  When applied to the inferred type of a capture-polymorphic poly-function
+ *  literal, an unsupported retain is reported as an implementation
+ *  restriction. The supported shape is documented at the report site.
+ *
+ *  @param tree  the inferred TypeTree being cleaned. Only used to source the
+ *               error position. Defaults to `EmptyTree` for callers that
+ *               don't need to report (UnApply / Bind cleanups in PostTyper).
  */
-class CleanupRetains(using Context) extends TypeMap:
+class CleanupRetains(tree: Tree = EmptyTree)(using Context) extends TypeMap:
+  // Capset-binding TypeLambdas in scope. Used to recognize valid retain
+  // elements during descent and to detect a capture-polymorphic context.
+  //
+  // A poly-fn literal `{ [C^] => x => body }` desugars to a `DefDef $anonfun`
+  // carrying the [C^] PolyType on its symbol. PostTyper visits two inferred
+  // TypeTrees per literal: the outer val/def tpt sees the whole type so [C^]
+  // is reached by descent; the inner $anonfun return tpt sees only a fragment
+  // and never crosses [C^]. Owner walking covers that fragment case by
+  // seeding the binder from `ctx.owner.info` — gated on anon-fn owners so we
+  // don't pull enclosing PolyTypes into the scope of an unrelated regular
+  // val (e.g. one inside `extension [T, C^]`).
+  private var capSetBinders: List[TypeLambda] =
+    if Feature.ccEnabled && ctx.owner.isAnonymousFunction then
+      def enclosing(sym: Symbol): List[TypeLambda] =
+        if !sym.exists || sym.is(Package) then Nil
+        else sym.info match
+          case lt: TypeLambda if lt.paramRefs.exists(_.derivesFromCapSet) =>
+            lt :: enclosing(sym.owner)
+          case _ => enclosing(sym.owner)
+      enclosing(ctx.owner)
+    else Nil
+
+  // At most one implementation-restriction error per type tree.
+  private var reported = false
+
+  // Source position for the implementation-restriction error. Set when
+  // `tree` carries the IsCapsetPolyFunLiteralTpt attachment, which PostTyper
+  // attaches to the inferred tpt of any val/def whose RHS is a poly-fn
+  // literal — including nested cases like `(i: Int) => { [C^] => ... }`.
+  private val reportPos: SrcPos =
+    if Feature.ccEnabled && tree.hasAttachment(transform.PostTyper.IsCapsetPolyFunLiteralTpt) then tree.srcPos
+    else NoSourcePosition
+
+  // Whether to keep a retain element. `parent` is the annotated type.
+  private def isPreserved(elem: Type, parent: Type): Boolean = elem match
+    case ref: TypeParamRef =>
+      // Capset param of an in-scope TypeLambda.
+      ref.derivesFromCapSet && capSetBinders.exists(_ eq ref.binder)
+    case ref: TypeRef =>
+      // Capset typedef aliasing an in-scope binder — for curried literals.
+      ref.derivesFromCapSet && capSetBinders.exists(_.paramRefs.exists(_ =:= ref))
+    case ref: TermRef =>
+      // caps.any only in capset bounds (synthesized `<: CapSet^{any}` for `[C^]`).
+      ref.isCapsAnyRef && parent.derivesFromCapSet
+    case _ => false
+
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
         if annot.symbol == defn.RetainsCapAnnot then tp
-        else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
+        else
+          val elems = annot.retainedType.retainedElementsRaw
+          val keep = elems.nonEmpty && elems.forall(isPreserved(_, parent))
+          // Suppress only the narrow case where the entire retain is a single
+          // synthesized TypeBounds — `nonDependentResultApprox` (Types.scala)
+          // produces these when collapsing a dependent retain into a `range(...)`
+          // and an invariant position turns it back into bounds. Anything else
+          // gets reported, even if some bad element is a TypeBounds.
+          val isSyntheticOnly = elems match
+            case (_: TypeBounds) :: Nil => true
+            case _ => false
+          if !keep && capSetBinders.nonEmpty && !reported && reportPos.span.exists && !isSyntheticOnly then
+            elems.find(e => !isPreserved(e, parent)) match
+              case Some(bad) =>
+                reported = true
+                report.restrictionError(
+                  em"""inferred capture-polymorphic function literals can only retain capture-set parameters from enclosing type lambdas; found $bad.
+                      |Define a class with a polymorphic apply method to retain arbitrary capture sets.""",
+                  reportPos)
+              case None =>
+          AnnotatedType(this(parent),
+            if keep then annot
+            else RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
+    case tp: TypeLambda if tp.paramRefs.exists(_.derivesFromCapSet) =>
+      // A second capset TypeLambda nested inside another would crash cc later
+      // (Setup's lambda recursion + SubstBindingMap on a Var holding outer
+      // binder refs hits an invariant in CaptureSet.map). Reject it here.
+      // Descend with empty `capSetBinders` so retains in the inner lambda
+      // erase to Nothing — this avoids the Const{C, D}-with-rebound-C shape
+      // that triggers the downstream crash.
+      val saved = capSetBinders
+      val nested = capSetBinders.nonEmpty
+      if nested && !reported && reportPos.span.exists then
+        reported = true
+        report.restrictionError(
+          em"""nested capture-set type-lambda binders aren't supported in inferred capture-polymorphic function literals.
+              |Combine binders into a single section like `[C^, D^, ...]`, or define a class with a polymorphic apply method.""",
+          reportPos)
+      capSetBinders = if nested then Nil else tp :: capSetBinders
+      try mapOver(tp) finally capSetBinders = saved
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific
@@ -1016,4 +1112,3 @@ abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
       case _ =>
         foldOver(acc, t)
 end DeepTypeAccumulator
-

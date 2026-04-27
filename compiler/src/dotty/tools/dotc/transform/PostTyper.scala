@@ -30,6 +30,26 @@ import ast.TreeInfo
 object PostTyper {
   val name: String = "posttyper"
   val description: String = "additional checks and cleanups after type checking"
+
+  /** Sticky attachment placed by PostTyper on the inferred tpt of a val/def
+   *  whose RHS is a capture-polymorphic poly-function literal. Read by
+   *  `cc.CleanupRetains` to decide whether to enable the implementation-
+   *  restriction error: it should fire only on user-written literals, not on
+   *  inferred poly-fn types that come from method calls or aliases.
+   */
+  val IsCapsetPolyFunLiteralTpt: util.Property.StickyKey[Unit] = util.Property.StickyKey()
+
+  /** Detect whether `rhs` is a capture-polymorphic poly-fn literal — i.e.
+   *  a closure (after desugaring: `Block(DefDef($anonfun, ...), Closure(...))`,
+   *  possibly wrapped in `Block(Nil, _)` from outer braces) whose synthesized
+   *  `$anonfun` carries a `PolyType` with at least one capset binder.
+   */
+  def isCapsetPolyFunLiteralRhs(rhs: tpd.Tree)(using Context): Boolean = rhs match
+    case tpd.closureDef(dd) =>
+      dd.symbol.info match
+        case pt: PolyType => pt.paramRefs.exists(_.derivesFromCapSet)
+        case _ => false
+    case _ => false
 }
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
@@ -585,12 +605,27 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
+          tree1.tpt match
+            case tpt: TypeTree if tpt.isInferred && PostTyper.isCapsetPolyFunLiteralRhs(tree.rhs) =>
+              tpt.putAttachment(PostTyper.IsCapsetPolyFunLiteralTpt, ())
+            case _ =>
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
+          // Only attach for user-named defs. Synthetic anon-funs (closure
+          // bodies) shouldn't carry the marker — that would fire restriction
+          // errors for literals nested inside Function1s even when the
+          // enclosing val has an explicit type ascription.
+          tree1.tpt match
+            case tpt: TypeTree
+            if !tree.symbol.isAnonymousFunction
+               && tpt.isInferred
+               && PostTyper.isCapsetPolyFunLiteralRhs(tree.rhs) =>
+              tpt.putAttachment(PostTyper.IsCapsetPolyFunLiteralTpt, ())
+            case _ =>
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           registerIfHasMacroAnnotations(tree)
@@ -677,7 +712,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
+          val tpe = if tree.isInferred then CleanupRetains(tree)(tree.tpe) else tree.tpe
           tree.withType(transformAnnotsIn(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
