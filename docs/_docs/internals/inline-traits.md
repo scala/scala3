@@ -251,7 +251,10 @@ Therefore there is no case in which this could be useful, and it is likely to ca
 However, there is a reasonable case for `trait extends inline trait` in general, to control the inlining and reduce code duplication so we allow
 this pattern if the inline trait has no parameters.
 
-Note that this restriction does not block `inline trait extends trait` or `inline trait extends class` which are allowed without restriction.
+Note that this restriction does not block `inline trait extends trait` or `inline trait extends class` which are allowed with one (other) restriction:
+ - Inline traits may not contain `super` references to classes or non-inline traits. This is because `super` references in scala may only reference
+   direct parents, and, after inlining, those references that were to direct parents in the original inline traits would now have to point to ancestor
+   classes which are further than 1 hop away.
 
 ## Benefits of inline traits
 We can now do the following with no boxing and unboxing:

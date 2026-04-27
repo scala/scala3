@@ -361,7 +361,7 @@ object Inlines:
                 cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
                 
                 val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
-                (inlinedDefs1, childDefs1)
+                (parentTraitInliner.adaptSuperCalls(inlinedDefs1), childDefs1)
           }
         }
         val newbody = newDefs._1 ::: newDefs._2
@@ -857,9 +857,12 @@ object Inlines:
 
     def adaptSuperCalls(defs: List[Tree]) = 
       val ttmap = TreeTypeMap(treeMap = {
+        // We go through all ancestor inline traits so eventually we will find the one with matching parentSym
         case sel@Select(Super(qual, mix), name) if sel.symbol.owner == parentSym =>
-          // Either method overridden so needs mangling, or not, in which case call directly by original name.
-          Select(This(ctx.owner.asClass), paramAccessorsMapper.getParamAccessorName(sel.symbol.owner, name).getOrElse(name))
+            // At that point either the method is overridden so needs mangling (and we just copied and mangled it in this inlining phase), 
+            // or not, in which case call directly by original name. In both cases we are calling the method resulting from inlining, on the
+            // inline receiver class.
+            Select(This(ctx.owner.asClass), paramAccessorsMapper.getParamAccessorName(sel.symbol.owner, name).getOrElse(name))
         case tree => tree
       })
       defs.map(ttmap(_))
@@ -882,7 +885,13 @@ object Inlines:
             case _ =>
               tree
           }
-        case Select(qual, name) =>
+        case sel@Select(Super(qual, mix), name) =>
+          if sel.symbol.owner.isInlineTrait then   // We need to leave this intact so that adaptSuperCalls can redirect it later
+            sel
+          else
+            report.error("Inline traits may not contain superclass references to classes or non-inline traits.", sel.srcPos)
+            sel
+        case sel@Select(qual, name) =>
           inContext(ctx.withSource(tree.source)) { // Need to ensure we preserve the fact that this Select was inlined
                                                    // potentially from a different file. Recreating it discards that info.
                                                    // See: inline-trait-multiple-stages-generic-defs.
@@ -964,6 +973,7 @@ object Inlines:
       if sym.is(Local) || (overriddenDecls.contains(sym)) then
         name = paramAccessorsMapper.registerNewName(sym)
         flags |= (Private | Local)
+        flags &~= Override          // private override is illegal; if the inlined method was already override then we might make it private override by accident.
       else
         flags |= Override
       sym.copy(
