@@ -18,3 +18,7 @@ inline def bar2 = new T1[List[Int]]() {}                        // ok
 inline def bar3[S] = new T1[List[List[S]]]() {}                 // error: S should be specialized
 inline def bar4[S: Specialized] = new T1[List[List[S]]]() {}    // ok
 
+inline def baz1[T] = new T1[T1[T]]() {}                         // error: T should be Specialized
+inline def baz2[T](x: T1[T1[T]]) = 1                            // error: T should be Specialized
+inline def baz3[T: Specialized] = new T1[T1[T]]() {}            // ok
+inline def baz4[T: Specialized](x: T1[T1[T]]) = 1               // ok
