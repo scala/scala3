@@ -43,3 +43,21 @@ class File extends SharedCapability
         (zs: List[File^{C}], ws: List[File^{D}]) => zs
     }
   val resultInterleaved3 = interleaved3[Int, {x}, String, {x}](List(1), List("a"))(files, files)
+
+  // Multiple capset binder blocks separated by term-parameter lists.
+  val multi1 =
+    { [C^] => (xs: List[File^{C}]) => [D^] => (ys: List[File^{D}]) => (xs, ys) }
+  val resultMulti1 = multi1[{x}](files)[{x}](files)
+
+  val multi2 =
+    { [C^] => (xs: List[File^{C}]) => [A] => (zs: List[A]) => [D^] => (ws: List[File^{D}]) => (xs, zs, ws) }
+  val resultMulti2 = multi2[{x}](files)[Int](List(1))[{x}](files)
+
+  // Non-capset block first, then capset block.
+  val multi3 = { [A] => (zs: List[A]) => [C^] => (xs: List[File^{C}]) => (zs, xs) }
+  val resultMulti3 = multi3[Int](List(1))[{x}](files)
+
+  // Inner block references both capset binders.
+  val multi4 =
+    { [C^] => (xs: List[File^{C}]) => [D^] => (ys: List[File^{C, D}]) => ys }
+  val resultMulti4 = multi4[{x}](files)[{x}](files)

@@ -39,9 +39,10 @@ object PostTyper {
    */
   def isCapsetPolyFunLiteralRhs(rhs: tpd.Tree)(using Context): Boolean = rhs match
     case tpd.closureDef(dd) =>
-      dd.symbol.info match
+      val ownPoly = dd.symbol.info match
         case pt: PolyType => pt.paramRefs.exists(_.derivesFromCapSet)
-        case _ => isCapsetPolyFunLiteralRhs(dd.rhs)
+        case _ => false
+      ownPoly || isCapsetPolyFunLiteralRhs(dd.rhs)
     case _ => false
 
   /** Walk the function / poly-function chain of a lambda type, preserving
