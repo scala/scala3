@@ -70,30 +70,32 @@ class CheckTermination extends MiniPhase {
                   tree.srcPos
                 )
               }
-
-            case None =>
-              val methodSymbol = getMethodSymbol(fn)
-              methodSymbol.defTree match {
-                case defTree: DefDef if !defTree.rhs.isEmpty || methodSymbol.isConstructor =>
-                  val params = getMethodParams(methodSymbol)
-                  callStack = methodSymbol :: callStack
-                  val savedMap = sizeMap
-
-                  params.zip(args).foreach((param, arg) => sizeMap += param -> (arg, Size.Same))
-                  traverse(defTree.rhs)
-
-                  sizeMap = savedMap
-                  callStack = callStack.tail
-                case _ =>
-                  if methodSymbol.isRealMethod then
-                    report.warning(s"Method ${methodSymbol.name} has an empty tree.", tree.srcPos)
-              }
+            case None => traverseCalled(getMethodSymbol(fn), args, tree.srcPos)
           }
           traverse(fn)
-          args.foreach{
+          args.foreach {
             case tree: Tree => traverse(tree)
             case _ => ()
           }
+
+        case tree @ Select(qualifier, _) if !tree.symbol.hasAnnotation(defn.AssumeTerminatesAnnot) =>
+          callStack.find(_ == tree.symbol) match {
+            case Some(methodSymbol) =>
+              val params = getMethodParams(methodSymbol)
+              if params.length <= 1 then {
+                report.error(
+                  s"${startMethod.name} may not terminate due to (mutually) recursive call.",
+                  tree.srcPos
+                )
+              }
+            case None =>
+              val methodSymbol = tree.symbol
+              val params = getMethodParams(methodSymbol)
+              if params.length <= 1 then {
+                traverseCalled(methodSymbol, Nil, tree.srcPos)
+              }
+          }
+          traverseChildren(tree)
 
         case tree @ Match(selector, cases) =>
           val syntheticUnapply = isUnapplySynthetic(selector)
@@ -118,6 +120,24 @@ class CheckTermination extends MiniPhase {
           traverseChildren(tree)
 
         case _ => traverseChildren(tree)
+      }
+    }
+
+    private def traverseCalled(methodSymbol: Symbol, args: List[Symbol | Tree], pos: SrcPos)(using Context) = {
+      methodSymbol.defTree match {
+        case defTree: DefDef if !defTree.rhs.isEmpty || methodSymbol.isConstructor =>
+          callStack = methodSymbol :: callStack
+          val savedMap = sizeMap
+
+          args.zip(getMethodParams(methodSymbol))
+            .foreach((arg, param) => sizeMap += param -> (arg, Size.Same))
+          traverse(defTree.rhs)
+
+          sizeMap = savedMap
+          callStack = callStack.tail
+        case _ =>
+          if methodSymbol.isRealMethod then
+            report.warning(s"Method ${methodSymbol.name} has an empty tree.", pos)
       }
     }
 
@@ -180,9 +200,9 @@ class CheckTermination extends MiniPhase {
             val tpeSym = symbol.info.typeSymbol
             val res = tree.symbol.hasAnnotation(defn.AssumeDecreasesAnnot) || {
               tpeSym.is(Case) && tpeSym.isClass && {
-                val constructorParams = tpeSym.asClass.primaryConstructor
-                  .paramSymss.filter(!_.exists(_.isTypeParam)).head
-                  constructorParams.exists(_.name == tree.symbol.name)
+                val constructorParams = tpeSym.asClass.primaryConstructor 
+                                              .paramSymss.filter(!_.exists(_.isTypeParam)).head
+                constructorParams.exists(_.name == tree.symbol.name)
               }
             }
             if res then Some((symbol, res)) else None
@@ -197,7 +217,7 @@ class CheckTermination extends MiniPhase {
       }
     }
 
-    private def areSmaller(args: List[Symbol | Tree], params: List[Symbol], methodSymbol: Symbol)(using Context): Boolean = {
+    private def areSmaller(args: List[Symbol | Tree], params: List[Symbol], methodSymbol: Symbol)(using Context) = {
       def compareSize(arg: Symbol, param: Symbol, decreased: Boolean = false): Size =
         if arg == param then
           if decreased then Size.Smaller else Size.Same
