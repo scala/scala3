@@ -30,42 +30,6 @@ import ast.TreeInfo
 object PostTyper {
   val name: String = "posttyper"
   val description: String = "additional checks and cleanups after type checking"
-
-  /** Detect whether `rhs` (or, transitively, any closure body it nests into)
-   *  is a capture-polymorphic poly-fn literal — i.e. a closure whose
-   *  synthesized `$anonfun` carries a `PolyType` with at least one capset
-   *  binder. The recursion catches cases like `(i: Int) => { [C^] => ... }`,
-   *  where the user-written literal is the body of an outer Function1.
-   */
-  def isCapsetPolyFunLiteralRhs(rhs: tpd.Tree)(using Context): Boolean = rhs match
-    case tpd.closureDef(dd) =>
-      val ownPoly = dd.symbol.info match
-        case pt: PolyType => pt.paramRefs.exists(_.derivesFromCapSet)
-        case _ => false
-      ownPoly || isCapsetPolyFunLiteralRhs(dd.rhs)
-    case _ => false
-
-  /** Walk the function / poly-function chain of a lambda type, preserving
-   *  outer parameter types and binder bounds verbatim and applying `f` only
-   *  at the innermost result. This treats the lambda's params/binders as
-   *  user-written ("explicit") and only the body's result type as inferred.
-   *  Returns `tp` unchanged if `f` is a no-op all the way down.
-   */
-  def explicify(tp: Type, f: Type => Type)(using Context): Type = tp match
-    case defn.PolyFunctionOf(mt: MethodOrPoly) =>
-      val mt1 = explicify(mt, f).asInstanceOf[MethodOrPoly]
-      if mt1 eq mt then tp else defn.PolyFunctionOf(mt1)
-    case mt: PolyType =>
-      val res1 = explicify(mt.resType, f)
-      if res1 eq mt.resType then mt else mt.derivedLambdaType(resType = res1)
-    case mt: MethodType =>
-      val res1 = explicify(mt.resType, f)
-      if res1 eq mt.resType then mt else mt.derivedLambdaType(resType = res1)
-    case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
-      val res1 = explicify(args.last, f)
-      if res1 eq args.last then tp else AppliedType(tycon, args.init :+ res1)
-    case _ =>
-      f(tp)
 }
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
@@ -163,41 +127,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     private val seenUnrolledMethods: util.EqHashMap[Symbol, Boolean] = new util.EqHashMap[Symbol, Boolean]
 
     private var noCheckNews: Set[New] = Set()
-
-    /** Synthetic `$anonfun` DefDef symbols collected when we detected a
-     *  capture-polymorphic poly-fn literal at a val/def's RHS. Their tpts
-     *  also need explicifying so the user-written param types in the
-     *  curried inner layers (e.g. `(ys: List[File^{C}])`) aren't dropped by
-     *  Setup's `mapInferred`.
-     */
-    private val literalAnonFunSyms = mutable.Set[Symbol]()
-
-    private def collectLiteralAnonFuns(rhs: Tree)(using Context): Unit = rhs match
-      case tpd.closureDef(dd) =>
-        literalAnonFunSyms += dd.symbol
-        collectLiteralAnonFuns(dd.rhs)
-      case _ =>
-
-    /** If `rhs` is a capture-polymorphic poly-fn literal, "explicify" `tpt`:
-     *  scrub inference artifacts from the freshly inferred result type
-     *  (recursing through the lambda's function/poly-function chain), then
-     *  return a non-inferred TypeTree of the same type. Setup will then
-     *  process the tpt via `transformExplicitType` (which respects user-
-     *  written parameter types and binder bounds) rather than via
-     *  `mapInferred` (which drops every `@retains`).
-     */
-    private def explicify(tpt: Tree, rhs: Tree, sym: Symbol)(using Context): Tree = tpt match
-      case tpt: TypeTree if tpt.isInferred && shouldExplicify(rhs, sym) =>
-        val cleaned = PostTyper.explicify(tpt.tpe, CleanupRetains()(_))
-        tpd.TypeTree(cleaned, inferred = false).withSpan(tpt.span)
-      case _ => tpt
-
-    private def shouldExplicify(rhs: Tree, sym: Symbol)(using Context): Boolean =
-      if sym.isAnonymousFunction then literalAnonFunSyms.remove(sym)
-      else if PostTyper.isCapsetPolyFunLiteralRhs(rhs) then
-        collectLiteralAnonFuns(rhs)
-        true
-      else false
 
     def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
       seenUnrolledMethods.getOrElseUpdate(method, {
@@ -653,8 +582,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           Checking.checkPolyFunctionType(tree.tpt)
-          val tree1 = cpy.ValDef(tree)(tpt =
-            explicify(makeOverrideTypeDeclared(tree.symbol, tree.tpt), tree.rhs, tree.symbol))
+          val (tpt1, rhs1) = Explicify.maybeExplicifyChain(makeOverrideTypeDeclared(tree.symbol, tree.tpt), tree.rhs)
+          val tree1 = cpy.ValDef(tree)(tpt = tpt1, rhs = rhs1)
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
@@ -662,8 +591,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           registerIfHasMacroAnnotations(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(tpt =
-            explicify(makeOverrideTypeDeclared(tree.symbol, tree.tpt), tree.rhs, tree.symbol))
+          val (tpt1, rhs1) = Explicify.maybeExplicifyChain(makeOverrideTypeDeclared(tree.symbol, tree.tpt), tree.rhs)
+          val tree1 = cpy.DefDef(tree)(tpt = tpt1, rhs = rhs1)
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           registerIfHasMacroAnnotations(tree)

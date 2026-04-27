@@ -911,6 +911,76 @@ class CleanupRetains(using Context) extends TypeMap:
       else this(parent)
     case _ => mapOver(tp)
 
+/** Treats a poly-fn literal's user-written parameter types and binder
+ *  bounds as explicit (preserved verbatim) and only its body's result
+ *  type as inferred (cleaned of `@retains`). This rescues capture-
+ *  polymorphic literals like `[C^] => (xs: List[File^{C}]) => xs`,
+ *  whose `{C}` would otherwise be stripped by Setup's `mapInferred`.
+ *
+ *  Implementation: flip the val/def's tpt — and each anonfun's result
+ *  tpt — to non-inferred, so Setup runs `transformExplicitType` on
+ *  them instead of `mapInferred`. Restricted to poly-fn literals;
+ *  ordinary Function1 lambdas still need `mapInferred`'s capture-set-
+ *  variable inference.
+ */
+object Explicify {
+
+  /** Walks a closure chain looking for a poly-fn literal. Catches
+   *  non-poly wrappers like `(i: Int) => { [C^] => ... }` or
+   *  `[A] => zs => [C^] => ...`.
+   */
+  def isPolyFunLiteralRhs(rhs: Tree)(using Context): Boolean = rhs match
+    case closureDef(dd) =>
+      dd.symbol.info.isInstanceOf[PolyType] || isPolyFunLiteralRhs(dd.rhs)
+    case _ => false
+
+  /** Walks `tp`'s function/poly-function chain, leaving outer params
+   *  and binder bounds untouched and applying `CleanupRetains` only at
+   *  the innermost result.
+   */
+  def explicify(tp: Type)(using Context): Type = tp match
+    case defn.PolyFunctionOf(mt: MethodOrPoly) =>
+      val mt1 = explicify(mt).asInstanceOf[MethodOrPoly]
+      if mt1 eq mt then tp else defn.PolyFunctionOf(mt1)
+    case mt: MethodOrPoly =>
+      mt.derivedLambdaType(resType = explicify(mt.resType))
+    case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
+      val res1 = explicify(args.last)
+      if res1 eq args.last then tp else AppliedType(tycon, args.init :+ res1)
+    case _ =>
+      CleanupRetains()(tp)
+
+  /** Replaces an inferred TypeTree with a non-inferred one of the
+   *  explicified type.
+   */
+  def explicifyTpt(tpt: Tree)(using Context): Tree = tpt match
+    case tpt: TypeTree if tpt.isInferred =>
+      tpd.TypeTree(explicify(tpt.tpe), inferred = false).withSpan(tpt.span)
+    case _ => tpt
+
+  /** Recursively explicifies the result tpt of every `$anonfun` DefDef
+   *  in a closure chain, so user-written param types in curried inner
+   *  layers (e.g. `(ys: List[File^{C}])`) survive Setup.
+   */
+  def explicifyClosureChain(rhs: Tree)(using Context): Tree = rhs match
+    case Block((dd: DefDef) :: Nil, closure: Closure) if dd.symbol == closure.meth.symbol =>
+      cpy.Block(rhs)(
+        cpy.DefDef(dd)(tpt = explicifyTpt(dd.tpt), rhs = explicifyClosureChain(dd.rhs)) :: Nil,
+        closure)
+    case Block(Nil, expr) =>
+      cpy.Block(rhs)(Nil, explicifyClosureChain(expr))
+    case _ => rhs
+
+  /** Entry point for PostTyper: explicify the val/def's tpt and the
+   *  full anonfun closure chain when `rhs` is a poly-fn literal.
+   */
+  def maybeExplicifyChain(tpt: Tree, rhs: Tree)(using Context): (Tree, Tree) = tpt match
+    case tpt: TypeTree if Feature.ccEnabled && tpt.isInferred && isPolyFunLiteralRhs(rhs) =>
+      (explicifyTpt(tpt), explicifyClosureChain(rhs))
+    case _ => (tpt, rhs)
+
+}
+
 /** A base class for extractors that match annotated types with a specific
  *  Capability annotation.
  */
