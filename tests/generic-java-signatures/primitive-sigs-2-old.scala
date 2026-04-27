@@ -1,4 +1,3 @@
-
 import scala.language.{ postfixOps }
 import java.{ lang => jl }
 
@@ -35,7 +34,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     println(c2.getGenericInterfaces.map(_.toString).sorted mkString " ")
     println(c1m ++ c2m sorted)
-    println(new C f)
+    println((new C()).f())
     c3m.sorted foreach println
   }
 }
