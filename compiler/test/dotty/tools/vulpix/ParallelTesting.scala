@@ -298,7 +298,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     private final def onComplete(testSource: TestSource, reportersOrCrash: Try[Seq[TestReporter]], logger: LoggedRunnable): Unit =
       try
         reportersOrCrash match
-          case util.Failure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
+          case util.Failure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getClass}: ${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
           case util.Success(reporters) if !reporters.exists(_.skipped) =>
             maybeFailureMessage(testSource, reporters) match {
               case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))

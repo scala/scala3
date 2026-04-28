@@ -13,10 +13,10 @@ import core.MacroClassLoader
 import core.Symbols.*
 import core.Types.*
 import quoted.*
-import util.SrcPos
-import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}
 
+import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}
 import scala.quoted.Quotes
+import scala.util.control.NonFatal
 
 import java.lang.reflect.InvocationTargetException
 
@@ -132,7 +132,9 @@ object MacroAnnotations:
             (List(tree), companion)
           case Interpreter.MissingClassValidInCurrentRun(sym, origin) =>
             Interpreter.suspendOnMissing(sym, origin, annot.tree)
-          case ex: Exception =>
+          // We're dealing with user-thrown things here, so we must use NonFatal to catch anything realistic,
+          // including `Error`s like `NotImplementedError`
+          case NonFatal(ex) =>
             val stack0 = ex.getStackTrace.takeWhile(_.getClassName != this.getClass().getName())
             val stack = stack0.take(1 + stack0.lastIndexWhere(_.getMethodName == "transform"))
             val msg =

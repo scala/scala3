@@ -8,7 +8,7 @@
   |Parents in tree: [trait Serializer]
   |
   |	at scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:10)
-  |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:208)
+  |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:206)
   |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:284)
   |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:283)
   |	at Macros$.makeSerializer(Macro.scala:23)
