@@ -11,7 +11,6 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
-import scala.util.control.NonFatal
 
 import ChildJVMMain.{MessageEnd, MessageStart}
 import Status.*
@@ -133,7 +132,7 @@ trait RunnerOrchestration:
         try
           f(debuggee)
           debuggee.exit()
-        catch case NonFatal(_) => Failure("Bad debug")
+        catch case _: Exception => Failure("Bad debug")
       end debugMain
 
       private def startMain(classPath: String): Future[Status] = {

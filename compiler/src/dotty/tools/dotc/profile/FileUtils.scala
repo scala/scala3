@@ -25,9 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
-import scala.util.control.NonFatal
 import scala.annotation.internal.sharable
-import compiletime.uninitialized
 
 object FileUtils {
   def newAsyncBufferedWriter(path: Path, charset: Charset = StandardCharsets.UTF_8.nn, options: Array[OpenOption] = NO_OPTIONS, threadsafe: Boolean = false): LineWriter = {
@@ -186,9 +184,9 @@ object FileUtils {
             }
           }
         } catch {
-          case NonFatal(t) =>
-            asyncStatus.tryFailure(t)
-            throw t
+          case ex: Exception =>
+            asyncStatus.tryFailure(ex)
+            throw ex
         }
         finally scheduled.set(false)
 

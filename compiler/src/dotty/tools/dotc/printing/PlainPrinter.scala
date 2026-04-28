@@ -12,7 +12,6 @@ import typer.Implicits.*
 import typer.ImportInfo
 import Variances.varianceSign
 import util.{Chars, SourcePosition}
-import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
 import ast.{tpd, untpd}
@@ -90,7 +89,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
-    try lo frozen_=:= hi catch { case NonFatal(ex) => false }
+    try lo frozen_=:= hi catch { case ex: Exception => false }
 
   private def homogenizeArg(tp: Type) = tp match {
     case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)
@@ -355,7 +354,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch case NonFatal(_) => Str("...") // reconsider catching errors
+          catch case _: Exception => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)

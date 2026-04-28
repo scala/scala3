@@ -20,7 +20,6 @@ import dotty.tools.io.Directory
 import scala.io.Source
 import org.junit.Test
 import scala.util.Using
-import scala.util.control.NonFatal
 import java.io.File
 
 class PrintingTest {
@@ -43,9 +42,10 @@ class PrintingTest {
     try {
       Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
     } catch {
-      case NonFatal(e) =>
+      case e: Exception =>
         println(s"Compile $path exception:")
         e.printStackTrace()
+        throw e
     }
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator

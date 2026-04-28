@@ -26,7 +26,6 @@ import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
-import scala.util.control.NonFatal
 import dotty.tools.dotc.core.ContextOps.localContext
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Types
@@ -335,7 +334,7 @@ object Completion:
     try
       if denot.isType then denot.symbol.showFullName
       else denot.info.widenTermRefExpr.show
-    catch case NonFatal(_) => denot.symbol.name.toString
+    catch case _: Exception => denot.symbol.name.toString
 
   def isInNewContext(untpdPath: List[untpd.Tree]): Boolean =
     untpdPath match
@@ -373,7 +372,7 @@ object Completion:
       || (completionMode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
     )
   catch
-    case NonFatal(ex) =>
+    case ex: Exception =>
       false
   end isValidCompletionSymbol
 
@@ -628,7 +627,7 @@ object Completion:
              val tpe = asDefLikeType(tree.typeOpt.dealias)
               termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
             }
-        catch case NonFatal(ex) =>
+        catch case ex: Exception =>
           logger.warning(
             s"Exception when trying to apply extension method:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
           )
@@ -736,7 +735,7 @@ object Completion:
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions
-    } catch case NonFatal(ex) =>
+    } catch case ex: Exception =>
       logger.warning(
         s"Exception when searching for implicit conversions:\n ${ex.getMessage()}\n${ex.getStackTrace().mkString("\n")}"
       )

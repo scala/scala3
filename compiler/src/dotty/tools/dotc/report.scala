@@ -7,7 +7,6 @@ import reporting.*, Diagnostic.*
 import util.{SourcePosition, NoSourcePosition, SrcPos}
 
 import java.lang.System.currentTimeMillis
-import scala.util.control.NonFatal
 
 object report:
 
@@ -157,7 +156,7 @@ object report:
   def enrichErrorMessage(errorMessage: String)(using Context): String =
     if ctx.settings.XnoEnrichErrorMessages.value then errorMessage
     else try enrichErrorMessage1(errorMessage)
-    catch case NonFatal(_) => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+    catch case _: Exception => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 
   private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
     import untpd.*, config.Settings.*

@@ -38,7 +38,6 @@ import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
 import scala.annotation.tailrec
-import scala.util.control.NonFatal
 
 object Applications {
   import tpd.*

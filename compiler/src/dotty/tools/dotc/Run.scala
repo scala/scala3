@@ -31,7 +31,6 @@ import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 
 import scala.collection.mutable, mutable.ListBuffer
-import scala.util.control.NonFatal
 import scala.io.Codec
 
 import Run.Progress
@@ -323,7 +322,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   def compile(files: List[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
-    catch case NonFatal(ex) if !this.enrichedErrorMessage =>
+    catch case ex: Exception if !this.enrichedErrorMessage =>
       val files1 = if units.isEmpty then files else units.map(_.source.file)
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex

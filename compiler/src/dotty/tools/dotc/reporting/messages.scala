@@ -24,7 +24,6 @@ import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbo
 import typer.ProtoTypes.{ViewProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
-import scala.util.control.NonFatal
 import StdNames.nme
 import Formatting.{hl, delay}
 import scala.util.matching.Regex
@@ -125,10 +124,8 @@ extends SyntaxMsg(errNo) {
     }
 
     val code1 =
-      s"""|import scala.util.control.NonFatal
-          |
-          |try $tryString catch {
-          |  case NonFatal(e) => ???
+      s"""|try $tryString catch {
+          |  case e: Exception => ???
           |}""".stripMargin
 
     val code2 =
@@ -147,8 +144,8 @@ extends SyntaxMsg(errNo) {
         |
         |$code2
         |
-        |It is recommended to use the ${hl("NonFatal")} extractor to catch all exceptions as it
-        |correctly handles transfer functions like ${hl("return")}."""
+        |It is recommended to catch ${hl("Exception")} rather than ${hl("Throwable")} as the latter
+        |includes ${hl("Error")} instances which indicate grave issues that should not be ignored."""
   }
 }
 
@@ -792,7 +789,7 @@ extends SyntaxMsg(WrongNumberOfTypeArgsID) {
       try fntpe.termSymbol match
         case NoSymbol => fntpe.show
         case symbol   => symbol.showFullName
-      catch case NonFatal(ex) => fntpe.show
+      catch case ex: Exception => fntpe.show
     i"""|$msgPrefix type arguments for $prettyName$expectedArgString
         |expected: $expectedArgString
         |actual:   $actualArgString"""

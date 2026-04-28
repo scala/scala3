@@ -10,10 +10,8 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.profile.ThreadPoolFactory
 
-import scala.util.control.NonFatal
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.core.Types.IdentityTypeMap.mapCtx
 import dotty.tools.dotc.report
 
 import scala.compiletime.uninitialized
@@ -155,10 +153,10 @@ private[jvm] object GeneratedClassHandler {
           unitInPostProcess.task.value.get.get
         catch
           case _: ClosedByInterruptException => throw new InterruptedException()
-          case NonFatal(t) =>
-            t.printStackTrace()
+          case e: Exception =>
+            e.printStackTrace()
             given Context = ctx
-            report.error(em"unable to write ${unitInPostProcess.sourceFile} $t")
+            report.error(em"unable to write ${unitInPostProcess.sourceFile} $e")
       }
     }
   }

@@ -6,7 +6,6 @@ import scala.language.unsafeNulls
 
 import java.nio.file.{Files, Paths}
 import scala.util.Try
-import scala.util.control.NonFatal
 import dotty.tools.dotc.coverage.Serializer
 import vulpix.*
 import reporting.TestReporter
@@ -97,7 +96,7 @@ trait CoverageSupport:
             .sorted(java.util.Comparator.reverseOrder())
             .forEach(Files.delete)
         catch
-          case NonFatal(_) => // Ignore cleanup errors
+          case _: Exception => // Ignore cleanup errors
       end try
     end if
   end verifyCoverageFile

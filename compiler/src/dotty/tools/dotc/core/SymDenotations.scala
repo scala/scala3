@@ -19,7 +19,6 @@ import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
-import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
@@ -2388,7 +2387,7 @@ object SymDenotations {
         }
       }
       catch {
-        case NonFatal(ex) =>
+        case ex: Exception =>
           tp match
             case tp: CachedType => btrCache.remove(tp)
             case _ =>
@@ -2617,7 +2616,7 @@ object SymDenotations {
             // since the older file might have been loaded from a jar earlier in the
             // classpath.
             def sameContainer(f: AbstractFile): Boolean =
-              try f.container == chosen.container catch case NonFatal(ex) => true
+              try f.container == chosen.container catch case ex: Exception => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
                 report.warning(em"""${ambiguousFilesMsg(conflicting)}

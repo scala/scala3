@@ -10,7 +10,6 @@ import org.junit.Test
 
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
-import scala.util.control.NonFatal
 
 class DebugTests:
   import DebugTests.{*, given}
@@ -115,7 +114,7 @@ object DebugTests extends ParallelTesting:
         catch
           case _: TimeoutException => throw new DebugStepException("Timeout", step.location)
           case e: DebugStepException => throw e
-          case NonFatal(e) =>
+          case e: Exception =>
             throw new Exception(s"Debug step failed unexpectedly: ${step.location}", e)
       end for
       // let the debuggee finish its execution

@@ -26,8 +26,6 @@ import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 import cc.RetainingAnnotation
 
-import scala.util.control.NonFatal
-
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
  *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
  *  It also performs the following checks:
@@ -128,7 +126,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(using checkingCtx)
     catch {
-      case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
+      case ex: Exception =>     //TODO CHECK. Check that we are bootstrapped
         inContext(checkingCtx) {
           println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev.megaPhase(using ctx)} ***")
         }
@@ -436,7 +434,7 @@ object TreeChecker {
         checkNoOrphans(res.tpe)
         phasesToCheck.foreach(_.checkPostCondition(res))
         res
-      catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+      catch case ex: Exception if !ctx.run.enrichedErrorMessage =>
         val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
         printer.println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
         throw ex

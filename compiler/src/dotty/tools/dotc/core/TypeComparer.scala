@@ -17,7 +17,6 @@ import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications.*
 import Variances.{Variance, variancesConform}
 import Constants.Constant
-import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
@@ -1637,12 +1636,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           needsGc = false
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
-      catch case NonFatal(ex) =>
-        if ex.isInstanceOf[AssertionError] then showGoal(tp1, tp2)
-        recCount -= 1
-        restore()
-        successCount = savedSuccessCount
-        throw ex
+      catch
+        case ex: AssertionError =>
+          showGoal(tp1, tp2)
+          recCount -= 1
+          restore()
+          successCount = savedSuccessCount
+          throw ex
+        case ex: Exception =>
+          recCount -= 1
+          restore()
+          successCount = savedSuccessCount
+          throw ex
   }
 
   /** Undo all actions in undoLog following prevSize */
@@ -2988,7 +2993,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         explainPoly(tp1)
         explainPoly(tp2)
       }
-    catch case NonFatal(ex) =>
+    catch case ex: Exception =>
       report.echo(s"assertion failure [[cannot display since $ex was thrown]]")
 
   /** Record statistics about the total number of subtype checks

@@ -17,7 +17,6 @@ import util.SrcPos
 import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}
 
 import scala.quoted.Quotes
-import scala.util.control.NonFatal
 
 import java.lang.reflect.InvocationTargetException
 
@@ -133,7 +132,7 @@ object MacroAnnotations:
             (List(tree), companion)
           case Interpreter.MissingClassValidInCurrentRun(sym, origin) =>
             Interpreter.suspendOnMissing(sym, origin, annot.tree)
-          case NonFatal(ex) =>
+          case ex: Exception =>
             val stack0 = ex.getStackTrace.takeWhile(_.getClassName != this.getClass().getName())
             val stack = stack0.take(1 + stack0.lastIndexWhere(_.getMethodName == "transform"))
             val msg =

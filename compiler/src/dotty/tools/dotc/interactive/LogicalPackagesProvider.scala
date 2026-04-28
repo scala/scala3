@@ -13,7 +13,6 @@ import dotty.tools.io.Path
 
 import java.io.File
 import scala.collection.mutable
-import scala.util.control.NonFatal
 
 /**
  * A compiler component that adds support for parsing Scala and Java source files and finding out
@@ -35,7 +34,7 @@ class LogicalPackagesProvider(sourcePath: String)(using Context){
       try
         parseSourceFile(sourceFile, pkg)
       catch
-        case NonFatal(e) =>
+        case e: Exception =>
           // Silently ignore parsing errors
     pkg
 
@@ -64,7 +63,7 @@ class LogicalPackagesProvider(sourcePath: String)(using Context){
       val traverser = new SourceFileTraverser(fileName, rootPackage)
       traverser.traverse(tree)
     catch
-      case NonFatal(e) =>
+      case e: Exception =>
         // Silently ignore parsing errors
 
   private def parseJavaSourceFile(
@@ -81,7 +80,7 @@ class LogicalPackagesProvider(sourcePath: String)(using Context){
       val traverser = new SourceFileTraverser(fileName, rootPackage)
       traverser.traverse(tree)
     catch
-      case NonFatal(e) =>
+      case e: Exception =>
         // Silently ignore parsing errors
 
   /**

@@ -19,7 +19,6 @@ import cc.CheckCaptures
 import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
-import scala.util.control.NonFatal
 import scala.compiletime.uninitialized
 
 object Phases {
@@ -413,7 +412,7 @@ object Phases {
           catch
             case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
               unitCtx.typerState.resetTo(previousTyperState)
-            case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+            case ex: Exception if !ctx.run.enrichedErrorMessage =>
               println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
               throw ex
           finally ctx.run.advanceUnit()
@@ -537,7 +536,7 @@ object Phases {
       ctx.run.enterUnit(ctx.compilationUnit)
       && {
         try {body; true}
-        catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+        catch case ex: Exception if !ctx.run.enrichedErrorMessage =>
           report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
         finally ctx.run.advanceUnit()

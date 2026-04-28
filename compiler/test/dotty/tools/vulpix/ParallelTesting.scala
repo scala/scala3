@@ -16,7 +16,6 @@ import scala.collection.mutable, mutable.ArrayBuffer, mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
-import scala.util.control.NonFatal
 
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
@@ -306,7 +305,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
               case None => onSuccess(testSource, reporters, logger)
             }
           case _ =>
-      catch case NonFatal(ex) =>
+      catch case ex: Exception =>
         echo(s"Exception thrown onComplete (probably by a reporter) in $testSource: ${ex.getClass}")
         Try(ex.printStackTrace())
           .recover{ _ =>
@@ -478,7 +477,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
       try op
       catch
-        case NonFatal(e) =>
+        case e: Exception =>
           // if an exception is thrown during compilation, the complete test
           // run should fail
           failTestSource(testSource)

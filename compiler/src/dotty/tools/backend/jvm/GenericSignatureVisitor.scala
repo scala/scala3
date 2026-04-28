@@ -6,7 +6,7 @@ import scala.tools.asm.{ClassReader, Type, Handle }
 import scala.tools.asm.tree.*
 
 import scala.collection.mutable
-import scala.util.control.{NoStackTrace, NonFatal}
+import scala.util.control.NoStackTrace
 import scala.annotation.*
 import scala.jdk.CollectionConverters.*
 import BTypes.InternalName
@@ -47,7 +47,7 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
 
     @inline def safely(f: => Unit): Unit = try f catch {
       case Aborted =>
-      case NonFatal(e) => raiseError(s"Exception thrown during signature parsing", sig, Some(e))
+      case e: Exception => raiseError(s"Exception thrown during signature parsing", sig, Some(e))
     }
 
     private def current = {

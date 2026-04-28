@@ -2,7 +2,6 @@ package dotty.tools.backend.jvm
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable.ListBuffer
-import scala.util.control.NonFatal
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.Contexts.*
@@ -50,7 +49,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
         case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
           report.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
-        case NonFatal(ex) =>
+        case ex: Exception =>
           if frontendAccess.compilerSettings.debug then ex.printStackTrace()
           report.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null

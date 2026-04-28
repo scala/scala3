@@ -101,15 +101,13 @@ object Plugin {
   /** Use a class loader to load the plugin class.
    */
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
-    import scala.util.control.NonFatal
     try
       Success[AnyClass](loader.loadClass(classname))
-    catch {
-      case NonFatal(e) =>
+    catch
+      case e: Exception =>
         Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
       case e: NoClassDefFoundError =>
         Failure(new PluginLoadException(classname, s"Error: class not found: ${e.getMessage} required by $classname"))
-    }
   }
 
   /** Load all plugins specified by the arguments.
