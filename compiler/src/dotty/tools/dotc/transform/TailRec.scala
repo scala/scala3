@@ -326,6 +326,8 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
+        // Argument shape under coverage: `{ Invoker.invoked(...); f$default$n(...) }`;
+        // strip the probe block and recover `f$default$n`'s parameter index.
         def defaultGetterIndex(arg: Tree): Option[Int] =
           def fromSymbol(sym: Symbol): Option[Int] =
             if sym.exists && sym.name.is(DefaultGetterName) then
