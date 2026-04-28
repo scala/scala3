@@ -42,7 +42,6 @@ import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.core.Decorators.nestedMap
 import dotty.tools.dotc.core.NameOps.expandedName
 
-
 class DesugarSpecializedTraits extends MacroTransform:
 
   override def phaseName: String = DesugarSpecializedTraits.name
@@ -56,7 +55,6 @@ class DesugarSpecializedTraits extends MacroTransform:
     try super.run
     catch case _: CompilationUnit.SuspendException => ()
 
-  
   override def newTransformer(using Context): Transformer = new Transformer {
 
     private def newInterfaceTrait(specialization: Specialization, specializations: SpecializedTraitCache): (ClassSymbol, SpecializedTraitCache) = {
@@ -76,7 +74,7 @@ class DesugarSpecializedTraits extends MacroTransform:
       // Create new trait
       val parents = defn.ObjectType
                     :: AppliedTypeTree(Ident(specialization.traitSymbol.typeRef), specialization.specialization).tpe // original trait, specialized to Foo[Int]
-                    :: inheritedParents.map(replaceSpecializedSymbolsMap(specializations1).typeMap(_))                                                                // parents of the original trait, specialized to Foo$sp$Int
+                    :: inheritedParents.map(replaceSpecializedSymbolsMap(specializations1).typeMap(_))               // parents of the original trait, specialized to Foo$sp$Int
 
       val traitSymbol = newNormalizedClassSymbol(
         specialization.traitSymbol.owner,
@@ -268,8 +266,6 @@ class DesugarSpecializedTraits extends MacroTransform:
           yield AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs) // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
         }.getOrElse(tree)
 
-        /* case sel@Select(qualifier, name) if typeMap(sel.denot.info) != sel.denot.info => 
-          Select(qualifier, name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX) */
         case tree => tree
       }
       
@@ -289,51 +285,13 @@ class DesugarSpecializedTraits extends MacroTransform:
             if transformedDef.symbol.allOverriddenSymbols.isEmpty && (transformedDef.symbol.owner.isSpecializedTraitInterface || transformedDef.symbol.owner.isSpecializedTraitImplementationClass) then
               transformedDef.symbol.flags = transformedDef.symbol.flags &~ Flags.Override
             transformedDef
-          /*case vd@ValDef(name, tpt, preRhs) =>
-            val transformedDef = super.transform(vd).asInstanceOf[ValDef]
-            if transformedDef.symbol.info != mapType(transformedDef.symbol.info) && transformedDef.symbol.allOverriddenSymbols.nonEmpty then
-              val specializedSymbol = newSymbol(
-                transformedDef.symbol.owner,
-                transformedDef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX,
-                transformedDef.symbol.flags &~ Flags.Override,
-                info = mapType(transformedDef.symbol.info),
-                transformedDef.symbol.privateWithin,
-                transformedDef.symbol.coord,
-                transformedDef.symbol.nestingLevel
-              ).entered
-              ValDef(specializedSymbol.asTerm, transformedDef.rhs.changeOwner(transformedDef.symbol, specializedSymbol))
-            else
-              transformedDef
-          
-          case dd@DefDef(name, paramss, tpt, preRhs) => 
-            val transformedDef = super.transform(dd).asInstanceOf[DefDef]
-            
-            if transformedDef.symbol.info != mapType(transformedDef.symbol.info) && transformedDef.symbol.allOverriddenSymbols.nonEmpty then
-              val specializedSymbol = newSymbol(
-                transformedDef.symbol.owner,
-                transformedDef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX,
-                transformedDef.symbol.flags &~ Flags.Override,
-                info = mapType(transformedDef.symbol.info),
-                transformedDef.symbol.privateWithin,
-                transformedDef.symbol.coord,
-                transformedDef.symbol.nestingLevel
-              ).entered
-
-              val rhsFun: List[List[Tree]] => Tree = paramss =>
-                val oldParamSyms = transformedDef.paramss.flatten.map(_.symbol)
-                val newParamSyms = paramss.flatten.map(_.symbol)
-                transformedDef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(transformedDef.symbol, specializedSymbol)
-
-              DefDef(specializedSymbol.asTerm, rhsFun)
-            else
-              transformedDef*/
 
           case impl@Template(constr, preParentsOrDerived, self, _) => 
             impl.parents.foreach(p => 
               p.tpe match {
                case Specialization(spec) if 
                 spec.hasSpecializedParams 
-                && !impl.symbol.owner.isAnonymousClass // impl.symbol = the dummy class; owner is the actual class.
+                && !impl.symbol.owner.isAnonymousClass /* impl.symbol is the dummy local class; owner is the actual class. */
                 && !isSpecializationOf(impl.symbol.typeRef, p.tpe, allowImplementationClass = true)
                 && !isImplementationOf(impl.symbol.owner.name, p.tpe.typeSymbol.name)
                 && !impl.symbol.owner.isOneOf(InlineTrait) =>
@@ -342,37 +300,7 @@ class DesugarSpecializedTraits extends MacroTransform:
               }
             )
 
-            /*
-            // If a class has a specialized member which was overriding a parent member, this override is lost because we specialize the types.
-            // E.g. def foo(Vec$sp$Int) cannot override def foo(Vec[Int]) because signatures must match exactly for overriding.
-            // However, specialized trait is based on the invariant that ∀T. T <: Foo[Int] => T <: Foo$sp$Int (and note that the reverse <= holds trivially by inheritance).
-            // This means it is safe to build bridge methods which simply apply the relevant casts so that we satisfy the interface, although we don't expect to call these.
-            def isMapped(t: Type) = mapType(t) != t
-            */
             val mappedbody = impl.body.map(transform(_))
-            
-            /*
-            val bridgeMethods = impl.body.collect {
-              case ddef@DefDef(name, paramss, _, _) if ddef.symbol.allOverriddenSymbols.nonEmpty && isMapped(ddef.symbol.info) => 
-                // Any callers of the original method will have been redirected to the bridge method because it has a signature match with the method they were calling            
-                val ddef2 = cpy.DefDef(ddef)(
-                  rhs=
-                    This(impl.symbol.owner.asClass).select(ddef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX)
-                    .appliedToArgss(
-                      ddef.termParamss.map(
-                        params => params.map(p => 
-                          ref(p.symbol).cast(mapType(p.symbol.info)))
-                      )
-                    ).cast(ddef.symbol.localReturnType)
-                )
-                ddef2.symbol.rawParamss = ddef2.paramss.nestedMap(_.symbol)
-                ddef2
-                
-              case vdef: ValDef if vdef.symbol.allOverriddenSymbols.nonEmpty && isMapped(vdef.symbol.info) => 
-                cpy.ValDef(vdef)(
-                  rhs = This(impl.symbol.owner.asClass).select(vdef.symbol.name ++ str.SPECIALIZED_METHOD_TARGET_NAME_SUFFIX).cast(vdef.symbol.info)
-                )
-            } */
            
             /* We need to map parents of non-specialized inline traits (see tests/pos/specialized-trait-partial-complete-specialization-with-return-type.scala, we need 
             to map the A[Int] reference to A$sp$Int in B's parents) */
@@ -394,9 +322,9 @@ class DesugarSpecializedTraits extends MacroTransform:
 
       val specializations2 = specializations1.installNewInterfaceSymbols.installNewImplementationSymbols
 
-      // We have Vec$sp$Int extends Vec[Int] in order to do the inlining, but then remove this parent 
-      // afterwards to avoid interface implementation problems (see tests/run/specialized-trait-as-parameter.scala,
-      // tests/run/specialized-trait-as-return-type.scala)
+      /* We have Vec$sp$Int extends Vec[Int] in order to do the inlining, but then remove this parent 
+       afterwards to avoid interface implementation problems (see tests/run/specialized-trait-as-parameter.scala,
+       tests/run/specialized-trait-as-return-type.scala) */
       extension (classTree: Tree)
         def updateParents(parentUpdater: List[Type] => List[Type]) = (classTree: @unchecked) match {
           case td@TypeDef(name, t@Template(constr, preParentsOrDerived, self, preBody)) =>  
@@ -448,7 +376,7 @@ class DesugarSpecializedTraits extends MacroTransform:
     }
 
     override def transform(tree: Tree)(using Context): Tree = tree
-       match { // TODO: Is Package level processing really what we want? Given we are not going to output the classes somewhere else do we not really want either to deepFold the whole tree directly or do a more direct transform?
+       match { // TODO: Is Package level processing really what we want? Given we are going to output the classes somewhere else do we not really want either to deepFold the whole tree directly or do a more direct transform?
         case pkg@PackageDef(pid, stats) => // TODO: If we do everything ourselves and match only on the package then we can get rid of the MacroTransform aspect and just have a Phase with the transformPackageDef method.
           
           def checkType(t: Type, pos: SrcPos) = t.widen.dealias match {
@@ -466,12 +394,6 @@ class DesugarSpecializedTraits extends MacroTransform:
           val (stats1, _) = transformStatements(stats, tree.span, SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass)) // TODO: Fix span
           cpy.PackageDef(pkg)(pid, stats1)
       }
-
-    // TODO: There is a case where recursive expansion causes something to need an implementation where it didn't before.
-
-
-    // TODO: Try with just generating new Foo(100) with no function to pass it to and no other references to Foo. this may not work because we might not
-    // correctly detect it. 
 
     private def collectReferencedSpecializations(stats: List[Tree], specializations: SpecializedTraitCache)(using Context): SpecializedTraitCache =
       stats.foldLeft(specializations)((specializations, tree) => {
@@ -514,8 +436,6 @@ class DesugarSpecializedTraits extends MacroTransform:
       })
   }
 end DesugarSpecializedTraits
-                  // TODO: Need to think carefully about the behaviour when we are integrating libraries - should the library generate the implementation classes or the user?
-                  // In any case we need to read back in either the $sp$ classes or the $impl$ traits to be able to work with them.              
 
 object DesugarSpecializedTraits:
   val name: String = "desugarSpecializedTraits"
@@ -565,11 +485,11 @@ end DesugarSpecializedTraits
   Model: Contains two levels:
            - interface/implementation symbols we have found since the last installNewInterface/ImplementationSymbols call
             (i.e. typically on this iteration) ("new")
-           - Those we found prior to that call
+           - Those we found prior to that call, that were thus installed by it or previously
 
-  Invariant: (newImplementationSymbols \cup implementationSymbols) \subseteq (interfaceSymbols \cup newInterfaceSymbols).
+  Invariant: (newImplementationSymbols ∪ implementationSymbols) ⊆ (interfaceSymbols ∪ newInterfaceSymbols).
     This is enforced by only providing addInterface and addInterfaceAndImplementation, and allows the unchecked get in 
-    getNeWImplementationSymbols.
+    getNewImplementationSymbols.
 
 */
 
@@ -649,8 +569,8 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(usi
 
   def hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
 
-  // If inline trait Foo[T] has a method taking another Foo[T] there's no point specializing the reference
-  // since the resulting sp$T$ would be the same as the starting trait.
+  /* If inline trait Foo[T] has a method taking another Foo[T] there's no point specializing the reference
+     since the resulting sp$T$ would be the same as the starting trait. */
   def isSpecialized: Boolean = 
     hasSpecializedParams && typeArguments.exists(!_.tpe.existsPart(_.typeSymbol.isTypeParam)) //) !tpt.symbol.isTypeParam) //  .zip(traitSymbol.typeParams).forall((t, s) => t.tpe =:= s.typeRef))
 
@@ -699,28 +619,7 @@ object Specialization:
   } 
 end Specialization
 
-// Would be nice to define a Specialization class I think
-//   -> Map the specialized type params to Int etc
-//   -> Map the non-specialized type params to new type params
-//   -> Be a canonical representation so we can store that in a set
-//   -> Generate a name / string representation for use in new traits
-//   -> Get the specialized list to apply
-
-
-// TODO: Fix name generation which doesn't work if the tpye isn't provided explicitly
-
-
-
-
-// Generate impl instead of generating anonymous classes every time to avoid insane code bloat
-  // Do we really want the method definitions to live in the implementation classes or in the trait?|
-  // I think in the trait is fine but note that this only actually saves any space if we don't use anonymous classes (because those copy parent members automatically it seems)
-// Need to make sure all my examples are up to date, consistent with what we do and what we want to do so that they are actually useful for the future.
 // Need to somehow make my naming a lot more consistent as well.
-// Correctly generate names
-// generate classes as well
-// do we actually want to generate Iteratorsp$Int
-// should we be worried about the results that we generate causing more stuff to be generated?
 // figure out why we generate the T version.
 // Try to see if we can do with only types and not trees
 // Synthesise Specialized instances so that people can't do stupid stuff like Specialized[Array[T]]. type x = Specialized[Array[Array[Int]]]
@@ -730,76 +629,23 @@ end Specialization
 
 // TODO: Think carefully about use of primaryConstructor and the other appropriateConstructors call or whatever it was.
 
-// Probably (tree)typemap
-
-// Would it be better to just copy rather than creating everything from scratch? I think this is right
-
-// 1. Figure out which specializations we need to generate
-// 2. Generate ArrayIterator$sp$Int and ArrayIterator$impl$Int wherever they live
-// 3. Replace ArrayIterator[Int] with ArrayIterator$sp$Int
-// 4. Replace new ArrayIterator[Int](xs) {} with new ArrayIterator$impl$Int(xs) {}
-// 5. Somehow figure out the caching
-// 6. Delete references to Specialized I guess
-
-// Synthesize Specialized[T] instances.
 // TODO: Need to try with a bigger project with multiple packages later on to see if we get the behaviour that we are expecting to get in terms of the classes that we generate.
-
-// Need to ban all of these but we will do that earlier I guess?
-// Vec[Vec[Int]] hehe <- fine
-// Vec[S, S[T]: Specialized] <- banned
-// Vec[S, T[T]: Specialized] <- banned
-// Vec[Array[T]: Specialized] <- banned
-
 
 // TODO: Prune the generated anonymous classes.
 
-
 // need to test with explicit evidence / our own custom type classes
-// TODO: Make sure name encoding is fully qualified - e.g. potential for conflicts if we define our own class Int.
-  // // TODO: check that we have a single type var only
+// TODO: check that we have a single type var only
 
 // trait Vec$Sp[S] extends Vec[S, Int, Int, Int, Int]
 // inline trait Two[S: Specialized] extends Vec$sp[S]
-// does mean that any methods in the original trait lose their specialization - maybe we /should/ make the generated traits inline?
-// hmm but we can't do that because we need the methods called on the Vec$Sp trait to be the specialized ones - that is really important. 
 // Could potentially copy over the inline based on whether Two is inline or not? Needs some thought.
-
 
 // In the case of foo[S](a: Vec[S, Int, Int, Int, Int]) I think we ideally do want this because we should be able to get speed gains by accessing the specialized members 
 
-// Should we allow these? I think they are all fine
-// inline trait Two[S: Specialized] extends Vec[S, Int, Int, Int, Int]
-// inline trait Two[S] extends Vec[S, Int, Int, Int, Int] // Maybe worth warning? Perhaps behind an extra flag
-// trait Two[S] extends Vec[S, Int, Int, Int, Int]
-// TODO: We want a self reference case where Vec[T] has some method that takes a Vec[Int] for example.
-// TODO: Fix broken "inline" tests 
 // TODO: Only specialize if there is some material increase in specialization - I think only if at least one new parameter gets fully specialized
 // Maybe it is better to not allow partial specializations --  we can think about that.
-// TODO: Need to add the rule that we need to directly extend inline traits to pass parameters in the same way as for normal traits
-// See inline-trait-param-no-shadow.scala
 
-// could ban normal traits from mixing in inline traits on the basis that 
-// it's a very unlikely usecase and would fix the mixin problem - although
-// we could just try and fix the mixin problem properly.
-
-// TOOD: probably need to do this from Timothée:
-  // - private members are not renamed, only private parameter accessors are;
-// this needs to be changed so that all overridable private members are renamed
-// Implement postphase checks for inline traits
 // TODO: Don't synthesize specialized instances for random generic types probably - as Hamza said we want to be able to control the specialization
-// TODO: If we are to ban trait extends inline trait then need to fix some tests.
-// TODO: Check that when we extend parents we actually do so in the specialized forms.
-// TODO: Fix specialized-trait-collections-example.scala
-// TODO: Test extensively with inline methods and inline traits.
-
-// TODO:
-  // Need  to enforce these:
-//  - can extend only a single specialized trait,
-//  - cannot mix in further classes or traits, and
-//  - cannot contain member definitions.
-// I'm not sure we strictly need them though.
-
-// TODO: Put classes onto the classpath as desired.
 
 // Concerns:
 //  - The superclass of `C` is a top class, or `C` itself is a top class.
@@ -807,21 +653,7 @@ end Specialization
 
 // If we can manage to get rid of the inheritance there that could be helpful in terms of avoiding multiple values
 // BUT: generate a version which is with just inline traits that has this problem as well.
-// Need to deal with the caching at some point
 // These implementation classes are type correct as long as we inject the knowledge that a specialization trait
 // like `Seq$sp$Int` is equal to its parameterized version `Seq[Int]`
 
-// Warning for dropping Specialized qualifier or it doesn't compile?
-// TODO: Make name consistent for tests.
-// TODO: In order to fix Foo extends Bar (banned for now)
-// //           case impl@Template(constr, preParentsOrDerived, self, _) => 
-//             cpy.Template(impl)(body = impl.body.map(transform(_)), 
-//             parents = // CAN POTENTIALLY MOVE THE OWNER CALL UP HERE. 
-//               impl.parents.map(p => if isSpecializationOf(impl.symbol.typeRef, p.tpe, allowImplementationClass = true) then {println(impl.symbol.typeRef); println(p.tpe); p} else transform(p)))
-//           case tree => super.transform(tree)
-//         }
-// Plus need another case in the normal map where you add sp trait as a parent as well as the original trait, AND update symbols. (or maybe switch to impl calss also possibhle).
-
-// end DesugarSpecializedTraits
 // Also delete the other members that already got inlined or maybe we don't care.
-// extend both traits
