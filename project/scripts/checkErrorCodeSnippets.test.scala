@@ -281,7 +281,7 @@ class ErrorCodeSnippetsTest extends munit.FunSuite:
       }
 
       if errorCode > Scala3_0_0_MaxErrorCode then
-        test(s"$errorCodeStr - must have 'since' version attirubte") {
+        test(s"$errorCodeStr - must have 'since' version attribute") {
           os.read(mdFile).linesIterator.find(_.startsWith("since: ")) match {
             case Some(s"since: $version") =>
               assert(ScalaVersion.parse(version).isSuccess, s"Invalid since version: $version")

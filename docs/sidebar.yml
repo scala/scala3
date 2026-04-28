@@ -433,3 +433,6 @@ subsection:
       - page: reference/error-codes/E225.md
       - page: reference/error-codes/E226.md
       - page: reference/error-codes/E227.md
+      - page: reference/error-codes/E228.md
+      - page: reference/error-codes/E229.md
+
