@@ -343,6 +343,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           case single :: Nil => InstrumentedParts.singleExprTree(single, transformed)
           case multiple => InstrumentCoverage.blockWithExprSpan(multiple, transformed)
 
+    private def transformCondition(tree: Tree)(using Context): Tree = tree match
+      case Literal(Constant(_: Boolean)) => tree
+      case _ => transform(tree)
+
     override def transform(tree: Tree)(using Context): Tree =
       inContext(transformCtx(tree)) { // necessary to position inlined code properly
         tree match
@@ -366,7 +370,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           // branches
           case tree: If =>
             cpy.If(tree)(
-              cond = transform(tree.cond),
+              cond = transformCondition(tree.cond),
               thenp = transformBranch(tree.thenp),
               elsep = transformBranch(tree.elsep)
             )

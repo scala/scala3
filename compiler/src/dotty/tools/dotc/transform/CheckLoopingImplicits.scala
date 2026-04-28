@@ -3,7 +3,7 @@ package transform
 
 import core.*
 import MegaPhase.MiniPhase
-import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*, Constants.*
+import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*
 import ast.*
 import Decorators.*
 import StdNames.*
@@ -85,11 +85,8 @@ class CheckLoopingImplicits extends MiniPhase:
       case Assign(lhs, rhs) =>
         checkNotLooping(lhs)
         checkNotLooping(rhs)
-      case If(cond, thenp, elsep) =>
-        InstrumentCoverage.stripLeadingCoverage(cond) match
-          case Literal(Constant(true)) => checkNotLooping(thenp)
-          case Literal(Constant(false)) => checkNotLooping(elsep)
-          case _ => checkNotLooping(cond)
+      case If(cond, _, _) =>
+        checkNotLooping(cond)
       case Match(selector, _) =>
         checkNotLooping(selector)
       case Labeled(_, expr) =>
