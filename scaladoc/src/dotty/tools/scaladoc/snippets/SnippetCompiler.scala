@@ -71,7 +71,7 @@ class SnippetCompiler(
         val validation = SnippetExpectations.validate(expected, observed, sourceFile)
         val failCheck =
           if arg.flag == SCFlags.Fail && expected.expectedErrors == 0 && !context.reporter.hasErrors then
-            List(SnippetCompilerMessage(None, "No errors found when compiling snippet", MessageLevel.Error))
+            List(SnippetCompilerMessage(None, s"No errors found when compiling snippet in $sourceFile:\n${wrappedSnippet.snippet}", MessageLevel.Error))
           else Nil
         val errors = validation ++ failCheck
         val hasMismatches = errors.exists(_.level == MessageLevel.Error)
@@ -85,7 +85,7 @@ class SnippetCompiler(
         val failMsg = Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
           SnippetCompilerMessage(
             Some(Position(SourcePosition(sourceFile, NoSpan), wrappedSnippet.outerLineOffset)),
-            "Snippet should not compile but compiled successfully", MessageLevel.Error)
+            s"Snippet should not compile but compiled successfully in $sourceFile:\n${wrappedSnippet.snippet}", MessageLevel.Error)
         )
         val msgs = observed.map(_.message) ++ failMsg
         val ok =
