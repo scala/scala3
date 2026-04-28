@@ -4,6 +4,7 @@ package transform
 import java.io.File
 import java.nio.file.{Files, Path}
 
+import ast.tpd
 import ast.tpd.*
 import collection.mutable
 import core.Comments.Comment
@@ -18,13 +19,74 @@ import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
 import coverage.*
-import typer.LiftCoverage
-import util.{SourcePosition, SourceFile}
+import typer.LiftImpure
+import util.{Property, SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
 import scala.util.matching.Regex
 import java.util.regex.Pattern
+
+/** Lift impure + lift the prefixes for coverage instrumentation. */
+object LiftCoverage extends LiftImpure:
+
+  // Property indicating whether we're currently lifting the arguments of an application
+  private val LiftingArgs = new Property.Key[Boolean]
+  val CoverageLiftedTemp = Property.StickyKey[Unit]()
+
+  private inline def liftingArgs(using Context): Boolean =
+    ctx.property(LiftingArgs).contains(true)
+
+  private def liftingArgsContext(using Context): Context =
+    ctx.fresh.setProperty(LiftingArgs, true)
+
+  /** Variant of `noLift` for the arguments of applications.
+   *  To produce the right coverage information (especially in case of exceptions), we must lift:
+   *  - all the applications, except the erased ones
+   */
+  private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
+    arg match
+      case arg if isUnsafeAssumeSeparate(arg) => true
+      case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
+      case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
+      case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
+      case tpd.Typed(expr, _) => noLiftArg(expr)
+      case _ => super.noLift(arg)
+
+  def isUnsafeAssumeSeparate(tree: tpd.Tree)(using Context): Boolean = tree match
+    case tree: tpd.Apply =>
+      tree.symbol == defn.Caps_unsafeAssumeSeparate
+      || isUnsafeAssumeSeparate(tree.fun)
+    case tpd.Select(qual, _) => isUnsafeAssumeSeparate(qual)
+    case tpd.Block(_, expr) => isUnsafeAssumeSeparate(expr)
+    case tpd.Inlined(_, _, expr) => isUnsafeAssumeSeparate(expr)
+    case tpd.Typed(expr, _) => isUnsafeAssumeSeparate(expr)
+    case _ => false
+
+  def isCoverageLiftedTemp(sym: Symbol)(using Context): Boolean =
+    sym.defTree.hasAttachment(CoverageLiftedTemp)
+
+  override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
+    tree.putAttachment(CoverageLiftedTemp, ())
+
+  override def noLift(expr: tpd.Tree)(using Context) =
+    if liftingArgs then noLiftArg(expr)
+    else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
+
+  /** Preserve singleton precision for lifted coverage temps when the underlying value is a
+   *  compile-time constant (same notion ConstFold uses), so constant re-folding after lifting
+   *  still matches the original inferred singleton type. Everything else uses the base widen.
+   */
+  override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
+    val dealiased = expr.tpe.dealias.deskolemized
+    dealiased.widenTermRefExpr.normalized.simplified match
+      case _: ConstantType => dealiased
+      case _ => super.liftedExprType(expr)
+
+  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
+    val liftedFun = liftApp(defs, tree.fun)
+    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
+    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).

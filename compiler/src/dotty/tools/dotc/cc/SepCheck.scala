@@ -10,7 +10,7 @@ import CaptureSet.{Refs, emptyRefs, HiddenSet}
 import NameKinds.WildcardParamName
 import config.Printers.capt
 import StdNames.nme
-import typer.LiftCoverage
+import transform.LiftCoverage
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
