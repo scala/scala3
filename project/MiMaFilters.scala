@@ -24,6 +24,7 @@ object MiMaFilters {
 
       // Breaking changes since last reference version
       Build.mimaPreviousDottyVersion -> Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.None.orNull"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.util.control.NonLocalReturns$ReturnThrowable"),
         // THIS IS FINE, IT SHOULD HAVE BEEN THIS WAY
         ProblemFilters.exclude[MissingTypesProblem]("scala.Function1$"),
@@ -52,7 +53,6 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalMethodProblem]("scala.jdk.Accumulator.:++"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.jdk.Accumulator.concat"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.jdk.Accumulator.sizeHint$default$2"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.None.orNull"),
       )
     )
   }
