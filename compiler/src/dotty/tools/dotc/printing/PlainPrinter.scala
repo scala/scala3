@@ -397,8 +397,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If -uniqid is set, the hashcode of the type, after a # */
   protected def hashStr(tp: Type): String =
     if showUniqueIds then
-      try "#" + tp.hashCode
-      catch case ex: NullPointerException => ""
+      "#" + tp.hashCode
     else ""
 
   /** A string to append to a symbol composed of:

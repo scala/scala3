@@ -4966,10 +4966,7 @@ object Types extends TypeUtils {
     }
 
     override def toString: String =
-      try s"RecThis(${binder.hashCode})"
-      catch {
-        case ex: NullPointerException => s"RecThis(<under construction>)"
-      }
+      s"RecThis(${binder.hashCode})"
   }
 
   private final class RecThisImpl(binder: RecType) extends RecThis(binder)
