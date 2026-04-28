@@ -324,10 +324,7 @@ object GenericSignatures {
               else if (sym == defn.NullClass)
                 builder.append("Lscala/runtime/Null$;")
               else if (sym.isPrimitiveValueClass)
-                // TODO, but a few tests need fixing / disabling until a newer scalac is ingested,
-                // replace the next 2 lines with: if (vcBoxing == ValueClassBoxing.Box || sym == defn.UnitClass) jsig(defn.boxedClass(sym).typeRef)
-                if (vcBoxing == ValueClassBoxing.Box) jsig(defn.ObjectType)
-                else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
+                if (vcBoxing == ValueClassBoxing.Box) jsig(defn.boxedClass(sym).typeRef)
                 else if (builder.length == 0 && sym0.isField) () // field generic signatures can only be reference types (JVMS §4.7.9.1)
                 else builder.append(defn.typeTag(sym.info))
               else if defn.isSyntheticFunctionClass(sym) then
