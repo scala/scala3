@@ -341,7 +341,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         val allProbes = inheritedProbes :+ coverageCall
         allProbes match
           case single :: Nil => InstrumentedParts.singleExprTree(single, transformed)
-          case multiple => Block(multiple, transformed)
+          case multiple => InstrumentCoverage.blockWithExprSpan(multiple, transformed)
 
     override def transform(tree: Tree)(using Context): Tree =
       inContext(transformCtx(tree)) { // necessary to position inlined code properly
@@ -400,7 +400,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
               // This is especially important for trees like (expr[T])(args),
               // for which the wrong transformation crashes the compiler.
               // See tests/coverage/pos/PolymorphicExtensions.scala
-              Block(
+              InstrumentCoverage.blockWithExprSpan(
                 pre :+ coverageCall,
                 cpy.TypeApply(tree)(expr, args)
               )
@@ -750,6 +750,33 @@ object InstrumentCoverage:
   val scoverageLocalOn: Regex = """^\s*//\s*\$COVERAGE-ON\$""".r
   val scoverageLocalOff: Regex = """^\s*//\s*\$COVERAGE-OFF\$""".r
 
+  /** Coverage probes are synthetic bookkeeping calls that should be transparent to
+   *  later warning logic and should not steal source positions from the user tree
+   *  they wrap.
+   */
+  def isCoverageProbe(tree: Tree)(using Context): Boolean = tree match
+    case Apply(fun, Literal(Constant(_: Int)) :: Literal(Constant(_: String)) :: Nil) =>
+      fun.symbol == defn.InvokedMethodRef.symbol
+    case _ =>
+      false
+
+  /** Remove leading synthetic coverage wrappers to recover the user-written tree. */
+  def stripLeadingCoverage(tree: Tree)(using Context): Tree = tree match
+    case Typed(expr, _) =>
+      stripLeadingCoverage(expr)
+    case Inlined(_, Nil, expr) =>
+      stripLeadingCoverage(expr)
+    case Block(stats, expr) if stats.forall(isCoverageProbe) =>
+      stripLeadingCoverage(expr)
+    case _ =>
+      tree
+
+  /** Keep wrapper blocks pointed at the wrapped expression span so later warnings
+   *  still highlight user code instead of synthetic `Invoker.invoked` scaffolding.
+   */
+  def blockWithExprSpan(stats: List[Tree], expr: Tree)(using Context): Tree =
+    Block(stats, expr).withSpan(expr.span)
+
   /**
    * An instrumented Tree, in 3 parts.
    * @param pre preparation code, e.g. lifted arguments. May be empty.
@@ -762,8 +789,8 @@ object InstrumentCoverage:
     /** Turns this into an actual Tree. */
     def toTree(using Context): Tree =
       if invokeCall.isEmpty then expr
-      else if pre.isEmpty then Block(invokeCall :: Nil, expr)
-      else Block(pre :+ invokeCall, expr)
+      else if pre.isEmpty then blockWithExprSpan(invokeCall :: Nil, expr)
+      else blockWithExprSpan(pre :+ invokeCall, expr)
 
   object InstrumentedParts:
     def notCovered(expr: Tree) = InstrumentedParts(Nil, EmptyTree, expr)
@@ -771,4 +798,4 @@ object InstrumentCoverage:
 
     /** Shortcut for `singleExpr(call, expr).toTree` */
     def singleExprTree(invokeCall: Apply, expr: Tree)(using Context): Tree =
-      Block(invokeCall :: Nil, expr)
+      blockWithExprSpan(invokeCall :: Nil, expr)

@@ -3,7 +3,7 @@ package transform
 
 import core.*
 import MegaPhase.MiniPhase
-import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*
+import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*, Constants.*
 import ast.*
 import Decorators.*
 import StdNames.*
@@ -54,6 +54,8 @@ class CheckLoopingImplicits extends MiniPhase:
             )
 
     def checkNotLooping(t: Tree): Unit = t match
+      case t if InstrumentCoverage.isCoverageProbe(t) =>
+        ()
       case t: Ident =>
         checkNotSelfRef(t)
       case t @ Select(qual, _) =>
@@ -83,8 +85,11 @@ class CheckLoopingImplicits extends MiniPhase:
       case Assign(lhs, rhs) =>
         checkNotLooping(lhs)
         checkNotLooping(rhs)
-      case If(cond, _, _) =>
-        checkNotLooping(cond)
+      case If(cond, thenp, elsep) =>
+        InstrumentCoverage.stripLeadingCoverage(cond) match
+          case Literal(Constant(true)) => checkNotLooping(thenp)
+          case Literal(Constant(false)) => checkNotLooping(elsep)
+          case _ => checkNotLooping(cond)
       case Match(selector, _) =>
         checkNotLooping(selector)
       case Labeled(_, expr) =>
@@ -105,7 +110,7 @@ class CheckLoopingImplicits extends MiniPhase:
     if sym.isOneOf(GivenOrImplicit | Lazy | ExtensionMethod)
       || sym.name == nme.apply && sym.owner.is(Module) && sym.owner.sourceModule.isOneOf(GivenOrImplicit)
     then
-      checkNotLooping(mdef.rhs)
+      checkNotLooping(InstrumentCoverage.stripLeadingCoverage(mdef.rhs))
     mdef
   end transform
 end CheckLoopingImplicits
