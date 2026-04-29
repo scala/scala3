@@ -660,7 +660,7 @@ object Scanners {
                     case InParens(LPAREN, _) => true
                     case _ => false
                   if checkable && !closingRegionTokens.contains(token) then
-                    report.warning(IndentationWarning(isLeft = true, missing = RBRACE), sourcePos())
+                    report.warning(IndentationWarning(isLeft = true, missing = r.closedBy), sourcePos())
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
