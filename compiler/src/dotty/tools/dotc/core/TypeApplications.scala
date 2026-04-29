@@ -178,14 +178,15 @@ class TypeApplications(val self: Type) extends AnyVal {
       case NoPrefix => true
       case _ => false
     }
-    try self match {
-      case self: TypeRef =>
-        val tsym = self.symbol
-        if (tsym.isClass) tsym.typeParams
-        else tsym.infoOrCompleter match {
-          case info: LazyType if isTrivial(self.prefix, tsym) =>
-            val tparams = info.completerTypeParams(tsym)
-            if tsym.isCompleted then tsym.info.typeParams
+    ctx.handleRecursive("type parameters of", self):
+      self match
+        case self: TypeRef =>
+          val tsym = self.symbol
+          if (tsym.isClass) tsym.typeParams
+          else tsym.infoOrCompleter match {
+            case info: LazyType if isTrivial(self.prefix, tsym) =>
+              val tparams = info.completerTypeParams(tsym)
+              if tsym.isCompleted then tsym.info.typeParams
               // Completers sometimes represent parameters as symbols where
               // the completed type represents them as paramrefs. Make sure we get
               // a stable result by calling `typeParams` recursively. Test case
@@ -193,28 +194,24 @@ class TypeApplications(val self: Type) extends AnyVal {
               // After calling its completerTypeParams, we get a list of parameter symbols
               // and as a side effect F0 is completed. Calling typeParams on the completed
               // type gives a list of paramrefs.
-            else tparams
-          case _ => self.info.typeParams
-        }
-      case self: AppliedType =>
-        if (self.tycon.typeSymbol.isClass) Nil
-        else self.superType.typeParams
-      case self: ClassInfo =>
-        self.cls.typeParams
-      case self: HKTypeLambda =>
-        self.typeParams
-      case _: SingletonType | _: RefinedType | _: RecType =>
-        Nil
-      case self: WildcardType =>
-        self.optBounds.typeParams
-      case self: TypeProxy =>
-        self.superType.typeParams
-      case _ =>
-        Nil
-    }
-    catch {
-      case ex: Throwable => handleRecursive("type parameters of", self.show, ex)
-    }
+              else tparams
+            case _ => self.info.typeParams
+          }
+        case self: AppliedType =>
+          if (self.tycon.typeSymbol.isClass) Nil
+          else self.superType.typeParams
+        case self: ClassInfo =>
+          self.cls.typeParams
+        case self: HKTypeLambda =>
+          self.typeParams
+        case _: SingletonType | _: RefinedType | _: RecType =>
+          Nil
+        case self: WildcardType =>
+          self.optBounds.typeParams
+        case self: TypeProxy =>
+          self.superType.typeParams
+        case _ =>
+          Nil
   }
 
   /** Substitute in `self` the type parameters of `tycon` by some other types. */
@@ -399,12 +396,9 @@ class TypeApplications(val self: Type) extends AnyVal {
               if hasParamsWithoutArg then
                 AppliedType(self, args)
               else
-                try
+                ctx.handleRecursive("try to instantiate", () => i"$dealiased[$args%, %]"):
                   val instantiated = dealiased.instantiate(args)
                   if (followAlias) instantiated.normalized else instantiated
-                catch
-                  case ex: Throwable => handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
-
             else AppliedType(self, args)
           }
           else dealiased.resType match {

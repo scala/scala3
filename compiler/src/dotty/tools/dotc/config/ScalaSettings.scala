@@ -457,6 +457,8 @@ private sealed trait XSettings:
   val XjarCompressionLevel: Setting[Int] = IntChoiceSetting(AdvancedSetting, "Xjar-compression-level", "compression level to use when writing jar files", Deflater.DEFAULT_COMPRESSION to Deflater.BEST_COMPRESSION, Deflater.DEFAULT_COMPRESSION)
   val XkindProjector: Setting[String] = ChoiceSetting(AdvancedSetting, "Xkind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Xkind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", List("disable", "", "underscores"), "disable", legacyArgs = true)
 
+  val XmaxFuel: Setting[Int] = IntSetting(AdvancedSetting, "Xmax-fuel", "Max fuel for recursive operations before abandoning.", 400)
+
   /** Documentation related settings */
   val XdropComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdrop-docs", "Drop documentation when scanning source files.", aliases = List("-Xdrop-comments"))
   val XcookComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xcook-docs", "Cook the documentation (type check `@usecase`, etc.)", aliases = List("-Xcook-comments"))

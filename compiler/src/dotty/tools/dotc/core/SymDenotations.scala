@@ -2365,7 +2365,7 @@ object SymDenotations {
             tp.derivedCapturingType(recur(parent), refs)
 
           case tp: TypeProxy =>
-            def computeTypeProxy = {
+            def computeTypeProxy = ctx.handleRecursive("type proxy of", tp):
               val superTp = tp.superType
               val baseTp = recur(superTp)
               tp match {
@@ -2374,7 +2374,6 @@ object SymDenotations {
                 case _ =>
               }
               baseTp
-            }
             computeTypeProxy
 
           case tp: AndOrType =>
@@ -2434,7 +2433,7 @@ object SymDenotations {
     def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
-      try {
+      ctx.handleRecursive("member names of", this):
         for ptype <- parentTypes do
           ptype.classSymbol match
             case pcls: ClassSymbol =>
@@ -2453,10 +2452,6 @@ object SymDenotations {
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
         names
-      }
-      catch {
-        case ex: Throwable => handleRecursive("member names", i"of $this", ex)
-      }
     }
 
     override final def fullNameSeparated(kind: QualifiedNameKind)(using Context): Name = {

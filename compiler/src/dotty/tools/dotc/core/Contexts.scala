@@ -522,6 +522,19 @@ object Contexts {
     final def withUncommittedTyperState: Context =
       withTyperState(typerState.uncommittedAncestor)
 
+    /** Ensures recursive operations obey the fuel limit, and throws user-friendly errors when they do not. */
+    inline final def handleRecursive[T](title: String, details: RecursiveOperationDetails, weight: Int = 1)(inline block: T): T =
+      val depth = base.recursiveDepth
+      val ops = base.recursiveOperations
+      if depth >= ops.length then
+        throw new RecursionOverflow(ops, title, details, weight)
+      ops(depth).title = title
+      ops(depth).details = details
+      ops(depth).weight = weight
+      base.recursiveDepth = depth + 1
+      try block
+      finally base.recursiveDepth = depth
+
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
       else value match {
@@ -1019,6 +1032,12 @@ object Contexts {
      * We need this information to be persisted across different runs, so it's stored here.
      */
     private[dotc] var coverage: Coverage | Null = null
+
+    // The array will be initialized with a number of slots corresponding to the max fuel,
+    // for now give it 1 slot so a single call to handleRecursive works for trivial things
+    // before the compiler has really started
+    private[dotc] var recursiveDepth: Int = 0
+    private[dotc] var recursiveOperations: Array[RecursiveOperation] = Array(RecursiveOperation.blank())
 
     // Types state
     /** A table for hash consing unique types */
