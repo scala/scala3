@@ -2255,11 +2255,9 @@ object Build {
     settings(commonBootstrappedSettings).
     settings(
       libraryDependencies ++= Seq(
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
+        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0",
         Dependencies.`jackson-databind`
       ),
-      // Work around https://github.com/eclipse/lsp4j/issues/295
-      dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0",
       // Exclude the dependency that is resolved transively, the stdlib
       // is a project dependency instead
       excludeDependencies += "org.scala-lang" %% "scala3-library",
@@ -2281,7 +2279,7 @@ object Build {
       Test / buildInfoPackage := "dotty.tools.languageserver.util.server",
       BuildInfoPlugin.buildInfoScopedSettings(Test),
       BuildInfoPlugin.buildInfoDefaultSettings,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   /** Common settings for sjsSandbox and sjsJUnitTests */
