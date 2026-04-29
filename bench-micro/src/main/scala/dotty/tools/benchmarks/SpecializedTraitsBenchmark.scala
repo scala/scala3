@@ -1,7 +1,9 @@
 // Run with: scala-cli --power --jmh bench-micro/src/main/scala/dotty/tools/benchmarks/SpecializedTraitsBenchmark.scala
 // May have to run it again / delete .scala-build and rerun if you get a class not found
 // error from scala-cli first time - the --jmh flag is still experimental.
-// Don't forget to publish the compiler first and check that the version below corresponds to the generated version.
+// Don't forget to publish the compiler first and check that the version below corresponds to the generated version,
+// as well as to kill the bloop server if you are republishing the same version as before.
+// scala-cli --power bloop exit
 
 //> using scala 3.8.4-RC1-bin-SNAPSHOT-nonbootstrapped
 //> using options -language:experimental.specializedTraits
