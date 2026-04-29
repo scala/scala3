@@ -15,10 +15,13 @@ import org.junit.Test
 import scala.jdk.CollectionConverters._
 import scala.util.Properties
 
+import org.junit.Assume.assumeTrue
+
 class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
 
   @Test
   def mrJar(): Unit = {
+    assumeTrue("Multi-release JARs require JDK 9+", Properties.isJavaAtLeast("9"))
 
     // The test fails if the same jar file gets reused. This might be a caching problem in our classpath implementation
 
@@ -70,6 +73,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
 
   @Test
   def ctSymTest(): Unit = {
+    assumeTrue("ct.sym cross-compilation requires JDK 9+", Properties.isJavaAtLeast("9"))
 
     def classExists(className: String, release: String): Boolean = {
       given ctx: Context = initCtx.fresh

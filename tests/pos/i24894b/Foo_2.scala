@@ -1,1 +1,1 @@
-@Deprecated(since = Bar.bar()) class Foo
+@SuppressWarnings(Array(Bar.bar())) class Foo

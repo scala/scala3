@@ -7,11 +7,11 @@ package logadapter:
   trait AbstractApi[T <: AbstractLogAdapter]:
     def logAdapterFor(loggerName: String): T
     trait SelfLogging:
-      given adapter: T = logAdapterFor(this.getClass.getName)
+      given adapter: T = logAdapterFor("TestLogger")
       // workaround:
-      //given () => T = logAdapterFor(this.getClass.getName)
+      //given () => T = logAdapterFor("TestLogger")
       // or
-      //private val adapter = logAdapterFor(this.getClass.getName)
+      //private val adapter = logAdapterFor("TestLogger")
       //given T = adapter
       // or just pollute the interface so it's never taken as pure
       //private val z = 42

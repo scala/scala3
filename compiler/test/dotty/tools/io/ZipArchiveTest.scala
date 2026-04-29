@@ -44,14 +44,11 @@ class ZipArchiveTest {
     }
   }
 
-  private val bootClassLoader: ClassLoader = {
-    ClassLoader.getPlatformClassLoader
-  }
-
   private def classLoader(location: URI): ClassLoader =
-    new URLClassLoader(Array(location.toURL), bootClassLoader)
+    new URLClassLoader(Array(location.toURL), /*parent*/ null)
 
-  private def manifestAt(location: URI): URL = classLoader(location).getResource("META-INF/MANIFEST.MF")
+  private def manifestAt(location: URI): URL =
+    classLoader(location).getResource("META-INF/MANIFEST.MF")
 
 
   // ZipArchive.fromManifestURL(URL)
