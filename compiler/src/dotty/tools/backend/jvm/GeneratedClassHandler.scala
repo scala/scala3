@@ -59,7 +59,7 @@ private[jvm] object GeneratedClassHandler {
     new AsyncWritingClassHandler(postProcessor, javaExecutor)
   }
 
-  def withOptimizations(handler: GeneratedClassHandler): GeneratedClassHandler =
+  def withGlobalOptimizations(handler: GeneratedClassHandler): GeneratedClassHandler =
     new GlobalOptimisingGeneratedClassHandler(handler)
 
   private class GlobalOptimisingGeneratedClassHandler(underlying: GeneratedClassHandler) extends GeneratedClassHandler {

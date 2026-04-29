@@ -483,8 +483,6 @@ object BCodeUtils {
    *      and they would fail verification after lifted.
    */
   final def javaFlags(sym: Symbol)(using Context): Int = {
-    import SymbolUtils.given
-
     // Classes are always emitted as public. This matches the behavior of Scala 2
     // and is necessary for object deserialization to work properly, otherwise
     // ModuleSerializationProxy may fail with an accessiblity error (see
@@ -561,6 +559,7 @@ object BCodeUtils {
    */
   private def enclosingMethodForEnclosingMethodAttribute(classSym: Symbol)(using ctx: Context): Option[Symbol] = {
     assert(classSym.isClass, classSym)
+    @tailrec
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (sym.isClass || sym == NoSymbol) None
       else if (sym.is(Method, butNot=Synthetic)) Some(sym)
@@ -575,6 +574,7 @@ object BCodeUtils {
    */
   private def enclosingClassForEnclosingMethodAttribute(classSym: Symbol)(using ctx: Context): Symbol = {
     assert(classSym.isClass, classSym)
+    @tailrec
     def enclosingClass(sym: Symbol): Symbol = {
       if (sym.isClass) sym
       else enclosingClass(sym.originalOwner.originalLexicallyEnclosingClass)
@@ -604,18 +604,4 @@ object BCodeUtils {
       None
     }
   }
-
-  private def ubytesToCharArray(bytes: Array[Byte]): Array[Char] = {
-    val ca = new Array[Char](bytes.length)
-    var idx = 0
-    while(idx < bytes.length) {
-      val b: Byte = bytes(idx)
-      assert((b & ~0x7f) == 0)
-      ca(idx) = b.asInstanceOf[Char]
-      idx += 1
-    }
-
-    ca
-  }
-
 }

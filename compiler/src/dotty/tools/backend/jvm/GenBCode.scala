@@ -116,7 +116,7 @@ class GenBCode extends Phase { self =>
       }
       _generatedClassHandler =
         if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations
-        then GeneratedClassHandler.withOptimizations(handler)
+        then GeneratedClassHandler.withGlobalOptimizations(handler)
         else handler
     }
     _generatedClassHandler.nn
@@ -140,6 +140,7 @@ class GenBCode extends Phase { self =>
       val result = super.runOn(units)
       for (exn, f) <- generatedClassHandler.complete() do
         report.error(em"unable to write $f $exn")
+        exn.printStackTrace()
       result
     finally
       ctx.settings.outputDir.value match

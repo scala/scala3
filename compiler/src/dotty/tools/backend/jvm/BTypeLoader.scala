@@ -16,20 +16,20 @@ import dotty.tools.dotc.core.{StdNames, Types}
 import dotty.tools.dotc.core.Types.{AnnotatedType, JavaArrayType, RefinedType, SingletonType, ThisType, Type, TypeRef, abstractTermNameFilter}
 import dotty.tools.dotc.report
 
-import scala.annotation.tailrec
+import scala.annotation.{constructorOnly, tailrec}
 import scala.tools.asm
 import scala.tools.asm.tree.ClassNode
 
-class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader]) {
-  // It's OK to cache BType-related fields because all Contexts that go through here share their defns
+class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader])(using @constructorOnly initctx: Context) {
+  // It's OK to cache type-related fields because all Contexts that go through here share their defns.
+  // We eagerly fetch the definitions because we must not access the symbol table in a multithreaded way,
+  // whereas it's OK if we translate the symbols to BTypes more than once, the locking overhead is not worth it.
 
-  // Concurrent maps because stack map frames are computed when in the class writer, which
+  // Concurrent map because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
   private val classBTypeCache: ConcurrentHashMap[InternalName, ClassBType] =
     new ConcurrentHashMap[InternalName, ClassBType]
 
-  private var primitiveTypeMapLazy: Map[Symbol, PrimitiveBType] | Null = null
-  private var objectRefLazy: ClassBType | Null = null
   /*
    * srNothingRef and srNullRef exist at run-time only. They are the bytecode-level manifestation (in
    * method signatures only) of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
@@ -37,41 +37,41 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
    * Therefore, when srNothingRef or srNullRef are to be emitted, a mapping is needed: the internal
    * names of NothingClass and NullClass can't be emitted as-is.
    */
+  private val objectClass: Symbol = defn.ObjectClass
+  private var objectRefLazy: ClassBType | Null = null
+  private val srNothingClass: Symbol = requiredClass("scala.runtime.Nothing$")
   private var srNothingRefLazy: ClassBType | Null = null
+  private val srNullClass: Symbol = requiredClass("scala.runtime.Null$")
   private var srNullRefLazy: ClassBType | Null = null
 
 
   def ObjectRef(using Context): ClassBType =
     if objectRefLazy eq null then
-      objectRefLazy = classBTypeFromSymbol(defn.ObjectClass)
+      objectRefLazy = classBTypeFromSymbol(objectClass)
     objectRefLazy.nn
 
   def srNothingRef(using Context): ClassBType =
     if srNothingRefLazy eq null then
-      srNothingRefLazy = classBTypeFromSymbol(requiredClass("scala.runtime.Nothing$"))
+      srNothingRefLazy = classBTypeFromSymbol(srNothingClass)
     srNothingRefLazy.nn
 
   def srNullRef(using Context): ClassBType =
     if srNullRefLazy eq null then
-      srNullRefLazy = classBTypeFromSymbol(requiredClass("scala.runtime.Null$"))
+      srNullRefLazy = classBTypeFromSymbol(srNullClass)
     srNullRefLazy.nn
 
   /** Maps primitive types to their corresponding PrimitiveBType. */
-  def primitiveTypeMap(using Context): Map[Symbol, PrimitiveBType] = {
-    if primitiveTypeMapLazy eq null then
-      primitiveTypeMapLazy = Map(
-        defn.UnitClass    -> UNIT,
-        defn.BooleanClass -> BOOL,
-        defn.CharClass    -> CHAR,
-        defn.ByteClass    -> BYTE,
-        defn.ShortClass   -> SHORT,
-        defn.IntClass     -> INT,
-        defn.LongClass    -> LONG,
-        defn.FloatClass   -> FLOAT,
-        defn.DoubleClass  -> DOUBLE
-      )
-    primitiveTypeMapLazy.nn
-  }
+  val primitiveTypeMap: Map[Symbol, PrimitiveBType] = Map(
+    defn.UnitClass    -> UNIT,
+    defn.BooleanClass -> BOOL,
+    defn.CharClass    -> CHAR,
+    defn.ByteClass    -> BYTE,
+    defn.ShortClass   -> SHORT,
+    defn.IntClass     -> INT,
+    defn.LongClass    -> LONG,
+    defn.FloatClass   -> FLOAT,
+    defn.DoubleClass  -> DOUBLE
+  )
 
 
   /** See doc of ClassBType.apply. This is where to use that method from. */
@@ -133,7 +133,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
 
   private def assertClassNotArrayNotPrimitive(sym: Symbol)(using Context): Unit = {
     assertClassNotArray(sym)
-    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, s"Found ${sym} while compiling ${ctx.compilationUnit.source.file.name}")
+    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, s"Found $sym while compiling ${ctx.compilationUnit.source.file.name}")
   }
 
   /**

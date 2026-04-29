@@ -162,7 +162,8 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
      * This method is used by asm when computing stack map frames.
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
-      // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
+      // All types that appear in a class node need to have their ClassBType cached,
+      // i.e., have been loaded either from symbols or from class files.
       val a = bTypeLoader.classBTypeFromInternalName(inameA).get
       val b = bTypeLoader.classBTypeFromInternalName(inameB).get
       val lub = a.jvmWiseLUB(b, bTypes)
