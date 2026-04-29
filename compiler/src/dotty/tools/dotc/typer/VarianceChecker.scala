@@ -121,15 +121,15 @@ class VarianceChecker(using Context) {
      *  same is true of the parameters (ValDefs).
      */
     def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = trace(s"variance checking $tp of $base at $variance", variances) {
-      try
+      ctx.handleRecursive("variance check of", tp):
         if (status.isDefined) status
-        else tp match {
+        else tp match
           case tp: TypeRef =>
             val sym = tp.symbol
             if (sym.isOneOf(VarianceFlags) && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
             else sym.info match {
               case MatchAlias(_) => foldOver(status, tp)
-              case TypeAlias(alias) => this(status, alias)
+              case TypeAlias(alias) => this (status, alias)
               case _ => foldOver(status, tp)
             }
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
@@ -138,10 +138,6 @@ class VarianceChecker(using Context) {
             foldOver(status, tp.parents)
           case _ =>
             foldOver(status, tp)
-        }
-      catch {
-        case ex: Throwable => handleRecursive("variance check of", tp.show, ex)
-      }
     }
 
     def checkInfo(info: Type): Option[VarianceError] = info match

@@ -129,7 +129,7 @@ object SyntaxHighlighting {
         }
       }
 
-      try
+      ctx.handleRecursive("syntax highlighting", () => in):
         val parser = new Parser(source)
         val trees = parser.blockStatSeq()
         TreeHighlighter.highlight(trees)
@@ -149,9 +149,6 @@ object SyntaxHighlighting {
           highlighted.append(NoColor)
 
         highlighted.toString
-      catch
-        case e: StackOverflowError =>
-          in
     }
   }
 

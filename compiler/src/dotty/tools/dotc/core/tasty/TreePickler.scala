@@ -379,7 +379,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       registerDef(sym)
       writeByte(tag)
       val addr = currentAddr
-      try
+      ctx.handleRecursive("tree pickling", mdef):
         withLength {
           pickleName(sym.name)
           pickleParams
@@ -396,7 +396,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             pickleTreeUnlessEmpty(rhs)
           pickleModifiers(sym, mdef)
         }
-      catch case t: Throwable => handleRecursive("tree pickling", mdef.show, t)
       if sym.is(Method) && sym.owner.isClass then
         profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
       for docCtx <- ctx.docCtx do
