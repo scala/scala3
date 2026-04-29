@@ -1137,6 +1137,8 @@ class Definitions {
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
   @tu lazy val JavaRecordFieldsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.JavaRecordFields")
   @tu lazy val QualifiedAnnot: ClassSymbol = requiredClass("scala.annotation.qualified")
+  @tu lazy val QualifiedTypesInternalModule: Symbol = requiredModule("scala.qualifiedTypes.internal")
+  @tu lazy val QualifiedTypesInternal_skolem: Symbol = QualifiedTypesInternalModule.requiredMethod("skolem")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
   @tu lazy val RuntimeCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.RuntimeChecked")
   @tu lazy val SourceFileAnnot: ClassSymbol = requiredClass("scala.annotation.internal.SourceFile")
