@@ -4,13 +4,12 @@ import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.*
-import core.{MacroClassLoader, TypeError}
+import core.{MacroClassLoader, RecursiveOperation, TypeError}
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.{AbstractFile, FileExtension}
 import reporting.*
 import core.Decorators.*
 import util.chaining.*
-
 import fromtasty.{TASTYCompiler, TastyFileUtil}
 
 /** Run the Dotty compiler.
@@ -85,6 +84,7 @@ class Driver {
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
       fileNamesOrNone.map(fileNames =>
+        ctx.base.recursiveOperations = Array.fill[RecursiveOperation](ctx.settings.XmaxFuel.value)(RecursiveOperation.blank())
         MacroClassLoader.init(ictx)
         Positioned.init
         if !ctx.settings.Yreporter.isDefault && ctx.settings.Yreporter.value != "help" then
@@ -173,7 +173,17 @@ class Driver {
       compileCtx.setReporter(reporter)
     if (callback != null)
       compileCtx.setCompilerCallback(callback)
-    process(args, compileCtx)
+    try
+      process(args, compileCtx)
+    catch
+      // This should be the ONLY point in the compiler where we catch stack overflows.
+      // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.
+      // This is a pure best-effort attempt at helping the user.
+      case so: StackOverflowError =>
+        report.error("Stack overflow in the compiler.\n"
+                   + "See https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html\n"
+                   + s"Stack trace:\n${so.getStackTrace.mkString("\n  ")}")(using compileCtx)
+        compileCtx.reporter
   }
 
   /** Entry point to the compiler with no optional arguments.
