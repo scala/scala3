@@ -182,7 +182,7 @@ class DesugarSpecializedTraits extends MacroTransform:
 
       init.setParamss(typeParams :: valueParams)
 
-      val paramAccessorss = valueParams.map(params => params.map(_.copy(owner = classSymbol, flags= Flags.LocalParamAccessor))) 
+      val paramAccessorss = valueParams.map(params => params.map(s => s.copy(owner = classSymbol, flags=s.flags|Flags.LocalParamAccessor))) 
       paramAccessorss.foreach(_.foreach(classSymbol.enter(_)))
 
       init.info = tm2(specialization.traitSymbol.primaryConstructor.info.appliedTo(specialization.typeArguments.map(_.tpe)))
