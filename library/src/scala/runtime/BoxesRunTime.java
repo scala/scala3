@@ -72,6 +72,8 @@ public final class BoxesRunTime
     }
 
     public static java.lang.Double boxToDouble(double d) {
+        // System.out.println("box " + d);
+        // (new Throwable()).printStackTrace();
         return java.lang.Double.valueOf(d);
     }
 

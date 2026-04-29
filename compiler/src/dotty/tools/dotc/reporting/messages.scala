@@ -124,8 +124,10 @@ extends SyntaxMsg(errNo) {
     }
 
     val code1 =
-      s"""|try $tryString catch {
-          |  case e: Exception => ???
+      s"""|import scala.util.control.NonFatal
+          |
+          |try $tryString catch {
+          |  case NonFatal(e) => ???
           |}""".stripMargin
 
     val code2 =
@@ -144,8 +146,8 @@ extends SyntaxMsg(errNo) {
         |
         |$code2
         |
-        |It is recommended to catch ${hl("Exception")} rather than ${hl("Throwable")} as the latter
-        |includes ${hl("Error")} instances which indicate grave issues that should not be ignored."""
+        |It is recommended to use the ${hl("NonFatal")} extractor to catch all exceptions as it
+        |correctly handles transfer functions like ${hl("return")}."""
   }
 }
 

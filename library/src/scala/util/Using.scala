@@ -280,7 +280,7 @@ object Using {
   private def preferentiallySuppress(primary: Throwable, secondary: Throwable): Throwable = {
     @annotation.nowarn("cat=deprecation")  // avoid warning on mention of ThreadDeath
     def score(t: Throwable): Int = t match {
-      case _: VirtualMachineError                   => 4 // very bad idea but preserved for compatibility
+      case _: VirtualMachineError                   => 4
       case _: LinkageError                          => 3
       case _: InterruptedException | _: ThreadDeath => 2
       case _: ControlThrowable                      => -1 // below everything

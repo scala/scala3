@@ -42,7 +42,7 @@ class PrintingTest {
     try {
       Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
     } catch {
-      case e: Exception =>
+      case e: Throwable =>
         println(s"Compile $path exception:")
         e.printStackTrace()
         throw e

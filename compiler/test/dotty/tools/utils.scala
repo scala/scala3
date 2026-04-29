@@ -13,7 +13,7 @@ import scala.jdk.StreamConverters.*
 import scala.reflect.ClassTag
 import scala.util.Using.{Releasable, resource}
 import scala.util.chaining.given
-import scala.util.control.ControlThrowable
+import scala.util.control.{ControlThrowable, NonFatal}
 
 import dotc.config.CommandLineParser
 
@@ -69,10 +69,10 @@ def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit 
     body
     throw Unthrown
   catch
-    case Unthrown         => throw AssertionError("Expression did not throw!")
-    case e: T if p(e)     => ()
-    case failed: T        => throw AssertionError(s"Exception failed check: $failed").tap(_.addSuppressed(failed))
-    case other: Exception => throw AssertionError(s"Wrong exception: expected ${implicitly[ClassTag[T]]} but was ${other.getClass.getName}").tap(_.addSuppressed(other))
+    case Unthrown        => throw AssertionError("Expression did not throw!")
+    case e: T if p(e)    => ()
+    case failed: T       => throw AssertionError(s"Exception failed check: $failed").tap(_.addSuppressed(failed))
+    case NonFatal(other) => throw AssertionError(s"Wrong exception: expected ${implicitly[ClassTag[T]]} but was ${other.getClass.getName}").tap(_.addSuppressed(other))
 end assertThrows
 
 enum TestPlatform:

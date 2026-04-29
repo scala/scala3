@@ -6,7 +6,6 @@ import org.junit.Test
 import scala.annotation.{nowarn, unused}
 import scala.collection.immutable.VectorInline.{WIDTH3, WIDTH4, WIDTH5}
 import scala.collection.mutable.{ListBuffer, StringBuilder}
-import scala.util.control.NonFatal
 import tools.AssertUtil.intercept
 
 class VectorTest {
@@ -664,7 +663,7 @@ object VectorUtils {
 
   def validateDebug[T](v: Vector[T]): Unit = {
     try validate(v) catch {
-      case NonFatal(ex) =>
+      case ex: Throwable =>
         throw new RuntimeException("Validation failed: " + ex.getMessage + "\n" + toDebugString(v), ex)
     }
   }

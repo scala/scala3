@@ -132,7 +132,7 @@ trait RunnerOrchestration:
         try
           f(debuggee)
           debuggee.exit()
-        catch case _: Exception => Failure("Bad debug")
+        catch case e: Throwable => Failure("Bad debug")
       end debugMain
 
       private def startMain(classPath: String): Future[Status] = {

@@ -31,7 +31,7 @@ class PatmatExhaustivityTest {
     try {
       Main.process((options ::: opts ::: files.map(_.toString)).toArray, reporter, null)
     } catch {
-      case e: Exception =>
+      case e: Throwable =>
         e.printStackTrace(printWriter)
     }
 

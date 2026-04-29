@@ -71,8 +71,15 @@ public class FutureConvertersTest {
         p.failure(ex);
         assertTrue("cs must be completed by now", cp.isDone());
         assertEquals("exceptionally equals", ex.toString(), cp.exceptionally(x -> x.toString()).get());
-        ExecutionException exn = assertThrows("get() must throw and thrown exception must be wrapped", ExecutionException.class, cp::get);
-        assertEquals("wrapper must contain the right exception", ex, exn.getCause());
+        Throwable thr = null;
+        try {
+            cp.get();
+        } catch (Throwable t) {
+            thr = t;
+        }
+        assertNotNull("get() must throw", thr);
+        assertEquals("thrown exception must be wrapped", ExecutionException.class, thr.getClass());
+        assertEquals("wrapper must contain the right exception", ex, thr.getCause());
     }
 
     @Test
