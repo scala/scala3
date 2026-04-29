@@ -692,7 +692,7 @@ object Parsers {
           if location.inPattern && in.token == INDENT && !in.currentRegion.isOutermost then
             in.currentRegion match
               case Indented(_, EQUALS, outer) =>
-                in.currentRegion = outer
+                in.currentRegion = outer.nn // we already checked !isOutermost
                 in.nextToken()
               case _ =>
           NamedArg(name, op())
