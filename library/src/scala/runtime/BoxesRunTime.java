@@ -108,7 +108,6 @@ public final class BoxesRunTime
     }
 
     public static double unboxToDouble(Object d) {
-        //        System.out.println("unbox " + d);
         return d == null ? 0.0d : ((java.lang.Double)d).doubleValue();
     }
 
@@ -167,12 +166,12 @@ public final class BoxesRunTime
     }
 
     public static boolean equalsCharObject(java.lang.Character xc, Object y) {
+        if (xc == null)
+            return y == null;
         if (y instanceof java.lang.Character)
             return xc.charValue() == ((java.lang.Character)y).charValue();
         if (y instanceof java.lang.Number)
             return equalsNumChar((java.lang.Number)y, xc);
-        if (xc == null)
-            return y == null;
 
         return xc.equals(y);
     }
