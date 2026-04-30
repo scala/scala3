@@ -244,7 +244,7 @@ object Build {
   )
 
   lazy val disableDocSetting =
-      // This is a legacy settings, we should reevalute generating javadocs
+      // This is a legacy settings, we should reevaluate generating javadocs
       Compile / doc / sources := Seq()
 
   lazy val commonSettings = publishSettings ++ Seq(
