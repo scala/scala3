@@ -4476,7 +4476,7 @@ object Parsers {
       val mods1 = checkEnumModifiers(mods, " case") | EnumCase
       accept(CASE)
 
-      atSpan(start, nameStart):
+      atSpan(start, nameStart) {
         val id = termIdent()
         if (in.token == COMMA) {
           in.nextToken()
@@ -4502,6 +4502,7 @@ object Parsers {
               ModuleDef(id.name.toTermName, caseTemplate(emptyConstructor))
           finalizeDef(caseDef, mods1, start)
         }
+      }
     }
 
     /** [`extends' ConstrApps] */
