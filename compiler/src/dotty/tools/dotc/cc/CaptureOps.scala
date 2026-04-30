@@ -933,7 +933,8 @@ object Explicify {
     case _ => false
 
   /** Walk `tp`'s lambda chain, leaving params and binder bounds alone
-   *  and sanitizing only the innermost result.
+   *  and re-marking placeholder retains in the innermost result with
+   *  `@caps.internal.inferred`.
    */
   def explicify(tp: Type)(using Context): Type = tp match
     case defn.PolyFunctionOf(mt: MethodOrPoly) =>
@@ -945,34 +946,28 @@ object Explicify {
       val res1 = explicify(args.last)
       if res1 eq args.last then tp else AppliedType(tycon, args.init :+ res1)
     case _ =>
-      sanitizeLeaf(tp)
+      markPlaceholderRetains(tp)
 
-  /** Drop typer placeholder arguments from `@retains` annotations (e.g.
-   *  `retain[TypeBounds(...)]` for unresolved inference) while keeping
-   *  user-written capability references. Mixed args like
-   *  `retain[x | TypeBounds(...)]` reduce to `retain[x]`.
+  /** Replace each `@retains` whose argument is a typer placeholder
+   *  (e.g. `retain[TypeBounds(...)]` for unresolved inference) with
+   *  `@caps.internal.inferred` on the parent. User-written retains
+   *  referencing capabilities are left intact so the body's result
+   *  type keeps its binding to capset binders.
    */
-  private def sanitizeLeaf(tp: Type)(using Context): Type =
+  private def markPlaceholderRetains(tp: Type)(using Context): Type =
     val tm = new TypeMap:
       def apply(tp: Type): Type = tp match
-        case AnnotatedType(parent, ann: RetainingAnnotation) =>
-          val args = ann.argumentTypes
-          val args1 = args.mapConserve(filterValidRetainArg)
-          if args1 eq args then mapOver(tp)
-          else AnnotatedType(this(parent), RetainingAnnotation(ann.symbol.asClass, args1*))
+        case AnnotatedType(parent, ann: RetainingAnnotation)
+        if !ann.argumentTypes.forall(isValidRetainArg) =>
+          AnnotatedType(this(parent), Annotation(defn.InferredAnnot, util.Spans.NoSpan))
         case _ => mapOver(tp)
     tm(tp)
 
-  /** Replace non-capability sub-parts with `Nothing` (the empty-capture
-   *  marker); `OrType` collapses to its valid branches.
-   */
-  private def filterValidRetainArg(tp: Type)(using Context): Type = tp match
-    case _: (TermRef | TypeRef | TypeParamRef | ThisType | SkolemType) => tp
-    case tp @ AnnotatedType(parent, ann) =>
-      tp.derivedAnnotatedType(filterValidRetainArg(parent), ann)
-    case tp: OrType =>
-      tp.derivedOrType(filterValidRetainArg(tp.tp1), filterValidRetainArg(tp.tp2))
-    case _ => defn.NothingType
+  private def isValidRetainArg(tp: Type)(using Context): Boolean = tp match
+    case _: (TermRef | TypeRef | TypeParamRef | ThisType | SkolemType) => true
+    case AnnotatedType(parent, _) => isValidRetainArg(parent)
+    case OrType(tp1, tp2) => isValidRetainArg(tp1) && isValidRetainArg(tp2)
+    case _ => false
 
   /** Flip an inferred TypeTree to non-inferred, with the explicified type. */
   def explicifyTpt(tpt: Tree)(using Context): Tree = tpt match
