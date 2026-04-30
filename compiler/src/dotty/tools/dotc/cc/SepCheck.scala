@@ -86,7 +86,7 @@ object SepCheck:
     /** The references in the set. The array should be treated as immutable in client code */
     def refs: Array[Capability]
 
-    /** The associated source positoons and type roles. The array should be treated as immutable in client code */
+    /** The associated source positions and type roles. The array should be treated as immutable in client code */
     def locs: Array[(SrcPos, TypeRole)]
 
     /** The number of references in the set */
