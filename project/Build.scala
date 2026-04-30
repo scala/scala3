@@ -103,7 +103,7 @@ object Build {
   def isNightly = sys.env.get("NIGHTLYBUILD").contains("yes")
   def isBenchmark = sys.env.get("BENCHMARKBUILD").contains("yes")
 
-  /** Version calculate for `nonbootstrapped` projects */
+  /** Version calculated for `nonbootstrapped` projects */
   val dottyNonBootstrappedVersion = {
     // Make sure sbt always computes the scalaBinaryVersion correctly
     val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
