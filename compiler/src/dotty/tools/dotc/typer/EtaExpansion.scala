@@ -160,7 +160,7 @@ abstract class Lifter {
    *     val x0 = pre
    *     x0.f(...)
    *
-   *  unless `pre` is idempotent reference, a `this` reference, a literal value, or a or the prefix of an `init` (`New` tree).
+   *  unless `pre` is idempotent reference, a `this` reference, a literal value, or the prefix of an `init` (`New` tree).
    *
    *  Note that default arguments will refer to the prefix, we do not want
    *  to re-evaluate a complex expression each time we access a getter.
