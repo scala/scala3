@@ -52,7 +52,7 @@ object SepCheck:
     case Qualifier(qual: Tree, meth: Symbol)
     case RHS(rhs: Tree, mvar: Symbol)
 
-    /** If this is a Result tole, the associated symbol, otherwise NoSymbol */
+    /** If this is a Result role, the associated symbol, otherwise NoSymbol */
     def dclSym = this match
       case Result(sym, _) => sym
       case _ => NoSymbol
