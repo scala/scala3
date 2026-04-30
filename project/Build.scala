@@ -787,7 +787,7 @@ object Build {
       scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := false, // org.scala-lang:scala3-sbt-bridge doesn't have a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-nonbootstrapped`
-      // Add the source directories for the sbt-bridge (non-boostrapped)
+      // Add the source directories for the sbt-bridge (non-bootstrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Compile / resourceDirectory := baseDirectory.value / "resources",
