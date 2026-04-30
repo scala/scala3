@@ -94,7 +94,9 @@
    |          Not found: bam
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg/syntax-error-recovery.scala:61:2 -----------------------------------------------------------------
+-- [E229] Syntax Warning: tests/neg/syntax-error-recovery.scala:61:2 ---------------------------------------------------
 61 |  println(bam)
    |  ^
    |  Line is indented too far to the left, or a ')' is missing
+   |
+   | longer explanation available when compiling with `-explain`
