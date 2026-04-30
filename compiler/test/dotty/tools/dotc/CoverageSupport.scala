@@ -149,7 +149,6 @@ trait CoverageSupport:
         val coverageDir = Files.createTempDirectory("coverage")
         val sourceRoot = Paths.get(".").toAbsolutePath.toString
         target.withFlags(
-          "-Ycheck:instrumentCoverage",
           "-coverage-out", coverageDir.toString,
           "-sourceroot", sourceRoot
         )

@@ -6,7 +6,6 @@
 
 16583.scala
 applied_constructor_types.scala
-capt1.scala
 capture.scala
 gadt-ycheck.scala
 help.scala
@@ -20,7 +19,6 @@ i15165.scala
 i15864.scala
 i18263.orig.scala
 i18263.scala
-i18589
 i19955a.scala
 i19955b.scala
 i20053b.scala
@@ -34,7 +32,6 @@ i8900a3.scala
 i9228.scala
 lazyVals_c3.0.0.scala
 lazyVals_c3.1.0.scala
-minicheck-toplevel.scala
 mt-scrutinee-widen3.scala
 null.scala
 pos_valueclasses
