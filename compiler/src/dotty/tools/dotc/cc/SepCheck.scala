@@ -35,7 +35,7 @@ object SepCheck:
   enum Captures derives CanEqual:
     case None
     case Explicit   // one or more explicitly declared captures
-    case Hidden     // exacttly one hidden captures
+    case Hidden     // exactly one hidden captures
     case NeedsCheck // one hidden capture and one other capture (hidden or declared)
 
     def add(that: Captures): Captures =
