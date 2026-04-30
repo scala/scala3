@@ -27,7 +27,7 @@ import Capabilities.*
  *   - If returned hidden sets refer to an encloding this, the reference must be
  *     from a consume method.
  *   - Consumed entities cannot be used subsequently.
- *   - Entitites cannot be consumed in a loop.
+ *   - Entities cannot be consumed in a loop.
  */
 object SepCheck:
 
