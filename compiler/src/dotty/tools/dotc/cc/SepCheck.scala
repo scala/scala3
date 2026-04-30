@@ -22,7 +22,7 @@ import Capabilities.*
  *  methods below. Rough summary:
  *
  *   - Hidden sets of arguments must not be referred to in the same application
- *   - Hidden sets of (result-) types must not be referred to alter in the same scope.
+ *   - Hidden sets of (result-) types must not be referred to later in the same scope.
  *   - Returned hidden sets can only refer to consume parameters.
  *   - If returned hidden sets refer to an enclosing this, the reference must be
  *     from a consume method.
