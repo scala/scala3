@@ -340,7 +340,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The set of references that were consumed so far in the current method */
   private var consumed: MutConsumedSet = MutConsumedSet()
 
-  /** Infos aboput Labeled expressions enclosing the current traversal point.
+  /** Infos about Labeled expressions enclosing the current traversal point.
    *  For each labeled expression, it's label name, and a list buffer containing
    *  all consumed sets of return expressions referring to that label.
    */
