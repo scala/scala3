@@ -24,7 +24,7 @@ import Capabilities.*
  *   - Hidden sets of arguments must not be referred to in the same application
  *   - Hidden sets of (result-) types must not be referred to alter in the same scope.
  *   - Returned hidden sets can only refer to consume parameters.
- *   - If returned hidden sets refer to an encloding this, the reference must be
+ *   - If returned hidden sets refer to an enclosing this, the reference must be
  *     from a consume method.
  *   - Consumed entities cannot be used subsequently.
  *   - Entities cannot be consumed in a loop.
