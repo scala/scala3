@@ -126,10 +126,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
     try
       recordTree(tree)
 
-      tree match
-        case TypeApply(fun, args) if fun.symbol.is(Inline) =>
-          addMacroDependency(args)
-        case _ =>
+      recordInlineCallArgs(tree)
         
       tree match
         case tree: Inlined if !tree.inlinedFromOuterScope =>
@@ -223,6 +220,12 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
     catch case ex: StaleSymbol =>
       // can happen for constructor proxies. Test case is pos-macros/i13532.
       true
+
+  protected def recordInlineCallArgs(tree: Tree)(using Context) =
+    tree match
+      case TypeApply(fun, args) if fun.symbol.is(Inline) =>
+        addMacroDependency(args)
+      case _ =>
 
   protected def recordTree(tree: Tree)(using Context): Unit =
     tree match
