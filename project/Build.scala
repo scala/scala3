@@ -793,7 +793,7 @@ object Build {
       Compile / resourceDirectory := baseDirectory.value / "resources",
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
-        ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13),
+        ("org.scala-sbt" %% "zinc-apiinfo" % "1.12.0" % Test).cross(CrossVersion.for3Use2_13),
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ),
       // Exclude the transitive dependencies from `zinc-apiinfo` that causes issues at the moment
@@ -2194,7 +2194,7 @@ object Build {
     val mtagsVersion = "1.6.7"
     Seq(
       libraryDependencies ++= Seq(
-        "org.lz4" % "lz4-java" % "1.8.0",
+        "org.lz4" % "lz4-java" % "1.8.1",
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
         "com.google.guava" % "guava" % "33.2.1-jre",
