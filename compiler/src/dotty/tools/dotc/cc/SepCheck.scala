@@ -1021,10 +1021,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def inSection[T](op: => T)(using Context): T =
     val savedDefsShadow = defsShadow
-    val savedPrevionsDefs = previousDefs
+    val savedPreviousDefs = previousDefs
     try op
     finally
-      previousDefs = savedPrevionsDefs
+      previousDefs = savedPreviousDefs
       defsShadow = savedDefsShadow
 
   def traverseSection[T](tree: Tree)(using Context) = inSection(traverseChildren(tree))
