@@ -81,7 +81,7 @@ object Build {
    *    - TASTY experimental version:
    *      - in main (NIGHTLY) is always experimental
    *      - in release candidate branch is experimental if {patch == 0}
-   *      - in stable release is always non-experimetnal
+   *      - in stable release is always non-experimental
    */
   val expectedTastyVersion = "28.9-experimental-1"
   checkReleasedTastyVersion()
