@@ -18,7 +18,7 @@ Building a Local Distribution
 
 Code of Conduct
 ===============
-Dotty uses the [Scala Code of Conduct](https://www.scala-lang.org/conduct.html)
+Scala 3 uses the [Scala Code of Conduct](https://www.scala-lang.org/conduct.html)
 for all communication and discussion. This includes both GitHub, Discord and
 other more direct lines of communication such as email.
 
