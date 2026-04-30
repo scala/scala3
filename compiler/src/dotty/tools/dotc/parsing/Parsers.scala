@@ -140,7 +140,7 @@ object Parsers {
       val backquoted = in.token == BACKQUOTED_IDENT
       atSpan(start, if backquoted then in.offset + 1 else in.offset):
         tree.tap: t =>
-          if backquoted then
+          if backquoted && !t.hasAttachment(Backquoted) then
             t.pushAttachment(Backquoted, ())
 
     def startOffset(t: Positioned): Int =
@@ -4442,9 +4442,6 @@ object Parsers {
         val nameIdent = termIdent()
         val templ = templateOpt(emptyConstructor)
         ModuleDef(nameIdent.name.asTermName, templ)
-          .tap: md =>
-            if nameIdent.isBackquoted then
-              md.pushAttachment(Backquoted, ())
       finalizeDef(md, mods, start)
 
     // We allow `infix` and `into` on `enum` definitions.
