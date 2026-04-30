@@ -2,8 +2,7 @@
 source "https://rubygems.org"
 ruby "~> 2.7"
 
-gem "jekyll", "3.6.3"
+gem "jekyll"
 gem "webrick"
 gem "rouge"
-# gem 's3_website'
-gem "redcarpet", "3.6.1"
+gem "jekyll-sass-converter", "~> 2.2"
