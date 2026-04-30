@@ -68,7 +68,7 @@ object Build {
   val baseVersion = s"$developedVersion-RC1"
 
   /** The version of TASTY that should be emitted, checked in runtime test
-   *  For defails on how TASTY version should be set see related discussions:
+   *  For details on how TASTY version should be set see related discussions:
    *    - https://github.com/scala/scala3/issues/13447#issuecomment-912447107
    *    - https://github.com/scala/scala3/issues/14306#issuecomment-1069333516
    *    - https://github.com/scala/scala3/pull/19321
