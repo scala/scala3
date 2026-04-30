@@ -215,7 +215,7 @@ object EtaExpansion extends LiftImpure {
    *
    *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) _ }
    *
-   *  where `T1, ..., Tn` are the paremeter types of the expanded method.
+   *  where `T1, ..., Tn` are the parameter types of the expanded method.
    *  If `expr` has implicit function type, the arguments are passed with `given`.
    *  E.g. for (1):
    *
