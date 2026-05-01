@@ -71,7 +71,7 @@ final class PcInlineValueProvider(
       endOffset: Int,
       range: l.Range
   ): l.Range =
-    val (startWithSpace, endWithSpace): (Int, Int) =
+    val (startWithSpace: Int, endWithSpace: Int) =
       extendRangeToIncludeWhiteCharsAndTheFollowingNewLine(
         text
       )(startOffset, endOffset)
