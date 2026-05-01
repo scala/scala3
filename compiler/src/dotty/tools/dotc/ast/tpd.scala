@@ -274,10 +274,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         (rtp, tparams :: paramss)
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
-        val previousParamRefs: mutable.ListBuffer[TermRef] =
-          // It is ok to assign `null` here.
-          // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
-          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: mutable.ListBuffer[TermRef] | Null).uncheckedNN
+        val previousParamRefs: Option[mutable.ListBuffer[TermRef]] =
+          if isParamDependent then Some(mutable.ListBuffer[TermRef]()) else None
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
@@ -289,8 +287,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
           if isParamDependent then
-            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
-            previousParamRefs += sym.termRef
+            val refs = previousParamRefs.get
+            val sym = makeSym(origInfo.substParams(tp, refs.toList))
+            refs += sym.termRef
             sym
           else makeSym(origInfo)
         end valueParam
