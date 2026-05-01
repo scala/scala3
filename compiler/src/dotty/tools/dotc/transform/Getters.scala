@@ -109,12 +109,9 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
         .tap: setter =>
           newSetters += setter
           if sym.is(Private) then
-            sym.owner.info.decls.toList.find: other =>
-              other != setter && other.name == setter.name && other.info =:= setter.info
-            .match
-              case Some(other) =>
-                report.error(DoubleDefinition(setter, other, sym.owner), sym.srcPos)
-              case _ =>
+            sym.owner.info.decls.toList
+            .find(other => other != setter && other.name == setter.name && other.info =:= setter.info)
+            .foreach(other => report.error(DoubleDefinition(setter, other, sym.owner), sym.srcPos))
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
     val sym = tree.symbol

@@ -1113,9 +1113,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def becomes(rhs: Tree)(using Context): Tree = {
       val sym = tree.symbol
       if sym.is(Method) then
-        val setter = sym.setter.orElse:
+        val setter = sym.setter.orElse {
           assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty, sym)
           sym
+        }
         setterAppliedTo(setter, rhs)
       else Assign(tree, rhs)
     }
