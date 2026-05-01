@@ -9,10 +9,13 @@ import core.Flags.*
 import core.StdNames.nme
 import core.Symbols.*
 import core.Types.*
+import core.Names.*
 import MegaPhase.MiniPhase
 
 class CheckTermination extends MiniPhase {
   import tpd.*
+
+  private var checked = Set[Symbol]()
 
   override def phaseName: String = CheckTermination.name
 
@@ -24,9 +27,10 @@ class CheckTermination extends MiniPhase {
     val method = tree.symbol
     val mandatory = method.hasAnnotation(defn.TerminationAnnot)
 
-    if mandatory && !method.is(Deferred) then {
+    if mandatory && !method.is(Deferred) && !checked.contains(method) then {
       val checker = new TerminationChecker(method)
       checker.traverse(tree.rhs)
+      if !checker.hasFailed then checked ++= checker.traversedMethods
     }
 
     tree
@@ -37,6 +41,9 @@ class CheckTermination extends MiniPhase {
 
     enum Size:
       case Smaller, Same, Unknown
+
+    var hasFailed: Boolean = false
+    var traversedMethods = Set[Symbol](startMethod)
 
     private var sizeMap = Map.empty[Symbol, (Symbol | Tree, Size)]
 
@@ -55,30 +62,34 @@ class CheckTermination extends MiniPhase {
         case tree @ Apply(fn, _) if fn.symbol == defn.assumeTerminatesMethod =>
           () // Don't traverse, as we assume they terminate.
 
-        case tree @ Apply(fn, _) if fn.symbol.hasAnnotation(defn.AssumeTerminatesAnnot) =>
-          traverseChildren(tree)
-
         case tree: Apply =>
           val (fn, args) = peelApplies(tree)
+          if fn.symbol.hasAnnotation(defn.AssumeTerminatesAnnot) || checked.contains(fn.symbol) then
+            traverseChildren(tree)
+          else
+            callStack.find(_ == fn.symbol) match {
+              case Some(methodSymbol) =>
+                val params = getMethodParams(methodSymbol)
+                if !areSmaller(args, params, methodSymbol) then {
+                  report.error(
+                    s"${startMethod.name} may not terminate due to (mutually) recursive call.",
+                    tree.srcPos
+                  )
+                  hasFailed = true
+                }
+              case None =>
+                val methodSymbol = getMethodSymbol(fn)
+                traversedMethods += methodSymbol
+                traverseCalled(methodSymbol, args, tree.srcPos)
+            }
+            traverse(fn)
+            args.foreach {
+              case tree: Tree => traverse(tree)
+              case _ => ()
+            }
 
-          callStack.find(_ == fn.symbol) match {
-            case Some(methodSymbol) =>
-              val params = getMethodParams(methodSymbol)
-              if !areSmaller(args, params, methodSymbol) then {
-                report.error(
-                  s"${startMethod.name} may not terminate due to (mutually) recursive call.",
-                  tree.srcPos
-                )
-              }
-            case None => traverseCalled(getMethodSymbol(fn), args, tree.srcPos)
-          }
-          traverse(fn)
-          args.foreach {
-            case tree: Tree => traverse(tree)
-            case _ => ()
-          }
-
-        case tree @ Select(qualifier, _) if !tree.symbol.hasAnnotation(defn.AssumeTerminatesAnnot) =>
+        case tree @ Select(qualifier, _) if !tree.symbol.hasAnnotation(defn.AssumeTerminatesAnnot) &&
+                                            !checked.contains(tree.symbol) =>
           callStack.find(_ == tree.symbol) match {
             case Some(methodSymbol) =>
               val params = getMethodParams(methodSymbol)
@@ -87,11 +98,13 @@ class CheckTermination extends MiniPhase {
                   s"${startMethod.name} may not terminate due to (mutually) recursive call.",
                   tree.srcPos
                 )
+                hasFailed = true
               }
             case None =>
               val methodSymbol = tree.symbol
               val params = getMethodParams(methodSymbol)
               if params.length <= 1 then {
+                traversedMethods += methodSymbol
                 traverseCalled(methodSymbol, Nil, tree.srcPos)
               }
           }
@@ -194,11 +207,15 @@ class CheckTermination extends MiniPhase {
     }
 
     private def peelSelects(tree: Tree)(using Context): Option[(Symbol, Boolean)] = {
+      def isMethodAnnotated(tpeSym: Symbol, name: Name, cls: Symbol) =
+        tpeSym.info.member(name).symbol.hasAnnotation(cls)
+
       def isQualifierSmaller(qualifier: Tree): Option[(Symbol, Boolean)] = {
         peelSelects(qualifier) match {
           case Some(symbol, _) =>
             val tpeSym = symbol.info.typeSymbol
-            val res = tree.symbol.hasAnnotation(defn.AssumeDecreasesAnnot) || {
+            val res = isMethodAnnotated(tpeSym, tree.symbol.name, defn.AssumeDecreasesAnnot) ||
+              tpeSym.children.forall(isMethodAnnotated(_, tree.symbol.name, defn.AssumeDecreasesAnnot)) || {
               tpeSym.is(Case) && tpeSym.isClass && {
                 val constructorParams = tpeSym.asClass.primaryConstructor 
                                               .paramSymss.filter(!_.exists(_.isTypeParam)).head
