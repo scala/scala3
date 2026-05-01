@@ -10,8 +10,7 @@ object Dependencies {
   val `jackson-dataformat-yaml` =
     "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  // Freeze on 0.62.x as 0.64.0 requires Java 11
-  private val flexmarkVersion = "0.62.2"
+  private val flexmarkVersion = "0.64.8"
 
   val flexmarkDeps = Seq(
     "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
@@ -28,5 +27,5 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
   )
 
-  val compilerInterface = "org.scala-sbt" % "compiler-interface" % "1.10.7"
+  val compilerInterface = "org.scala-sbt" % "compiler-interface" % "1.12.0"
 }
