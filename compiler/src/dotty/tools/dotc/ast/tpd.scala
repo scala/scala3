@@ -273,9 +273,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
-        val isParamDependent = tp.isParamDependent
-        val previousParamRefs: Option[mutable.ListBuffer[TermRef]] =
-          if isParamDependent then Some(mutable.ListBuffer[TermRef]()) else None
+        val previousParamRefs: mutable.ListBuffer[TermRef] | Null =
+          if tp.isParamDependent then mutable.ListBuffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
@@ -286,10 +285,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
-          if isParamDependent then
-            val refs = previousParamRefs.get
-            val sym = makeSym(origInfo.substParams(tp, refs.toList))
-            refs += sym.termRef
+          if previousParamRefs ne null then
+            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
+            previousParamRefs += sym.termRef
             sym
           else makeSym(origInfo)
         end valueParam
