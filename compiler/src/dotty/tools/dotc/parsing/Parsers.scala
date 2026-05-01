@@ -3834,7 +3834,7 @@ object Parsers {
             mods = addModifier(mods)
           mods |= Param
         }
-        atNameSpan(start):
+        atNameSpan(start) {
           val name = ident() match
             case nme.using if !in.isColon =>
               val msg = ExpectedTokenButFoundSoftKeyword(expected = COLONop, found = in.token, nme.using, paramModAdvice)
@@ -3859,6 +3859,7 @@ object Parsers {
           if (impliedMods.mods.nonEmpty)
             impliedMods = impliedMods.withMods(Nil) // keep only flags, so that parameter positions don't overlap
           ValDef(name, tpt, default).withMods(mods)
+        }
       }
 
       def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
@@ -4186,12 +4187,8 @@ object Parsers {
         else EmptyTree
       lhs match {
         case IdPattern(id, t) :: Nil if t.isEmpty =>
-          val vdef =
-            if isBackquoted(id) then
-              ValDef(id.name.asTermName, tpt, rhs)
-                .tap(_.pushAttachment(Backquoted, ()))
-            else
-              ValDef(id.name.asTermName, tpt, rhs)
+          val vdef = ValDef(id.name.asTermName, tpt, rhs)
+          if (isBackquoted(id)) vdef.pushAttachment(Backquoted, ())
           finalizeDef(vdef, mods, start)
         case _ =>
           def isAllIds = lhs.forall {
