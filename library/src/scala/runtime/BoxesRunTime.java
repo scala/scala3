@@ -12,6 +12,7 @@
 
 package scala.runtime;
 
+import java.util.Objects;
 import scala.math.ScalaNumber;
 
 /** An object (static class) that defines methods used for creating,
@@ -191,7 +192,7 @@ public final class BoxesRunTime
         case DOUBLE:
             return xn.doubleValue() == ch;
         default:
-            return xn.equals(yc);
+            return Objects.equals(xn, yc);
         }
     }
 
