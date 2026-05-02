@@ -1,7 +1,3 @@
--- Warning: tests/neg/ycheck-termination-class.scala:9:16 --------------------------------------------------------------
-9 |  def classLoop(r: ClassNode): Int =
-  |                ^
-  |                Argument of type ClassNode decreases but the type is not well-founded.
 -- Error: tests/neg/ycheck-termination-class.scala:10:17 ---------------------------------------------------------------
 10 |    1 + classLoop(r.next) // error
    |        ^^^^^^^^^^^^^^^^^

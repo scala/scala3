@@ -42,10 +42,14 @@ class CheckTermination extends MiniPhase {
     enum Size:
       case Smaller, Same, Unknown
 
-    var hasFailed: Boolean = false
+    var shouldReport = true
+
+    var hasFailed = false
     var traversedMethods = Set[Symbol](startMethod)
 
     private var sizeMap = Map.empty[Symbol, (Symbol | Tree, Size)]
+
+    private var varSizeMap = Map.empty[Symbol, Size]
 
     private var callStack = List[Symbol](startMethod)
 
@@ -54,10 +58,24 @@ class CheckTermination extends MiniPhase {
         case tree: DefDef => () // Don't traverse inner function definitions.
 
         case tree: WhileDo =>
-          report.warning(
-            "The termination checker does not support while loops.",
-            tree.srcPos
-          )
+          val savedMap = varSizeMap
+          varSizeMap = Map.empty
+          shouldReport = false
+          traverseChildren(tree)
+          shouldReport = true
+          if !varSizeMap.exists((_, size) => size == Size.Smaller) then {
+            report.error(
+              s"${startMethod.name} may not terminate due to infinite while loop.",
+              tree.srcPos
+            )
+          } else {
+            varSizeMap = savedMap
+            traverseChildren(tree) // TODO: Find a way to not have to traverse twice.
+            val foldedMap = foldVarSizes(savedMap, varSizeMap)
+            // If the loop never runs the variables sizes don't change.
+            varSizeMap = foldVarSizes(foldedMap,
+              foldedMap.map((sym, _) => sym -> savedMap.getOrElse(sym, Size.Same)))
+          }
 
         case tree @ Apply(fn, _) if fn.symbol == defn.assumeTerminatesMethod =>
           () // Don't traverse, as we assume they terminate.
@@ -70,7 +88,7 @@ class CheckTermination extends MiniPhase {
             callStack.find(_ == fn.symbol) match {
               case Some(methodSymbol) =>
                 val params = getMethodParams(methodSymbol)
-                if !areSmaller(args, params, methodSymbol) then {
+                if shouldReport && !areSmaller(args, params, methodSymbol) then {
                   report.error(
                     s"${startMethod.name} may not terminate due to (mutually) recursive call.",
                     tree.srcPos
@@ -78,9 +96,7 @@ class CheckTermination extends MiniPhase {
                   hasFailed = true
                 }
               case None =>
-                val methodSymbol = getMethodSymbol(fn)
-                traversedMethods += methodSymbol
-                traverseCalled(methodSymbol, args, tree.srcPos)
+                traverseCalled(getMethodSymbol(fn), args, tree.srcPos)
             }
             traverse(fn)
             args.foreach {
@@ -93,7 +109,7 @@ class CheckTermination extends MiniPhase {
           callStack.find(_ == tree.symbol) match {
             case Some(methodSymbol) =>
               val params = getMethodParams(methodSymbol)
-              if params.length <= 1 then {
+              if shouldReport && params.length <= 1 then {
                 report.error(
                   s"${startMethod.name} may not terminate due to (mutually) recursive call.",
                   tree.srcPos
@@ -104,21 +120,41 @@ class CheckTermination extends MiniPhase {
               val methodSymbol = tree.symbol
               val params = getMethodParams(methodSymbol)
               if params.length <= 1 then {
-                traversedMethods += methodSymbol
                 traverseCalled(methodSymbol, Nil, tree.srcPos)
               }
           }
           traverseChildren(tree)
 
+        case tree @ If(cond, thenp, elsep) => 
+          traverse(cond)
+          val savedMap = varSizeMap
+          traverse(thenp)
+          val foldedMap = foldVarSizes(savedMap, varSizeMap)
+          varSizeMap = savedMap
+          traverse(elsep)
+          varSizeMap = foldVarSizes(foldedMap, varSizeMap)
+
         case tree @ Match(selector, cases) =>
           val syntheticUnapply = isUnapplySynthetic(selector)
+          val savedMap = sizeMap
+          val savedVarMap = varSizeMap
+          var foldedMap = varSizeMap
           cases.foreach(cse =>
-            val savedMap = sizeMap
             if syntheticUnapply then { mapSymbols(selector.symbol, cse.pat) }
             traverse(cse.guard)
             traverse(cse.body)
             sizeMap = savedMap
+            foldedMap = foldVarSizes(foldedMap, varSizeMap)
+            varSizeMap = savedVarMap
           )
+          varSizeMap = foldedMap
+
+        case tree @ Assign(lhs, rhs) =>
+          varSizeMap += lhs.symbol -> (
+            if areSmaller(List(rhs), List(lhs.symbol), NoSymbol) then Size.Smaller
+            else Size.Unknown
+          )
+          traverseChildren(tree)
 
         case tree: ValDef =>
           tree.rhs match {
@@ -136,9 +172,24 @@ class CheckTermination extends MiniPhase {
       }
     }
 
+    private def foldVarSizes(before: Map[Symbol, Size], after: Map[Symbol, Size]) = {
+      after.map((symbol, afterSize) =>
+        val size = before.get(symbol) match {
+          case Some(beforeSize) =>
+            (beforeSize, afterSize) match
+              case (Size.Unknown, _) | (_, Size.Unknown) => Size.Unknown
+              case (Size.Same, _) | (_, Size.Same) => Size.Same
+              case _ => Size.Smaller
+          case None => afterSize
+        }
+        symbol -> size
+      )
+    }
+
     private def traverseCalled(methodSymbol: Symbol, args: List[Symbol | Tree], pos: SrcPos)(using Context) = {
       methodSymbol.defTree match {
         case defTree: DefDef if !defTree.rhs.isEmpty || methodSymbol.isConstructor =>
+          traversedMethods += methodSymbol
           callStack = methodSymbol :: callStack
           val savedMap = sizeMap
 
@@ -149,7 +200,7 @@ class CheckTermination extends MiniPhase {
           sizeMap = savedMap
           callStack = callStack.tail
         case _ =>
-          if methodSymbol.isRealMethod then
+          if shouldReport && methodSymbol.isRealMethod then
             report.warning(s"Method ${methodSymbol.name} has an empty tree.", pos)
       }
     }
@@ -215,7 +266,8 @@ class CheckTermination extends MiniPhase {
           case Some(symbol, _) =>
             val tpeSym = symbol.info.typeSymbol
             val res = isMethodAnnotated(tpeSym, tree.symbol.name, defn.AssumeDecreasesAnnot) ||
-              tpeSym.children.forall(isMethodAnnotated(_, tree.symbol.name, defn.AssumeDecreasesAnnot)) || {
+              (!tpeSym.children.isEmpty &&
+                tpeSym.children.forall(isMethodAnnotated(_, tree.symbol.name, defn.AssumeDecreasesAnnot))) || {
               tpeSym.is(Case) && tpeSym.isClass && {
                 val constructorParams = tpeSym.asClass.primaryConstructor 
                                               .paramSymss.filter(!_.exists(_.isTypeParam)).head
@@ -268,7 +320,8 @@ class CheckTermination extends MiniPhase {
                   case None => (tree.symbol, false)
                 }
             }
-            compareSize(argSymbol, param, decreased) match {
+            if varSizeMap.get(argSymbol) == Some(Size.Unknown) then false
+            else compareSize(argSymbol, param, decreased || varSizeMap.get(argSymbol).exists(_ == Size.Smaller)) match {
               case Size.Smaller => typeWellFounded(param.info.typeSymbol, argSymbol.srcPos)
               case Size.Same => isLexicoDecreasing(tail)
               case Size.Unknown => false
@@ -293,7 +346,7 @@ class CheckTermination extends MiniPhase {
           val unapplyMethod = tpeSym.asClass.companionClass.info.member(nme.unapply).symbol
           unapplyMethod.exists && unapplyMethod.is(Synthetic)
         }
-        if !res then {
+        if shouldReport && !res then {
           report.warning(
             s"${selector.symbol.name} may not structurally decrease because ${tpeSym.name} unapply method is overridden or undefined.",
             selector.srcPos
@@ -312,12 +365,12 @@ class CheckTermination extends MiniPhase {
         val constructorParams = classSym.primaryConstructor.paramSymss.filter(!_.exists(_.isTypeParam)).head
         fields.forall(symbol => symbol.isStableMember && constructorParams.exists(_.name == symbol.name))
 
-      val res = tpeSym.hasAnnotation(defn.AssumeWellFoundedAnnot) || {
+      lazy val res = tpeSym.hasAnnotation(defn.AssumeWellFoundedAnnot) || {
         if tpeSym.is(Sealed) then tpeSym.children.forall(typeWellFounded(_, pos))
         else tpeSym.is(CaseVal) || (tpeSym.is(Case) && tpeSym.isClass && caseClassCheck(tpeSym.asClass))
       }
 
-      if !res then {
+      if shouldReport && !res then {
         report.warning(
           s"Argument of type ${tpeSym.name} decreases but the type is not well-founded.",
           pos
