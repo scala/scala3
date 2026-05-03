@@ -6,7 +6,7 @@
 inline trait C[S: Specialized]:
    def v(x: S): S = x
    def w: Unit = 
-      val x = new C[S] {} // error: Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.
+      val x = new C[S] {} // Actually ok because $impl$ classes are generated outside of the inline trait; class C$impl$Char will just create an instance of itself (this is allowed)
       println("w")
 
 inline trait A[T: Specialized]:
