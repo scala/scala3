@@ -86,7 +86,7 @@ object Inlines:
     // && !member.symbol.is(Deferred) // Also inline interfaces (see specialized-trait-collections-example.scala)
 
   /** Should call be inlined in this context? */
-  def needsInlining(tree: Tree)(using Context): Boolean =
+  def needsInlining(tree: Tree, allowSpecializedTraits: Boolean = false)(using Context): Boolean =
     def isInlineableInCtx =
       StagingLevel.level == 0
       && (
@@ -101,10 +101,10 @@ object Inlines:
 
     tree match
       case Block(_, expr) =>
-        needsInlining(expr)
+        needsInlining(expr, allowSpecializedTraits)
       case tdef @ TypeDef(_, impl: Template) =>
         // !tdef.symbol.isInlineTrait &&
-        impl.parents.map(symbolFromParent).exists(_.isInlineTrait) && isInlineableInCtx
+        impl.parents.map(symbolFromParent).exists(sym => sym.isInlineTrait && (allowSpecializedTraits || !sym.isSpecializedTrait)) && isInlineableInCtx
       case _ =>
         def isUnapplyExpressionWithDummy: Boolean =
           // The first step of typing an `unapply` consists in typing the call
@@ -120,10 +120,10 @@ object Inlines:
   private[dotc] def symbolFromParent(parent: Tree)(using Context): Symbol =
     if parent.symbol.isConstructor then parent.symbol.owner else parent.tpe.typeSymbol
 
-  private def inlineTraitAncestors(cls: TypeDef)(using Context): List[Tree] = cls match {
+  private def inlineTraitAncestors(cls: TypeDef, allowSpecialized: Boolean)(using Context): List[Tree] = cls match {
     case tpd.TypeDef(_, tmpl: Template) =>
       val parentTrees: Map[Symbol, Tree] = tmpl.parents.map(par => symbolFromParent(par) -> par).toMap.filter(_._1.isInlineTrait)
-      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym.isInlineTrait && sym != cls.symbol)
+      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym.isInlineTrait && sym != cls.symbol && (allowSpecialized || !sym.isSpecializedTrait) )
       ancestors.flatMap(ancestor =>
         def baseTree =
           cls.tpe.baseType(ancestor) match
@@ -333,7 +333,7 @@ object Inlines:
         )
     OverridingPairsChecker(clsSym, clsSym.thisType).checkAll(checkInlineTraitOverride) 
 
-  def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
+  def inlineParentInlineTraits(cls: Tree, allowSpecialized: Boolean=false)(using Context): Tree =
     cls match {
       // case cls @ tpd.TypeDef(_, impl: Template) if cls.symbol.owner.ownersIterator.exists(_.isInlineTrait) => // TODO: We can relax this if we use a seen list to avoid cycles
       //   report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
@@ -341,7 +341,7 @@ object Inlines:
       case cls @ tpd.TypeDef(_, impl: Template) =>
         checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
-        val ancestors = inlineTraitAncestors(cls)
+        val ancestors = inlineTraitAncestors(cls, allowSpecialized)
         val cycleFound = ancestors.exists { parent =>
           if cls.symbol.ownersIterator.contains(symbolFromParent(parent)) then
             // TODO: This appears at the inline trait D line rather than the line corresponding to the inlining - should we be worried ? 
@@ -1162,7 +1162,6 @@ object Inlines:
     // Check if oldSym has been inlined into childClasslike
     def inlinedSymbolIsRegistered(oldSym: Symbol, childClasslike: Type) =
       inlinedTraitSymbols.contains((oldSym, childClasslike))
-
   end InlineTraitState
 
 end Inlines

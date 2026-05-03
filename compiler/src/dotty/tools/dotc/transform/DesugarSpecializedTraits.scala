@@ -41,8 +41,13 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.core.Decorators.nestedMap
 import dotty.tools.dotc.core.NameOps.expandedName
+import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 
-class DesugarSpecializedTraits extends MacroTransform:
+class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
+
+
+  override def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref
 
   override def phaseName: String = DesugarSpecializedTraits.name
   override def description: String = DesugarSpecializedTraits.description
@@ -190,16 +195,7 @@ class DesugarSpecializedTraits extends MacroTransform:
       fixConstructor(init, classSymbol)
       val typer = Typer(ctx.nestingLevel + 1) // TODO: actually get these from the user.
       
-      val newParamss = 
-        specialization.traitSymbol.primaryConstructor.paramSymss.tail.zip(paramAccessorss.map(_.map(ref))) // skip the type params
-        .map((paramSyms, paramAccessors) =>
-          paramSyms.zip(paramAccessors).map(
-            (paramSym, accessor) =>
-               if paramSym.name.asTermName.is(ContextBoundParamName) 
-               then typer.implicitArgTree(tm(paramSym.info), paramSym.span) // TODO: Fix spans throughout
-               else accessor
-          )
-        )
+      val newParamss = paramAccessorss.nestedMap(ref(_))
 
       val newParams1 = if (newParamss.length == 1) then newParamss ++ List(List()) else newParamss
 
@@ -225,7 +221,7 @@ class DesugarSpecializedTraits extends MacroTransform:
       classDef
     }
 
-    private def replaceSpecializedSymbolsMap(specializations: SpecializedTraitCache) =
+    private def replaceSpecializedSymbolsMap(specializations: SpecializedTraitCache)(using Context) =
       val typeMap = new TypeMap:
         def apply(t: Type) = t match {
           case Specialization(spec) => 
@@ -238,27 +234,58 @@ class DesugarSpecializedTraits extends MacroTransform:
 
       def treeMap(tree: Tree): Tree = tree match {
         // Replace (anonymous class version of) new Foo[Int] {} with new Foo$impl$Int.asInstanceOf[Foo$sp$Int] 
-        case Block(List(an@TypeDef(anon, Template(_, parentCalls: List[Tree], _, _))),  
+        case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
                   Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass =>
-          parentCalls match {
-            case _ :+ Apply(Apply(tpe, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
-              val spec = Specialization.unapply(t.tpe).get
-              { // We don't replace non-specialized anonymous class instantiations e.g. new Foo[T] where T is defined in the enclosing scope.
-                for (specializedSymbol <- specializations.getImplementationSymbol(spec))
-                yield Typed(Apply(Apply(Select(New(ref(specializedSymbol)),ctor).appliedToTypeTrees(spec.unspecializedTypeArgs), ctorArgs.map(_.changeNonLocalOwners(an.symbol.owner))), ev), t)
-              }.getOrElse(tree)
-            case _ => tree
-          }
+           
+          def deandify(tp: Type): Iterator[Type] = tp match
+            case AndType(l, r) => deandify(l) ++ deandify(r)
+            case _ => Iterator.single(tp)
 
-        // Replace class Bar extends Foo[Int](params) with class Bar extends Foo$sp$Int(params)
-        // TODO: Why do we still have this case if we don't allow this pattern? 
-        // Note: We always drop the evidence params when creating these new specialized traits so we know that there are none, but we may need to revisit this if we decide we do want to copy the evidence parameters over
-        case Apply(TypeApply(fun@Select(New(tpt), init), args), ev) if fun.symbol.isConstructor => 
-          val spec = Specialization(fun.symbol.owner, args)
-          {
-            for (specializedSymbol <- specializations.getInterfaceSymbol(spec))
-            yield New(ref(specializedSymbol)).select(init).appliedToTypeTrees(spec.unspecializedTypeArgs)
-          }.getOrElse(tree)
+          t.tpe match {
+            case a: AndType => /* Multiple mixed in traits will be typed as an AndType */ 
+              deandify(a).foreach(trt =>
+                Specialization.unapply(trt).foreach {spec => 
+                  if spec.hasSpecializedParams then
+                    report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", an.srcPos)
+                }
+              )
+              tree
+            case tpe =>
+              Specialization.unapply(tpe).map(spec => 
+                  {
+                  if spec.hasSpecializedParams then
+                    if tmpl.body.filterNot(x => x.symbol.name.is(ContextBoundParamName)).nonEmpty then // Only allowed to contain evidence parameters
+                      report.error("Anonymous classes acting as instances of Specialized traits may not have additional members; you can make a named object instead if you like.", an.srcPos)
+
+                    parentCalls match { 
+                      case (obj :: parentsOfSpecTrait) :+ Apply(Apply(tpe, ctorArgs), ev) if (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) =>
+                        specializations.getImplementationSymbol(spec).map( specializedSymbol => 
+                          Typed(Apply(Apply(Select(New(ref(specializedSymbol)),ctor).appliedToTypeTrees(spec.unspecializedTypeArgs), ctorArgs.map(_.changeNonLocalOwners(an.symbol.owner))), ev), t)
+                        ).getOrElse(tree) // We don't replace non-specialized anonymous class instantiations e.g. new Foo[T] where T is defined in the enclosing scope.
+                      case _ => 
+                        report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", an.srcPos)
+                        tree
+                    }
+                  else
+                    tree
+                }).getOrElse(tree)
+          } 
+
+        // Replace class/object Bar extends Foo[Int](params) with class/object Bar extends Foo$sp$Int(params)
+        case app @ Apply(_, _) => tpd.methPart(app) match {
+          case fun @ Select(New(tpt), init) if fun.symbol.isConstructor =>
+            val argss = tpd.allArgss(tree)
+            argss match {
+              case typeArgs :: valueArgss => 
+                val spec = Specialization(fun.symbol.owner, typeArgs)
+                {
+                  for (specializedSymbol <- specializations.getInterfaceSymbol(spec))
+                  yield New(ref(specializedSymbol)).select(init).appliedToTypeTrees(spec.unspecializedTypeArgs).appliedToNone
+                }.getOrElse(tree)
+              case _ => tree
+            }
+          case _ => tree
+        }
 
         // Replace AppliedTypeTree instances in code
         case Specialization(spec) => {
@@ -275,44 +302,46 @@ class DesugarSpecializedTraits extends MacroTransform:
           case dd@DefDef(name, paramss, tpt, preRhs) => 
             val transformedDef = super.transform(dd)
             transformedDef.symbol.info = mapType(transformedDef.symbol.info)
-            if transformedDef.symbol.allOverriddenSymbols.isEmpty && (transformedDef.symbol.owner.isSpecializedTraitInterface || transformedDef.symbol.owner.isSpecializedTraitImplementationClass) then
-              transformedDef.symbol.flags = transformedDef.symbol.flags &~ Flags.Override
             transformedDef
 
           case vd@ValDef(name, tpt, preRhs) => 
             val transformedDef = super.transform(vd)
             transformedDef.symbol.info = mapType(transformedDef.symbol.info)
-            if transformedDef.symbol.allOverriddenSymbols.isEmpty && (transformedDef.symbol.owner.isSpecializedTraitInterface || transformedDef.symbol.owner.isSpecializedTraitImplementationClass) then
-              transformedDef.symbol.flags = transformedDef.symbol.flags &~ Flags.Override
             transformedDef
 
-          case impl@Template(constr, preParentsOrDerived, self, _) => 
-            impl.parents.foreach(p => 
-              p.tpe match {
-               case Specialization(spec) if 
-                spec.hasSpecializedParams 
-                && !impl.symbol.owner.isAnonymousClass /* impl.symbol is the dummy local class; owner is the actual class. */
-                && !isSpecializationOf(impl.symbol.typeRef, p.tpe, allowImplementationClass = true)
-                && !isImplementationOf(impl.symbol.owner.name, p.tpe.typeSymbol.name)
-                && !impl.symbol.owner.isOneOf(InlineTrait) =>
-                  report.error("Specialized traits may only be extended by anonymous class instances or inline traits.", impl.srcPos)
-                case _ => 
-              }
-            )
-
+          case impl@Template(constr, preParentsOrDerived, self, _) =>
             val mappedbody = impl.body.map(transform(_))
+            val mappedconstr = transform(impl.constr).asInstanceOf[DefDef]
            
             /* We need to map parents of non-specialized inline traits (see tests/pos/specialized-trait-partial-complete-specialization-with-return-type.scala, we need 
-            to map the A[Int] reference to A$sp$Int in B's parents) */
-            val mappedparents = impl.parents.map(transform(_))
+            to map the A[Int] reference to A$sp$Int in B's parents). For our implementation classes and interface traits we don't want to map as we will delete parents after.  */
+            val mappedparents = if impl.symbol.owner.isSpecializedTraitImplementationClass || impl.symbol.owner.isSpecializedTraitInterface then impl.parents else impl.parents.map(transform(_))
             val oldInfo = impl.symbol.owner.info.asInstanceOf[ClassInfo]
-            impl.symbol.owner.info = oldInfo.derivedClassInfo(declaredParents = oldInfo.declaredParents.map(mapType(_)))
+            impl.symbol.owner.info = oldInfo.derivedClassInfo(declaredParents = if impl.symbol.owner.isSpecializedTraitImplementationClass || impl.symbol.owner.isSpecializedTraitInterface then oldInfo.declaredParents else oldInfo.declaredParents.map(mapType(_)))
 
-            cpy.Template(impl)(body = mappedbody, parents = mappedparents)
+            cpy.Template(impl)(body = mappedbody, parents = mappedparents, constr = mappedconstr)
           case tree => super.transform(tree)
         }
       }
     end replaceSpecializedSymbolsMap
+
+    /* Override flags can be generated by inline trait inlining, but after removing the Foo[Int] parent the corresponding members no longer override members in their parents.
+       Therefore we need to remove them. */
+    def removeRedundantOverridesMap = new TreeTypeMap(treeMap =
+        tree => tree match {
+          case dd@DefDef(name, paramss, tpt, preRhs) => 
+            if dd.symbol.exists && dd.symbol.allOverriddenSymbols.isEmpty && (dd.symbol.owner.isSpecializedTraitInterface || dd.symbol.owner.isSpecializedTraitImplementationClass) then
+              dd.symbol.flags = dd.symbol.flags &~ Flags.Override
+            dd
+
+          case vd@ValDef(name, tpt, preRhs) => 
+            if vd.symbol.exists && vd.symbol.allOverriddenSymbols.isEmpty && (vd.symbol.owner.isSpecializedTraitInterface || vd.symbol.owner.isSpecializedTraitImplementationClass) then
+              vd.symbol.flags = vd.symbol.flags &~ Flags.Override
+            vd
+          
+          case tree => tree
+      }
+    )
 
     // Returns (new stmts including original, new symbols including original)
     private def transformStatements(stats: List[Tree], span: Span, specializations: SpecializedTraitCache): (List[Tree], SpecializedTraitCache) = {
@@ -328,9 +357,12 @@ class DesugarSpecializedTraits extends MacroTransform:
       extension (classTree: Tree)
         def updateParents(parentUpdater: List[Type] => List[Type]) = (classTree: @unchecked) match {
           case td@TypeDef(name, t@Template(constr, preParentsOrDerived, self, preBody)) =>  
-            td.symbol.info = td.symbol.info match {
-              case ci: ClassInfo => ci.derivedClassInfo(declaredParents=parentUpdater(ci.declaredParents)) 
-            }
+
+          val cls = td.symbol.asClass
+          val oldInfo = cls.classInfo
+          val newInfo = oldInfo.derivedClassInfo(declaredParents = parentUpdater(oldInfo.declaredParents))
+          cls.info = newInfo
+          cls.copySymDenotation(info = newInfo).installAfter(DesugarSpecializedTraits.this)
         }
 
         def refreshClassDef = (classTree: @unchecked) match {
@@ -340,7 +372,7 @@ class DesugarSpecializedTraits extends MacroTransform:
 
       /* We need to inline recursively throughout generated specialized traits - see tests/run/specialized-trait-requires-inline-trait-inlining.scala */
       // TODO: How do we calculate the spans correctly?
-      val ttmap = new TreeTypeMap(treeMap = {
+      val inlineInlineTraits = new TreeTypeMap(treeMap = (tree: Tree) => tree match {
         case tree: TypeDef if tree.symbol.isInlineTrait =>
           val tree1 = Inlines.checkAndTransformInlineTrait(tree)
           val tree2 = if Inlines.needsInlining(tree1) then Inlines.inlineParentInlineTraits(tree1) else tree1
@@ -350,29 +382,54 @@ class DesugarSpecializedTraits extends MacroTransform:
         case t => t
       })
       
-      val generatedTraitStats1 = generatedTraitStats.map(trtDef => ttmap(trtDef.withSpan(span)))
-      val generatedClassStats1 = generatedClassStats.map(clsDef => ttmap(clsDef.withSpan(span)))
-        .tapEach:
+      val generatedTraitStats1 = generatedTraitStats.map {
+        case tree: TypeDef =>
+          assert(tree.symbol.isInlineTrait)
+          val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree.withSpan(span)),allowSpecialized=true).asInstanceOf[TypeDef]
+          cpy.TypeDef(inlined)(name = inlined.name, rhs = inlineInlineTraits(inlined.rhs)).withSpan(inlined.span)
+      } 
+
+      val generatedClassStats1 = generatedClassStats.map {
+        case tree: TypeDef =>
+          assert(Inlines.needsInlining(tree, allowSpecializedTraits=true))
+          val inlined = Inlines.inlineParentInlineTraits(tree.withSpan(span), allowSpecialized=true).asInstanceOf[TypeDef]
+          cpy.TypeDef(inlined)(name = inlined.name, rhs = inlineInlineTraits(inlined.rhs)).withSpan(inlined.span)
+      }.tapEach:  // We can do parent removal earlier for $impl$ classes as we don't depend on the parents later.
           _.updateParents { parents => (parents: @unchecked) match
             case obj :: traitSp :: originalSpec :: Nil => obj :: traitSp :: Nil 
           }
         .map(refreshClassDef)
 
-      // We need to do this after inlining into the $impl$ classes otherwise we break
-      // overriding/interface implementation rules during the inlining. 
-      val generatedTraitStats1a = generatedTraitStats1
-        .tapEach:
-          _.updateParents { parents => (parents: @unchecked) match
-            case obj :: original :: parents => obj :: parents
-          }
-        .map(refreshClassDef)
-
-      if (generatedTraitStats1a.isEmpty && generatedClassStats1.isEmpty)
+      if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
         (stats.map(replaceSpecializedSymbolsMap(specializations2)(_)), specializations2)
       else 
-        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1a, span, specializations2)
+        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, span, specializations2)
         val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, span, specializations3)
-        (generatedTraitStats2 ++ generatedClassStats2 ++ stats.map(replaceSpecializedSymbolsMap(specializations4)(_)), specializations4)
+        
+        /* We need to do the parent removal after inlining into the $impl$ classes otherwise we break
+           overriding/interface implementation rules during the inlining. The $impl$ inlining
+           can also happen in the recursive calls, and so we need to do this right at the end (after the recursive calls): */
+        val generatedTraitStats3 = 
+          generatedTraitStats2.tapEach: stat => 
+            if stat.symbol.isSpecializedTraitInterface then // We could have $impl$ classes from recursive calls as well.
+              stat.updateParents { parents => (parents: @unchecked) match
+                case obj :: Specialization(originalSpec) :: parents if specializations4.getInterfaceSymbol(originalSpec).get == stat.symbol.asClass => 
+                  obj :: parents
+                case obj :: parents => obj :: parents // We already removed the relevant parent.
+            }
+          .map(refreshClassDef)
+        
+        val stats2 = generatedTraitStats3 ++ 
+                     generatedClassStats2 ++ 
+                     stats.map(stat => 
+                        replaceSpecializedSymbolsMap(specializations4)( // Foo[Int] -> Foo$sp$Int in user code. 
+                        if (!stat.symbol.isSpecializedTraitImplementationClass && !stat.symbol.isSpecializedTraitInterface) then // We already processed these in an earlier recursive call
+                          Inlines.inlineParentInlineTraits(stat, allowSpecialized = true) // Perform inlining into class Bar extends Foo[Int] from user code.
+                        else
+                          stat
+                     ))
+
+        (stats2.map(removeRedundantOverridesMap(_)), specializations4)
     }
 
     override def transform(tree: Tree)(using Context): Tree = tree
@@ -607,16 +664,20 @@ object Specialization:
 
   def classSpecializedTypeParams(classSym: Symbol)(using Context): List[Type] = classSym.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
   
-  def anonymousClassIsSpecialized(tree: Tree)(using Context) = tree match {
-    case TypeDef(anon, Template(_, parentCalls: List[Tree], _, _)) =>
-      parentCalls match {
-        case _ :+ Apply(Apply(t@tpe, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
-          val spec = Specialization.unapply(t.tpe.resultType.resultType)
-          spec.get.hasSpecializedParams
-        case _ => true
-      }
-    case _ => true
-  } 
+  // TODO: These methods are used in other phases; probably move them to the phase object? 
+  def anonymousClassIsSpecialized(tree: Tree)(using Context) = 
+    tree match {
+      case TypeDef(anon, Template(_, parentCalls: List[Tree], _, _)) =>
+        parentCalls match {
+          case _ :+ Apply(Apply(t@tpe, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
+            val spec = Specialization.unapply(t.tpe.resultType.resultType)
+            spec.get.hasSpecializedParams
+          case _ => false
+        }
+      case _ => false
+    } 
+
+  def isSpecializedTrait(sym: Symbol)(using Context) = classSpecializedTypeParams(sym).nonEmpty
 end Specialization
 
 // Need to somehow make my naming a lot more consistent as well.

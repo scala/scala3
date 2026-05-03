@@ -82,18 +82,35 @@ A specialized context bound (or its expansion to a context parameter) is only al
 type parameters of inline methods and inline traits. Regular methods or traits or classes
 cannot take `Specialized[T]` parameters. 
 
-Hence, the only way to create a specialized trait is using an anonymous class instance, like in the `Vec.apply` method above. What's more,
-we require that each such anonymous class instance
+## Creating Specialized Trait Instances
+Creation of an object with specialized behaviour can occur in one of two ways:
+ - Instantiating a `class` or using an `object` which extends the specialized trait, specializing its type parameters. E.g.:
+```scala
+inline trait Foo[T: Specialized](x: T):
+  def foo: T = x
 
- - can extend only a single specialized trait,
- - cannot mix in further classes or traits, and
- - cannot contain member definitions.
+class Bar extends Foo[Int](10):           // Type parameter does of course not need to be specified explicitly here (it can be inferred from the value type of 10)
+    def myMethod = "Hello I am a method"
 
-So each such class instance is of the form `new A[Ts](ps1)...(psN) {}` where
-`A` is a specialized trait and the type parameters `Ts` and term parameters `ps1, ,,, psN` can also be absent.
+// Both Baz and myBar will have specialized instances of foo.
+object Baz extends Foo(12)
+val myBar = Bar()
+```
+ - Instantiation of an anonymous class instance directly from the Specialized trait: `new A[Ts](ps1)...(psN) {}`  where `A` is a specialized trait and the type parameters `Ts` and term parameters `ps1, ,,, psN` can also be absent. This has a special meaning, as it desugars to instantiating a _specialized instance class_ (see Expansion of Specialized Traits). This comes with the twin advantages that:
+    - there is no need for the boilerplate of manually defining an object/class to extend the specialized trait
+    - this specialized instance class is reused every time such an instance is created (there is no proliferation of anonymous classes).
+  
+    However, to facilitate this reuse, we must impose the following restrictions. Anonymous class instances acting as instances of Specialized traits:
+    - can extend only a single specialized trait [0],
+    - cannot mix in further classes or traits, and
+    - cannot contain member definitions.
+    
+    Should these restrictions be undesirable, the user can always create their own named `object` or `class` extending from a specialized trait (i.e. the first case for creation of a specialized object just above), which does not induce these restrictions.
 
-The restrictions ensure that each time we create an instance of a specialized trait we know statically the classes of all `Specialized` type arguments.  <!-- TODO: Except if T \in Ts is defined in the enclosing scope e.g. as a class type parameter -->
-
+[0] Note that of course an anonymous class instance such as `new Foo[Int] {}` where `Foo` extends some other trait `Bar` desugars in the compiler to `new Bar[Int] with Foo[Int] {}`, which means we can't distinguish these two cases. Therefore we begrudgingly allow 
+`new Bar[Int] with Foo[Int] {}` although there is really no reason to use this in source code because it's exactly the same as writing `new Foo[Int] {}`. We disallow `new Foo[Int] with Bar[Int] {}` however.
+ 
+<!-- TODO: The restrictions ensure that each time we create an instance of a specialized trait we know statically the classes of all `Specialized` type arguments Except if T \in Ts is defined in the enclosing scope e.g. as a class type parameter. Notion of material specialisation -->
 <!-- TODO: Do we also allow extensions? -->
 <!-- TODO: Do we definitely need all of these restrictions? -->
 
@@ -137,7 +154,7 @@ The specialized instance traits are created on demand the first time they are me
 inline trait Vec$sp$Int extends Vec[Int]
 ```
 
-In general a specialized instance trait that specializes an inline trait `A[T]` with a specialization type `S`:
+In general a specialized interface trait that specializes an inline trait `A[T]` with a specialization type `S`:
 
  - drops all `Specialized` trait parameters of `A` <!-- TODO: (which have been specialized to a type argument)-->
  - adds `A[S]` as first parent trait
@@ -145,6 +162,7 @@ In general a specialized instance trait that specializes an inline trait `A[T]` 
  - contains declarations from the body of `A` specialized to the type(s) in question (after inlining)
  - Is an `inline trait`. This is for consistency; see [1].
  - Maintains type parameters for type params not marked with `Specialized` in the original trait, and also for specializations where the type *argument* is`T: Specialized', in the case of partial specializations. <!-- TODO: Maybe we want an example for this -->
+ - Does not take value parameters (including evidence parameters)
 
 A specialized instance class for an inline trait `A` at specialized argument `S`
 
