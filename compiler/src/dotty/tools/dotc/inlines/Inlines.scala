@@ -996,11 +996,7 @@ object Inlines:
         paramAccessorsMapper
           .getParamAccessorRhs(vdef.symbol.owner, vdef.symbol.name)
           .getOrElse(inlinedRhs(vdef, inlinedSym))
-        
-      // TODO: We might only need to do this to evidence params but tbh I can't see much harm in applying it when we want to? 
-      if (rhs.tpe.exists && !vdef.symbol.isMutableVar) // we can't narrow vars because e.g. var current = 0 would be narrowed to type 0 but someone may letter set i
-        inlinedSym.info = rhs.tpe
-
+      
       val rhs1 = rhs.changeNonLocalOwners(inlinedSym) // if rhs.symbol.exists then rhs.changeOwner(rhs.symbol.owner, inlinedSym) else rhs
 
       tpd.ValDef(inlinedSym.asTerm, rhs1).withSpan(parent.span)

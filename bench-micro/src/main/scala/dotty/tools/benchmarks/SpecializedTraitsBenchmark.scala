@@ -41,8 +41,8 @@ class VecGeneric[T: Numeric](elems: Array[T]):
       result = num.plus(result, num.times(this(i), other(i)))
     result
 
-inline trait VecSpecialized[T: {Specialized, Numeric}](elems: Array[T]):
-  private val num = summon[Numeric[T]]
+inline trait VecSpecialized[T: {Specialized, Numeric2}](elems: Array[T]):
+  private val num = summon[Numeric2[T]]
 
   def length = elems.length
 
@@ -85,3 +85,16 @@ class VecBench:
     val x = new VecSpecialized[Int](arr.arr1) {}
     val y = new VecSpecialized[Int](arr.arr2) {}
     assert(x.scalarProduct(y) == arr.target)
+
+// You can really see the impact of Specialized on the interface usage here
+// Remove Specialized and see that the generated code gets much more boxing and unboxing
+// which slows it down substantially. 
+inline trait Numeric2[T: Specialized]:
+  def fromInt(x: Int): T
+  def plus(x: T, y: T): T
+  def times(x: T, y: T): T
+
+implicit object IntIsIntegral extends Numeric2[Int]:
+  override def fromInt(x: Int): Int = x
+  override def plus(x: Int, y: Int): Int = x + y
+  override def times(x: Int, y: Int): Int = x * y
