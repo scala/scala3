@@ -27,6 +27,7 @@ import cc.{CapturingType, derivedCapturingType, stripCapturing}
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.transform.Specialization
 
 object SymDenotations {
 
@@ -1057,6 +1058,9 @@ object SymDenotations {
 
     def isInlineTrait(using Context): Boolean =
       isAllOf(InlineTrait)
+    
+    def isSpecializedTrait(using Context): Boolean = 
+      Specialization.isSpecializedTrait(symbol)
 
     /** Does this method or field need to be retained at runtime */
     def isRetainedInline(using Context): Boolean =
