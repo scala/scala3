@@ -50,7 +50,7 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
   private def isDeletable(sym: SymDenotation)(using Context): Boolean = 
     !sym.isType
     && sym.owner.isInlineTrait
-    && (sym.is(Local) || sym.is(Inline))
+    && (sym.is(Local) || (sym.is(Inline) && !sym.isRetainedInline)) // isRetainedInline not an issue while we block non-local privates as retainedBody is non local private.
     && !sym.is(Param)
     && !sym.is(ParamAccessor)
 }

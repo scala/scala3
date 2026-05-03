@@ -292,7 +292,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private def checkInlTraitPrivateMemberIsLocal(tree: Tree)(using Context): Unit =
       if tree.symbol.owner.isInlineTrait && tree.symbol.isAllOf(Private, butNot = Local) then
-        report.error(em"implementation restriction: inline traits cannot have non-local private members", tree.srcPos)
+        report.error(em"implementation restriction: inline traits cannot have non-local private members. This also means no retained inline methods.", tree.srcPos)
 
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier
