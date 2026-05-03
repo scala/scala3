@@ -341,47 +341,55 @@ object Inlines:
       case cls @ tpd.TypeDef(_, impl: Template) =>
         checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
-        val newDefs = inContext(ctx.withOwner(cls.symbol)) {
-          inlineTraitAncestors(cls).foldLeft((List.empty[Tree], impl.body)){
-            case ((inlineDefs, childDefs), parent) =>
-              if cls.symbol.ownersIterator.contains(symbolFromParent(parent)) then
-                // TODO: This appears at the inline trait D line rather than the line corresponding to the inlining - should we be worried ? 
-                report.error("Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.", cls.sourcePos)
-                (inlineDefs, childDefs)
-              else
-                val parentTraitInliner = InlineParentTrait(parent)
-                
-                // Update self type
-                val newSelfType = cls.symbol.asClass.classDenot.givenSelfType & parentTraitInliner.inlinedSelfType.extractAnnotationsAndOpaqueTypeAliases
-                cls.symbol.info = cls.symbol.asClass.classInfo.derivedClassInfo(selfInfo=newSelfType)
-                
-                // Inline body
-                val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
-                val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
-                cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
-                
-                val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
-                (parentTraitInliner.adaptSuperCalls(inlinedDefs1), childDefs1)
-          }
+        val ancestors = inlineTraitAncestors(cls)
+        val cycleFound = ancestors.exists { parent =>
+          if cls.symbol.ownersIterator.contains(symbolFromParent(parent)) then
+            // TODO: This appears at the inline trait D line rather than the line corresponding to the inlining - should we be worried ? 
+            report.error("Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.", cls.sourcePos)
+          cls.symbol.ownersIterator.contains(symbolFromParent(parent))
         }
-        val newbody = newDefs._1 ::: newDefs._2
-        val paramAccessors = newbody.filter(_.symbol.is(ParamAccessor))
-        
-        for pacc <- paramAccessors
-            otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
-        do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
 
-        val impl1 = cpy.Template(impl)(body = newbody, 
-          self=
-            if cls.symbol.asClass.classDenot.givenSelfType.exists then
-              cpy.ValDef(impl.self)(tpt=
-              TypeTree(cls.symbol.asClass.classDenot.givenSelfType)
-                                        .withSpan(impl.self.tpt.span.orElse(cls.symbol.span)))
-                                        .withSpan(impl.self.span.orElse(cls.symbol.span))
-                                        .cloneIn(cls.symbol.source)
-            else impl.self
-          )
-        cpy.TypeDef(cls)(rhs = impl1)
+        if cycleFound then cls
+        else {
+          val newDefs = inContext(ctx.withOwner(cls.symbol)) {
+            ancestors.foldLeft((List.empty[Tree], impl.body)){
+              case ((inlineDefs, childDefs), parent) =>
+                  val parentTraitInliner = InlineParentTrait(parent)
+                  
+                  // Update self type
+                  val newSelfType = cls.symbol.asClass.classDenot.givenSelfType & parentTraitInliner.inlinedSelfType.extractAnnotationsAndOpaqueTypeAliases
+                  cls.symbol.info = cls.symbol.asClass.classInfo.derivedClassInfo(selfInfo=newSelfType)
+                  
+                  // Inline body
+                  val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
+                  val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
+                  cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
+                  
+                  val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
+                  (parentTraitInliner.adaptSuperCalls(inlinedDefs1), childDefs1)
+            }
+          }
+
+          val newbody = newDefs._1 ::: newDefs._2
+          val paramAccessors = newbody.filter(_.symbol.is(ParamAccessor))
+          
+          for pacc <- paramAccessors
+              otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
+          do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
+
+          val impl1 = cpy.Template(impl)(body = newbody, 
+            self=
+              if cls.symbol.asClass.classDenot.givenSelfType.exists then
+                cpy.ValDef(impl.self)(tpt=
+                TypeTree(cls.symbol.asClass.classDenot.givenSelfType)
+                                          .withSpan(impl.self.tpt.span.orElse(cls.symbol.span)))
+                                          .withSpan(impl.self.span.orElse(cls.symbol.span))
+                                          .cloneIn(cls.symbol.source)
+              else impl.self
+            )
+
+          cpy.TypeDef(cls)(rhs = impl1)
+        }
       case _ =>
         cls
     }
