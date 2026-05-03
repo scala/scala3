@@ -73,9 +73,9 @@ class Compiler {
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new RefChecks,              // Various checks mostly related to abstract members and overriding
          new DropForMap,             // Drop unused trailing map calls in for comprehensions
          new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
+    List(new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
