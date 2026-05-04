@@ -31,7 +31,7 @@
 21 |  foo(c)(c) // error: separation
    |      ^
    |Separation failure: argument of type  (c : () => Unit)
-   |to a function of type (x$0: () => Unit) ->{} (() ->{c, any} Unit) ->{x$0} Unit
+   |to a function of type (x$0: () => Unit) -> (() ->{c, any} Unit) ->{x$0} Unit
    |corresponds to capture-polymorphic formal parameter x$0 of type  () =>² Unit
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function result with type  (() ->{c, any} Unit) ->{c} Unit.

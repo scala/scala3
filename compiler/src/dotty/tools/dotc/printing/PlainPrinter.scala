@@ -573,10 +573,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case hi => hi.derivesFromCapSet)
 
   /** Print capture variable bounds using `^` syntax.
-   *  Plain CapSet lower bound and universal upper bound are elided.
+   *  Plain CapSet lower bound, empty lower bound, and universal upper bound are elided.
    */
   private def toTextCaptureVarBounds(lo: Type, hi: Type): Text =
     val loText = lo match
+      case CapturingType(_, refs: CaptureSet) if refs.elems.isEmpty && !ccVerbose => Text() // empty lower bound
       case CapturingType(_, refs) => " >: " ~ toTextCaptureSet(refs)
       case _ => Text() // plain CapSet = trivial lower bound
     val hiText = hi match
