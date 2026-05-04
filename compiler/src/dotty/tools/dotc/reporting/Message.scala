@@ -147,6 +147,7 @@ object Message:
               && cur.binder.paramNames == existing.binder.paramNames
             case (cur: ENodeVarEntry, existing: ENodeVarEntry) =>
               cur.bindingLevel == existing.bindingLevel
+              && cur.ref.kind == existing.ref.kind
             case _ =>
               false
 
