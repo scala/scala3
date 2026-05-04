@@ -161,7 +161,7 @@ class TypeTests extends ReplTest:
     } andThen {
       storedOutput()
       run(":type withCaps")
-      assertEquals("(a: Object^, b: Object^) -> Object^{a, b}", storedOutput().trim)
+      assertEquals("(a: AnyRef^, b: AnyRef^) -> Object^{a, b}", storedOutput().trim)
     }
 
   // scala/scala3#25465: :doc on a type should give a proper error with CC, not crash

@@ -509,7 +509,8 @@ object Completion:
           try extensionCompletions(adjustedQual)
           catch case _: TypeError => Map.empty
         implicitConversionMemberCompletions(adjustedQual) ++
-        safeExtensionCompletions ++
+        //safeExtensionCompletions ++
+        extensionCompletions(adjustedQual) ++
         directMemberCompletions(adjustedQual) ++
         namedTupleCompletions(adjustedQual)
       else

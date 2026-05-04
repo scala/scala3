@@ -399,9 +399,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       var stopped = false
       var i = 0
       while i < allPhases.length && !stopped do
-        val phase = allPhases(i) match
-          case mp: dotty.tools.dotc.transform.MegaPhase => mp.truncatedAt(stopAfter, ctx.base)
-          case p => p
+        val phase = allPhases(i)
         doEnterPhase(phase)
         val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then

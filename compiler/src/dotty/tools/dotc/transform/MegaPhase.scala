@@ -168,21 +168,6 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  /** If this MegaPhase contains a sub-phase whose name appears in `stopNames`,
-   *  return a freshly-initialized MegaPhase containing only the prefix up to and
-   *  including the first matching sub-phase. Otherwise return this MegaPhase
-   *  unchanged. The constituent mini-phases must already be initialized; the
-   *  returned MegaPhase reuses them, so their phase IDs are preserved.
-   */
-  def truncatedAt(stopNames: List[String], base: ContextBase): MegaPhase =
-    val stopIdx = miniPhases.indexWhere(p => stopNames.contains(p.phaseName))
-    if stopIdx < 0 || stopIdx == miniPhases.length - 1 then this
-    else
-      val prefix = miniPhases.take(stopIdx + 1)
-      val truncated = new MegaPhase(prefix)
-      truncated.init(base, prefix.head.id, prefix.last.id)
-      truncated
-
   private val cpy: TypedTreeCopier = cpyBetweenPhases
 
   /** Transform node using all phases in this group that have idxInGroup >= start */
