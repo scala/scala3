@@ -75,7 +75,6 @@ object Phases {
     final def fusePhases(phasess: List[List[Phase]],
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
-                           stopAfterPhases: List[String],
                            YCheckAfter: List[String])(using Context): List[Phase] = {
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
@@ -90,7 +89,7 @@ object Phases {
 
       val filteredPhases = phasess.map(_.filter { p =>
         try isEnabled(p)
-        finally stop |= stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
+        finally stop |= stopBeforePhases.contains(p.phaseName)
       })
 
       var i = 0
@@ -220,24 +219,6 @@ object Phases {
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
-
-    /** Save the phase arrays so they can be restored after a `compileUnits`
-     *  call that truncates them via `YstopAfter`. Returns `None` if the phases
-     *  have not yet been fully initialized (before the first full compilation).
-     */
-    def savePhaseState(): Option[(Array[Phase], Array[Phase], Array[PhaseId], Array[DenotTransformer])] =
-      if phases != null && phases.length > 5 then
-        Some((phases, fusedPhases, nextDenotTransformerId, denotTransformers))
-      else None
-
-    /** Restore phase arrays from a previous `savePhaseState`. */
-    def restorePhaseState(saved: Option[(Array[Phase], Array[Phase], Array[PhaseId], Array[DenotTransformer])]): Unit =
-      saved.foreach { (p, fp, ndti, dt) =>
-        phases = p
-        fusedPhases = fp
-        nextDenotTransformerId = ndti
-        denotTransformers = dt
-      }
 
     /** Unlink `phase` from Denot transformer chain. This means that
      *  any denotation transformer defined by the phase will not be executed.

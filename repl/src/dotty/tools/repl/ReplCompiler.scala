@@ -124,13 +124,11 @@ class ReplCompiler extends Compiler:
     ParseResult(src) match
       case parsed: Parsed =>
         // Stop after CC — we only need types, not bytecode.
-        // Save/restore phases since YstopAfter truncates the shared array.
         val ccCtx = state.context.fresh
           .setSource(parsed.source)
           .setSetting(state.context.settings.YstopAfter, List("cc"))
         val compileState = state.copy(context = ccCtx)
-        val savedPhases = state.context.base.savePhaseState()
-        try compile(parsed)(using compileState).fold(
+        compile(parsed)(using compileState).fold(
           (errs, _) => Left(errs),
           (unit, newState) =>
             given Context = newState.context
@@ -155,7 +153,6 @@ class ReplCompiler extends Compiler:
                   src.atSpan(Span(0, expr.length)))))
             }
         )
-        finally state.context.base.restorePhaseState(savedPhases)
       case SyntaxErrors(_, errs, _) => Left(errs)
       case _ => Left(List(new Diagnostic.Error(
         s"Couldn't parse '$expr' to valid scala",
@@ -271,13 +268,7 @@ class ReplCompiler extends Compiler:
       wrapped(expr, src, state).flatMap { pkg =>
         val unit = CompilationUnit(src)
         unit.untpdTree = pkg
-        // compileUnits with YstopAfter truncates the shared base.phases array.
-        // Save and restore the phase arrays so that subsequent code
-        // (tab completions, error rendering) can still look up phase IDs from
-        // previous full compilations. (scala/scala3#25465, scala/scala3#25790)
-        val savedPhases = ctx.base.savePhaseState()
-        try ctx.run.nn.compileUnits(unit :: Nil, ctx)
-        finally ctx.base.restorePhaseState(savedPhases)
+        ctx.run.nn.compileUnits(unit :: Nil, ctx)
 
         if (errorsAllowed || !ctx.reporter.hasErrors)
           for

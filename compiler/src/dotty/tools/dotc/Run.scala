@@ -375,7 +375,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
+      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases, runCtx)
 
     if ctx.settings.YnoDoubleBindings.value then
@@ -390,7 +390,18 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
         if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
         else None
 
-      for phase <- allPhases do
+      def matchesStopAfter(p: Phase): Boolean = p match
+        case mp: dotty.tools.dotc.transform.MegaPhase =>
+          mp.miniPhases.exists(sub => stopAfter.contains(sub.phaseName))
+        case _ =>
+          stopAfter.contains(p.phaseName)
+
+      var stopped = false
+      var i = 0
+      while i < allPhases.length && !stopped do
+        val phase = allPhases(i) match
+          case mp: dotty.tools.dotc.transform.MegaPhase => mp.truncatedAt(stopAfter, ctx.base)
+          case p => p
         doEnterPhase(phase)
         val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then
@@ -423,7 +434,9 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
           end if
         end if
         doAdvancePhase(phase, wasRan = phaseWillRun)
-      end for
+        if matchesStopAfter(phase) then stopped = true
+        i += 1
+      end while
       profiler.finished()
     }
 
