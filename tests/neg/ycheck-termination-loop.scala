@@ -1,4 +1,4 @@
-//> using options -Ycheck-termination
+//> using options -Ycheck-termination -Yretain-trees
 
 class C {
   import scala.annotation.terminates
