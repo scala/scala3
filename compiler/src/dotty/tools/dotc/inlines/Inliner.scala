@@ -1124,21 +1124,33 @@ class Inliner(val call: tpd.Tree)(using Context):
       dropUnusedDefs(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
     }
     else {
+      // Recognise inline-proxy synthetic bindings. The opaque-alias proxy
+      // (created by `OpaqueProxy.apply`) has its rhs built by `tpd.cast`,
+      // which is documented as safe ("assuming no exception is raised, i.e.
+      // the operation is pure"), so we treat it as elideable here. The
+      // this-proxy has the `InlineProxy` flag (see `registerType`).
+      def isInlineProxyBinding(sym: Symbol): Boolean =
+        sym.is(InlineProxy) || (sym.is(Synthetic) && sym.name.is(InlineBinderName))
+
       val refCount = MutableSymbolMap[Int]()
+      val termRefCount = MutableSymbolMap[Int]()
       val bindingOfSym = MutableSymbolMap[MemberDef]()
 
       def isInlineable(binding: MemberDef) = binding match {
         case ddef @ DefDef(_, Nil, _, _) => isElideableExpr(ddef.rhs)
-        case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs)
+        case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs) || isInlineProxyBinding(vdef.symbol)
         case _ => false
       }
       for (binding <- bindings if isInlineable(binding)) {
         refCount(binding.symbol) = 0
+        termRefCount(binding.symbol) = 0
         bindingOfSym(binding.symbol) = binding
       }
 
       def updateRefCount(sym: Symbol, inc: Int) =
         for (x <- refCount.get(sym)) refCount(sym) = x + inc
+      def updateTermRefCount(sym: Symbol, inc: Int) =
+        for (x <- termRefCount.get(sym)) termRefCount(sym) = x + inc
       def updateTermRefCounts(tree: Tree) =
         tree.typeOpt.foreachPart {
           case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
@@ -1148,6 +1160,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         tree.foreachSubTree {
           case t: RefTree =>
             updateRefCount(t.symbol, 1)
+            updateTermRefCount(t.symbol, 1)
             updateTermRefCounts(t)
           case t @ (_: New | _: TypeTree) =>
             updateTermRefCounts(t)
@@ -1155,6 +1168,68 @@ class Inliner(val call: tpd.Tree)(using Context):
         }
       countRefs(tree)
       for (binding <- bindings) countRefs(binding)
+
+      // Identify inline proxy bindings whose only references are in type
+      // positions (e.g. type ascriptions `(v: proxy.OpaqueAlias)`). For
+      // these we can dealias the type references and drop the bindings,
+      // so they don't leave dead values in the bytecode (see issue #21334).
+      val typeOnlySyms: Set[Symbol] = bindings.iterator.collect {
+        case b if isInlineProxyBinding(b.symbol)
+            && refCount.contains(b.symbol)
+            && refCount.getOrElse(b.symbol, 0) > 0
+            && termRefCount.getOrElse(b.symbol, 0) == 0 => b.symbol
+      }.toSet
+
+      if typeOnlySyms.nonEmpty then
+        // Substitute TypeRefs `proxy.MemberName` (where the prefix is one of
+        // the type-only proxies) with the dealiased member type. After the
+        // substitution, recount references to confirm a proxy really has no
+        // remaining uses before dropping it; any binding still referenced
+        // is kept (so we don't leave dangling refs).
+        val dealiasMap = new TreeTypeMap(
+          typeMap = new TypeMap() {
+            override def stopAt = StopAt.Package
+            override def apply(tp: Type): Type = tp match
+              case tr: TypeRef =>
+                tr.prefix match
+                  case prefix: TermRef if typeOnlySyms.contains(prefix.symbol) =>
+                    tr.info match
+                      case TypeAlias(alias) => apply(alias)
+                      case _ => mapOver(tr)
+                  case _ => mapOver(tr)
+              case _ => mapOver(tp)
+          }
+        )
+        val Block(newBindings, newTree) = dealiasMap(Block(bindings, tree)): @unchecked
+        val newBindingsT = newBindings.asInstanceOf[List[MemberDef]]
+
+        // Recount refs (any reference, term or type) to detect which proxies
+        // are now truly unreferenced after dealiasing.
+        val newRefCount = MutableSymbolMap[Int]()
+        for sym <- typeOnlySyms do newRefCount(sym) = 0
+        def bumpType(tpe: Type) = tpe.foreachPart {
+          case ref: TermRef =>
+            for x <- newRefCount.get(ref.symbol) do newRefCount(ref.symbol) = x + 1
+          case _ =>
+        }
+        def updateNewCount(tr: Tree): Unit = tr.foreachSubTree {
+          case t: RefTree =>
+            for x <- newRefCount.get(t.symbol) do newRefCount(t.symbol) = x + 1
+            bumpType(t.typeOpt)
+          case t @ (_: New | _: TypeTree) =>
+            bumpType(t.typeOpt)
+          case _ =>
+        }
+        updateNewCount(newTree)
+        for binding <- newBindingsT
+            if !typeOnlySyms.contains(binding.symbol)
+        do updateNewCount(binding)
+
+        val droppableSyms = typeOnlySyms.filter(newRefCount.getOrElse(_, 1) == 0)
+        if droppableSyms.nonEmpty then
+          val keptBindings = newBindingsT.filterNot(b => droppableSyms.contains(b.symbol))
+          return dropUnusedDefs(keptBindings, newTree)
+      end if
 
       def retain(boundSym: Symbol) = {
         refCount.get(boundSym) match {
