@@ -291,12 +291,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   end SetupTypeMap
 
-  private val noFunctionParamNames: Type => List[TermName] = _ => Nil
-
   /** User-written parameter names for `target`, a plain `FunctionN` type in `root`.
    *  The names are used when that function type is expanded to a dependent function.
    */
-  private def functionParamNamesFromRhs(root: Type, rhs: Tree, target: Type)(using Context): List[TermName] =
+  private def functionParamNamesFromRhs(root: Type, rhs: Tree, target: Type)(using Context): List[TermName] = {
     def closureOf(tree: Tree): Option[DefDef] = tree match
       case closureDef(mdef) => Some(mdef)
       case Block(_, expr) => closureOf(expr)
@@ -334,6 +332,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 apply(Search(rest, body1, Nil), mt.resType)
               case _ => search
           case AppliedType(_, args) if defn.isNonRefinedFunction(tp) =>
+            // Follow only the function result spine, keeping it aligned with the RHS closure chain.
             termParamClause(search.paramss, search.body) match
               case Some((params, rest, body1)) if params.length == args.init.length =>
                 if tp eq target then search.copy(names = params.map(_.name))
@@ -344,6 +343,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     closureOf(rhs) match
       case Some(mdef) => find(Search(mdef.paramss, mdef.rhs, Nil), root).names
       case None => Nil
+  }
 
   /** Transform the type of an InferredTypeTree by performing the following transformation
     * steps everywhere in the type:
@@ -371,7 +371,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       sym: Symbol,
       typeArgFormal: Type = NoType,
       initialVariance: Int = 1,
-      sourceParamNames: Type => List[TermName] = noFunctionParamNames
+      sourceParamNames: Type => List[TermName] = _ => Nil
     )(using Context): Type = {
 
     def mapInferred(inCaptureRefinement: Boolean): TypeMap = new TypeMap with SetupTypeMap {
@@ -637,11 +637,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if !tree.hasNuType then
         var transformed =
           if tree.isInferred || sym.is(ModuleVal)
-          then
-            val sourceParamNames =
-              if !rhs.isEmpty then (target: Type) => functionParamNamesFromRhs(tree.tpe, rhs, target)
-              else noFunctionParamNames
-            transformInferredType(tree.tpe, sym, typeArgFormal, sourceParamNames = sourceParamNames)
+          then if rhs.isEmpty then transformInferredType(tree.tpe, sym, typeArgFormal)
+          else transformInferredType(
+            tree.tpe, sym, typeArgFormal,
+            sourceParamNames = target => functionParamNamesFromRhs(tree.tpe, rhs, target))
           else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
