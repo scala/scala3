@@ -415,10 +415,14 @@ class TypeApplications(val self: Type) extends AnyVal {
                 .derivedLambdaType(resType = tycon.safeDealias.appliedTo(args1))
                 .appliedTo(args)
             case _ =>
-              val reducer = new Reducer(dealiased, args)
-              val reduced = reducer(dealiased.resType)
-              if (reducer.allReplaced) reduced
-              else AppliedType(dealiased, args)
+              stripped match
+                case tr: TypeRef if tr.info.isMatchAlias =>
+                  AppliedType(stripped, args)
+                case _ =>
+                  val reducer = new Reducer(dealiased, args)
+                  val reduced = reducer(dealiased.resType)
+                  if reducer.allReplaced then reduced
+                  else AppliedType(dealiased, args)
           }
         tryReduce
       case dealiased: PolyType =>
