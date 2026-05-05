@@ -1180,7 +1180,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             && termRefCount.getOrElse(b.symbol, 0) == 0 => b.symbol
       }.toSet
 
-      if typeOnlySyms.nonEmpty then
+      if typeOnlySyms.nonEmpty && !inlinedMethod.is(Transparent) then
         // The proxies are only referenced from type positions, but in
         // general we cannot just drop them: the type ascription
         // `(value: proxy.OpaqueAlias)` is needed during typing to expose
@@ -1188,33 +1188,31 @@ class Inliner(val call: tpd.Tree)(using Context):
         // the underlying alias) loses information that downstream code
         // relies on (see scala/scala3#21334).
         //
-        // The narrow case we *can* handle is when the inlined expansion is
-        // simply `Typed(literal, tpt)` where `literal` is a `Literal` and
-        // `tpt` references the proxies. Here the type ascription only
-        // fixes the result type of the inlined body and can be dropped:
-        // the surrounding inline machinery in `Inlines.scala` will insert
-        // any required cast to the inline method's declared return type.
-        // We restrict this to `Literal` (not `Ident` etc.) to avoid
-        // narrowing the type of references like `Predef.???` whose method
-        // type could be used as a select qualifier downstream. In every
-        // other case (proxies used in argument positions, nested inline
-        // calls, etc.) we leave the proxies alone and let the regular
-        // retain logic handle them.
-        def isLiteralValue(t: Tree): Boolean = t match
-          case _: Literal => true
-          case Typed(inner, _) => isLiteralValue(inner)
-          case Inlined(_, Nil, expansion) => isLiteralValue(expansion)
-          case Block(Nil, expr) => isLiteralValue(expr)
-          case _ => false
-
+        // The case we *can* handle is when the inlined expansion is
+        // `Typed(inner, tpt)` and:
+        //
+        //   1. `tpt` references the proxies but `inner` does not,
+        //   2. `inner.tpe` is *not* already a subtype of `call.tpe`.
+        //
+        // Condition (2) ensures the cast logic in `Inlines.scala` —
+        // `if !(inlined.tpe <:< target) then inlined.cast(target)` — will
+        // re-cast the inlined block back to the call's expected type after
+        // we strip the type ascription. If `inner.tpe` is already a
+        // subtype of `call.tpe` (e.g. `Predef.???` whose result is
+        // `Nothing`, see tests/pos/i22068.orig.scala), no cast is added
+        // and downstream selects on the inlined block would see an
+        // unexpectedly narrow qualifier type and fail `Ycheck`.
+        //
+        // Transparent inline methods are excluded entirely because their
+        // result type is inferred from the inlined block and the proxies
+        // are part of that type (see tests/pos/i13461-c.scala). Cases
+        // where the proxy is used in an argument position (e.g. inside an
+        // Apply, see tests/pos/i17948.all.scala) don't match the outer
+        // `Typed` shape and are unaffected.
         tree match
-          case Typed(inner, tpt) if isLiteralValue(inner) =>
-            val tptTpe = tpt.tpe
-            // Verify the tpt actually references one of the type-only
-            // proxies (otherwise we don't gain anything by stripping it)
-            // and the inner expression has no proxy references.
+          case Typed(inner, tpt) =>
             var tptRefsProxy = false
-            tptTpe.foreachPart {
+            tpt.tpe.foreachPart {
               case ref: TermRef if typeOnlySyms.contains(ref.symbol) =>
                 tptRefsProxy = true
               case _ =>
@@ -1229,7 +1227,10 @@ class Inliner(val call: tpd.Tree)(using Context):
                 }
               case _ =>
             }
-            if tptRefsProxy && !innerRefsProxy then
+            if tptRefsProxy && !innerRefsProxy
+                && inner.tpe.exists && call.tpe.exists
+                && !(inner.tpe.widen <:< call.tpe.widen)
+            then
               return dropUnusedDefs(bindings, inner)
           case _ =>
       end if
