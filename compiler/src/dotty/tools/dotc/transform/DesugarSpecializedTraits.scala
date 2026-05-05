@@ -140,7 +140,7 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
     private def generateImplementationClassParents(specialization: Specialization, interfaceSymbol: ClassSymbol) = 
       val objectParent = defn.ObjectType
       val traitSpParent = interfaceSymbol.typeRef.appliedTo(specialization.unspecializedTypeParams) // Set using old unspecializedTypeParams and replace after.
-      val originalTraitSpecializedParent = AppliedTypeTree(Ident(specialization.traitSymbol.typeRef), specialization.typeArguments).tpe
+      val originalTraitSpecializedParent = AppliedTypeTree(Ident(specialization.traitSymbol.typeRef), specialization.mapUnspecializedArgs(specialization.unspecializedTypeParams.map(TypeTree(_)))).tpe
       (objectParent, traitSpParent, originalTraitSpecializedParent)
 
     private def newImplementationClass(specialization: Specialization, interfaceSymbol: ClassSymbol) =
@@ -166,40 +166,41 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
     // TODO: Standardise a bit so that we either generate the symbols and later the classes or not.
     // TODO: Tidy this up a bit with functions
     private def buildImplementationClassTree(specialization: Specialization, interfaceSymbol: ClassSymbol, classSymbol: ClassSymbol)(using Context) = {
-      val (objectParent, traitSpParent, originalTraitSpecializedParent) = generateImplementationClassParents(specialization, interfaceSymbol)
+      val (objectParent, traitSpParent_, originalTraitSpecializedParent_) = generateImplementationClassParents(specialization, interfaceSymbol)
+
+      // Apply Type Param Fix: TODO : This really ought to be done more cleanly somewhere else.
+      val tpMap: Map[Type, Type] = specialization.unspecializedTypeParams.zip(classSymbol.typeParams.map(_.typeRef)).toMap
+      val freshTypeVarMap = new TypeMap:
+        def apply(t: Type) = tpMap.applyOrElse(t, mapOver)
+      val traitSpParent = freshTypeVarMap(traitSpParent_)
+      val originalTraitSpecializedParent = freshTypeVarMap(originalTraitSpecializedParent_)
+
       val init = newDefaultConstructor(classSymbol)
       
       val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
-        def apply(t: Type) = specialization.constructorParamToArgumentTypeMap.view.applyOrElse(t, mapOver) // TODO: IF we can do just types we can get rid fo this 
+        def apply(t: Type) = specialization.specializedConstructorParamToArgumentTypeMap.view.applyOrElse(t, mapOver) // TODO: IF we can do just types we can get rid fo this 
       
-      val tm2 = new TypeMap:
-          def apply(t: Type) = t match {
-            case Specialization(spec) if spec.traitSymbol eq specialization.traitSymbol =>
-              classSymbol.typeRef
-            case _ => mapOver(t)
-          }
-
+      /* Create constructor and setup constructor type */
       val nonTypeParams = specialization.traitSymbol.primaryConstructor.rawParamss.tail
+      val oldTypeParams = specialization.unspecializedConstructorParams
+      val initTypeParams = classSymbol.typeParams.map(s => s.copy(owner = init, flags = (s.flags &~ (Flags.Private | Flags.Deferred))))
+      val valueParams = nonTypeParams.map(_.map(param => param.copy(owner = init, info = tm(param.info).substSym(oldTypeParams, initTypeParams), name=param.name.expandedName(classSymbol)))) // We need to map the parameter names to avoid a name clash with val params from parents (see tests/pos/specialized-trait-val-parameter.scala)
 
-      // We need to map the parameter names to avoid a name clash with val params from parents (see tests/pos/specialized-trait-val-parameter.scala)
-      val valueParams = nonTypeParams.map(_.map(param => param.copy(owner = init, info = tm(param.info), name=param.name.expandedName(classSymbol)))) // .map(_.filterNot(isSyntheticEvidence)
-      val typeParams = classSymbol.typeParams.map(_.copy())
+      initTypeParams.foreach(_.entered)      
+      init.setParamss(initTypeParams :: valueParams)
+      init.info = specialization.traitSymbol.primaryConstructor.info.appliedTo( // Type Arg if specialized; otherwise we want our type param.
+        specialization.constructorTypeParams.map(par => specialization.specializedConstructorParamToArgumentTypeMap.applyOrElse(par, _.subst(oldTypeParams, classSymbol.typeParams.map(_.typeRef))))
+      )
+      fixConstructor(init, classSymbol)
 
-      init.setParamss(typeParams :: valueParams)
-
-      val paramAccessorss = valueParams.map(params => params.map(s => s.copy(owner = classSymbol, flags=s.flags|Flags.LocalParamAccessor))) 
+      /* Build param accessors */
+      val paramAccessorss = valueParams.map(params => params.map(s => s.copy(owner = classSymbol, flags=(s.flags|Flags.LocalParamAccessor) &~ Flags.Param, info = s.info.subst(initTypeParams, classSymbol.typeParams.map(_.typeRef)))))
       paramAccessorss.foreach(_.foreach(classSymbol.enter(_)))
 
-      init.info = tm2(specialization.traitSymbol.primaryConstructor.info.appliedTo(specialization.typeArguments.map(_.tpe)))
-
-      fixConstructor(init, classSymbol)
-      val typer = Typer(ctx.nestingLevel + 1) // TODO: actually get these from the user.
-      
+      /* Build class def tree */
       val newParamss = paramAccessorss.nestedMap(ref(_))
-
       val newParams1 = if (newParamss.length == 1) then newParamss ++ List(List()) else newParamss
-
-      // TODO: Clean adn robust
+      // TODO: Clean and robust
       val classDef = ClassDefWithParents(
         classSymbol,
         DefDef(init.asTerm.entered), 
@@ -209,14 +210,10 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
           New(originalTraitSpecializedParent.typeConstructor)
             .select(TermRef(originalTraitSpecializedParent.typeConstructor, specialization.traitSymbol.primaryConstructor.asTerm)) // TODO: Check for other constructors
             .appliedToTypes(originalTraitSpecializedParent.argTypes)
-            // .appliedToArgss(paramAccessors.map(_.map(ref)))
             .appliedToArgss(newParams1)
-            
-            // TODO: What about potential custom typeclass instances? How do we balance that with generating another version of the class every time? Probably just generate the basic version and then let them apply their own version want (based on some kind of hashing). Then we generate a whole new impl class / or anon class which is still specialised to their instances that they provided, at the time that we see it?
-            // To be honest if our assumption is that we aren't very often going to do anything weird we can just always generate the class at the point of use, with the evidences specialized (but only if we don't ahve that one already - i.e. effectively consider the evidences as part of the name) 
           ),
           // Put into body of class
-          paramAccessorss.flatMap(syms => syms.map(sym => tpd.ValDef(sym.asTerm))) // .withFlags(Flags.LocalParamAccessor).withType(sym.info)
+          paramAccessorss.flatMap(syms => syms.map(sym => tpd.ValDef(sym.asTerm)))
         )
       classDef
     }
@@ -233,7 +230,9 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
         }
 
       def treeMap(tree: Tree): Tree = tree match {
-        // Replace (anonymous class version of) new Foo[Int] {} with new Foo$impl$Int.asInstanceOf[Foo$sp$Int] 
+        /* Replace new Foo[Int] {} with new Foo$impl$Int.asInstanceOf[Foo$sp$Int]
+           This has already been desugared to an anonymous class instance with parents:
+           Objects, Parents of Foo, Foo. */
         case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
                   Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass =>
            
@@ -618,13 +617,18 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(usi
 
   val specializedTypeParamsToTypeArgumentsMap: Map[Type, Tree] = paramToArgList.toMap.filter((k, v) => specializedTypeParamsSet(k))
   val specialization: List[Tree] = traitSymbol.typeParams.map(_.typeRef).map(specializedTypeParamsToTypeArgumentsMap.applyOrElse(_, TypeTree(_))) // TODO: Don't really like this name
-  // val constructorParamToArgumentTypeMap: Map[Type, Type] = traitSymbol.primaryConstructor.typeParams.zip(paramToArgList).filter((constrParam, paramArg) => specializedTypeParamsSet(paramArg._1)).map((constrParam, paramArg) => (constrParam.typeRef, paramArg._1)).toMap
 
-  // TODO: Potentially can get this out of the specialization.specialization directly given we make the same assumption about one primary constructor and param ordering. 
-  def constructorParamToArgumentTypeMap: Map[Type, Type] = 
-    traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef).zip(typeArguments.map(_.tpe)).toMap
+  def constructorTypeParams: List[Type] = traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef)
+  def unspecializedConstructorParams: List[Symbol] = traitSymbol.primaryConstructor.rawParamss.head.zip(traitSymbol.typeParams).filterNot((constrParam, typeParam) => specializedTypeParamsSet(typeParam.typeRef)).map((constrParam, typeParam) => constrParam)
+  def specializedConstructorParamToArgumentTypeMap: Map[Type, Type] = 
+    traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef).zip(paramToArgList).filter((constrParam, paramArg) => specializedTypeParamsSet(paramArg._1)).map((constrParam, paramArg) => (constrParam, paramArg._2.tpe)).toMap
 
-  def hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
+  val hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
+
+  def mapUnspecializedArgs(unspec: List[Tree]): List[Tree] = paramToArgList.foldLeft((List.empty[Tree], unspec))((resUnspec, paramArg) => ((resUnspec, paramArg): @unchecked) match {
+    case ((result, unspec), (param, arg)) if specializedTypeParamsSet(param) => (arg :: result, unspec)
+    case ((result, head :: rest), (param, arg))                              => (head :: result, rest)
+  })._1.reverse
 
   /* If inline trait Foo[T] has a method taking another Foo[T] there's no point specializing the reference
      since the resulting sp$T$ would be the same as the starting trait. */
