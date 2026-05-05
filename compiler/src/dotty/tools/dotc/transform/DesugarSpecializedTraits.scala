@@ -258,9 +258,12 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
                       report.error("Anonymous classes acting as instances of Specialized traits may not have additional members; you can make a named object instead if you like.", an.srcPos)
 
                     parentCalls match { 
-                      case (obj :: parentsOfSpecTrait) :+ Apply(Apply(tpe, ctorArgs), ev) if (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) =>
+                      case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) if (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) =>
                         specializations.getImplementationSymbol(spec).map( specializedSymbol => 
-                          Typed(Apply(Apply(Select(New(ref(specializedSymbol)),ctor).appliedToTypeTrees(spec.unspecializedTypeArgs), ctorArgs.map(_.changeNonLocalOwners(an.symbol.owner))), ev), t)
+                          Typed(
+                            Select(New(ref(specializedSymbol)),ctor).appliedToTypeTrees(spec.unspecializedTypeArgs)
+                                                                    .appliedToArgss(tpd.allArgss(app).tail.nestedMap(_.changeNonLocalOwners(an.symbol.owner))) // Remove the type params which are not needed
+                            , t)
                         ).getOrElse(tree) // We don't replace non-specialized anonymous class instantiations e.g. new Foo[T] where T is defined in the enclosing scope.
                       case _ => 
                         report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", an.srcPos)
