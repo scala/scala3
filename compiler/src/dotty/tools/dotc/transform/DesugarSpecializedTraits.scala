@@ -408,7 +408,7 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
         .map(refreshClassDef)
 
       if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
-        (stats.map(replaceSpecializedSymbolsMap(specializations2)(_)), specializations2)
+        (stats.map(replaceSpecializedSymbolsMap(specializations2)(_)), specializations2) // TODO: Check if this shouldn't be the same as the one belwo!?
       else 
         val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, span, specializations2)
         val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, span, specializations3)
