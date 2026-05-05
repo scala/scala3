@@ -4,6 +4,6 @@
    |                           Found:    (Test.f : [C^] => (xs: List[IO^{C}]) -> (ys: IO^{C}) -> IO^{C} ->{ys} Unit)
    |                           Required: [C^] => (x$1: List[IO^{C}]) -> IO^{C} -> IO^{C} -> Unit
    |
-   |                           Note that capability `x$0` cannot flow into capture set {}.
+   |                           Note that capability `ys` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

@@ -4,8 +4,8 @@
    |                        Found:    (Test.f : (a: IO, b: IO) -> IO^{a})
    |                        Required: (IO^, IO^) => IO^{any}
    |
-   |                        Note that capability `x$0` cannot flow into capture set {any}
-   |                        because (x$0 : IO) is not visible from any in value g.
+   |                        Note that capability `a` cannot flow into capture set {any}
+   |                        because (a : IO) is not visible from any in value g.
    |
    |                        where:    =>  refers to a root capability in the type of value g
    |                                  ^   refers to the root capability caps.any

@@ -614,7 +614,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if names.length != mt.paramNames.length then tp
           else
             val newRes = walk(mt.resType, rest, innerRhs)
-            mt.derivedLambdaType(paramNames = names, resType = newRes)
+            if !mt.isResultDependent && !mt.isParamDependent then
+              // Construct directly without going through derivedLambdaType.
+              // The latter substitutes paramRefs from `mt` to the new MT, which
+              // wraps any capture-set Vars in a BiMapped that holds a live
+              // reference to the synthetic-named `mt`. That reference is later
+              // resurrected by cc as a TermParamRef in error messages, defeating
+              // the rename. Direct construction avoids the substitution since
+              // there are no paramRefs to retarget for a non-dependent method.
+              mt.companion(names, mt.paramInfos, newRes)
+            else
+              mt.derivedLambdaType(paramNames = names, resType = newRes)
         case _ => tp
 
       closureOf(rhs) match

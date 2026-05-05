@@ -145,8 +145,8 @@
    |                     Found:    (f3 : (x: IO) -> IO^{x})
    |                     Required: IO^ => IO^{any}
    |
-   |                     Note that capability `x$0` cannot flow into capture set {any}
-   |                     because (x$0 : IO) is not visible from any in value f4.
+   |                     Note that capability `x` cannot flow into capture set {any}
+   |                     because (x : IO) is not visible from any in value f4.
    |
    |                     where:    =>  refers to a root capability in the type of value f4
    |                               ^   refers to the root capability caps.any
