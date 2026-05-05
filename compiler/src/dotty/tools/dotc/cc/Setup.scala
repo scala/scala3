@@ -220,6 +220,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     private var isTopLevel = true
 
     protected def innerApply(tp: Type): Type
+    protected def functionParamNames(tp: Type): List[TermName] = Nil
 
     final def apply(tp: Type) =
       val saved = isTopLevel
@@ -250,7 +251,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if expand then
           depFun(
               args.init, args.last,
-              isContextual = defn.isContextFunctionClass(tycon.classSymbol)
+              isContextual = defn.isContextFunctionClass(tycon.classSymbol),
+              paramNames = functionParamNames(original)
             ).showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
         else tp
       case _ => tp
@@ -289,6 +291,60 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   end SetupTypeMap
 
+  private val noFunctionParamNames: Type => List[TermName] = _ => Nil
+
+  /** User-written parameter names for `target`, a plain `FunctionN` type in `root`.
+   *  The names are used when that function type is expanded to a dependent function.
+   */
+  private def functionParamNamesFromRhs(root: Type, rhs: Tree, target: Type)(using Context): List[TermName] =
+    def closureOf(tree: Tree): Option[DefDef] = tree match
+      case closureDef(mdef) => Some(mdef)
+      case Block(_, expr) => closureOf(expr)
+      case Inlined(_, _, expr) => closureOf(expr)
+      case Typed(expr, _) => closureOf(expr)
+      case _ => None
+
+    def termParamClause(paramss: List[ParamClause], body: Tree): Option[(List[ValDef], List[ParamClause], Tree)] =
+      paramss match
+        case Nil :: rest =>
+          Some((Nil, rest, body))
+        case (params @ ((_: ValDef) :: _)) :: rest =>
+          Some((params.asInstanceOf[List[ValDef]], rest, body))
+        case Nil =>
+          closureOf(body).map(mdef => (mdef.paramss, mdef.rhs)).flatMap(termParamClause)
+        case _ :: rest =>
+          termParamClause(rest, body)
+
+    case class Search(paramss: List[ParamClause], body: Tree, names: List[TermName])
+
+    object find extends TypeAccumulator[Search]:
+      def apply(search: Search, tp: Type): Search =
+        tp match
+          case CapturingType(parent, _) =>
+            apply(search, parent)
+          case AnnotatedType(parent, _) =>
+            apply(search, parent)
+          case defn.RefinedFunctionOf(rinfo) =>
+            apply(search, rinfo)
+          case poly: PolyType =>
+            apply(search, poly.resType)
+          case mt: MethodType =>
+            termParamClause(search.paramss, search.body) match
+              case Some((params, rest, body1)) if params.length == mt.paramNames.length =>
+                apply(Search(rest, body1, Nil), mt.resType)
+              case _ => search
+          case AppliedType(_, args) if defn.isNonRefinedFunction(tp) =>
+            termParamClause(search.paramss, search.body) match
+              case Some((params, rest, body1)) if params.length == args.init.length =>
+                if tp eq target then search.copy(names = params.map(_.name))
+                else apply(Search(rest, body1, Nil), args.last)
+              case _ => search
+          case _ => search
+
+    closureOf(rhs) match
+      case Some(mdef) => find(Search(mdef.paramss, mdef.rhs, Nil), root).names
+      case None => Nil
+
   /** Transform the type of an InferredTypeTree by performing the following transformation
     * steps everywhere in the type:
     *  1. Drop retains annotations
@@ -308,11 +364,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *  @param sym           the definition to which this type belongs
     *  @param typeArgFormal if `tp` is an an inferred type argument, the formal parameter info,
     *                       otherwise NotType
+    *  @param sourceParamNames user-written parameter names for plain function types in `tp`
     */
-  private def transformInferredType(tp: Type, sym: Symbol, typeArgFormal: Type = NoType, initialVariance: Int = 1)(using Context): Type = {
+  private def transformInferredType(
+      tp: Type,
+      sym: Symbol,
+      typeArgFormal: Type = NoType,
+      initialVariance: Int = 1,
+      sourceParamNames: Type => List[TermName] = noFunctionParamNames
+    )(using Context): Type = {
 
     def mapInferred(inCaptureRefinement: Boolean): TypeMap = new TypeMap with SetupTypeMap {
       override def toString = "map inferred"
+      override protected def functionParamNames(tp: Type): List[TermName] =
+        sourceParamNames(tp)
 
       variance = initialVariance
       var refiningNames: Set[Name] = Set()
@@ -572,65 +637,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       if !tree.hasNuType then
         var transformed =
           if tree.isInferred || sym.is(ModuleVal)
-          then transformInferredType(tree.tpe, sym, typeArgFormal)
+          then
+            val sourceParamNames =
+              if !rhs.isEmpty then (target: Type) => functionParamNamesFromRhs(tree.tpe, rhs, target)
+              else noFunctionParamNames
+            transformInferredType(tree.tpe, sym, typeArgFormal, sourceParamNames = sourceParamNames)
           else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
-        if !rhs.isEmpty && tree.isInferred then
-          transformed = withUserParamNames(transformed, rhs)
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
           else transformed)
-
-    /** If `tp` was expanded into a curried dependent function during inferred-type
-     *  transformation, propagate the user-written parameter names from the value's
-     *  RHS closure structure so that printed types show the names the user wrote
-     *  rather than synthetic `x$0`-style names.
-     */
-    private def withUserParamNames(tp: Type, rhs: Tree)(using Context): Type =
-      def closureOf(tree: Tree): Option[DefDef] = tree match
-        case closureDef(mdef) => Some(mdef)
-        case Inlined(_, _, expr) => closureOf(expr)
-        case Typed(expr, _) => closureOf(expr)
-        case _ => None
-
-      def walk(tp: Type, paramss: List[ParamClause], innerRhs: Tree): Type = (tp, paramss) match
-        case (_, Nil) => closureOf(innerRhs) match
-          case Some(mdef) => walk(tp, mdef.paramss, mdef.rhs)
-          case None => tp
-        case (CapturingType(parent, refs), _) =>
-          val parent1 = walk(parent, paramss, innerRhs)
-          if parent1 eq parent then tp else tp.derivedCapturingType(parent1, refs)
-        case (at @ AnnotatedType(parent, annot), _) =>
-          val parent1 = walk(parent, paramss, innerRhs)
-          if parent1 eq parent then tp else at.derivedAnnotatedType(parent1, annot)
-        case (rt @ RefinedType(parent, rname, rinfo), _) if rname == nme.apply =>
-          val rinfo1 = walk(rinfo, paramss, innerRhs)
-          if rinfo1 eq rinfo then tp else rt.derivedRefinedType(parent, rname, rinfo1)
-        case (poly: PolyType, (((_: TypeDef) :: _)) :: rest) =>
-          val newRes = walk(poly.resType, rest, innerRhs)
-          if newRes eq poly.resType then tp else poly.derivedLambdaType(resType = newRes)
-        case (mt: MethodType, (params @ ((_: ValDef) :: _)) :: rest) =>
-          val names = params.asInstanceOf[List[ValDef]].map(_.name)
-          if names.length != mt.paramNames.length then tp
-          else
-            val newRes = walk(mt.resType, rest, innerRhs)
-            if !mt.isResultDependent && !mt.isParamDependent then
-              // Construct directly without going through derivedLambdaType.
-              // The latter substitutes paramRefs from `mt` to the new MT, which
-              // wraps any capture-set Vars in a BiMapped that holds a live
-              // reference to the synthetic-named `mt`. That reference is later
-              // resurrected by cc as a TermParamRef in error messages, defeating
-              // the rename. Direct construction avoids the substitution since
-              // there are no paramRefs to retarget for a non-dependent method.
-              mt.companion(names, mt.paramInfos, newRes)
-            else
-              mt.derivedLambdaType(paramNames = names, resType = newRes)
-        case _ => tp
-
-      closureOf(rhs) match
-        case Some(mdef) => walk(tp, mdef.paramss, mdef.rhs)
-        case None => tp
-    end withUserParamNames
 
     /** Transform the type of a val or var or the result type of a def */
     def transformResultType(tpt: TypeTree, sym: Symbol, rhs: Tree = EmptyTree)(using Context): Unit =
@@ -676,7 +692,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
           inContext(ctx.withOwner(meth)):
             paramss.foreach(traverse)
-            transformResultType(tpt, meth)
+            transformResultType(tpt, meth, tree.rhs)
             traverse(tree.rhs)
 
         case tree @ ValDef(_, tpt: TypeTree, _) =>
