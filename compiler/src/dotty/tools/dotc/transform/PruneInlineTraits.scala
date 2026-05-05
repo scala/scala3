@@ -18,6 +18,7 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
   override def phaseName: String = PruneInlineTraits.name
 
   override def description: String = PruneInlineTraits.description
+  override def runsAfter: Set[String] = Set(PruneSpecializedMethods.name)
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if isEraseable(sym) then sym.copySymDenotation(initFlags = sym.flags | Deferred)

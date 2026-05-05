@@ -74,6 +74,7 @@ class Compiler {
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new DropForMap,             // Drop unused trailing map calls in for comprehensions
+         new PruneSpecializedMethods, // Drop specialized methods which have already been inlined
          new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
     List(new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new init.Checker) ::        // Check initialization of objects
