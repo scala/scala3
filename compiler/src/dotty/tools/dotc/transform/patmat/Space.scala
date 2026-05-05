@@ -225,9 +225,10 @@ object SpaceEngine {
         || canDecompose(a) && isSubspace(Or(decompose(a)), b)
       case (_, Or(_))  => simplify(minus(a, b)) == Empty
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
-        isSubType(tp1, tp2)
-        || canDecompose(a) && isSubspace(Or(decompose(a)), b)
-        || (canDecompose(b) && rhsDecompositionAllowed(tp2)) && isSubspace(a, Or(decompose(b)))
+        !isTrivialWildcardLeftOfConcrete(tp1, tp2)
+        && (isSubType(tp1, tp2)
+          || canDecompose(a) && isSubspace(Or(decompose(a)), b)
+          || (canDecompose(b) && rhsDecompositionAllowed(tp2)) && isSubspace(a, Or(decompose(b))))
       case (Prod(tp1, _, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
@@ -536,6 +537,16 @@ object SpaceEngine {
 
   def isPrimToBox(tp: Type, pt: Type)(using Context): Boolean =
     tp.isPrimitiveValueType && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
+
+  /** Is `tp1` an unbounded `WildcardType` while `tp2` is something other than the unbounded
+   *  wildcard? */
+  private def isTrivialWildcardLeftOfConcrete(tp1: Type, tp2: Type)(using Context): Boolean =
+    def isTrivialWild(t: Type): Boolean = t match
+      case w: WildcardType =>
+        val b = w.effectiveBounds
+        b.lo.isNothingType && b.hi.isAny
+      case _ => false
+    isTrivialWild(tp1) && !isTrivialWild(tp2)
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"$tp1 <:< $tp2") {
