@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25971.scala:11:69 ---------------------------------------
+11 |  val g: [C^ <: {any}] => List[IO^{C}] -> IO^{C} -> IO^{C} -> Unit = f // error
+   |                                                                     ^
+   |                           Found:    (Test.f : [C^] => (xs: List[IO^{C}]) -> (ys: IO^{C}) -> IO^{C} ->{ys} Unit)
+   |                           Required: [C^] => (x$1: List[IO^{C}]) -> IO^{C} -> IO^{C} -> Unit
+   |
+   |                           Note that capability `x$0` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
