@@ -293,7 +293,11 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
         // Replace AppliedTypeTree instances in code
         case Specialization(spec) => {
           for (specializedSymbol <- specializations.getInterfaceSymbol(spec))
-          yield AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs) // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
+          yield
+            if spec.unspecializedTypeArgs.nonEmpty then
+              AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs)  // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
+            else
+              TypeTree(specializedSymbol.typeRef)
         }.getOrElse(tree)
 
         case tree => tree
