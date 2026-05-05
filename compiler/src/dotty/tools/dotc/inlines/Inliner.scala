@@ -1181,54 +1181,57 @@ class Inliner(val call: tpd.Tree)(using Context):
       }.toSet
 
       if typeOnlySyms.nonEmpty then
-        // Substitute TypeRefs `proxy.MemberName` (where the prefix is one of
-        // the type-only proxies) with the dealiased member type. After the
-        // substitution, recount references to confirm a proxy really has no
-        // remaining uses before dropping it; any binding still referenced
-        // is kept (so we don't leave dangling refs).
-        val dealiasMap = new TreeTypeMap(
-          typeMap = new TypeMap() {
-            override def stopAt = StopAt.Package
-            override def apply(tp: Type): Type = tp match
-              case tr: TypeRef =>
-                tr.prefix match
-                  case prefix: TermRef if typeOnlySyms.contains(prefix.symbol) =>
-                    tr.info match
-                      case TypeAlias(alias) => apply(alias)
-                      case _ => mapOver(tr)
-                  case _ => mapOver(tr)
-              case _ => mapOver(tp)
-          }
-        )
-        val Block(newBindings, newTree) = dealiasMap(Block(bindings, tree)): @unchecked
-        val newBindingsT = newBindings.asInstanceOf[List[MemberDef]]
+        // The proxies are only referenced from type positions, but in
+        // general we cannot just drop them: the type ascription
+        // `(value: proxy.OpaqueAlias)` is needed during typing to expose
+        // the alias, and rewriting it (either to the original opaque or to
+        // the underlying alias) loses information that downstream code
+        // relies on (see scala/scala3#21334).
+        //
+        // The narrow case we *can* handle is when the inlined expansion is
+        // simply `Typed(literal, tpt)` where `literal` is a `Literal` and
+        // `tpt` references the proxies. Here the type ascription only
+        // fixes the result type of the inlined body and can be dropped:
+        // the surrounding inline machinery in `Inlines.scala` will insert
+        // any required cast to the inline method's declared return type.
+        // We restrict this to `Literal` (not `Ident` etc.) to avoid
+        // narrowing the type of references like `Predef.???` whose method
+        // type could be used as a select qualifier downstream. In every
+        // other case (proxies used in argument positions, nested inline
+        // calls, etc.) we leave the proxies alone and let the regular
+        // retain logic handle them.
+        def isLiteralValue(t: Tree): Boolean = t match
+          case _: Literal => true
+          case Typed(inner, _) => isLiteralValue(inner)
+          case Inlined(_, Nil, expansion) => isLiteralValue(expansion)
+          case Block(Nil, expr) => isLiteralValue(expr)
+          case _ => false
 
-        // Recount refs (any reference, term or type) to detect which proxies
-        // are now truly unreferenced after dealiasing.
-        val newRefCount = MutableSymbolMap[Int]()
-        for sym <- typeOnlySyms do newRefCount(sym) = 0
-        def bumpType(tpe: Type) = tpe.foreachPart {
-          case ref: TermRef =>
-            for x <- newRefCount.get(ref.symbol) do newRefCount(ref.symbol) = x + 1
+        tree match
+          case Typed(inner, tpt) if isLiteralValue(inner) =>
+            val tptTpe = tpt.tpe
+            // Verify the tpt actually references one of the type-only
+            // proxies (otherwise we don't gain anything by stripping it)
+            // and the inner expression has no proxy references.
+            var tptRefsProxy = false
+            tptTpe.foreachPart {
+              case ref: TermRef if typeOnlySyms.contains(ref.symbol) =>
+                tptRefsProxy = true
+              case _ =>
+            }
+            var innerRefsProxy = false
+            inner.foreachSubTree {
+              case t @ (_: RefTree | _: New | _: TypeTree) =>
+                t.typeOpt.foreachPart {
+                  case ref: TermRef if typeOnlySyms.contains(ref.symbol) =>
+                    innerRefsProxy = true
+                  case _ =>
+                }
+              case _ =>
+            }
+            if tptRefsProxy && !innerRefsProxy then
+              return dropUnusedDefs(bindings, inner)
           case _ =>
-        }
-        def updateNewCount(tr: Tree): Unit = tr.foreachSubTree {
-          case t: RefTree =>
-            for x <- newRefCount.get(t.symbol) do newRefCount(t.symbol) = x + 1
-            bumpType(t.typeOpt)
-          case t @ (_: New | _: TypeTree) =>
-            bumpType(t.typeOpt)
-          case _ =>
-        }
-        updateNewCount(newTree)
-        for binding <- newBindingsT
-            if !typeOnlySyms.contains(binding.symbol)
-        do updateNewCount(binding)
-
-        val droppableSyms = typeOnlySyms.filter(newRefCount.getOrElse(_, 1) == 0)
-        if droppableSyms.nonEmpty then
-          val keptBindings = newBindingsT.filterNot(b => droppableSyms.contains(b.symbol))
-          return dropUnusedDefs(keptBindings, newTree)
       end if
 
       def retain(boundSym: Symbol) = {
