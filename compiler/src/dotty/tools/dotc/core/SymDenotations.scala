@@ -1059,6 +1059,9 @@ object SymDenotations {
     def isInlineTrait(using Context): Boolean =
       isAllOf(InlineTrait)
     
+    def isSpecializedMethod(using Context): Boolean = 
+      Specialization.isSpecializedMethod(symbol)
+
     def isSpecializedTrait(using Context): Boolean = 
       Specialization.isSpecializedTrait(symbol)
 

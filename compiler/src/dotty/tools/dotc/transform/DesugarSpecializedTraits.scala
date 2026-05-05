@@ -43,6 +43,7 @@ import dotty.tools.dotc.core.Decorators.nestedMap
 import dotty.tools.dotc.core.NameOps.expandedName
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
+import dotty.tools.dotc.core.Flags.InlineMethod
 
 class DesugarSpecializedTraits extends MacroTransform, DenotTransformer:
 
@@ -667,6 +668,7 @@ object Specialization:
   }
 
   def classSpecializedTypeParams(classSym: Symbol)(using Context): List[Type] = classSym.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
+  def methodSpecializedTypeParams(methodSym: Symbol)(using Context): List[Type] = methodSym.paramSymss.flatten.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
   
   // TODO: These methods are used in other phases; probably move them to the phase object? 
   def anonymousClassIsSpecialized(tree: Tree)(using Context) = 
@@ -682,6 +684,7 @@ object Specialization:
     } 
 
   def isSpecializedTrait(sym: Symbol)(using Context) = classSpecializedTypeParams(sym).nonEmpty
+  def isSpecializedMethod(sym: Symbol)(using Context) = sym.isAllOf(InlineMethod) && methodSpecializedTypeParams(sym).nonEmpty 
 end Specialization
 
 // Need to somehow make my naming a lot more consistent as well.
