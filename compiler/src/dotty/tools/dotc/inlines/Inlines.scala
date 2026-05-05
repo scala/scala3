@@ -83,15 +83,19 @@ object Inlines:
       && (
         // Outside of inline method bodies, any inline call may be inlined.
         !inInlineMethod
-        // Inside inline method bodies, a transparent inline given must still be
-        // expanded at typer so that dependent type members of its result
-        // (e.g. `tc.Out` from `fromVal[Int, Int]`) are known when typing the
-        // enclosing body; otherwise the implicit-argument reference is
-        // non-stable and gets skolemized, making `tc.Out` opaque. See #15798.
-        // Macro-based givens are excluded: eager expansion of their bodies
-        // would run a macro at the def site with abstract types, typically
-        // causing cyclic-macro-dependency errors (see tests/neg-macros/i18695).
-        || (sym.is(Given) && !sym.is(Macro) && needsTransparentInlining(tree))
+        // Inside inline method bodies, expand a transparent inline given at
+        // typer so that dependent type members of its result (e.g. `tc.Out`
+        // from `fromVal[Int, Int]`) are known when typing the enclosing
+        // body; otherwise the implicit-argument reference is non-stable and
+        // gets skolemized, making `tc.Out` opaque (#15798). Only givens with
+        // no value parameter clauses are eligible: a body that branches on a
+        // using arg's path (e.g. `inline m match` in HKDGeneric.derived) can
+        // produce a result that no longer matches the declared type when
+        // expanded at typer. Macro givens are also excluded; running their
+        // macro at the def site with abstract types causes cyclic-macro-
+        // dependency errors (tests/neg-macros/i18695).
+        || (sym.is(Given) && !sym.is(Macro) && needsTransparentInlining(tree)
+            && !sym.info.stripPoly.isInstanceOf[MethodType])
       )
       && (
         ctx.phase == Phases.inliningPhase
