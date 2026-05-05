@@ -644,7 +644,12 @@ object SpaceEngine {
         }
       }
 
-    sig.map { case tp: WildcardType => tp.bounds.hi case tp => tp }
+    sig.map:
+      case tp: WildcardType =>
+        val b = tp.effectiveBounds
+        if b.lo.isNothingType && b.hi.isAny then tp
+        else b.hi
+      case tp => tp
   }
 
   /** Whether the extractor covers the given type */
