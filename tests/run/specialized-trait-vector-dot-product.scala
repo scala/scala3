@@ -14,14 +14,17 @@ inline trait Vec[T: {Specialized, Numeric2}](elems: Array[T]):
       result = num.plus(result, num.times(this(i), other(i)))
     result
 
+object Vec:
+  inline def apply[T: {Specialized, Numeric2}](elems: Array[T]) = new Vec[T](elems) {}
+end Vec
+
 object Test:
   def main(args: Array[String]) = 
     implicit val v: Numeric2[Int] = new IntIsIntegral() {}
-    val x = new Vec[Int](Array(1, 2, 3, 4, 5)) {}
-    val y = new Vec[Int](Array(3, 4, 5, 6, 7)) {}
+    val x = Vec[Int](Array(1, 2, 3, 4, 5))
+    val y = Vec[Int](Array(3, 4, 5, 6, 7))
     val z = x.scalarProduct(y)
     assert(z == 85)
-
 
 inline trait Numeric2[T: Specialized]:
   def fromInt(x: Int): T
