@@ -31,8 +31,8 @@
 21 |  foo(c)(c) // error: separation
    |      ^
    |Separation failure: argument of type  (c : () => Unit)
-   |to a function of type (x$0: () => Unit) -> (() ->{c, any} Unit) ->{x$0} Unit
-   |corresponds to capture-polymorphic formal parameter x$0 of type  () =>² Unit
+   |to a function of type (p1: () => Unit) -> (() ->{c, any} Unit) ->{p1} Unit
+   |corresponds to capture-polymorphic formal parameter p1 of type  () =>² Unit
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function result with type  (() ->{c, any} Unit) ->{c} Unit.
    |
@@ -43,7 +43,7 @@
    |  The two sets overlap at               : {c}
    |
    |where:    =>  refers to a root capability in the type of parameter c
-   |          =>² refers to a root capability created in method test when checking argument to parameter x$0 of method apply
+   |          =>² refers to a root capability created in method test when checking argument to parameter p1 of method apply
 -- Error: tests/neg-custom-args/captures/sep-curried-par.scala:23:65 ---------------------------------------------------
 23 |  val bar = (p1: () => Unit) => (p2: () ->{p1, any} Unit) => par(p1, p2) // error separation
    |                                                                 ^^

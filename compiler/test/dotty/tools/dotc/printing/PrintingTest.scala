@@ -84,4 +84,7 @@ class PrintingTest {
 
   @Test
   def inlining: Unit = testIn("tests/printing/inlining", "inlining")
+
+  @Test
+  def cc: Unit = testIn("tests/printing/cc", "cc")
 }

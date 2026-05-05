@@ -1,0 +1,36 @@
+[[syntax trees at end of                        cc]] // tests/printing/cc/i25971.scala
+package <empty> {
+  import language.experimental.captureChecking
+  import caps.*
+  @SourceFile("tests/printing/cc/i25971.scala") class File() extends Object() {}
+  final lazy module val Test: Test^{} = new Test()
+  @SourceFile("tests/printing/cc/i25971.scala") final module class Test()
+     extends Object() {
+    private[this] type $this = Test.type
+    private def writeReplace(): AnyRef =
+      new scala.runtime.ModuleSerializationProxy(classOf[Test.type])
+    val f:
+      [C^] => (xs: List[File^{C}]) -> (ys: File^{C}) -> File^{C} ->{ys} Unit = [
+      C^] => (xs: List[File^{C}]) => (ys: File^{C}) => (zs: File^{C}) =>
+      {
+        matchResult1[Unit]:
+          {
+            case val x1: (File^{ys}) @RuntimeChecked =
+              ys:(File^{ys}) @RuntimeChecked
+            return[matchResult1] ()
+          }
+        ()
+      }
+    val g: (ys: File^) -> File^ ->{ys} Unit = (ys: File^) => (zs: File^) =>
+      {
+        matchResult2[Unit]:
+          {
+            case val x2: (File^{ys}) @RuntimeChecked =
+              ys:(File^{ys}) @RuntimeChecked
+            return[matchResult2] ()
+          }
+        ()
+      }
+  }
+}
+

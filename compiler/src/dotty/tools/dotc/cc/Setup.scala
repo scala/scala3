@@ -568,23 +568,66 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Transform type of tree, and remember the transformed type as the type of the tree
      *  @pre !(boxed && sym.exists)
      */
-    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType)(using Context): Unit =
+    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType, rhs: Tree = EmptyTree)(using Context): Unit =
       if !tree.hasNuType then
         var transformed =
           if tree.isInferred || sym.is(ModuleVal)
           then transformInferredType(tree.tpe, sym, typeArgFormal)
           else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
+        if !rhs.isEmpty && tree.isInferred then
+          transformed = withUserParamNames(transformed, rhs)
         tree.setNuType(
           if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
           else transformed)
 
+    /** If `tp` was expanded into a curried dependent function during inferred-type
+     *  transformation, propagate the user-written parameter names from the value's
+     *  RHS closure structure so that printed types show the names the user wrote
+     *  rather than synthetic `x$0`-style names.
+     */
+    private def withUserParamNames(tp: Type, rhs: Tree)(using Context): Type =
+      def closureOf(tree: Tree): Option[DefDef] = tree match
+        case closureDef(mdef) => Some(mdef)
+        case Inlined(_, _, expr) => closureOf(expr)
+        case Typed(expr, _) => closureOf(expr)
+        case _ => None
+
+      def walk(tp: Type, paramss: List[ParamClause], innerRhs: Tree): Type = (tp, paramss) match
+        case (_, Nil) => closureOf(innerRhs) match
+          case Some(mdef) => walk(tp, mdef.paramss, mdef.rhs)
+          case None => tp
+        case (CapturingType(parent, refs), _) =>
+          val parent1 = walk(parent, paramss, innerRhs)
+          if parent1 eq parent then tp else tp.derivedCapturingType(parent1, refs)
+        case (at @ AnnotatedType(parent, annot), _) =>
+          val parent1 = walk(parent, paramss, innerRhs)
+          if parent1 eq parent then tp else at.derivedAnnotatedType(parent1, annot)
+        case (rt @ RefinedType(parent, rname, rinfo), _) if rname == nme.apply =>
+          val rinfo1 = walk(rinfo, paramss, innerRhs)
+          if rinfo1 eq rinfo then tp else rt.derivedRefinedType(parent, rname, rinfo1)
+        case (poly: PolyType, (((_: TypeDef) :: _)) :: rest) =>
+          val newRes = walk(poly.resType, rest, innerRhs)
+          if newRes eq poly.resType then tp else poly.derivedLambdaType(resType = newRes)
+        case (mt: MethodType, (params @ ((_: ValDef) :: _)) :: rest) =>
+          val names = params.asInstanceOf[List[ValDef]].map(_.name)
+          if names.length != mt.paramNames.length then tp
+          else
+            val newRes = walk(mt.resType, rest, innerRhs)
+            mt.derivedLambdaType(paramNames = names, resType = newRes)
+        case _ => tp
+
+      closureOf(rhs) match
+        case Some(mdef) => walk(tp, mdef.paramss, mdef.rhs)
+        case None => tp
+    end withUserParamNames
+
     /** Transform the type of a val or var or the result type of a def */
-    def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
+    def transformResultType(tpt: TypeTree, sym: Symbol, rhs: Tree = EmptyTree)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
         inContext(ctx.addMode(Mode.CCPreciseOwner)):
-          transformTT(tpt, sym, boxed = false)
+          transformTT(tpt, sym, boxed = false, rhs = rhs)
       catch case ex: IllegalCaptureRef =>
         capt.println(i"fail while transforming result type $tpt of $sym")
         throw ex
@@ -630,7 +673,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val sym = tree.symbol
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
-            transformResultType(tpt, sym)
+            transformResultType(tpt, sym, tree.rhs)
             traverse(tree.rhs)
 
         case tree @ TypeApply(fn, args) =>
