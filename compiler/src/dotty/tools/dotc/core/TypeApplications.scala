@@ -18,6 +18,14 @@ object TypeApplications {
 
   type TypeParamInfo = ParamInfo.Of[TypeName]
 
+  /** True if match-alias `tr`'s RHS mentions `tr.symbol`. */
+  def matchAliasTypeRefIsRecursive(tr: TypeRef)(using Context): Boolean =
+    tr.info match
+      case ab: AliasingBounds if ab.isMatchAlias =>
+        ab.alias.existsPart(_.typeSymbol eq tr.symbol)
+      case _ =>
+        false
+
   /** Assert type is not a TypeBounds instance and return it unchanged */
   def noBounds(tp: Type): Type = tp match {
     case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
@@ -416,7 +424,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                 .appliedTo(args)
             case _ =>
               stripped match
-                case tr: TypeRef if tr.info.isMatchAlias =>
+                case tr: TypeRef if tr.info.isMatchAlias && !matchAliasTypeRefIsRecursive(tr) =>
                   AppliedType(stripped, args)
                 case _ =>
                   val reducer = new Reducer(dealiased, args)
