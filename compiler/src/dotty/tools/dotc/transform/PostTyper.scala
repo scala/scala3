@@ -26,6 +26,7 @@ import cc.*
 import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import ast.TreeInfo
+import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
 
 object PostTyper {
   val name: String = "posttyper"
@@ -495,6 +496,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if tree.isType then
             checkNotPackage(tree)
           else
+            if tree.symbol == defn.SpecializedModule then
+              report.error(IllegalUseOfSpecialized(), tree.srcPos)
             registerNeedsInlining(tree)
             val tree1 = checkUsableAsValue(tree)
             tree1.tpe match {
@@ -599,6 +602,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: TypeDef =>
           if tree.symbol.isInlineTrait then
             ctx.compilationUnit.needsInlining = true  // Transform inner classes to traits
+          if tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) then
+            report.error(IllegalUseOfSpecialized(), tree.srcPos)
           registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
           if (sym.isClass)
@@ -671,6 +676,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else if (tree.tpt.symbol == defn.orType)
             () // nothing to do
           else
+            if tree.tpt.symbol == defn.SpecializedClass && !ctx.owner.name.is(ContextBoundParamName) then
+              report.error(IllegalUseOfSpecialized(), tree.srcPos)
             Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>

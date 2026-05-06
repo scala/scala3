@@ -3861,3 +3861,20 @@ final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
     i"""A private field shadows an inherited field with the same name.
        |This can lead to confusion as the inherited field becomes inaccessible.
        |Consider renaming the private field to avoid the shadowing."""
+
+final class IllegalUseOfSpecialized(using Context)
+    extends SyntaxMsg(IllegalUseOfSpecializedID):
+  override protected def msg(using Context): String =
+    i"Specialized may only be used as a context bound"
+  override protected def explain(using Context): String =
+    i"""Specialized allows for a performance improvement by specializing generic type parameters
+        to avoid boxing/unboxing. It should only be used as a context (typeclass) bound on a
+        generic type in inline traits or inline methods:
+
+        inline trait Vec[T: Specialized](val x: T)
+
+        inline def foo[T: Specialized](v: Vec[T]) = v.x
+
+        In this instance it was used in a way which is unsupported, such as
+        trying to create a type synonym or a value with explicit type Specialized[X].  
+      """
