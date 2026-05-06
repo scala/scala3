@@ -1124,13 +1124,27 @@ class Inliner(val call: tpd.Tree)(using Context):
       dropUnusedDefs(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
     }
     else {
-      // Recognise inline-proxy synthetic bindings. The opaque-alias proxy
-      // (created by `OpaqueProxy.apply`) has its rhs built by `tpd.cast`,
-      // which is documented as safe ("assuming no exception is raised, i.e.
-      // the operation is pure"), so we treat it as elideable here. The
-      // this-proxy has the `InlineProxy` flag (see `registerType`).
-      def isInlineProxyBinding(sym: Symbol): Boolean =
-        sym.is(InlineProxy) || (sym.is(Synthetic) && sym.name.is(InlineBinderName))
+      // Recognise the synthetic this-proxy and opaque-alias-proxy
+      // bindings, both of which have a guaranteed-pure rhs:
+      //
+      //   - opaque proxies are created by `OpaqueProxy.apply`; their
+      //     rhs is built with `tpd.cast`, documented as safe
+      //     ("assuming no exception is raised, i.e. the operation is
+      //     pure"). They carry `Synthetic` + `InlineBinderName` and
+      //     *no* `InlineProxy` (see `OpaqueProxy.unapply`).
+      //   - this-proxies are created by `registerType`; their rhs is
+      //     a stable module/outer reference. They carry the
+      //     `InlineProxy` flag and a `<class>_this` name (not
+      //     `InlineBinderName`).
+      //
+      // Param bindings (`paramBindingDef`) also carry `InlineProxy`,
+      // but their rhs is the user's argument, which may have side
+      // effects (e.g. `new Bomb()` for a by-value extension prefix —
+      // see tests/run-macros/i5110), so they must not be classified
+      // as elideable.
+      def isThisOrOpaqueProxy(sym: Symbol): Boolean =
+        (sym.is(InlineProxy) && !sym.name.is(InlineBinderName))
+          || (sym.is(Synthetic, butNot = InlineProxy) && sym.name.is(InlineBinderName))
 
       val refCount = MutableSymbolMap[Int]()
       val termRefCount = MutableSymbolMap[Int]()
@@ -1138,7 +1152,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
       def isInlineable(binding: MemberDef) = binding match {
         case ddef @ DefDef(_, Nil, _, _) => isElideableExpr(ddef.rhs)
-        case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs) || isInlineProxyBinding(vdef.symbol)
+        case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs) || isThisOrOpaqueProxy(vdef.symbol)
         case _ => false
       }
       for (binding <- bindings if isInlineable(binding)) {
@@ -1174,7 +1188,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       // these we can dealias the type references and drop the bindings,
       // so they don't leave dead values in the bytecode (see issue #21334).
       val typeOnlySyms: Set[Symbol] = bindings.iterator.collect {
-        case b if isInlineProxyBinding(b.symbol)
+        case b if isThisOrOpaqueProxy(b.symbol)
             && refCount.contains(b.symbol)
             && refCount.getOrElse(b.symbol, 0) > 0
             && termRefCount.getOrElse(b.symbol, 0) == 0 => b.symbol
