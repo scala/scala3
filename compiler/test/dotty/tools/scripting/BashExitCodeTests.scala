@@ -25,7 +25,6 @@ class BashExitCodeTests:
 
   /** Verify the exit code of running `cmd args*`. */
   def verifyExit(cmd: String, args: String*)(expectedExitCode: Int): Unit =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val (validTest, exitCode, stdout, stderr) = bashCommand((cmd +: args).mkString(" "))
     if verifyValid(validTest) then
       assertEquals({

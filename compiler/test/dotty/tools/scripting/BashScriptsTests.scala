@@ -91,7 +91,6 @@ class BashScriptsTests:
   /* verify that `dist/bin/scala` correctly passes args to the jvm via -J-D for script envtest.sc */
   @Ignore // SCALA CLI does not support `-J` to pass java properties, only things like -Xmx5g
   @Test def verifyScJProperty =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val tag = "World1"
     val stdout = callScript(tag, envtestNuSc, s"-J-Dkey")
     assertEquals( s"Hello $tag", stdout)
@@ -99,28 +98,24 @@ class BashScriptsTests:
   /* verify that `dist/bin/scala` correctly passes args to the jvm via -J-D for script envtest.scala */
   @Ignore // SCALA CLI does not support `-J` to pass java properties, only things like -Xmx5g
   @Test def verifyScalaJProperty =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val tag = "World2"
     val stdout = callScript(tag, envtestScala, s"-J-Dkey")
     assertEquals(s"Hello $tag", stdout)
 
   /* verify that `dist/bin/scala` can set system properties via -D for envtest.sc */
   @Test def verifyScDProperty =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val tag = "World3"
     val stdout = callScript(tag, envtestNuSc, s"-Dkey")
     assertEquals(s"Hello $tag", stdout)
 
   /* verify that `dist/bin/scala` can set system properties via -D for envtest.scala */
   @Test def verifyScalaDProperty =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val tag = "World4"
     val stdout = callScript(tag, envtestScala, s"-Dkey")
     assertEquals(s"Hello $tag", stdout)
 
   /* verify that `dist/bin/scala` can set system properties via -D when executing compiled script via -jar envtest.jar */
   @Test def saveAndRunWithDProperty =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val libOut = envtestScala.relpath.stripSuffix(".scala") + ".jar"
     val commandline = Seq(
       "SCALA_OPTS= ", scalaPath.relpath, "--power", "package", envtestScala.relpath, "-o", libOut, "--library", "--offline", "--server=false").mkString(" ")
@@ -141,7 +136,6 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scalac` non-interference with command line args following script name */
   @Test def verifyScalacArgs =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val commandline = (Seq("SCALA_OPTS= ", scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
     if verifyValid(validTest) then
@@ -157,7 +151,6 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scala` non-interference with command line args following script name */
   @Test def verifyScalaArgs =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val commandline = (
       Seq("SCALA_OPTS= ", scalaPath, showArgsScalaCli)
       ++ Seq("--power", "--offline", "--server=false")
@@ -181,7 +174,6 @@ class BashScriptsTests:
    */
   @Category(Array(classOf[BootstrappedOnlyTests]))
   @Test def verifyScriptPathProperty =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val scriptFile = testFiles.find(_.getName == "scriptPath_scalacli.sc").get
     val expected = s"${scriptFile.getName}"
     printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
@@ -198,7 +190,6 @@ class BashScriptsTests:
    * verify SCALA_OPTS can specify an @argsfile when launching a scala script in `dist/bin/scala`.
    */
   @Test def verifyScalaOpts =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val scriptFile = testFiles.find(_.getName == "classpathReport_scalacli.sc").get
     printf("===> verify SCALA_OPTS='@argsfile' is properly handled by `dist/bin/scala`\n")
     val envPairs = List(("SCALA_OPTS", s"@$argsfile"))
@@ -221,7 +212,6 @@ class BashScriptsTests:
    * verify that individual scripts can override -save with -nosave (needed to address #13760).
    */
   @Test def sqlDateTest =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val scriptBase = "sqlDateError_scalacli"
     val scriptFile = testFiles.find(_.getName == s"$scriptBase.sc").get
     val testJar = testFile(s"$scriptBase.jar") // jar should not be created when scriptFile runs
@@ -246,7 +236,6 @@ class BashScriptsTests:
    * verify -e println("yo!") works.
    */
   @Test def verifyCommandLineExpression =
-    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     printf("===> verify -e <expression> is properly handled by `dist/bin/scala`\n")
     val expected = "9"
     val expression = s"println(3*3)"

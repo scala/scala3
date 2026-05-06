@@ -63,14 +63,12 @@ class PatmatExhaustivityTest {
 
   @Test
   def patmatExhaustivity: Unit = {
-    val excluded = TestSources.patmatExhaustivityScala2LibraryTastyExcludelisted.toSet
     val res = Directory(testsDir).list.toList
       .filter(f => f.ext.isScala || f.isDirectory)
       .filter { f =>
         val path = if f.isDirectory then f.path + "/" else f.path
         Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
       }
-      .filterNot(f => excluded.contains(f.name))
       .map(f => if f.isDirectory then compileDir(f.jpath) else compileFile(f.jpath))
 
     val failed = res.filter(!_)

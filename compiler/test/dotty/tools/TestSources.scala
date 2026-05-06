@@ -32,16 +32,12 @@ object TestSources {
   def posTestRecheckExcludesFile: String = "compiler/test/dotc/pos-test-recheck.excludes"
   def posLazyValsAllowlistFile: String = "compiler/test/dotc/pos-lazy-vals-tests.allowlist"
   def posLintingAllowlistFile: String = "compiler/test/dotc/pos-linting.allowlist"
-  def posInitGlobalScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/pos-init-global-scala2-library-tasty.excludelist"
 
   def posFromTastyExcludelisted: List[String] = loadList(posFromTastyExcludelistFile)
   def posTestPicklingExcludelisted: List[String] = loadList(posTestPicklingExcludelistFile)
   def posTestRecheckExcluded: List[String] = loadList(posTestRecheckExcludesFile)
   def posLazyValsAllowlist: List[String] = loadList(posLazyValsAllowlistFile)
   def posLintingAllowlist: List[String] = loadList(posLintingAllowlistFile)
-  def posInitGlobalScala2LibraryTastyExcludelisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(posInitGlobalScala2LibraryTastyExcludelistFile)
-    else Nil
 
   // run tests lists
 
@@ -49,39 +45,11 @@ object TestSources {
   def runTestPicklingExcludelistFile: String = "compiler/test/dotc/run-test-pickling.excludelist"
   def runTestRecheckExcludesFile: String = "compiler/test/dotc/run-test-recheck.excludes"
   def runLazyValsAllowlistFile: String = "compiler/test/dotc/run-lazy-vals-tests.allowlist"
-  def runMacrosScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/run-macros-scala2-library-tasty.excludelist"
 
   def runFromTastyExcludelisted: List[String] = loadList(runFromTastyExcludelistFile)
   def runTestPicklingExcludelisted: List[String] = loadList(runTestPicklingExcludelistFile)
   def runTestRecheckExcluded: List[String] = loadList(runTestRecheckExcludesFile)
   def runLazyValsAllowlist: List[String] = loadList(runLazyValsAllowlistFile)
-  def runMacrosScala2LibraryTastyExcludelisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(runMacrosScala2LibraryTastyExcludelistFile)
-    else Nil
-
-  // neg tests lists
-
-  def negScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-scala2-library-tasty.excludelist"
-  def negInitGlobalScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-init-global-scala2-library-tasty.excludelist"
-  def negExplicitNullsScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-explicit-nulls-scala2-library-tasty.excludelist"
-
-  def negScala2LibraryTastyExcludelisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(negScala2LibraryTastyExcludelistFile)
-    else Nil
-  def negInitGlobalScala2LibraryTastyExcludelisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(negInitGlobalScala2LibraryTastyExcludelistFile)
-    else Nil
-  def negExplicitNullsScala2LibraryTastyExcludelisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(negExplicitNullsScala2LibraryTastyExcludelistFile)
-    else Nil
-
-  // patmat tests lists
-
-  def patmatExhaustivityScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/patmat-exhaustivity-scala2-library-tasty.excludelist"
-
-  def patmatExhaustivityScala2LibraryTastyExcludelisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(patmatExhaustivityScala2LibraryTastyExcludelistFile)
-    else Nil
 
   // neg best effort tests lists
 
