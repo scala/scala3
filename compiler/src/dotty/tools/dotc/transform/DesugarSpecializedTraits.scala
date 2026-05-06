@@ -42,10 +42,9 @@ import dotty.tools.dotc.core.NameOps.expandedName
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.InlineMethod
+import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 
-class DesugarSpecializedTraits extends MacroTransform, DenotTransformer: // We need DenotTransformer for installAfter (even though we implement transform as id)
-
-  override def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref
+class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
   override def phaseName: String = DesugarSpecializedTraits.name
   override def description: String = DesugarSpecializedTraits.description
@@ -53,11 +52,9 @@ class DesugarSpecializedTraits extends MacroTransform, DenotTransformer: // We n
   override def changesParents: Boolean = true 
   override def allowsImplicitSearch: Boolean = true
 
-  override def run(using Context): Unit =
-    try super.run
-    catch case _: CompilationUnit.SuspendException => ()
 
-  override def newTransformer(using Context): Transformer = new Transformer {
+
+
 
     private def newInterfaceTrait(specialization: Specialization, specializations: SpecializedTraitCache): (ClassSymbol, SpecializedTraitCache) = {
       val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
