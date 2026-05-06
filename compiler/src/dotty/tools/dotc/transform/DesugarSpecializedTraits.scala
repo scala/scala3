@@ -402,7 +402,6 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         }
       .map(refreshClassDef)
 
-    
     val (generatedTraitStatsFinal, generatedClassStatsFinal, specializationsFinal) = 
       if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
         (generatedTraitStats1, generatedClassStats1, specializations2)
@@ -435,7 +434,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
                      ))
 
     (statsFinal.map(removeRedundantOverridesMap(_)), specializationsFinal)
-  }
+}
     
   override protected def newTransformer(using Context): Transformer = new Transformer:
     override def transform(tree: Tree)(using Context): Tree = 
