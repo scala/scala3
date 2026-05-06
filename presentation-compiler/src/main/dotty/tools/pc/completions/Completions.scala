@@ -585,10 +585,13 @@ class Completions(
           config.isCompletionSnippetsEnabled()
         )
         (args, false)
-    val singletonCompletions = InferCompletionType.inferType(path).map(
+    val expectedType = InferCompletionType.inferType(path)
+    val singletonCompletions = expectedType.map(
       SingletonCompletions.contribute(path, _, completionPos)
     ).getOrElse(Nil)
-    (singletonCompletions ++ advanced, exclusive)
+    val relativeAdtCompletions =
+      RelativeAdtCompletions.contribute(path, expectedType, completionPos)
+    (relativeAdtCompletions ++ singletonCompletions ++ advanced, exclusive)
   end advancedCompletions
 
   private def isAmmoniteCompletionPosition(
