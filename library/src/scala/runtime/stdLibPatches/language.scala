@@ -181,6 +181,13 @@ private[scala] object language:
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for relative ADT scoping: a leading `.` followed by an
+     *  identifier in target-typed positions desugars to `T.X`, where `T` is the
+     *  expected type. See SIP-80.
+     */
+    @compileTimeOnly("`targetTypedCompanionShorthand` can only be used at compile time in import statements")
+    object targetTypedCompanionShorthand
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

@@ -41,6 +41,7 @@ object Feature:
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
+  val targetTypedCompanionShorthand = experimental("targetTypedCompanionShorthand")
   val safe = experimental("safe")
 
   val nonViralExperimentalFeatures: Set[TermName] =
@@ -80,6 +81,7 @@ object Feature:
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
+    (targetTypedCompanionShorthand, "Allow target-typed companion shorthand (`.X` for `T.X` in target-typed positions)"),
     (safe, "Require safe mode"),
   )
 

@@ -2898,6 +2898,9 @@ object Parsers {
         case MACRO =>
           val start = in.skipToken()
           MacroTree(simpleExpr(Location.Elsewhere))
+        case DOT if in.lookahead.token == IDENTIFIER && in.featureEnabled(Feature.targetTypedCompanionShorthand) =>
+          val start = in.skipToken()
+          atSpan(start) { RelativeSelect(ident()) }
         case _ =>
           if isLiteral then
             literal()
@@ -3449,6 +3452,9 @@ object Parsers {
           val typed = Typed(Ident(nme.WILDCARD), refinedType())
           Bind(nme.WILDCARD, typed).withMods(addMod(Modifiers(), givenMod))
         }
+      case DOT if in.lookahead.token == IDENTIFIER && in.featureEnabled(Feature.targetTypedCompanionShorthand) =>
+        val start = in.skipToken()
+        simplePatternRest(atSpan(start) { RelativeSelect(ident()) })
       case _ =>
         if (isLiteral) literal(inPattern = true)
         else {

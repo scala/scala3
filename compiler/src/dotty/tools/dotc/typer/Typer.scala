@@ -1138,6 +1138,122 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree1
   }
 
+  /** Type a relative selection `.X` (SIP-80) by resolving it as `T.X` where `T`
+   *  is the principal companion-bearing class derived from the expected type.
+   *
+   *  Resolution algorithm:
+   *    1. Reject when `experimental.targetTypedCompanionShorthand` is not enabled.
+   *    2. Strip prototype layers from `pt` to obtain a value type `target`.
+   *    3. Locate `target.classSymbol.companionModule`; if absent, error.
+   *    4. Build `Select(companionRef, name)` and re-typecheck against `pt`.
+   *  Implicit conversions, overload resolution, and pattern-mode handling fall
+   *  out of the reuse of `typedSelect`/`adapt`.
+   */
+  def typedRelativeSelect(tree: untpd.RelativeSelect, pt: Type)(using Context): Tree =
+    record("typedRelativeSelect")
+    // Note: gating happens at the parser via `featureEnabled(targetTypedCompanionShorthand)`,
+    // mirroring how `multiSpreads`, `subCases`, and `relaxedLambdaSyntax` are wired.
+    // If we reach here, the import (or `-language:experimental.targetTypedCompanionShorthand`)
+    // is in scope and the parser has produced a `RelativeSelect` node.
+
+    // Strip ProtoType layers (SelectionProto / IgnoredProto / FunProto / PolyProto)
+    // until we hit a real value type. WildcardType / unsolved TypeVars / TypeBounds
+    // mean the expected type isn't determined and we cannot resolve.
+    //
+    // SelectionProto wraps the original expected type as `IgnoredProto(orig)`. When
+    // the relative selection is the function part of an Apply (e.g. `.Node(1, x, y)`)
+    // or a TypeApply (e.g. `.Node[Int]`), pt is a FunProto/PolyProto whose result
+    // is what determines the target — peel it.
+    //
+    // Opaque type aliases must NOT be dealiased: they have their own companion
+    // (per SIP-80 §opaque types). We use widenSingleton + dropDependentRefinement
+    // but skip `.dealias`.
+    def principalTarget(tp: Type): Type = tp match
+      case tp: SelectionProto => principalTarget(tp.memberProto)
+      case tp: IgnoredProto   => principalTarget(tp.ignored)
+      case tp: FunProto       => principalTarget(tp.resultType)
+      case tp: PolyProto      => principalTarget(tp.resType)
+      case tp: ProtoType      => NoType
+      case tp: TypeBounds     => NoType
+      case tp: TypeVar =>
+        // If the TypeVar is instantiated, use the instance type. Otherwise,
+        // fall back to the current upper bound from the typer state's
+        // constraint. This is what unblocks `Some(.Red)` with target type
+        // `Option[Color]`: `Some.apply[A]: A => Some[A]` is constrained via
+        // `constrainResult(Some[A], Option[Color])` to `A <: Color`, so the
+        // upper bound is Color and `.Red` resolves correctly.
+        val inst = tp.instanceOpt
+        if inst.exists then principalTarget(inst)
+        else
+          val hi = TypeComparer.fullUpperBound(tp.origin)
+          if !hi.exists || hi.isExactlyAny then NoType
+          else principalTarget(hi)
+      case tp if tp eq WildcardType => NoType
+      case tp =>
+        val w = tp.widenExpr
+        w match
+          case w: TypeVar => principalTarget(w)
+          // SIP-80: special-case `T | Null` (and `Null | T`) to resolve as `T`.
+          // `Null` has no useful companion members and the union is the common
+          // idiom for nullable references — making `val c: Color | Null = .Red`
+          // resolve `.Red` against `Color` is the natural reading.
+          case OrType(lhs, rhs) if rhs.classSymbol == defn.NullClass => principalTarget(lhs)
+          case OrType(lhs, rhs) if lhs.classSymbol == defn.NullClass => principalTarget(rhs)
+          case _ => w.dropDependentRefinement
+
+    val target = principalTarget(pt)
+    if !target.exists then
+      // The expected type is undetermined here. We don't try to defer:
+      // overload-with-default-args calls are handled earlier by the SIP-80
+      // branch of `Applications.pretypeArgs`, which pre-types `.X` with the
+      // common formal shared across surviving candidates. If we reach here,
+      // there's nothing more to be done — emit a diagnostic.
+      return errorTree(tree,
+        em"the expected type of `.${tree.name}` cannot be determined here; relative ADT scoping requires a known target type",
+        tree.srcPos)
+
+    // Look up the alias's own companion via `prefix.member(name)` first. This is
+    // necessary for opaque types — `classSymbol.companionModule` would resolve to
+    // the underlying class's companion, not the alias's.
+    def companionByPrefix: Symbol = target match
+      case ref: TypeRef =>
+        val nameAsTerm = ref.name.toTermName
+        val prefix = ref.prefix
+        if prefix.exists && prefix.ne(NoPrefix) then
+          val mem = prefix.member(nameAsTerm)
+          if mem.exists then mem.suchThat(_.is(Module)).symbol else NoSymbol
+        else NoSymbol
+      case _ => NoSymbol
+
+    val viaPrefix = companionByPrefix
+    val companion =
+      if viaPrefix.exists then viaPrefix
+      else
+        val cls = target.classSymbol
+        if cls.exists then cls.companionModule else NoSymbol
+
+    if !companion.exists then
+      return errorTree(tree,
+        em"type $target has no companion object; `.${tree.name}` cannot be resolved (SIP-80)",
+        tree.srcPos)
+
+    // Build a typed reference to the companion that respects any path-dependent prefix.
+    val prefix = target match
+      case ref: TypeRef => ref.prefix
+      case _            => target.normalizedPrefix
+    val companionRef =
+      if prefix.exists && prefix.ne(NoPrefix) then
+        tpd.ref(TermRef(prefix, companion.asTerm)).withSpan(tree.span.startPos)
+      else
+        tpd.ref(companion).withSpan(tree.span.startPos)
+
+    // Re-enter the regular Select typing path with the original expected type so
+    // overload selection, implicit conversions, and pattern-mode resolution all
+    // work without bespoke handling.
+    val select = untpd.cpy.Select(tree)(untpd.TypedSplice(companionRef), tree.name)
+    typedSelect(select, pt)
+  end typedRelativeSelect
+
   def typedThis(tree: untpd.This)(using Context): Tree = {
     record("typedThis")
     assignType(tree)
@@ -3897,6 +4013,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.QuotePattern => typedQuotePattern(tree, pt)
           case tree: untpd.SplicePattern => typedSplicePattern(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
+          case tree: untpd.RelativeSelect => typedRelativeSelect(tree, pt)
           case tree: untpd.Hole => typedHole(tree, pt)
           case tree: untpd.Parens =>
             checkDeprecatedAssignmentSyntax(tree)

@@ -38,6 +38,7 @@ SimpleExpr1  ::=  Literal
                |  SimpleExpr ‘.’ id
                |  SimpleExpr TypeArgs
                |  SimpleExpr1 ArgumentExprs
+               |  ‘.’ id                                 -- under experimental.targetTypedCompanionShorthand (SIP-80)
                |  XmlExpr
 Exprs        ::=  Expr {‘,’ Expr}
 MatchClause  ::=  ‘match’ ‘{’ CaseClauses ‘}’
