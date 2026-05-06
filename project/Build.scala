@@ -1611,8 +1611,8 @@ object Build {
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.ow2.asm" % "asm-util" % "9.9.0",
-        "org.ow2.asm" % "asm-commons" % "9.9.0",
+        "org.ow2.asm" % "asm-util" % "9.9.1",
+        "org.ow2.asm" % "asm-commons" % "9.9.1",
         Dependencies.compilerInterface,
         ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
       ),
@@ -1747,8 +1747,8 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        "org.ow2.asm" % "asm-util" % "9.9.0",
-        "org.ow2.asm" % "asm-commons" % "9.9.0",
+        "org.ow2.asm" % "asm-util" % "9.9.1",
+        "org.ow2.asm" % "asm-commons" % "9.9.1",
         Dependencies.compilerInterface,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
