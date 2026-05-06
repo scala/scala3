@@ -1,14 +1,14 @@
 //> using options -Ycheck-termination -Yretain-trees
 
 class C {
-  import scala.annotation.{terminates, decreasesBy}
+  import scala.annotation.{terminates, decreases}
 
   sealed abstract class Nat
   case object Zero extends Nat
   case class Succ(val n: Nat) extends Nat
 
   @terminates
-  def ackermann(m: Nat)(n: Nat): Nat @decreasesBy(n) = {
+  def ackermann(m: Nat)(n: Nat): Nat @decreases(n) = {
     n match {
       case Zero => Succ(m)
       case Succ(pn) =>

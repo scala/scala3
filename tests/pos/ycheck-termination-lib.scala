@@ -2,7 +2,7 @@
 
 class C {
   import scala.annotation.{terminates}
-  import scala.util.assumeTerminates
+  import scala.util.uncheckedTermination
 
   @terminates
   def reverse_:::[A, B >: A](tis: List[A], prefix: List[B]): List[B] = {
@@ -34,11 +34,11 @@ class C {
   @terminates
   def map[A, B](tis: List[A], f: A => B): List[B] = {
     if (tis eq Nil) Nil else {
-      val h = assumeTerminates(f(tis.head)) :: Nil
+      val h = uncheckedTermination(f(tis.head)) :: Nil
       var t = h
       var rest = tis.tail
       while (rest ne Nil) {
-        val nx = assumeTerminates(f(rest.head)) :: Nil
+        val nx = uncheckedTermination(f(rest.head)) :: Nil
         // t.next = nx
         t = nx
         rest = rest.tail
@@ -63,7 +63,7 @@ class C {
     var acc = z
     var these: List[A] = reverse(tis)
     while (!these.isEmpty) {
-      acc = assumeTerminates(op(these.head, acc))
+      acc = uncheckedTermination(op(these.head, acc))
       these = these.tail
     }
     acc

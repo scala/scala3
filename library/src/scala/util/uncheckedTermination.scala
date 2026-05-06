@@ -10,10 +10,11 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.annotation
+package scala.util
 
 import scala.language.`2.13`
 
-/** Annotation used along side `@terminates` to give a decreasing measure
- */
-final class decreasesBy(measure: Any) extends StaticAnnotation
+/** Wraps a block that will not be checked by the termination checker.
+  */
+object uncheckedTermination:
+  def apply[T](body: => T): T = body

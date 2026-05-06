@@ -1,7 +1,7 @@
 //> using options -Ycheck-termination -Yretain-trees
 
 class C {
-  import scala.annotation.{terminates, decreasesBy}
+  import scala.annotation.terminates
 
   sealed abstract class Nat {
     def +(that: Nat): Nat =

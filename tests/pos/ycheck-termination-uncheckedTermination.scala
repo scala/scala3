@@ -2,7 +2,7 @@
 
 class C {
   import scala.annotation.terminates
-  import scala.util.assumeTerminates
+  import scala.util.uncheckedTermination
 
   sealed abstract class Nat
   case object Zero extends Nat
@@ -15,7 +15,7 @@ class C {
       case Succ(m) =>
         // The below does not terminate but
         // is assumed terminating by the user.
-        assumeTerminates:
+        uncheckedTermination:
           f(n) || f(Succ(n))
 
 }

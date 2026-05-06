@@ -14,9 +14,9 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.BuildFrom.buildFromIArray"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.terminates")
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.terminates"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.decreasesBy"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.util.assumeTerminates"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.util.assumeTerminates$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.decreases"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.util.uncheckedTermination"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.util.uncheckedTermination$"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.assumeTerminates"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.assumeDecreases"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.assumeWellFounded"),

@@ -1031,8 +1031,8 @@ class Definitions {
   def TupledFunctionClass(using Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
   def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
 
-  @tu lazy val assumeTerminatesModule: Symbol = requiredModule("scala.util.assumeTerminates")
-  @tu lazy val assumeTerminatesMethod: Symbol = assumeTerminatesModule.requiredMethod("apply")
+  @tu lazy val uncheckedTerminationModule: Symbol = requiredModule("scala.util.uncheckedTermination")
+  @tu lazy val uncheckedTerminationMethod: Symbol = uncheckedTerminationModule.requiredMethod("apply")
 
   @tu lazy val boundaryModule: Symbol = requiredModule("scala.util.boundary")
   @tu lazy val LabelClass: Symbol = requiredClass("scala.util.boundary.Label")
@@ -1081,7 +1081,7 @@ class Definitions {
   @tu lazy val ChildAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Child")
   @tu lazy val ContextResultCountAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ContextResultCount")
   @tu lazy val ProvisionalSuperClassAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ProvisionalSuperClass")
-  @tu lazy val DecreasesByAnnot: ClassSymbol = requiredClass("scala.annotation.decreasesBy")
+  @tu lazy val DecreasesAnnot: ClassSymbol = requiredClass("scala.annotation.decreases")
   @tu lazy val DeprecatedAnnot: ClassSymbol = requiredClass("scala.deprecated")
   @tu lazy val DeprecatedOverridingAnnot: ClassSymbol = requiredClass("scala.deprecatedOverriding")
   @tu lazy val DeprecatedInheritanceAnnot: ClassSymbol = requiredClass("scala.deprecatedInheritance")
