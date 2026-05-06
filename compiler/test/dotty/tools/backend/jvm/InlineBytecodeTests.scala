@@ -559,12 +559,11 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
+      // After scala/scala3#21334 the dead opaque-alias / this-proxy
+      // bindings are dropped, so the only instructions left are the
+      // beta-reduced literal and its return.
       val expected =
         List(
-          Field(GETSTATIC, "foo$", "MODULE$", "Lfoo$;"),
-          VarOp(ASTORE, 1),
-          VarOp(ALOAD, 1),
-          VarOp(ASTORE, 2),
           Op(ICONST_2),
           Op(IRETURN),
         )
