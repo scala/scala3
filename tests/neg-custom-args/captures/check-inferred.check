@@ -1,0 +1,75 @@
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:35:6 -----------------------------------------------------
+35 |class A: // error
+   |      ^
+   |      class A needs to extend Capability since it has a field `x` with `any` in its type.
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:39:6 -----------------------------------------------------
+39 |class B extends caps.Control: // error
+   |      ^
+   |      class B is classied as scala.caps.Control but has a field x of unclassified type test.A^.
+   |      Field classifiers have to conform to the classifier of the containing class.
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:43:6 -----------------------------------------------------
+43 |class C: // error
+   |      ^
+   |      class C needs to extend Capability since it has a field `x` with `any` in its type.
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:18:13 ----------------------------------------------------
+18 |  val incr = () => // error
+   |             ^
+   |             value incr needs an explicit type because the inferred type does not conform to
+   |             the type that is externally visible in other compilation units.
+   |
+   |              Inferred type          : () ->{Counter.this.count} Unit
+   |              Externally visible type: () -> Unit
+   |
+19 |    count.put(count.get + 1)
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:20:13 ----------------------------------------------------
+20 |  val decr = () => // error
+   |             ^
+   |             value decr needs an explicit type because the inferred type does not conform to
+   |             the type that is externally visible in other compilation units.
+   |
+   |              Inferred type          : () ->{Counter.this.count} Unit
+   |              Externally visible type: () -> Unit
+   |
+21 |    count.put(count.get - 1)
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:24:14 ----------------------------------------------------
+24 |  val count = Ref(): Object^ // error // error
+   |              ^^^^^^^^^^^^^^
+   |              value count needs an explicit type because the inferred type does not conform to
+   |              the type that is externally visible in other compilation units.
+   |
+   |               Inferred type          : Object^
+   |               Externally visible type: Object
+   |
+   |              where:    ^ refers to a root capability created in value count
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:24:11 ----------------------------------------------------
+24 |  val count = Ref(): Object^ // error // error
+   |           ^
+   |           value count needs an explicit type because it captures a root capability in its type Object^.
+   |           Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |           subsumed by the computed capability of the enclosing class.
+   |
+   |           where:    ^ refers to a root capability in the type of value count
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:45:15 ----------------------------------------------------
+45 |  private val y = ??? : A^ // error
+   |               ^
+   |           value y needs an explicit type because it captures a root capability in its type test.A^.
+   |           Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |           subsumed by the computed capability of the enclosing class.
+   |
+   |           where:    ^ refers to a root capability in the type of value y
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:52:15 ----------------------------------------------------
+52 |  private val y = ??? : A^ // error
+   |               ^
+   |           value y needs an explicit type because it captures a root capability in its type test.A^.
+   |           Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |           subsumed by the computed capability of the enclosing class.
+   |
+   |           where:    ^ refers to a root capability in the type of value y
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:29:21 ----------------------------------------------------
+29 |    private val count = Ref() // error
+   |                     ^
+   |           value count needs an explicit type because it captures a root capability in its type test.Ref^.
+   |           Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |           subsumed by the computed capability of the enclosing class.
+   |
+   |           where:    ^ refers to a root capability classified as Unscoped in the type of value count

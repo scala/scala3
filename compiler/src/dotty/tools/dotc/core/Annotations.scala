@@ -4,9 +4,12 @@ package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
 import ast.tpd, tpd.*
-import util.Spans.Span
+import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
 import printing.Texts.Text
+import cc.{isRetainsLike, RetainingAnnotation}
+import config.Feature.sourceVersion
+import Decorators.*
 
 import scala.annotation.internal.sharable
 
@@ -33,12 +36,16 @@ object Annotations {
     /** All term arguments of this annotation in a single flat list */
     def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
 
+    /** All type arguments of this annotation in a single flat list */
+    def argumentTypes(using Context): List[Type] =
+      tpd.allArguments(tree).filterConserve(_.isType).tpes
+
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
       if (i < args.length) Some(args(i)) else None
     }
     def argumentConstant(i: Int)(using Context): Option[Constant] =
-      for (case ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
+      for case ConstantType(c) <- argument(i).map(stripCast(_).tpe.widenTermRefExpr.normalized) yield c
 
     def argumentConstantString(i: Int)(using Context): Option[String] =
       for (case Constant(s: String) <- argumentConstant(i)) yield s
@@ -53,33 +60,39 @@ object Annotations {
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
-    def mapWith(tm: TypeMap)(using Context) =
-      val args = tpd.allArguments(tree)
-      if args.isEmpty then this
-      else
-        // Checks if `tm` would result in any change by applying it to types
-        // inside the annotations' arguments and checking if the resulting types
-        // are different.
-        val findDiff = new TreeAccumulator[Type]:
-          def apply(x: Type, tree: Tree)(using Context): Type =
-            if tm.isRange(x) then x
-            else
-              val tp1 = tm(tree.tpe)
-              foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
-        val diff = findDiff(NoType, args)
-        if tm.isRange(diff) then EmptyAnnotation
-        else if diff.exists then derivedAnnotation(tm.mapOver(tree))
-        else this
+    def mapWith(tm: TypeMap)(using Context): Annotation =
+      tpd.allArguments(tree) match
+        case Nil => this
+        case arg :: Nil if symbol.isRetainsLike =>
+          assert(false, s"unexpected symbol $symbol for ConcreteAnnotation $this in ${ctx.source}, this should be a CompactAnnotation")
+        case args =>
+          // Checks if `tm` would result in any change by applying it to types
+          // inside the annotations' arguments and checking if the resulting types
+          // are different.
+          val findDiff = new TreeAccumulator[Type]:
+            def apply(x: Type, tree: Tree)(using Context): Type =
+              if tm.isRange(x) then x
+              else
+                val tp1 = tm(tree.tpe)
+                foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
+          val diff = findDiff(NoType, args)
+          if tm.isRange(diff) then EmptyAnnotation
+          else if diff.exists then derivedAnnotation(tm.mapOver(tree))
+          else this
+    end mapWith
 
     /** Does this annotation refer to a parameter of `tl`? */
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
-      val args = tpd.allArguments(tree)
-      if args.isEmpty then false
-      else tree.existsSubTree:
-        case id: (Ident | This) => id.tpe.stripped match
-          case TermParamRef(tl1, _) => tl eq tl1
-          case _ => false
-        case _ => false
+      val acc = new TreeAccumulator[Boolean]:
+        def apply(x: Boolean, t: Tree)(using Context) =
+          if x then true
+          else if t.isType then refersToLambdaParam(t.tpe, tl)
+          else t match
+            case id: (Ident | This) => isLambdaParam(id.tpe.stripped, tl)
+            case _ => foldOver(x, t)
+
+      tpd.allArguments(tree).exists(acc(false, _))
+    end refersToParamOf
 
     /** A string representation of the annotation. Overridden in BodyAnnotation.
      */
@@ -113,6 +126,88 @@ object Annotations {
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
+
+  /** A class for optimized, compact annotations that are defined by a type
+   *  instead of a tree. This makes mapping such annotations a lot faster and safer.
+   *  In fact, in retrospect, most annotations would better be represented as
+   *  CompactAnnotations.
+   *
+   *  CompactAnnotation is extended by cc.RetainingAnnotation, which is reserved
+   *  for @retains, @retainsByName and @retainsCap. For now there are no
+   *  CompactAnnotations other than RetainingAnnotations but this could be changed
+   *  in the future, after 3.9 has shipped.
+   */
+  class CompactAnnotation(val tpe: Type) extends Annotation:
+    assert(tpe.isInstanceOf[AppliedType | TypeRef], tpe)
+
+    def tree(using Context) = TypeTree(tpe)
+
+    def oldTree(using Context): Tree =
+      New(tpe, Nil).withSpan(NoSpan)
+
+    override def symbol(using Context) = tpe.typeSymbol
+
+    override def derivedAnnotation(tree: Tree)(using Context): Annotation =
+      derivedAnnotation(tree.tpe)
+
+    def derivedAnnotation(tp: Type)(using Context): Annotation =
+      if tp eq this.tpe then this else CompactAnnotation(tp)
+
+    override def arguments(using Context): List[Tree] =
+      argumentTypes.map(TypeTree(_))
+
+    override def argumentTypes(using Context): List[Type] = tpe.argInfos
+
+    def argumentType(i: Int)(using Context): Type =
+      val args = argumentTypes
+      if i < args.length then args(i) else NoType
+
+    override def argumentConstant(i: Int)(using Context): Option[Constant] =
+      argumentType(i).normalized match
+        case ConstantType(c) => Some(c)
+        case _ => None
+
+    /** A hook to transform the type argument of a mapped annotation. Overridden in
+     *  RetainingAnnotation to avoid compilation time blowups for annotations that
+     *  are not valid capture annotations.
+     */
+    protected def sanitize(tp: Type)(using Context): Type = tp
+
+    protected def mapWithCtd(tm: TypeMap)(using Context): Annotation = tm(tpe) match
+      case tp1 @ AppliedType(tycon, args) =>
+        derivedAnnotation(tp1.derivedAppliedType(tycon, args.mapConserve(sanitize)))
+      case tp1: TypeRef =>
+        derivedAnnotation(tp1)
+      case _ =>
+        EmptyAnnotation
+
+    override def mapWith(tm: TypeMap)(using Context): Annotation =
+      assert(!symbol.isRetainsLike)
+      mapWithCtd(tm)
+
+    override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
+      refersToLambdaParam(tpe, tl)
+
+    override def hash: Int = tpe.hash
+    override def eql(that: Annotation) = that match
+      case that: CompactAnnotation => this.tpe `eql` that.tpe
+      case _ => false
+
+  object CompactAnnotation:
+    def apply(tp: Type)(using Context): CompactAnnotation =
+      if tp.typeSymbol.isRetainsLike then RetainingAnnotation(tp)
+      else new CompactAnnotation(tp)
+    def apply(tree: Tree)(using Context): CompactAnnotation =
+      val argTypes = tpd.allArguments(tree).map(_.tpe)
+      apply(annotClass(tree).typeRef.appliedTo(argTypes))
+  end CompactAnnotation
+
+  private def isLambdaParam(t: Type, tl: TermLambda): Boolean = t match
+    case TermParamRef(tl1, _) => tl eq tl1
+    case _ => false
+
+  private def refersToLambdaParam(tp: Type, tl: TermLambda)(using Context): Boolean =
+    tp.existsPart(isLambdaParam(_, tl), stopAt = StopAt.Static)
 
   abstract class LazyAnnotation extends Annotation {
     protected var mySym: Symbol | (Context ?=> Symbol) | Null
@@ -195,7 +290,12 @@ object Annotations {
 
   object Annotation {
 
-    def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
+    def apply(tree: Tree)(using Context): Annotation = tree match
+      case tree: TypeTree =>
+        CompactAnnotation(tree.tpe)
+      case _ =>
+        if annotClass(tree).isRetainsLike then CompactAnnotation(tree)
+        else ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
       apply(cls, Nil, span)
@@ -210,7 +310,9 @@ object Annotations {
       apply(atp, arg :: Nil, span)
 
     def apply(atp: Type, args: List[Tree], span: Span)(using Context): Annotation =
-      apply(New(atp, args).withSpan(span))
+      if atp.typeSymbol.isRetainsLike && args.isEmpty
+      then RetainingAnnotation(atp)
+      else apply(New(atp, args).withSpan(span))
 
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree): Annotation =
@@ -248,7 +350,11 @@ object Annotations {
     }
   }
 
-  @sharable val EmptyAnnotation = Annotation(EmptyTree)
+  /** An annotation that is used as a result of mapping annotations
+   *  to indicate that the resulting typemap should drop the annotation
+   *  (in derivedAnnotatedType).
+   */
+  @sharable val EmptyAnnotation = ConcreteAnnotation(EmptyTree)
 
   def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation = {
     val tref = cls.typeRef
@@ -303,7 +409,7 @@ object Annotations {
         case annot @ ExperimentalAnnotation(msg) => ExperimentalAnnotation(msg, annot.tree.span)
       }
   }
-  
+
   object PreviewAnnotation {
     /** Matches and extracts the message from an instance of `@preview(msg)`
      *  Returns `Some("")` for `@preview` with no message.

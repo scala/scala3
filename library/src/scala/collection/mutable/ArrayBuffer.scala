@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import java.util.Arrays
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
@@ -26,7 +27,7 @@ import scala.runtime.PStatics.VM_MaxArraySize
  *  access take constant time (amortized time). Prepends and removes are
  *  linear in the buffer size.
  *
- *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#array-buffers "Scala's Collection Library overview"]]
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#array-buffers)
  *  section on `Array Buffers` for more information.
  *
  *  @tparam A    the type of this arraybuffer's elements.
@@ -51,20 +52,23 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   def this(initialSize: Int) = this(new Array[AnyRef](initialSize max 1), 0)
 
-  @transient private[this] var mutationCount: Int = 0
+  @transient private var mutationCount: Int = 0
 
   // needs to be `private[collection]` or `protected[collection]` for parallel-collections
   protected[collection] var array: Array[AnyRef] = initialElements
   protected var size0 = initialSize
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
-    shape.parUnbox(new ObjectArrayStepper(array, 0, length).asInstanceOf[AnyStepper[A] with EfficientSplit])
+    shape.parUnbox(new ObjectArrayStepper(array, 0, length).asInstanceOf[AnyStepper[A] & EfficientSplit])
   }
 
   override def knownSize: Int = super[IndexedSeqOps].knownSize
 
-  /** Ensure that the internal array has at least `n` cells. */
+  /** Ensures that the internal array has at least `n` cells.
+   *
+   *  @param n the minimum number of cells required in the internal array
+   */
   protected def ensureSize(n: Int): Unit = {
     array = ArrayBuffer.ensureSize(array, size0, n)
   }
@@ -76,7 +80,10 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   def sizeHint(size: Int): Unit =
     if(size > length && size >= 1) ensureSize(size)
 
-  /** Reduce length to `n`, nulling out all dropped elements */
+  /** Reduces length to `n`, nulling out all dropped elements.
+   *
+   *  @param n the new size of the buffer, must be less than or equal to the current size
+   */
   private def reduceToSize(n: Int): Unit = {
     mutationCount += 1
     Arrays.fill(array, n, size0, null)
@@ -94,6 +101,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   /** Trims the `array` buffer size down to either a power of 2
    *  or Int.MaxValue while keeping first `requiredLength` elements.
+   *
+   *  @param requiredLength the number of elements to retain in the resized array
    */
   private def resize(requiredLength: Int): Unit =
     array = ArrayBuffer.downsize(array, requiredLength)
@@ -122,15 +131,14 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   override def iterableFactory: SeqFactory[ArrayBuffer] = ArrayBuffer
 
   /** Note: This does not actually resize the internal representation.
-    * See clearAndShrink if you want to also resize internally
-    */
+   *  See clearAndShrink if you want to also resize internally
+   */
   def clear(): Unit = reduceToSize(0)
 
-  /**
-    * Clears this buffer and shrinks to @param size (rounding up to the next
-    * natural size)
-    * @param size
-    */
+  /** Clears this buffer and shrinks to @param size (rounding up to the next
+   *  natural size)
+   *  @param size
+   */
   def clearAndShrink(size: Int = ArrayBuffer.DefaultInitialSize): this.type = {
     clear()
     resize(size)
@@ -147,9 +155,9 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   // Overridden to use array copying for efficiency where possible.
-  override def addAll(elems: IterableOnce[A]): this.type = {
+  override def addAll(elems: IterableOnce[A]^): this.type = {
     elems match {
-      case elems: ArrayBuffer[_] =>
+      case elems: ArrayBuffer[?] =>
         val elemsLength = elems.size0
         if (elemsLength > 0) {
           mutationCount += 1
@@ -176,10 +184,10 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
     this
   }
 
-  def insertAll(@deprecatedName("n", "2.13.0") index: Int, elems: IterableOnce[A]): Unit = {
+  def insertAll(@deprecatedName("n", "2.13.0") index: Int, elems: IterableOnce[A]^): Unit = {
     checkWithinBounds(index, index)
     elems match {
-      case elems: collection.Iterable[A] =>
+      case elems: collection.Iterable[A @unchecked] =>
         val elemsLength = elems.size
         if (elemsLength > 0) {
           mutationCount += 1
@@ -202,8 +210,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   /** Note: This does not actually resize the internal representation.
-    * See trimToSize if you want to also resize internally
-    */
+   *  See trimToSize if you want to also resize internally
+   */
   def remove(@deprecatedName("n", "2.13.0") index: Int): A = {
     checkWithinBounds(index, index + 1)
     val res = this(index)
@@ -213,8 +221,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   /** Note: This does not actually resize the internal representation.
-    * See trimToSize if you want to also resize internally
-    */
+   *  See trimToSize if you want to also resize internally
+   */
   def remove(@deprecatedName("n", "2.13.0") index: Int, count: Int): Unit =
     if (count > 0) {
       checkWithinBounds(index, index + count)
@@ -230,10 +238,10 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   @deprecated("Use 'new GrowableBuilder(this).mapResult(f)' instead", "2.13.0")
   @deprecatedOverriding("ArrayBuffer[A] no longer extends Builder[A, ArrayBuffer[A]]", "2.13.0")
-  @inline def mapResult[NewTo](f: (ArrayBuffer[A]) => NewTo): Builder[A, NewTo] = new GrowableBuilder[A, ArrayBuffer[A]](this).mapResult(f)
+  @inline def mapResult[NewTo](f: (ArrayBuffer[A]) => NewTo): Builder[A, NewTo]^{f} = new GrowableBuilder[A, ArrayBuffer[A]](this).mapResult(f)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "ArrayBuffer"
+  override protected def stringPrefix = "ArrayBuffer"
 
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
@@ -244,11 +252,12 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   }
 
   /** Sorts this $coll in place according to an Ordering.
-    *
-    * @see [[scala.collection.mutable.IndexedSeqOps.sortInPlace]]
-    * @param  ord the ordering to be used to compare elements.
-    * @return modified input $coll sorted according to the ordering `ord`.
-    */
+   *
+   *  @see [[scala.collection.mutable.IndexedSeqOps.sortInPlace]]
+   *  @tparam B a supertype of the element type `A` for which an `Ordering` is available
+   *  @param  ord the ordering to be used to compare elements.
+   *  @return modified input $coll sorted according to the ordering `ord`.
+   */
   override def sortInPlace[B >: A]()(implicit ord: Ordering[B]): this.type = {
     if (length > 1) {
       mutationCount += 1
@@ -281,20 +290,19 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
     new MutationTracker.CheckedIterator(super.sliding(size = size, step = step), mutationCount)
 }
 
-/**
-  * Factory object for the `ArrayBuffer` class.
-  *
-  * $factoryInfo
-  *
-  * @define coll array buffer
-  * @define Coll `mutable.ArrayBuffer`
-  */
+/** Factory object for the `ArrayBuffer` class.
+ *
+ *  $factoryInfo
+ *
+ *  @define coll array buffer
+ *  @define Coll `mutable.ArrayBuffer`
+ */
 @SerialVersionUID(3L)
 object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   final val DefaultInitialSize = 16
-  private[this] val emptyArray = new Array[AnyRef](0)
+  private val emptyArray = new Array[AnyRef](0)
 
-  def from[B](coll: collection.IterableOnce[B]): ArrayBuffer[B] = {
+  def from[B](coll: collection.IterableOnce[B]^): ArrayBuffer[B] = {
     val k = coll.knownSize
     if (k >= 0) {
       // Avoid reallocation of buffer if length is known
@@ -312,12 +320,11 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
 
   def empty[A]: ArrayBuffer[A] = new ArrayBuffer[A]()
 
-  /**
-   * The increased size for an array-backed collection.
+  /** The increased size for an array-backed collection.
    *
-   * @param arrayLen  the length of the backing array
-   * @param targetLen the minimum length to resize up to
-   * @return
+   *  @param arrayLen  the length of the backing array
+   *  @param targetLen the minimum length to resize up to
+   *  @return
    *   - `-1` if no resizing is needed, else
    *   - `VM_MaxArraySize` if `arrayLen` is too large to be doubled, else
    *   - `max(targetLen, arrayLen * 2, DefaultInitialSize)`.
@@ -343,9 +350,9 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   }
 
   /**
-   * @param arrayLen  the length of the backing array
-   * @param targetLen the length to resize down to, if smaller than `arrayLen`
-   * @return -1 if no resizing is needed, or the size for the new array otherwise
+   *  @param arrayLen  the length of the backing array
+   *  @param targetLen the length to resize down to, if smaller than `arrayLen`
+   *  @return -1 if no resizing is needed, or the size for the new array otherwise
    */
   private def resizeDown(arrayLen: Int, targetLen: Int): Int =
     if (targetLen >= arrayLen) -1 else math.max(targetLen, 0)
@@ -372,10 +379,11 @@ final class ArrayBufferView[A] private[mutable](underlying: ArrayBuffer[A], muta
     this({
       val _array = array
       val _length = length
-      new ArrayBuffer[A](0) {
+      val buf = new ArrayBuffer[A](0) {
         this.array = _array
         this.size0 = _length
       }
+      buf
     }, () => 0)
   }
 
@@ -385,24 +393,24 @@ final class ArrayBufferView[A] private[mutable](underlying: ArrayBuffer[A], muta
   @throws[IndexOutOfBoundsException]
   def apply(n: Int): A = underlying(n)
   def length: Int = underlying.length
-  override protected[this] def className = "ArrayBufferView"
+  override protected def className = "ArrayBufferView"
 
   // we could inherit all these from `CheckedIndexedSeqView`, except this class is public
-  override def iterator: Iterator[A] = new CheckedIndexedSeqView.CheckedIterator(this, mutationCount())
-  override def reverseIterator: Iterator[A] = new CheckedIndexedSeqView.CheckedReverseIterator(this, mutationCount())
+  override def iterator: Iterator[A]^{this} = new CheckedIndexedSeqView.CheckedIterator(this, mutationCount())
+  override def reverseIterator: Iterator[A]^{this} = new CheckedIndexedSeqView.CheckedReverseIterator(this, mutationCount())
 
-  override def appended[B >: A](elem: B): IndexedSeqView[B] = new CheckedIndexedSeqView.Appended(this, elem)(mutationCount)
-  override def prepended[B >: A](elem: B): IndexedSeqView[B] = new CheckedIndexedSeqView.Prepended(elem, this)(mutationCount)
-  override def take(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.Take(this, n)(mutationCount)
-  override def takeRight(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.TakeRight(this, n)(mutationCount)
-  override def drop(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.Drop(this, n)(mutationCount)
-  override def dropRight(n: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.DropRight(this, n)(mutationCount)
-  override def map[B](f: A => B): IndexedSeqView[B] = new CheckedIndexedSeqView.Map(this, f)(mutationCount)
-  override def reverse: IndexedSeqView[A] = new CheckedIndexedSeqView.Reverse(this)(mutationCount)
-  override def slice(from: Int, until: Int): IndexedSeqView[A] = new CheckedIndexedSeqView.Slice(this, from, until)(mutationCount)
-  override def tapEach[U](f: A => U): IndexedSeqView[A] = new CheckedIndexedSeqView.Map(this, { (a: A) => f(a); a})(mutationCount)
+  override def appended[B >: A](elem: B): IndexedSeqView[B]^{this} = new CheckedIndexedSeqView.Appended(this, elem)(mutationCount)
+  override def prepended[B >: A](elem: B): IndexedSeqView[B]^{this} = new CheckedIndexedSeqView.Prepended(elem, this)(mutationCount)
+  override def take(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Take(this, n)(mutationCount)
+  override def takeRight(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.TakeRight(this, n)(mutationCount)
+  override def drop(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Drop(this, n)(mutationCount)
+  override def dropRight(n: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.DropRight(this, n)(mutationCount)
+  override def map[B](f: A => B): IndexedSeqView[B]^{this, f} = new CheckedIndexedSeqView.Map(this, f)(mutationCount)
+  override def reverse: IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Reverse(this)(mutationCount)
+  override def slice(from: Int, until: Int): IndexedSeqView[A]^{this} = new CheckedIndexedSeqView.Slice(this, from, until)(mutationCount)
+  override def tapEach[U](f: A => U): IndexedSeqView[A]^{this, f} = new CheckedIndexedSeqView.Map(this, { (a: A) => f(a); a})(mutationCount)
 
-  override def concat[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B] = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
-  override def appendedAll[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B] = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
-  override def prependedAll[B >: A](prefix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B] = new CheckedIndexedSeqView.Concat(prefix, this)(mutationCount)
+  override def concat[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]^): IndexedSeqView[B]^{suffix, this} = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
+  override def appendedAll[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]^): IndexedSeqView[B]^{suffix, this} = new CheckedIndexedSeqView.Concat(this, suffix)(mutationCount)
+  override def prependedAll[B >: A](prefix: IndexedSeqView.SomeIndexedSeqOps[B]^): IndexedSeqView[B]^{prefix, this} = new CheckedIndexedSeqView.Concat(prefix, this)(mutationCount)
 }

@@ -4,67 +4,52 @@ title: "Erased Definitions - More Details"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs-spec.html
 ---
 
-TODO: complete
 ## Rules
 
-1. `erased` is a soft modifier. It can appear:
-   * At the start of a parameter block of a method, function or class
-   * In a method definition
-   * In a `val` definition (but not `lazy val` or `var`)
-   * In a `class` or `trait` definition
+1. `erased` is a soft modifier. It can appear in a `val` definition or in a parameter.
+   * `erased` cannot appear in a `lazy` `val` definition.
+   * `erased` _can_ appear for a parameterless given that expands to a value
+     definition. In that case the `given` is expanded to a non-lazy `val`.
+   * `erased` cannot appear in a call-by-name parameter.
+   * `erased` cannot appear in a mutable `var` definition.
+   * `erased` cannot appear in an `object` definition.
 
-    ```scala
-    erased val x = ...
-    erased def f = ...
+2. Values or parameters that have a type that extends the `scala.compiletime.Erased` trait are
+   implicitly `erased`.
 
-    def g(erased x: Int) = ...
+   * The restrictions of point (1) apply.
+   * Parameterless givens are treated like values.
+   * Mutable variables cannot have a time that extends `scala.compiletime.Erased`.
 
-    (erased x: Int, y: Int) => ...
-    def h(x: (Int, erased Int) => Int) = ...
+3. A reference to an `erased` value can only be used in an *erased context*:
+   * Inside the expression of an argument to an `erased` parameter
+   * Inside the body of an `erased` `val`
+   * Inside the path of a dependent type expression
 
-    class K(erased x: Int) { ... }
-    erased class E {}
-    ```
+4. `erased` can also be used in a function type, e.g.
 
+   * `(erased T1, T2) => R`
+   * `(x: T1, y: erased T2) ?=> T`
 
-2. A reference to an `erased` val or def can only be used
-   * Inside the expression of argument to an `erased` parameter
-   * Inside the body of an `erased` `val` or `def`
+   Note that there is no subtype relation between `(erased T) => R` and `T => R` (or `(erased T) ?=> R` and `T ?=> R`). The `erased` parameters must match exactly in their respective positions.
 
-
-3. Functions
-   * `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
-   * `(using x1: T1, erased x2: T2, ..., xN: TN) => y: (using T1, erased T2, ..., TN) => R`
-   * `(using erased T1) => R  <:<  erased T1 => R`
-   * `(using T1, erased T2) => R  <:< (T1, erased T2) => R`
-   *  ...
-
-   Note that there is no subtype relation between `(erased T) => R` and `T => R` (or `(given erased T) => R` and `(given T) => R`). The `erased` parameters must match exactly in their respective positions.
-
-
-4. Eta expansion
+5. Eta expansion
 
    if `def f(erased x: T): U` then `f: (erased T) => U`.
 
-
-5. Erasure semantics
+6. Erasure semantics
    * All `erased` parameters are removed from the function
-   * All argument to `erased` parameters are not passed to the function
-   * All `erased` definitions are removed
-   * `(erased ET1, erased ET2, T1, ..., erased ETN, TM) => R` are erased to `(T1, ..., TM) => R`.
-   * `(given erased ET1, erased ET2, T1, ..., erased ETN, TM) => R` are erased to `(given T1, ..., TM) => R`.
+   * All arguments to `erased` parameters are not passed to the function
+   * All `erased` value definitions are removed
+   * All `erased` argument types are removed from a function type
 
-
-6. Overloading
+7. Overloading
 
    Method with `erased` parameters will follow the normal overloading constraints after erasure.
 
-
-7. Overriding
+8. Overriding
    * Member definitions overriding each other must both be `erased` or not be `erased`.
    * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` and vice-versa.
 
-8. Type Restrictions
-   * For dependent functions, `erased` parameters are limited to realizable types, that is, types that are inhabited by non-null values.
-     This restriction stops us from using a bad bound introduced by an erased value, which leads to unsoundness (see #4060).
-   * Polymorphic functions with erased parameters are currently not supported, and will be rejected by the compiler. This is purely an implementation restriction, and might be lifted in the future.
+9. Type Restrictions
+   * Polymorphic function literals with erased parameters are currently not supported, and will be rejected by the compiler. This is purely an implementation restriction, and might be lifted in the future.

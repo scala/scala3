@@ -2,12 +2,12 @@ package dotc
 
 import dotty.tools.vulpix.{ParallelTesting, TestFlags, TestGroup}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object comptest extends ParallelTesting {
 
   def maxDuration = 3.seconds
-  def numberOfSlaves = 5
+  def numberOfWorkers = 5
   def safeMode = false
   def isInteractive = true
   def testFilter = Nil
@@ -27,5 +27,5 @@ object comptest extends ParallelTesting {
         dotcDir + "tools/dotc/ast/Trees.scala"
       ),
       TestFlags("", Array("-Ylog:typer", "-Xprompt"))
-  )(TestGroup("comptest"))
+  )(using TestGroup("comptest"))
 }

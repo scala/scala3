@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
-
 import ExtractDependencies.internalError
 import ast.{Positioned, Trees, tpd}
 import core.*
@@ -124,7 +122,7 @@ class ExtractAPI extends Phase {
       registerProductNames(fullClassName, binaryClassName.stripSuffix(str.MODULE_SUFFIX))
   end recordNonLocalClass
 
-  override def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     val sourceFile = unit.source
     ctx.withIncCallback: cb =>
@@ -137,7 +135,9 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension(FileExtension.Inc).toFile
+      val sourceFileJPath = sourceFile.file.jpath
+      assert(sourceFileJPath != null, s"unexpected null jpath for $sourceFile")
+      val pw = new PrintWriter(File(sourceFileJPath).changeExtension(FileExtension.Inc).toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
@@ -213,7 +213,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
    */
-  private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
+  private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition | Null), api.Structure]
 
   /** This cache is necessary to avoid infinite loops when hashing an inline "Body" annotation.
    *  Its values are transitively seen inline references within a call chain starting from a single "origin" inline
@@ -232,13 +232,13 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
 
   private object Constants {
     val emptyStringArray = Array[String]()
-    val local            = api.ThisQualifier.create()
-    val public           = api.Public.create()
-    val privateLocal     = api.Private.create(local)
-    val protectedLocal   = api.Protected.create(local)
-    val unqualified      = api.Unqualified.create()
-    val thisPath         = api.This.create()
-    val emptyType        = api.EmptyType.create()
+    val local: api.ThisQualifier = api.ThisQualifier.create()
+    val public: api.Public = api.Public.create()
+    val privateLocal: api.Private = api.Private.create(local)
+    val protectedLocal: api.Protected = api.Protected.create(local)
+    val unqualified: api.Unqualified = api.Unqualified.create()
+    val thisPath: api.This = api.This.create()
+    val emptyType: api.EmptyType = api.EmptyType.create()
     val emptyModifiers   =
       new api.Modifiers(false, false, false, false, false,false, false, false)
   }
@@ -305,7 +305,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     val modifiers = apiModifiers(sym)
     val anns = apiAnnotations(sym, inlineOrigin = NoSymbol).toArray
     val topLevel = sym.isTopLevelClass
-    val childrenOfSealedClass = sym.sealedDescendants.sorted(classFirstSort).map(c =>
+    val childrenOfSealedClass = sym.sealedDescendants.sorted(using classFirstSort).map(c =>
       if (c.isClass)
         apiType(c.typeRef)
       else
@@ -407,7 +407,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
   }
 
   def apiDefinitions(defs: List[Symbol]): List[api.ClassDefinition] =
-    defs.sorted(classFirstSort).map(apiDefinition(_, inlineOrigin = NoSymbol))
+    defs.sorted(using classFirstSort).map(apiDefinition(_, inlineOrigin = NoSymbol))
 
   /** `inlineOrigin` denotes an optional inline method that we are
    *  currently hashing the body of. If it exists, include extra information
@@ -754,7 +754,10 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     //   `IncOptions#useOptimizedSealed`.
     s.annotations.foreach { annot =>
       val sym = annot.symbol
-      if sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot then
+      // Ignore annotations of type Any, this means we couldn't actually load it,
+      // because it's no longer on the classpath compared to when the code we're loading was compiled.
+      // See the i25722 special test in explicitNullsPos for an example.
+      if sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot && !sym.typeRef.isAny then
         annots += apiAnnotation(annot)
     }
 

@@ -4,16 +4,14 @@
    |               Found:    (C.this : C^{C.this.x})
    |               Required: C
    |
+   |               Note that capability `C.this.x` cannot flow into capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/cc-this.scala:12:15 -----------------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/cc-this.scala:12:15 ------------------------------------
 12 |  class C2(val x: () => Int): // error
    |               ^
-   |    reference (C2.this.x : () => Int) is not included in the allowed capture set {} of the self type of class C2
--- Error: tests/neg-custom-args/captures/cc-this.scala:19:8 ------------------------------------------------------------
+   |               Reference `C2.this.x` is not included in the allowed capture set {} of the self type of class C2.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/cc-this.scala:19:8 -------------------------------------
 19 |  class C4(val f: () => Int) extends C3 // error
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |reference (C4.this.f : () => Int) captured by this self type is not included in the allowed capture set {} of pure base class class C3
--- Error: tests/neg-custom-args/captures/cc-this.scala:33:8 ------------------------------------------------------------
-33 |  def c3 = c2.y // error
-   |        ^
-   |      Separation failure: method c3's inferred result type C{val x: () => Int}^{cc} hides non-local parameter cc
+   |Reference `C4.this.f` of the self type of class C4 is not included in the allowed capture set {} of pure base class class C3.

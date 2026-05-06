@@ -1,4 +1,4 @@
-class C extends caps.Capability
+class C extends caps.SharedCapability
 def test(c: C) =
   val pure: () -> Unit = () => ()
   val impure: () => Unit = pure
@@ -22,4 +22,4 @@ def test(c: C) =
 
   val y4 = y3 match
     case Ref(xx) => xx
-  val y4c: () ->{y3} Unit = y4
+  val y4c: () ->{y3} Unit = y4 // was error, now OK

@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/captures/boxed-consume.scala:10:52 -----------------------------------------------------
+10 |  def h(consume x: (Object^, Object^)): Object^ = x._1  // error: local reach leak
+   |                                                  ^^^^
+   |                           Local reach capability x._1* leaks into capture scope of method h.
+   |                           You could try to abstract the capabilities referred to by x._1* in a capset variable.
+-- Error: tests/neg-custom-args/captures/boxed-consume.scala:16:10 -----------------------------------------------------
+16 |  println(d) // error
+   |          ^
+   |        Separation failure: Illegal access to (d : Object^), which was passed as a consume parameter to method g
+   |        on line 15 and therefore is no longer available.
+   |
+   |        where:    ^ refers to a root capability in the type of value d

@@ -1,0 +1,44 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-boxes.scala:22:4 ----------------------------------
+21 |  val xs: Box[Ref^{}] = freeze:
+22 |    Box(a)  // error
+   |                        ^
+   |                        Found:    Box[Ref^{a.rd}]^{}
+   |                        Required: Box[Ref^{}]^{any.rd}
+   |
+   |                        Note that capability `a.rd` cannot flow into capture set {}.
+   |
+   |                        where:    any is a root capability classified as Unscoped in the type of value xs
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/freeze-boxes.scala:29:7 -------------------------------------------------------
+29 |    Box(a) // error
+   |    ^^^^^^
+   |Separation failure: Illegal access to {`any` of value a} which is hidden by the previous definition
+   |of value a with type Ref^.
+   |This type hides capabilities  {any}
+   |
+   |where:    ^   refers to a root capability classified as Unscoped in the type of value a
+   |          any is a root capability classified as Unscoped created in value a when instantiating method allocRef's type (): Ref^{fresh}
+-- Error: tests/neg-custom-args/captures/freeze-boxes.scala:31:6 -------------------------------------------------------
+31 |  par(() => a.set(42), () => println(b.get))  // error
+   |      ^^^^^^^^^^^^^^^
+   |Separation failure: argument of type  () ->{a} Unit
+   |to method par: (op1: () => Unit, op2: () => Unit): Unit
+   |corresponds to capture-polymorphic formal parameter op1 of type  () => Unit
+   |and hides capabilities  {a}.
+   |Some of these overlap with the captures of the second argument with type  () ->{b.rd} Unit.
+   |
+   |  Hidden set of current argument        : {a}
+   |  Hidden footprint of current argument  : {a}
+   |  Capture set of second argument        : {b.rd}
+   |  Footprint set of second argument      : {b.rd, a.rd}
+   |  The two sets overlap at               : {a}
+   |
+   |where:    => refers to a root capability created in method test2 when checking argument to parameter op1 of method par
+-- Error: tests/neg-custom-args/captures/freeze-boxes.scala:37:12 ------------------------------------------------------
+37 |  par(() => a.set(42), () => println(b.get)) // error
+   |            ^
+   |      Separation failure: Illegal access to (a : Ref^), which was passed as a consume parameter to method freeze
+   |      on line 36 and therefore is no longer available.
+   |
+   |      where:    ^ refers to a root capability classified as Unscoped in the type of value a

@@ -95,7 +95,7 @@ trait InkuireSupport(using DocContext) extends Resources:
             case TypeDef(name, _) => name
           }
           val vars = variableNames ++ methodVars
-          val (receiver, preArgs): (Option[Inkuire.TypeLike], Seq[Inkuire.TypeLike]) = Some(classType).filter(_ => !isModule) match {
+          val (receiver: Option[Inkuire.TypeLike], preArgs: Seq[Inkuire.TypeLike]) = Some(classType).filter(_ => !isModule) match {
             case None => (methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)), Seq.empty)
             case rcvr => (rcvr, methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)).toSeq)
           }
@@ -314,6 +314,8 @@ trait InkuireSupport(using DocContext) extends Resources:
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe, vars) //TODO [Inkuire] Repeated types
       case AnnotatedType(tpe, _) =>
+        inner(tpe, vars)
+      case FlexibleType(tpe) =>
         inner(tpe, vars)
       case tl @ TypeLambda(paramNames, _, resType) =>
         Inkuire.TypeLambda(paramNames.map(Inkuire.TypeLambda.argument), inner(resType, vars)) //TODO [Inkuire] Type bounds

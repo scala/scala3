@@ -1,0 +1,53 @@
+-- [E052] Type Error: tests/neg/reassignment.scala:4:10 ----------------------------------------------------------------
+4 |val y = x = 0  // error
+  |        ^^^^^
+  |        Reassignment to val x
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | You can not assign a new value to x as values can't be changed.
+  | Reassigment is only permitted if the variable is declared with `var`.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/reassignment.scala:5:19 ----------------------------------------------------------------
+5 |val z: Boolean = x = 0 // error
+  |                 ^^^^^
+  |                 Reassignment to val x. Maybe you meant to write an equality test using `==`?
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | An equality test is written "x == y" using `==`. A single `=` stands
+  | for assigment, where a variable on the left gets a new value on the right.
+  | This is only permitted if the variable is declared with `var`.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/reassignment.scala:6:13 ----------------------------------------------------------------
+6 |def f = if x = 0 then 1 else 2  // error
+  |           ^^^^^
+  |           Reassignment to val x. Maybe you meant to write an equality test using `==`?
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | An equality test is written "x == y" using `==`. A single `=` stands
+  | for assigment, where a variable on the left gets a new value on the right.
+  | This is only permitted if the variable is declared with `var`.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/reassignment.scala:8:4 -----------------------------------------------------------------
+8 |  x = 0  // error
+  |  ^^^^^
+  |  Reassignment to val x
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | You can not assign a new value to x as values can't be changed.
+  | Reassigment is only permitted if the variable is declared with `var`.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/reassignment.scala:9:4 -----------------------------------------------------------------
+9 |  x = 2  // error
+  |  ^^^^^
+  |  Reassignment to val x. Maybe you meant to write an equality test using `==`?
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | An equality test is written "x == y" using `==`. A single `=` stands
+  | for assigment, where a variable on the left gets a new value on the right.
+  | This is only permitted if the variable is declared with `var`.
+   ---------------------------------------------------------------------------------------------------------------------

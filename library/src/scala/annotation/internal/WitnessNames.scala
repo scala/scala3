@@ -1,6 +1,8 @@
 package scala.annotation
 package internal
 
+import language.experimental.captureChecking
+
 /** An annotation that is used for marking type definitions that should get
  *  context bound companions. The scheme is as follows:
  *

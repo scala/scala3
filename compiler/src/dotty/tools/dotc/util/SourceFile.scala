@@ -2,16 +2,14 @@ package dotty.tools
 package dotc
 package util
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.*
 import Spans.*
 import core.Contexts.*
+import core.Decorators.*
 
 import scala.io.Codec
 import Chars.*
 import scala.annotation.internal.sharable
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.util.chaining.*
@@ -19,9 +17,8 @@ import dotty.tools.dotc.util.chaining.*
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.{FileSystemException, NoSuchFileException, Paths}
+import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
 object ScriptSourceFile {
@@ -39,8 +36,8 @@ object ScriptSourceFile {
      */
     val headerLength =
       if (headerStarts exists (content startsWith _)) {
-        val matcher = headerPattern matcher content.mkString
-        if (matcher.find) matcher.end
+        val matcher = headerPattern.matcher(content.mkString)
+        if matcher.find then matcher.end
         else content.indexOf('\n') // end of first line
       }
       else 0
@@ -61,6 +58,45 @@ object ScriptSourceFile {
   }
 }
 
+object WrappedSourceFile:
+  enum MagicHeaderInfo:
+    case HasHeader(offset: Int, originalFile: SourceFile)
+    case NoHeader
+  import MagicHeaderInfo.*
+
+  /** Convert a (source, span) pair into a SourcePosition, remapping through the
+   *  magic offset header if applicable. */
+  def sourcePos(sourceFile: SourceFile, span: Span)(using Context): SourcePosition =
+    lookupMagicHeader(sourceFile) match
+      case HasHeader(offset, originalFile) if span.exists && span.start >= offset =>
+        originalFile.atSpan(span.shift(-offset))
+      case _ => sourceFile.atSpan(span)
+
+  private def lookupMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
+    val cache = ctx.base.magicHeaderCache
+    cache.lookup(sourceFile) match
+      case null =>
+        val magicHeader = ctx.settings.YmagicOffsetHeader.value
+        val result =
+          if magicHeader.isEmpty then NoHeader
+          else
+            val text = new String(sourceFile.content)
+            val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+            val regex = s"(?m)^$headerQuoted:(.+)$$".r
+            regex.findFirstMatchIn(text) match
+              case Some(m) =>
+                val sourceStartOffset = sourceFile.nextLine(m.start)
+                val file = ctx.getFile(m.group(1).nn)
+                if file.exists then
+                  HasHeader(sourceStartOffset, ctx.getSource(file))
+                else
+                  report.warning(em"original source file not found: ${file.path}")
+                  NoHeader
+              case None => NoHeader
+        cache(sourceFile) = result
+        result
+      case result => result
+
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile.*
 
@@ -70,7 +106,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
    * the source is read from Tasty. */
   def content(): Array[Char] = {
     if (myContent == null) myContent = computeContent
-    myContent
+    myContent.nn
   }
 
   private var _maybeInComplete: Boolean = false
@@ -120,7 +156,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
    */
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     if isSelfContained then position // return the argument
-    else SourcePosition(underlying, position.span shift start)
+    else SourcePosition(underlying, position.span.shift(start))
 
   private def calculateLineIndicesFromContents() = {
     val cs = content()
@@ -233,7 +269,7 @@ object SourceFile {
 
   /** Returns the relative path of `source` within the `reference` path
    *
-   *  It returns the absolute path of `source` if it is not contained in `reference`.
+   *  It returns the current path under `source.file.jpath` if it is not contained in `reference`.
    */
   def relativePath(source: SourceFile, reference: String): String = {
     val file = source.file
@@ -264,16 +300,16 @@ object SourceFile {
         val path = refPath.relativize(sourcePath)
         path.iterator.asScala.mkString("/")
       else
-        sourcePath.toString
+        jpath.toString
   }
 
   /** Return true if file is a script:
    *  if filename extension is not .scala and has a script header.
    */
-  def isScript(file: AbstractFile | Null, content: Array[Char]): Boolean =
+  def isScript(file: AbstractFile, content: Array[Char]): Boolean =
     ScriptSourceFile.hasScriptHeader(content)
 
-  def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
+  def apply(file: AbstractFile, codec: Codec): SourceFile =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
     // so cope with failure.
     val chars =
@@ -286,7 +322,7 @@ object SourceFile {
     else
       SourceFile(file, chars)
 
-  def apply(file: AbstractFile | Null, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
+  def apply(file: AbstractFile, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

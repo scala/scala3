@@ -1,7 +1,5 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.JarArchive
 import dotty.tools.io.PlainFile
@@ -34,17 +32,11 @@ import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.report
 
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.BackendReporting
 import scala.annotation.constructorOnly
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.ConcurrentModificationException
 
-/** !!!Copied from `dotty.tools.backend.jvm.ClassfileWriters` but no `PostProcessorFrontendAccess` needed.
- * this should probably be changed to wrap that class instead.
- *
- * Until then, any changes to this file should be copied to `dotty.tools.backend.jvm.ClassfileWriters` as well.
- */
 object FileWriters {
   type InternalName = String
   type NullableFile =  AbstractFile | Null
@@ -85,6 +77,11 @@ object FileWriters {
 
     def log(message: String): Unit = report.echo(message)
 
+  enum Report:
+    case Error(message: Context => Message, position: SourcePosition)
+    case Warning(message: Context => Message, position: SourcePosition)
+    case Log(message: String)
+
   final class BufferingReporter extends DelayedReporter {
     // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
     // We could use a listBuffer etc - but that would be extra allocation in the common case
@@ -93,10 +90,6 @@ object FileWriters {
     private val _bufferedReports = AtomicReference(List.empty[Report])
     private val _hasErrors = AtomicBoolean(false)
 
-    enum Report(val relay: Context ?=> BackendReporting => Unit):
-      case Error(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.error(message(ctx), position))
-      case Warning(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.warning(message(ctx), position))
-      case Log(message: String) extends Report(_.log(message))
 
     /** Atomically record that an error occurred */
     private def recordError(): Unit =
@@ -106,8 +99,8 @@ object FileWriters {
     private def recordReport(report: Report): Unit =
       _bufferedReports.getAndUpdate(report :: _)
 
-    /** atomically extract and clear the buffered reports, must only be called at a synchonization point. */
-    private def resetReports(): List[Report] =
+    /** atomically extract and clear the buffered reports, must only be called at a synchronization point. */
+    def resetReports(): List[Report] =
       val curr = _bufferedReports.get()
       if curr.nonEmpty && !_bufferedReports.compareAndSet(curr, Nil) then
         throw ConcurrentModificationException("concurrent modification of buffered reports")
@@ -125,12 +118,6 @@ object FileWriters {
 
     def log(message: String): Unit =
       recordReport(Report.Log(message))
-
-    /** Should only be called from main compiler thread. */
-    def relayReports(toReporting: BackendReporting)(using Context): Unit =
-      val reports = resetReports()
-      if reports.nonEmpty then
-        reports.reverse.foreach(_.relay(toReporting))
   }
 
   trait ReadOnlySettings:
@@ -154,7 +141,7 @@ object FileWriters {
       val debug = ctx.settings.Ydebug.value
 
     def readRun(using ctx: Context): ReadOnlyRun = new:
-      val suspendedAtTyperPhase = ctx.run.suspendedAtTyperPhase
+      val suspendedAtTyperPhase = ctx.run.nn.suspendedAtTyperPhase
 
     def buffered(using Context): BufferedReadOnlyContext = new:
       val settings = readSettings
@@ -234,7 +221,7 @@ object FileWriters {
         new JarEntryWriter(jarFile, jarManifestMainClass, jarCompressionLevel)
       }
       else if (file.isVirtual) new VirtualFileWriter(file)
-      else if (file.isDirectory) new DirEntryWriter(file.file.toPath)
+      else if (file.isDirectory) new DirEntryWriter(file.file.nn.toPath)
       else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
@@ -341,7 +328,7 @@ object FileWriters {
         catch {
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave a empty of half-written classfile around after an interrupt
-            catch { case _: Throwable => () }
+            catch { case _: java.io.IOException => () }
             throw ex
         }
         os.close()
@@ -365,8 +352,9 @@ object FileWriters {
         else throw new FileConflictException(s"${base.path}/${path}: ${dir.path} is not a directory")
       val components = path.split('/')
       var dir = base
-      for (i <- 0 until components.length - 1) dir = ensureDirectory(dir) subdirectoryNamed components(i).toString
-      ensureDirectory(dir) fileNamed components.last.toString
+      for i <- 0 until components.length - 1 do
+        dir = ensureDirectory(dir).subdirectoryNamed(components(i).toString)
+      ensureDirectory(dir).fileNamed(components.last.toString)
     }
 
     private def writeBytes(outFile: AbstractFile, bytes: Array[Byte]): Unit = {
@@ -384,5 +372,5 @@ object FileWriters {
   }
 
   /** Can't output a file due to the state of the file system. */
-  class FileConflictException(msg: String, cause: Throwable = null) extends IOException(msg, cause)
+  class FileConflictException(msg: String, cause: Throwable | Null = null) extends IOException(msg, cause)
 }

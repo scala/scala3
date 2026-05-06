@@ -1,32 +1,40 @@
 package scala.quoted
 
+import language.experimental.captureChecking
+
 import scala.annotation.{compileTimeOnly, experimental}
 
-/** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}` */
+/** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}`.
+ *
+ *  @tparam T the type or type constructor being represented
+ */
 abstract class Type[T <: AnyKind] private[scala]:
-  /** The type represented by `Type` */
+  /** The type represented by `Type`. */
   type Underlying = T
 end Type
 
-/** Methods to interact with the current `Type[T]` in scope */
+/** Methods to interact with the current `Type[T]` in scope. */
 object Type:
 
-  /** Show a source code like representation of this type without syntax highlight */
+  /** Shows a source code like representation of this type without syntax highlight.
+   *
+   *  @tparam T the type or type constructor to show
+   */
   def show[T <: AnyKind](using Type[T])(using Quotes): String =
     import quotes.reflect.*
     TypeTree.of[T].show
 
-  /** Return a quoted.Type with the given type */
+  /** Returns a quoted.Type with the given type. */
   @compileTimeOnly("Reference to `scala.quoted.Type.of` was not handled by PickleQuotes")
   given of[T <: AnyKind](using Quotes): Type[T] = ???
 
 
   /** Extracts the value of a singleton constant type.
-   *  Returns Some of the value of the type if it is a singleton constant type.
-   *  Returns None if the type is not a singleton constant type.
+   *  Returns `Some` of the value of the type if it is a singleton constant type.
+   *  Returns `None` if the type is not a singleton constant type.
    *
    *  Example usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
@@ -41,16 +49,19 @@ object Type:
    *  }
    *  //}
    *  ```
+   *
+   *  @tparam T the singleton constant type to extract the value from
+   *  @return `Some` with the constant value if `T` is a singleton constant type, `None` otherwise
    */
   def valueOfConstant[T](using Type[T])(using Quotes): Option[T] =
     ValueOf.unapply(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
 
   /** Extracts the value of a tuple of singleton constant types.
-   *  Returns Some of the tuple type if it is a tuple singleton constant types.
-   *  Returns None if the type is not a tuple singleton constant types.
+   *  Returns `Some` of the tuple type if it is a tuple singleton constant types.
+   *  Returns `None` if the type is not a tuple singleton constant types.
    *
    *  Example usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
@@ -65,6 +76,9 @@ object Type:
    *  }
    *  //}
    *  ```
+   *
+   *  @tparam T the tuple type of singleton constant types to extract values from
+   *  @return `Some` with the tuple of constant values if all elements are singleton constant types, `None` otherwise
    */
   def valueOfTuple[T <: Tuple](using Type[T])(using Quotes): Option[T] =
     valueOfTuple(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]

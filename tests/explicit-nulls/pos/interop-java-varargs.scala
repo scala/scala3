@@ -4,7 +4,7 @@ import java.nio.file.Paths
 class S {
 
   // Paths.get is a Java method with two arguments, where the second one
-  // is a varargs: https://docs.oracle.com/javase/8/docs/api/java/nio/file/Paths.html
+  // is a varargs: https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/file/Paths.html
   // static Path get(String first, String... more)
   // The Scala compiler converts this signature into
   // def get(first: String | Null, more: (String | Null)*)

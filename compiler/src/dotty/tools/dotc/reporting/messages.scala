@@ -9,35 +9,35 @@ import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
 import NameKinds.{WildcardParamName, ContextFunctionParamName}
 import parsing.Scanners.Token
-import parsing.Tokens
+import parsing.Tokens, Tokens.showToken
 import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
-import ast.Trees
+import ast.Trees.*
+import ast.desugar
+import ast.tpd
+import ast.untpd
 import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
-import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
+import typer.ProtoTypes.{ViewProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
-import scala.util.control.NonFatal
 import StdNames.nme
 import Formatting.{hl, delay}
-import ast.Trees.*
-import ast.untpd
-import ast.tpd
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
-import cc.CaptureSet.IdentityCaptRefMap
+import cc.CaptureSet
+import cc.Capabilities.Capability
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
-import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
-import Message.Disambiguation
+import Message.{Disambiguation, Note}
+import dotty.tools.dotc.util.SimpleIdentitySet
 
 /**  Messages
   *  ========
@@ -111,6 +111,9 @@ abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Mess
 
 abstract class StagingMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   override final def kind = MessageKind.Staging
+
+abstract class CapturesMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  override final def kind = MessageKind.CaptureChecking
 
 abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
 extends SyntaxMsg(errNo) {
@@ -275,13 +278,18 @@ class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name, proto: T
 extends NotFoundMsg(MissingIdentID) {
   def msg(using Context) =
     val missing = name.show
-    val addendum =
-      didYouMean(
-        inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true)
-          .closestTo(missing),
-        proto, "")
-
-    i"Not found: $treeKind$name$addendum"
+    // If we're looking for a term or type X and a type or term X respectively is in scope, don't emit "Not found: X" as that's confusing for beginners
+    val wrongKind = inScopeCandidates(!name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing, maxDist = 0)
+    if wrongKind.nonEmpty then
+      if name.isTypeName then
+        val extra = if wrongKind.exists(_._2.sym.denot.is(Module)) then f" - did you mean $name.type?" else ""
+        i"Expected a type, but found a term: $name$extra"
+      else
+        i"Expected a term, but found a type: $name"
+    else
+      val candidates = inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true).closestTo(missing)
+      val addendum = didYouMean(candidates, proto, "")
+      i"Not found: $treeKind$name$addendum"
   def explain(using Context) = {
     i"""|Each identifier in Scala needs a matching declaration. There are two kinds of
         |identifiers: type identifiers and value identifiers. Value identifiers are introduced
@@ -292,13 +300,19 @@ extends NotFoundMsg(MissingIdentID) {
         |imported from elsewhere.
         |
         |Possible reasons why no matching declaration was found:
-        | - The declaration or the use is mis-spelt.
-        | - An import is missing."""
+        | - The declaration or the use is misspelled.
+        | - An import is missing.
+        | - The declaration exists but refers to a type in a context where a term is expected, or vice-versa."""
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: => String*)(using Context)
-  extends TypeMismatchMsg(found, expected)(TypeMismatchID):
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], val notes: List[Note] = Nil)(using Context)
+  extends TypeMismatchMsg(found, expected)(TypeMismatchID) {
+
+  private val shouldSuggestNN =
+    if ctx.mode.is(Mode.SafeNulls) && expected.isValueType then
+      found frozen_<:< OrNull(expected)
+    else false
 
   def msg(using Context) =
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
@@ -307,7 +321,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
-    object reported extends TypeMap, IdentityCaptRefMap:
+    object reported extends TypeMap, CaptureSet.IdentityCaptRefMap:
       var notes: String = ""
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
@@ -337,7 +351,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
           mapOver(tp)
         case _ =>
           mapOver(tp)
-
+    val preface = notes.filter(_.showAsPrefix).map(_.render).mkString
     val found1 = reported(found)
     reported.setVariance(-1)
     val expected1 = reported(expected)
@@ -345,22 +359,41 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
     val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
-    i"""|Found:    $foundStr
+    i"""|${preface}Found:    $foundStr
         |Required: $expectedStr${reported.notes}"""
   end msg
 
-  override def msgPostscript(using Context) =
+  override def msgPostscript(using Context): String =
     def importSuggestions =
       if expected.isTopType || found.isBottomType then ""
       else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
-    super.msgPostscript
-    ++ addenda.dropWhile(_.isEmpty).headOption.getOrElse(importSuggestions)
+    notes.filter(!_.showAsPrefix).map(_.render).mkString ++ super.msgPostscript ++ importSuggestions
 
   override def explain(using Context) =
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
     treeStr + "\n" + super.explain
 
-end TypeMismatch
+  override def actions(using Context) =
+    inTree match {
+      case Some(tree) if shouldSuggestNN =>
+        val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
+        val replacement = tree match
+          case a @ Apply(_, _) if !a.hasAttachment(desugar.WasTypedInfix) =>
+            content + ".nn"
+          case _ @ (Select(_, _) | Ident(_)) => content + ".nn"
+          case _ => "(" + content + ").nn"
+        List(
+          CodeAction(title = """Add .nn""",
+            description = None,
+            patches = List(
+              ActionPatch(tree.srcPos.sourcePos, replacement)
+            )
+          )
+        )
+      case _ =>
+        List()
+    }
+}
 
 class NotAMember(site: Type, val name: Name, selected: String, proto: Type, addendum: => String = "")(using Context)
 extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
@@ -716,7 +749,12 @@ extends Message(ProperDefinitionNotFoundID) {
 
 class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
 extends SyntaxMsg(ByNameParameterNotSupportedID) {
-  def msg(using Context) = i"By-name parameter type ${tpe} not allowed here."
+  def msg(using Context) =
+    val tpeStr = tpe match
+      case untpd.ByNameTypeTree(untpd.CapturesAndResult(_, tpe1)) =>
+        i"=> $tpe1" // suppress CapturesAndResult encoding under cc
+      case _ => i"$tpe"
+    i"By-name parameter type $tpeStr not allowed here."
 
   def explain(using Context) =
     i"""|By-name parameters act like functions that are only evaluated when referenced,
@@ -753,7 +791,7 @@ extends SyntaxMsg(WrongNumberOfTypeArgsID) {
       try fntpe.termSymbol match
         case NoSymbol => fntpe.show
         case symbol   => symbol.showFullName
-      catch case NonFatal(ex) => fntpe.show
+      catch case ex: Exception => fntpe.show
     i"""|$msgPrefix type arguments for $prettyName$expectedArgString
         |expected: $expectedArgString
         |actual:   $actualArgString"""
@@ -923,11 +961,11 @@ class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
         |"""
 }
 
-class MatchCaseUnreachable()(using Context)
+class MatchCaseUnreachable(why: String = "")(using Context)
 extends Message(MatchCaseUnreachableID) {
   def kind = MessageKind.MatchCaseUnreachable
-  def msg(using Context) = "Unreachable case"
-  def explain(using Context) = ""
+  override protected def msg(using Context) = "Unreachable case"
+  override protected def explain(using Context) = why
 }
 
 class MatchCaseOnlyNullWarning()(using Context)
@@ -1173,7 +1211,7 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
   withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
   def msg(using Context) =
     val isConcreteOverAbstract =
-      (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
+      other.owner.isSubClass(member.owner) && other.is(Deferred) && !member.is(Deferred)
     def addendum =
       if isConcreteOverAbstract then
         i"""|
@@ -1189,14 +1227,22 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
 
 class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
 extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
-  def msg(using Context) = i"${definition.name} is a forward reference extending over the definition of ${value.name}"
+  extension (sym: Symbol) def srcLine = sym.line + 1
+
+  def msg(using Context) =
+    val ref =
+      if value != definition then i"${definition.name} (defined on line ${definition.srcLine})"
+      else i"${definition.name}"
+    i"forward reference to ${ref} extends over the definition of ${value.name} (on line ${value.srcLine})"
 
   def explain(using Context) =
     i"""|${definition.name} is used before you define it, and the definition of ${value.name}
         |appears between that use and the definition of ${definition.name}.
         |
-        |Forward references are allowed only, if there are no value definitions between
-        |the reference and the referred method definition.
+        |Forward references are allowed only if there are no value definitions between
+        |the reference and the definition that is referred to.
+        |Specifically, any statement between the reference and the definition
+        |cannot be a variable definition, and if it's a value definition, it must be lazy.
         |
         |Define ${definition.name} before it is used,
         |or move the definition of ${value.name} so it does not appear between
@@ -1205,16 +1251,16 @@ extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
         |"""
 }
 
-class ExpectedTokenButFound(expected: Token, found: Token, prefix: String = "")(using Context)
+class ExpectedTokenButFound(expected: Token, found: Token, prefix: String = "", suffix: String = "")(using Context)
 extends SyntaxMsg(ExpectedTokenButFoundID) {
 
-  private def foundText = Tokens.showToken(found)
+  private def foundText = showToken(found)
 
   def msg(using Context) =
     val expectedText =
       if (Tokens.isIdentifier(expected)) "an identifier"
-      else Tokens.showToken(expected)
-    i"""$prefix$expectedText expected, but $foundText found"""
+      else showToken(expected)
+    i"""$prefix$expectedText expected, but $foundText found$suffix"""
 
   def explain(using Context) =
     if (Tokens.isIdentifier(expected) && Tokens.isKeyword(found))
@@ -1224,7 +1270,18 @@ extends SyntaxMsg(ExpectedTokenButFoundID) {
       ""
 }
 
-class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name, op2LeftAssoc: Boolean)(using Context)
+class ExpectedTokenButFoundSoftKeyword(expected: Token, found: Token, soft: Name, advice: String = "")(using Context)
+extends SyntaxMsg(ExpectedTokenButFoundID):
+  def addendum = if !advice.isEmpty then s"\n$advice" else advice
+  def msg(using Context) =
+    val expectedText = if Tokens.isIdentifier(expected) then "an identifier" else Tokens.showToken(expected)
+    val what = if Tokens.isIdentifier(found) || expected == Tokens.COLONop then "an identifier" else "the soft keyword"
+    s"""$expectedText expected, but ${Tokens.showToken(found)} found
+       |The soft keyword `$soft` was taken as $what in this context.$addendum""".stripMargin
+  def explain(using Context) = s"The soft keyword `$soft` has special meaning only in certain contexts."
+end ExpectedTokenButFoundSoftKeyword
+
+class MixedLeftAndRightAssociativeOps(op1: Name, op2: Name | Null, op2LeftAssoc: Boolean)(using Context)
 extends SyntaxMsg(MixedLeftAndRightAssociativeOpsID) {
   def msg(using Context) =
     val op1Asso: String = if (op2LeftAssoc) "which is right-associative" else "which is left-associative"
@@ -1327,25 +1384,6 @@ extends CyclicMsg(CyclicReferenceInvolvingImplicitID) {
         |To avoid this error, try giving ${cycleSym.name} an explicit type.
         |"""
 }
-
-class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using Context)
-extends TypeMsg(SkolemInInferredID):
-  def msg(using Context) =
-    def argStr =
-      if argument.isEmpty then ""
-      else i" from argument of type ${argument.tpe.widen}"
-    i"""Failure to generate given instance for type $pt$argStr)
-        |
-        |I found: $tree
-        |But the part corresponding to `<skolem>` is not a reference that can be generated.
-        |This might be because resolution yielded as given instance a function that is not
-        |known to be total and side-effect free."""
-  def explain(using Context) =
-    i"""The part of given resolution that corresponds to `<skolem>` produced a term that
-        |is not a stable reference. Therefore a given instance could not be generated.
-        |
-        |To trouble-shoot the problem, try to supply an explicit expression instead of
-        |relying on implicit search at this point."""
 
 class SuperQualMustBeParent(qual: untpd.Ident, cls: ClassSymbol)(using Context)
 extends ReferenceMsg(SuperQualMustBeParentID) {
@@ -1525,17 +1563,25 @@ class AmbiguousExtensionMethod(tree: untpd.Tree, expansion1: tpd.Tree, expansion
        |are possible expansions of $tree"""
   def explain(using Context) = ""
 
-class ReassignmentToVal(name: Name)(using Context)
+class ReassignmentToVal(name: Name, pt: Type)(using Context)
   extends TypeMsg(ReassignmentToValID) {
-  def msg(using Context) = i"""Reassignment to val $name"""
+
+  def booleanExpected = pt.isRef(defn.BooleanClass)
+  def booleanNote =
+    if booleanExpected then
+      ". Maybe you meant to write an equality test using `==`?"
+    else ""
+  def msg(using Context)
+    = i"""Reassignment to val $name$booleanNote"""
+
   def explain(using Context) =
-    i"""|You can not assign a new value to $name as values can't be changed.
-        |Keep in mind that every statement has a value, so you may e.g. use
-        |  ${hl("val")} $name ${hl("= if (condition) 2 else 5")}
-        |In case you need a reassignable name, you can declare it as
-        |variable
-        |  ${hl("var")} $name ${hl("=")} ...
-        |"""
+    if booleanExpected then
+      i"""An equality test is written "x == y" using `==`. A single `=` stands
+         |for assigment, where a variable on the left gets a new value on the right.
+         |This is only permitted if the variable is declared with `var`."""
+    else
+      i"""You can not assign a new value to $name as values can't be changed.
+         |Reassigment is only permitted if the variable is declared with `var`."""
 }
 
 class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
@@ -1588,7 +1634,7 @@ class MissingTypeParameterInTypeApp(tpe: Type)(using Context)
 class MissingArgument(pname: Name, methString: String)(using Context)
   extends TypeMsg(MissingArgumentID):
   def msg(using Context) =
-    if pname.firstPart contains '$' then s"not enough arguments for $methString"
+    if pname.firstPart.contains('$') then s"not enough arguments for $methString"
     else s"missing argument for parameter $pname of $methString"
   def explain(using Context) = ""
 
@@ -1915,7 +1961,7 @@ class ExtendFinalClass(clazz:Symbol, finalClazz: Symbol)(using Context)
 
 class ExpectedTypeBoundOrEquals(found: Token)(using Context)
   extends SyntaxMsg(ExpectedTypeBoundOrEqualsID) {
-  def msg(using Context) = i"${hl("=")}, ${hl(">:")}, or ${hl("<:")} expected, but ${Tokens.showToken(found)} found"
+  def msg(using Context) = i"${hl("=")}, ${hl(">:")}, or ${hl("<:")} expected, but ${showToken(found)} found"
 
   def explain(using Context) =
     i"""Type parameters and abstract types may be constrained by a type bound.
@@ -2086,28 +2132,61 @@ class TraitIsExpected(symbol: Symbol)(using Context) extends SyntaxMsg(TraitIsEx
   }
 }
 
-class TraitRedefinedFinalMethodFromAnyRef(method: Symbol)(using Context) extends SyntaxMsg(TraitRedefinedFinalMethodFromAnyRefID) {
-  def msg(using Context) = i"Traits cannot redefine final $method from ${hl("class AnyRef")}."
-  def explain(using Context) = ""
-}
-
-class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context)
+class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol, addingCaptureSet: Boolean = false)(using Context)
 extends NamingMsg(AlreadyDefinedID):
+  private def isCaptureConflict = addingCaptureSet || Feature.ccEnabled && conflicting.isDummyCaptureParam
   def msg(using Context) =
     def where: String =
       if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
         i" in ${conflicting.associatedFile}"
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
+    def print(tpe: Type): String =
+      def addParams(tpe: Type): List[String] = tpe match
+        case tpe: MethodType =>
+          val s = if tpe.isContextualMethod then i"(${tpe.paramInfos}%, %) =>" else ""
+          s :: addParams(tpe.resType)
+        case tpe: PolyType =>
+          i"[${tpe.paramNames}%, %] =>" :: addParams(tpe.resType)
+        case tpe =>
+          i"$tpe" :: Nil
+      addParams(tpe).mkString(" ")
     def note =
-      if owner.is(Method) || conflicting.is(Method) then
+      if conflicting.is(Given) && name.startsWith("given_") then
+        i"""|
+            |
+            |Provide an explicit, unique name to given definitions,
+            |since the names assigned to anonymous givens may clash. For example:
+            |
+            |      given myGiven: ${print(atPhase(typerPhase)(conflicting.info))}  // define an instance
+            |      given myGiven @ ${print(atPhase(typerPhase)(conflicting.info))} // as a pattern variable
+            |"""
+      else if owner.is(Method) || conflicting.is(Method) then
         "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
       else ""
-    if conflicting.isTerm != name.isTermName then
-      i"$name clashes with $conflicting$where; the two must be defined together"
-    else
-      i"$name is already defined as $conflicting$where$note"
-  def explain(using Context) = ""
+    def defaultMsg =
+      if conflicting.isTerm != name.isTermName then
+        i"$name clashes with $conflicting$where; the two must be defined together"
+      else
+        i"$name is already defined as $conflicting$where$note"
+    if addingCaptureSet then
+      val captureKind =
+        if !owner.isClass then "capture-set parameter"
+        else
+          val typeSym = owner.unforcedDecls.lookup(name.toTypeName)
+          if typeSym.is(Param) then "capture-set parameter" else "capture-set member"
+      val what = if conflicting.is(Param) then "term parameter"
+        else if conflicting.owner.isClass then i"member $conflicting" else "term"
+      i"$captureKind $name clashes with $what of the same name"
+    else if Feature.ccEnabled && conflicting.isDummyCaptureParam then
+      i"$name clashes with capture-set parameter of the same name"
+    else defaultMsg
+  def explain(using Context) =
+    if isCaptureConflict then
+      i"""Capture-set parameters (declared with ^) range over capture sets. Since both
+         |capture-set parameter names and regular term names can appear in a capture set,
+         |they must be distinct to avoid ambiguity."""
+    else ""
 
 class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
   def msg(using Context) =
@@ -2331,14 +2410,14 @@ class ParamsNoInline(owner: Symbol)(using Context)
 class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
-      if symbol is Package then i"$symbol"
+      if symbol.is(Package) then i"$symbol"
       else i"Java defined ${hl("class " + symbol.name)}"
     s"$kind is not a value"
   def explain(using Context) = ""
 }
 
 class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context)
-extends NamingMsg(DoubleDefinitionID) {
+extends NamingMsg(DoubleDefinitionID):
   import Signature.MatchDegree.*
 
   private def erasedType: Type =
@@ -2376,6 +2455,12 @@ extends NamingMsg(DoubleDefinitionID) {
             i"have the same$nameAnd type $erasedType after erasure.$hint"
         }
       }
+      else if decl.is(CaseAccessor) || previousDecl.is(CaseAccessor) then
+        val selector = """_(\d+)""".r
+        decl.name.toString match
+          case selector(n) =>
+            s"${decl.name} is a case element selector and must name the ${n}th element"
+          case _ => ""
       else ""
     def symLocation(sym: Symbol) = {
       val lineDesc =
@@ -2400,6 +2485,25 @@ extends NamingMsg(DoubleDefinitionID) {
     } + details
   }
   def explain(using Context) =
+    def givenAddendum =
+      def isGivenName(sym: Symbol) = sym.name.startsWith("given_") // Desugar.inventGivenName
+      def print(tpe: Type): String =
+        def addParams(tpe: Type): List[String] = tpe match
+          case tpe: MethodType =>
+            val s = if tpe.isContextualMethod then i"(${tpe.paramInfos}%, %) =>" else ""
+            s :: addParams(tpe.resType)
+          case tpe: PolyType =>
+            i"[${tpe.paramNames}%, %] =>" :: addParams(tpe.resType)
+          case tpe =>
+            i"$tpe" :: Nil
+        addParams(tpe).mkString(" ")
+      if decl.is(Given) && previousDecl.is(Given) && isGivenName(decl) && isGivenName(previousDecl) then
+        i"""| Provide an explicit, unique name to given definitions,
+            |   since the names assigned to anonymous givens may clash. For example:
+            |
+            |      given myGiven: ${print(atPhase(typerPhase)(decl.info))}
+            |"""
+      else ""
     decl.signature.matchDegree(previousDecl.signature) match
       case FullMatch =>
        i"""
@@ -2413,8 +2517,8 @@ extends NamingMsg(DoubleDefinitionID) {
         |
         |In your code the two declarations
         |
-        |  ${previousDecl.showDcl}
-        |  ${decl.showDcl}
+        |  ${atPhase(typerPhase)(previousDecl.showDcl)}
+        |  ${atPhase(typerPhase)(decl.showDcl)}
         |
         |erase to the identical signature
         |
@@ -2422,21 +2526,20 @@ extends NamingMsg(DoubleDefinitionID) {
         |
         |so the compiler cannot keep both: the generated bytecode symbols would collide.
         |
-        |To fix this error, you need to disambiguate the two definitions. You can either:
+        |To fix this error, you must disambiguate the two definitions by doing one of the following:
         |
-        |1. Rename one of the definitions, or
+        |1. Rename one of the definitions.$givenAddendum
         |2. Keep the same names in source but give one definition a distinct
-        |   bytecode-level name via `@targetName` for example:
+        |   bytecode-level name via `@targetName`; for example:
         |
         |      @targetName("${decl.name.show}_2")
-        |      ${decl.showDcl}
+        |      ${atPhase(typerPhase)(decl.showDcl)}
         |
         |Choose the `@targetName` argument carefully: it is the name that will be used
         |when calling the method externally, so it should be unique and descriptive.
-        """
+        |"""
       case _ => ""
-
-}
+end DoubleDefinition
 
 class ImportedTwice(sel: Name)(using Context) extends SyntaxMsg(ImportedTwiceID) {
   def msg(using Context) = s"${sel.show} is imported twice on the same import line."
@@ -2532,7 +2635,7 @@ class PureUnitExpression(stat: untpd.Tree, tpe: Type)(using Context)
 class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Context)
   extends Message(UnqualifiedCallToAnyRefMethodID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Suspicious top-level unqualified call to ${hl(method.name.toString)}"
+  def msg(using Context) = i"Universal method ${hl(method.name.toString)} does not resolve to the enclosing class"
   def explain(using Context) =
     val getClassExtraHint =
       if method.name == nme.getClass_ && ctx.settings.classpath.value.contains("scala3-staging") then
@@ -2764,29 +2867,6 @@ class IllegalRedefinitionOfStandardKind(kindType: String, name: Name)(using Cont
         | Please choose a different name to avoid conflicts
         |"""
 }
-
-class NoExtensionMethodAllowed(mdef: untpd.DefDef)(using Context)
-  extends SyntaxMsg(NoExtensionMethodAllowedID) {
-  def msg(using Context) = i"No extension method allowed here, since collective parameters are given"
-  def explain(using Context) =
-    i"""|Extension method:
-        |  `${mdef}`
-        |is defined inside an extension clause which has collective parameters.
-        |"""
-}
-
-class ExtensionMethodCannotHaveTypeParams(mdef: untpd.DefDef)(using Context)
-  extends SyntaxMsg(ExtensionMethodCannotHaveTypeParamsID) {
-  def msg(using Context) = i"Extension method cannot have type parameters since some were already given previously"
-
-  def explain(using Context) =
-    i"""|Extension method:
-        |  `${mdef}`
-        |has type parameters `[${mdef.leadingTypeParams.map(_.show).mkString(",")}]`, while the extension clause has
-        |it's own type parameters. Please consider moving these to the extension clause's type parameter list.
-        |"""
-}
-
 class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(using Context)
   extends SyntaxMsg(ExtensionCanOnlyHaveDefsID) {
   def msg(using Context) = i"Only methods allowed here, since collective parameters are given"
@@ -2824,7 +2904,7 @@ class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(using Context)
         |"""
 }
 
-class ModifierNotAllowedForDefinition(flag: Flag, explanation: String = "")(using Context)
+class ModifierNotAllowedForDefinition(flag: Flag, explanation: => String = "")(using Context)
   extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
   def msg(using Context) = i"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
   def explain(using Context) = explanation
@@ -2937,7 +3017,7 @@ class MissingImplicitArgument(
       val idx = paramNames.indexOf(name)
       if (idx >= 0) Some(i"${args(idx)}") else None
     """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match
-      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("?" + v)).nn
+      case Regex.Groups(v: String) => quoteReplacement(translate(v).getOrElse("?" + v)).nn
     )
 
   /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
@@ -3046,7 +3126,7 @@ class MissingImplicitArgument(
   def msg(using Context): String =
 
     def formatMsg(shortForm: String)(headline: String = shortForm) = arg match
-      case arg: Trees.SearchFailureIdent[?] =>
+      case arg: SearchFailureIdent[?] =>
         arg.tpe match
           case _: NoMatchingImplicits => headline
           case tpe: SearchFailureType =>
@@ -3381,11 +3461,13 @@ extends Message(UnusedSymbolID):
 object UnusedSymbol:
   def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def localVars(using Context): UnusedSymbol = UnusedSymbol(i"local variable was mutated but not read")
   def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused explicit parameter${paramAddendum(sym)}")
   def implicitParams(sym: Symbol)(using Context): UnusedSymbol =
     UnusedSymbol(i"unused implicit parameter${paramAddendum(sym)}")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def privateVars(using Context): UnusedSymbol = UnusedSymbol(i"private variable was mutated but not read")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
   def unsetLocals(using Context): UnusedSymbol =
     UnusedSymbol(i"unset local variable, consider using an immutable val instead")
@@ -3435,6 +3517,18 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
 
 end QuotedTypeMissing
 
+final class CannotInstantiateQuotedTypeVar(symbol: Symbol)(using patternCtx: Context) extends StagingMessage(CannotInstantiateQuotedTypeVarID):
+  override protected def msg(using Context): String =
+    i"""Quoted pattern type variable `${symbol.name}` cannot be instantiated.
+      |If you meant to refer to a class named `${symbol.name}`, wrap it in backticks.
+      |If you meant to introduce a binding, this is not allowed after `new`. You might
+      |want to use the lower-level `quotes.reflect` API instead.
+      |Read more about type variables in quoted pattern in the Scala documentation:
+      |https://docs.scala-lang.org/scala3/guides/macros/quotes.html#type-variables-in-quoted-patterns
+    """
+
+  override protected def explain(using Context): String = ""
+
 final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
   override protected def msg(using Context): String =
     i"""Deprecated syntax: since 3.7 this is interpreted as a named tuple with one element,
@@ -3447,7 +3541,7 @@ final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Conte
 
 class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
   def msg(using Context) =
-    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single name tuple argument.
+    i"""Deprecated syntax: infix named arguments lists are deprecated; since 3.7 it is interpreted as a single named tuple argument.
        |To avoid this warning, either remove the argument names or use dotted selection."""
         + Message.rewriteNotice("This", version = SourceVersion.`3.7-migration`)
 
@@ -3596,7 +3690,8 @@ class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Contex
 
   override def explain(using Context) = ""
 
-  private val nnSourcePosition = SourcePosition(sourcePosition.source, Span(sourcePosition.span.end, sourcePosition.span.end + 3, sourcePosition.span.end), sourcePosition.outer)
+  private val nnSourcePosition =
+    sourcePosition.withSpan(Span(sourcePosition.span.end, sourcePosition.span.end + 3, sourcePosition.span.end))
 
   override def actions(using Context) =
     List(
@@ -3608,3 +3703,198 @@ class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Contex
       )
     )
 }
+
+final class ErasedNotPure(tree: tpd.Tree, isArgument: Boolean, isImplicit: Boolean)(using Context) extends TypeMsg(ErasedNotPureID):
+  def what =
+    if isArgument then s"${if isImplicit then "implicit " else ""}argument to an erased parameter"
+    else "right-hand-side of an erased value"
+  override protected def msg(using Context): String =
+    i"$what fails to be a pure expression"
+
+  override protected def explain(using Context): String =
+    def alternatives =
+      if tree.symbol == defn.Compiletime_erasedValue then
+        i"""An accepted (but unsafe) alternative for this expression uses function
+           |
+           |      caps.unsafe.unsafeErasedValue
+           |
+           |instead."""
+      else
+        """A pure expression is an expression that is clearly side-effect free and terminating.
+          |Some examples of pure expressions are:
+          |  - literals,
+          |  - references to values,
+          |  - side-effect-free instance creations,
+          |  - applications of inline functions to pure arguments."""
+
+    i"""The $what must be a pure expression, but I found:
+       |
+       |  $tree
+       |
+       |This expression is not classified to be pure.
+       |$alternatives"""
+end ErasedNotPure
+
+final class IllegalErasedDef(sym: Symbol)(using Context) extends TypeMsg(IllegalErasedDefID):
+  override protected def msg(using Context): String =
+    def notAllowed = "`erased` is not allowed for this kind of definition."
+    def result = if sym.is(Method) then " result" else ""
+    if sym.is(Erased) then notAllowed
+    else
+      i"""$sym is implicitly `erased` since its$result type extends trait `compiletime.Erased`.
+         |But $notAllowed"""
+
+  override protected def explain(using Context): String =
+    "Only non-lazy immutable values can be `erased`"
+end IllegalErasedDef
+
+final class DefaultShadowsGiven(name: Name)(using Context) extends TypeMsg(DefaultShadowsGivenID):
+  override protected def msg(using Context): String =
+    i"Argument for implicit parameter $name was supplied using a default argument."
+  override protected def explain(using Context): String =
+    "Usually the given in scope is intended, but you must specify it after explicit `using`."
+
+final class RecurseWithDefault(name: Name)(using Context) extends TypeMsg(RecurseWithDefaultID):
+  override protected def msg(using Context): String =
+    i"Recursive call used a default argument for parameter $name."
+  override protected def explain(using Context): String =
+    "It's more explicit to pass current or modified arguments in a recursion."
+
+final class EncodedPackageName(name: Name)(using Context) extends SyntaxMsg(EncodedPackageNameID):
+  override protected def msg(using Context): String =
+    i"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour."
+  override protected def explain(using Context): String =
+    i"""Tools may not handle directories whose names differ from their corresponding package names.
+       |For example, `p-q` is encoded as `p$$minusq` when written to the file system.
+       |
+       |Package objects derive their names from the file names, so files such as `myfile.test.scala`
+       |or `myfile-test.scala` can produce encoded names for the generated package objects.
+       |
+       |In this case, the name `$name` is encoded as `${name.encode}`."""
+
+final class CannotBeIncluded(
+    added: Capability | CaptureSet,
+    target: CaptureSet,      // The original set where elements cannot be included
+    realTarget: CaptureSet,  // The underlying set of an IncludeFailure
+    notes: List[Note],
+    targetOwner: Symbol,
+    provenance: => String)(using Context) extends CapturesMessage(CannotBeIncludedID) {
+
+  def msg(using Context): String = {
+    val prefix = added match
+      case added: Capability =>
+        i"`${added.showAsCapability}` cannot be referenced here; it is not"
+      case added: CaptureSet =>
+        val addedDescription =
+          if added.description.isEmpty then "" else i" ${added.description}"
+        if added.elems.size == 1 then
+          i"Reference `${added.elems.nth(0).showAsCapability}`$addedDescription is not"
+        else
+          i"References $added$addedDescription are not all"
+
+    def needsUseStr =
+      if target.isAlwaysEmpty && (targetOwner.isClass || targetOwner.isConstructor) then
+        val (suffix, loc) =
+          if targetOwner.isClass
+          then ("", targetOwner)
+          else (" initially", targetOwner.owner)
+        def useStr(c: Capability) = c.showAsCapability ++ suffix
+        val usedStr = added match
+          case added: Capability => i"${useStr(added)}"
+          case added: CaptureSet => i"${added.elems.toList.map(useStr).mkString(", ")}"
+
+        if loc.isPackageObject then
+          i"""
+            |
+            |The top-level definitions should be wrapped in an object with a uses clause:
+            |
+            |    uses $usedStr"""
+        else
+          i"""
+            |
+            |External uses should be declared explicitly with a uses clause in $loc:
+            |
+            |    uses $usedStr"""
+      else ""
+
+    def notesStr: String = notes.map(_.render).mkString
+    val provisional = realTarget.isProvisionallySolved
+    val kind = if provisional then "previously estimated\n" else "allowed "
+
+    // Show target instead of real target if that is more informative; i.e.
+    // real target has no description, but target has a description or a provenance
+    // for target exists. Always show realTarget under provisional, so we see
+    // which was the root cause for a recompile.
+    val shownTarget =
+      if provisional
+        || realTarget.description.nonEmpty
+        || target.description.isEmpty && provenance.isEmpty
+      then realTarget
+      else if realTarget.isConst && !target.isConst then target.asVar.withElems(realTarget.elems)
+      else target
+    val provenanceStr: String =
+      if shownTarget.description.isEmpty then provenance else ""
+    i"$prefix included in the ${kind}capture set $shownTarget$provenanceStr.$notesStr$needsUseStr"
+  }
+  def explain(using Context) = ""
+}
+
+final class OverrideClass(using Context) extends SyntaxMsg(OverrideClassID):
+  override protected def msg(using Context) =
+    "`override` modifier is deprecated for classes and traits"
+  override protected def explain(using Context) =
+    i"""Instead of overriding a type alias with a class type, use an alias of the class.
+       |For example, instead of `override class C`, use `override type C = CImpl; class CImpl`."""
+
+final class TypeParameterShadowsType(shadow: Symbol, parent: Symbol, shadowed: Symbol)(using Context)
+    extends NamingMsg(TypeParameterShadowsTypeID):
+  override protected def msg(using Context): String =
+    if shadowed.exists then
+      i"Type parameter ${shadow.name} for $parent shadows the type defined by ${shadowed.showLocated}"
+    else
+      i"Type parameter ${shadow.name} for $parent shadows an explicitly renamed type : ${shadow.name}"
+  override protected def explain(using Context): String =
+    i"""A type parameter shadows another type that is already in scope.
+       |This can lead to confusion and potential errors.
+       |Consider renaming the type parameter to avoid the shadowing."""
+
+final class PrivateShadowsType(shadow: Symbol, shadowed: Symbol)(using Context)
+    extends NamingMsg(PrivateShadowsTypeID):
+  override protected def msg(using Context): String =
+    i"${shadow.showLocated} shadows field ${shadowed.name} inherited from ${shadowed.owner}"
+  override protected def explain(using Context): String =
+    i"""A private field shadows an inherited field with the same name.
+       |This can lead to confusion as the inherited field becomes inaccessible.
+       |Consider renaming the private field to avoid the shadowing."""
+
+class AmbiguousTemplateName(tree: NamedDefTree[?])(using Context) extends SyntaxMsg(AmbiguousTemplateNameID):
+  override protected def msg(using Context) = i"name `${tree.name}` should be enclosed in backticks"
+  override protected def explain(using Context): String =
+    "Names with trailing operator characters may fuse with a subsequent colon if not set off by backquotes or spaces."
+
+class IndentationWarning(isLeft: Boolean = false, before: String = "", missing: Token*)(using Context)
+extends SyntaxMsg(IndentationWarningID):
+  override protected def msg(using Context) =
+    s"Line is indented too far to the ${if isLeft then "left" else "right"}, or a ${
+      missing.map(showToken).mkString(" or ")
+    } is missing${
+      if !before.isEmpty then i" before:\n\n$before" else ""
+    }"
+  override protected def explain(using Context): String =
+    "Indentation that does not reflect syntactic nesting may be due to a typo such as missing punctuation."
+
+final class IllegalIdentifier(name: Name)(using Context) extends SyntaxMsg(IllegalIdentifierID):
+  override protected def msg(using Context): String = name match
+    case nme.CONSTRUCTOR | nme.STATIC_CONSTRUCTOR =>
+      "Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden"
+    case _ =>
+      i"The identifier `$name` should not contain `$$`, which is reserved for internal compiler use."
+  override protected def explain(using Context): String = name match
+    case nme.CONSTRUCTOR | nme.STATIC_CONSTRUCTOR =>
+      "Names can include unusual characters when enclosed in backquotes, but `<init>` and `<clinit>` are reserved."
+    case _ =>
+      i"""User identifiers may be encoded with embedded `$$`, and other compiler artifacts
+         |may rely on using `$$` with specific meanings.
+         |
+         |The prohibition against explicit `$$` may be ignored by enclosing the identifier in backquotes
+         |at the definition site."""

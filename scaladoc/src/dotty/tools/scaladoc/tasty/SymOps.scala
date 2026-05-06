@@ -7,10 +7,22 @@ import scala.collection.mutable.{ Map => MMap }
 import dotty.tools.io.AbstractFile
 import Scaladoc2AnchorCreator.getScaladoc2Type
 import JavadocAnchorCreator.getJavadocType
+import scala.annotation.tailrec
 
 object SymOps:
 
   extension (using Quotes)(sym: reflect.Symbol)
+
+    private def isPackageObjectOwner(owner: reflect.Symbol): Boolean =
+      owner.name.toString.contains("package$")
+
+    private def ownerPath: List[reflect.Symbol] =
+      import reflect._
+      @tailrec
+      def loop(current: Symbol, seen: Set[Symbol], acc: List[Symbol]): List[Symbol] =
+        if !current.exists || seen.contains(current) then acc
+        else loop(current.maybeOwner, seen + current, current :: acc)
+      loop(sym, Set.empty, Nil)
 
     def isImplicitClass: Boolean =
       import reflect._
@@ -20,19 +32,25 @@ object SymOps:
         }
 
     def packageName: String =
-      if (sym.isPackageDef) sym.fullName
-      else sym.maybeOwner.packageName
+      sym.ownerPath.reverseIterator.collectFirst {
+        case owner if owner.isPackageDef => owner.fullName
+      }.getOrElse("")
 
     def packageNameSplitted: Seq[String] =
-      sym.packageName.split('.').toList
+      sym.packageName match
+        case "" => Nil
+        case pkg => pkg.split('.').toList
 
     def className: Option[String] =
       import reflect._
-      if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
-        Some(sym.maybeOwner).filter(s => s.exists).flatMap(_.className).fold("")(cn => cn + "$") + sym.name
-      ).filterNot(_.contains("package$"))
-      else if (sym.isPackageDef) None
-      else sym.maybeOwner.className
+      val classOwners = sym.ownerPath.collect {
+        case owner
+        if owner.isClassDef
+          && !owner.flags.is(Flags.Package)
+          && !sym.isPackageObjectOwner(owner) =>
+            owner.name
+      }
+      Option.when(classOwners.nonEmpty)(classOwners.mkString("$"))
 
     def anchor: Option[String] =
       if (!sym.isClassDef && !sym.isPackageDef) {
@@ -214,7 +232,7 @@ end SymOps
 class SymOpsWithLinkCache:
   import SymOps.*
 
-  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
+  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile | Null, Option[ExternalDocLink]] = MMap()
 
   extension (using Quotes)(sym: reflect.Symbol)
 
@@ -223,12 +241,15 @@ class SymOpsWithLinkCache:
       val extension = ".html"
       val docURL = link.documentationUrl.toString
       def constructPathForJavadoc: String =
-        val l = "\\$+".r.replaceAllIn(location.mkString("/"), _ => ".")
+        val l = "\\$+".r.replaceAllIn(location.mkString("/").stripSuffix("$"), ".")
         val javadocAnchor = if anchor.isDefined then {
-          val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
-            case v: ValDef => v.tpt.tpe
-          }.map(getJavadocType)
-          "#" + sym.name + paramSigs.mkString("-","-","-")
+          if sym.isDefDef then
+            val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
+              case v: ValDef => v.tpt.tpe
+            }.map(getJavadocType)
+            "#" + sym.name + paramSigs.mkString("-","-","-")
+          else
+            "#" + sym.name
         } else ""
         docURL + l + extension + javadocAnchor
 

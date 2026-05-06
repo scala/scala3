@@ -1,0 +1,19 @@
+-- [E218] Type Error: tests/neg/erased-lazy-val.scala:6:18 -------------------------------------------------------------
+6 |  erased lazy val i: Int = 1 // error
+  |                  ^
+  |                  `erased` is not allowed for this kind of definition.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E218] Type Error: tests/neg/erased-lazy-val.scala:7:11 -------------------------------------------------------------
+7 |  lazy val e: E = E() // error
+  |           ^
+  |           lazy value e is implicitly `erased` since its type extends trait `compiletime.Erased`.
+  |           But `erased` is not allowed for this kind of definition.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E218] Type Error: tests/neg/erased-lazy-val.scala:8:2 --------------------------------------------------------------
+8 |  erased object obj1 // error
+  |  ^
+  |  `erased` is not allowed for this kind of definition.
+  |
+  | longer explanation available when compiling with `-explain`

@@ -1,4 +1,4 @@
-//> using options  -Wunused:strict-no-implicit-warn
+//> using options -Wunused:imports
 
 package foo.unused.strict.test:
   package a:
@@ -7,15 +7,15 @@ package foo.unused.strict.test:
     val z: Int = 2
     def f: Int = 3
   package b:
-    import a.given // OK
-    import a._ // OK
-    import a.* // OK
-    import a.x // OK
-    import a.y // OK
+    import a.given // warn
+    import a._ // warn
+    import a.* // warn
+    import a.x // warn
+    import a.y // warn
     import a.z // warn
     import a.f // warn
   package c:
-    import a.given // OK
+    import a.given // warn
     import a.x // OK
     import a.y // OK
     import a.z // OK
@@ -28,8 +28,8 @@ package foo.implicits.resolution:
   object A { implicit val x: X = new X }
   object B { implicit val y: Y = new Y }
   class C {
-    import A._ // OK
-    import B._ // OK
+    import A.given // warn
+    import B.given // OK
     def t = implicitly[X]
   }
 
@@ -44,7 +44,7 @@ package foo.unused.summon.inlines:
     given willBeUsed: (A & B) = new A with B {}
 
   package use:
-    import lib.{A, B, C, willBeUnused, willBeUsed} //OK
+    import lib.{A, B, C, willBeUnused, willBeUsed} // warn
     import compiletime.summonInline //OK
 
     transparent inline given conflictInside: C =

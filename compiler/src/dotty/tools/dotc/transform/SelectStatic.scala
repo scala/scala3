@@ -52,9 +52,9 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
   override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree = {
     val sym = tree.symbol
     def isStaticMember =
-      (sym is Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner ||
-      (sym is Flags.JavaStatic) ||
-      sym.isScalaStatic
+      sym.is(Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner
+      || sym.is(Flags.JavaStatic)
+      || sym.isScalaStatic
     val isStaticRef = !sym.is(Package) && !sym.maybeOwner.is(Package) && isStaticMember
     val tree1 =
       if isStaticRef && !tree.qualifier.symbol.isAllOf(JavaModule) && !tree.qualifier.isType then
@@ -75,8 +75,6 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def normalize(t: Tree)(using Context) = t match {
-    case Select(Block(stats, qual), nm) =>
-      Block(stats, cpy.Select(t)(qual, nm))
     case Apply(Block(stats, qual), nm) =>
       Block(stats, Apply(qual, nm))
     case TypeApply(Block(stats, qual), nm) =>

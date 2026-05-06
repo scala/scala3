@@ -1,11 +1,6 @@
 package dotty.tools.debug
 
 import java.nio.file.Path
-import java.util.function.Consumer
-import java.{util => ju}
-import scala.jdk.CollectionConverters.*
-import scala.util.control.NonFatal
-import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.Driver
 
@@ -33,6 +28,6 @@ class ExpressionCompilerBridge:
       driver.process(args, reporter)
       !reporter.hasErrors
     catch
-      case NonFatal(cause) =>
+      case cause: Exception =>
         cause.printStackTrace()
         throw cause

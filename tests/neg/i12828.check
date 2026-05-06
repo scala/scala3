@@ -1,6 +1,6 @@
 -- Error: tests/neg/i12828.scala:7:7 -----------------------------------------------------------------------------------
 7 |object Baz extends Bar[Int] // error: not implemented
-  |       ^
+  |       ^^^
   |       object creation impossible, since def foo(x: A): Unit in trait Foo is not defined 
   |       (Note that
   |        parameter A in def foo(x: A): Unit in trait Foo does not match

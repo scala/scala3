@@ -1,6 +1,6 @@
-import caps.Mutable
+import caps.Stateful
 
-trait IterableOnce[T] extends Mutable:
+trait IterableOnce[T] extends Stateful:
   def iterator: Iterator[T]^{this}
   update def foreach(op: T => Unit): Unit
 

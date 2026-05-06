@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import scala.language.unsafeNulls
-
 import scala.collection.mutable
 
 import dotty.tools.dotc.core.*
@@ -21,8 +19,6 @@ import dotty.tools.sjs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldNam
 import dotty.tools.sjs.ir.OriginalName
 import dotty.tools.sjs.ir.OriginalName.NoOriginalName
 import dotty.tools.sjs.ir.UTF8String
-
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import JSDefinitions.jsdefn
 

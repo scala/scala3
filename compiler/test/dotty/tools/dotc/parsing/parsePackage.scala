@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.dotc._
-import core._, ast._
-import Trees._
+import dotty.tools.dotc.*
+import core.*, ast.*
+import Trees.*
 import Contexts.Context
 
 object parsePackage extends ParserTest {
 
-  import ast.untpd._
+  import ast.untpd.*
 
   var nodes = 0
 

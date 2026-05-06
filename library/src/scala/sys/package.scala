@@ -21,21 +21,23 @@ import scala.jdk.CollectionConverters._
  *  world outside of it.
  */
 package object sys {
-  /** Throw a new RuntimeException with the supplied message.
+  /** Throws a new RuntimeException with the supplied message.
    *
-   *  @return   Nothing.
+   *  @param message the detail message for the `RuntimeException`
+   *  @return   this method never returns normally (return type is `Nothing`)
    */
   def error(message: String): Nothing = throw new RuntimeException(message)
 
-  /** Exit the JVM with the default status code.
+  /** Exits the JVM with the default status code.
    *
-   *  @return   Nothing.
+   *  @return   this method never returns normally (return type is `Nothing`)
    */
   def exit(): Nothing = exit(0)
 
-  /** Exit the JVM with the given status code.
+  /** Exits the JVM with the given status code.
    *
-   *  @return   Nothing.
+   *  @param status the exit status code passed to `System.exit` (0 for success, non-zero for failure)
+   *  @return   this method never returns normally (return type is `Nothing`)
    */
   def exit(status: Int): Nothing = {
     java.lang.System.exit(status)
@@ -50,7 +52,7 @@ package object sys {
 
   /** A bidirectional, mutable Map representing the current system Properties.
    *
-   *  @return   a SystemProperties.
+   *  @return   a `SystemProperties` instance wrapping the current system properties
    *  @see      [[scala.sys.SystemProperties]]
    */
   def props: SystemProperties = new SystemProperties
@@ -63,7 +65,7 @@ package object sys {
    *  If lookup fails, use `System.getenv(_)` for case-insensitive lookup
    *  on a certain platform. If that also fails, throw `NoSuchElementException`.
    *
-   *  @return   a Map containing the system environment variables.
+   *  @return   a `Map` containing the system environment variables.
    */
   def env: Map[String, String] = Map.from(System.getenv().asScala).withDefault { v =>
     val s = System.getenv(v)
@@ -71,7 +73,7 @@ package object sys {
     s
   }
 
-  /** Register a shutdown hook to be run when the VM exits.
+  /** Registers a shutdown hook to be run when the VM exits.
    *  The hook is automatically registered: the returned value can be ignored,
    *  but is available in case the Thread requires further modification.
    *  It can also be unregistered by calling ShutdownHookThread#remove().
@@ -79,7 +81,7 @@ package object sys {
    *  Note that shutdown hooks are NOT guaranteed to be run.
    *
    *  @param    body  the body of code to run at shutdown
-   *  @return   the   Thread which will run the shutdown hook.
+   *  @return   the `ShutdownHookThread` which will run the shutdown hook
    *  @see      [[scala.sys.ShutdownHookThread]]
    */
   def addShutdownHook(body: => Unit): ShutdownHookThread = ShutdownHookThread(body)

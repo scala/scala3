@@ -14,6 +14,8 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.tailrec
 
 /** A module containing the implementations of parsers from strings to numeric types, and boolean
@@ -32,10 +34,10 @@ private[scala] object StringParsers {
   private final val POS = true
 
   @inline
-  private[this] final def decValue(ch: Char): Int = java.lang.Character.digit(ch, 10)
+  private final def decValue(ch: Char): Int = java.lang.Character.digit(ch, 10)
 
   @inline
-  private[this] final def stepToOverflow(from: String, len: Int, agg: Int, isPositive: Boolean, min: Int): Option[Int] = {
+  private final def stepToOverflow(from: String, len: Int, agg: Int, isPositive: Boolean, min: Int): Option[Int] = {
     @tailrec
     def rec(i: Int, agg: Int): Option[Int] = 
       if (agg < min) None
@@ -53,7 +55,7 @@ private[scala] object StringParsers {
   }
 
   @inline
-  private[this] final def isDigit(c: Char): Boolean = c >= '0' && c <= '9'
+  private final def isDigit(c: Char): Boolean = c >= '0' && c <= '9'
 
   //bool
   @inline

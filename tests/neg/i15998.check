@@ -3,12 +3,20 @@
   |            ^
   |            Found:    (1 : Int)
   |            Required: CC[A]
+  |            Note that implicit conversions were not tried because the result of an implicit conversion
+  |            must be more specific than CC[A]
   |
   |            where:    A  is a type variable
   |                      CC is a type variable with constraint <: [B] =>> Any
   |
-  |            Note that implicit conversions were not tried because the result of an implicit conversion
-  |            must be more specific than CC[A]
+  |
+  |            One of the following imports might fix the problem:
+  |
+  |              import scala.math.BigDecimal.int2bigDecimal
+  |              import scala.math.BigInt.int2bigInt
+  |              import scala.math.Ordered.orderingToOrdered
+  |              import scala.util.chaining.scalaUtilChainingOps
+  |
   |
   | longer explanation available when compiling with `-explain`
 -- [E172] Type Error: tests/neg/i15998.scala:11:11 ---------------------------------------------------------------------

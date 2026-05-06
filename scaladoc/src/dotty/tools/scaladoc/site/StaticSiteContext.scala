@@ -8,7 +8,9 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.jdk.CollectionConverters._
+import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
+import dotty.tools.scaladoc.snippets.SnippetCompilerMessage
 
 class StaticSiteContext(
   val root: File,
@@ -19,8 +21,8 @@ class StaticSiteContext(
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  val docsPath = root.toPath.resolve("_docs")
-  val blogPath = root.toPath.resolve("_blog")
+  val docsPath: Path = root.toPath.resolve("_docs")
+  val blogPath: Path = root.toPath.resolve("_blog")
 
   def resolveNewBlogPath(stringPath: String): Path =
     if stringPath.nonEmpty then root.toPath.resolve(stringPath)
@@ -46,6 +48,16 @@ class StaticSiteContext(
     def process(l: LoadedTemplate): List[LoadedTemplate] =
       l +: l.children.flatMap(process)
     process(staticSiteRoot.rootTemplate)
+
+  private val pendingSnippetMessages = ArrayBuffer.empty[SnippetCompilerMessage]
+
+  def bufferSnippetMessages(messages: Seq[SnippetCompilerMessage]): Unit =
+    pendingSnippetMessages ++= messages
+
+  def reportSnippetMessages(): Unit =
+    pendingSnippetMessages.foreach(_.emit()(using outerCtx))
+    pendingSnippetMessages.clear()
+
   /** Handles redirecting from multiple locations to one page
    *
    * For each entry in redirectFrom setting, create a page which contains code that redirects you to the page where the redirectFrom is defined.
@@ -114,7 +126,7 @@ class StaticSiteContext(
 
     DRI.forPath(relativePath)
 
-  def pathFromRoot(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
+  def pathFromRoot(myTemplate: LoadedTemplate): Path = root.toPath.relativize(myTemplate.file.toPath)
 
   val projectWideProperties =
     Seq("projectName" -> args.name) ++

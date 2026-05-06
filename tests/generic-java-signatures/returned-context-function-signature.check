@@ -1,0 +1,12 @@
+public java.lang.String CtxFns$.bar(int,CtxFns$Context)
+int,class CtxFns$Context -> class java.lang.String
+int,class CtxFns$Context -> class java.lang.String
+public java.lang.String CtxFns$.foo(int,CtxFns$Context)
+int,class CtxFns$Context -> class java.lang.String
+int,class CtxFns$Context -> class java.lang.String
+public void CtxFns$.puts(java.lang.Object,CtxFns$Context)
+class java.lang.Object,class CtxFns$Context -> void
+T,class CtxFns$Context -> void
+private java.lang.Object CtxFns$.writeReplace()
+ -> class java.lang.Object
+ -> class java.lang.Object

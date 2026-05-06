@@ -34,9 +34,9 @@ final class IntAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-2).toLong << 32 | (x(x.length-1)&0xFFFFFFFFL) }
 
-  override protected[this] def className: String = "IntAccumulator"
+  override protected def className: String = "IntAccumulator"
 
-  def efficientStepper[S <: Stepper[_]](implicit shape: StepperShape[Int, S]): S with EfficientSplit = {
+  def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = {
     val st = new IntAccumulatorStepper(this)
     val r =
       if (shape.shape == StepperShape.IntShape) st
@@ -44,7 +44,7 @@ final class IntAccumulator
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParIntStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
 
   private def expand(): Unit = {
@@ -65,7 +65,10 @@ final class IntAccumulator
     else history = java.util.Arrays.copyOf(history, history.length << 1)
   }
 
-  /** Appends an element to this `IntAccumulator`. */
+  /** Appends an element to this `IntAccumulator`.
+   *
+   *  @param a the `Int` value to append
+   */
   def addOne(a: Int): this.type = {
     totalSize += 1
     if (index+2 >= current.length) expand()
@@ -77,7 +80,10 @@ final class IntAccumulator
   /** Result collection consisting of all elements appended so far. */
   override def result(): IntAccumulator = this
 
-  /** Removes all elements from `that` and appends them to this `IntAccumulator`. */
+  /** Removes all elements from `that` and appends them to this `IntAccumulator`.
+   *
+   *  @param that the `IntAccumulator` to drain elements from; it will be empty after this operation
+   */
   def drain(that: IntAccumulator): Unit = {
     var h = 0
     var prev = 0L
@@ -143,7 +149,10 @@ final class IntAccumulator
     history = IntAccumulator.emptyIntArrayArray
   }
 
-  /** Retrieves the `ix`th element. */
+  /** Retrieves the `ix`th element.
+   *
+   *  @param ix the zero-based index of the element to retrieve, as a `Long`
+   */
   def apply(ix: Long): Int = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt)
     else {
@@ -152,7 +161,10 @@ final class IntAccumulator
     }
   }
 
-  /** Retrieves the `ix`th element, using an `Int` index. */
+  /** Retrieves the `ix`th element, using an `Int` index.
+   *
+   *  @param i the zero-based index of the element to retrieve
+   */
   def apply(i: Int): Int = apply(i.toLong)
 
   def update(idx: Long, elem: Int): Unit = {
@@ -243,7 +255,7 @@ final class IntAccumulator
     r
   }
 
-  /** Copies the elements in this `IntAccumulator` into an `Array[Int]` */
+  /** Copies the elements in this `IntAccumulator` into an `Array[Int]`. */
   @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Int] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -265,7 +277,7 @@ final class IntAccumulator
     a
   }
 
-  /** Copies the elements in this `IntAccumulator` to a `List` */
+  /** Copies the elements in this `IntAccumulator` to a `List`. */
   override def toList: List[Int] = {
     var ans: List[Int] = Nil
     var i = index - 1
@@ -286,10 +298,12 @@ final class IntAccumulator
     ans
   }
 
-  /**
-   * Copy the elements in this `IntAccumulator` to a specified collection.
-   * Note that the target collection is not specialized.
-   * Usage example: `acc.to(Vector)`
+  /** Copies the elements in this `IntAccumulator` to a specified collection.
+   *  Note that the target collection is not specialized.
+   *  Usage example: `acc.to(Vector)`
+   *
+   *  @tparam C1 the type of the target collection
+   *  @param factory the factory for building the target collection from `Int` elements
    */
   override def to[C1](factory: Factory[Int, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)
@@ -344,7 +358,7 @@ object IntAccumulator extends collection.SpecificIterableFactory[Int, IntAccumul
   override def newBuilder: IntAccumulator = new IntAccumulator
 
   class SerializationProxy[A](@transient private val acc: IntAccumulator) extends Serializable {
-    @transient private var result: IntAccumulator = _
+    @transient private var result: IntAccumulator = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -412,7 +426,7 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       ans
     }
 
-  def trySplit(): IntStepper =
+  def trySplit(): IntStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1
@@ -450,7 +464,7 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       }
 
     // Overridden for efficiency
-    override def tryAdvance(c: Consumer[_ >: jl.Integer]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Integer]): Boolean = (c: AnyRef) match {
       case ic: IntConsumer => tryAdvance(ic)
       case _ =>
         if (N <= 0) false
@@ -477,7 +491,7 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       }
 
     // Overridden for efficiency
-    override def forEachRemaining(c: Consumer[_ >: jl.Integer]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Integer]): Unit = (c: AnyRef) match {
       case ic: IntConsumer => forEachRemaining(ic)
       case _ =>
         while (N > 0) {

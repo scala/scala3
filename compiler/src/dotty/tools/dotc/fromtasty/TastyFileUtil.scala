@@ -15,7 +15,7 @@ object TastyFileUtil {
    *    package foo
    *    class Foo
    *  ```
-   *  then `getClassName("./out/foo/Foo.tasty") returns `Some("./out")`
+   *  then `getClassPath("./out/foo/Foo.tasty") returns `Some("./out")`
    */
   def getClassPath(file: AbstractFile, fromBestEffortTasty: Boolean = false): Option[String] =
     getClassName(file, fromBestEffortTasty).map { className =>
@@ -33,19 +33,16 @@ object TastyFileUtil {
    *  ```
    *  then `getClassName("./out/foo/Foo.tasty") returns `Some("foo.Foo")`
    */
-  def getClassName(file: AbstractFile, withBestEffortTasty: Boolean = false): Option[String] = {
+  def getClassName(file: AbstractFile, withBestEffortTasty: Boolean = false): Option[String] =
     assert(file.exists)
     assert(file.hasTastyExtension || (withBestEffortTasty && file.hasBetastyExtension))
     val bytes = file.toByteArray
     val names = new TastyClassName(bytes, file.hasBetastyExtension).readName()
-    names.map { case (packageName, className) =>
-      val fullName = packageName match {
-        case EMPTY_PACKAGE => s"${className.lastPart}"
-        case _ => s"$packageName.${className.lastPart}"
-      }
-      fullName
-    }
-  }
+    names.map: (packageName, className) =>
+      if packageName == EMPTY_PACKAGE then
+        s"${className.lastPart.encode}"
+      else
+        s"${packageName.encode}.${className.lastPart.encode}"
 }
 
 

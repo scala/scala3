@@ -10,10 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// DO NOT EDIT, CHANGES WILL BE LOST
-// This auto-generated code can be modified in "project/GenerateAnyVals.scala".
-// Afterwards, running "sbt generateSources" regenerates this source file.
-
 package scala
 
 import scala.language.`2.13`
@@ -72,19 +68,40 @@ final abstract class Double private extends AnyVal {
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
   def !=(x: Double): Boolean
 
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def <(x: Byte): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def <(x: Short): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def <(x: Char): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def <(x: Int): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def <(x: Long): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def <(x: Float): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def <(x: Double): Boolean
 
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
@@ -102,19 +119,40 @@ final abstract class Double private extends AnyVal {
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
   def <=(x: Double): Boolean
 
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def >(x: Byte): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def >(x: Short): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def >(x: Char): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def >(x: Int): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def >(x: Long): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def >(x: Float): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against this one
+   */
   def >(x: Double): Boolean
 
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
@@ -132,79 +170,184 @@ final abstract class Double private extends AnyVal {
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
   def >=(x: Double): Boolean
 
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Byte): Double
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Short): Double
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Char): Double
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Int): Double
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Long): Double
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Float): Double
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Double): Double
 
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Byte): Double
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Short): Double
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Char): Double
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Int): Double
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Long): Double
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Float): Double
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Double): Double
 
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Byte): Double
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Short): Double
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Char): Double
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Int): Double
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Long): Double
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Float): Double
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Double): Double
 
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Byte): Double
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Short): Double
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Char): Double
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Int): Double
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Long): Double
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Float): Double
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Double): Double
 
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Byte): Double
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Short): Double
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Char): Double
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Int): Double
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Long): Double
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Float): Double
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Double): Double
 
   // Provide a more specific return type for Scaladoc
@@ -230,28 +373,28 @@ object Double extends AnyValCompanion {
   /** The largest finite positive number representable as a Double. */
   final val MaxValue = java.lang.Double.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToDouble`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToDouble`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the Double to be boxed
    *  @return     a java.lang.Double offering `x` as its underlying value.
    */
   def box(x: Double): java.lang.Double = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Double.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToDouble`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToDouble`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the java.lang.Double to be unboxed.
-   *  @throws     ClassCastException  if the argument is not a java.lang.Double
    *  @return     the Double resulting from calling doubleValue() on `x`
+   *  @throws     ClassCastException  if the argument is not a java.lang.Double
    */
   def unbox(x: java.lang.Object): Double = ???
 
-  /** The String representation of the scala.Double companion object. */
-  override def toString = "object scala.Double"
+  /** The `String` representation of the `scala.Double` companion object. */
+  override def toString() = "object scala.Double"
 }
 

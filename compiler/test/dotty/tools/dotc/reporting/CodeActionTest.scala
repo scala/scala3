@@ -4,13 +4,13 @@ import dotty.tools.DottyTest
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import scala.runtime.Scala3RunTime.assertFailed
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 /** This is a test suite that is meant to test the actions attached to the
@@ -176,6 +176,130 @@ class CodeActionTest extends DottyTest:
       expected =
         """val s: String|Null = null
            |""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN1 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """val s: String|Null = ???
+          | val t: String = s""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """val s: String|Null = ???
+          | val t: String = s.nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN2 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = s q s""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = (s q s).nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN3 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = s q (s, s)""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = (s q (s, s)).nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN4 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = s.q(s, s)""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """implicit class infixOpTest(val s1: String) extends AnyVal {
+          |  def q(s2: String, s3: String): String | Null = null
+          |}
+          | val s: String = ???
+          | val t: String = s.q(s, s).nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN5 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """val s: String | Null = ???
+          |val t: String = s match {
+          | case _: String => "foo"
+          | case _ => s
+          |}""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """val s: String | Null = ???
+          |val t: String = s match {
+          | case _: String => "foo"
+          | case _ => s.nn
+          |}""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN6 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """val s: String | Null = ???
+          |val t: String = if (s != null) "foo" else s""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """val s: String | Null = ???
+          |val t: String = if (s != null) "foo" else s.nn""".stripMargin,
+      ctxx = ctxx
+      )
+
+  @Test def addNN7 =
+    val ctxx = newContext
+    ctxx.setSetting(ctxx.settings.YexplicitNulls, true)
+    checkCodeAction(
+      code =
+        """given ctx: String | Null = null
+          |def f(using c: String): String = c
+          |val s: String = f(using ctx)""".stripMargin,
+        title = "Add .nn",
+      expected =
+        """given ctx: String | Null = null
+          |def f(using c: String): String = c
+          |val s: String = f(using ctx.nn)""".stripMargin,
       ctxx = ctxx
       )
 

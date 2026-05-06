@@ -2,283 +2,229 @@ package dotty.tools
 package backend
 package jvm
 
-
-import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.transform.Erasure
-import scala.tools.asm.{Handle, Opcodes}
-import dotty.tools.dotc.core.StdNames
+import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
-import PostProcessorFrontendAccess.Lazy
+import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
+import dotty.tools.dotc.core.Flags.{JavaDefined, Method, ModuleClass}
+import dotty.tools.dotc.core.Types
+import dotty.tools.dotc.core.Types.{AnnotatedType, JavaArrayType, RefinedType, SingletonType, ThisType, Type, TypeRef}
+import dotty.tools.dotc.report
 
-abstract class CoreBTypes {
-  val bTypes: BTypes
-  import bTypes.*
+import scala.tools.asm.Handle
 
-   def primitiveTypeMap: Map[Symbol, PrimitiveBType]
+case class MethodNameAndType(name: String, methodType: MethodBType)
 
-   def boxedClasses: Set[ClassBType]
+abstract class CoreBTypes(private val frontendAccess: PostProcessorFrontendAccess)(using ctx: Context) {
+  def primitiveTypeMap: Map[Symbol, PrimitiveBType]
 
-   def boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType]
+  def boxedClasses: Set[ClassBType]
 
-   def boxResultType: Map[Symbol, ClassBType]
+  def boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType]
 
-   def unboxResultType: Map[Symbol, PrimitiveBType]
+  def boxResultType: Map[Symbol, ClassBType]
 
-   def srNothingRef : ClassBType
-   def srNullRef    : ClassBType
+  def unboxResultType: Map[Symbol, PrimitiveBType]
 
-   def ObjectRef                   : ClassBType
-   def StringRef                   : ClassBType
-   def jlStringBuilderRef          : ClassBType
-   def jlStringBufferRef           : ClassBType
-   def jlCharSequenceRef           : ClassBType
-   def jlClassRef                  : ClassBType
-   def jlThrowableRef              : ClassBType
-   def jlCloneableRef              : ClassBType
-   def jiSerializableRef           : ClassBType
-   def jlClassCastExceptionRef     : ClassBType
-   def jlIllegalArgExceptionRef    : ClassBType
-   def jliSerializedLambdaRef      : ClassBType
+  def srNothingRef : ClassBType
+  def srNullRef    : ClassBType
 
-   def srBoxesRuntimeRef: ClassBType
+  def ObjectRef                   : ClassBType
+  def StringRef                   : ClassBType
+  def PredefRef                   : ClassBType
+  def jlClassRef                  : ClassBType
+  def jlThrowableRef              : ClassBType
+  def jlCloneableRef              : ClassBType
+  def jiSerializableRef           : ClassBType
+  def jlClassCastExceptionRef     : ClassBType
+  def jlIllegalArgExceptionRef    : ClassBType
+  def jliSerializedLambdaRef      : ClassBType
+  def jliMethodHandleRef: ClassBType
 
-   def jliLambdaMetaFactoryMetafactoryHandle    : Handle
-   def jliLambdaMetaFactoryAltMetafactoryHandle : Handle
-   def jliLambdaDeserializeBootstrapHandle      : Handle
-   def jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle
+  def srBoxesRuntimeRef            : ClassBType
+  def srBoxedUnitRef               : ClassBType
+  def srBoxesRuntimeBoxToMethods   : Map[BType, MethodNameAndType]
+  def srBoxesRuntimeUnboxToMethods : Map[BType, MethodNameAndType]
 
-   def asmBoxTo  : Map[BType, MethodNameAndType]
-   def asmUnboxTo: Map[BType, MethodNameAndType]
+  def javaBoxMethods   : Map[InternalName, MethodNameAndType]
+  def javaUnboxMethods : Map[InternalName, MethodNameAndType]
 
-   def typeOfArrayOp: Map[Int, BType]
-}
+  def predefAutoBoxMethods   : Map[String, MethodBType]
+  def predefAutoUnboxMethods : Map[String, MethodBType]
 
-abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTypes {
-  val bTypes: BTypesFromSymbols[I]
+  def srRefCreateMethods : Map[InternalName, MethodNameAndType]
+  def srRefZeroMethods   : Map[InternalName, MethodNameAndType]
 
-  import bTypes.*
-  import DottyBackendInterface.*
-  import dotty.tools.dotc.core.Contexts.Context
-  import frontendAccess.perRunLazy
-  /**
-   * Maps primitive types to their corresponding PrimitiveBType. The map is defined lexically above
-   * the first use of `classBTypeFromSymbol` because that method looks at the map.
-   */
-  override def primitiveTypeMap: Map[Symbol, bTypes.PrimitiveBType] = _primitiveTypeMap.get
-  private lazy val _primitiveTypeMap: Lazy[Map[Symbol, PrimitiveBType]] = perRunLazy:
-    Map(
-    defn.UnitClass    -> UNIT,
-    defn.BooleanClass -> BOOL,
-    defn.CharClass    -> CHAR,
-    defn.ByteClass    -> BYTE,
-    defn.ShortClass   -> SHORT,
-    defn.IntClass     -> INT,
-    defn.LongClass    -> LONG,
-    defn.FloatClass   -> FLOAT,
-    defn.DoubleClass  -> DOUBLE
-  )
+  def primitiveBoxConstructors : Map[InternalName, MethodNameAndType]
+  def srRefConstructors        : Map[InternalName, MethodNameAndType]
+  def tupleClassConstructors   : Map[InternalName, MethodNameAndType]
 
-  /**
-   * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
-   * operand stack (ldc instruction taking a class literal), see genConstant.
-   */
-  override def boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType] = _boxedClassOfPrimitive.get
-  private lazy val _boxedClassOfPrimitive: Lazy[Map[PrimitiveBType, ClassBType]] = perRunLazy(Map(
-      UNIT   -> classBTypeFromSymbol(requiredClass[java.lang.Void]),
-      BOOL   -> classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
-      BYTE   -> classBTypeFromSymbol(requiredClass[java.lang.Byte]),
-      SHORT  -> classBTypeFromSymbol(requiredClass[java.lang.Short]),
-      CHAR   -> classBTypeFromSymbol(requiredClass[java.lang.Character]),
-      INT    -> classBTypeFromSymbol(requiredClass[java.lang.Integer]),
-      LONG   -> classBTypeFromSymbol(requiredClass[java.lang.Long]),
-      FLOAT  -> classBTypeFromSymbol(requiredClass[java.lang.Float]),
-      DOUBLE -> classBTypeFromSymbol(requiredClass[java.lang.Double])
-    ))
+  def jliLambdaMetaFactoryMetafactoryHandle    : Handle
+  def jliLambdaMetaFactoryAltMetafactoryHandle : Handle
+  def jliLambdaDeserializeBootstrapHandle      : Handle
+  def jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle
 
-  lazy val boxedClasses: Set[ClassBType] = boxedClassOfPrimitive.values.toSet
+  def asmBoxTo  : Map[BType, MethodNameAndType]
+  def asmUnboxTo: Map[BType, MethodNameAndType]
+
+  def typeOfArrayOp: Map[Int, BType]
+
+  // Concurrent maps because stack map frames are computed when in the class writer, which
+  // might run on multiple classes concurrently.
+  private val classBTypeCache: Lazy[ConcurrentHashMap[InternalName, ClassBType]] =
+    frontendAccess.perRunLazy(new ConcurrentHashMap[InternalName, ClassBType])
+
+  /** See doc of ClassBType.apply. This is where to use that method from. */
+  def classBType[T](internalName: InternalName)(init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] =
+    ClassBType(internalName, this, classBTypeCache.get)(init)
+
+  /** See doc of ClassBType.apply. This is where to use that method from. Version that cannot fail. */
+  def classBType(internalName: InternalName)(init: ClassBType => ClassInfo): ClassBType =
+    ClassBType(internalName, this, classBTypeCache.get)(ct => Right(init(ct))).fold(_ => assert(false), identity)
+
+  /** Obtain a previously constructed ClassBType for a given internal name, or None if no such ClassBType was constructed. */
+  def classBTypeFromInternalName(internalName: InternalName): Option[ClassBType] =
+    Option(classBTypeCache.get.get(internalName))
+
+  def classBTypeFromSymbol(classSym: Symbol): ClassBType
+  def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType
 
   /**
-   * Maps the method symbol for a box method to the boxed type of the result. For example, the
-   * method symbol for `Byte.box()` is mapped to the ClassBType `java/lang/Byte`.
+   * The class internal name for a given class symbol.
    */
-  override def boxResultType: Map[Symbol, ClassBType] = _boxResultType.get
-  private lazy val _boxResultType: Lazy[Map[Symbol, ClassBType]] = perRunLazy{
-    val boxMethods = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
-      (x, Erasure.Boxing.boxMethod(x.asClass))
-    }.toMap
-    for ((valueClassSym, boxMethodSym) <- boxMethods)
-    yield boxMethodSym -> boxedClassOfPrimitive(primitiveTypeMap(valueClassSym))
+  final def internalName(sym: Symbol)(using Context): String = {
+    // For each java class, the scala compiler creates a class and a module (thus a module class).
+    // If the `sym` is a java module class, we use the java class instead. This ensures that the
+    // ClassBType is created from the main class (instead of the module class).
+    // The two symbols have the same name, so the resulting internalName is the same.
+    val classSym = if (sym.is(JavaDefined) && sym.is(ModuleClass)) sym.linkedClass else sym
+    getClassBType(classSym).internalName
+  }
+
+  private def assertClassNotArray(sym: Symbol)(using Context): Unit = {
+    assert(sym.isClass, sym)
+    assert(sym != defn.ArrayClass || BackendUtils.compilingArray, sym)
+  }
+
+  private def assertClassNotArrayNotPrimitive(sym: Symbol)(using Context): Unit = {
+    assertClassNotArray(sym)
+    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, sym)
   }
 
   /**
-   * Maps the method symbol for an unbox method to the primitive type of the result.
-   * For example, the method symbol for `Byte.unbox()`) is mapped to the PrimitiveBType BYTE. */
-  override def unboxResultType: Map[Symbol, PrimitiveBType] = _unboxResultType.get
-  private lazy val _unboxResultType = perRunLazy[Map[Symbol, PrimitiveBType]]{
-    val unboxMethods: Map[Symbol, Symbol] =
-      defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
-    for ((valueClassSym, unboxMethodSym) <- unboxMethods)
-    yield unboxMethodSym -> primitiveTypeMap(valueClassSym)
+   * The ClassBType for a class symbol.
+   *
+   * The class symbol scala.Nothing is mapped to the class scala.runtime.Nothing$. Similarly,
+   * scala.Null is mapped to scala.runtime.Null$. This is because there exist no class files
+   * for the Nothing / Null. If used for example as a parameter type, we use the runtime classes
+   * in the classfile method signature.
+   *
+   * Note that the referenced class symbol may be an implementation class. For example when
+   * compiling a mixed-in method that forwards to the static method in the implementation class,
+   * the class descriptor of the receiver (the implementation class) is obtained by creating the
+   * ClassBType.
+   */
+  final def getClassBType(sym: Symbol)(using Context): ClassBType = {
+    assertClassNotArrayNotPrimitive(sym)
+
+    if (sym == defn.NothingClass) srNothingRef
+    else if (sym == defn.NullClass) srNullRef
+    else classBTypeFromSymbol(sym)
   }
 
   /*
-   * srNothingRef and srNullRef exist at run-time only. They are the bytecode-level manifestation (in
-   * method signatures only) of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
-   *
-   * Therefore, when srNothingRef or srNullRef are to be emitted, a mapping is needed: the internal
-   * names of NothingClass and NullClass can't be emitted as-is.
-   * TODO @lry Once there's a 2.11.3 starr, use the commented argument list. The current starr crashes on the type literal `scala.runtime.Nothing$`
+   * must-single-thread
    */
-  override def srNothingRef: ClassBType = _srNothingRef.get
-  private lazy val _srNothingRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass("scala.runtime.Nothing$")))
-
-  override def srNullRef: ClassBType = _srNullRef.get
-  private lazy val _srNullRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass("scala.runtime.Null$")))
-
-  override def ObjectRef: ClassBType = _ObjectRef.get
-  private lazy val _ObjectRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(defn.ObjectClass))
-
-  override def StringRef: ClassBType = _StringRef.get
-  private lazy val _StringRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(defn.StringClass))
-
-  override def jlStringBuilderRef: ClassBType = _jlStringBuilderRef.get
-  private lazy val _jlStringBuilderRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.StringBuilder]))
-
-  override def jlStringBufferRef: ClassBType = _jlStringBufferRef.get
-  private lazy val _jlStringBufferRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.StringBuffer]))
-
-  override def jlCharSequenceRef: ClassBType = _jlCharSequenceRef.get
-  private lazy val _jlCharSequenceRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.CharSequence]))
-
-  override def jlClassRef: ClassBType = _jlClassRef.get
-  private lazy val _jlClassRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.Class[?]]))
-
-  override def jlThrowableRef: ClassBType = _jlThrowableRef.get
-  private lazy val _jlThrowableRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(defn.ThrowableClass))
-
-  override def jlCloneableRef: ClassBType = _jlCloneableRef.get
-  private lazy val _jlCloneableRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(defn.JavaCloneableClass))
-
-  override def jiSerializableRef: ClassBType = _jiSerializableRef.get
-  private lazy val _jiSerializableRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.io.Serializable]))
-
-  override def jlClassCastExceptionRef: ClassBType = _jlClassCastExceptionRef.get
-  private lazy val _jlClassCastExceptionRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.ClassCastException]))
-
-  override def jlIllegalArgExceptionRef: ClassBType = _jlIllegalArgExceptionRef.get
-  private lazy val _jlIllegalArgExceptionRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException]))
-
-  override def jliSerializedLambdaRef: ClassBType = _jliSerializedLambdaRef.get
-  private lazy val _jliSerializedLambdaRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda]))
-
-  override def srBoxesRuntimeRef: ClassBType = _srBoxesRuntimeRef.get
-  private lazy val _srBoxesRuntimeRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime]))
-
-  private def jliCallSiteRef: ClassBType = _jliCallSiteRef.get
-  private lazy val _jliCallSiteRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite]))
-
-  private def jliLambdaMetafactoryRef: ClassBType = _jliLambdaMetafactoryRef.get
-  private lazy val _jliLambdaMetafactoryRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory]))
-
-  private def jliMethodHandleRef: ClassBType = _jliMethodHandleRef.get
-  private lazy val _jliMethodHandleRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(defn.MethodHandleClass))
-
-  private def jliMethodHandlesLookupRef: ClassBType = _jliMethodHandlesLookupRef.get
-  private lazy val _jliMethodHandlesLookupRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(defn.MethodHandlesLookupClass))
-
-  private def jliMethodTypeRef: ClassBType = _jliMethodTypeRef.get
-  private lazy val _jliMethodTypeRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType]))
-
-  // since JDK 9
-  private def jliStringConcatFactoryRef: ClassBType = _jliStringConcatFactoryRef.get
-  private lazy val _jliStringConcatFactoryRef: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass("java.lang.invoke.StringConcatFactory")))
-
-  private def srLambdaDeserialize: ClassBType = _srLambdaDeserialize.get
-  private lazy val _srLambdaDeserialize: Lazy[ClassBType] = perRunLazy(classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize]))
-
-
-  override def jliLambdaMetaFactoryMetafactoryHandle = _jliLambdaMetaFactoryMetafactoryHandle.get
-  private lazy val _jliLambdaMetaFactoryMetafactoryHandle: Lazy[Handle] = perRunLazy{new Handle(
-    Opcodes.H_INVOKESTATIC,
-    jliLambdaMetafactoryRef.internalName,
-    "metafactory",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)}
-
-  override def jliLambdaMetaFactoryAltMetafactoryHandle = _jliLambdaMetaFactoryAltMetafactoryHandle.get
-  private lazy val _jliLambdaMetaFactoryAltMetafactoryHandle: Lazy[Handle] = perRunLazy{ new Handle(
-    Opcodes.H_INVOKESTATIC,
-    jliLambdaMetafactoryRef.internalName,
-    "altMetafactory",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)}
-
-  override def jliLambdaDeserializeBootstrapHandle: Handle = _jliLambdaDeserializeBootstrapHandle.get
-  private lazy val _jliLambdaDeserializeBootstrapHandle: Lazy[Handle] = perRunLazy{ new Handle(
-    Opcodes.H_INVOKESTATIC,
-    srLambdaDeserialize.internalName,
-    "bootstrap",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)}
-
-  override def jliStringConcatFactoryMakeConcatWithConstantsHandle = _jliStringConcatFactoryMakeConcatWithConstantsHandle.get
-  private lazy val _jliStringConcatFactoryMakeConcatWithConstantsHandle: Lazy[Handle] = perRunLazy{ new Handle(
-    Opcodes.H_INVOKESTATIC,
-    jliStringConcatFactoryRef.internalName,
-    "makeConcatWithConstants",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)}
+  final def asmMethodType(msym: Symbol)(using Context): MethodBType = {
+    assert(msym.is(Method), s"not a method-symbol: $msym")
+    val resT: BType =
+      if (msym.isClassConstructor || msym.isConstructor) UNIT
+      else toTypeKind(msym.info.resultType)
+    MethodBType(msym.info.firstParamTypes.map(toTypeKind), resT)
+  }
 
   /**
-   * Methods in scala.runtime.BoxesRuntime
-   * No need to wrap in Lazy to synchronize access, symbols won't change
+   * The jvm descriptor of a type.
    */
-  lazy val asmBoxTo  : Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("boxToBoolean",   MethodBType(List(BOOL),   boxedClassOfPrimitive(BOOL))),
-    BYTE   -> MethodNameAndType("boxToByte",      MethodBType(List(BYTE),   boxedClassOfPrimitive(BYTE))),
-    CHAR   -> MethodNameAndType("boxToCharacter", MethodBType(List(CHAR),   boxedClassOfPrimitive(CHAR))),
-    SHORT  -> MethodNameAndType("boxToShort",     MethodBType(List(SHORT),  boxedClassOfPrimitive(SHORT))),
-    INT    -> MethodNameAndType("boxToInteger",   MethodBType(List(INT),    boxedClassOfPrimitive(INT))),
-    LONG   -> MethodNameAndType("boxToLong",      MethodBType(List(LONG),   boxedClassOfPrimitive(LONG))),
-    FLOAT  -> MethodNameAndType("boxToFloat",     MethodBType(List(FLOAT),  boxedClassOfPrimitive(FLOAT))),
-    DOUBLE -> MethodNameAndType("boxToDouble",    MethodBType(List(DOUBLE), boxedClassOfPrimitive(DOUBLE)))
-  )
+  final def typeDescriptor(t: Type): String = {
+    toTypeKind(t).descriptor
+  }
 
-  lazy val asmUnboxTo: Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ObjectRef), BOOL)),
-    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ObjectRef), BYTE)),
-    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ObjectRef), CHAR)),
-    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ObjectRef), SHORT)),
-    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ObjectRef), INT)),
-    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectRef), LONG)),
-    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectRef), FLOAT)),
-    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
-  )
+  /**
+   * The jvm descriptor for a symbol.
+   */
+  final def symDescriptor(sym: Symbol)(using Context): String = getClassBType(sym).descriptor
 
-  lazy val typeOfArrayOp: Map[Int, BType] = {
-    import dotty.tools.backend.ScalaPrimitivesOps.*
-    Map(
-        (List(ZARRAY_LENGTH, ZARRAY_GET, ZARRAY_SET) map (_ -> BOOL))   ++
-        (List(BARRAY_LENGTH, BARRAY_GET, BARRAY_SET) map (_ -> BYTE))   ++
-        (List(SARRAY_LENGTH, SARRAY_GET, SARRAY_SET) map (_ -> SHORT))  ++
-        (List(CARRAY_LENGTH, CARRAY_GET, CARRAY_SET) map (_ -> CHAR))   ++
-        (List(IARRAY_LENGTH, IARRAY_GET, IARRAY_SET) map (_ -> INT))    ++
-        (List(LARRAY_LENGTH, LARRAY_GET, LARRAY_SET) map (_ -> LONG))   ++
-        (List(FARRAY_LENGTH, FARRAY_GET, FARRAY_SET) map (_ -> FLOAT))  ++
-        (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
-        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) *
-    )
+  final def toTypeKind(tp: Type)(using Context): BType = typeToTypeKind(tp)
+
+  /**
+   * This method returns the BType for a type reference, for example a parameter type.
+   *
+   * If the result is a ClassBType for a nested class, it is added to the innerClassBufferASM.
+   *
+   * If `t` references a class, toTypeKind ensures that the class is not an implementation class.
+   * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
+   * classes.
+   */
+  final def typeToTypeKind(tp: Type)(using Context): BType = {
+    val defn = ctx.definitions
+
+    /**
+     * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
+     * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
+     */
+    def primitiveOrClassToBType(sym: Symbol): BType = {
+      assert(sym.isClass, sym)
+      assert(sym != defn.ArrayClass || BackendUtils.compilingArray, sym)
+      primitiveTypeMap.getOrElse(sym, getClassBType(sym))
+    }
+
+    /**
+     * When compiling Array.scala, the type parameter T is not erased and shows up in method
+     * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
+     */
+    def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
+      assert(sym.isType && BackendUtils.compilingArray, sym)
+      ObjectRef
+    }
+
+    tp.widenDealias match {
+      case JavaArrayType(el) => ArrayBType(typeToTypeKind(el)) // Array type such as Array[Int] (kept by erasure)
+      case t: TypeRef =>
+        t.info match {
+
+          case _ =>
+            if (!t.symbol.isClass) nonClassTypeRefToBType(t.symbol) // See comment on nonClassTypeRefToBType
+            else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
+        }
+      case Types.ClassInfo(_, sym, _, _, _) => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
+
+      /* AnnotatedType should (probably) be eliminated by erasure. However, we know it happens for
+        * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
+        * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
+        */
+      case a@AnnotatedType(t, _) =>
+        report.debuglog(s"typeKind of annotated type $a")
+        typeToTypeKind(t)
+
+      /* The cases below should probably never occur. They are kept for now to avoid introducing
+        * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
+        * test suite don't produce any warning.
+        */
+
+      case tp =>
+        report.warning(
+          s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
+            "If possible, please file a bug on https://github.com/scala/scala3/issues")
+
+        tp match {
+          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectRef // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+          case tp: ThisType => getClassBType(tp.cls)
+          // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
+          case t: SingletonType => typeToTypeKind(t.underlying)
+          case t: RefinedType => typeToTypeKind(t.parent)
+        }
+    }
   }
 }

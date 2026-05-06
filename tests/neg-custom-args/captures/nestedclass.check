@@ -4,4 +4,6 @@
    |               Found:    (xs : C^{cap1})
    |               Required: C
    |
+   |               Note that capability `cap1` cannot flow into capture set {}.
+   |
    | longer explanation available when compiling with `-explain`

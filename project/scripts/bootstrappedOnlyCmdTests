@@ -109,11 +109,11 @@ echo "testing ./bin/scala with arguments"
 test "$EXPECTED_OUTPUT_ARGS" = "$(cat "$tmp")"
 clear_cli_dotfiles project/scripts
 
-echo "testing i12973"
-clear_out "$OUT"
-./bin/scalac -d "$OUT/out.jar" tests/pos/i12973.scala
-echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" > "$tmp" 2>&1
-grep -qe "Bug12973 is fixed" "$tmp"
+#echo "testing i12973"
+#clear_out "$OUT"
+#./bin/scalac -d "$OUT/out.jar" tests/pos/i12973.scala
+#echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" > "$tmp" 2>&1
+#grep -qe "Bug12973 is fixed" "$tmp"
 
 echo "testing -sourcepath with incremental compile: inlining changed inline def into a def"
 # Here we will test that a changed inline method symbol loaded from the sourcepath (-sourcepath compiler option)

@@ -141,7 +141,8 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  erased  extension  infix  inline  mut  opaque  open  throws tracked transparent  using  |  *  +  -
+as  consume  derives  end  erased  extension  infix  initially  inline
+opaque  open  throws  tracked  transparent  update  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -234,14 +235,16 @@ TypeBound         ::=  Type
                     |  CaptureSet                                               -- under captureChecking
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
-CaptureSet        ::=  ‘{’ CaptureRef {‘,’ CaptureRef} ‘}’                      -- under captureChecking
-CaptureRef        ::=  { SimpleRef ‘.’ } SimpleRef [‘*’] [‘.’ ‘rd’]             -- under captureChecking
+CaptureSet        ::=  '{' CaptureRef {',' CaptureRef} '}'                      -- under captureChecking
+CaptureRef        ::=  { SimpleRef '.' } SimpleRef ['*'] [CapFilter] ['.' 'rd'] -- under captureChecking
+CapFilter         ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
 ```
 
 ### Expressions
 ```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  TypTypeParamClause ‘=>’ Expr                             PolyFunction(ts, expr)
+                    |  ExprCaseClause
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
                     |  TypTypeParamClause ‘=>’ Block
@@ -260,6 +263,7 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  PrefixOperator SimpleExpr ‘=’ Expr                       Assign(expr, expr)
+                    |  InfixExpr id [nl] `=' Expr                               Assign(expr, expr) -- only if language.postfixOps is enabled
                     |  SimpleExpr ArgumentExprs ‘=’ Expr                        Assign(expr, expr)
                     |  PostfixExpr [Ascription]
                     |  ‘inline’ InfixExpr MatchClause
@@ -291,8 +295,11 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ColonArgument                                 -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr							-- to be dropped
-ColonArgument     ::=  colon [LambdaStart]
+ColonArgument     ::=  colon {LambdaStart}
                        indent (CaseClauses | Block) outdent
+                    |  colon LambdaStart {LambdaStart} expr ENDlambda                         -- ENDlambda is inserted for each production at next EOL
+                                                                                -- does not apply if enclosed in parens
+                    |  colon ExprCaseClause
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
                     |  TypTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
@@ -363,7 +370,7 @@ Patterns          ::=  Pattern {‘,’ Pattern}
 NamedPattern      ::=  id '=' Pattern
 
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
-                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
+                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ [‘,’ Patterns]‘)’
 ```
 
 ### Type and Value Parameters
@@ -405,7 +412,8 @@ UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) �
 DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
 
 DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
-DefTermParam      ::= {Annotation} [`erased`] [‘inline’] Param                    ValDef(mods, id, tpe, expr) -- point of mods at id.
+DefTermParam      ::= {Annotation} TermParamMods Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
@@ -429,7 +437,8 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘infix’
                     |  ‘erased’
                     |  ‘tracked’
-                    |  ‘mut’                                                      -- under captureChecking
+                    |  ‘update’                                                      -- under captureChecking
+                    |  ‘consume’
 
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
@@ -510,12 +519,15 @@ ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
                     |  Export
 Template          ::=  InheritClauses [TemplateBody]
-InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+InheritClauses    ::=  [‘extends’ ConstrApps]
+                       [‘derives’ QualId {‘,’ QualId}]
+                       [‘uses’ UseRef {‘,’ UseRef}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
 ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation
                     |  <<< SelfInvocation {semi BlockStat} >>>
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
+UseRef            ::=  CaptureRef [‘initially’]
 
 WithTemplateBody  ::=  <<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>

@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i123577.scala:11:4 ------------------------------------------------------------
+11 |    (msg: String) => ??? // error
+   |    ^^^^^^^^^^^^^^^^^^^^
+   |    Found:    String => Nothing
+   |    Required: MillRpcChannel
+   |
+   | longer explanation available when compiling with `-explain`

@@ -7,84 +7,110 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import Symbols.*
+import dotty.tools.backend.ScalaPrimitives
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile}
 import dotty.tools.io.*
+
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import java.util.concurrent.TimeoutException
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.Await
 
+/**
+ * GenBCode has 3 parts:
+ * 1. Translating trees to Java bytecode
+ * 2. Optimizing the bytecode, if the user requested it
+ * 3. Emitting the bytecode to class files.
+ *
+ * Part 1 requires a Context, and must therefore be done sequentially.
+ * Parts 2 and 3 do not require a Context and can be parallelized.
+ *
+ * It is crucial that parts 2 and 3 do not accidentally depend on a Context,
+ * which is why we have a "post-processor frontend interface" that hides this Context.
+ */
 class GenBCode extends Phase { self =>
 
   override def phaseName: String = GenBCode.name
 
   override def description: String = GenBCode.description
 
-  override def isRunnable(using Context) = super.isRunnable && !ctx.usedBestEffortTasty
+  override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  private val superCallsMap = new MutableSymbolMap[List[ClassSymbol]]
-  def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
-    val old = superCallsMap.getOrElse(sym, List.empty)
-    if (!old.contains(calls))
-      superCallsMap.update(sym, old :+ calls)
-  }
 
-  private val entryPoints = new mutable.HashSet[String]()
-  def registerEntryPoint(s: String): Unit = entryPoints += s
-
-  private var _backendInterface: DottyBackendInterface = uninitialized
-  def backendInterface(using ctx: Context): DottyBackendInterface = {
-    if _backendInterface eq null then
-      // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
-      val backendCtx = ctx match
-        case fc: FreshContext => fc
-        case ctx => ctx.fresh
-      _backendInterface = DottyBackendInterface(superCallsMap)(using backendCtx)
-    _backendInterface
-  }
-
-  private var _codeGen: CodeGen = uninitialized
-  def codeGen(using Context): CodeGen = {
-    if _codeGen eq null then
-      val int = backendInterface
-      val dottyPrimitives = new DottyPrimitives(ctx)
-      _codeGen = new CodeGen(int, dottyPrimitives)(bTypes.asInstanceOf[BTypesFromSymbols[int.type]])
-    _codeGen
-  }
-
-  private var _bTypes: BTypesFromSymbols[DottyBackendInterface] = uninitialized
-  def bTypes(using Context): BTypesFromSymbols[DottyBackendInterface] = {
-    if _bTypes eq null then
-      _bTypes = BTypesFromSymbols(backendInterface, frontendAccess)
-    _bTypes
-  }
-
-  private var _frontendAccess: PostProcessorFrontendAccess | Null = uninitialized
+  private var _frontendAccess: PostProcessorFrontendAccess | Null = null
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
-      _frontendAccess = PostProcessorFrontendAccess.Impl(backendInterface, entryPoints)
+      // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
+      val context = ctx match
+        case fc: FreshContext => fc
+        case ctx => ctx.fresh
+      _frontendAccess = PostProcessorFrontendAccess.Impl(context)
     _frontendAccess.nn
   }
 
-  private var _postProcessor: PostProcessor | Null = uninitialized
+  private var _primitives: ScalaPrimitives | Null = null
+  def primitives(using Context): ScalaPrimitives = {
+    if _primitives eq null then
+      _primitives = ScalaPrimitives(ctx)
+    _primitives.nn
+  }
+
+  private var _byteCodeRepository: BCodeRepository | Null = null
+  def byteCodeRepository(using Context): BCodeRepository = {
+    if _byteCodeRepository eq null then
+      _byteCodeRepository = BCodeRepository(frontendAccess, backendUtils, bTypes)
+    _byteCodeRepository.nn
+  }
+
+  private var _bTypesFromClassfile: BTypesFromClassfile | Null = null
+  def bTypesFromClassfile(using Context): BTypesFromClassfile = {
+    if _bTypesFromClassfile eq null then
+      _bTypesFromClassfile = BTypesFromClassfile(byteCodeRepository, bTypes)
+    _bTypesFromClassfile.nn
+  }
+
+  private var _bTypes: CoreBTypes | Null = null
+  def bTypes(using Context): CoreBTypes = {
+    if _bTypes eq null then
+      // lazy load to break the circular dependency
+      def inlineInfoLoader() = Option.when[InlineInfoLoader](frontendAccess.compilerSettings.optInlinerEnabled)(bTypesFromClassfile)
+      _bTypes = CoreBTypesFromSymbols(frontendAccess, primitives, inlineInfoLoader)(using ctx)
+    _bTypes.nn
+  }
+
+  private var _backendUtils: BackendUtils | Null = null
+  def backendUtils(using Context): BackendUtils = {
+    if _backendUtils eq null then
+      _backendUtils = BackendUtils(frontendAccess, bTypes)
+    _backendUtils.nn
+  }
+
+  private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, bTypes)
+      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, backendUtils, bTypes)
     _postProcessor.nn
   }
 
-  private var _generatedClassHandler: GeneratedClassHandler | Null = uninitialized
+  private var _codeGen: CodeGen | Null = null
+  def codeGen(using Context): CodeGen = {
+    if _codeGen eq null then
+      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, postProcessor.callGraph, bTypes)
+    _codeGen.nn
+  }
+
+  private var _generatedClassHandler: GeneratedClassHandler | Null = null
   def generatedClassHandler(using Context): GeneratedClassHandler = {
     if _generatedClassHandler eq null then
       _generatedClassHandler = GeneratedClassHandler(postProcessor)
     _generatedClassHandler.nn
   }
 
-  override def run(using Context): Unit =
-    frontendAccess.frontendSynchWithoutContext {
-      backendInterface.ctx
-      .asInstanceOf[FreshContext]
+  protected def run(using Context): Unit =
+    frontendAccess.frontendSynch {
+      frontendAccess
+      .ctx
       .setCompilationUnit(ctx.compilationUnit)
     }
     codeGen.genUnit(ctx.compilationUnit)
@@ -97,18 +123,9 @@ class GenBCode extends Phase { self =>
     try
       val result = super.runOn(units)
       generatedClassHandler.complete()
-      try
-        for
-          async <- ctx.run.nn.asyncTasty
-          bufferedReporter <- async.sync()
-        do
-          bufferedReporter.relayReports(frontendAccess.backendReporting)
-      catch
-        case ex: Exception =>
-          report.error(s"exception from future: $ex, (${Option(ex.getCause())})")
       result
     finally
-      // frontendAccess and postProcessor are created lazilly, clean them up only if they were initialized
+      // frontendAccess and postProcessor are created lazily, clean them up only if they were initialized
       if _frontendAccess ne null then
         frontendAccess.compilerSettings.outputDirectory match {
           case jar: JarArchive =>
@@ -129,4 +146,8 @@ class GenBCode extends Phase { self =>
 object GenBCode {
   val name: String = "genBCode"
   val description: String = "generate JVM bytecode"
+
+  val CLASS_CONSTRUCTOR_NAME = "<clinit>"
+  val INSTANCE_CONSTRUCTOR_NAME = "<init>"
+
 }

@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters._
 class CodeSymbol(query: String, expected: Seq[SymInfo]) extends Action {
 
   override def execute(): Exec[Unit] = {
-    val results = server.symbol(new WorkspaceSymbolParams(query)).get().asScala
+    val results = server.symbol(new WorkspaceSymbolParams(query)).get().getLeft.asScala
     val expectedSymInfo = expected.map(_.toSymInformation)
 
     assertEquals(expectedSymInfo, results)

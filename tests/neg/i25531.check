@@ -1,0 +1,13 @@
+-- Error: tests/neg/i25531.scala:3:6 -----------------------------------------------------------------------------------
+3 |class Walker extends FileVisitor[Path] {} // error
+  |      ^^^^^^
+  |class Walker needs to be abstract, since:
+  |it has 4 unimplemented members.
+  |/** As seen from class Walker, the missing signatures are as follows.
+  | *  For convenience, these are usable as stub implementations.
+  | */
+  |  def postVisitDirectory(x0: java.nio.file.Path, x1: java.io.IOException): java.nio.file.FileVisitResult = ???
+  |  def preVisitDirectory
+  |  (x0: java.nio.file.Path, x1: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult = ???
+  |  def visitFile(x0: java.nio.file.Path, x1: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult = ???
+  |  def visitFileFailed(x0: java.nio.file.Path, x1: java.io.IOException): java.nio.file.FileVisitResult = ???

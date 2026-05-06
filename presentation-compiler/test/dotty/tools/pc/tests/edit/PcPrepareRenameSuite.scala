@@ -518,5 +518,5 @@ class PcPrepareRenameSuite extends BasePcRenameSuite:
          |    )
          |  }
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )

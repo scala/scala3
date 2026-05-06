@@ -8,6 +8,11 @@ case class Module(rootPackage: Member, members: Map[DRI, Member])
 
 object ScalaModuleProvider:
   def mkModule()(using ctx: DocContext): Module =
+    if !ctx.args.generateApi then
+      // Return empty module when API generation is disabled
+      val emptyRoot = Member("", "", DRI(location = ""), Kind.RootPackage, members = Nil, docs = None)
+      return Module(emptyRoot, Map.empty)
+
     val (result, rootDoc) = ScaladocTastyInspector.loadDocs()
     val (rootPck, rest) = result.partition(_.name == "API")
     val (emptyPackages, nonemptyPackages) = (rest ++ rootPck.flatMap(_.members))

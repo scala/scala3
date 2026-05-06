@@ -20,7 +20,6 @@ import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.quoted.*
-import dotty.tools.dotc.config.ScalaRelease.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
 import dotty.tools.dotc.staging.QuoteTypeTags.*
@@ -76,7 +75,7 @@ class Splicing extends MacroTransform:
 
   override def phaseName: String = Splicing.name
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if ctx.compilationUnit.needsStaging then
       super.run
 

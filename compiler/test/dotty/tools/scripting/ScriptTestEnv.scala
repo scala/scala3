@@ -217,7 +217,7 @@ object ScriptTestEnv {
     printf("===> test script name [%s]\n", scriptFile.getName)
 
   def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
-    import scala.sys.process._
+    import scala.sys.process.*
     val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.absPath)
       ++ scriptArgs
     Process(cmd).lazyLines_!.foreach { println }
@@ -282,7 +282,7 @@ object ScriptTestEnv {
   }
 
   extension(f: File) {
-    def name = f.getName
+    def name: String = f.getName
     def norm: String = f.toPath.normalize.norm
     def absPath: String = f.getAbsolutePath.norm
     def relpath: Path = f.toPath.relpath
@@ -305,7 +305,7 @@ object ScriptTestEnv {
   //    dist[*]/target/universal/stage, if present
   //    else, SCALA_HOME if defined
   //    else, not defined
-  lazy val envScalaHome =
+  lazy val envScalaHome: String =
     printf("scalacPath: %s\n", scalacPath.norm)
     if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "not-found").norm

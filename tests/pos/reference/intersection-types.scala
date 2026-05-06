@@ -26,7 +26,7 @@ object t2 {
   }
 
   val x: A & B = new C
-  val ys: List[A & B] = x.children
+  val ys: List[A] & List[B] = x.children
 
   class C extends A with B {
     def children: List[A & B] = ???

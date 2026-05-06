@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 final class TupleXXL private (es: IArray[Object]) extends Product {
   assert(es.length > 22)
 
@@ -7,9 +9,13 @@ final class TupleXXL private (es: IArray[Object]) extends Product {
   def productArity: Int = es.length
   override def productPrefix: String = "Tuple"
 
+  // NOTE: For historical reasons, we cannot change this method
+  // to `def toString(): String`. See #24461 for more informations.
   override def toString: String =
     elems.asInstanceOf[Array[Object]].mkString("(", ",", ")")
 
+  // NOTE: For historical reasons, we cannot change this method
+  // to `def hashCode(): Int`. See #24461 for more informations.
   override def hashCode: Int =
     scala.runtime.ScalaRunTime._hashCode(this)
 

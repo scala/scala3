@@ -20,10 +20,11 @@ import scala.language.`2.13`
  *  is not a requirement.
  *
  *  See `scala.sys.SystemProperties` for an example usage.
+ *
+ *  @tparam T the type of the property value after conversion from string
  */
 trait Prop[+T] {
-  /** The full name of the property, e.g., "java.awt.headless".
-   */
+  /** The full name of the property, e.g., "java.awt.headless". */
   def key: String
 
   /** If the key exists in the properties map, converts the value
@@ -44,9 +45,13 @@ trait Prop[+T] {
    *  @param    newValue  the new string value
    *  @return   the old value, or null if it was unset.
    */
-  def set(newValue: String): String
+  def set(newValue: String): String | Null
 
   /** Sets the property with a value of the represented type.
+   *
+   *  @tparam T1 a supertype of `T`, used as the input type since `Prop` is covariant in `T`
+   *  @param value the value to set for this property
+   *  @return the previous value of this property
    */
   def setValue[T1 >: T](value: T1): T
 
@@ -56,16 +61,18 @@ trait Prop[+T] {
    */
   def get: String
 
-  /** Some(value) if the property is set, None otherwise.
-   */
+  /** Some(value) if the property is set, None otherwise. */
   def option: Option[T]
 
   // Do not open until 2.12.
-  //** This value if the property is set, an alternative value otherwise. */
+  /** This value if the property is set, an alternative value otherwise.
+   *
+   *  @tparam T1 a supertype of `T`, the result type
+   *  @param alt the alternative value to use if the property is not set
+   */
   //def or[T1 >: T](alt: => T1): T1
 
-  /** Removes the property from the underlying map.
-   */
+  /** Removes the property from the underlying map. */
   def clear(): Unit
 
   /** A value of type `T` for use when the property is unset.
@@ -82,7 +89,10 @@ object Prop {
    */
   @annotation.implicitNotFound("No implicit property creator available for type ${T}.")
   trait Creator[+T] {
-    /** Creates a Prop[T] of this type based on the given key. */
+    /** Creates a Prop[T] of this type based on the given key.
+     *
+     *  @param key the property name used for lookup
+     */
     def apply(key: String): Prop[T]
   }
 

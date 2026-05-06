@@ -6,15 +6,15 @@ import scala.language.unsafeNulls
 
 import org.junit.{AfterClass, Test}
 import reporting.TestReporter
-import vulpix._
+import vulpix.*
 
 import java.io.{File => JFile}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class FromTastyTests {
-  import TestConfiguration._
-  import FromTastyTests._
+  import TestConfiguration.*
+  import FromTastyTests.*
 
   @Test def posTestFromTasty: Unit = {
     // Can be reproduced with
@@ -44,7 +44,7 @@ object FromTastyTests extends ParallelTesting {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 30.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

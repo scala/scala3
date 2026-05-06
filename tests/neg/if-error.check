@@ -3,6 +3,7 @@
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |  Found:    Unit
   |  Required: Int
+  |
   |  Maybe you are missing an else part for the conditional?
   |
   | longer explanation available when compiling with `-explain`

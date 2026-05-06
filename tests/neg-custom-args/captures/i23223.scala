@@ -4,9 +4,9 @@ import caps.*
 class A:
   def a: A = this
 
-class B extends A, Capability // error
+class B extends A, SharedCapability // error
 
 def leak(b: B): A = b.a
 
-class C extends Capability:
+class C extends SharedCapability:
   def c: C^{} = this // error

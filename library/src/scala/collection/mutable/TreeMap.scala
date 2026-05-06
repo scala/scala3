@@ -15,20 +15,20 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{RedBlackTree => RB}
 
-/**
-  * A mutable sorted map implemented using a mutable red-black tree as underlying data structure.
-  *
-  * @param ordering the implicit ordering used to compare objects of type `A`.
-  * @tparam K the type of the keys contained in this tree map.
-  * @tparam V the type of the values associated with the keys.
-  *
-  * @define Coll mutable.TreeMap
-  * @define coll mutable tree map
-  */
+/** A mutable sorted map implemented using a mutable red-black tree as underlying data structure.
+ *
+ *  @tparam K the type of the keys contained in this tree map.
+ *  @tparam V the type of the values associated with the keys.
+ *  @param ordering the implicit ordering used to compare objects of type `A`.
+ *
+ *  @define Coll mutable.TreeMap
+ *  @define coll mutable tree map
+ */
 sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: Ordering[K])
   extends AbstractMap[K, V]
     with SortedMap[K, V]
@@ -41,12 +41,11 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 
   override def sortedMapFactory: TreeMap.type = TreeMap
 
-  /**
-    * Creates an empty `TreeMap`.
-    * @param ord the implicit ordering used to compare objects of type `K`.
-    * @return an empty `TreeMap`.
-    */
-  def this()(implicit ord: Ordering[K]) = this(RB.Tree.empty)(ord)
+  /** Creates an empty `TreeMap`.
+   *  @param ord the implicit ordering used to compare objects of type `K`.
+   *  @return an empty `TreeMap`.
+   */
+  def this()(implicit ord: Ordering[K]) = this(RB.Tree.empty)(using ord)
 
   def iterator: Iterator[(K, V)] = {
     if (isEmpty) Iterator.empty
@@ -78,14 +77,14 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
     else RB.valuesIterator(tree, Some(start))
   }
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[(K, V), S]): S with EfficientSplit =
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[(K, V), S]): S & EfficientSplit =
     shape.parUnbox(
       scala.collection.convert.impl.AnyBinaryTreeStepper.from[(K, V), RB.Node[K, V]](
         size, tree.root, _.left, _.right, x => (x.key, x.value)
       )
     )
 
-  override def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S with EfficientSplit = {
+  override def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Node[K, V]
     val s = shape.shape match {
@@ -94,10 +93,10 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T](size, tree.root, _.left, _.right, _.key.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[K, T](size, tree.root, _.left, _.right, _.key))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
-  override def valueStepper[S <: Stepper[_]](implicit shape: StepperShape[V, S]): S with EfficientSplit = {
+  override def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S & EfficientSplit = {
     import scala.collection.convert.impl._
     type T = RB.Node[K, V]
     val s = shape.shape match {
@@ -106,7 +105,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
       case StepperShape.DoubleShape => DoubleBinaryTreeStepper.from[T] (size, tree.root, _.left, _.right, _.value.asInstanceOf[Double])
       case _         => shape.parUnbox(AnyBinaryTreeStepper.from[V, T] (size, tree.root, _.left, _.right, _.value))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
   def addOne(elem: (K, V)): this.type = { RB.insert(tree, elem._1, elem._2); this }
@@ -117,20 +116,20 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 
   def get(key: K): Option[V] = RB.get(tree, key)
 
-  /**
-    * Creates a ranged projection of this map. Any mutations in the ranged projection will update the original map and
-    * vice versa.
-    *
-    * Only entries with keys between this projection's key range will ever appear as elements of this map, independently
-    * of whether the entries are added through the original map or through this view. That means that if one inserts a
-    * key-value in a view whose key is outside the view's bounds, calls to `get` or `contains` will _not_ consider the
-    * newly added entry. Mutations are always reflected in the original map, though.
-    *
-    * @param from the lower bound (inclusive) of this projection wrapped in a `Some`, or `None` if there is no lower
-    *             bound.
-    * @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
-    *              bound.
-    */
+  /** Creates a ranged projection of this map. Any mutations in the ranged projection will update the original map and
+   *  vice versa.
+   *
+   *  Only entries with keys between this projection's key range will ever appear as elements of this map, independently
+   *  of whether the entries are added through the original map or through this view. That means that if one inserts a
+   *  key-value in a view whose key is outside the view's bounds, calls to `get` or `contains` will _not_ consider the
+   *  newly added entry. Mutations are always reflected in the original map, though.
+   *
+   *  @param from the lower bound (inclusive) of this projection wrapped in a `Some`, or `None` if there is no lower
+   *             bound.
+   *  @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
+   *              bound.
+   *  @return a new `TreeMap` that is a ranged projection of this map, sharing the same underlying data
+   */
   def rangeImpl(from: Option[K], until: Option[K]): TreeMap[K, V] = new TreeMapProjection(from, until)
 
   override def foreach[U](f: ((K, V)) => U): Unit = RB.foreach(tree, f)
@@ -150,46 +149,48 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 
   override def maxBefore(key: K): Option[(K, V)] = RB.maxBefore(tree, key)
 
-  override protected[this] def className: String = "TreeMap"
+  override protected def className: String = "TreeMap"
 
 
-  /**
-    * A ranged projection of a [[TreeMap]]. Mutations on this map affect the original map and vice versa.
-    *
-    * Only entries with keys between this projection's key range will ever appear as elements of this map, independently
-    * of whether the entries are added through the original map or through this view. That means that if one inserts a
-    * key-value in a view whose key is outside the view's bounds, calls to `get` or `contains` will _not_ consider the
-    * newly added entry. Mutations are always reflected in the original map, though.
-    *
-    * @param from the lower bound (inclusive) of this projection wrapped in a `Some`, or `None` if there is no lower
-    *             bound.
-    * @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
-    *              bound.
-    */
-  private[this] final class TreeMapProjection(from: Option[K], until: Option[K]) extends TreeMap[K, V](tree) {
+  /** A ranged projection of a [[TreeMap]]. Mutations on this map affect the original map and vice versa.
+   *
+   *  Only entries with keys between this projection's key range will ever appear as elements of this map, independently
+   *  of whether the entries are added through the original map or through this view. That means that if one inserts a
+   *  key-value in a view whose key is outside the view's bounds, calls to `get` or `contains` will _not_ consider the
+   *  newly added entry. Mutations are always reflected in the original map, though.
+   *
+   *  @param from the lower bound (inclusive) of this projection wrapped in a `Some`, or `None` if there is no lower
+   *             bound.
+   *  @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
+   *              bound.
+   */
+  private final class TreeMapProjection(from: Option[K], until: Option[K]) extends TreeMap[K, V](tree) {
 
-    /**
-      * Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
-      */
-    private[this] def pickLowerBound(newFrom: Option[K]): Option[K] = (from, newFrom) match {
+    /** Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
+     *
+     *  @param newFrom a possible new lower bound wrapped in a `Some`, or `None` if unconstrained
+     */
+    private def pickLowerBound(newFrom: Option[K]): Option[K] = (from, newFrom) match {
       case (Some(fr), Some(newFr)) => Some(ordering.max(fr, newFr))
       case (None, _) => newFrom
       case _ => from
     }
 
-    /**
-      * Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
-      */
-    private[this] def pickUpperBound(newUntil: Option[K]): Option[K] = (until, newUntil) match {
+    /** Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
+     *
+     *  @param newUntil a possible new upper bound wrapped in a `Some`, or `None` if unconstrained
+     */
+    private def pickUpperBound(newUntil: Option[K]): Option[K] = (until, newUntil) match {
       case (Some(unt), Some(newUnt)) => Some(ordering.min(unt, newUnt))
       case (None, _) => newUntil
       case _ => until
     }
 
-    /**
-      * Returns true if the argument is inside the view bounds (between `from` and `until`).
-      */
-    private[this] def isInsideViewBounds(key: K): Boolean = {
+    /** Returns true if the argument is inside the view bounds (between `from` and `until`).
+     *
+     *  @param key the key to check against the view bounds
+     */
+    private def isInsideViewBounds(key: K): Boolean = {
       val afterFrom = from.isEmpty || ordering.compare(from.get, key) <= 0
       val beforeUntil = until.isEmpty || ordering.compare(key, until.get) < 0
       afterFrom && beforeUntil
@@ -200,7 +201,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 
     override def get(key: K) = if (isInsideViewBounds(key)) RB.get(tree, key) else None
 
-    override def iterator = if (RB.size(tree) == 0) Iterator.empty else RB.iterator(tree, from, until)
+    override def iterator: Iterator[(K, V)] = if (RB.size(tree) == 0) Iterator.empty else RB.iterator(tree, from, until)
     override def keysIterator: Iterator[K] = if (RB.size(tree) == 0) Iterator.empty else RB.keysIterator(tree, from, until)
     override def valuesIterator: Iterator[V] = if (RB.size(tree) == 0) Iterator.empty else RB.valuesIterator(tree, from, until)
     override def keysIteratorFrom(start: K) = if (RB.size(tree) == 0) Iterator.empty else RB.keysIterator(tree, pickLowerBound(Some(start)), until)
@@ -239,16 +240,15 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 
 }
 
-/**
-  * $factoryInfo
-  *
-  * @define Coll mutable.TreeMap
-  * @define coll mutable tree map
-  */
+/** $factoryInfo
+ *
+ *  @define Coll mutable.TreeMap
+ *  @define coll mutable tree map
+ */
 @SerialVersionUID(3L)
 object TreeMap extends SortedMapFactory[TreeMap] {
 
-  def from[K : Ordering, V](it: IterableOnce[(K, V)]): TreeMap[K, V] =
+  def from[K : Ordering, V](it: IterableOnce[(K, V)]^): TreeMap[K, V] =
     Growable.from(empty[K, V], it)
 
   def empty[K : Ordering, V]: TreeMap[K, V] = new TreeMap[K, V]()

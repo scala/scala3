@@ -1,9 +1,9 @@
 import language.experimental.captureChecking
-import caps.{CapSet, Capability}
+import caps.{CapSet, SharedCapability}
 
 object Test:
 
-  class C extends Capability
+  class C extends SharedCapability
   class D
 
   def f[X^](x: D^{X}): D^{X} = x

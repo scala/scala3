@@ -1,6 +1,5 @@
-//> using options -feature
+//> using options -feature -preview
 
-import language.experimental.into
 import Conversion.into
 
 into trait T

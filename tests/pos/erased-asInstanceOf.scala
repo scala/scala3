@@ -11,7 +11,7 @@ object Test {
 
     val ds: Dataset = ???
 
-    lazy val collD = new Column
+    val collD = new Column
 
     ds.select(collD)
 

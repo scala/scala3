@@ -1,7 +1,6 @@
 import scala.language.experimental.erasedDefinitions
 
 import compiletime.summonFrom
-import compiletime.erasedValue
 
 trait Link[T, A]
 
@@ -15,7 +14,7 @@ transparent inline def link[T] =
 
 class Foo
 object Foo {
-  erased implicit val barLink: Link[Foo, Bar.type] = erasedValue
+  erased implicit val barLink: Link[Foo, Bar.type] = caps.unsafe.unsafeErasedValue
 }
 
 implicit object Bar {

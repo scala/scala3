@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -318,7 +316,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           em"Conflicting properties and methods for ${classSym.fullName}::$name.",
           firstAlt.srcPos)
       implicit val pos = firstAlt.span
-      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)(Unversioned)
+      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(using firstAlt.sourcePos), None, None)(Unversioned)
     } else {
       genMemberExportOrDispatcher(name, isProp, alts, static = false)
     }
@@ -369,7 +367,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       }
     }
 
-    js.JSPropertyDef(flags, genExpr(jsName)(alts.head.sourcePos), getterBody, setterArgAndBody)(Unversioned)
+    js.JSPropertyDef(flags, genExpr(jsName)(using alts.head.sourcePos), getterBody, setterArgAndBody)(Unversioned)
   }
 
   private def genExportMethod(alts0: List[Symbol], jsName: JSName, static: Boolean)(using Context): js.JSMethodDef = {
@@ -974,10 +972,10 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
   class FormalArgsRegistry(val minArgc: Int, needsRestParam: Boolean) {
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[jsNames.LocalName] =
-      (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(NoPosition).name)
+      (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(using NoPosition).name)
 
-    private val restParamName: jsNames.LocalName =
-      if (needsRestParam) freshLocalIdent("rest")(NoPosition).name
+    private val restParamName: jsNames.LocalName | Null =
+      if (needsRestParam) freshLocalIdent("rest")(using NoPosition).name
       else null
 
     def genFormalArgs()(implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef]) = {
@@ -986,7 +984,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       }
 
       val restParam = {
-        if (needsRestParam)
+        if (restParamName != null)
           Some(js.ParamDef(js.LocalIdent(restParamName), NoOriginalName, jstpe.AnyType, mutable = false))
         else
           None
@@ -1012,7 +1010,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
 
     def genRestArgRef()(implicit pos: Position): js.Tree = {
-      assert(needsRestParam, s"trying to generate a reference to non-existent rest param at $pos")
+      assert(restParamName != null, s"trying to generate a reference to non-existent rest param at $pos")
       js.VarRef(restParamName)(jstpe.AnyType)
     }
 
@@ -1021,7 +1019,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         js.VarRef(paramName)(jstpe.AnyType)
       }
 
-      if (needsRestParam) {
+      if (restParamName != null) {
         val restArgRef = js.VarRef(restParamName)(jstpe.AnyType)
         fixedArgRefs :+ js.JSSpread(restArgRef)
       } else {

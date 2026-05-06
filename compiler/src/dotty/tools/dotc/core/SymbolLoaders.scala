@@ -5,12 +5,9 @@ package core
 import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
-import scala.util.control.NonFatal
-
 import dotty.tools.dotc.classpath.{ ClassPathFactory, PackageNameUtils }
 import dotty.tools.dotc.classpath.FileUtils.{hasTastyExtension, hasBetastyExtension}
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
@@ -25,8 +22,7 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException, UnpicklerConfig, TastyVersion}
-import dotty.tools.dotc.core.tasty.TastyUnpickler
+import dotty.tools.tasty.UnpickleException
 import dotty.tools.tasty.besteffort.BestEffortTastyHeaderUnpickler
 
 object SymbolLoaders {
@@ -154,7 +150,9 @@ object SymbolLoaders {
       def enterScanned(unit: CompilationUnit)(using Context) = {
 
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
-          val ok = filePath == path
+          // Ignore empty packages if necessary so we don't warn on top-level package objects
+          // (such as `package object scala` in the top-level "package.scala" of the standard library)
+          val ok = filePath == path || filePath == path.filter(_ != nme.EMPTY_PACKAGE)
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
@@ -210,7 +208,9 @@ object SymbolLoaders {
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
   def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(using Context): Unit =
-    ((classRep.binary, classRep.source): @unchecked) match {
+    // module-info is a special class added by JPMS (Java 9+) that cannot be parsed like a normal class
+    if classRep.name != "module-info" then
+      ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, nameOf(classRep), src)
@@ -285,7 +285,16 @@ object SymbolLoaders {
     def maybeModuleClass(classRep: ClassRepresentation): Boolean =
       classRep.name.nonEmpty && classRep.name.last == '$'
 
-    def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(using Context) = {
+    /** Enter classes from the classpath into the given package.
+      *
+      * @param root The package denotation to enter classes into
+      * @param packageName The name of the package
+      * @param flat Whether to enter flat names (nested classes with $ in name)
+      * @param forceAbsentCheck If true, always check isAbsent to avoid re-entering existing classes.
+      *                         This is needed when merging entries from a new JAR (REPL :jar/:dep).
+      *                         If false, only check isAbsent for flat names (original behavior).
+      */
+    def enterClasses(root: SymDenotation, packageName: String, flat: Boolean, forceAbsentCheck: Boolean = false)(using Context) = {
       def isAbsent(classRep: ClassRepresentation) =
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
@@ -294,7 +303,7 @@ object SymbolLoaders {
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
-            (!flat || isAbsent(classRep))) // on 2nd enter of flat names, check that the name has not been entered before
+            ((!forceAbsentCheck && !flat) || isAbsent(classRep))) // Check isAbsent: always if forceAbsentCheck, or on 2nd enter of flat names
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classReps)
           if (maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -304,9 +313,9 @@ object SymbolLoaders {
     }
 
     def doComplete(root: SymDenotation)(using Context): Unit = {
-      assert(root is PackageClass, root)
+      assert(root.is(PackageClass), root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre.select(sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
 
@@ -324,8 +333,18 @@ object SymbolLoaders {
             if (packageName.isEmpty) fullName
             else fullName.substring(packageName.length + 1).nn
 
-          enterPackage(root.symbol, name.toTermName,
-            (module, modcls) => new PackageLoader(module, classPath))
+          // If the directory name conflicts with an existing class or object,
+          // verify it actually contains class/tasty files or sub-packages before
+          // treating it as a package. Spurious directories (e.g., created by a
+          // compiler plugin writing non-class files) should not shadow existing
+          // definitions. See #23043.
+          val hasConflict = currentDecls.lookup(name.toTermName) != NoSymbol
+          if !hasConflict
+            || classPath.list(fullName).classesAndSources.nonEmpty
+            || classPath.packages(fullName).nonEmpty
+          then
+            enterPackage(root.symbol, name.toTermName,
+              (module, modcls) => new PackageLoader(module, classPath))
         }
     }
   }
@@ -334,20 +353,32 @@ object SymbolLoaders {
     packageClass: ClassSymbol, fullPackageName: String,
     jarClasspath: ClassPath, fullClasspath: ClassPath,
   )(using Context): Unit =
-    if jarClasspath.classes(fullPackageName).nonEmpty then
+    val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
+    val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
+
+    if hasClasses then
       // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
       val packageVal = packageClass.sourceModule.asInstanceOf[TermSymbol]
       if packageClass.isRoot then
         val loader = new PackageLoader(packageVal, fullClasspath)
-        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false)
-        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true)
-      else if packageClass.ownersIterator.contains(defn.ScalaPackageClass) then
-        () // skip
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = false, forceAbsentCheck = true)
+        loader.enterClasses(defn.EmptyPackageClass, fullPackageName, flat = true, forceAbsentCheck = true)
       else if fullClasspath.hasPackage(fullPackageName) then
-        packageClass.info = new PackageLoader(packageVal, fullClasspath)
+        // Enter new classes into the existing scope without replacing the package info
+        // (which would cause cyclic references). Use jarClasspath (not fullClasspath)
+        // to only enter new classes from the JAR.
+        // This allows libraries like scala-parallel-collections and os-lib-watch to work with :dep/:jar
+        val loader = new PackageLoader(packageVal, jarClasspath)
+        loader.enterClasses(packageClass, fullPackageName, flat = false, forceAbsentCheck = true)
+        loader.enterClasses(packageClass, fullPackageName, flat = true, forceAbsentCheck = true)
       else
         packageClass.owner.info.decls.openForMutations.unlink(packageVal)
-    else
+
+    // Always process sub-packages, even when hasClasses is true.
+    // This is needed when a package has BOTH classes AND sub-packages,
+    // e.g. scala-parallel-collections adds both classes to scala.collection
+    // and the new scala.collection.parallel sub-package.
+    if hasPackages then
       for p <- jarClasspath.packages(fullPackageName) do
         val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
         val subPackage = packageClass.info.decl(subPackageName).orElse:
@@ -404,16 +435,14 @@ abstract class SymbolLoader extends LazyType { self =>
       report.informTime("loaded " + description, start)
     }
     catch {
-      case ex: InterruptedException =>
-        throw ex
       case ex: ClosedByInterruptException =>
         throw new InterruptedException
       case ex: IOException =>
         signalError(ex)
-      case NonFatal(ex: TypeError) =>
+      case ex: TypeError =>
         println(s"exception caught when loading $root: ${ex.toMessage}")
         throw ex
-      case NonFatal(ex) =>
+      case ex: Exception =>
         println(s"exception caught when loading $root: $ex")
         throw ex
     }
@@ -473,12 +502,17 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
   val isBestEffortTasty = tastyFile.hasBetastyExtension
-  private val unpickler: tasty.DottyUnpickler =
+
+  lazy val tastyBytes = tastyFile.toByteArray
+
+  private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
-      val tastyBytes = tastyFile.toByteArray
       new tasty.DottyUnpickler(tastyFile, tastyBytes, isBestEffortTasty) // reads header and name table
 
-  val compilationUnitInfo: CompilationUnitInfo | Null = unpickler.compilationUnitInfo
+  val compilationUnitInfo: CompilationUnitInfo =
+    new CompilationUnitInfo:
+      def associatedFile: AbstractFile = tastyFile
+      def tastyInfo: Option[TastyInfo] = unpickler.compilationUnitInfo.tastyInfo
 
   def description(using Context): String =
     if isBestEffortTasty then "Best Effort TASTy file " + tastyFile.toString
@@ -488,7 +522,6 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
     handleUnpicklingExceptions:
       val (classRoot, moduleRoot) = rootDenots(root.asClass)
       if (!isBestEffortTasty || ctx.withBestEffortTasty) then
-        val tastyBytes = tastyFile.toByteArray
         unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
         if mayLoadTreesFromTasty || isBestEffortTasty then
           classRoot.classSymbol.rootTreeOrProvider = unpickler

@@ -17,7 +17,7 @@ import scala.annotation.nowarn
 
 @nowarn("cat=deprecation")
 trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
-  val underlying: java.lang.ref.Reference[_ <: T]
+  val underlying: java.lang.ref.Reference[? <: T]
   override def get = Option(underlying.get)
   def apply() = {
     val ret = underlying.get
@@ -27,7 +27,7 @@ trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
   def clear(): Unit = underlying.clear()
   def enqueue(): Boolean = underlying.enqueue()
   def isEnqueued: Boolean = underlying.isEnqueued
-  def self: java.lang.ref.Reference[_ <: T] = underlying
+  def self: java.lang.ref.Reference[? <: T] = underlying
 }
 
 private trait ReferenceWithWrapper[T <: AnyRef] {

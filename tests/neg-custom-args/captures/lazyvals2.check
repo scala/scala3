@@ -1,0 +1,5 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazyvals2.scala:20:37 ----------------------------------
+20 |  val fun2: () ->{io} String = () => x() // error
+   |                                     ^
+   |                                   References {console, io} are not all included in the allowed capture set {io}
+   |                                   of an enclosing function literal with expected type () ->{io} String.

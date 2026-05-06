@@ -15,6 +15,7 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.meta.companionClass
 import scala.annotation.nowarn
 import scala.collection.generic.DefaultSerializationProxy
@@ -38,13 +39,12 @@ import scala.language.implicitConversions
  *  on a map that will no longer have elements removed but will be
  *  used heavily may save both time and storage space.
  *
- *  This map is not intended to contain more than 2^29^ entries (approximately
- *  500 million).  The maximum capacity is 2^30^, but performance will degrade
- *  rapidly as 2^30^ is approached.
- *
+ *  This map is not intended to contain more than 2<sup>29</sup> entries (approximately
+ *  500 million).  The maximum capacity is 2<sup>30</sup>, but performance will degrade
+ *  rapidly as 2<sup>30</sup> is approached.
  */
 @(deprecated @companionClass)("Use `scala.collection.mutable.HashMap` instead for better performance.", since = "2.13.16")
-class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initialBufferSize: Int, initBlank: Boolean)
+class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initialBufferSize: Int, initBlank: Boolean)
   extends AbstractMap[K, V]
     with MapOps[K, V, Map, AnyRefMap[K, V]]
     with StrictOptimizedIterableOps[(K, V), Iterable, AnyRefMap[K, V]]
@@ -53,44 +53,53 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
   import AnyRefMap._
   def this() = this(AnyRefMap.exceptionDefault, 16, initBlank = true)
 
-  /** Creates a new `AnyRefMap` that returns default values according to a supplied key-value mapping. */
-  def this(defaultEntry: K => V) = this(defaultEntry, 16, initBlank = true)
+  /** Creates a new `AnyRefMap` that returns default values according to a supplied key-value mapping.
+   *
+   *  @param defaultEntry the function mapping keys to default values
+   */
+  def this(defaultEntry: K -> V) = this(defaultEntry, 16, initBlank = true)
 
   /** Creates a new `AnyRefMap` with an initial buffer of specified size.
    *
    *  An `AnyRefMap` can typically contain half as many elements as its buffer size
    *  before it requires resizing.
+   *
+   *  @param initialBufferSize the initial size of the internal buffer; the map can hold about half this many elements before resizing
    */
   def this(initialBufferSize: Int) = this(AnyRefMap.exceptionDefault, initialBufferSize, initBlank = true)
 
-  /** Creates a new `AnyRefMap` with specified default values and initial buffer size. */
-  def this(defaultEntry: K => V, initialBufferSize: Int) = this(defaultEntry, initialBufferSize, initBlank = true)
+  /** Creates a new `AnyRefMap` with specified default values and initial buffer size.
+   *
+   *  @param defaultEntry the function mapping keys to default values
+   *  @param initialBufferSize the initial size of the internal buffer; the map can hold about half this many elements before resizing
+   */
+  def this(defaultEntry: K -> V, initialBufferSize: Int) = this(defaultEntry, initialBufferSize, initBlank = true)
 
-  private[this] var mask = 0
-  private[this] var _size = 0
-  private[this] var _vacant = 0
-  private[this] var _hashes: Array[Int] = null
-  private[this] var _keys: Array[AnyRef] = null
-  private[this] var _values: Array[AnyRef] = null
+  private var mask = 0
+  private var _size = 0
+  private var _vacant = 0
+  private var _hashes: Array[Int] = compiletime.uninitialized
+  private var _keys: Array[AnyRef | Null] = compiletime.uninitialized
+  private var _values: Array[AnyRef | Null] = compiletime.uninitialized
 
   if (initBlank) defaultInitialize(initialBufferSize)
 
-  private[this] def defaultInitialize(n: Int): Unit = {
+  private def defaultInitialize(n: Int): Unit = {
     mask =
       if (n<0) 0x7
       else (((1 << (32 - java.lang.Integer.numberOfLeadingZeros(n-1))) - 1) & 0x3FFFFFFF) | 0x7
     _hashes = new Array[Int](mask+1)
-    _keys = new Array[AnyRef](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _keys = new Array[AnyRef | Null](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
   }
 
   private[collection] def initializeTo(
-    m: Int, sz: Int, vc: Int, hz: Array[Int], kz: Array[AnyRef], vz: Array[AnyRef]
+    m: Int, sz: Int, vc: Int, hz: Array[Int], kz: Array[AnyRef | Null], vz: Array[AnyRef | Null]
   ): Unit = {
     mask = m; _size = sz; _vacant = vc; _hashes = hz; _keys = kz; _values = vz
   }
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]): AnyRefMap[K,V] = {
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]^): AnyRefMap[K,V] = {
     var sz = coll.knownSize
     if(sz < 0) sz = 4
     val arm = new AnyRefMap[K, V](sz * 2)
@@ -127,7 +136,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
     val hashes = _hashes
     val keys = _keys
     while ({ g = hashes(e); g != 0}) {
-      if (g == h && { val q = keys(e); (q eq k) || ((q ne null) && (q equals k)) }) return e
+      if (g == h && { val q = keys(e); (q eq k) || ((q ne null) && (q.equals(k))) }) return e
       x += 1
       e = (e + 2*(x+1)*x - 3) & mask
     }
@@ -140,7 +149,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
     var g = 0
     var o = -1
     while ({ g = _hashes(e); g != 0}) {
-      if (g == h && { val q = _keys(e); (q eq k) || ((q ne null) && (q equals k)) }) return e
+      if (g == h && { val q = _keys(e); (q eq k) || ((q ne null) && (q.equals(k))) }) return e
       else if (o == -1 && g+g == 0) o = e
       x += 1
       e = (e + 2*(x+1)*x - 3) & mask
@@ -198,16 +207,21 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
    *  Note: this is the fastest way to retrieve a value that may or
    *  may not exist, if the default null/zero is acceptable.  For key/value
    *  pairs that do exist, `apply` (i.e. `map(key)`) is equally fast.
+   *
+   *  @param key the key to look up
+   *  @return the value associated with `key`, or `null` if the key is not present
    */
-  def getOrNull(key: K): V = {
+  def getOrNull(key: K): V | Null = {
     val i = seekEntry(hashOf(key), key)
-    (if (i < 0) null else _values(i)).asInstanceOf[V]
+    if (i < 0) null else _values(i).asInstanceOf[V]
   }
 
   /** Retrieves the value associated with a key.
    *  If the key does not exist in the map, the `defaultEntry` for that key
    *  will be returned instead; an exception will be thrown if no
    *  `defaultEntry` was supplied.
+   *
+   *  @param key the key to look up
    */
   override def apply(key: K): V = {
     val i = seekEntry(hashOf(key), key)
@@ -216,6 +230,8 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
 
   /** Defers to defaultEntry to find a default value for the key.  Throws an
    *  exception if no other default behavior was specified.
+   *
+   *  @param key the key to look up a default value for
    */
   override def default(key: K): V = defaultEntry(key)
 
@@ -225,8 +241,8 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
     val ov = _values
     mask = newMask
     _hashes = new Array[Int](mask+1)
-    _keys = new Array[AnyRef](mask+1)
-    _values = new Array[AnyRef](mask+1)
+    _keys = new Array[AnyRef | Null](mask+1)
+    _values = new Array[AnyRef | Null](mask+1)
     _vacant = 0
     var i = 0
     while (i < oh.length) {
@@ -282,6 +298,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
   /** Updates the map to include a new key-value pair.
    *
    *  This is the fastest way to add an entry to an `AnyRefMap`.
+   *
+   *  @param key the key to update
+   *  @param value the new value to associate with `key`
    */
   override def update(key: K, value: V): Unit = {
     val h = hashOf(key)
@@ -305,7 +324,11 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
   @deprecated("Use `addOne` or `update` instead; infix operations with an operand of multiple args will be deprecated", "2.13.3")
   def +=(key: K, value: V): this.type = { update(key, value); this }
 
-  /** Adds a new key/value pair to this map and returns the map. */
+  /** Adds a new key/value pair to this map and returns the map.
+   *
+   *  @param key the key to add
+   *  @param value the value to associate with `key`
+   */
   @inline final def addOne(key: K, value: V): this.type = { update(key, value); this }
 
   @inline override final def addOne(kv: (K, V)): this.type = { update(kv._1, kv._2); this }
@@ -333,13 +356,13 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
   }
 
   private abstract class AnyRefMapIterator[A] extends AbstractIterator[A] {
-    private[this] val hz = _hashes
-    private[this] val kz = _keys
-    private[this] val vz = _values
+    private val hz = _hashes
+    private val kz = _keys
+    private val vz = _values
 
-    private[this] var index = 0
+    private var index = 0
 
-    def hasNext: Boolean = index<hz.length && {
+    def hasNext: Boolean = index < hz.length && {
       var h = hz(index)
       while (h+h == 0) {
         index += 1
@@ -393,9 +416,9 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
   override def clone(): AnyRefMap[K, V] = {
     val hz = java.util.Arrays.copyOf(_hashes, _hashes.length)
     val kz = java.util.Arrays.copyOf(_keys, _keys.length)
-    val vz = java.util.Arrays.copyOf(_values,  _values.length)
+    val vz = java.util.Arrays.copyOf(_values, _values.length)
     val arm = new AnyRefMap[K, V](defaultEntry, 1, initBlank = false)
-    arm.initializeTo(mask, _size, _vacant, hz, kz,  vz)
+    arm.initializeTo(mask, _size, _vacant, hz, kz, vz)
     arm
   }
 
@@ -403,24 +426,25 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
   override def + [V1 >: V](kv: (K, V1)): AnyRefMap[K, V1] = AnyRefMap.from(new View.Appended(this, kv))
 
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
-  override def + [V1 >: V](elem1: (K, V1), elem2: (K, V1), elems: (K, V1)*): AnyRefMap[K, V1] = {
+  override def + [V1 >: V](elem1: (K, V1), elem2: (K, V1), elems: (K, V1)*): AnyRefMap[K, V1]^{} = {
+    // An empty capture annotation is needed in the result type to satisfy the overriding checker.
     val m = this + elem1 + elem2
     if(elems.isEmpty) m else m.concat(elems)
   }
 
-  override def concat[V2 >: V](xs: scala.collection.IterableOnce[(K, V2)]): AnyRefMap[K, V2] = {
+  override def concat[V2 >: V](xs: scala.collection.IterableOnce[(K, V2)]^): AnyRefMap[K, V2] = {
     val arm = clone().asInstanceOf[AnyRefMap[K, V2]]
     xs.iterator.foreach(kv => arm += kv)
     arm
   }
 
-  override def ++[V2 >: V](xs: scala.collection.IterableOnce[(K, V2)]): AnyRefMap[K, V2] = concat(xs)
+  override def ++[V2 >: V](xs: scala.collection.IterableOnce[(K, V2)]^): AnyRefMap[K, V2] = concat(xs)
 
   @deprecated("Use m.clone().addOne(k,v) instead of m.updated(k, v)", "2.13.0")
   override def updated[V1 >: V](key: K, value: V1): AnyRefMap[K, V1] =
     clone().asInstanceOf[AnyRefMap[K, V1]].addOne(key, value)
 
-  private[this] def foreachElement[A,B](elems: Array[AnyRef], f: A => B): Unit = {
+  private def foreachElement[A,B](elems: Array[AnyRef | Null], f: A => B): Unit = {
     var i,j = 0
     while (i < _hashes.length & j < _size) {
       val h = _hashes(i)
@@ -432,21 +456,32 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
     }
   }
 
-  /** Applies a function to all keys of this map. */
+  /** Applies a function to all keys of this map.
+   *
+   *  @tparam A the result type of the function
+   *  @param f the function to apply to each key
+   */
   def foreachKey[A](f: K => A): Unit = foreachElement[K,A](_keys, f)
 
-  /** Applies a function to all values of this map. */
+  /** Applies a function to all values of this map.
+   *
+   *  @tparam A the result type of the function
+   *  @param f the function to apply to each value
+   */
   def foreachValue[A](f: V => A): Unit = foreachElement[V,A](_values, f)
 
   /** Creates a new `AnyRefMap` with different values.
    *  Unlike `mapValues`, this method generates a new
    *  collection immediately.
+   *
+   *  @tparam V1 the new value type
+   *  @param f the transformation function to apply to each value
    */
   def mapValuesNow[V1](f: V => V1): AnyRefMap[K, V1] = {
-    val arm = new AnyRefMap[K,V1](AnyRefMap.exceptionDefault,  1,  initBlank = false)
+    val arm = new AnyRefMap[K,V1](AnyRefMap.exceptionDefault, 1, initBlank = false)
     val hz = java.util.Arrays.copyOf(_hashes, _hashes.length)
     val kz = java.util.Arrays.copyOf(_keys, _keys.length)
-    val vz = new Array[AnyRef](_values.length)
+    val vz = new Array[AnyRef | Null](_values.length)
     var i,j = 0
     while (i < _hashes.length & j < _size) {
       val h = _hashes(i)
@@ -461,13 +496,15 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
   }
 
   /** Applies a transformation function to all values stored in this map.
-    *  Note: the default, if any,  is not transformed.
-    */
+   *  Note: the default, if any,  is not transformed.
+   */
   @deprecated("Use transformValuesInPlace instead of transformValues", "2.13.0")
   @`inline` final def transformValues(f: V => V): this.type = transformValuesInPlace(f)
 
   /** Applies a transformation function to all values stored in this map.
    *  Note: the default, if any,  is not transformed.
+   *
+   *  @param f the transformation function to apply to each value
    */
   def transformValuesInPlace(f: V => V): this.type = {
     var i,j = 0
@@ -484,27 +521,30 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
 
   // The implicit dummy parameter is necessary to distinguish these methods from the base methods they overload (not override).
   // Previously, in Scala 2, f took `K with AnyRef` scala/bug#11035
-  /**
-   * An overload of `map` which produces an `AnyRefMap`.
+  /** An overload of `map` which produces an `AnyRefMap`.
    *
-   * @param f the mapping function must produce a key-value pair where the key is an `AnyRef`
-   * @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
+   *  @tparam K2 the key type of the resulting map, must be a subtype of `AnyRef`
+   *  @tparam V2 the value type of the resulting map
+   *  @param f the function mapping each key-value pair to a new key-value pair; the resulting key must be an `AnyRef`
+   *  @param dummy implicit parameter used to distinguish this overload from the inherited version after erasure
    */
   def map[K2 <: AnyRef, V2](f: ((K, V)) => (K2, V2))(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.Map(this, f))
-  /**
-   * An overload of `flatMap` which produces an `AnyRefMap`.
+  /** An overload of `flatMap` which produces an `AnyRefMap`.
    *
-   * @param f the mapping function must produce key-value pairs where the key is an `AnyRef`
-   * @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
+   *  @tparam K2 the key type of the resulting map, must be a subtype of `AnyRef`
+   *  @tparam V2 the value type of the resulting map
+   *  @param f the function mapping each key-value pair to a collection of new key-value pairs; the resulting keys must be `AnyRef`s
+   *  @param dummy implicit parameter used to distinguish this overload from the inherited version after erasure
    */
-  def flatMap[K2 <: AnyRef, V2](f: ((K, V)) => IterableOnce[(K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
+  def flatMap[K2 <: AnyRef, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.FlatMap(this, f))
-  /**
-   * An overload of `collect` which produces an `AnyRefMap`.
+  /** An overload of `collect` which produces an `AnyRefMap`.
    *
-   * @param pf the mapping function must produce a key-value pair where the key is an `AnyRef`
-   * @param dummy an implicit placeholder for purposes of distinguishing the (erased) signature of this method
+   *  @tparam K2 the key type of the resulting map, must be a subtype of `AnyRef`
+   *  @tparam V2 the value type of the resulting map
+   *  @param pf the partial function mapping key-value pairs to new key-value pairs; the resulting key must be an `AnyRef`
+   *  @param dummy implicit parameter used to distinguish this overload from the inherited version after erasure
    */
   def collect[K2 <: AnyRef, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     strictOptimizedCollect(AnyRefMap.newBuilder[K2, V2], pf)
@@ -518,10 +558,10 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
     _vacant = 0
   }
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(AnyRefMap.toFactory[K, V](AnyRefMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(AnyRefMap.toFactory[K, V](AnyRefMap), this)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "AnyRefMap"
+  override protected def stringPrefix = "AnyRefMap"
 }
 
 @deprecated("Use `scala.collection.mutable.HashMap` instead for better performance.", since = "2.13.16")
@@ -539,6 +579,9 @@ object AnyRefMap {
   /** A builder for instances of `AnyRefMap`.
    *
    *  This builder can be reused to create multiple instances.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
    */
   final class AnyRefMapBuilder[K <: AnyRef, V] extends ReusableBuilder[(K, V), AnyRefMap[K, V]] {
     private[collection] var elems: AnyRefMap[K, V] = new AnyRefMap[K, V]
@@ -551,12 +594,17 @@ object AnyRefMap {
     override def knownSize: Int = elems.knownSize
   }
 
-  /** Creates a new `AnyRefMap` with zero or more key/value pairs. */
+  /** Creates a new `AnyRefMap` with zero or more key/value pairs.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @param elems the key-value pairs to initialize the map with
+   */
   def apply[K <: AnyRef, V](elems: (K, V)*): AnyRefMap[K, V] = buildFromIterableOnce(elems)
 
   def newBuilder[K <: AnyRef, V]: ReusableBuilder[(K, V), AnyRefMap[K, V]] = new AnyRefMapBuilder[K, V]
 
-  private def buildFromIterableOnce[K <: AnyRef, V](elems: IterableOnce[(K, V)]): AnyRefMap[K, V] = {
+  private def buildFromIterableOnce[K <: AnyRef, V](elems: IterableOnce[(K, V)]^): AnyRefMap[K, V] = {
     var sz = elems.knownSize
     if(sz < 0) sz = 4
     val arm = new AnyRefMap[K, V](sz * 2)
@@ -565,27 +613,41 @@ object AnyRefMap {
     arm
   }
 
-  /** Creates a new empty `AnyRefMap`. */
+  /** Creates a new empty `AnyRefMap`.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   */
   def empty[K <: AnyRef, V]: AnyRefMap[K, V] = new AnyRefMap[K, V]
 
-  /** Creates a new empty `AnyRefMap` with the supplied default */
-  def withDefault[K <: AnyRef, V](default: K => V): AnyRefMap[K, V] = new AnyRefMap[K, V](default)
+  /** Creates a new empty `AnyRefMap` with the supplied default.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @param default the function mapping keys to default values
+   */
+  def withDefault[K <: AnyRef, V](default: K -> V): AnyRefMap[K, V] = new AnyRefMap[K, V](default)
 
   /** Creates a new `AnyRefMap` from an existing source collection. A source collection
-    * which is already an `AnyRefMap` gets cloned.
-    *
-    * @param source Source collection
-    * @tparam K the type of the keys
-    * @tparam V the type of the values
-    * @return a new `AnyRefMap` with the elements of `source`
-    */
-  def from[K <: AnyRef, V](source: IterableOnce[(K, V)]): AnyRefMap[K, V] = source match {
-    case source: AnyRefMap[_, _] => source.clone().asInstanceOf[AnyRefMap[K, V]]
+   *  which is already an `AnyRefMap` gets cloned.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @param source Source collection
+   *  @return a new `AnyRefMap` with the elements of `source`
+   */
+  def from[K <: AnyRef, V](source: IterableOnce[(K, V)]^): AnyRefMap[K, V] = source match {
+    case source: AnyRefMap[?, ?] => source.clone().asInstanceOf[AnyRefMap[K, V]]
     case _ => buildFromIterableOnce(source)
   }
 
   /** Creates a new `AnyRefMap` from arrays of keys and values.
    *  Equivalent to but more efficient than `AnyRefMap((keys zip values): _*)`.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @param keys the array of keys
+   *  @param values the array of values, paired positionally with `keys`
    */
   def fromZip[K <: AnyRef, V](keys: Array[K], values: Array[V]): AnyRefMap[K, V] = {
     val sz = math.min(keys.length, values.length)
@@ -598,6 +660,11 @@ object AnyRefMap {
 
   /** Creates a new `AnyRefMap` from keys and values.
    *  Equivalent to but more efficient than `AnyRefMap((keys zip values): _*)`.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @param keys the collection of keys
+   *  @param values the collection of values, paired positionally with `keys`
    */
   def fromZip[K <: AnyRef, V](keys: Iterable[K], values: Iterable[V]): AnyRefMap[K, V] = {
     val sz = math.min(keys.size, values.size)
@@ -612,17 +679,18 @@ object AnyRefMap {
   implicit def toFactory[K <: AnyRef, V](dummy: AnyRefMap.type): Factory[(K, V), AnyRefMap[K, V]] = ToFactory.asInstanceOf[Factory[(K, V), AnyRefMap[K, V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] with Serializable {
-    def fromSpecific(it: IterableOnce[(AnyRef, AnyRef)]): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from[AnyRef, AnyRef](it)
+  private object ToFactory extends Factory[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] with Serializable {
+    def fromSpecific(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from[AnyRef, AnyRef](it)
     def newBuilder: Builder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
   implicit def toBuildFrom[K <: AnyRef, V](factory: AnyRefMap.type): BuildFrom[Any, (K, V), AnyRefMap[K, V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (K, V), AnyRefMap[K, V]]]
-  private[this] object ToBuildFrom extends BuildFrom[Any, (AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] {
-    def fromSpecific(from: Any)(it: IterableOnce[(AnyRef, AnyRef)]): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from(it)
+  private object ToBuildFrom extends BuildFrom[Any, (AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] {
+    def fromSpecific(from: Any)(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from(it)
     def newBuilder(from: Any): ReusableBuilder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
   implicit def iterableFactory[K <: AnyRef, V]: Factory[(K, V), AnyRefMap[K, V]] = toFactory[K, V](this)
-  implicit def buildFromAnyRefMap[K <: AnyRef, V]: BuildFrom[AnyRefMap[_, _], (K, V), AnyRefMap[K, V]] = toBuildFrom(this)
+  implicit def buildFromAnyRefMap[K <: AnyRef, V]: BuildFrom[AnyRefMap[?, ?], (K, V), AnyRefMap[K, V]] = toBuildFrom(this)
 }
+

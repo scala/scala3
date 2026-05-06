@@ -4,11 +4,33 @@
    |             Found:    (box.x : (b : B^{io})^{b})
    |             Required: A
    |
+   |             Note that capability `io` cannot flow into capture set {}.
+   |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:16:11 ---------------------------------------
-16 |  b.getBox.x // error
-   |  ^^^^^^^^^^
-   |  Found:    (Box[(b : B^{io})^{b}]#x : (b : B^{io})^{b})
-   |  Required: A^?
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:18:13 ---------------------------------------
+18 |  val _: A = c // error
+   |             ^
+   |             Found:    (c : B^{b})
+   |             Required: A
+   |
+   |             Note that capability `b` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:19:2 ----------------------------------------
+19 |  c // error
+   |  ^
+   |  Found:    A^{c}
+   |  Required: A
+   |
+   |  Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23207.scala:27:2 ----------------------------------------
+27 |  c  // error
+   |  ^
+   |  Found:    A^{c}
+   |  Required: A
+   |
+   |  Note that capability `c` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

@@ -20,17 +20,15 @@ object Names {
    */
   type PreName = Name | String
 
-  /** A common superclass of Name and Symbol. After bootstrap, this should be
-   *  just the type alias Name | Symbol
-   */
-  abstract class Designator
+  /** A common type of Name and Symbol */
+  type Designator = Name | Symbols.Symbol
 
   /** A name is either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator, Showable derives CanEqual {
+  abstract class Name extends Showable derives CanEqual {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name
@@ -185,7 +183,7 @@ object Names {
     def info: NameInfo = SimpleNameKind.info
     def underlying: TermName = unsupported("underlying")
 
-    @sharable // because of synchronized block in `and`
+    @sharable // because of synchronized block in `add`
     private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
 
     private def add(info: NameInfo): TermName = synchronized {
@@ -386,39 +384,7 @@ object Names {
 
     protected def computeToString: String =
       if (length == 0) ""
-      else {
-        if (Config.checkBackendNames)
-          if (!toStringOK) {
-            // We print the stacktrace instead of doing an assert directly,
-            // because asserts are caught in exception handlers which might
-            // cause other failures. In that case the first, important failure
-            // is lost.
-            System.err.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
-            Thread.dumpStack()
-            assert(false)
-          }
-        new String(chrs, start, length)
-      }
-
-    /** It's OK to take a toString if the stacktrace does not contain a method
-     *  from GenBCode or it also contains one of the allowed methods below.
-     */
-    private def toStringOK = {
-      val trace: Array[StackTraceElement] = Thread.currentThread.getStackTrace.asInstanceOf[Array[StackTraceElement]]
-      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
-      trace.exists(elem =>
-          List(
-              "mangledString",
-              "toSimpleName",
-              "decode",
-              "unmangle",
-              "dotty$tools$dotc$core$NameOps$NameDecorator$$functionArityFor$extension",
-              "dotty$tools$dotc$typer$Checking$CheckNonCyclicMap$$apply",
-              "$plus$plus",
-              "readConstant",
-              "extractedName")
-            .contains(elem.getMethodName))
-    }
+      else new String(chrs, start, length)
 
     def debugString: String = toString
   }
@@ -506,7 +472,7 @@ object Names {
     }
 
     override def isEmpty: Boolean = false
-    override def encode: ThisName = underlying.encode.derived(info.map(_.encode))
+    override def encode: ThisName = underlying.encode.derived(info.map(NameTransformer.encode)) // encodes <init>
     override def decode: ThisName = underlying.decode.derived(info.map(_.decode))
     override def firstPart: SimpleName = underlying.firstPart
     override def lastPart: SimpleName = info match {

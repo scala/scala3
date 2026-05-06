@@ -15,8 +15,11 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** Base type for mutable sorted set collections
+ *
+ *  @tparam A the element type of the set, which must have an implicit `Ordering`
  */
 trait SortedSet[A]
   extends Set[A]
@@ -30,9 +33,12 @@ trait SortedSet[A]
 }
 
 /**
-  * @define coll mutable sorted set
-  * @define Coll `mutable.SortedSet`
-  */
+ *  @define coll mutable sorted set
+ *  @define Coll `mutable.SortedSet`
+ *
+ *  @tparam A the element type of the set
+ *  @tparam CC the type constructor for the sorted set collection
+ */
 transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
   extends SetOps[A, Set, C]
     with collection.SortedSetOps[A, CC, C] {
@@ -40,8 +46,6 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
   def unsorted: Set[A]
 }
 
-/**
- *  $factoryInfo
- */
+/** $factoryInfo */
 @SerialVersionUID(3L)
 object SortedSet extends SortedIterableFactory.Delegate[SortedSet](TreeSet)

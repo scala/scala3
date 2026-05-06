@@ -22,14 +22,13 @@ import java.util.concurrent.TimeUnit
  */
 @deprecated("Use `java.util.concurrent.LinkedBlockingQueue with capacity 1` instead.", since = "2.13.0")
 class SyncVar[A] {
-  private[this] var isDefined: Boolean = false
-  private[this] var value: A = _
+  private var isDefined: Boolean = false
+  private var value: A = compiletime.uninitialized
 
-  /**
-   * Wait for this SyncVar to become defined and then get
-   * the stored value without modifying it.
+  /** Wait for this SyncVar to become defined and then get
+   *  the stored value without modifying it.
    *
-   * @return value that is held in this container
+   *  @return value that is held in this container
    */
   def get: A = synchronized {
     while (!isDefined) wait()
@@ -37,8 +36,10 @@ class SyncVar[A] {
   }
 
   /** Waits `timeout` millis. If `timeout <= 0` just returns 0.
-    * It never returns negative results.
-    */
+   *  It never returns negative results.
+   *
+   *  @param timeout the maximum time to wait, in milliseconds
+   */
   private def waitMeasuringElapsed(timeout: Long): Long = if (timeout <= 0) 0 else {
     val start = System.nanoTime()
     wait(timeout)
@@ -48,8 +49,8 @@ class SyncVar[A] {
     if (elapsed < 0) 0 else TimeUnit.NANOSECONDS.toMillis(elapsed)
   }
 
-  /** Wait at least `timeout` milliseconds (possibly more) for this `SyncVar`
-   *  to become defined and then get its value.
+  /** Waits at least `timeout` milliseconds (possibly more) for this `SyncVar`
+   *  to become defined and then gets its value.
    *
    *  @param timeout     time in milliseconds to wait
    *  @return            `None` if variable is undefined after `timeout`, `Some(value)` otherwise
@@ -67,23 +68,22 @@ class SyncVar[A] {
     if (isDefined) Some(value) else None
   }
 
-  /**
-   * Wait for this SyncVar to become defined and then get
-   * the stored value, unsetting it as a side effect.
+  /** Wait for this SyncVar to become defined and then get
+   *  the stored value, unsetting it as a side effect.
    *
-   * @return value that was held in this container
+   *  @return value that was held in this container
    */
   def take(): A = synchronized {
     try get
     finally unsetVal()
   }
 
-  /** Wait at least `timeout` milliseconds (possibly more) for this `SyncVar`
-   *  to become defined and then get the stored value, unsetting it
+  /** Waits at least `timeout` milliseconds (possibly more) for this `SyncVar`
+   *  to become defined and then gets the stored value, unsetting it
    *  as a side effect.
    *
-   *  @param timeout     the amount of milliseconds to wait
-   *  @return            the value or a throws an exception if the timeout occurs
+   *  @param timeout     the maximum time to wait, in milliseconds
+   *  @return            the value held in this `SyncVar`
    *  @throws NoSuchElementException on timeout
    */
   def take(timeout: Long): A = synchronized {
@@ -92,13 +92,16 @@ class SyncVar[A] {
   }
 
   /** Place a value in the SyncVar. If the SyncVar already has a stored value,
-   * wait until another thread takes it. */
+   *  wait until another thread takes it. 
+   *
+   *  @param x the value to store in this `SyncVar`
+   */
   def put(x: A): Unit = synchronized {
     while (isDefined) wait()
     setVal(x)
   }
 
-  /** Check whether a value is stored in the synchronized variable. */
+  /** Checks whether a value is stored in the synchronized variable. */
   def isSet: Boolean = synchronized {
     isDefined
   }

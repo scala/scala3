@@ -11,7 +11,6 @@ import Symbols.*
 import Names.*
 import NameKinds.UniqueName
 import util.Spans.*
-import util.Property
 import collection.mutable
 import Trees.*
 
@@ -33,27 +32,45 @@ abstract class Lifter {
   /** The corresponding lifter for pass-by-name arguments */
   protected def exprLifter: Lifter = NoLift
 
+  private def lifterFor(paramType: Type): Lifter =
+    if paramType.isInstanceOf[ExprType] then exprLifter else this
+
+  /** Returns true if the argument would be lifted for the given parameter type. */
+  def wouldLift(arg: tpd.Tree, paramType: Type)(using Context): Boolean =
+    !paramType.hasAnnotation(defn.InlineParamAnnot) && !lifterFor(paramType).noLift(arg)
+
   /** The flags of a lifted definition */
   protected def liftedFlags: FlagSet = EmptyFlags
 
   /** The tree of a lifted definition */
-  protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): MemberDef = ValDef(sym, rhs)
+  protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): MemberDef =
+    // Mark the type of lifted definitions as inferred
+    ValDef(sym, rhs, inferred = true)
+
+  /** Type assigned to a lifted temporary symbol. */
+  protected def liftedExprType(expr: Tree)(using Context): Type =
+    expr.tpe.widen.deskolemized
+
+  /** Hook for lifters that need to record or mark freshly created lifted defs. */
+  protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
-      var liftedType = expr.tpe.widen.deskolemized
+      var liftedType = liftedExprType(expr)
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span),
         // Lifted definitions will be added to a local block, so they need to be
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
-      defs += liftedDef(lifted, expr)
+      val liftedTree = liftedDef(lifted, expr)
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
         .setDefTree
+      onLiftedDef(liftedTree)
+      defs += liftedTree
       ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
@@ -87,12 +104,10 @@ abstract class Lifter {
   def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
+        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map: (arg, name, tp) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
-            val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
-            lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
-        }
+            lifterFor(tp).liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }
@@ -145,7 +160,7 @@ abstract class Lifter {
    *     val x0 = pre
    *     x0.f(...)
    *
-   *  unless `pre` is idempotent reference, a `this` reference, a literal value, or a or the prefix of an `init` (`New` tree).
+   *  unless `pre` is idempotent reference, a `this` reference, a literal value, or the prefix of an `init` (`New` tree).
    *
    *  Note that default arguments will refer to the prefix, we do not want
    *  to re-evaluate a complex expression each time we access a getter.
@@ -173,52 +188,8 @@ object LiftImpure extends LiftImpure
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
-  override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
-
-/** Lift impure + lift the prefixes */
-object LiftCoverage extends LiftImpure {
-
-  // Property indicating whether we're currently lifting the arguments of an application
-  private val LiftingArgs = new Property.Key[Boolean]
-
-  private inline def liftingArgs(using Context): Boolean =
-    ctx.property(LiftingArgs).contains(true)
-
-  private def liftingArgsContext(using Context): Context =
-    ctx.fresh.setProperty(LiftingArgs, true)
-
-  /** Variant of `noLift` for the arguments of applications.
-   *  To produce the right coverage information (especially in case of exceptions), we must lift:
-   *  - all the applications, except the erased ones
-   *  - all the impure arguments
-   *
-   * There's no need to lift the other arguments.
-   */
-  private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
-    arg match
-      case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
-      case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
-      case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
-      case tpd.Typed(expr, _) => noLiftArg(expr)
-      case _ => super.noLift(arg)
-
-  override def noLift(expr: tpd.Tree)(using Context) =
-    if liftingArgs then noLiftArg(expr) else super.noLift(expr)
-
-  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
-    val liftedFun = liftApp(defs, tree.fun)
-    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
-    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
-  }
-}
-
-/** Lift all impure or complex arguments to `def`s */
-object LiftToDefs extends LiftComplex {
-  override def liftedFlags: FlagSet = Method
-  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.DefDef = tpd.DefDef(sym, rhs)
-}
 
 /** Lifter for eta expansion */
 object EtaExpansion extends LiftImpure {
@@ -244,7 +215,7 @@ object EtaExpansion extends LiftImpure {
    *
    *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) _ }
    *
-   *  where `T1, ..., Tn` are the paremeter types of the expanded method.
+   *  where `T1, ..., Tn` are the parameter types of the expanded method.
    *  If `expr` has implicit function type, the arguments are passed with `given`.
    *  E.g. for (1):
    *
@@ -300,9 +271,9 @@ object EtaExpansion extends LiftImpure {
     val body = Apply(lifted, ids)
     if (mt.isContextualMethod) body.setApplyKind(ApplyKind.Using)
     val fn =
-      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given), mt.erasedParams)
-      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.erasedParams)
-      else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.erasedParams)
+      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given), mt.paramErasureStatuses)
+      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.paramErasureStatuses)
+      else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.paramErasureStatuses)
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }

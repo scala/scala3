@@ -26,8 +26,7 @@ import scala.annotation.nowarn
 object Source {
   val DefaultBufSize = 2048
 
-  /** Creates a `Source` from System.in.
-   */
+  /** Creates a `Source` from System.in. */
   def stdin = fromInputStream(System.in)
 
   /** Creates a Source from an Iterable.
@@ -40,56 +39,84 @@ object Source {
   } withReset(() => fromIterable(iterable))
 
   /** Creates a Source instance from a single character.
+   *
+   *  @param c the character to use as the source content
    */
   def fromChar(c: Char): Source = fromIterable(Array(c))
 
-  /** creates Source from array of characters, with empty description.
+  /** Creates Source from array of characters, with empty description.
+   *
+   *  @param chars the array of characters to use as the source content
    */
   def fromChars(chars: Array[Char]): Source = fromIterable(chars)
 
-  /** creates Source from a String, with no description.
+  /** Creates Source from a String, with no description.
+   *
+   *  @param s the string to use as the source content
    */
   def fromString(s: String): Source = fromIterable(s)
 
-  /** creates Source from file with given name, setting its description to
+  /** Creates Source from file with given name, setting its description to
    *  filename.
+   *
+   *  @param name the name of the file to read
+   *  @param codec the implicit codec used for character encoding
    */
   def fromFile(name: String)(implicit codec: Codec): BufferedSource =
-    fromFile(new JFile(name))(codec)
+    fromFile(new JFile(name))(using codec)
 
-  /** creates Source from file with given name, using given encoding, setting
+  /** Creates Source from file with given name, using given encoding, setting
    *  its description to filename.
+   *
+   *  @param name the name of the file to read
+   *  @param enc the name of the character encoding to use
    */
   def fromFile(name: String, enc: String): BufferedSource =
-    fromFile(name)(Codec(enc))
+    fromFile(name)(using Codec(enc))
 
-  /** creates `source` from file with given file `URI`.
+  /** Creates `source` from file with given file `URI`.
+   *
+   *  @param uri the file URI to read from
+   *  @param codec the implicit codec used for character encoding
    */
   def fromFile(uri: URI)(implicit codec: Codec): BufferedSource =
-    fromFile(new JFile(uri))(codec)
+    fromFile(new JFile(uri))(using codec)
 
-  /** creates Source from file with given file: URI
+  /** Creates Source from file with given file: URI
+   *
+   *  @param uri the file URI to read from
+   *  @param enc the name of the character encoding to use
    */
   def fromFile(uri: URI, enc: String): BufferedSource =
-    fromFile(uri)(Codec(enc))
+    fromFile(uri)(using Codec(enc))
 
-  /** creates Source from file, using default character encoding, setting its
+  /** Creates Source from file, using default character encoding, setting its
    *  description to filename.
+   *
+   *  @param file the file to read from
+   *  @param codec the implicit codec used for character encoding
    */
   def fromFile(file: JFile)(implicit codec: Codec): BufferedSource =
-    fromFile(file, Source.DefaultBufSize)(codec)
+    fromFile(file, Source.DefaultBufSize)(using codec)
 
   /** same as fromFile(file, enc, Source.DefaultBufSize)
+   *
+   *  @param file the file to read from
+   *  @param enc the name of the character encoding to use
    */
   def fromFile(file: JFile, enc: String): BufferedSource =
-    fromFile(file)(Codec(enc))
+    fromFile(file)(using Codec(enc))
 
   def fromFile(file: JFile, enc: String, bufferSize: Int): BufferedSource =
-    fromFile(file, bufferSize)(Codec(enc))
+    fromFile(file, bufferSize)(using Codec(enc))
 
   /** Creates Source from `file`, using given character encoding, setting
    *  its description to filename. Input is buffered in a buffer of size
    *  `bufferSize`.
+   *
+   *  @param file the file to read from
+   *  @param bufferSize the size of the input buffer, in characters
+   *  @param codec the implicit codec used for character encoding
    */
   def fromFile(file: JFile, bufferSize: Int)(implicit codec: Codec): BufferedSource = {
     val inputStream = new FileInputStream(file)
@@ -97,23 +124,25 @@ object Source {
     createBufferedSource(
       inputStream,
       bufferSize,
-      () => fromFile(file, bufferSize)(codec),
+      () => fromFile(file, bufferSize)(using codec),
       () => inputStream.close()
-    )(codec) withDescription s"file:${file.getAbsolutePath}"
+    )(using codec) withDescription s"file:${file.getAbsolutePath}"
   }
 
-  /** Create a `Source` from array of bytes, decoding
+  /** Creates a `Source` from array of bytes, decoding
    *  the bytes according to codec.
    *
+   *  @param bytes the array of bytes to decode into characters
+   *  @param codec the implicit codec used for character encoding
    *  @return      the created `Source` instance.
    */
   def fromBytes(bytes: Array[Byte])(implicit codec: Codec): Source =
     fromString(new String(bytes, codec.name))
 
   def fromBytes(bytes: Array[Byte], enc: String): Source =
-    fromBytes(bytes)(Codec(enc))
+    fromBytes(bytes)(using Codec(enc))
 
-  /** Create a `Source` from array of bytes, assuming
+  /** Creates a `Source` from array of bytes, assuming
    *  one byte per character (ISO-8859-1 encoding.)
    */
   @deprecated("Use `fromBytes` and specify an encoding", since="2.13.9")
@@ -121,29 +150,44 @@ object Source {
     fromString(new String(bytes, Codec.ISO8859.charSet))
 
   /** creates `Source` from file with given file: URI
+   *
+   *  @param uri the file URI to read from
+   *  @param codec the implicit codec used for character encoding
    */
   def fromURI(uri: URI)(implicit codec: Codec): BufferedSource =
-    fromFile(new JFile(uri))(codec)
+    fromFile(new JFile(uri))(using codec)
 
-  /** same as fromURL(new URL(s))(Codec(enc))
+  /** Same as fromURL(new URL(s))(Codec(enc))
+   *
+   *  @param s the URL string to read from
+   *  @param enc the name of the character encoding to use
    */
   def fromURL(s: String, enc: String): BufferedSource =
-    fromURL(s)(Codec(enc))
+    fromURL(s)(using Codec(enc))
 
-  /** same as fromURL(new URL(s))
+  /** Same as fromURL(new URL(s))
+   *
+   *  @param s the URL string to read from
+   *  @param codec the implicit codec used for character encoding
    */
   def fromURL(s: String)(implicit codec: Codec): BufferedSource =
-    fromURL(new URI(s).toURL)(codec)
+    fromURL(new URI(s).toURL)(using codec)
 
-  /** same as fromInputStream(url.openStream())(Codec(enc))
+  /** Same as fromInputStream(url.openStream())(Codec(enc))
+   *
+   *  @param url the URL to read from
+   *  @param enc the name of the character encoding to use
    */
   def fromURL(url: URL, enc: String): BufferedSource =
-    fromURL(url)(Codec(enc))
+    fromURL(url)(using Codec(enc))
 
-  /** same as fromInputStream(url.openStream())(codec)
+  /** Same as fromInputStream(url.openStream())(codec)
+   *
+   *  @param url the URL to read from
+   *  @param codec the implicit codec used for character encoding
    */
   def fromURL(url: URL)(implicit codec: Codec): BufferedSource =
-    fromInputStream(url.openStream())(codec)
+    fromInputStream(url.openStream())(using codec)
 
   /** Reads data from inputStream with a buffered reader, using the encoding
    *  in implicit parameter codec.
@@ -158,20 +202,20 @@ object Source {
   def createBufferedSource(
     inputStream: InputStream,
     bufferSize: Int = DefaultBufSize,
-    reset: () => Source = null,
-    close: () => Unit = null
+    reset: (() => Source) | Null = null,
+    close: (() => Unit) | Null = null
   )(implicit codec: Codec): BufferedSource = {
     // workaround for default arguments being unable to refer to other parameters
-    val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(codec) else reset
+    val resetFn = if (reset == null) () => createBufferedSource(inputStream, bufferSize, reset, close)(using codec) else reset
 
-    new BufferedSource(inputStream, bufferSize)(codec) withReset resetFn withClose close
+    new BufferedSource(inputStream, bufferSize)(using codec) withReset resetFn withClose close
   }
 
   def fromInputStream(is: InputStream, enc: String): BufferedSource =
-    fromInputStream(is)(Codec(enc))
+    fromInputStream(is)(using Codec(enc))
 
   def fromInputStream(is: InputStream)(implicit codec: Codec): BufferedSource =
-    createBufferedSource(is, reset = () => fromInputStream(is)(codec), close = () => is.close())(codec)
+    createBufferedSource(is, reset = () => fromInputStream(is)(using codec), close = () => is.close())(using codec)
 
   /** Reads data from a classpath resource, using either a context classloader (default) or a passed one.
    *
@@ -201,15 +245,14 @@ object Source {
  *  The default positioner encodes line and column numbers in the position passed to [[report]].
  *  This behavior can be changed by supplying a
  *  [[scala.io.Source.withPositioning(pos:* custom positioner]].
- *
  */
 abstract class Source extends Iterator[Char] with Closeable {
-  /** the actual iterator */
+  /** The actual iterator. */
   protected val iter: Iterator[Char]
 
   // ------ public values
 
-  /** description of this source, default empty */
+  /** Description of this source, default empty. */
   var descr: String = ""
   var nerrors = 0
   var nwarnings = 0
@@ -217,7 +260,7 @@ abstract class Source extends Iterator[Char] with Closeable {
   private def lineNum(line: Int): String = (getLines() drop (line - 1) take 1).mkString
 
   class LineIterator extends AbstractIterator[String] with Iterator[String] {
-    private[this] val sb = new StringBuilder
+    private val sb = new StringBuilder
 
     lazy val iter: BufferedIterator[Char] = Source.this.iter.buffered
     def isNewline(ch: Char): Boolean = ch == '\r' || ch == '\n'
@@ -249,28 +292,26 @@ abstract class Source extends Iterator[Char] with Closeable {
    */
   def getLines(): Iterator[String] = new LineIterator()
 
-  /** Returns `'''true'''` if this source has more characters.
-   */
+  /** Returns `**true**` if this source has more characters. */
   def hasNext: Boolean = iter.hasNext
 
-  /** Returns next character.
-   */
+  /** Returns next character. */
   def next(): Char = positioner.next()
 
   @nowarn("cat=deprecation")
   class Positioner(encoder: Position) {
     def this() = this(RelaxedPosition)
     /** the last character returned by next. */
-    var ch: Char = _
+    var ch: Char = compiletime.uninitialized
 
-    /** position of last character returned by next */
+    /** Position of last character returned by next. */
     var pos = 0
 
-    /** current line and column */
+    /** Current line and column. */
     var cline = 1
     var ccol = 1
 
-    /** default col increment for tabs '\t', set to 4 initially */
+    /** Default col increment for tabs '\t', set to 4 initially. */
     var tabinc = 4
 
     def next(): Char = {
@@ -317,7 +358,7 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, msg, out)
   }
 
-  private def spaces(n: Int) = List.fill(n)(' ').mkString
+  private def spaces(n: Int) = " ".repeat(n)
   /**
    *  @param pos the source position (line/column)
    *  @param msg the error message to report
@@ -327,7 +368,7 @@ abstract class Source extends Iterator[Char] with Closeable {
     val line  = Position line pos
     val col   = Position column pos
 
-    out println "%s:%d:%d: %s%s%s^".format(descr, line, col, msg, lineNum(line), spaces(col - 1))
+    out.println("%s:%d:%d: %s%s%s^".format(descr, line, col, msg, lineNum(line), spaces(col - 1)))
   }
 
   /**
@@ -344,15 +385,17 @@ abstract class Source extends Iterator[Char] with Closeable {
     report(pos, "warning! " + msg, out)
   }
 
-  private[this] var resetFunction: () => Source = null
-  private[this] var closeFunction: () => Unit = null
-  private[this] var positioner: Positioner = RelaxedPositioner
+  @annotation.stableNull
+  private var resetFunction: (() => Source) | Null = null
+  @annotation.stableNull
+  private var closeFunction: (() => Unit) | Null = null
+  private var positioner: Positioner = RelaxedPositioner
 
-  def withReset(f: () => Source): this.type = {
+  def withReset(f: (() => Source) | Null): this.type = {
     resetFunction = f
     this
   }
-  def withClose(f: () => Unit): this.type = {
+  def withClose(f: (() => Unit) | Null): this.type = {
     closeFunction = f
     this
   }
@@ -360,7 +403,10 @@ abstract class Source extends Iterator[Char] with Closeable {
     descr = text
     this
   }
-  /** Change or disable the positioner. */
+  /** Change or disable the positioner.
+   *
+   *  @param on whether to enable (`true`) or disable (`false`) position tracking
+   */
   def withPositioning(on: Boolean): this.type = {
     positioner = if (on) RelaxedPositioner else NoPositioner
     this

@@ -1,7 +1,5 @@
 package dotty.tools.dotc.semanticdb.internal
 
-import scala.language.unsafeNulls
-
 import java.io.IOException
 import java.io.OutputStream
 import java.nio.ByteBuffer
@@ -221,13 +219,14 @@ object SemanticdbOutputStream {
   def encodeZigZag64(n: Long): Long = (n << 1) ^ (n >> 63)
 }
 
-class SemanticdbOutputStream(output: OutputStream, buffer: Array[Byte]) {
-  private def refreshBuffer(): Unit = {
+class SemanticdbOutputStream(output: OutputStream | Null, buffer: Array[Byte]) {
+  private def refreshBuffer(): OutputStream = {
     if (output == null) {
       throw new OutOfSpaceException()
     }
     output.write(buffer, 0, position)
     position = 0
+    output
   }
 
   def flush(): Unit = {
@@ -565,7 +564,7 @@ class SemanticdbOutputStream(output: OutputStream, buffer: Array[Byte]) {
       length -= bytesWritten
       position = limit
       totalBytesWritten += bytesWritten
-      refreshBuffer()
+      val output = refreshBuffer()
       while (length > limit) {
         value.get(buffer, 0, limit)
         output.write(buffer, 0, limit)
@@ -592,7 +591,7 @@ class SemanticdbOutputStream(output: OutputStream, buffer: Array[Byte]) {
       length -= bytesWritten
       position = limit
       totalBytesWritten += bytesWritten
-      refreshBuffer()
+      val output = refreshBuffer()
       if (length <= limit) {
         System.arraycopy(value, offset, buffer, 0, length)
         position = length

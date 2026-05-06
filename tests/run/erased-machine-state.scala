@@ -1,4 +1,4 @@
-//> using options -language:experimental.erasedDefinitions
+import language.experimental.erasedDefinitions
 
 import scala.annotation.implicitNotFound
 
@@ -8,52 +8,31 @@ final class Off extends State
 
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
-object IsOff {
-  implicit def isOff: IsOff[Off] = {
-    println("isOff")
-    new IsOff[Off]
-  }
-}
+object IsOff:
+  inline given IsOff[Off]()
 
 @implicitNotFound("State must be On")
 class IsOn[S <: State]
-object IsOn {
-  implicit def isOn: IsOn[On] = {
-    println("isOn")
-    new IsOn[On]
-  }
-}
+object IsOn:
+  inline given IsOn[On]()
 
-class Machine[S <: State] private {
-  def turnedOn (using erased s: IsOff[S]): Machine[On] = {
+class Machine[S <: State]:
+  def turnOn(using erased IsOff[S]): Machine[On] =
     println("turnedOn")
     new Machine[On]
-  }
-  def turnedOff (using erased s: IsOn[S]): Machine[Off] = {
+
+  def turnOff (using erased IsOn[S]): Machine[Off] =
     println("turnedOff")
     new Machine[Off]
-  }
-}
 
-object Machine {
-  def newMachine(): Machine[Off] = {
-    println("newMachine")
-    new Machine[Off]
-  }
-}
 
-object Test {
-  def main(args: Array[String]): Unit = {
-    val m = Machine.newMachine()
-    m.turnedOn
-    m.turnedOn.turnedOff
+@main def Test =
+  val m = Machine[Off]()
+  val m1 = m.turnOn
+  val m2 = m1.turnOff
+  m2.turnOn
 
-    // m.turnedOff
-    //            ^
-    //            State must be On
-
-    // m.turnedOn.turnedOn
-    //                    ^
-    //                    State must be Off
-  }
-}
+  // m1.turnOn
+  //          ^ error: State must be Off
+  // m2.turnOff
+  //           ^ error: State must be On

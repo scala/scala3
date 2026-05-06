@@ -1,13 +1,16 @@
 package scala
 package compiletime
 
+import language.experimental.captureChecking
+
 import annotation.{compileTimeOnly, experimental}
 
 /** Use this method when you have a type, do not have a value for it but want to
  *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
  *  pattern-match on it as follows:
- *  ```scala
+ *  ```scala sc:compile
  *  //{
+ *  import scala.compiletime.*
  *  type Tup
  *  inline def f = {
  *  //}
@@ -22,16 +25,18 @@ import annotation.{compileTimeOnly, experimental}
  *  This value can only be used in an inline match and the value cannot be used in
  *  the branches.
  *  @syntax markdown
+ *
+ *  @tparam T the type to match against in an inline match expression
  */
-// TODO add `erased` once it is not an experimental feature anymore
 def erasedValue[T]: T = erasedValue[T]
 
 /** Used as the initializer of a mutable class or object field, like this:
  *
- *  ```scala
- *  //{
+ *  ```scala sc-hidden sc-name:compiletime-uninitialized-preamble
+ *  import scala.compiletime.*
  *  type T
- *  //}
+ *  ```
+ *  ```scala sc:compile sc-compile-with:compiletime-uninitialized-preamble
  *  var x: T = uninitialized
  *  ```
  *
@@ -44,8 +49,13 @@ def uninitialized: Nothing = ???
 
 /** Used as the right hand side of a given in a trait, like this
  *
+ *  ```scala sc-hidden sc-name:compiletime-deferred-preamble
+ *  import scala.compiletime.*
+ *  trait DeferredHolder:
+ *    type T
  *  ```
- *  given T = deferred
+ *  ```scala sc:compile sc-compile-with:compiletime-deferred-preamble
+ *    given T = deferred
  *  ```
  *
  *  This signifies that the given will get a synthesized definition in all classes
@@ -58,21 +68,28 @@ def deferred: Nothing = ???
 /** The error method is used to produce user-defined compile errors during inline expansion.
  *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.
  *
- *  ```scala sc:fail
+ *  ```scala sc-hidden sc-name:compiletime-error-imports
+ *  import scala.compiletime.*
+ *  ```
+ *  ```scala sc:fail sc-compile-with:compiletime-error-imports
  *  error("My error message")
  *  ```
  *  or
- *  ```scala
+ *  ```scala sc:compile sc-compile-with:compiletime-error-imports
  *  inline def errorOnThisCode(inline x: Any) =
  *    error("My error of this code: " + codeOf(x))
  *  ```
  *  @syntax markdown
+ *
+ *  @param msg the error message to display at compile time
+ *  @return this method never returns; it always produces a compile-time error
  */
 inline def error(inline msg: String): Nothing = ???
 
 /** Returns the string representation of argument code:
  *
- *  ```scala
+ *  ```scala sc:compile
+ *  import scala.compiletime.*
  *  inline def logged(inline p1: Any) =
  *    ("code: " + codeOf(p1), p1)
  *
@@ -87,6 +104,9 @@ inline def error(inline msg: String): Nothing = ???
  *        Other values may display unintutively.
  *
  *  @syntax markdown
+ *
+ *  @param arg the expression whose source code representation is returned
+ *  @return the string representation of the argument's source code
  */
 transparent inline def codeOf(arg: Any): String =
   // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
@@ -97,6 +117,7 @@ transparent inline def codeOf(arg: Any): String =
  *
  *  Usage:
  *  ```scala sc:fail
+ *  import scala.compiletime.*
  *  inline def twice(inline n: Int): Int =
  *    requireConst(n) // compile-time assertion that the parameter `n` is a constant
  *    n + n
@@ -106,6 +127,8 @@ transparent inline def codeOf(arg: Any): String =
  *  twice(m) // error: expected a constant value but found: m
  *  ```
  *  @syntax markdown
+ *
+ *  @param x the value that must be a compile-time constant after inlining
  */
 inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -114,6 +137,8 @@ inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | 
 /** Same as `constValue` but returns a `None` if a constant value
  *  cannot be constructed from the provided type. Otherwise returns
  *  that value wrapped in `Some`.
+ *
+ *  @tparam T the constant singleton type to attempt to convert to a value
  */
 transparent inline def constValueOpt[T]: Option[T] =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -121,6 +146,8 @@ transparent inline def constValueOpt[T]: Option[T] =
 
 /** Given a constant, singleton type `T`, convert it to a value
  *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
+ *
+ *  @tparam T the constant singleton type to convert to a value
  */
 transparent inline def constValue[T]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -128,6 +155,8 @@ transparent inline def constValue[T]: T =
 
 /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
  *  `(constValue[X1], ..., constValue[Xn])`.
+ *
+ *  @tparam T the tuple type whose element types are constant singleton types
  */
 inline def constValueTuple[T <: Tuple]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -136,8 +165,9 @@ inline def constValueTuple[T <: Tuple]: T =
 
 /** Summons first given matching one of the listed cases. E.g. in
  *
- *  ```scala
+ *  ```scala sc:compile
  *  //{
+ *  import scala.compiletime.*
  *  type A
  *  trait B
  *  type C
@@ -157,6 +187,10 @@ inline def constValueTuple[T <: Tuple]: T =
  *  ```
  *  the returned value would be `2`.
  *  @syntax markdown
+ *
+ *  @tparam T the result type of the match expression
+ *  @param f a match block with cases that summon givens of specified types
+ *  @return the result of the first matching case
  */
 transparent inline def summonFrom[T](f: Nothing => T): T =
   error("Compiler bug: `summonFrom` was not evaluated by the compiler")
@@ -174,21 +208,25 @@ transparent inline def summonInline[T]: T =
  *  a Tuple.
  *
  *  @tparam T the tuple containing the types of the values to be summoned
- *  @return the given values typed as elements of the tuple
+ *  @return a tuple of the summoned given instances corresponding to the element types of `T`
  */
 inline def summonAll[T <: Tuple]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
   error("Compiler bug: `summonAll` was not evaluated by the compiler")
 
-/** Assertion that an argument is by-name. Used for nullability checking. */
+/** Assertion that an argument is by-name. Used for nullability checking.
+ *
+ *  @tparam T the result type of the by-name argument
+ *  @param x the by-name argument to evaluate
+ */
 def byName[T](x: => T): T = x
 
 /** Casts a value to be `Matchable`. This is needed if the value's type is an unconstrained
-  *  type parameter and the value is the scrutinee of a match expression.
-  *  This is normally disallowed since it violates parametricity and allows
-  *  to uncover implementation details that were intended to be hidden.
-  *  The `asMatchable` escape hatch should be used sparingly. It's usually
-  *  better to constrain the scrutinee type to be `Matchable` in the first place.
-  */
+ *  type parameter and the value is the scrutinee of a match expression.
+ *  This is normally disallowed since it violates parametricity and allows
+ *  to uncover implementation details that were intended to be hidden.
+ *  The `asMatchable` escape hatch should be used sparingly. It's usually
+ *  better to constrain the scrutinee type to be `Matchable` in the first place.
+ */
 extension [T](x: T)
   transparent inline def asMatchable: x.type & Matchable = x.asInstanceOf[x.type & Matchable]

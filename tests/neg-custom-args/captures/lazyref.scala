@@ -3,7 +3,7 @@ class CC
 type Cap = CC^
 
 class LazyRef[T](val elem: () => T):
-  val get: () => T = elem
+  def get: () => T = elem  // error: separation failure
   def map[U](f: T => U): LazyRef[U]^{f, this} =
     new LazyRef(() => f(elem())) // error: separation failure
 

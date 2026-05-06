@@ -1,6 +1,6 @@
 import caps.use
 
-def runOps(@use xs: List[() => Unit]): Unit = ???
+def runOps[C^](xs: List[() ->{C} Unit]): Unit = ???
 
 def f[T <: List[() => Unit]](xs: T): () -> Unit =
   () => runOps(xs) // error

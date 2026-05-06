@@ -3,6 +3,6 @@ import annotation.experimental
 
 @experimental object Test:
 
-  erased class CanThrow[-E <: Exception]
+  class CanThrow[-E <: Exception] extends compiletime.Erased
 
   def other = 1

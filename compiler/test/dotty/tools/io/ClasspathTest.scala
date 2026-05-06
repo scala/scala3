@@ -7,13 +7,13 @@ import org.junit.Test
 import java.io.File
 import dotty.tools.io.AbstractFile
 import java.nio.file.{Files, Paths}
-import java.nio.file.StandardCopyOption._
+import java.nio.file.StandardCopyOption.*
 import java.nio.file.attribute.PosixFilePermissions
 import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 
 class ClasspathTest {
 
-  def pathsep = sys.props("path.separator")
+  def pathsep: String = sys.props("path.separator").nn
 
   def isWindows: Boolean = scala.util.Properties.isWin
 

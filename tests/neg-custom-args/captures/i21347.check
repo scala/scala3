@@ -1,12 +1,16 @@
--- Error: tests/neg-custom-args/captures/i21347.scala:4:15 -------------------------------------------------------------
-4 |  ops.foreach: op => // error
-  |               ^
-  |               Capture set parameter C leaks into capture scope of method runOps.
-  |               To allow this, the type C should be declared with a @use annotation
-5 |    op()
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21347.scala:8:2 -----------------------------------------
+8 |  () => runOps(f :: Nil) // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    () ->{f} Unit
+  |  Required: () -> Unit
+  |
+  |  Note that capability `f` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21347.scala:11:15 ------------------------------------------------------------
 11 |  ops.foreach: op => // error
    |               ^
    |               Local reach capability ops* leaks into capture scope of method runOpsAlt.
-   |               To allow this, the parameter ops should be declared with a @use annotation
+   |               You could try to abstract the capabilities referred to by ops* in a capset variable.
+   |
 12 |    op()

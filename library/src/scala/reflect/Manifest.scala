@@ -27,45 +27,45 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
  *  which are not yet adequately represented in manifests.
  *
  *  Example usages:
- *  {{{
- *    def arr[T] = new Array[T](0)                          // does not compile
- *    def arr[T](implicit m: Manifest[T]) = new Array[T](0) // compiles
- *    def arr[T: Manifest] = new Array[T](0)                // shorthand for the preceding
+ *  ```scala sc:compile
+ *    import scala.reflect.Manifest
+ *
+ *    def arr[T: Manifest]: Array[T] = new Array[T](0)
  *
  *    // Methods manifest and optManifest are in [[scala.Predef]].
- *    def isApproxSubType[T: Manifest, U: Manifest] = manifest[T] <:< manifest[U]
- *    isApproxSubType[List[String], List[AnyRef]] // true
- *    isApproxSubType[List[String], List[Int]]    // false
+ *    def isApproxSubType[T: Manifest, U: Manifest]: Boolean = manifest[T] <:< manifest[U]
+ *    val stringsAreAnyRefs = isApproxSubType[List[String], List[AnyRef]]
+ *    val stringsAreInts = isApproxSubType[List[String], List[Int]]
  *
  *    def methods[T: Manifest] = manifest[T].runtimeClass.getMethods
  *    def retType[T: Manifest](name: String) =
- *      methods[T] find (_.getName == name) map (_.getGenericReturnType)
+ *      methods[T].find(_.getName == name).map(_.getGenericReturnType)
  *
- *    retType[Map[_, _]]("values")  // Some(scala.collection.Iterable<B>)
- *  }}}
+ *    val mapValuesReturnType = retType[Map[_, _]]("values")
+ *  ```
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest(DeprecatedApis.*)?""")
 @implicitNotFound(msg = "No Manifest available for ${T}.")
 // TODO undeprecated until Scala reflection becomes non-experimental
 // @deprecated("use scala.reflect.ClassTag (to capture erasures) or scala.reflect.runtime.universe.TypeTag (to capture types) or both instead", "2.10.0")
 trait Manifest[T] extends ClassManifest[T] with Equals {
-  override def typeArguments: List[Manifest[_]] = Nil
+  override def typeArguments: List[Manifest[?]] = Nil
 
   override def arrayManifest: Manifest[Array[T]] =
     Manifest.classType[Array[T]](arrayClass[T](runtimeClass), this)
 
   override def canEqual(that: Any): Boolean = that match {
-    case _: Manifest[_]   => true
+    case _: Manifest[?]   => true
     case _                => false
   }
   /** Note: testing for erasure here is important, as it is many times
    *  faster than <:< and rules out most comparisons.
    */
   override def equals(that: Any): Boolean = that match {
-    case m: Manifest[_] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
+    case m: Manifest[?] => (m canEqual this) && (this.runtimeClass == m.runtimeClass) && (this <:< m) && (m <:< this)
     case _              => false
   }
-  override def hashCode = this.runtimeClass.##
+  override def hashCode() = this.runtimeClass.##
 }
 
 /** The object `Manifest` defines factory methods for manifests.
@@ -80,7 +80,7 @@ object Manifest {
    * defined above.
    */
 
-  def valueManifests: List[AnyValManifest[_]] =
+  def valueManifests: List[AnyValManifest[?]] =
     ManifestFactory.valueManifests
 
   val Byte: ManifestFactory.ByteManifest = ManifestFactory.Byte
@@ -105,42 +105,44 @@ object Manifest {
     ManifestFactory.singleType[T](value)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a top-level or static class.
-    * @note This no-prefix, no-arguments case is separate because we
-    *       it's called from ScalaRunTime.boxArray itself. If we
-    *       pass varargs as arrays into this, we get an infinitely recursive call
-    *       to boxArray. (Besides, having a separate case is more efficient)
-    */
-  def classType[T](clazz: Predef.Class[_]): Manifest[T] =
+   *  a top-level or static class.
+   *  @note This no-prefix, no-arguments case is separate because we
+   *       it's called from ScalaRunTime.boxArray itself. If we
+   *       pass varargs as arrays into this, we get an infinitely recursive call
+   *       to boxArray. (Besides, having a separate case is more efficient)
+   */
+  def classType[T](clazz: Predef.Class[?]): Manifest[T] =
     ManifestFactory.classType[T](clazz)
 
   /** Manifest for the class type `clazz`, where `clazz` is
-    * a top-level or static class and args are its type arguments. */
-  def classType[T](clazz: Predef.Class[T], arg1: Manifest[_], args: Manifest[_]*): Manifest[T] =
-    ManifestFactory.classType[T](clazz, arg1, args: _*)
+   *  a top-level or static class and args are its type arguments.
+   */
+  def classType[T](clazz: Predef.Class[T], arg1: Manifest[?], args: Manifest[?]*): Manifest[T] =
+    ManifestFactory.classType[T](clazz, arg1, args*)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a class with non-package prefix type `prefix` and type arguments `args`.
-    */
-  def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
-    ManifestFactory.classType[T](prefix, clazz, args: _*)
+   *  a class with non-package prefix type `prefix` and type arguments `args`.
+   */
+  def classType[T](prefix: Manifest[?], clazz: Predef.Class[?], args: Manifest[?]*): Manifest[T] =
+    ManifestFactory.classType[T](prefix, clazz, args*)
 
-  def arrayType[T](arg: Manifest[_]): Manifest[Array[T]] =
+  def arrayType[T](arg: Manifest[?]): Manifest[Array[T]] =
     ManifestFactory.arrayType[T](arg)
 
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
-    * strictly necessary as it could be obtained by reflection. It was
-    * added so that erasure can be calculated without reflection. */
-  def abstractType[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
-    ManifestFactory.abstractType[T](prefix, name, upperBound, args: _*)
+   *  strictly necessary as it could be obtained by reflection. It was
+   *  added so that erasure can be calculated without reflection.
+   */
+  def abstractType[T](prefix: Manifest[?], name: String, upperBound: Predef.Class[?], args: Manifest[?]*): Manifest[T] =
+    ManifestFactory.abstractType[T](prefix, name, upperBound, args*)
 
   /** Manifest for the unknown type `_ >: L <: U` in an existential. */
-  def wildcardType[T](lowerBound: Manifest[_], upperBound: Manifest[_]): Manifest[T] =
+  def wildcardType[T](lowerBound: Manifest[?], upperBound: Manifest[?]): Manifest[T] =
     ManifestFactory.wildcardType[T](lowerBound, upperBound)
 
   /** Manifest for the intersection type `parents_0 with ... with parents_n`. */
-  def intersectionType[T](parents: Manifest[_]*): Manifest[T] =
-    ManifestFactory.intersectionType[T](parents: _*)
+  def intersectionType[T](parents: Manifest[?]*): Manifest[T] =
+    ManifestFactory.intersectionType[T](parents*)
 
 }
 
@@ -149,15 +151,14 @@ object Manifest {
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest(DeprecatedApis.*)?""")
 @SerialVersionUID(1L)
 abstract class AnyValManifest[T <: AnyVal](override val toString: String) extends Manifest[T] with Equals {
-  override def <:<(that: ClassManifest[_]): Boolean =
+  override def <:<(that: ClassManifest[?]): Boolean =
     (that eq this) || (that eq Manifest.Any) || (that eq Manifest.AnyVal)
   override def canEqual(other: Any) = other match {
-    case _: AnyValManifest[_] => true
+    case _: AnyValManifest[?] => true
     case _                    => false
   }
   override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-  @transient
-  override val hashCode = System.identityHashCode(this)
+  override def hashCode = System.identityHashCode(this)
 }
 
 /** `ManifestFactory` defines factory methods for manifests.
@@ -169,7 +170,7 @@ abstract class AnyValManifest[T <: AnyVal](override val toString: String) extend
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest(DeprecatedApis.*)?""")
 object ManifestFactory {
-  def valueManifests: List[AnyValManifest[_]] =
+  def valueManifests: List[AnyValManifest[?]] =
     List(Byte, Short, Char, Int, Long, Float, Double, Boolean, Unit)
 
   @SerialVersionUID(1L)
@@ -307,7 +308,7 @@ object ManifestFactory {
     @inline override def newArray(len: Int): Array[Unit] = new Array[Unit](len)
     override def newWrappedArray(len: Int): ArraySeq[Unit] = new ArraySeq.ofUnit(new Array[Unit](len))
     override def newArrayBuilder(): ArrayBuilder[Unit] = new ArrayBuilder.ofUnit()
-    override protected def arrayClass[T](tp: Class[_]): Class[Array[T]] =
+    override protected def arrayClass[T](tp: Class[?]): Class[Array[T]] =
       if (tp eq runtimeClass) classOf[Array[scala.runtime.BoxedUnit]].asInstanceOf[Class[Array[T]]]
       else super.arrayClass(tp)
     override def unapply(x: Any): Option[Unit] = {
@@ -320,14 +321,14 @@ object ManifestFactory {
   }
   val Unit: UnitManifest = new UnitManifest
 
-  private[this] val ObjectTYPE = classOf[java.lang.Object]
-  private[this] val NothingTYPE = classOf[scala.runtime.Nothing$]
-  private[this] val NullTYPE = classOf[scala.runtime.Null$]
+  private val ObjectTYPE = classOf[java.lang.Object]
+  private val NothingTYPE = classOf[scala.runtime.Nothing$]
+  private val NullTYPE = classOf[scala.runtime.Null$]
 
   @SerialVersionUID(1L)
   final private class AnyManifest extends PhantomManifest[scala.Any](ObjectTYPE, "Any") {
     override def newArray(len: Int) = new Array[scala.Any](len)
-    override def <:<(that: ClassManifest[_]): Boolean = (that eq this)
+    override def <:<(that: ClassManifest[?]): Boolean = (that eq this)
     private def readResolve(): Any = Manifest.Any
   }
   val Any: Manifest[scala.Any] = new AnyManifest
@@ -335,7 +336,7 @@ object ManifestFactory {
   @SerialVersionUID(1L)
   final private class ObjectManifest extends PhantomManifest[java.lang.Object](ObjectTYPE, "Object") {
     override def newArray(len: Int) = new Array[java.lang.Object](len)
-    override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
+    override def <:<(that: ClassManifest[?]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.Object
   }
   val Object: Manifest[java.lang.Object] = new ObjectManifest
@@ -345,7 +346,7 @@ object ManifestFactory {
   @SerialVersionUID(1L)
   final private class AnyValPhantomManifest extends PhantomManifest[scala.AnyVal](ObjectTYPE, "AnyVal") {
     override def newArray(len: Int) = new Array[scala.AnyVal](len)
-    override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
+    override def <:<(that: ClassManifest[?]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.AnyVal
   }
   val AnyVal: Manifest[scala.AnyVal] = new AnyValPhantomManifest
@@ -353,7 +354,7 @@ object ManifestFactory {
   @SerialVersionUID(1L)
   final private class NullManifest extends PhantomManifest[scala.Null](NullTYPE, "Null") {
     override def newArray(len: Int) = new Array[scala.Null](len)
-    override def <:<(that: ClassManifest[_]): Boolean =
+    override def <:<(that: ClassManifest[?]): Boolean =
       (that ne null) && (that ne Nothing) && !(that <:< AnyVal)
     private def readResolve(): Any = Manifest.Null
   }
@@ -362,14 +363,14 @@ object ManifestFactory {
   @SerialVersionUID(1L)
   final private class NothingManifest extends PhantomManifest[scala.Nothing](NothingTYPE, "Nothing") {
     override def newArray(len: Int) = new Array[scala.Nothing](len)
-    override def <:<(that: ClassManifest[_]): Boolean = (that ne null)
+    override def <:<(that: ClassManifest[?]): Boolean = (that ne null)
     private def readResolve(): Any = Manifest.Nothing
   }
   val Nothing: Manifest[scala.Nothing] = new NothingManifest
 
   @SerialVersionUID(1L)
   final private class SingletonTypeManifest[T <: AnyRef](value: AnyRef) extends Manifest[T] {
-    lazy val runtimeClass: Class[_ <: AnyRef] = value.getClass
+    lazy val runtimeClass: Class[? <: AnyRef] = value.getClass
     override lazy val toString = value.toString + ".type"
   }
 
@@ -378,85 +379,86 @@ object ManifestFactory {
     new SingletonTypeManifest[T](value)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a top-level or static class.
-    * @note This no-prefix, no-arguments case is separate because we
-    *       it's called from ScalaRunTime.boxArray itself. If we
-    *       pass varargs as arrays into this, we get an infinitely recursive call
-    *       to boxArray. (Besides, having a separate case is more efficient)
-    */
-  def classType[T](clazz: Predef.Class[_]): Manifest[T] =
+   *  a top-level or static class.
+   *  @note This no-prefix, no-arguments case is separate because we
+   *       it's called from ScalaRunTime.boxArray itself. If we
+   *       pass varargs as arrays into this, we get an infinitely recursive call
+   *       to boxArray. (Besides, having a separate case is more efficient)
+   */
+  def classType[T](clazz: Predef.Class[?]): Manifest[T] =
     new ClassTypeManifest[T](None, clazz, Nil)
 
   /** Manifest for the class type `clazz`, where `clazz` is
-    * a top-level or static class and args are its type arguments. */
-  def classType[T](clazz: Predef.Class[T], arg1: Manifest[_], args: Manifest[_]*): Manifest[T] =
+   *  a top-level or static class and args are its type arguments.
+   */
+  def classType[T](clazz: Predef.Class[T], arg1: Manifest[?], args: Manifest[?]*): Manifest[T] =
     new ClassTypeManifest[T](None, clazz, arg1 :: args.toList)
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a class with non-package prefix type `prefix` and type arguments `args`.
-    */
-  def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
+   *  a class with non-package prefix type `prefix` and type arguments `args`.
+   */
+  def classType[T](prefix: Manifest[?], clazz: Predef.Class[?], args: Manifest[?]*): Manifest[T] =
     new ClassTypeManifest[T](Some(prefix), clazz, args.toList)
 
   @SerialVersionUID(1L)
-  private abstract class PhantomManifest[T](_runtimeClass: Predef.Class[_],
+  private abstract class PhantomManifest[T](_runtimeClass: Predef.Class[?],
                                             override val toString: String) extends ClassTypeManifest[T](None, _runtimeClass, Nil) {
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-    @transient
-    override val hashCode = System.identityHashCode(this)
+    override def hashCode = System.identityHashCode(this)
   }
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-    * a top-level or static class. */
+   *  a top-level or static class.
+   */
   @SerialVersionUID(1L)
-  private class ClassTypeManifest[T](prefix: Option[Manifest[_]],
-                                     val runtimeClass: Predef.Class[_],
-                                     override val typeArguments: List[Manifest[_]]) extends Manifest[T] {
-    override def toString =
+  private class ClassTypeManifest[T](prefix: Option[Manifest[?]],
+                                     val runtimeClass: Predef.Class[?],
+                                     override val typeArguments: List[Manifest[?]]) extends Manifest[T] {
+    override def toString() =
       (if (prefix.isEmpty) "" else prefix.get.toString+"#") +
       (if (runtimeClass.isArray) "Array" else runtimeClass.getName) +
       argString
    }
 
-  def arrayType[T](arg: Manifest[_]): Manifest[Array[T]] =
+  def arrayType[T](arg: Manifest[?]): Manifest[Array[T]] =
     arg.asInstanceOf[Manifest[T]].arrayManifest
 
   @SerialVersionUID(1L)
-  private class AbstractTypeManifest[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: scala.collection.Seq[Manifest[_]]) extends Manifest[T] {
+  private class AbstractTypeManifest[T](prefix: Manifest[?], name: String, upperBound: Predef.Class[?], args: scala.collection.Seq[Manifest[?]]) extends Manifest[T] {
     def runtimeClass = upperBound
     override val typeArguments = args.toList
-    override def toString = prefix.toString+"#"+name+argString
+    override def toString() = prefix.toString+"#"+name+argString
   }
 
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
-    * strictly necessary as it could be obtained by reflection. It was
-    * added so that erasure can be calculated without reflection. */
-  def abstractType[T](prefix: Manifest[_], name: String, upperBound: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
+   *  strictly necessary as it could be obtained by reflection. It was
+   *  added so that erasure can be calculated without reflection.
+   */
+  def abstractType[T](prefix: Manifest[?], name: String, upperBound: Predef.Class[?], args: Manifest[?]*): Manifest[T] =
     new AbstractTypeManifest[T](prefix, name, upperBound, args)
 
   @SerialVersionUID(1L)
-  private class WildcardManifest[T](lowerBound: Manifest[_], upperBound: Manifest[_]) extends Manifest[T] {
+  private class WildcardManifest[T](lowerBound: Manifest[?], upperBound: Manifest[?]) extends Manifest[T] {
     def runtimeClass = upperBound.runtimeClass
-    override def toString =
+    override def toString() =
       "_" +
         (if (lowerBound eq Nothing) "" else " >: "+lowerBound) +
         (if (upperBound eq Nothing) "" else " <: "+upperBound)
   }
 
-  /** Manifest for the unknown type `_ >: L <: U` in an existential.
-    */
-  def wildcardType[T](lowerBound: Manifest[_], upperBound: Manifest[_]): Manifest[T] =
+  /** Manifest for the unknown type `_ >: L <: U` in an existential. */
+  def wildcardType[T](lowerBound: Manifest[?], upperBound: Manifest[?]): Manifest[T] =
     new WildcardManifest[T](lowerBound, upperBound)
 
   @SerialVersionUID(1L)
-  private class IntersectionTypeManifest[T](parents: Array[Manifest[_]]) extends Manifest[T] {
+  private class IntersectionTypeManifest[T](parents: Array[Manifest[?]]) extends Manifest[T] {
     // We use an `Array` instead of a `Seq` for `parents` to avoid cyclic dependencies during deserialization
     // which can cause serialization proxies to leak and cause a ClassCastException.
     def runtimeClass = parents(0).runtimeClass
-    override def toString = parents.mkString(" with ")
+    override def toString() = parents.mkString(" with ")
   }
 
   /** Manifest for the intersection type `parents_0 with ... with parents_n`. */
-  def intersectionType[T](parents: Manifest[_]*): Manifest[T] =
+  def intersectionType[T](parents: Manifest[?]*): Manifest[T] =
     new IntersectionTypeManifest[T](parents.toArray)
 }

@@ -1,62 +1,69 @@
 package dotty.tools.scaladoc
 package snippets
 
-import dotty.tools.scaladoc.DocContext
-import java.nio.file.Paths
-import java.io.File
-
+import dotty.tools.dotc.config.Settings._
+import dotty.tools.dotc.fromtasty.TastyFileUtil
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.fromtasty.TastyFileUtil
-import dotty.tools.dotc.config.Settings._
-import dotty.tools.dotc.config.ScalaSettings
 
 class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
-
-// (val classpath: String, val bootclasspath: String, val tastyFiles: Seq[File], isScalajs: Boolean, useJavaCp: Boolean):
   private val sep = System.getProperty("path.separator")
 
   private val fullClasspath = List(
     args.tastyFiles
       .map(_.getAbsolutePath())
-      .map(AbstractFile.getFile(_))
-      .flatMap(t => try { TastyFileUtil.getClassPath(t) } catch { case e: AssertionError => Seq() })
-      .distinct.mkString(sep),
+      .map(AbstractFile.getFile(_).nn)
+      .flatMap(t => try TastyFileUtil.getClassPath(t) catch case _: AssertionError => Seq.empty)
+      .distinct
+      .mkString(sep),
     args.classpath
   ).mkString(sep)
 
-  private val snippetCompilerSettings: Seq[SnippetCompilerSetting[?]] = cctx.settings.userSetSettings(cctx.settingsState).filter(_ != cctx.settings.classpath)
-  .map[SnippetCompilerSetting[?]]( s =>
-    SnippetCompilerSetting(s, s.valueIn(cctx.settingsState))
-  ) :+ SnippetCompilerSetting(cctx.settings.classpath, fullClasspath)
+  private val snippetCompilerSettings: Seq[SnippetCompilerSetting[?]] =
+    val userSetSettings =
+      cctx.settings.userSetSettings(cctx.settingsState)
+        .filter(_ != cctx.settings.classpath)
+        .map[SnippetCompilerSetting[?]]: setting =>
+          SnippetCompilerSetting(setting, setting.valueIn(cctx.settingsState))
+    userSetSettings :+ SnippetCompilerSetting(cctx.settings.classpath, fullClasspath)
 
   private val compiler: SnippetCompiler = SnippetCompiler(snippetCompilerSettings = snippetCompilerSettings)
 
-  // These constants were found empirically to make snippet compiler
-  // report errors in the same position as main compiler.
-  private val constantLineOffset = 2
-  private val constantColumnOffset = 4
-
   def checkSnippet(
-    snippet: String,
+    snippet: SnippetSource,
     data: Option[SnippetCompilerData],
     arg: SnippetCompilerArg,
-    lineOffset: SnippetChecker.LineOffset,
-    sourceFile: SourceFile
-  ): Option[SnippetCompilationResult] = {
+    sourceFile: SourceFile,
+    sourceColumnOffset: Int
+  ): Option[SnippetCompilationResult] =
     if arg.flag != SCFlags.NoCompile then
-      val wrapped = WrappedSnippet(
-        snippet,
-        data.map(_.packageName),
-        lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
-        data.fold(0)(_.position.column) + constantColumnOffset
+      val baseLineOffset = data.fold(0)(_.position.line)
+      val baseColumnOffset = data.fold(0)(_.position.column) + sourceColumnOffset
+      val sourceLines = snippet.sourceLines.map(_.map(_ + baseLineOffset))
+      val adjustedSnippet = snippet.copy(
+        sourceLines = sourceLines,
+        outerLineOffset = snippet.outerLineOffset + baseLineOffset
       )
-      Some(compiler.compile(wrapped, arg, sourceFile))
+      val wrapped = WrappedSnippet(
+        snippet.snippet,
+        data.map(_.packageName),
+        snippet.outerLineOffset + baseLineOffset,
+        baseColumnOffset,
+        sourceLines
+      )
+      Some(compiler.compile(
+        adjustedSnippet,
+        wrapped,
+        arg,
+        sourceFile
+      ))
     else
       None
 
-  }
-
 object SnippetChecker:
-  type LineOffset = Int
-  type SnippetCheckingFunc = (String, LineOffset, Option[SCFlags]) => Option[SnippetCompilationResult]
+  // The first line of snippet content is two lines below the opening code fence.
+  val codeFenceContentLineOffset = 2
+  // Doc comments add ` * ` before snippet content, which shifts columns by four.
+  val docCommentColumnOffset = 4
+
+  type SnippetCheckingFunc = (SnippetSource, Option[SnippetCompilerArg]) => Option[SnippetCompilationResult]

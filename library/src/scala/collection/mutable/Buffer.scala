@@ -14,6 +14,7 @@ package scala.collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.nowarn
 
 
@@ -21,13 +22,15 @@ import scala.annotation.nowarn
  *
  *  @define coll buffer
  *  @define Coll `Buffer`
+ *
+ *  @tparam A the element type of the buffer
  */
 trait Buffer[A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
     with Growable[A]
     with Shrinkable[A]
-    with IterableFactoryDefaults[A, Buffer] {
+    with IterableFactoryDefaults[A, Buffer] { self =>
 
   override def iterableFactory: SeqFactory[Buffer] = Buffer
 
@@ -35,10 +38,10 @@ trait Buffer[A]
 
   //TODO Prepend is a logical choice for a readable name of `+=:` but it conflicts with the renaming of `append` to `add`
   /** Prepends a single element at the front of this $coll.
-    *
-    *  @param elem  the element to $add.
-    *  @return the $coll itself
-    */
+   *
+   *  @param elem  the element to $add.
+   *  @return the $coll itself
+   */
   def prepend(elem: A): this.type
 
   /** Appends the given elements to this buffer.
@@ -55,90 +58,90 @@ trait Buffer[A]
    *  @param elems  the iterable object containing the elements to append.
    *  @return       this $coll
    */
-  @`inline` final def appendAll(@deprecatedName("xs") elems: IterableOnce[A]): this.type = addAll(elems)
+  @`inline` final def appendAll(@deprecatedName("xs") elems: IterableOnce[A]^): this.type = addAll(elems)
 
-  /** Alias for `prepend` */
+  /** Alias for `prepend`. */
   @`inline` final def +=: (elem: A): this.type = prepend(elem)
 
   /** Prepends the elements contained in a iterable object to this buffer.
    *  @param elems  the iterable object containing the elements to append.
    *  @return       this $coll
    */
-  def prependAll(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
+  def prependAll(elems: IterableOnce[A]^): this.type = { insertAll(0, elems); this }
 
   @deprecated("Use prependAll instead", "2.13.0")
   @`inline` final def prepend(elems: A*): this.type = prependAll(elems)
 
-  /** Alias for `prependAll` */
-  @inline final def ++=:(elems: IterableOnce[A]): this.type = prependAll(elems)
+  /** Alias for `prependAll`. */
+  @inline final def ++=:(elems: IterableOnce[A]^): this.type = prependAll(elems)
 
   /** Inserts a new element at a given index into this buffer.
-    *
-    *  @param idx    the index where the new elements is inserted.
-    *  @param elem   the element to insert.
-    *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
-    *            `0 <= idx <= length`.
-    */
+   *
+   *  @param idx    the index where the new elements is inserted.
+   *  @param elem   the element to insert.
+   *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
+   *            `0 <= idx <= length`.
+   */
   @throws[IndexOutOfBoundsException]
   def insert(idx: Int, elem: A): Unit
 
   /** Inserts new elements at the index `idx`. Opposed to method
-    *  `update`, this method will not replace an element with a new
-    *  one. Instead, it will insert a new element at index `idx`.
-    *
-    *  @param idx     the index where a new element will be inserted.
-    *  @param elems   the iterable object providing all elements to insert.
-    *  @throws IndexOutOfBoundsException if `idx` is out of bounds.
-    */
+   *  `update`, this method will not replace an element with a new
+   *  one. Instead, it will insert a new element at index `idx`.
+   *
+   *  @param idx     the index where a new element will be inserted.
+   *  @param elems   the iterable object providing all elements to insert.
+   *  @throws IndexOutOfBoundsException if `idx` is out of bounds.
+   */
   @throws[IndexOutOfBoundsException]
-  def insertAll(idx: Int, elems: IterableOnce[A]): Unit
+  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit
 
   /** Removes the element at a given index position.
-    *
-    *  @param idx  the index which refers to the element to delete.
-    *  @return   the element that was formerly at index `idx`.
-    */
+   *
+   *  @param idx  the index which refers to the element to delete.
+   *  @return   the element that was formerly at index `idx`.
+   */
   @throws[IndexOutOfBoundsException]
   def remove(idx: Int): A
 
   /** Removes the element on a given index position. It takes time linear in
-    *  the buffer size.
-    *
-    *  @param idx       the index which refers to the first element to remove.
-    *  @param count   the number of elements to remove.
-    *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
-    *            `0 <= idx <= length - count` (with `count > 0`).
-    *  @throws   IllegalArgumentException if `count < 0`.
-    */
+   *  the buffer size.
+   *
+   *  @param idx       the index which refers to the first element to remove.
+   *  @param count   the number of elements to remove.
+   *  @throws   IndexOutOfBoundsException if the index `idx` is not in the valid range
+   *            `0 <= idx <= length - count` (with `count > 0`).
+   *  @throws   IllegalArgumentException if `count < 0`.
+   */
   @throws[IndexOutOfBoundsException]
   @throws[IllegalArgumentException]
   def remove(idx: Int, count: Int): Unit
   
   /** Removes a single element from this buffer, at its first occurrence.
-    *  If the buffer does not contain that element, it is unchanged.
-    *
-    *  @param x  the element to remove.
-    *  @return   the buffer itself
-    */
+   *  If the buffer does not contain that element, it is unchanged.
+   *
+   *  @param x  the element to remove.
+   *  @return   the buffer itself
+   */
   def subtractOne (x: A): this.type = {
     val i = indexOf(x)
     if (i != -1) remove(i)
     this
   }
 
-  /** Removes the first ''n'' elements of this buffer.
-    *
-    *  @param n  the number of elements to remove from the beginning
-    *            of this buffer.
-    */
+  /** Removes the first *n* elements of this buffer.
+   *
+   *  @param n  the number of elements to remove from the beginning
+   *            of this buffer.
+   */
   @deprecated("use dropInPlace instead", since = "2.13.4")
   def trimStart(n: Int): Unit = dropInPlace(n)
 
-  /** Removes the last ''n'' elements of this buffer.
-    *
-    *  @param n  the number of elements to remove from the end
-    *            of this buffer.
-    */
+  /** Removes the last *n* elements of this buffer.
+   *
+   *  @param n  the number of elements to remove from the end
+   *            of this buffer.
+   */
   @deprecated("use dropRightInPlace instead", since = "2.13.4")
   def trimEnd(n: Int): Unit = dropRightInPlace(n)
 
@@ -153,7 +156,7 @@ trait Buffer[A]
    *  @param  replaced the number of elements to drop in the original $coll
    *  @return          this $coll
    */
-  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type
 
   // +=, ++=, clear inherited from Growable
   // Per remark of @ichoran, we should preferably not have these:
@@ -166,7 +169,6 @@ trait Buffer[A]
    *
    *  @param  n the number of elements to remove
    *  @return this $coll
-   *
    */
   def dropInPlace(n: Int): this.type = { remove(0, normalized(n)); this }
 
@@ -174,7 +176,6 @@ trait Buffer[A]
    *
    *  @param  n the number of elements to remove
    *  @return this $coll
-   *
    */
   def dropRightInPlace(n: Int): this.type = {
     val norm = normalized(n)
@@ -186,7 +187,6 @@ trait Buffer[A]
    *
    *  @param  n the number of elements to retain
    *  @return this $coll
-   *
    */
   def takeInPlace(n: Int): this.type = {
     val norm = normalized(n)
@@ -198,7 +198,6 @@ trait Buffer[A]
    *
    *  @param  n the number of elements to retain
    *  @return this $coll
-   *
    */
   def takeRightInPlace(n: Int): this.type = { remove(0, length - normalized(n)); this }
 
@@ -207,7 +206,6 @@ trait Buffer[A]
    *  @param  start the lowest index to include
    *  @param  end   the lowest index to exclude
    *  @return this $coll
-   *
    */
   def sliceInPlace(start: Int, end: Int): this.type = takeInPlace(end).dropInPlace(start)
 
@@ -235,7 +233,7 @@ trait Buffer[A]
     if (idx < 0) this else takeInPlace(idx)
   }
 
-  /** Append the given element to this $coll until a target length is reached.
+  /** Appends the given element to this $coll until a target length is reached.
    *
    *  @param   len   the target length
    *  @param   elem  the padding value
@@ -247,7 +245,7 @@ trait Buffer[A]
   }
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
-  override protected[this] def stringPrefix = "Buffer"
+  override protected def stringPrefix = "Buffer"
 }
 
 trait IndexedBuffer[A] extends IndexedSeq[A]
@@ -257,16 +255,16 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
-  /** Replace the contents of this $coll with the flatmapped result.
+  /** Replaces the contents of this $coll with the flatmapped result.
    *
    *  @param f the mapping function
    *  @return this $coll
    */
-  def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
+  def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
     // There's scope for a better implementation which copies elements in place.
     var i = 0
     val s = size
-    val newElems = new Array[IterableOnce[A]](s)
+    val newElems = new Array[IterableOnce[A]^{f}](s)
     while (i < s) { newElems(i) = f(this(i)); i += 1 }
     clear()
     i = 0
@@ -274,9 +272,9 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     this
   }
 
-  /** Replace the contents of this $coll with the filtered result.
+  /** Replaces the contents of this $coll with the filtered result.
    *
-   *  @param f the filtering function
+   *  @param p the filtering function
    *  @return this $coll
    */
   def filterInPlace(p: A => Boolean): this.type = {
@@ -294,7 +292,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     if (i == j) this else takeInPlace(j)
   }
 
-  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type = {
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type = {
     val replaced0 = math.min(math.max(replaced, 0), length)
     val i = math.min(math.max(from, 0), length)
     var j = 0
@@ -315,5 +313,8 @@ object Buffer extends SeqFactory.Delegate[Buffer](ArrayBuffer)
 @SerialVersionUID(3L)
 object IndexedBuffer extends SeqFactory.Delegate[IndexedBuffer](ArrayBuffer)
 
-/** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Buffer` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the buffer
+ */
 abstract class AbstractBuffer[A] extends AbstractSeq[A] with Buffer[A]

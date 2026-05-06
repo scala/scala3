@@ -41,6 +41,6 @@ trait File:
 
 def main(io: Any^) =
   val sayHello: ((File^{io}) => Unit) = (file: File^{io}) => file.write("Hello World!\r\n")
-  val filesList : List[File]^{io} = ???
+  val filesList : List[File]^{io} = ??? // error
   val x = () => filesList.foreach(sayHello)
   x: (() -> Unit) // error

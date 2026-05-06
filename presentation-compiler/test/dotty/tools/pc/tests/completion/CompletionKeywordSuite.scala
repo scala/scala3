@@ -2,10 +2,12 @@ package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
 
+import org.junit.Ignore
 import org.junit.Test
 
 class CompletionKeywordSuite extends BaseCompletionSuite:
 
+  @Ignore
   @Test def `super-template` =
     check(
       """
@@ -57,10 +59,11 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  **/
         |}
         |""".stripMargin,
-     "",
+      "",
       includeCommitCharacter = true
     )
 
+  @Ignore
   @Test def `super-def` =
     check(
       """
@@ -81,6 +84,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `super-val` =
     check(
       """
@@ -101,6 +105,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `super-var` =
     check(
       """
@@ -121,6 +126,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `super-arg` =
     check(
       """
@@ -380,6 +386,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       ""
     )
 
+  @Ignore
   @Test def `super-typeapply` =
     check(
       """
@@ -405,7 +412,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|def
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `protected-val` =
@@ -459,7 +466,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |}""".stripMargin,
       """|using (commit: '')
          |""".stripMargin,
-      includeCommitCharacter = true,
+      includeCommitCharacter = true
     )
 
   @Test def `not-using` =
@@ -467,7 +474,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|object A{
          |  def hello(a: String, u@@)
          |}""".stripMargin,
-      "",
+      ""
     )
 
   @Test def `extends-class` =

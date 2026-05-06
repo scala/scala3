@@ -1,0 +1,8 @@
+class FooSmall: List(type A, type B, type C, type D)
+class FooLarge: List(type A, type B, type C, type D, type E)
+type FooUnion: List()
+type FooAnd: List(type A, type B, type C, type D, type E)
+trait CLS1: List(type A, type B, type C, type B1, type B2, type A3, type B3, type B4)
+type SharedAnd1: List(type B, type Shared, type A, type C)
+type SharedAnd2: List(type C, type Shared, type A, type B)
+type SharedUnion: List(type A, type Shared)

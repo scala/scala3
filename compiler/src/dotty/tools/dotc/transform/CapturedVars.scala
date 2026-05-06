@@ -67,17 +67,15 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
     else refMap(defn.ObjectClass)
   }
 
-  override def prepareForValDef(vdef: ValDef)(using Context): Context = {
+  override def prepareForValDef(vdef: ValDef)(using Context): Context =
     val sym = atPhase(thisPhase)(vdef.symbol)
-    if (captured contains sym) {
+    if captured.contains(sym) then
       val newd = atPhase(thisPhase)(sym.denot).copySymDenotation(
         info = refClass(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef,
         initFlags = sym.flags &~ Mutable)
       newd.removeAnnotation(defn.VolatileAnnot)
       newd.installAfter(thisPhase)
-    }
     ctx
-  }
 
   override def transformValDef(vdef: ValDef)(using Context): Tree = {
     val vble = vdef.symbol

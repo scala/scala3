@@ -59,7 +59,11 @@ object Util:
       case TypeApply(fn, targs) =>
         unapply(fn)
 
+      case ref: RefTree if ref.symbol.is(Flags.Method) =>
+        Some((ref, Nil))
+
       case ref: RefTree if ref.tpe.widenSingleton.isInstanceOf[MethodicType] =>
+        // for polymorphic method with no `apply` symbol; see tests/init/pos/interleaving-overload.scala
         Some((ref, Nil))
 
       case _ => None
@@ -113,7 +117,7 @@ object Util:
       }
 
     // A concrete class may not be instantiated if the self type is not satisfied
-    instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
+    instantiable
 
   /** Whether the class or its super class/trait contains any mutable fields? */
   def isMutable(cls: ClassSymbol)(using Context): Boolean =

@@ -1,0 +1,56 @@
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:4:6 --------------------------------------------------
+4 |  def f = s.trim // warn
+  |      ^
+  |   method f exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:8:6 --------------------------------------------------
+8 |  def h = (s.trim, s.length) // warn
+  |      ^
+  |method h exposes a flexible type in its inferred result type ((String)?, Int). Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:9:16 -------------------------------------------------
+9 |  protected def i = s.trim // warn
+  |                ^
+  |   method i exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:11:19 ------------------------------------------------
+11 |  private[foo] def k = s.trim // warn
+   |                   ^
+   | method k exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:12:6 -------------------------------------------------
+12 |  val ss = s.replace("a", "A") // warn
+   |      ^
+   | value ss exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:13:6 -------------------------------------------------
+13 |  val ss2 = Seq(s.trim) // warn
+   |      ^
+   |value ss2 exposes a flexible type in its inferred result type Seq[(String)?]. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:21:6 -------------------------------------------------
+21 |  def f = s2.trim // warn
+   |      ^
+   | method f exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:25:6 -------------------------------------------------
+25 |  def h = (s2.trim, s2.length) // warn
+   |      ^
+   |method h exposes a flexible type in its inferred result type ((String)?, Int). Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:26:6 -------------------------------------------------
+26 |  val ss = s2.replace("a", "A") // warn
+   |      ^
+   | value ss exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:27:6 -------------------------------------------------
+27 |  val ss2 = Seq(s2.trim) // warn
+   |      ^
+   |value ss2 exposes a flexible type in its inferred result type Seq[(String)?]. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:32:4 -------------------------------------------------
+32 |def f = s2.trim // warn
+   |    ^
+   | method f exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:36:4 -------------------------------------------------
+36 |def h = (s2.trim, s2.length) // warn
+   |    ^
+   |method h exposes a flexible type in its inferred result type ((String)?, Int). Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:37:4 -------------------------------------------------
+37 |val ss = s2.replace("a", "A") // warn
+   |    ^
+   | value ss exposes a flexible type in its inferred result type (String)?. Consider annotating the type explicitly
+-- Warning: tests/explicit-nulls/warn/expose-flexible-types.scala:38:4 -------------------------------------------------
+38 |val ss2 = Seq(s2.trim) // warn
+   |    ^
+   |value ss2 exposes a flexible type in its inferred result type Seq[(String)?]. Consider annotating the type explicitly

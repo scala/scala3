@@ -1,19 +1,24 @@
 package dotty.tools.pc
 
 import scala.annotation.tailrec
+import scala.meta.pc.OffsetParams
 import scala.util.control.NonFatal
 
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Denotations.PreDenotation
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Scopes.EmptyScope
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
+import dotty.tools.dotc.interactive.Completion.CompletionResult
 import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.IndexedContext.Result
@@ -21,13 +26,15 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 sealed trait IndexedContext:
   given ctx: Context
+  def scopeContext: CompletionResult
   def scopeSymbols: List[Symbol]
   def rename(sym: Symbol): Option[String]
   def findSymbol(name: Name, fromPrefix: Option[Type] = None): Option[List[Symbol]]
   def findSymbolInLocalScope(name: String): Option[List[Symbol]]
 
   final def lookupSym(sym: Symbol, fromPrefix: Option[Type] = None): Result =
-    def all(symbol: Symbol): Set[Symbol] = Set(symbol, symbol.companionModule, symbol.companionClass, symbol.companion).filter(_ != NoSymbol)
+    def all(symbol: Symbol): Set[Symbol] =
+      Set(symbol, symbol.companionModule, symbol.companionClass, symbol.companion).filter(_ != NoSymbol)
     val isRelated = all(sym) ++ all(sym.dealiasType)
     findSymbol(sym.name, fromPrefix) match
       case Some(symbols) if symbols.exists(isRelated) => Result.InScope
@@ -37,7 +44,6 @@ sealed trait IndexedContext:
       case Some(symbols) if symbols.exists(rename(_).isEmpty) => Result.Conflict
       case Some(symbols) => Result.InScope
       case _ => Result.Missing
-  end lookupSym
 
   final def hasRename(sym: Symbol, as: String): Boolean =
     rename(sym) match
@@ -74,32 +80,37 @@ end IndexedContext
 
 object IndexedContext:
 
-  def apply(pos: SourcePosition)(using Context): IndexedContext =
-    ctx match
+  def apply(pos: SourcePosition, tpdPath: List[tpd.Tree], driverCtx: Context): IndexedContext =
+    driverCtx match
       case NoContext => Empty
-      case _ => LazyWrapper(pos)(using ctx)
+      case _ =>
+        val typerCtx: Context = Interactive
+          .contextOfPath(tpdPath)(using driverCtx).withPhase(Phases.typerPhase(using driverCtx))
+        LazyWrapper(pos, tpdPath)(using typerCtx)
 
   case object Empty extends IndexedContext:
     given ctx: Context = NoContext
+    def scopeContext: CompletionResult = CompletionResult(Map.empty, Map.empty)
     def findSymbol(name: Name, fromPrefix: Option[Type]): Option[List[Symbol]] = None
     def findSymbolInLocalScope(name: String): Option[List[Symbol]] = None
     def scopeSymbols: List[Symbol] = List.empty
     def rename(sym: Symbol): Option[String] = None
 
-  class LazyWrapper(pos: SourcePosition)(using val ctx: Context) extends IndexedContext:
+  class LazyWrapper(pos: SourcePosition, tpdPath: List[tpd.Tree])(using val ctx: Context) extends IndexedContext:
 
-    val completionContext = Completion.scopeContext(pos)
-    val names: Map[String, Seq[SingleDenotation]] = completionContext.names.toList.groupBy(_._1.show).map{
+    val scopeContext: CompletionResult = Completion.scopeContext(pos, tpdPath, ctx)
+    val names: Map[String, Seq[SingleDenotation]] = scopeContext.names.toList.groupBy(_._1.show).map {
       case (name, denotations) =>
-        val denots = denotations.flatMap(_._2)
+        val denots = denotations.flatMap(_._2.denots)
         val nonRoot = denots.filter(!_.symbol.owner.isRoot)
-        val (importedByDefault, conflictingValue) = denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
+        val (importedByDefault, conflictingValue) =
+          denots.partition(denot => Interactive.isImportedByDefault(denot.symbol))
         if importedByDefault.nonEmpty && conflictingValue.nonEmpty then
           name.trim -> conflictingValue
         else
           name.trim -> nonRoot
     }
-    val renames = completionContext.renames
+    val renames = scopeContext.renames
 
     def defaultScopes(name: Name): Option[List[Symbol]] =
       List(defn.ScalaPredefModuleClass, defn.ScalaPackageClass, defn.JavaLangPackageClass)
@@ -128,8 +139,7 @@ object IndexedContext:
                   case tref: TermRef =>
                     tref.termSymbol.info <:< target
                   case otherPrefix =>
-                    otherPrefix <:< target
-                )
+                    otherPrefix <:< target)
               }
             case None => denots
 
@@ -150,6 +160,5 @@ object IndexedContext:
     def exists: Boolean = this match
       case InScope | Conflict => true
       case Missing => false
-
 
 end IndexedContext

@@ -1,0 +1,3 @@
+package parent
+
+trait ParsingTest

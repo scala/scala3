@@ -1,0 +1,46 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/apply-rule.scala:3:19 ------------------------------------
+3 |  val _: () -> A = x // error
+  |                   ^
+  |                   Found:    (x : () ->{s*} A^{})
+  |                   Required: () -> A
+  |
+  |                   Note that capability `x` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/apply-rule.scala:5:19 ------------------------------------
+5 |  val _: () -> A = y // error
+  |                   ^
+  |                   Found:    (y : () ->{s*} A^{})
+  |                   Required: () -> A
+  |
+  |                   Note that capability `y` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/apply-rule.scala:9:19 ------------------------------------
+9 |  val _: () -> A = x // error
+  |                   ^
+  |                   Found:    (x : () ->{C} A^{})
+  |                   Required: () -> A
+  |
+  |                   Note that capability `x` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/apply-rule.scala:11:19 -----------------------------------
+11 |  val _: () -> A = y // error
+   |                   ^
+   |                   Found:    (y : () ->{C} A^{})
+   |                   Required: () -> A
+   |
+   |                   Note that capability `y` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/apply-rule.scala:2:11 ---------------------------------------------------------
+2 |  val x = s(0) // error
+  |          ^^^^
+  |          Local reach capability s* leaks into capture scope of method select.
+  |          You could try to abstract the capabilities referred to by s* in a capset variable.
+-- Error: tests/neg-custom-args/captures/apply-rule.scala:4:12 ---------------------------------------------------------
+4 |  val y = s.head // error
+  |          ^^^^^^
+  |          Local reach capability s* leaks into capture scope of method select.
+  |          You could try to abstract the capabilities referred to by s* in a capset variable.

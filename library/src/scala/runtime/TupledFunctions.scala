@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 import scala.util.TupledFunction
 import scala.annotation.experimental
 

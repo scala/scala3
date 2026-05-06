@@ -1,5 +1,8 @@
 package scala
 import compiletime.ops.boolean.*
+import collection.immutable.{SeqMap, ListMap}
+
+import language.experimental.captureChecking
 
 object NamedTuple:
 
@@ -10,7 +13,7 @@ object NamedTuple:
    */
   opaque type NamedTuple[N <: Tuple, +V <: Tuple] >: V <: AnyNamedTuple = V
 
-  /** A type which is a supertype of all named tuples */
+  /** A type which is a supertype of all named tuples. */
   opaque type AnyNamedTuple = Any
 
   def apply[N <: Tuple, V <: Tuple](x: V): NamedTuple[N, V] = x
@@ -18,7 +21,7 @@ object NamedTuple:
   def unapply[N <: Tuple, V <: Tuple](x: NamedTuple[N, V]): Some[V] = Some(x)
 
   /** A named tuple expression will desugar to a call to `build`. For instance,
-   * `(name = "Lyra", age = 23)` will desugar to `build[("name", "age")]()(("Lyra", 23))`.
+   *  `(name = "Lyra", age = 23)` will desugar to `build[("name", "age")]()(("Lyra", 23))`.
    */
   inline def build[N <: Tuple]()[V <: Tuple](x: V): NamedTuple[N, V] = x
 
@@ -28,13 +31,13 @@ object NamedTuple:
   import NamedTupleDecomposition.{Names, DropNames}
   export NamedTupleDecomposition.{
     Names, DropNames,
-    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray
+    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray, toSeqMap
   }
 
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
 
     // ALL METHODS DEPENDING ON `toTuple` MUST BE EXPORTED FROM `NamedTupleDecomposition`
-    /** The underlying tuple without the names */
+    /** The underlying tuple without the names. */
     inline def toTuple: V = x
 
     // This intentionally works for empty named tuples as well. I think NonEmptyTuple is a dead end
@@ -46,22 +49,22 @@ object NamedTuple:
 
   end extension
 
-  /** The size of a named tuple, represented as a literal constant subtype of Int */
+  /** The size of a named tuple, represented as a literal constant subtype of `Int`. */
   type Size[X <: AnyNamedTuple] = Tuple.Size[DropNames[X]]
 
-  /** The type of the element value at position N in the named tuple X */
+  /** The type of the element value at position N in the named tuple X. */
   type Elem[X <: AnyNamedTuple, N <: Int] = Tuple.Elem[DropNames[X], N]
 
-  /** The type of the first element value of a named tuple */
+  /** The type of the first element value of a named tuple. */
   type Head[X <: AnyNamedTuple] = Elem[X, 0]
 
-  /** The type of the last element value of a named tuple */
+  /** The type of the last element value of a named tuple. */
   type Last[X <: AnyNamedTuple] = Tuple.Last[DropNames[X]]
 
-  /** The type of a named tuple consisting of all elements of named tuple X except the first one */
+  /** The type of a named tuple consisting of all elements of named tuple X except the first one. */
   type Tail[X <: AnyNamedTuple] = Drop[X, 1]
 
-  /** The type of the initial part of a named tuple without its last element */
+  /** The type of the initial part of a named tuple without its last element. */
   type Init[X <: AnyNamedTuple] =
     NamedTuple[Tuple.Init[Names[X]], Tuple.Init[DropNames[X]]]
 
@@ -80,7 +83,7 @@ object NamedTuple:
   /** The pair type `(Take(X, N), Drop[X, N]). */
   type Split[X <: AnyNamedTuple, N <: Int] = (Take[X, N], Drop[X, N])
 
-  /** Type of the concatenation of two tuples `X` and `Y` */
+  /** The type of the concatenation of two tuples `X` and `Y`. */
   type Concat[X <: AnyNamedTuple, Y <: AnyNamedTuple] =
     NamedTuple[Tuple.Concat[Names[X], Names[Y]], Tuple.Concat[DropNames[X], DropNames[Y]]]
 
@@ -90,7 +93,7 @@ object NamedTuple:
   type Map[X <: AnyNamedTuple, F[_ <: Tuple.Union[DropNames[X]]]] =
     NamedTuple[Names[X], Tuple.Map[DropNames[X], F]]
 
-  /** A named tuple with the elements of tuple `X` in reversed order */
+  /** A named tuple with the elements of tuple `X` in reversed order. */
   type Reverse[X <: AnyNamedTuple] =
     NamedTuple[Tuple.Reverse[Names[X]], Tuple.Reverse[DropNames[X]]]
 
@@ -122,36 +125,40 @@ object NamedTuple:
    */
   type From[T] <: AnyNamedTuple
 
-  /** The type of the empty named tuple */
+  /** The type of the empty named tuple. */
   type Empty = NamedTuple[EmptyTuple, EmptyTuple]
 
-  /** The empty named tuple */
+  /** The empty named tuple. */
   val Empty: Empty = EmptyTuple
 
+  /** The ordering instance for named tuples. */
+  given namedTupleOrdering: [N <: Tuple, V <: Tuple] => (ord: Ordering[V]) => Ordering[NamedTuple[N, V]]:
+    def compare(x: NamedTuple[N, V], y: NamedTuple[N, V]): Int =
+      ord.compare(x.toTuple, y.toTuple)
 end NamedTuple
 
 /** Separate from NamedTuple object so that we can match on the opaque type NamedTuple. */
 object NamedTupleDecomposition:
   import NamedTuple.*
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
-      /** The value (without the name) at index `n` of this tuple */
+      /** The value (without the name) at index `n` of this tuple. */
     inline def apply(n: Int): Elem[NamedTuple[N, V], n.type] =
       x.toTuple.apply(n).asInstanceOf[Elem[NamedTuple[N, V], n.type]]
 
-    /** The number of elements in this tuple */
+    /** The number of elements in this tuple. */
     inline def size: Size[NamedTuple[N, V]] = x.toTuple.size
 
-    /** The first element value of this tuple */
+    /** The first element value of this tuple. */
     inline def head: Head[NamedTuple[N, V]] = apply(0)
 
-    /** The last element value of this tuple */
+    /** The last element value of this tuple. */
     inline def last: Last[NamedTuple[N, V]] = apply(size - 1).asInstanceOf[Last[NamedTuple[N, V]]]
 
-    /** The tuple consisting of all elements of this tuple except the last one */
+    /** The tuple consisting of all elements of this tuple except the last one. */
     inline def init: Init[NamedTuple[N, V]] =
       x.take(size - 1).asInstanceOf[Init[NamedTuple[N, V]]]
 
-    /** The tuple consisting of all elements of this tuple except the first one */
+    /** The tuple consisting of all elements of this tuple except the first one. */
     inline def tail: Tail[NamedTuple[N, V]] = x.toTuple.drop(1)
 
     /** The tuple consisting of the first `n` elements of this tuple, or all
@@ -164,7 +171,7 @@ object NamedTupleDecomposition:
      */
     inline def drop(n: Int): Drop[NamedTuple[N, V], n.type] = x.toTuple.drop(n)
 
-    /** The tuple `(x.take(n), x.drop(n))` */
+    /** The tuple `(x.take(n), x.drop(n))`. */
     inline def splitAt(n: Int): Split[NamedTuple[N, V], n.type] = x.toTuple.splitAt(n)
 
     /** The tuple consisting of all elements of this tuple followed by all elements
@@ -181,7 +188,7 @@ object NamedTupleDecomposition:
     inline def map[F[_]](f: [t] => t => F[t]): Map[NamedTuple[N, V], F] =
       x.toTuple.map[F](f)
 
-    /** The named tuple consisting of all elements of this tuple in reverse */
+    /** The named tuple consisting of all elements of this tuple in reverse. */
     inline def reverse: Reverse[NamedTuple[N, V]] = x.toTuple.reverse
 
     /** The named tuple consisting of all element values of this tuple zipped
@@ -194,21 +201,30 @@ object NamedTupleDecomposition:
     inline def zip[V2 <: Tuple](that: NamedTuple[N, V2]): Zip[NamedTuple[N, V], NamedTuple[N, V2]] =
       x.toTuple.zip(that.toTuple)
 
-    /** A list consisting of all element values */
+    /** A list consisting of all element values. */
     inline def toList: List[Tuple.Union[V]] = x.toTuple.toList
 
-    /** An array consisting of all element values */
+    /** An array consisting of all element values. */
     inline def toArray: Array[Object] = x.toTuple.toArray
 
-    /** An immutable array consisting of all element values */
+    /** An immutable array consisting of all element values. */
     inline def toIArray: IArray[Object] = x.toTuple.toIArray
 
+    /** An immutable map consisting of all element values preserving the order of fields.
+     *  Keys are the names of the elements.
+     */
+    inline def toSeqMap: SeqMap[String, Tuple.Union[V]] =
+      inline compiletime.constValueTuple[N].toList match
+        case names: List[String] =>
+          ListMap.from(names.iterator.zip(
+            x.toTuple.productIterator.asInstanceOf[Iterator[Tuple.Union[V]]]
+          ))
   end extension
 
   /** The names of a named tuple, represented as a tuple of literal string values. */
   type Names[X <: AnyNamedTuple] <: Tuple = X match
-    case NamedTuple[n, _] => n
+    case NamedTuple[n, ?] => n
 
   /** The value types of a named tuple represented as a regular tuple. */
   type DropNames[NT <: AnyNamedTuple] <: Tuple = NT match
-    case NamedTuple[_, x] => x
+    case NamedTuple[?, x] => x

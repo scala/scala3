@@ -1,6 +1,6 @@
-package test
+//> using options -preview
 
-import language.experimental.into
+package test
 
 into trait T
 class C(x: Int) extends T

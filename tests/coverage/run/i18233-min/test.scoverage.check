@@ -42,23 +42,6 @@ Test
 Object
 <empty>.Test
 <init>
-139
-144
-11
-aList
-Ident
-false
-0
-false
-aList
-
-2
-i18233-min/i18233-min.scala
-<empty>
-Test
-Object
-<empty>.Test
-<init>
 148
 168
 12
@@ -69,24 +52,7 @@ false
 false
 println(anotherList)
 
-3
-i18233-min/i18233-min.scala
-<empty>
-Test
-Object
-<empty>.Test
-<init>
-156
-167
-12
-anotherList
-Ident
-false
-0
-false
-anotherList
-
-4
+2
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -103,7 +69,7 @@ false
 false
 List(Array[String]()*)
 
-5
+3
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -120,7 +86,7 @@ false
 false
 Array[String]()
 
-6
+4
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -137,7 +103,7 @@ false
 false
 def aList
 
-7
+5
 i18233-min/i18233-min.scala
 <empty>
 i18233-min$package
@@ -153,6 +119,40 @@ false
 0
 false
 Array("abc", "def")
+
+6
+i18233-min/i18233-min.scala
+<empty>
+i18233-min$package
+Object
+<empty>.i18233-min$package
+arr
+56
+61
+5
+<none>
+Literal
+false
+0
+false
+"abc"
+
+7
+i18233-min/i18233-min.scala
+<empty>
+i18233-min$package
+Object
+<empty>.i18233-min$package
+arr
+63
+68
+5
+<none>
+Literal
+false
+0
+false
+"def"
 
 8
 i18233-min/i18233-min.scala

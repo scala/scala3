@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types.*, Symbols.*, Contexts.*
+import NullOpsDecorator.stripNull
 import printing.Printer
 import printing.Texts.Text
 
@@ -33,7 +34,6 @@ object Constants {
     def isLongRange: Boolean     = ByteTag <= tag && tag <= LongTag
     def isFloatRange: Boolean    = ByteTag <= tag && tag <= FloatTag
     def isNumeric: Boolean       = ByteTag <= tag && tag <= DoubleTag
-    def isNonUnitAnyVal: Boolean = BooleanTag <= tag && tag <= DoubleTag
     def isAnyVal: Boolean        = UnitTag <= tag && tag <= DoubleTag
 
     def tpe(using Context): Type = tag match {
@@ -149,7 +149,7 @@ object Constants {
     /** Convert constant value to conform to given type.
      */
     def convertTo(pt: Type)(using Context): Constant | Null = {
-      def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
+      def classBound(pt: Type): Type = pt.dealias.stripTypeVar.stripNull() match {
         case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
           classBound(tref.info.bounds.lo)
         case param: TypeParamRef =>
@@ -226,6 +226,49 @@ object Constants {
   }
 
   object Constant {
+    trait ValueToConstant[-T]:
+      def apply(value: T): Constant
+
+    object ValueToConstant:
+      given ValueToConstant[Null] with
+        def apply(value: Null): Constant = new Constant(value, NullTag)
+
+      given ValueToConstant[Unit] with
+        def apply(value: Unit): Constant = new Constant(value, UnitTag)
+
+      given ValueToConstant[Boolean] with
+        def apply(value: Boolean): Constant = new Constant(value, BooleanTag)
+
+      given ValueToConstant[Byte] with
+        def apply(value: Byte): Constant = new Constant(value, ByteTag)
+
+      given ValueToConstant[Short] with
+        def apply(value: Short): Constant = new Constant(value, ShortTag)
+
+      given ValueToConstant[Int] with
+        def apply(value: Int): Constant = new Constant(value, IntTag)
+
+      given ValueToConstant[Long] with
+        def apply(value: Long): Constant = new Constant(value, LongTag)
+
+      given ValueToConstant[Float] with
+        def apply(value: Float): Constant = new Constant(value, FloatTag)
+
+      given ValueToConstant[Double] with
+        def apply(value: Double): Constant = new Constant(value, DoubleTag)
+
+      given ValueToConstant[String] with
+        def apply(value: String): Constant = new Constant(value, StringTag)
+
+      given ValueToConstant[Char] with
+        def apply(value: Char): Constant = new Constant(value, CharTag)
+
+      given ValueToConstant[Type] with
+        def apply(value: Type): Constant = new Constant(value, ClazzTag)
+
+    def fromValue[T](value: T)(using valueToConstant: ValueToConstant[T]): Constant =
+      valueToConstant(value)
+
     def apply(x: Null): Constant         = new Constant(x, NullTag)
     def apply(x: Unit): Constant         = new Constant(x, UnitTag)
     def apply(x: Boolean): Constant      = new Constant(x, BooleanTag)
@@ -238,23 +281,6 @@ object Constants {
     def apply(x: String): Constant       = new Constant(x, StringTag)
     def apply(x: Char): Constant         = new Constant(x, CharTag)
     def apply(x: Type): Constant         = new Constant(x, ClazzTag)
-    def apply(value: Any): Constant      =
-      new Constant(value,
-        value match {
-          case null            => NullTag
-          case x: Unit         => UnitTag
-          case x: Boolean      => BooleanTag
-          case x: Byte         => ByteTag
-          case x: Short        => ShortTag
-          case x: Int          => IntTag
-          case x: Long         => LongTag
-          case x: Float        => FloatTag
-          case x: Double       => DoubleTag
-          case x: String       => StringTag
-          case x: Char         => CharTag
-          case x: Type         => ClazzTag
-        }
-      )
 
     def unapply(c: Constant): Constant = c
   }

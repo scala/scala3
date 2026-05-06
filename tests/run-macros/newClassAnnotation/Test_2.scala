@@ -1,5 +1,3 @@
-//> using options -experimental
-
 @main def Test =
   val (cls, str) = makeClass("name")
   println(str)

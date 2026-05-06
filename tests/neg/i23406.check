@@ -1,0 +1,40 @@
+-- Error: tests/neg/i23406.scala:21:7 ----------------------------------------------------------------------------------
+21 |  funny[String]  // error
+   |  ^^^^^^^^^^^^^
+   |  value x is unusable in method Test because it refers to an erased expression
+   |  in the selector of an inline match that reduces to
+   |
+   |  {
+   |    erased val $scrutinee1: String = compiletime.package$package.erasedValue[String]
+   |    erased val x: String = $scrutinee1
+   |    {
+   |      x:String
+   |    }
+   |  }
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i23406.scala:7
+ 7 |    case x: String => x
+   |                      ^
+    --------------------------------------------------------------------------------------------------------------------
+-- Error: tests/neg/i23406.scala:22:9 ----------------------------------------------------------------------------------
+22 |  problem[String] // error
+   |  ^^^^^^^^^^^^^^^
+   |  value x is unusable in method Test because it refers to an erased expression
+   |  in the selector of an inline match that reduces to
+   |
+   |  {
+   |    erased val $scrutinee2: String = compiletime.package$package.erasedValue[String]
+   |    erased val x: String = $scrutinee2
+   |    {
+   |      foo(x)
+   |    }
+   |  }
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from i23406.scala:11
+11 |    case x: String => foo(x)
+   |                          ^
+    --------------------------------------------------------------------------------------------------------------------

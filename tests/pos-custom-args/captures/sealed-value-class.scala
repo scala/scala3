@@ -1,3 +1,3 @@
-class Ops[A](xs: Array[A]) extends AnyVal:
-
-  def f(p: A => Boolean): Array[A] = xs
+class Ops[A](xs: Array[A]^) extends AnyVal:
+  this: Ops[A]^ =>
+  def f(p: A => Boolean): Array[A]^{this} = xs

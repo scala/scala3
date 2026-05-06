@@ -2,18 +2,17 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
 import dotty.tools.dotc.reporting.Diagnostic.*
 import dotty.tools.dotc.reporting.Message.*
+import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.dotc.util.NoSourcePosition
 
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
-import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import core.Decorators.{em, toMessage}
 import core.handleRecursive
 
@@ -30,13 +29,17 @@ object Reporter {
     override def report(dia: Diagnostic)(using Context): Unit = ()
   }
 
+  /** A silent reporter for testing */
+  class SilentReporter extends Reporter:
+    def doReport(dia: Diagnostic)(using Context): Unit = ()
+
   type ErrorHandler = (Diagnostic, Context) => Unit
 
   private val defaultIncompleteHandler: ErrorHandler =
     (mc, ctx) => ctx.reporter.report(mc)(using ctx)
 
   /** Show prompt if `-Xprompt` is passed as a flag to the compiler */
-  def displayPrompt(reader: BufferedReader, writer: PrintWriter): Unit = {
+  def displayPrompt(reader: BufferedReader | Null, writer: PrintWriter): Unit = {
     writer.println()
     writer.print("a)bort, s)tack, r)esume: ")
     writer.flush()
@@ -95,6 +98,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private var _errorCount = 0
   private var _warningCount = 0
+  private var _infoCount = 0
 
   /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
@@ -112,11 +116,16 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private var warnings: List[Warning] = Nil
 
+  private var infos: List[Info] = Nil
+
   /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
 
   /** All warnings reported by this reporter (ignoring outer reporters) */
   def allWarnings: List[Warning] = warnings
+
+  /** All infos reported by this reporter (ignoring outer reporters) */
+  def allInfos: List[Info] = infos
 
   /** Were sticky errors reported? Overridden in StoreReporter. */
   def hasStickyErrors: Boolean = false
@@ -148,10 +157,14 @@ abstract class Reporter extends interfaces.ReporterResult {
     unreportedWarnings = unreportedWarnings.updated(key, count + n)
 
   /** Issue the diagnostic, ignoring `-Wconf` and `@nowarn` configurations,
-   *  but still honouring `-nowarn`, `-Werror`, and conditional warnings. */
-  def issueUnconfigured(dia: Diagnostic)(using Context): Unit = dia match
+   *  but still honouring `-nowarn`, `-Werror`, and conditional warnings.
+   *
+   *  Avoid forcing elaboration of the message, but if already `forced`,
+   *  then do issue the diagnostic with usual `isHidden` check.
+   */
+  def issueUnconfigured(dia: Diagnostic, forced: Boolean = false)(using Context): Unit = dia match
     case w: Warning if ctx.settings.silentWarnings.value    =>
-    case w: ConditionalWarning if w.isSummarizedConditional =>
+    case w: ConditionalWarning if !forced && w.isSummarizedConditional =>
       val key = w.enablingOption.name
       addUnreported(key, 1)
     case _                                                  =>
@@ -164,6 +177,8 @@ abstract class Reporter extends interfaces.ReporterResult {
           handleRecursive("error reporting", dia.message, ex)
         dia match {
           case w: Warning =>
+            if w.isInstanceOf[LintWarning] then
+              w.msg.actions.foreach(Rewrites.applyAction)
             warnings = w :: warnings
             _warningCount += 1
           case e: Error   =>
@@ -171,7 +186,9 @@ abstract class Reporter extends interfaces.ReporterResult {
             _errorCount += 1
             if ctx.typerState.isGlobalCommittable then
               ctx.base.errorsToBeReported = true
-          case _: Info    => // nothing to do here
+          case i: Info    =>
+            infos = i :: infos
+            _infoCount += 1
           // match error if d is something else
         }
         markReported(dia)
@@ -184,10 +201,11 @@ abstract class Reporter extends interfaces.ReporterResult {
       dia match
         case w: Warning => WConf.parsed.action(dia) match
           case Error   => issueUnconfigured(w.toError)
-          case Warning => issueUnconfigured(w)
+          case Warning => issueUnconfigured(w, forced = true)
           case Verbose => issueUnconfigured(w.setVerbose())
           case Info    => issueUnconfigured(w.toInfo)
           case Silent  =>
+          case Default => issueUnconfigured(w)
         case _ => issueUnconfigured(dia)
 
     // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
@@ -215,30 +233,34 @@ abstract class Reporter extends interfaces.ReporterResult {
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)
 
-  def finalizeReporting()(using Context) =
-    if (hasWarnings && ctx.settings.XfatalWarnings.value)
-      report(new Error("No warnings can be incurred under -Werror (or -Xfatal-warnings)", NoSourcePosition))
+  def finalizeReporting()(using Context) = werror()
+
+  private def werror()(using Context) =
+    if hasWarnings && ctx.settings.Werror.value then
+      report(Error("No warnings can be incurred under -Werror", NoSourcePosition))
 
   /** Summary of warnings and errors */
-  def summary: String = {
-    val b = new mutable.ListBuffer[String]
+  def summary: String =
+    val b = ListBuffer.empty[String]
     if (warningCount > 0)
       b += countString(warningCount, "warning") + " found"
     if (errorCount > 0)
       b += countString(errorCount, "error") + " found"
     b.mkString("\n")
-  }
 
   def summarizeUnreportedWarnings()(using Context): Unit =
+    val warned = hasWarnings
     for (settingName, count) <- unreportedWarnings do
       val were = if count == 1 then "was" else "were"
-      val msg = em"there $were ${countString(count, settingName.tail + " warning")}; re-run with $settingName for details"
+      val warnings = countString(count, s"${settingName.tail} warning")
+      val msg = em"there $were $warnings; re-run with $settingName for details"
       report(Warning(msg, NoSourcePosition))
+    if !warned then werror()
 
   /** Print the summary of warnings and errors */
   def printSummary()(using Context): Unit =
     val s = summary
-    if (s != "") doReport(Warning(s.toMessage, NoSourcePosition))
+    if !s.isEmpty then doReport(Warning(s.toMessage, NoSourcePosition))
 
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {

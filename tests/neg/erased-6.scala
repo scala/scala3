@@ -1,7 +1,7 @@
 //> using options -language:experimental.erasedDefinitions
 
 object Test {
-  erased def foo: Foo = new Foo
+  erased val foo: Foo = new Foo  // error, Foo is not noInits
   foo.x() // error
   foo.y // error
   foo.z // error

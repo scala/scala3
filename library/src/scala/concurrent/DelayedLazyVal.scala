@@ -27,8 +27,8 @@ import scala.language.`2.13`
  */
 @deprecated("`DelayedLazyVal` Will be removed in the future.", since = "2.13.0")
 class DelayedLazyVal[T](f: () => T, body: => Unit)(implicit exec: ExecutionContext){
-  @volatile private[this] var _isDone = false
-  private[this] lazy val complete = f()
+  @volatile private var _isDone = false
+  private lazy val complete = f()
 
   /** Whether the computation is complete.
    *

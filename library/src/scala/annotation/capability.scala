@@ -1,6 +1,8 @@
 package scala.annotation
 import annotation.experimental
 
+import language.experimental.captureChecking
+
 /** Marks an annotated class as a capability.
  *  If the annotation is present and -Ycc is set, any (possibly aliased
  *  or refined) instance of the class type is implicitly augmented with

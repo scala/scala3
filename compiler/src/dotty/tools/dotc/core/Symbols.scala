@@ -19,19 +19,23 @@ import DenotTransformers.*
 import StdNames.*
 import NameOps.*
 import NameKinds.LazyImplicitName
-import ast.*, tpd.*
+import ast.*
+import tpd.*
 import Constants.Constant
 import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile}
+
 import scala.annotation.internal.sharable
 import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyVersion
+
+import scala.reflect.ClassTag
 
 object Symbols extends SymUtils {
 
@@ -45,7 +49,7 @@ object Symbols extends SymUtils {
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] (private var myCoord: Coord, val id: Int, val nestingLevel: Int)
-    extends Designator, ParamInfo, SrcPos, printing.Showable {
+    extends ParamInfo, SrcPos, printing.Showable {
 
     type ThisName <: Name
 
@@ -84,8 +88,8 @@ object Symbols extends SymUtils {
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.Whas.checkInit ||       // initialization check
-      ctx.settings.YcheckInitGlobal.value
+      ctx.settings.Whas.safeInit ||        // initialization check
+      ctx.settings.YsafeInitGlobal.value
 
     /** The last denotation of this symbol */
     private var lastDenot: SymDenotation = uninitialized
@@ -105,7 +109,7 @@ object Symbols extends SymUtils {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      if checkedPeriod.code == ctx.period.code then lastDenot
+      if checkedPeriod == ctx.period then lastDenot
       else computeDenot(lastDenot)
     }
 
@@ -386,8 +390,8 @@ object Symbols extends SymUtils {
     final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
     final def sourcePos(using Context): SourcePosition = {
-      val src = source
-      (if (src.exists) src else ctx.source).atSpan(span)
+      val src = if source.exists then source else ctx.source
+      WrappedSourceFile.sourcePos(src, span)
     }
 
     /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
@@ -520,14 +524,12 @@ object Symbols extends SymUtils {
         val file = associatedFile
         if file != null && !file.isScalaBinary then
           mySource = ctx.getSource(file)
-        else
-          mySource = defn.patchSource(this)
-          if !mySource.exists then
-            val compUnitInfo = compilationUnitInfo
-            if compUnitInfo != null then
-              compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
-                case Some(path) => mySource = ctx.getSource(path)
-                case _ =>
+        else if !mySource.exists then
+          val compUnitInfo = compilationUnitInfo
+          if compUnitInfo != null then
+            compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
+              case Some(path) => mySource = ctx.getSource(path)
+              case _ =>
           if !mySource.exists then
             mySource = atPhaseNoLater(flattenPhase) {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
@@ -900,8 +902,8 @@ object Symbols extends SymUtils {
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type)(using Context): TermSymbol =
-    newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+  def newSkolem(owner: Symbol, tp: Type)(using Context): TermSymbol =
+    newSymbol(owner, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: Message)(using Context): Symbol = {
     val errType = ErrorType(msg)
@@ -1019,6 +1021,9 @@ object Symbols extends SymUtils {
       case sym => defn.AnyClass
     }
   }
+
+  def requiredClass[T](using evidence: ClassTag[T], ctx: Context): Symbol =
+    requiredClass(evidence.runtimeClass.getName)
 
   def requiredClassRef(path: PreName)(using Context): TypeRef = requiredClass(path).typeRef
 

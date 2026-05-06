@@ -2,7 +2,7 @@ package dotty
 
 import scala.language.unsafeNulls
 
-import java.nio.file._
+import java.nio.file.*
 
 /** Runtime properties from defines or environmnent */
 object Properties {
@@ -51,20 +51,20 @@ object Properties {
    */
   val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
 
+  /** Enable Scoverage instrumentation for compilation tests */
+  val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
+
   /** Extra directory containing sources for the compiler */
   def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
 
-  /** dotty-library jar */
-  def dottyLibrary: String = sys.props("dotty.tests.classes.dottyLibrary")
-
-  /** dotty-library-js jar */
-  def dottyLibraryJS: String = sys.props("dotty.tests.classes.dottyLibraryJS")
-
   /** dotty-compiler jar */
   def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
+
+  /** dotty-repl jar */
+  def dottyRepl: String = sys.props("dotty.tests.classes.dottyRepl")
 
   /** dotty-staging jar */
   def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
@@ -81,14 +81,11 @@ object Properties {
   /** scala-library jar */
   def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
 
-  /** scala-library TASTy jar */
-  def scalaLibraryTasty: Option[String] = sys.props.get("dotty.tests.tasties.scalaLibrary")
+  // TODO: Remove this once we migrate the test suite
+  def usingScalaLibraryCCTasty: Boolean = true
 
-  /** If we are using the scala-library TASTy jar */
-  def usingScalaLibraryTasty: Boolean = scalaLibraryTasty.isDefined
-  /** If we are using the scala-library TASTy jar */
-
-  def usingScalaLibraryCCTasty: Boolean = scalaLibraryTasty.exists(_.contains("scala2-library-cc-tasty"))
+  // TODO: Remove this once we migrate the test suite
+  def usingScalaLibraryTasty: Boolean = true
 
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
@@ -98,6 +95,18 @@ object Properties {
 
   /** jline-reader jar */
   def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
+
+  /** pprint jar */
+  def pprint: String = sys.props("dotty.tests.classes.pprint")
+
+  /** fansi jar */
+  def fansi: String = sys.props("dotty.tests.classes.fansi")
+
+  /** fansi jar */
+  def sourcecode: String = sys.props("dotty.tests.classes.sourcecode")
+
+  /** scala-xml jar */
+  def scalaXml: String = sys.props("dotty.tests.classes.scalaXml")
 
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")

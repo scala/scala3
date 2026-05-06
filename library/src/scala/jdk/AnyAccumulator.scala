@@ -21,7 +21,10 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AnyStepper, Factory, IterableFactoryDefaults, SeqFactory, Stepper, StepperShape, mutable}
 import scala.reflect.ClassTag
 
-/** An Accumulator for arbitrary element types, see [[Accumulator]]. */
+/** An `Accumulator` for arbitrary element types, see [[Accumulator]].
+ *
+ *  @tparam A the element type stored in this accumulator
+ */
 final class AnyAccumulator[A]
   extends Accumulator[A, AnyAccumulator, AnyAccumulator[A]]
     with mutable.SeqOps[A, AnyAccumulator, AnyAccumulator[A]]
@@ -33,9 +36,9 @@ final class AnyAccumulator[A]
 
   private[jdk] def cumulative(i: Int): Long = cumul(i)
 
-  override protected[this] def className: String = "AnyAccumulator"
+  override protected def className: String = "AnyAccumulator"
 
-  def efficientStepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit =
+  def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit =
     shape.parUnbox(new AnyAccumulatorStepper[A](this.asInstanceOf[AnyAccumulator[A]]))
 
   private def expand(): Unit = {
@@ -60,7 +63,10 @@ final class AnyAccumulator[A]
     }
   }
 
-  /** Appends an element to this `AnyAccumulator`. */
+  /** Appends an element to this `AnyAccumulator`.
+   *
+   *  @param a the element to append
+   */
   def addOne(a: A): this.type = {
     totalSize += 1
     if (index >= current.length) expand()
@@ -72,7 +78,11 @@ final class AnyAccumulator[A]
   /** Result collection consisting of all elements appended so far. */
   override def result(): AnyAccumulator[A] = this
 
-  /** Removes all elements from `that` and appends them to this `AnyAccumulator`. */
+  /** Removes all elements from `that` and appends them to this `AnyAccumulator`.
+   *
+   *  @tparam A1 the element type of the source accumulator, must be a subtype of `A`
+   *  @param that the accumulator to drain; it will be empty after this operation
+   */
   def drain[A1 <: A](that: AnyAccumulator[A1]): Unit = {
     var h = 0
     var prev = 0L
@@ -127,7 +137,10 @@ final class AnyAccumulator[A]
     cumul  = AnyAccumulator.emptyLongArray
   }
 
-  /** Retrieves the `ix`th element. */
+  /** Retrieves the `ix`th element.
+   *
+   *  @param ix the zero-based index of the element to retrieve, as a `Long`
+   */
   def apply(ix: Long): A = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt).asInstanceOf[A]
     else {
@@ -136,7 +149,10 @@ final class AnyAccumulator[A]
     }
   }
 
-  /** Retrieves the `ix`th element, using an `Int` index. */
+  /** Retrieves the `ix`th element, using an `Int` index.
+   *
+   *  @param i the zero-based index of the element to retrieve
+   */
   def apply(i: Int): A = apply(i.toLong)
 
   def update(idx: Long, elem: A): Unit = {
@@ -160,7 +176,10 @@ final class AnyAccumulator[A]
     r
   }
 
-  /** Copy the elements in this `AnyAccumulator` into an `Array` */
+  /** Copies the elements in this `AnyAccumulator` into an `Array`.
+   *
+   *  @tparam B the element type of the resulting array, must be a supertype of `A`
+   */
   override def toArray[B >: A : ClassTag]: Array[B] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
     val a = new Array[B](totalSize.toInt)
@@ -188,7 +207,7 @@ final class AnyAccumulator[A]
     a
   }
 
-  /** Copies the elements in this `AnyAccumulator` to a `List` */
+  /** Copies the elements in this `AnyAccumulator` to a `List`. */
   override def toList: List[A] = {
     var ans: List[A] = Nil
     var i = index - 1
@@ -209,9 +228,11 @@ final class AnyAccumulator[A]
     ans
   }
 
-  /**
-   * Copy the elements in this `AnyAccumulator` to a specified collection. Example use:
-   * `acc.to(Vector)`.
+  /** Copies the elements in this `AnyAccumulator` to a specified collection. Example use:
+   *  `acc.to(Vector)`.
+   *
+   *  @tparam C1 the type of the resulting collection
+   *  @param factory the factory used to build the target collection
    */
   override def to[C1](factory: Factory[A, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)
@@ -230,10 +251,16 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
 
   import java.util.{function => jf}
 
-  /** A `Supplier` of `AnyAccumulator`s, suitable for use with `java.util.stream.Stream`'s `collect` method. */
+  /** A `Supplier` of `AnyAccumulator`s, suitable for use with `java.util.stream.Stream`'s `collect` method.
+   *
+   *  @tparam A the element type of the accumulator to supply
+   */
   def supplier[A]: jf.Supplier[AnyAccumulator[A]] = () => new AnyAccumulator[A]
 
-  /** A `BiConsumer` that adds an element to an `AnyAccumulator`, suitable for use with `java.util.stream.Stream`'s `collect` method. */
+  /** A `BiConsumer` that adds an element to an `AnyAccumulator`, suitable for use with `java.util.stream.Stream`'s `collect` method.
+   *
+   *  @tparam A the element type to add to the accumulator
+   */
   def adder[A]: jf.BiConsumer[AnyAccumulator[A], A] = (ac: AnyAccumulator[A], a: A) => ac addOne a
 
   /** A `BiConsumer` that adds an `Int` to an `AnyAccumulator`, suitable for use with `java.util.stream.Stream`'s `collect` method. */
@@ -245,10 +272,13 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   /** A `BiConsumer` that adds a `Double` to an `AnyAccumulator`, suitable for use with `java.util.stream.Stream`'s `collect` method. */
   def unboxedDoubleAdder: jf.ObjDoubleConsumer[AnyAccumulator[Double]] = (ac: AnyAccumulator[Double], a: Double) => ac addOne a
 
-  /** A `BiConsumer` that merges `AnyAccumulator`s, suitable for use with `java.util.stream.Stream`'s `collect` method. */
+  /** A `BiConsumer` that merges `AnyAccumulator`s, suitable for use with `java.util.stream.Stream`'s `collect` method.
+   *
+   *  @tparam A the element type of the accumulators to merge
+   */
   def merger[A]: jf.BiConsumer[AnyAccumulator[A], AnyAccumulator[A]] = (a1: AnyAccumulator[A], a2: AnyAccumulator[A]) => a1 drain a2
 
-  def from[A](source: IterableOnce[A]): AnyAccumulator[A] = source match {
+  def from[A](source: IterableOnce[A]): AnyAccumulator[A] = (source: @unchecked) match {
     case acc: AnyAccumulator[A] => acc
     case _ => new AnyAccumulator[A].addAll(source)
   }
@@ -258,7 +288,7 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   def newBuilder[A]: mutable.Builder[A, AnyAccumulator[A]] = new AnyAccumulator[A]
 
   class SerializationProxy[A](@transient private val acc: AnyAccumulator[A]) extends Serializable {
-    @transient private var result: AnyAccumulator[AnyRef] = _
+    @transient private var result: AnyAccumulator[AnyRef] = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -284,7 +314,7 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
   }
 }
 
-private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulator[A]) extends AnyStepper[A] with EfficientSplit {
+private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) extends AnyStepper[A] with EfficientSplit {
   import java.util.Spliterator._
 
   private var h: Int = 0
@@ -326,7 +356,7 @@ private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulato
       ans
     }
 
-  def trySplit(): AnyStepper[A] =
+  def trySplit(): AnyStepper[A] | Null =
     if (N <= 1) null
     else {
       val half = N >> 1
@@ -353,7 +383,7 @@ private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulato
 
   override def spliterator[B >: A]: Spliterator[B] = new AnyStepper.AnyStepperSpliterator[B](this) {
     // Overridden for efficiency
-    override def tryAdvance(c: Consumer[_ >: B]): Boolean = {
+    override def tryAdvance(c: Consumer[? >: B]): Boolean = {
       if (N <= 0) false
       else {
         if (i >= n) loadMore()
@@ -365,7 +395,7 @@ private[jdk] class AnyAccumulatorStepper[A](private[this] val acc: AnyAccumulato
     }
 
     // Overridden for efficiency
-    override def forEachRemaining(f: java.util.function.Consumer[_ >: B]): Unit = {
+    override def forEachRemaining(f: java.util.function.Consumer[? >: B]): Unit = {
       while (N > 0) {
         if (i >= n) loadMore()
         val i0 = i

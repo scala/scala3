@@ -9,8 +9,4 @@ class Foo {
   inline def bar: Unit = {
     foo
   }
-
-  erased def baz: Unit = {
-    foo
-  }
 }

@@ -93,6 +93,11 @@ object Depending:
   def f(using d: Depends) = d.thing.y
   def g(using d: Depends) = d.thing.length()
 
+class i24198:
+  def m(ss: String*) = ss.foldLeft("")(_ + _)
+object i24198:
+  extension (r: i24198) def m(ss: Seq[String]) = ss.foldRight("!")(_ + _)
+
 @main def test() =
   val x = new T {}
   println(x.f(42)) // OK!
@@ -119,3 +124,6 @@ object Depending:
     given String = "42"
     x.w("27")
   }
+  println:
+    val sut = i24198()
+    sut.m(List("hello", ", ", "world"))

@@ -7,7 +7,7 @@ object Test:
   val t1 = [X] => (erased x: X, y: Int) => y
   val t2 = [X] => (x: X, erased y: Int) => x
 
-  erased class A
+  class A extends compiletime.Erased
 
   type T3 = [X] => (x: A, y: X) => X
 

@@ -1,0 +1,21 @@
+import caps.*
+
+trait Async extends Control
+
+class A(a: Async) extends caps.Unscoped // error but msg could be better
+
+class B extends caps.Unscoped: // error
+  val a: Async^ = new Async {}  
+
+class C(f: () => Unit) extends caps.Unscoped // error but msg could be better
+
+class D extends caps.Unscoped: // error
+  val f: () => Unit = ???   
+
+def test(g: () => Unit) =
+  class E extends caps.Unscoped:
+    def gg() = g()     // error but msg could be better
+
+  val b = B()
+  val d = D() // ok (?)
+  val _: D^{any.only[Unscoped]} = d

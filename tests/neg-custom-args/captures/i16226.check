@@ -1,27 +1,26 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:13:4 ----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:13:27 ---------------------------------------
 13 |    (ref1, f1) => map[A, B](ref1, f1) // error
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?) ->? LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
-   |Required: (LazyRef[A]^{io}, A =>² B) =>³ LazyRef[B]^
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |Found:    LazyRef[B]^{f1, ref1}
+   |Required: LazyRef[B]^{any}
    |
-   |where:    =>  refers to a root capability associated with the result type of (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?): LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
-   |          =>² refers to the universal root capability
-   |          =>³ refers to a fresh root capability in the result type of method mapc
-   |          ^   refers to a fresh root capability in the result type of method mapc
+   |Note that capability `f1` cannot flow into capture set {any}
+   |because (f1 : A => B) in an enclosing function is not visible from any in method mapc.
+   |
+   |where:    =>  refers to a root capability created in anonymous function of type (ref1²: LazyRef[A]^{io}, f1²: A => B): LazyRef[B]^ of parameter parameter f1 of method $anonfun
+   |          any is a root capability in the result type of method mapc
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:4 ----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16226.scala:15:27 ---------------------------------------
 15 |    (ref1, f1) => map[A, B](ref1, f1) // error
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Found:    (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?) ->? LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
-   |Required: (ref: LazyRef[A]^{io}, f: A =>² B) =>³ LazyRef[B]^
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |Found:    LazyRef[B]^{f1, ref1}
+   |Required: LazyRef[B]^{any}
    |
-   |where:    =>  refers to a root capability associated with the result type of (ref1: LazyRef[A^?]{val elem: () ->? A^?}^?, f1: A^? ->? B^?): LazyRef[B^?]{val elem: () => B^?}^{f1, ref1}
-   |          =>² refers to the universal root capability
-   |          =>³ refers to a fresh root capability in the result type of method mapd
-   |          ^   refers to a root capability associated with the result type of (ref: LazyRef[A]^{io}, f: A =>² B): LazyRef[B]^
+   |Note that capability `f1` cannot flow into capture set {any}
+   |because (f1 : A => B) in an enclosing function is not visible from any in method mapd.
    |
-   |Note that the existential capture root in LazyRef[B]^
-   |cannot subsume the capability f1.type since that capability is not a SharedCapability
+   |where:    =>  refers to a root capability created in anonymous function of type (ref1²: LazyRef[A]^{io}, f1²: A => B): LazyRef[B]^ of parameter parameter f1 of method $anonfun
+   |          any is a root capability in the result type of method mapd
    |
    | longer explanation available when compiling with `-explain`

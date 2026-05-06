@@ -1,0 +1,20 @@
+-- Error: tests/neg-custom-args/captures/localReaches.scala:24:30 ------------------------------------------------------
+24 |  var x: () ->{xs*} Unit = ys.head // error
+   |                           ^^^^^^^
+   |                           Local reach capability ops* leaks into capture scope of method localReach3.
+   |                           You could try to abstract the capabilities referred to by ops* in a capset variable.
+-- Error: tests/neg-custom-args/captures/localReaches.scala:27:11 ------------------------------------------------------
+27 |    x = ys.head  // error
+   |        ^^^^^^^
+   |        Local reach capability ops* leaks into capture scope of method localReach3.
+   |        You could try to abstract the capabilities referred to by ops* in a capset variable.
+-- Error: tests/neg-custom-args/captures/localReaches.scala:14:10 ------------------------------------------------------
+14 |  val xs: List[() => Unit] = op :: Nil // error
+   |          ^^^^^^^^^^^^^^^^
+   |          Separation failure: value xs's type List[() => Unit] hides parameter op.
+   |          The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/localReaches.scala:22:10 ------------------------------------------------------
+22 |  val xs: List[() => Unit] = ops // error
+   |          ^^^^^^^^^^^^^^^^
+   |          Separation failure: value xs's type List[() => Unit] hides parameter ops.
+   |          The parameter needs to be annotated with consume to allow this.

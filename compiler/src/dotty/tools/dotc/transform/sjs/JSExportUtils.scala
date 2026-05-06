@@ -2,8 +2,6 @@ package dotty.tools.dotc
 package transform
 package sjs
 
-import scala.language.unsafeNulls
-
 import core.*
 import NameKinds.DefaultGetterName
 import Names.*

@@ -220,7 +220,7 @@ class ImportInfo(symf: Context ?=> Symbol,
           case Some(bv) => bv
           case None =>
             var c = ctx.outer
-            while c.importInfo eqn ctx.importInfo do c = c.outer
+            while c.importInfo eq ctx.importInfo do c = c.outer
             val cinfo = c.importInfo
             (cinfo != null) && cinfo.featureImported(feature)(using c)
       )

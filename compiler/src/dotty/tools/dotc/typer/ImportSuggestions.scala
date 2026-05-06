@@ -13,7 +13,6 @@ import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
 import collection.mutable
-import scala.util.control.NonFatal
 import cc.isCaptureChecking
 
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
@@ -127,7 +126,7 @@ trait ImportSuggestions:
               .filter(lookInside(_))
               .flatMap(sym => rootsIn(sym.termRef))
         val imported =
-          if ctx.importInfo eqn ctx.outer.importInfo then Nil
+          if ctx.importInfo eq ctx.outer.importInfo then Nil
           else ctx.importInfo.nn.importSym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
             case _ => Nil
@@ -185,7 +184,7 @@ trait ImportSuggestions:
             // To regain precision, test both sides separately.
             test(ViewProto(argType, rt1)) || test(ViewProto(argType, rt2))
           case pt: ViewProto =>
-            pt.isMatchedBy(ref)
+            pt.isMatchedBy(ref, keepConstraint = false)
           case _ =>
             normalize(ref, pt) <:< pt
         test(pt)
@@ -256,7 +255,7 @@ trait ImportSuggestions:
         match
           case (Nil, partials) => (extensionImports, partials)
           case givenImports => givenImports
-    catch case NonFatal(ex) =>
+    catch case ex: Exception =>
       if ctx.settings.Ydebug.value then
         println("caught exception when searching for suggestions")
         ex.printStackTrace()
@@ -336,7 +335,7 @@ trait ImportSuggestions:
         if ref.symbol.is(ExtensionMethod) then
           s"${ctx.printer.toTextPrefixOf(ref).show}${ref.symbol.name}"
         else
-          ctx.printer.toTextRef(ref).show
+         ref.showRef
       s"  import $imported"
     val suggestions = suggestedRefs
       .zip(suggestedRefs.map(importString))

@@ -1,0 +1,6 @@
+-- [E006] Not Found Error: tests/neg/notfound-type-but-term.scala:3:12 -------------------------------------------------
+3 |def test(): O = ??? // error
+  |            ^
+  |            Expected a type, but found a term: O - did you mean O.type?
+  |
+  | longer explanation available when compiling with `-explain`

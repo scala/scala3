@@ -3,8 +3,8 @@
 final class UnivEq[A]
 
 object UnivEq:
-  erased def force[A]: UnivEq[A] =
-    compiletime.erasedValue
+  inline def force[A]: UnivEq[A] =
+    caps.unsafe.unsafeErasedValue
 
 extension [A](a: A)
   inline def ==*[B >: A](b: B)(using erased UnivEq[B]): Boolean = a == b

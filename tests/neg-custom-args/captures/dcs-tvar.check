@@ -1,10 +1,22 @@
--- Error: tests/neg-custom-args/captures/dcs-tvar.scala:6:15 -----------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/dcs-tvar.scala:6:2 ---------------------------------------
 6 |  () => runOps(xs) // error
-  |               ^^
-  |               Local reach capability xs* leaks into capture scope of method f.
-  |               To allow this, the parameter xs should be declared with a @use annotation
--- Error: tests/neg-custom-args/captures/dcs-tvar.scala:9:15 -----------------------------------------------------------
+  |  ^^^^^^^^^^^^^^^^
+  |  Found:    () ->{any} Unit
+  |  Required: () -> Unit
+  |
+  |  Note that capability `any` cannot flow into capture set {}.
+  |
+  |  where:    any is a root capability in the type of type T
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/dcs-tvar.scala:9:2 ---------------------------------------
 9 |  () => runOps(xs) // error
-  |               ^^
-  |               Local reach capability xs* leaks into capture scope of method g.
-  |               To allow this, the parameter xs should be declared with a @use annotation
+  |  ^^^^^^^^^^^^^^^^
+  |  Found:    () ->{any} Unit
+  |  Required: () -> Unit
+  |
+  |  Note that capability `any` cannot flow into capture set {}.
+  |
+  |  where:    any is a root capability in the type of type U
+  |
+  | longer explanation available when compiling with `-explain`

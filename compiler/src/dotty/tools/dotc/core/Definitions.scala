@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType}
+import cc.{CaptureSet, RetainingAnnotation, SafeRefs}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -107,7 +107,7 @@ class Definitions {
    *      }
    *  ImpureXYZFunctionN follow this template:
    *
-   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {cap} XYZFunctionN[T0,...,T{N-1}, R]
+   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = XYZFunctionN[T0,...,T{N-1}, R]^{any}
    */
   private def newFunctionNType(name: TypeName): Symbol = {
     val impure = name.startsWith("Impure")
@@ -122,8 +122,9 @@ class Definitions {
           denot.info = TypeAlias(
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
-              tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                      captureRoot.termRef)
+              tl => AnnotatedType(
+                      underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                      RetainingAnnotation(defn.RetainsCapAnnot))
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -213,7 +214,6 @@ class Definitions {
   @tu lazy val OpsPackageClass: ClassSymbol = OpsPackageVal.moduleClass.asClass
 
   @tu lazy val ScalaPackageVal: TermSymbol = requiredPackage(nme.scala)
-  @tu lazy val ScalaMathPackageVal: TermSymbol = requiredPackage("scala.math")
   @tu lazy val ScalaPackageClass: ClassSymbol = {
     val cls = ScalaPackageVal.moduleClass.asClass
     cls.info.decls.openForMutations.useSynthesizer(
@@ -223,12 +223,19 @@ class Definitions {
     cls
   }
   @tu lazy val ScalaPackageObject: Symbol = requiredModule("scala.package")
+
   @tu lazy val ScalaRuntimePackageVal: TermSymbol = requiredPackage("scala.runtime")
   @tu lazy val ScalaRuntimePackageClass: ClassSymbol = ScalaRuntimePackageVal.moduleClass.asClass
   @tu lazy val JavaPackageVal: TermSymbol = requiredPackage(nme.java)
   @tu lazy val JavaPackageClass: ClassSymbol = JavaPackageVal.moduleClass.asClass
   @tu lazy val JavaLangPackageVal: TermSymbol = requiredPackage(jnme.JavaLang)
   @tu lazy val JavaLangPackageClass: ClassSymbol = JavaLangPackageVal.moduleClass.asClass
+  @tu lazy val JavaMathPackageClass: ClassSymbol = requiredPackage("java.math").moduleClass.asClass
+  @tu lazy val JavaTimePackageClass: ClassSymbol = requiredPackage("java.time").moduleClass.asClass
+  @tu lazy val ScalaCollectionPackageClass: ClassSymbol = requiredPackage("scala.collection").moduleClass.asClass
+  @tu lazy val ScalaCollectionImmutablePackageClass: ClassSymbol = requiredPackage("scala.collection.immutable").moduleClass.asClass
+  @tu lazy val ScalaMathPackageClass: ClassSymbol = requiredPackage("scala.math").moduleClass.asClass
+  @tu lazy val ScalaUtilPackageClass: ClassSymbol = requiredPackage("scala.util").moduleClass.asClass
 
   // fundamental modules
   @tu lazy val SysPackage : Symbol = requiredModule("scala.sys.package")
@@ -266,6 +273,7 @@ class Definitions {
     @tu lazy val CompiletimeOpsDoubleModuleClass: Symbol = requiredModule("scala.compiletime.ops.double").moduleClass
     @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
     @tu lazy val CompiletimeOpsBooleanModuleClass: Symbol = requiredModule("scala.compiletime.ops.boolean").moduleClass
+  @tu lazy val ErasedClass: ClassSymbol = requiredClass("scala.compiletime.Erased")
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -278,17 +286,11 @@ class Definitions {
    * To achieve this, we synthesize all Any and Object methods; Object methods no longer get
    * loaded from a classfile.
    */
-  @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
+  @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract | TransparentType, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait, AnyType :: Nil), ensureCtor = false)
+  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait | TransparentType, AnyType :: Nil), ensureCtor = false)
   def MatchableType: TypeRef = MatchableClass.typeRef
-  @tu lazy val AnyValClass: ClassSymbol =
-    val res = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyType, MatchableType)))
-    // Mark companion as absent, so that class does not get re-completed
-    val companion = ScalaPackageVal.info.decl(nme.AnyVal).symbol
-    companion.moduleClass.markAbsent()
-    companion.markAbsent()
-    res
+  @tu lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
   def AnyValType: TypeRef = AnyValClass.typeRef
 
@@ -319,7 +321,7 @@ class Definitions {
     val cls = requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, List(AnyType, MatchableType), newScope)
-    cls.setFlag(NoInits | JavaDefined)
+    cls.setFlag(NoInits | JavaDefined | TransparentType)
 
     ensureConstructor(cls, cls.denot.asClass, EmptyScope)
     val companion = JavaLangPackageVal.info.decl(nme.Object).symbol.asTerm
@@ -398,7 +400,7 @@ class Definitions {
    *       meth8(1) // OK (creates a primitive array and copies it into a reference array at Erasure)
    *       val ai = Array[Int](1)
    *       meth7(ai: _*) // OK (will copy the array at Erasure)
-   *       meth8(ai: _*) // OK (will copy the array at Erasure)
+   *       meth8(ai*) // OK (will copy the array at Erasure)
    *
    *     Java repeated arguments are erased to arrays, so it would be safe to treat
    *     them in the same way: add an `& Object` to the parameter type to disallow
@@ -459,13 +461,18 @@ class Definitions {
   @tu lazy val CBCompanion: TypeSymbol = // type `<context-bound-companion>`[-Refs]
     enterPermanentSymbol(tpnme.CBCompanion,
       TypeBounds(NothingType,
-        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil, Contravariant :: Nil)(
+        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil)(
           tl => TypeBounds.empty :: Nil,
           tl => AnyType))).asType
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
+
+  @tu lazy val spreadMethod = enterMethod(OpsPackageClass, nme.spread,
+      PolyType(TypeBounds.empty :: Nil)(
+        tl => MethodType(AnyType :: Nil, tl.paramRefs(0))
+      ))
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
@@ -518,6 +525,8 @@ class Definitions {
     @tu lazy val newGenericArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     @tu lazy val newArrayMethod: TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
+  @tu lazy val VarArgsBuilderModule: Symbol = requiredModule("scala.runtime.VarArgsBuilder")
+
   def getWrapVarargsArrayModule: Symbol = ScalaRuntimeModule
 
   // The set of all wrap{X, Ref}Array methods, where X is a value type
@@ -543,7 +552,7 @@ class Definitions {
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
     val cls = enterCompleteClassSymbol(
-      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final | Erased,
+      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyType))
     enterTypeField(cls, tpnme.Self, Deferred, cls.info.decls.openForMutations)
     cls
@@ -562,10 +571,11 @@ class Definitions {
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
     @tu lazy val Seq_drop         : Symbol = SeqClass.requiredMethod(nme.drop)
+    @tu lazy val Seq_dropRight    : Symbol = SeqClass.requiredMethod(nme.dropRight)
+    @tu lazy val Seq_takeRight    : Symbol = SeqClass.requiredMethod(nme.takeRight)
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
-
 
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
     @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
@@ -670,6 +680,11 @@ class Definitions {
   @tu lazy val JavaCloneableClass: ClassSymbol        = requiredClass("java.lang.Cloneable")
   @tu lazy val NullPointerExceptionClass: ClassSymbol = requiredClass("java.lang.NullPointerException")
   @tu lazy val IndexOutOfBoundsException: ClassSymbol = requiredClass("java.lang.IndexOutOfBoundsException")
+  @tu lazy val IndexOutOfBoundsExceptionType: Type    = IndexOutOfBoundsException.typeRef
+    @tu lazy val IndexOutOfBoundsException_IntConstructor: TermSymbol  = IndexOutOfBoundsException.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
+        case List(pt) => pt.isRef(IntClass)
+        case _ => false
+      }).symbol.asTerm
   @tu lazy val ClassClass: ClassSymbol                = requiredClass("java.lang.Class")
   @tu lazy val BoxedNumberClass: ClassSymbol          = requiredClass("java.lang.Number")
   @tu lazy val ClassCastExceptionClass: ClassSymbol   = requiredClass("java.lang.ClassCastException")
@@ -714,6 +729,12 @@ class Definitions {
   @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
   @tu lazy val JavaRecordClass: Symbol = getClassIfDefined("java.lang.Record")
 
+  @tu lazy val JavaUtilObjectsClass: ClassSymbol = requiredModule("java.util.Objects").moduleClass.asClass
+  def Objects_hashCode(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
+  def Objects_equals(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.equals_).suchThat(_.info.firstParamTypes.length == 2).symbol
+
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
     // jl.Enum has a single constructor protected(name: String, ordinal: Int).
@@ -747,7 +768,10 @@ class Definitions {
   def JavaEnumType = JavaEnumClass.typeRef
 
   @tu lazy val MethodHandleClass: ClassSymbol        = requiredClass("java.lang.invoke.MethodHandle")
+  @tu lazy val MethodHandlesClass: TermSymbol        = requiredModule("java.lang.invoke.MethodHandles")
+  @tu lazy val MethodHandles_lookup: Symbol          = MethodHandlesClass.requiredMethod("lookup")
   @tu lazy val MethodHandlesLookupClass: ClassSymbol = requiredClass("java.lang.invoke.MethodHandles.Lookup")
+    @tu lazy val MethodHandlesLookup_FindVarHandle: Symbol = MethodHandlesLookupClass.requiredMethod("findVarHandle")
   @tu lazy val VarHandleClass: ClassSymbol           = requiredClass("java.lang.invoke.VarHandle")
 
   @tu lazy val StringBuilderClass: ClassSymbol = requiredClass("scala.collection.mutable.StringBuilder")
@@ -1000,20 +1024,33 @@ class Definitions {
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")
 
   @tu lazy val CapsModule: Symbol = requiredPackage("scala.caps")
-    @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
+    @tu lazy val Caps_any: TermSymbol = CapsModule.requiredValue("any")
+    @tu lazy val Caps_fresh: TermSymbol = CapsModule.requiredValue("fresh")
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
+    @tu lazy val Caps_Classifier: ClassSymbol = requiredClass("scala.caps.Classifier")
+    @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
+    @tu lazy val Caps_ExclusiveCapability: ClassSymbol = requiredClass("scala.caps.ExclusiveCapability")
+    @tu lazy val Caps_Control: ClassSymbol = requiredClass("scala.caps.Control")
+    @tu lazy val Caps_Stateful: ClassSymbol = requiredClass("scala.caps.Stateful")
+    @tu lazy val Caps_Unscoped: ClassSymbol = requiredClass("scala.caps.Unscoped")
+    @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
+    @tu lazy val Caps_Read: ClassSymbol = requiredClass("scala.caps.Read")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
+    @tu lazy val Caps_erasedValue: Symbol = CapsInternalModule.requiredMethod("erasedValue")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
+    @tu lazy val Caps_unsafeDiscardUses: Symbol = CapsUnsafeModule.requiredMethod("unsafeDiscardUses")
+    @tu lazy val Caps_unsafeErasedValue: Symbol = CapsUnsafeModule.requiredMethod("unsafeErasedValue")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
+    @tu lazy val Caps_Shared: TypeSymbol = CapsModule.requiredType("Shared")
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
-    @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
-    @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
+    @tu lazy val Caps_freeze: TermSymbol = CapsModule.requiredMethod("freeze")
+    @tu lazy val Caps_Var: ClassSymbol = requiredClass("scala.caps.internal.Var")
 
-  @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
+  @tu lazy val PureClass: ClassSymbol = requiredClass("scala.caps.Pure")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -1033,9 +1070,9 @@ class Definitions {
   @tu lazy val DeprecatedAnnot: ClassSymbol = requiredClass("scala.deprecated")
   @tu lazy val DeprecatedOverridingAnnot: ClassSymbol = requiredClass("scala.deprecatedOverriding")
   @tu lazy val DeprecatedInheritanceAnnot: ClassSymbol = requiredClass("scala.deprecatedInheritance")
+  @tu lazy val DeprecatedNameAnnot: ClassSymbol = requiredClass("scala.deprecatedName")
   @tu lazy val ImplicitAmbiguousAnnot: ClassSymbol = requiredClass("scala.annotation.implicitAmbiguous")
   @tu lazy val ImplicitNotFoundAnnot: ClassSymbol = requiredClass("scala.annotation.implicitNotFound")
-  @tu lazy val InferredDepFunAnnot: ClassSymbol = requiredClass("scala.caps.internal.inferredDepFun")
   @tu lazy val InlineParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.InlineParam")
   @tu lazy val ErasedParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ErasedParam")
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
@@ -1044,7 +1081,6 @@ class Definitions {
   @tu lazy val NowarnAnnot: ClassSymbol = requiredClass("scala.annotation.nowarn")
   @tu lazy val UnusedAnnot: ClassSymbol = requiredClass("scala.annotation.unused")
   @tu lazy val UnrollAnnot: ClassSymbol = requiredClass("scala.annotation.unroll")
-  @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
   @tu lazy val RuntimeCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.RuntimeChecked")
@@ -1065,13 +1101,16 @@ class Definitions {
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
+  @tu lazy val UncheckedOverrideAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedOverride")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.unsafe.untrackedCaptures")
-  @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
-  @tu lazy val ConsumeAnnot:  ClassSymbol = requiredClass("scala.caps.consume")
-  @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.internal.refineOverride")
+  @tu lazy val UseAnnot: ClassSymbol = requiredClass("scala.caps.use")
+  @tu lazy val ReserveAnnot: ClassSymbol = requiredClass("scala.caps.reserve")
+  @tu lazy val AssumeSafeAnnot: ClassSymbol = requiredClass("scala.caps.assumeSafe")
+  @tu lazy val RejectSafeAnnot: ClassSymbol = requiredClass("scala.caps.rejectSafe")
+  @tu lazy val ConsumeAnnot: ClassSymbol = requiredClass("scala.caps.internal.consume")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
@@ -1087,14 +1126,19 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
-  @tu lazy val RootCapabilityAnnot = requiredClass("scala.caps.internal.rootCapability")
+  @tu lazy val InferredAnnot = requiredClass("scala.caps.internal.inferred")
+  @tu lazy val DeclaredAnnot = requiredClass("scala.caps.internal.declared")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
+  @tu lazy val OnlyCapabilityAnnot = requiredClass("scala.annotation.internal.onlyCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
   @tu lazy val PublicInBinaryAnnot: ClassSymbol = requiredClass("scala.annotation.publicInBinary")
   @tu lazy val WitnessNamesAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WitnessNames")
+  @tu lazy val StableNullAnnot: ClassSymbol = requiredClass("scala.annotation.stableNull")
+  @tu lazy val InlineAnnot: ClassSymbol = requiredClass("scala.inline")
+  @tu lazy val NoInlineAnnot: ClassSymbol = requiredClass("scala.noinline")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
@@ -1113,24 +1157,30 @@ class Definitions {
 
   // Set of annotations that are not printed in types except under -Yprint-debug
   @tu lazy val SilentAnnots: Set[Symbol] =
-    Set(InlineParamAnnot, ErasedParamAnnot, RefineOverrideAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot)
+    Set(InlineParamAnnot, ErasedParamAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot, InferredAnnot)
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
   // improve the precision of type nullification.
   // We don't require that any of these annotations be present in the class path, but we want to
   // create Symbols for the ones that are present, so they can be checked during nullification.
+  // The annotation from jspecify is designed to be used on types only; however, it is common to use it
+  // on fields and method parameters required by some frameworks, so we need to recognize annotations
+  // form `AnnotatedType` as well as from `Symbol`.
   @tu lazy val NotNullAnnots: List[ClassSymbol] = getClassesIfDefined(
     "javax.annotation.Nonnull" ::
     "javax.validation.constraints.NotNull" ::
-    "androidx.annotation.NonNull" ::
+    "jakarta.annotation.Nonnull" ::
     "android.support.annotation.NonNull" ::
     "android.annotation.NonNull" ::
+    "androidx.annotation.NonNull" ::
+    "androidx.annotation.RecentlyNonNull" ::
     "com.android.annotations.NonNull" ::
     "org.eclipse.jdt.annotation.NonNull" ::
     "edu.umd.cs.findbugs.annotations.NonNull" ::
     "org.checkerframework.checker.nullness.qual.NonNull" ::
     "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NonNullType" ::
     "org.jetbrains.annotations.NotNull" ::
     "org.springframework.lang.NonNull" ::
     "org.springframework.lang.NonNullApi" ::
@@ -1138,7 +1188,32 @@ class Definitions {
     "lombok.NonNull" ::
     "reactor.util.annotation.NonNull" ::
     "reactor.util.annotation.NonNullApi" ::
-    "io.reactivex.annotations.NonNull" :: Nil)
+    "io.reactivex.annotations.NonNull" ::
+    "io.reactivex.rxjava3.annotations.NonNull" ::
+    "org.jspecify.annotations.NonNull" :: Nil)
+
+  // A list of annotations that are commonly used to indicate that a field/method argument or return
+  // type is explicitly nullable.
+  @tu lazy val NullableAnnots: List[ClassSymbol] = getClassesIfDefined(
+    "javax.annotation.Nullable" ::
+    "javax.annotation.CheckForNull" ::
+    "jakarta.annotation.Nullable" ::
+    "android.support.annotation.Nullable" ::
+    "android.annotation.Nullable" ::
+    "androidx.annotation.Nullable" ::
+    "androidx.annotation.RecentlyNullable" ::
+    "com.android.annotations.Nullable" ::
+    "org.eclipse.jdt.annotation.Nullable" ::
+    "edu.umd.cs.findbugs.annotations.Nullable" ::
+    "org.checkerframework.checker.nullness.qual.Nullable" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableDecl" ::
+    "org.checkerframework.checker.nullness.compatqual.NullableType" ::
+    "org.jetbrains.annotations.Nullable" ::
+    "org.springframework.lang.Nullable" ::
+    "reactor.util.annotation.Nullable" ::
+    "io.reactivex.annotations.Nullable" ::
+    "io.reactivex.rxjava3.annotations.Nullable" ::
+    "org.jspecify.annotations.Nullable" :: Nil)
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
@@ -1328,8 +1403,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ RetainingType(tp1, refSet) if tp.annot.symbol == RetainsByNameAnnot =>
-        RetainingType(apply(tp1), refSet)
+      case tp @ AnnotatedType(tp1, ann: RetainingAnnotation) if ann.symbol == RetainsByNameAnnot =>
+        AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes*))
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match
@@ -1437,116 +1512,16 @@ class Definitions {
       || sym.owner == CompiletimeOpsStringModuleClass && compiletimePackageStringTypes.contains(sym.name)
     )
 
-  // ----- Scala-2 library patches --------------------------------------
-
-  /** The `scala.runtime.stdLibPacthes` package contains objects
-   *  that contain defnitions that get added as members to standard library
-   *  objects with the same name.
-   */
-  @tu lazy val StdLibPatchesPackage: TermSymbol = requiredPackage("scala.runtime.stdLibPatches")
-  @tu private lazy val ScalaPredefModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
-  @tu private lazy val LanguageModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.language").moduleClass
-
-  /** If `sym` is a patched library class, the source file of its patch class,
-   *  otherwise `NoSource`
-   */
-  def patchSource(sym: Symbol)(using Context): SourceFile =
-    if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
-    else if sym == LanguageModuleClass then LanguageModuleClassPatch.source
-    else NoSource
-
-  /** A finalizer that patches standard library classes.
-   *  It copies all non-private, non-synthetic definitions from `patchCls`
-   *  to `denot` while changing their owners to `denot`. Before that it deletes
-   *  any definitions of `denot` that have the same name as one of the copied
-   *  definitions.
-   *
-   *  If an object is present in both the original class and the patch class,
-   *  it is not overwritten. Instead its members are copied recursively.
-   *
-   *  To avpid running into cycles on bootstrap, patching happens only if `patchCls`
-   *  is read from a classfile.
-   */
-  def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
-    def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
-      val scope = denot.info.decls.openForMutations
-
-      def recurse(patch: Symbol) = patch.is(Module) && scope.lookup(patch.name).exists
-
-      def makeClassSymbol(patch: Symbol, parents: List[Type], selfInfo: TypeOrSymbol) =
-        newClassSymbol(
-          owner = denot.symbol,
-          name = patch.name.asTypeName,
-          flags = patch.flags,
-          // need to rebuild a fresh ClassInfo
-          infoFn = cls => ClassInfo(
-            prefix = denot.symbol.thisType,
-            cls = cls,
-            declaredParents = parents, // assume parents in patch don't refer to symbols in the patch
-            decls = newScope,
-            selfInfo =
-              if patch.is(Module)
-              then TermRef(denot.symbol.thisType, patch.name.sourceModuleName)
-              else selfInfo // assume patch self type annotation does not refer to symbols in the patch
-          ),
-          privateWithin = patch.privateWithin,
-          coord = denot.symbol.coord,
-          compUnitInfo = denot.symbol.compilationUnitInfo
-        )
-
-      def makeNonClassSymbol(patch: Symbol) =
-        if patch.is(Inline) then
-          // Inline symbols contain trees in annotations, which is coupled
-          // with the underlying symbol.
-          // Changing owner for inline symbols is a simple workaround.
-          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
-          patch
-        else
-          // change `info` which might contain reference to the patch
-          patch.copy(
-            owner = denot.symbol,
-            info =
-              if patch.is(Module)
-              then TypeRef(denot.symbol.thisType, patch.name.moduleClassName)
-              else patch.info // assume non-object info does not refer to symbols in the patch
-          )
-
-      if patchCls.exists then
-        val patches = patchCls.info.decls.filter(patch =>
-          !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
-        for patch <- patches if !recurse(patch) do
-          val e = scope.lookupEntry(patch.name)
-          if e != null then scope.unlink(e)
-        for patch <- patches do
-          patch.ensureCompleted()
-          if !recurse(patch) then
-            val sym =
-              patch.info match
-              case ClassInfo(_, _, parents, _, selfInfo) =>
-                makeClassSymbol(patch, parents, selfInfo)
-              case _ =>
-                makeNonClassSymbol(patch)
-              end match
-            sym.annotations = patch.annotations
-            scope.enter(sym)
-          if patch.isClass then
-            patch2(scope.lookup(patch.name).asClass, patch)
-
-    def patchWith(patchCls: Symbol) =
-      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
-      patch2(denot, patchCls)
-
-    if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
-      patchWith(ScalaPredefModuleClassPatch)
-    else if denot.name == tpnme.language.moduleClassName && denot.symbol == LanguageModuleClass then
-      patchWith(LanguageModuleClassPatch)
-  end patchStdLibClass
-
   // ----- Symbol sets ---------------------------------------------------
 
   @tu lazy val topClasses: Set[Symbol] = Set(AnyClass, MatchableClass, ObjectClass, AnyValClass)
 
   @tu lazy val untestableClasses: Set[Symbol] = Set(NothingClass, NullClass, SingletonClass)
+
+  /** Annotations which do not need to be pickled since they are reconstituted automatically
+   *  when unpickling.
+   */
+  @tu lazy val unpicklableAnnotations: Set[Symbol] = Set(BodyAnnot)
 
   /** Base classes that are assumed to be pure for the purposes of capture checking.
    *  Every class inheriting from a pure baseclass is pure.
@@ -1557,6 +1532,19 @@ class Definitions {
    */
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
+
+  @tu lazy val assumedSafePackages: Set[Symbol] =
+    SafeRefs.assumedSafePackages
+      .map(requiredPackage)
+      .filter(!_.info.isInstanceOf[StubInfo])
+      .map(_.moduleClass)
+      .toSet
+    + OpsPackageClass
+
+  @tu lazy val capsErasedValueMethods =
+    Set(Caps_erasedValue, Caps_unsafeErasedValue)
+  @tu lazy val erasedValueMethods =
+    capsErasedValueMethods + Compiletime_erasedValue
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
@@ -1846,7 +1834,7 @@ class Definitions {
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
    *  instance?
    */
-  def isNonRefinedFunction(tp: Type)(using Context): Boolean =
+  def isNonRefinedFunction(tp: Type)(using Context): Boolean = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
 
@@ -1855,7 +1843,12 @@ class Definitions {
     && tp.isRef(
         FunctionType(arity, sym.name.isContextFunction).typeSymbol,
         skipRefined = false)
-  end isNonRefinedFunction
+  }
+
+  /** Is a dependent function type represented as a RefinedType?
+   */
+  def isRefinedFunction(tp: Type)(using Context): Boolean =
+    tp.dropDependentRefinement ne tp
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
@@ -1977,6 +1970,8 @@ class Definitions {
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
+      case tp: FlexibleType =>
+        asContextFunctionType(tp.hi)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType
@@ -2001,7 +1996,9 @@ class Definitions {
 
   /** A allowlist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =
-    (sym `eq` SomeClass) || isTupleClass(sym)
+    (sym `eq` SomeClass)
+    || isTupleClass(sym)
+    || sym.is(Module) && isAssuredNoInits(sym.companionClass)
 
   /** If `cls` is Tuple1..Tuple22, add the corresponding *: type as last parent to `parents` */
   def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {
@@ -2039,42 +2036,11 @@ class Definitions {
     HasProblematicGetClass.contains(className)
 
   @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
-    // add these for now, until we had a chance to retrofit 2.13 stdlib
     // we should do a more through sweep through it then.
     val strs = Map(
-      "Any" -> Set("scala"),
-      "AnyVal" -> Set("scala"),
-      "Matchable" -> Set("scala"),
-      "Product" -> Set("scala"),
-      "Object" -> Set("java.lang"),
       "Comparable" -> Set("java.lang"),
       "Serializable" -> Set("java.io"),
-      "BitSetOps" -> Set("scala.collection"),
-      "IndexedSeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "IterableOnceOps" -> Set("scala.collection"),
-      "IterableOps" -> Set("scala.collection"),
-      "LinearSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "MapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SeqOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SortedMapOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "SortedOps" -> Set("scala.collection"),
-      "SortedSetOps" -> Set("scala.collection", "scala.collection.mutable", "scala.collection.immutable"),
-      "StrictOptimizedIterableOps" -> Set("scala.collection"),
-      "StrictOptimizedLinearSeqOps" -> Set("scala.collection"),
-      "StrictOptimizedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSeqOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSortedMapOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "StrictOptimizedSortedSetOps" -> Set("scala.collection", "scala.collection.immutable"),
-      "ArrayDequeOps" -> Set("scala.collection.mutable"),
-      "DefaultSerializable" -> Set("scala.collection.generic"),
-      "IsIterable" -> Set("scala.collection.generic"),
-      "IsIterableLowPriority" -> Set("scala.collection.generic"),
-      "IsIterableOnce" -> Set("scala.collection.generic"),
-      "IsIterableOnceLowPriority" -> Set("scala.collection.generic"),
-      "IsMap" -> Set("scala.collection.generic"),
-      "IsSeq" -> Set("scala.collection.generic"))
+    )
     strs.map { case (simple, pkgs) => (
         simple.toTypeName,
         pkgs.map(pkg => staticRef(pkg.toTermName, isPackage = true).symbol.moduleClass)
@@ -2091,11 +2057,12 @@ class Definitions {
    */
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
-    Caps_Capability, // TODO: Remove when Capability is stabilized
-    RequiresCapabilityAnnot,
-    captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass, UseAnnot,
-    Caps_Mutable, Caps_SharedCapability, ConsumeAnnot,
-    CapsUnsafeModule, CapsUnsafeModule.moduleClass,
+    /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
+    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful,
+    Caps_Shared, RequiresCapabilityAnnot,
+    Caps_any, Caps_fresh, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
+    ConsumeAnnot, UseAnnot, ReserveAnnot, AssumeSafeAnnot, RejectSafeAnnot,
+    CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 
@@ -2125,12 +2092,17 @@ class Definitions {
 
   @tu private lazy val ScalaNumericValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypeList.toSet
   @tu private lazy val ScalaValueTypes: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(UnitType, BooleanType)
+  @tu private lazy val ScalaValueTypesNoUnit: collection.Set[TypeRef] = ScalaNumericValueTypes `union` Set(BooleanType)
 
   val ScalaNumericValueClasses: PerRun[collection.Set[Symbol]] = new PerRun(ScalaNumericValueTypes.map(_.symbol))
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypes.map(_.symbol))
+  val ScalaValueClassesNoUnit: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypesNoUnit.map(_.symbol))
 
+  val ScalaNumericBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
+    Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass)
+  )
   val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
-    Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)
+    ScalaNumericBoxedClasses() `union` Set(BoxedUnitClass, BoxedBooleanClass)
   )
 
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()
@@ -2229,7 +2201,6 @@ class Definitions {
       orType,
       RepeatedParamClass,
       ByNameParamClass2x,
-      AnyValClass,
       NullClass,
       NothingClass,
       SingletonClass,
@@ -2242,7 +2213,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   @tu lazy val syntheticCoreMethods: List[TermSymbol] =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, spreadMethod)
 
   @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
@@ -2491,14 +2462,14 @@ class Definitions {
     """.stripMargin)
 
     add(Object_wait,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()]].
       | *
       | *  @note   not specified by SLS as a member of AnyRef
       | */
     """.stripMargin)
 
     add(Object_waitL,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]].
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long)]].
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @note not specified by SLS as a member of AnyRef
@@ -2506,7 +2477,7 @@ class Definitions {
     """.stripMargin)
 
     add(Object_waitLI,
-    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]]
+    """/** See [[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long,int)]]
       | *
       | * @param timeout the maximum time to wait in milliseconds.
       | * @param nanos   additional time, in nanoseconds range 0-999999.
@@ -2532,51 +2503,6 @@ class Definitions {
     """/** The union of two types.
       | *
       | *   See [[https://docs.scala-lang.org/scala3/reference/new-types/union-types.html]].
-      | */
-    """.stripMargin)
-
-    add(AnyValClass,
-    """/** `AnyVal` is the root class of all ''value types'', which describe values
-      | *  not implemented as objects in the underlying host system. Value classes
-      | *  are specified in Scala Language Specification, section 12.2.
-      | *
-      | *  The standard implementation includes nine `AnyVal` subtypes:
-      | *
-      | *  [[scala.Double]], [[scala.Float]], [[scala.Long]], [[scala.Int]], [[scala.Char]],
-      | *  [[scala.Short]], and [[scala.Byte]] are the ''numeric value types''.
-      | *
-      | *  [[scala.Unit]] and [[scala.Boolean]] are the ''non-numeric value types''.
-      | *
-      | *  Other groupings:
-      | *
-      | *   - The ''subrange types'' are [[scala.Byte]], [[scala.Short]], and [[scala.Char]].
-      | *   - The ''integer types'' include the subrange types as well as [[scala.Int]] and [[scala.Long]].
-      | *   - The ''floating point types'' are [[scala.Float]] and [[scala.Double]].
-      | *
-      | * Prior to Scala 2.10, `AnyVal` was a sealed trait. Beginning with Scala 2.10,
-      | * however, it is possible to define a subclass of `AnyVal` called a ''user-defined value class''
-      | * which is treated specially by the compiler. Properly-defined user value classes provide a way
-      | * to improve performance on user-defined types by avoiding object allocation at runtime, and by
-      | * replacing virtual method invocations with static method invocations.
-      | *
-      | * User-defined value classes which avoid object allocation...
-      | *
-      | *   - must have a single `val` parameter that is the underlying runtime representation.
-      | *   - can define `def`s, but no `val`s, `var`s, or nested `traits`s, `class`es or `object`s.
-      | *   - typically extend no other trait apart from `AnyVal`.
-      | *   - cannot be used in type tests or pattern matching.
-      | *   - may not override `equals` or `hashCode` methods.
-      | *
-      | * A minimal example:
-      | * {{{
-      | *     class Wrapper(val underlying: Int) extends AnyVal {
-      | *       def foo: Wrapper = new Wrapper(underlying * 19)
-      | *     }
-      | * }}}
-      | *
-      | * It's important to note that user-defined value classes are limited, and in some circumstances,
-      | * still must allocate a value class instance at runtime. These limitations and circumstances are
-      | * explained in greater detail in the [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Classes and Universal Traits]].
       | */
     """.stripMargin)
 

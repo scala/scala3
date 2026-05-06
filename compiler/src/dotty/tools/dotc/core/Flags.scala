@@ -250,7 +250,7 @@ object Flags {
   val (Local @ _, _, _) = newFlags(13, "<local>")
 
   /** A field generated for a primary constructor parameter (no matter if it's a 'val' or not),
-   *  or an accessor of such a field.
+   *  or an accessor of such a field / An `into` modifier on a class
    */
   val (ParamAccessorOrInto @ _, ParamAccessor @ _, Into @ _) = newFlags(14, "<paramaccessor>", "into")
 
@@ -529,18 +529,18 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized | PhantomSymbol | Invisible | Erased
+    Lifted | MixedIn | Specialized | PhantomSymbol | Invisible
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Override | Final | Method | Implicit | Given | Lazy |
+    Override | Final | Method | Implicit | Given | Lazy | Erased |
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Transparent
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in term export forwarders */
-  val RetainedExportTermFlags = Infix | Given | Implicit | Inline | Transparent | Erased | HasDefaultParams | NoDefaultParams | ExtensionMethod
+  val RetainedExportTermFlags = Infix | Given | Implicit | Inline | Transparent | HasDefaultParams | NoDefaultParams | ExtensionMethod
 
   /** Flags retained in parameters of term export forwarders */
   val RetainedExportTermParamFlags = Given | Implicit | Erased | HasDefault | Inline
@@ -569,7 +569,6 @@ object Flags {
   val EnumCase: FlagSet                      = Case | Enum
   val CovariantLocal: FlagSet                = Covariant | Local                              // A covariant type parameter
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
-  val EffectivelyErased                      = PhantomSymbol | Erased
   val ConstructorProxyModule: FlagSet        = PhantomSymbol | Module
   val CaptureParam: FlagSet                  = PhantomSymbol | StableRealizable | Synthetic
   val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter

@@ -1,6 +1,6 @@
 
 import language.experimental.captureChecking
-import caps.consume
+
 
 trait File:
   def close(): Unit
@@ -8,9 +8,9 @@ trait File:
 def withFile[R](path: String)(op: File^ => R): R = ???
 
 trait Foo[+X]:
-  def use(@consume x: File^): X
+  def use(consume x: File^): X
 class Bar extends Foo[File^]: // error
-  def use(@consume x: File^): File^ = x // error override
+  def use(consume x: File^): File^ = x // error override
 
 def bad(): Unit =
   val backdoor: Foo[File^] = new Bar // error (follow-on, since the parent Foo[File^] of bar is illegal).

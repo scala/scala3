@@ -3,8 +3,6 @@ package dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
-
 import dotty.tools.tasty.TastyFormat.*
 import dotty.tools.tasty.besteffort.BestEffortTastyFormat.ERRORtype
 import dotty.tools.tasty.TastyBuffer.*
@@ -14,15 +12,12 @@ import ast.{untpd, tpd}
 import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annotations.*, Flags.*
 import Comments.{Comment, docCtx}
 import NameKinds.*
-import StdNames.{nme, tpnme}
+import StdNames.nme
 import config.Config
+import config.Feature.sourceVersion
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
-import quoted.QuotePatterns
-
-object TreePickler:
-  class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
 
 class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   val buf: TreeBuffer = new TreeBuffer
@@ -30,7 +25,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   import buf.*
   import pickler.nameBuffer.nameIndex
   import tpd.*
-  import TreePickler.*
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
   private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
@@ -283,8 +277,19 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
-      withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
-      annotatedTypeTrees += tpe.annot.tree
+      withLength:
+        pickleType(tpe.parent, richTypes)
+        tpe.annot match
+          case ann: CompactAnnotation =>
+            if sourceVersion.enablesCompactAnnotation then
+              pickleType(ann.tpe)
+            else
+              val atree = ann.oldTree
+              pickleTree(atree)
+              annotatedTypeTrees += atree
+          case ann =>
+            pickleTree(ann.tree)
+            annotatedTypeTrees += ann.tree
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
@@ -390,13 +395,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             pickleTreeUnlessEmpty(rhs)
           pickleModifiers(sym, mdef)
         }
-      catch
-        case ex: Throwable =>
-          if !ctx.settings.XnoEnrichErrorMessages.value
-            && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
-            throw StackSizeExceeded(mdef)
-          else
-            throw ex
+      catch case t: Throwable => handleRecursive("tree pickling", mdef.show, t)
       if sym.is(Method) && sym.owner.isClass then
         profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
       for docCtx <- ctx.docCtx do
@@ -459,7 +458,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 writeByte(QUALTHIS)
                 pickleTree(qual.withType(tref))
               case _: ErrorType if ctx.isBestEffort =>
-                pickleTree(qual)
+                if qual.hasType then
+                  pickleTree(qual.asInstanceOf[Tree]) // it has a type, so it's a valid tpd.Tree
+                else
+                  pickleErrorType()
               case _ => pickleCapturedThis
         case Select(qual, name) =>
           name match {
@@ -590,6 +592,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             if (tree.isInline)
               if (selector.isEmpty) writeByte(IMPLICIT)
               else { writeByte(INLINE); pickleTree(selector) }
+            else if tree.isSubMatch then { writeByte(SUBMATCH); pickleTree(selector) }
             else pickleTree(selector)
             tree.cases.foreach(pickleTree)
           }
@@ -857,64 +860,60 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if (flags.is(ParamAccessor) && sym.isTerm && !sym.isSetter)
       flags = flags &~ ParamAccessor // we only generate a tag for parameter setters
     pickleFlags(flags, sym.isTerm)
-    if flags.is(Into) then
-      // Temporary measure until we can change TastyFormat to include an INTO tag
-      pickleAnnotation(sym, mdef, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
     val annots = sym.annotations.foreach(pickleAnnotation(sym, mdef, _))
   }
 
-  def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit = {
+  def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit =
     import Flags.*
-    def writeModTag(tag: Int) = {
+    def writeModTag(tag: Int) =
       assert(isModifierTag(tag))
       writeByte(tag)
-    }
+
     if flags.is(Scala2x) then assert(attributes.scala2StandardLibrary)
-    if (flags.is(Private)) writeModTag(PRIVATE)
-    if (flags.is(Protected)) writeModTag(PROTECTED)
-    if (flags.is(Final, butNot = Module)) writeModTag(FINAL)
-    if (flags.is(Case)) writeModTag(CASE)
-    if (flags.is(Override)) writeModTag(OVERRIDE)
-    if (flags.is(Inline)) writeModTag(INLINE)
-    if (flags.is(InlineProxy)) writeModTag(INLINEPROXY)
-    if (flags.is(Macro)) writeModTag(MACRO)
-    if (flags.is(JavaStatic)) writeModTag(STATIC)
-    if (flags.is(Module)) writeModTag(OBJECT)
-    if (flags.is(Enum)) writeModTag(ENUM)
-    if (flags.is(Local)) writeModTag(LOCAL)
-    if (flags.is(Synthetic)) writeModTag(SYNTHETIC)
-    if (flags.is(Artifact)) writeModTag(ARTIFACT)
+    if flags.is(Private) then writeModTag(PRIVATE)
+    if flags.is(Protected) then writeModTag(PROTECTED)
+    if flags.is(Final, butNot = Module) then writeModTag(FINAL)
+    if flags.is(Case) then writeModTag(CASE)
+    if flags.is(Override) then writeModTag(OVERRIDE)
+    if flags.is(Inline) then writeModTag(INLINE)
+    if flags.is(InlineProxy) then writeModTag(INLINEPROXY)
+    if flags.is(Macro) then writeModTag(MACRO)
+    if flags.is(JavaStatic) then writeModTag(STATIC)
+    if flags.is(Module) then writeModTag(OBJECT)
+    if flags.is(Enum) then writeModTag(ENUM)
+    if flags.is(Local) then writeModTag(LOCAL)
+    if flags.is(Synthetic) then writeModTag(SYNTHETIC)
+    if flags.is(Artifact) then writeModTag(ARTIFACT)
     if flags.is(Transparent) then writeModTag(TRANSPARENT)
     if flags.is(Infix) then writeModTag(INFIX)
     if flags.is(Invisible) then writeModTag(INVISIBLE)
-    if (flags.is(Erased)) writeModTag(ERASED)
-    if (flags.is(Exported)) writeModTag(EXPORTED)
-    if (flags.is(Given)) writeModTag(GIVEN)
-    if (flags.is(Implicit)) writeModTag(IMPLICIT)
-    if (flags.is(Tracked)) writeModTag(TRACKED)
-    if (isTerm) {
-      if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
-      if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
-      if (flags.is(Mutable)) writeModTag(MUTABLE)
-      if (flags.is(Accessor)) writeModTag(FIELDaccessor)
-      if (flags.is(CaseAccessor)) writeModTag(CASEaccessor)
-      if (flags.is(HasDefault)) writeModTag(HASDEFAULT)
+    if flags.is(Erased) then writeModTag(ERASED)
+    if flags.is(Exported) then writeModTag(EXPORTED)
+    if flags.is(Given) then writeModTag(GIVEN)
+    if flags.is(Implicit) then writeModTag(IMPLICIT)
+    if flags.is(Tracked) then writeModTag(TRACKED)
+    if isTerm then
+      if flags.is(Lazy, butNot = Module) then writeModTag(LAZY)
+      if flags.is(AbsOverride) then { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
+      if flags.is(Mutable) then writeModTag(MUTABLE)
+      if flags.is(Accessor) then writeModTag(FIELDaccessor)
+      if flags.is(CaseAccessor) then writeModTag(CASEaccessor)
+      if flags.is(HasDefault) then writeModTag(HASDEFAULT)
       if flags.isAllOf(StableMethod) then writeModTag(STABLE) // other StableRealizable flag occurrences are either implied or can be recomputed
-      if (flags.is(Extension)) writeModTag(EXTENSION)
-      if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
-      if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
-      assert(!(flags.is(Label)))
-    }
-    else {
-      if (flags.is(Sealed)) writeModTag(SEALED)
-      if (flags.is(Abstract)) writeModTag(ABSTRACT)
-      if (flags.is(Trait)) writeModTag(TRAIT)
-      if (flags.is(Covariant)) writeModTag(COVARIANT)
-      if (flags.is(Contravariant)) writeModTag(CONTRAVARIANT)
-      if (flags.is(Opaque)) writeModTag(OPAQUE)
-      if (flags.is(Open)) writeModTag(OPEN)
-    }
-  }
+      if flags.is(Extension) then writeModTag(EXTENSION)
+      if flags.is(ParamAccessor) then writeModTag(PARAMsetter)
+      if flags.is(SuperParamAlias) then writeModTag(PARAMalias)
+      assert(!flags.is(Label))
+    else
+      if flags.is(Sealed) then writeModTag(SEALED)
+      if flags.is(Abstract) then writeModTag(ABSTRACT)
+      if flags.is(Trait) then writeModTag(TRAIT)
+      if flags.is(Covariant) then writeModTag(COVARIANT)
+      if flags.is(Contravariant) then writeModTag(CONTRAVARIANT)
+      if flags.is(Opaque) then writeModTag(OPAQUE)
+      if flags.is(Open) then writeModTag(OPEN)
+      if flags.is(Into) then writeModTag(INTO)
+  end pickleFlags
 
   private def isUnpicklable(owner: Symbol, ann: Annotation)(using Context) = ann match {
     case Annotation.Child(sym) => sym.isInaccessibleChildOf(owner)
@@ -923,34 +922,30 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       // Such annotations will be reconstituted when unpickling the child class.
       // See tests/pickling/i3149.scala
     case _ if ctx.isBestEffort && !ann.symbol.denot.isError => true
-    case _ =>
-      ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
+    case _ => defn.unpicklableAnnotations.contains(ann.symbol)
   }
 
   def pickleAnnotation(owner: Symbol, mdef: MemberDef, ann: Annotation)(using Context): Unit =
     if !isUnpicklable(owner, ann) then
       writeByte(ANNOTATION)
-      withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
+      val annotTree = ann match
+        case ann: CompactAnnotation =>
+          if sourceVersion.enablesCompactAnnotation then ann.tree else ann.oldTree
+        case _ =>
+          ann.tree
+      withLength { pickleType(ann.symbol.typeRef); pickleTree(annotTree) }
       var treeBuf = annotTrees.lookup(mdef)
       if treeBuf == null then
         treeBuf = new mutable.ListBuffer[Tree]
         annotTrees(mdef) = treeBuf
-      treeBuf += ann.tree
+      treeBuf += annotTree
 
 // ---- main entry points ---------------------------------------
 
   def pickle(trees: List[Tree])(using Context): Unit = {
     profile = Profile.current
     for tree <- trees do
-      try
-        if !tree.isEmpty then pickleTree(tree)
-      catch case ex: StackSizeExceeded =>
-        report.error(
-          em"""Recursion limit exceeded while pickling ${ex.mdef}
-              |in ${ex.mdef.symbol.showLocated}.
-              |You could try to increase the stacksize using the -Xss JVM option.
-              |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.""",
-          ex.mdef.srcPos)
+      if !tree.isEmpty then pickleTree(tree)
 
     def missing = forwardSymRefs.keysIterator
       .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")

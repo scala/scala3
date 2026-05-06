@@ -24,3 +24,8 @@ object updated:
 
   def h[A, B](a: A, b: B)(using c: Compare[A, B] = Compare.any, s: String) = ()
   h(true, 1) // error
+
+  class X
+  val defx = X()
+  def competing[A, B](a: A, b: B)(implicit x: X = defx, cmp: Compare[A, B]) = ()
+  competing(true, 42) // error when the default is in the same param list as the missing implicit

@@ -1,7 +1,7 @@
 package example
 
 /**
-  * Trait Parameters: https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html
+  * Trait Parameters: https://nightly.scala-lang.org/docs/reference/other-new-features/trait-parameters.html
   */
 object TraitParams {
 

@@ -11,14 +11,14 @@ import org.junit.Assume.assumeTrue
 import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import reporting.TestReporter
-import vulpix._
+import vulpix.*
 
 
 class IdempotencyTests {
-  import TestConfiguration._
-  import IdempotencyTests._
+  import TestConfiguration.*
+  import IdempotencyTests.*
   import CompilationTest.aggregateTests
 
   // ignore flaky tests
@@ -30,8 +30,8 @@ class IdempotencyTests {
     val opt = defaultOptions
 
     val posIdempotency = aggregateTests(
-      compileFilesInDir("tests/pos", opt, filter)(TestGroup("idempotency/posIdempotency1")),
-      compileFilesInDir("tests/pos", opt, filter)(TestGroup("idempotency/posIdempotency2")),
+      compileFilesInDir("tests/pos", opt, filter)(using TestGroup("idempotency/posIdempotency1")),
+      compileFilesInDir("tests/pos", opt, filter)(using TestGroup("idempotency/posIdempotency2")),
     )
 
     val orderIdempotency = {
@@ -41,8 +41,8 @@ class IdempotencyTests {
         } yield {
           val sources = TestSources.sources(testDir.toPath)
           aggregateTests(
-            compileList(testDir.getName, sources, opt)(TestGroup("idempotency/orderIdempotency1")),
-            compileList(testDir.getName, sources.reverse, opt)(TestGroup("idempotency/orderIdempotency2"))
+            compileList(testDir.getName, sources, opt)(using TestGroup("idempotency/orderIdempotency1")),
+            compileList(testDir.getName, sources.reverse, opt)(using TestGroup("idempotency/orderIdempotency2"))
           )
         }
       aggregateTests(tests*)
@@ -50,7 +50,7 @@ class IdempotencyTests {
 
     def check(name: String) = {
       val files = List(s"tests/idempotency/$name.scala", "tests/idempotency/IdempotencyCheck.scala")
-      compileList(name, files, defaultOptions)(TestGroup("idempotency/check"))
+      compileList(name, files, defaultOptions)(using TestGroup("idempotency/check"))
     }
     val allChecks = aggregateTests(
       check("CheckOrderIdempotency"),
@@ -72,7 +72,7 @@ object IdempotencyTests extends ParallelTesting {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 30.seconds
-  def numberOfSlaves = 5
+  def numberOfWorkers = 5
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

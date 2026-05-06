@@ -19,11 +19,11 @@ import scala.collection._
 import scala.collection.immutable.Node
 
 /** A stepper that is a slightly elaborated version of the ChampBaseIterator;
-  * the main difference is that it knows when it should stop instead of running
-  * to the end of all trees.
-  */
+ *  the main difference is that it knows when it should stop instead of running
+ *  to the end of all trees.
+ */
 private[collection] abstract class ChampStepperBase[
-  A, T <: Node[T], Sub >: Null, Semi <: Sub with ChampStepperBase[A, T, _, _]
+  A, T <: Node[T], Sub, Semi <: Sub & ChampStepperBase[A, T, ?, ?]
 ](protected var maxSize: Int)
 extends EfficientSplit {
   import Node.MaxDepth
@@ -32,11 +32,11 @@ extends EfficientSplit {
 
   protected var currentValueCursor: Int = 0
   protected var currentValueLength: Int = 0
-  protected var currentValueNode: T = _
+  protected var currentValueNode: T = compiletime.uninitialized
 
   private var currentStackLevel: Int = -1
-  private var nodeCursorsAndLengths: Array[Int] = _
-  private var nodes: Array[T] = _
+  private var nodeCursorsAndLengths: Array[Int] = compiletime.uninitialized
+  private var nodes: Array[T] = compiletime.uninitialized
 
   private def initNodes(): Unit = {
     if (nodeCursorsAndLengths eq null) {
@@ -71,10 +71,9 @@ extends EfficientSplit {
     currentStackLevel = currentStackLevel - 1
   }
 
-  /**
-    * Searches for next node that contains payload values,
-    * and pushes encountered sub-nodes on a stack for depth-first traversal.
-    */
+  /** Searches for next node that contains payload values,
+   *  and pushes encountered sub-nodes on a stack for depth-first traversal.
+   */
   private final def searchNextValueNode(): Boolean = {
     while (currentStackLevel >= 0) {
       val cursorIndex = currentStackLevel * 2
@@ -109,7 +108,7 @@ extends EfficientSplit {
     ans
   }
 
-  final def trySplit(): Sub =
+  final def trySplit(): Sub | Null =
     if (!hasStep) null
     else {
       var fork = 0
@@ -157,7 +156,7 @@ extends EfficientSplit {
 }
 
 
-private[collection] final class AnyChampStepper[A, T >: Null <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => A)
+private[collection] final class AnyChampStepper[A, T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => A)
 extends ChampStepperBase[A, T, AnyStepper[A], AnyChampStepper[A, T]](_maxSize)
 with AnyStepper[A] {
   def nextStep(): A =
@@ -172,14 +171,14 @@ with AnyStepper[A] {
   def semiclone(): AnyChampStepper[A, T] = new AnyChampStepper[A, T](0, extract)
 }
 private[collection] object AnyChampStepper {
-  def from[A, T >: Null <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => A): AnyChampStepper[A, T] = {
+  def from[A, T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => A): AnyChampStepper[A, T] = {
     val ans = new AnyChampStepper[A, T](maxSize, extract)
     ans.initRoot(root)
     ans
   }
 }
 
-private[collection] final class DoubleChampStepper[T >: Null <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Double)
+private[collection] final class DoubleChampStepper[T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Double)
 extends ChampStepperBase[Double, T, DoubleStepper, DoubleChampStepper[T]](_maxSize)
 with DoubleStepper {
   def nextStep(): Double =
@@ -194,14 +193,14 @@ with DoubleStepper {
   def semiclone(): DoubleChampStepper[T] = new DoubleChampStepper[T](0, extract)
 }
 private[collection] object DoubleChampStepper {
-  def from[T >: Null <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Double): DoubleChampStepper[T] = {
+  def from[T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Double): DoubleChampStepper[T] = {
     val ans = new DoubleChampStepper[T](maxSize, extract)
     ans.initRoot(root)
     ans
   }
 }
 
-private[collection] final class IntChampStepper[T >: Null <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Int)
+private[collection] final class IntChampStepper[T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Int)
 extends ChampStepperBase[Int, T, IntStepper, IntChampStepper[T]](_maxSize)
 with IntStepper {
   def nextStep(): Int =
@@ -216,14 +215,14 @@ with IntStepper {
   def semiclone(): IntChampStepper[T] = new IntChampStepper[T](0, extract)
 }
 private[collection] object IntChampStepper {
-  def from[T >: Null <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Int): IntChampStepper[T] = {
+  def from[T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Int): IntChampStepper[T] = {
     val ans = new IntChampStepper[T](maxSize, extract)
     ans.initRoot(root)
     ans
   }
 }
 
-private[collection] final class LongChampStepper[T >: Null <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Long)
+private[collection] final class LongChampStepper[T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Long)
 extends ChampStepperBase[Long, T, LongStepper, LongChampStepper[T]](_maxSize)
 with LongStepper {
   def nextStep(): Long =
@@ -238,7 +237,7 @@ with LongStepper {
   def semiclone(): LongChampStepper[T] = new LongChampStepper[T](0, extract)
 }
 private[collection] object LongChampStepper {
-  def from[T >: Null <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Long): LongChampStepper[T] = {
+  def from[T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Long): LongChampStepper[T] = {
     val ans = new LongChampStepper[T](maxSize, extract)
     ans.initRoot(root)
     ans

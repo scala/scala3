@@ -2,14 +2,13 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.interfaces.SourceFile
 import dotty.tools.dotc.reporting.MessageFilter.SourcePattern
 
 import java.util.regex.PatternSyntaxException
+import scala.PartialFunction.cond
 import scala.annotation.internal.sharable
 import scala.util.matching.Regex
 
@@ -18,12 +17,13 @@ enum MessageFilter:
     import Diagnostic.*
     this match
     case Any => true
+    case Configuration => message.isInstanceOf[ConfigurationWarning]
     case Deprecated => message.isInstanceOf[DeprecationWarning]
     case Feature => message.isInstanceOf[FeatureWarning]
     case Unchecked => message.isInstanceOf[UncheckedWarning]
     case MessageID(errorId) => message.msg.errorId == errorId
     case MessagePattern(pattern) =>
-      val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
+      val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]", "")
       pattern.findFirstIn(noHighlight).nonEmpty
     case SourcePattern(pattern) =>
       val source = message.position.orElse(NoSourcePosition).source()
@@ -33,23 +33,25 @@ enum MessageFilter:
       pattern.findFirstIn(path).nonEmpty
     case Origin(pattern) =>
       message match
-      case message: OriginWarning => pattern.findFirstIn(message.origin).nonEmpty
+      case message: OriginWarning if message.origin != OriginWarning.NoOrigin =>
+        pattern.findFirstIn(message.origin).nonEmpty
       case _ => false
     case None => false
 
-  case Any, Deprecated, Feature, Unchecked, None
+  case Any, Configuration, Deprecated, Feature, Unchecked, None
   case MessagePattern(pattern: Regex)
   case MessageID(errorId: ErrorMessageID)
   case SourcePattern(pattern: Regex)
   case Origin(pattern: Regex)
 
 enum Action:
-  case Error, Warning, Verbose, Info, Silent
+  case Error, Warning, Verbose, Info, Silent, Default
 
 final case class WConf(confs: List[(List[MessageFilter], Action)]):
-  def action(message: Diagnostic): Action = confs.collectFirst {
-    case (filters, action) if filters.forall(_.matches(message)) => action
-  }.getOrElse(Action.Warning)
+  def action(message: Diagnostic): Action =
+    confs.collectFirst:
+      case (filters, action) if filters.forall(_.matches(message)) => action
+    .getOrElse(Action.Default)
 
 object WConf:
   import Action.*
@@ -81,30 +83,34 @@ object WConf:
 
   def parseFilter(s: String): Either[String, MessageFilter] = s match
     case "any" => Right(Any)
-    case Splitter(filter, conf) => filter match
-      case "msg" => regex(conf).map(MessagePattern.apply)
-      case "id" => conf match
-        case ErrorId(num) =>
-          ErrorMessageID.fromErrorNumber(num.toInt) match
-            case Some(errId) if errId.isActive => Right(MessageID(errId))
-            case Some(errId) => Left(s"E${num} is marked as inactive.")
-            case _ => Left(s"Unknown error message number: E${num}")
-        case _ =>
-          Left(s"invalid error message id: $conf")
-      case "name" =>
-        try Right(MessageID(ErrorMessageID.valueOf(conf + "ID")))
-        catch case _: IllegalArgumentException => Left(s"unknown error message name: $conf")
+    case Splitter(filter, conf) =>
+      assert(filter != null && conf != null, s"$Splitter should not match with missing groups")
+      filter match
+        case "msg" => regex(conf).map(MessagePattern.apply)
+        case "id" => conf match
+          case ErrorId(num) =>
+            assert(num != null, s"$ErrorId should not match with missing groups")
+            ErrorMessageID.fromErrorNumber(num.toInt) match
+              case Some(errId) if errId.isActive => Right(MessageID(errId))
+              case Some(errId) => Left(s"E${num} is marked as inactive.")
+              case _ => Left(s"Unknown error message number: E${num}")
+          case _ =>
+            Left(s"invalid error message id: $conf")
+        case "name" =>
+          try Right(MessageID(ErrorMessageID.valueOf(conf + "ID")))
+          catch case _: IllegalArgumentException => Left(s"unknown error message name: $conf")
 
-      case "cat" => conf match
-        case "deprecation" => Right(Deprecated)
-        case "feature"     => Right(Feature)
-        case "unchecked"   => Right(Unchecked)
-        case _             => Left(s"unknown category: $conf")
+        case "cat" => conf match
+          case "configuration" => Right(Configuration)
+          case "deprecation" => Right(Deprecated)
+          case "feature"     => Right(Feature)
+          case "unchecked"   => Right(Unchecked)
+          case _             => Left(s"unknown category: $conf")
 
-      case "src" => regex(conf).map(SourcePattern.apply)
-      case "origin" => regex(conf).map(Origin.apply)
+        case "src" => regex(conf).map(SourcePattern.apply)
+        case "origin" => regex(conf).map(Origin.apply)
 
-      case _ => Left(s"unknown filter: $filter")
+        case _ => Left(s"unknown filter: $filter")
     case _ => Left(s"unknown filter: $s")
 
   def parsed(using Context): WConf =
@@ -136,13 +142,23 @@ object WConf:
       if (parseErrorss.nonEmpty) Left(parseErrorss.flatten)
       else Right(WConf(configs))
 
-class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
-  private var _used = false
-  def used: Boolean = _used
+class Suppression(val annotPos: SourcePosition, val filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
+  inline def unusedState = 0
+  inline def usedState = 1
+  inline def supersededState = 2
+  private var _used = unusedState
+  def used: Boolean = _used == usedState
+  def superseded: Boolean = _used == supersededState
   def markUsed(): Unit =
-    _used = true
+    _used = usedState
+  def markSuperseded(): Unit =
+    _used = supersededState
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
-    pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+    def posMatches =
+         start <= pos.start && pos.end <= end
+      || pos.inlinePosStack.exists(p => start <= p.start && p.end <= end)
+    pos.exists && posMatches && filters.forall(_.matches(dia))
 
   override def toString = s"Suppress in ${annotPos.source} $start..$end [${filters.mkString(", ")}]"
+end Suppression

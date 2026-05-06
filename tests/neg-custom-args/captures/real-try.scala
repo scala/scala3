@@ -17,20 +17,20 @@ def test(): Unit =
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  val x = try // error
-    () => foo(1)
+  val x = try
+    () => foo(1) // error
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  val y = try  // error
-    () => Cell(foo(1))
+  val y = try
+    () => Cell(foo(1)) // error
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  val b = try // error
-    Cell(() => foo(1))
+  val b = try
+    Cell(() => foo(1)) // error
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???
