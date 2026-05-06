@@ -110,10 +110,8 @@ class TreeUnpickler(reader: TastyReader,
   /** Was unpickled class compiled with capture checks? */
   private val withCaptureChecks: Boolean = attributes.captureChecked
 
-  private val unpicklingScala2Library = attributes.scala2StandardLibrary
-
   /** This dependency was compiled with explicit nulls enabled */
-  // TODO Use this to tag the symbols of this dependency as compiled with explicit nulls (see use of unpicklingScala2Library).
+  // TODO Use this to tag the symbols of this dependency as compiled with explicit nulls
   private val explicitNulls = attributes.explicitNulls
 
   private val unpicklingJava = attributes.isJava
@@ -650,8 +648,7 @@ class TreeUnpickler(reader: TastyReader,
       if (!rhsIsEmpty) skipTree()
       val (givenFlags0, annotFns, privateWithin) = readModifiers(end)
       val givenFlags =
-        if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty
-        else if unpicklingJava then givenFlags0 | JavaDefined
+        if unpicklingJava then givenFlags0 | JavaDefined
         else givenFlags0
       pickling.println(i"creating symbol $name at $start with flags ${givenFlags.flagsString}, isAbsType = $isAbsType, $ttag")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)

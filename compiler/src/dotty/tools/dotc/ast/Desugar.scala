@@ -721,8 +721,6 @@ object desugar {
     def isEnumCase = mods.isEnumCase
     def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
-      // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
-    val caseClassInScala2Library = isCaseClass && Feature.shouldBehaveAsScala2
 
     val originalTparams = constr1.leadingTypeParams
     val originalVparamss = asTermOnly(constr1.trailingParamss)
@@ -912,20 +910,18 @@ object desugar {
         DefDef(name, Nil, tpt, rhs).withMods(synthetic)
 
       def productElemMeths =
-        if caseClassInScala2Library then Nil
-        else
-          val caseParams = derivedVparamss.head.toArray
-          val selectorNamesInBody = normalizedBody.collect {
-            case vdef: ValDef if vdef.name.isSelectorName =>
-              vdef.name
-            case ddef: DefDef if ddef.name.isSelectorName && ddef.paramss.isEmpty =>
-              ddef.name
-          }
-          for i <- List.range(0, arity)
-              selName = nme.selectorName(i)
-              if (selName ne caseParams(i).name) && !selectorNamesInBody.contains(selName)
-          yield syntheticProperty(selName, caseParams(i).tpt,
-            Select(This(EmptyTypeIdent), caseParams(i).name))
+        val caseParams = derivedVparamss.head.toArray
+        val selectorNamesInBody = normalizedBody.collect {
+          case vdef: ValDef if vdef.name.isSelectorName =>
+            vdef.name
+          case ddef: DefDef if ddef.name.isSelectorName && ddef.paramss.isEmpty =>
+            ddef.name
+        }
+        for i <- List.range(0, arity)
+            selName = nme.selectorName(i)
+            if (selName ne caseParams(i).name) && !selectorNamesInBody.contains(selName)
+        yield syntheticProperty(selName, caseParams(i).tpt,
+          Select(This(EmptyTypeIdent), caseParams(i).name))
 
       def enumCaseMeths =
         if isEnumCase then
@@ -1030,7 +1026,6 @@ object desugar {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS =
             if (arity == 0) Literal(Constant(true))
-            else if caseClassInScala2Library then scala2LibCompatUnapplyRhs(unapplyParam.name)
             else Ident(unapplyParam.name)
           val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
 

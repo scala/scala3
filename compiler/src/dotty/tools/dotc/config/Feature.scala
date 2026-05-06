@@ -190,7 +190,7 @@ object Feature:
 
   /* Should we behave as scala 2?*/
   def shouldBehaveAsScala2(using Context): Boolean =
-    ctx.settings.YcompileScala2Library.value || sourceVersion.isScala2
+    sourceVersion.isScala2
 
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`
