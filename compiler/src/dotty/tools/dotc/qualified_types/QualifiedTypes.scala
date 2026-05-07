@@ -135,25 +135,31 @@ object QualifiedTypes:
     avoidMap(tp)
 
   /** Weaken any qualifiers inside `tp` by eliminating free `ENodeVar`s
-   *  (kinds `OpenedParam` and `Skolem`). Sub-expressions of Boolean type that
-   *  contain a free `ENodeVar` are replaced with `true` or `false` depending
-   *  on polarity so that the rewritten qualifier is *weaker* than the
-   *  original (i.e., implied by it).
+   *  (kinds `OpenedParam` and `Skolem`) that satisfy `isAvoided`.
+   *  Sub-expressions of Boolean type that contain such a var are replaced
+   *  with `true` or `false` depending on polarity so that the rewritten
+   *  qualifier is *weaker* than the original (i.e., implied by it).
    *
-   *  If all free vars cannot be eliminated from the qualifier's body by this
-   *  rewriting (e.g., because they appear outside any Boolean connective),
-   *  the qualifier is dropped entirely, falling back to the parent type.
+   *  If `isAvoided` matches everything, this fully drops qualifiers whose
+   *  body cannot be weakened to a closed expression. Callers that want to
+   *  drop only a subset of skolems (e.g., those introduced by a specific
+   *  avoidance pass) pass a more selective predicate.
+   *
+   *  If all matching free vars cannot be eliminated from the qualifier's
+   *  body by this rewriting (e.g., because they appear outside any Boolean
+   *  connective), the qualifier is dropped entirely, falling back to the
+   *  parent type.
    */
-  def avoidQualifierVars(tp: Type)(using Context): Type =
+  def avoidQualifierVars(tp: Type, isAvoided: ENodeVar => Boolean = _ => true)(using Context): Type =
     if !Feature.qualifiedTypesEnabled then return tp
     val avoidMap = new TypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
           val parent1 = apply(parent)
-          val body1 = avoidVarsInBody(qualifier.body, positive = true)
-          if containsFreeVar(body1) || isTrueAtom(body1) then
-            // Either we couldn't eliminate all free vars, or the body became
-            // trivially `true` — in both cases drop the qualifier entirely.
+          val body1 = avoidVarsInBody(qualifier.body, positive = true, isAvoided)
+          if containsFreeVar(body1, isAvoided) || isTrueAtom(body1) then
+            // Either we couldn't eliminate all matching free vars, or the body
+            // became trivially `true` — in both cases drop the qualifier entirely.
             parent1
           else if body1 eq qualifier.body then
             if parent1 eq parent then t else QualifiedType(parent1, qualifier)
@@ -163,19 +169,20 @@ object QualifiedTypes:
     avoidMap(tp)
 
   /** Recurse through Boolean connectives, replacing sub-expressions that
-   *  contain a free `ENodeVar` with the polarity-appropriate constant
-   *  (`true` in positive position, `false` in negative position).
+   *  contain a free `ENodeVar` matching `isAvoided` with the
+   *  polarity-appropriate constant (`true` in positive position, `false` in
+   *  negative position).
    */
-  private def avoidVarsInBody(node: ENode, positive: Boolean)(using Context): ENode =
+  private def avoidVarsInBody(node: ENode, positive: Boolean, isAvoided: ENodeVar => Boolean)(using Context): ENode =
     node match
       case ENode.OpApply(ENode.Op.And, args) =>
-        ENode.OpApply(ENode.Op.And, args.map(avoidVarsInBody(_, positive)))
+        ENode.OpApply(ENode.Op.And, args.map(avoidVarsInBody(_, positive, isAvoided)))
       case ENode.OpApply(ENode.Op.Or, args) =>
-        ENode.OpApply(ENode.Op.Or, args.map(avoidVarsInBody(_, positive)))
+        ENode.OpApply(ENode.Op.Or, args.map(avoidVarsInBody(_, positive, isAvoided)))
       case ENode.OpApply(ENode.Op.Not, List(arg)) =>
-        ENode.OpApply(ENode.Op.Not, List(avoidVarsInBody(arg, !positive)))
+        ENode.OpApply(ENode.Op.Not, List(avoidVarsInBody(arg, !positive, isAvoided)))
       case _ =>
-        if containsFreeVar(node) then constantAtom(positive)
+        if containsFreeVar(node, isAvoided) then constantAtom(positive)
         else node
 
   private def constantAtom(value: Boolean)(using Context): ENode =
@@ -185,12 +192,11 @@ object QualifiedTypes:
     case ENode.Atom(ConstantType(Constant(true))) => true
     case _ => false
 
-  private def containsFreeVar(node: ENode)(using Context): Boolean =
+  private def containsFreeVar(node: ENode, isAvoided: ENodeVar => Boolean)(using Context): Boolean =
     var found = false
     node.foreachType: tp =>
       tp.foreachPart:
-        case tp: ENodeVar if tp.isFree => found = true
-        case tp: SkolemType => found = true
+        case tp: ENodeVar if tp.isFree && isAvoided(tp) => found = true
         case _ =>
     found
 
