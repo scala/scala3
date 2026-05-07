@@ -17,7 +17,7 @@
 11 |  val z: A -> (x: A) -> B^ = y // error
    |                             ^
    |                             Found:    A -> A -> B^{y*}
-   |                             Required: A -> (x: A) -> B^
+   |                             Required: A -> A -> B^
    |
    |                             Note that capability `y*` cannot flow into capture set {any}.
    |
@@ -44,7 +44,7 @@
 16 |  val z: (x: A) -> B^ = y // error
    |                        ^
    |                        Found:    A -> B^{y*}
-   |                        Required: (x: A) -> B^
+   |                        Required: A -> B^
    |
    |                        Note that capability `y*` cannot flow into capture set {any}.
    |

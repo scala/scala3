@@ -176,9 +176,27 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction)
 
   protected def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
+    /** Like `isElidableUniversal`, but also accepts a `ResultCap` whose
+     *  origin is a `LocalCap`. That shape is the result of `cc.toResult`
+     *  rewriting the `LocalCap` that `=>` desugars to into an
+     *  existentially-bound `ResultCap`; recognising it here restores the
+     *  `=>` shortcut. A `ResultCap` originating from a user-written
+     *  `caps.fresh` has `GlobalAny` as its origin and is *not* elided.
+     */
+    def isElidableArrowCaptures(refs: GeneralCaptureSet): Boolean =
+      isElidableUniversal(refs) || (refs match
+        case refs: CaptureSet =>
+          !refs.elems.isEmpty
+            && refs.elems.forall:
+              case _: Capabilities.LocalCap => true
+              case Capabilities.GlobalAny => true
+              case rc: Capabilities.ResultCap => rc.origin.isInstanceOf[Capabilities.LocalCap]
+              case _ => false
+            && !ccVerbose
+        case _ => false)
     val (printPure, refsText) =
       if refs == null then (isPure, Str(""))
-      else if isElidableUniversal(refs) then (false, Str(""))
+      else if isElidableArrowCaptures(refs) then (false, Str(""))
       else refs match
         case cs: CaptureSet if cs.isConst && cs.elems.isEmpty => (true, Str(""))
         case _ => (isPure, toTextGeneralCaptureSet(refs))
@@ -206,11 +224,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: MethodType =>
         val isContextual = tp.isImplicitMethod
         if cc.isCaptureCheckingOrSetup
-            && tp.allParamNamesSynthetic
             && !tp.looksResultDependent && !tp.looksParamDependent
+            && !tp.hasResultCapScopedHere  // see cc.CaptureOps for rationale
             && !showUniqueIds && !printDebug && !ccVerbose
         then
-          // cc.Setup converts all functions to dependent functions. Undo that when printing.
+          // The binder carries no semantic role here (no direct param ref,
+          // no fresh existential scoped to it, no inter-param dependency),
+          // so collapse to plain function syntax even if the names are
+          // user-written.
           toTextFunction(tp.paramInfos, tp.resType, tp, refs, isContextual, isPure)
         else
           changePrec(GlobalPrec):

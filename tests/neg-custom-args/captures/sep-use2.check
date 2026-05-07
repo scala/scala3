@@ -42,7 +42,7 @@
 23 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{c} Object^{fresh}
+   |to a function of type (x$0: Object^) ->{c} Object^{fresh}
    |corresponds to capture-polymorphic formal parameter x$0 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
@@ -59,7 +59,7 @@
 27 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{c} Object^{fresh}
+   |to a function of type (x$0: Object^) ->{c} Object^{fresh}
    |corresponds to capture-polymorphic formal parameter x$0 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.

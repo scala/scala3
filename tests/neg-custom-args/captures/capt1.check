@@ -19,7 +19,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:16:2 -----------------------------------------
 16 |  f  // error
    |  ^
-   |  Found:    (y: Int) ->{x} Int
+   |  Found:    Int ->{x} Int
    |  Required: Matchable
    |
    |  Note that capability `x` cannot flow into capture set {}.

@@ -21,12 +21,12 @@
 -- Error: tests/neg-custom-args/captures/sep-use.scala:18:10 -----------------------------------------------------------
 18 |  def xx: (y: Int) => Unit = _ => println(io)  // error
    |          ^^^^^^^^^^^^^^^^
-   |          Separation failure: method xx's result type (y: Int) => Unit hides non-local parameter io
+   |          Separation failure: method xx's result type Int => Unit hides non-local parameter io
 -- Error: tests/neg-custom-args/captures/sep-use.scala:19:10 -----------------------------------------------------------
 19 |  println(io) // error
    |          ^^
    |          Separation failure: Illegal access to {io} which is hidden by the previous definition
-   |          of method xx with result type (y: Int) => Unit.
+   |          of method xx with result type Int => Unit.
    |          This type hides capabilities  {io}
    |
    |          where:    => refers to a root capability in the result type of method xx

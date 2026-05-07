@@ -1,0 +1,8 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> class File
+// defined class File
+scala> def f: [C^ <: {any}] => (xs: List[File^{C}]) -> (ys: File^{C}) -> (zs: File^{C}) ->{ys} Unit = ???
+def f: [C^] => List[File^{C}] -> (ys: File^{C}) -> File^{C} ->{ys} Unit
+scala> def g = (ys: File^) => (zs: File^) => { val _ = ys; () }
+def g: (ys: File^) -> File^ ->{ys} Unit

@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25758-in-package/B_2.scala:4:31 -------------------------
 4 |    val leak: String -> Unit = (secret: String) => // error
   |                               ^
-  |                   Found:    (secret: String) ->{ttt.A} Unit
+  |                   Found:    String ->{ttt.A} Unit
   |                   Required: String -> Unit
   |
   |                   Note that capability `any` cannot flow into capture set {}.

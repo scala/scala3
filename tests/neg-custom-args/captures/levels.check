@@ -10,9 +10,9 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:23:11 ---------------------------------------
 23 |    r.setV(g) // error
    |           ^
-   |           Found:    (x: String) ->{cap3} String
+   |           Found:    String ->{cap3} String
    |           Required: String -> String
    |
-   |           Note that capability `cap3` cannot flow into capture set {}.
+   |           Note that capability `cap3` cannot flow into capture set {} of value r.
    |
    | longer explanation available when compiling with `-explain`

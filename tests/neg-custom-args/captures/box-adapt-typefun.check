@@ -11,7 +11,7 @@
 12 |  val test: [T] -> Unit -> (Cap^{io}) = f.value // error
    |                                        ^^^^^^^
    |                                        Found:    [T] => ((x$1: Unit): Cap^{io})^{io}
-   |                                        Required: [T] => (x$1: Unit) -> Cap^{io}
+   |                                        Required: [T] => Unit -> Cap^{io}
    |
    |                                        Note that capability `io` cannot flow into capture set {}.
    |

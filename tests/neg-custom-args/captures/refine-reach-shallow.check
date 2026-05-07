@@ -14,8 +14,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:10:38 -------------------------
 10 |  val g: [R] -> (IO^{f*} => R) -> R = f  // error // error
    |                                      ^
-   |                                      Found:    (f : [R] => (x$1: IO^{any} ->{any} R) -> R)
-   |                                      Required: [R] => (x$1: IO^{f*} ->{any} R) -> R
+   |                                      Found:    (f : [R] => (IO^{any} => R) -> R)
+   |                                      Required: [R] => (IO^{f*} => R) -> R
    |
    |                                      Note that capability `any` cannot flow into capture set {f*}.
    |
@@ -25,8 +25,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/refine-reach-shallow.scala:13:38 -------------------------
 13 |  val g: [R] -> (IO^{f*} -> R) -> R = f  // error // error
    |                                      ^
-   |                                      Found:    (f : [R] => (x$1: IO^{any} -> R) -> R)
-   |                                      Required: [R] => (x$1: IO^{f*} -> R) -> R
+   |                                      Found:    (f : [R] => (IO^{any} -> R) -> R)
+   |                                      Required: [R] => (IO^{f*} -> R) -> R
    |
    |                                      Note that capability `any` cannot flow into capture set {f*}.
    |
@@ -37,7 +37,7 @@
 19 |  val g: [R] -> (IO^ -> R) -> IO^{f*} = f  // error
    |                                        ^
    |             Found:    (f : [R] => (x$1: IO^ -> R) -> IO^{fresh})
-   |             Required: [R] => (x$1: IO^ -> R) -> IO^{f*}
+   |             Required: [R] => (IO^ -> R) -> IO^{f*}
    |
    |             Note that capability `fresh` cannot flow into capture set {f*}.
    |
@@ -49,7 +49,7 @@
 20 |  val h: [R] -> (IO^{f*} -> R) -> IO^ = f  // error
    |                                        ^
    |        Found:    (f : [R] => (x$1: IO^{any} -> R) -> IO^{fresh})
-   |        Required: [R] => (x$1: IO^{f*} -> R) -> IO^
+   |        Required: [R] => (IO^{f*} -> R) -> IO^
    |
    |        Note that capability `any` cannot flow into capture set {f*}.
    |

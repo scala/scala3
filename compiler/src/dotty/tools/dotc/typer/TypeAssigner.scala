@@ -440,7 +440,21 @@ trait TypeAssigner {
           case pt: PolyType =>
             pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
         val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
-        methodicType.toFunctionType(isJava = meth.symbol.is(JavaDefined))
+        // When capture checking is on, we want a closure's inferred type to
+        // expose its user-written parameter names as a dependent function
+        // type, so they print and appear in capture sets as written. We do
+        // this only for closures that actually carry meaningful names
+        // originating from user source — see the cases enumerated in
+        // `keepsParamNamesUnderCC` below.
+        val keepsParamNamesUnderCC =
+          config.Feature.ccEnabledSomewhere
+          && !ctx.erasedTypes                       // RefinedType is invalid after erasure
+          && !isMethodReferenceEtaExpansion(meth)   // method-ref eta-expansions belong to the standard CC path
+          && hasUserSourceCoord(meth)               // skip synthetic closures from later phases (e.g. quote-pickling holes)
+          && hasMeaningfulParamNames(methodicType)  // skip empty/synthetic/wildcard/contextual params
+        methodicType.toFunctionType(
+          isJava = meth.symbol.is(JavaDefined),
+          alwaysDependent = keepsParamNamesUnderCC)
       else target.tpe)
 
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
@@ -583,6 +597,39 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Hole, tpt: Tree)(using Context): Hole =
     tree.withType(tpt.tpe)
+
+  // ---- Helpers for closure typing under capture checking -----------------
+
+  /** Is `meth` the synthetic anonymous-fun representing the eta-expansion of
+   *  a method reference (e.g. `val f = someMethod`)? Detected via
+   *  [[tpd.isEtaExpansion]] which checks that the parameters are
+   *  zero-extent and the body is an `Apply`.
+   */
+  private def isMethodReferenceEtaExpansion(meth: Tree)(using Context): Boolean =
+    meth.symbol.defTree match
+      case mdef: untpd.DefDef => tpd.isEtaExpansion(mdef.asInstanceOf[tpd.DefDef])
+      case _ => false
+
+  /** True if `meth`'s anonymous-fun symbol points to a real source location.
+   *  Closures synthesized by later phases (e.g. quote pickling) create their
+   *  anonymous-fun symbols with `NoCoord`, so this distinguishes them from
+   *  closures the user wrote.
+   */
+  private def hasUserSourceCoord(meth: Tree)(using Context): Boolean =
+    meth.symbol.span.exists
+
+  /** True if `tp` is a non-contextual `MethodType` whose parameter names are
+   *  worth surfacing in printed types and capture sets — they are
+   *  user-given (not all `x$N` synthetic, not all `_$N` wildcard) and there
+   *  is at least one of them.
+   */
+  private def hasMeaningfulParamNames(tp: Type)(using Context): Boolean = tp match
+    case mt: MethodType =>
+      mt.paramNames.nonEmpty
+      && !mt.allParamNamesSynthetic
+      && !mt.paramNames.forall(_.is(NameKinds.WildcardParamName))
+      && !mt.isContextualMethod
+    case _ => true
 
 }
 

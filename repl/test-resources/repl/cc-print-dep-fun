@@ -1,0 +1,47 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> import caps.fresh
+scala> class A
+// defined class A
+scala> class B
+// defined class B
+scala> class C
+// defined class C
+scala> class Box[+T](val value: T)
+// defined class Box
+scala> def unused: (x: A) -> B = ???
+def unused: A -> B
+scala> def used(a: A^): A^{a} -> B = ???
+def used(a: A^): A^{a} -> B
+scala> def freshScope: (x: A^) -> B^{fresh} = ???
+def freshScope: (x: A^) -> B^{fresh}
+scala> def curriedAllUnused: (x: A) -> (y: B) -> C = ???
+def curriedAllUnused: A -> B -> C
+scala> def curriedFirstUsed(io: A^): (xs: A^{io}) -> (ys: B) -> C = ???
+def curriedFirstUsed(io: A^): A^{io} -> B -> C
+scala> def curriedInnerFresh: (x: A) -> (y: B^) -> C^{fresh} = ???
+def curriedInnerFresh: A -> (y: B^) -> C^{fresh}
+scala> def curriedOuterFresh: (x: A^) -> B^{fresh} -> C = ???
+def curriedOuterFresh: (x: A^) -> B^{fresh} -> C
+scala> def multiParamUnused: (x: A, y: B) -> C = ???
+def multiParamUnused: (A, B) -> C
+scala> def multiParamOneUsed(io: A^): (a: A^{io}, b: B) -> C = ???
+def multiParamOneUsed(io: A^): (A^{io}, B) -> C
+scala> def reach(io: A^): (xs: List[A^{io}]) -> List[B^{xs*}] = ???
+def reach(io: A^): (xs: List[A^{io}]) -> List[B^{xs*}]
+scala> def insideBox: Box[(x: A) -> B] = ???
+def insideBox: Box[A -> B]
+scala> def insideBoxFresh: Box[(x: A^) -> B^{fresh}] = ???
+def insideBoxFresh: Box[(x: A^) -> B^{fresh}]
+scala> def polyFn: [T] => (x: A) -> T = ???
+def polyFn: [T] => A -> T
+scala> def polyFnUsed: [T] => (a: A^) -> A^{a} = ???
+def polyFnUsed: [T] => (a: A^) -> A^{a}
+scala> def ctxUnused: (x: A) ?-> B = ???
+def ctxUnused: (A) ?-> B
+scala> def ctxUsed(io: A^): (a: A^{io}) ?-> B = ???
+def ctxUsed(io: A^): (A^{io}) ?-> B
+scala> def impureUnused: (x: A) => B = ???
+def impureUnused: A => B
+scala> def freshArrow: (x: A) ->{fresh} B = ???
+def freshArrow: A ->{fresh} B

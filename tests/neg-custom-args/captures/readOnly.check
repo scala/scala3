@@ -13,7 +13,7 @@
    |                       Found:    (putA : Int ->{a} Unit)
    |                       Required: Int -> Unit
    |
-   |                       Note that capability `a` cannot flow into capture set {}.
+   |                       Note that capability `putA` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/readOnly.scala:20:23 ----------------------------------------------------------

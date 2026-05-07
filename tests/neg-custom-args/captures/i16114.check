@@ -19,7 +19,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16114.scala:35:30 ---------------------------------------
 35 |    val op4: Unit ->{} Unit = (x: Unit) =>  // error
    |                              ^
-   |                              Found:    (x: Unit) ->{io} Unit
+   |                              Found:    Unit ->{io} Unit
    |                              Required: Unit -> Unit
    |
    |                              Note that capability `io` cannot flow into capture set {}.
@@ -30,7 +30,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16114.scala:38:27 ---------------------------------------
 38 |    val op: Unit -> Unit = (x: Unit) => // error
    |                           ^
-   |                           Found:    (x: Unit) ->{io} Unit
+   |                           Found:    Unit ->{io} Unit
    |                           Required: Unit -> Unit
    |
    |                           Note that capability `io` cannot flow into capture set {}.

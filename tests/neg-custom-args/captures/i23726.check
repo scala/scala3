@@ -19,7 +19,7 @@
 16 |  f3(b)  // error
    |     ^
    |Separation failure: argument of type  (b : Ref^)
-   |to a function of type (x: Ref^) -> (op: () ->{b} Unit) -> List[() ->{op} Unit]
+   |to a function of type Ref^ -> (op: () ->{b} Unit) -> List[() ->{op} Unit]
    |corresponds to capture-polymorphic formal parameter x of type  Ref^²
    |and hides capabilities  {b}.
    |Some of these overlap with the captures of the function result with type  (op: () ->{b} Unit) -> List[() ->{op} Unit].
@@ -36,7 +36,7 @@
 24 |  f7(a)  // error
    |     ^
    |Separation failure: argument of type  (a : Ref^)
-   |to a function of type (x: Ref^) ->{a, b} (y: List[Ref^{a, b}]) ->{a, b} Unit
+   |to a function of type Ref^ ->{a, b} List[Ref^{a, b}] ->{a, b} Unit
    |corresponds to capture-polymorphic formal parameter x of type  Ref^²
    |and hides capabilities  {a}.
    |Some of these overlap with the captures of the function prefix.

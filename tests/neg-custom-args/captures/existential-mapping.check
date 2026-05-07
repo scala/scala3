@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:9:25 ---------------------------
 9 |  val _:  (x: C^) -> C = x1 // error
   |                         ^^
-  |                         Found:    (x: C^) -> C^{x1*}
-  |                         Required: (x: C^) -> C
+  |                         Found:    C^ -> C^{x1*}
+  |                         Required: C^ -> C
   |
   |                         Note that capability `x1*` cannot flow into capture set {}.
   |
@@ -23,8 +23,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:15:30 --------------------------
 15 |  val _: A^ -> (x: C^) -> C = x3 // error
    |                              ^^
-   |                              Found:    A^ -> (x: C^) -> C^{x3*}
-   |                              Required: A^ -> (x: C^) -> C
+   |                              Found:    A^ -> C^ -> C^{x3*}
+   |                              Required: A^ -> C^ -> C
    |
    |                              Note that capability `x3*` cannot flow into capture set {}.
    |
@@ -45,8 +45,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:21:30 --------------------------
 21 |  val _: A^ -> (x: C^) -> C = x5 // error
    |                              ^^
-   |                              Found:    A^ -> (x: C^) -> C^{x5*}
-   |                              Required: A^ -> (x: C^) -> C
+   |                              Found:    A^ -> C^ -> C^{x5*}
+   |                              Required: A^ -> C^ -> C
    |
    |                              Note that capability `x5*` cannot flow into capture set {}.
    |
@@ -56,8 +56,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:24:30 --------------------------
 24 |  val _: A^ -> (x: C^) => C = x6 // error
    |                              ^^
-   |                              Found:    A^ -> (x: C^) ->{x6*} C^{x6*}
-   |                              Required: A^ -> (x: C^) => C
+   |                              Found:    A^ -> C^ ->{x6*} C^{x6*}
+   |                              Required: A^ -> C^ => C
    |
    |                              Note that capability `x6*` cannot flow into capture set {}.
    |
@@ -68,8 +68,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:27:25 --------------------------
 27 |  val _:  (x: C^) => C = y1 // error
    |                         ^^
-   |                         Found:    (x: C^) ->{y1} C^{y1*}
-   |                         Required: (x: C^) => C
+   |                         Found:    C^ ->{y1} C^{y1*}
+   |                         Required: C^ => C
    |
    |                         Note that capability `y1*` cannot flow into capture set {}.
    |
@@ -92,8 +92,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:33:30 --------------------------
 33 |  val _: A^ => (x: C^) => C = y3 // error
    |                              ^^
-   |                              Found:    A^ ->{y3} (x: C^) ->{y3*} C^{y3*}
-   |                              Required: A^ => (x: C^) =>² C
+   |                              Found:    A^ ->{y3} C^ ->{y3*} C^{y3*}
+   |                              Required: A^ => C^ =>² C
    |
    |                              Note that capability `y3*` cannot flow into capture set {}.
    |
@@ -118,8 +118,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:39:30 --------------------------
 39 |  val _: A^ => (x: C^) -> C = y5 // error
    |                              ^^
-   |                              Found:    A^ ->{y5} (x: C^) -> C^{y5*}
-   |                              Required: A^ => (x: C^) -> C
+   |                              Found:    A^ ->{y5} C^ -> C^{y5*}
+   |                              Required: A^ => C^ -> C
    |
    |                              Note that capability `y5*` cannot flow into capture set {}.
    |
@@ -130,8 +130,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:42:30 --------------------------
 42 |  val _: A^ => (x: C^) => C = y6 // error
    |                              ^^
-   |                              Found:    A^ ->{y6} (x: C^) ->{y6*} C^{y6*}
-   |                              Required: A^ => (x: C^) =>² C
+   |                              Found:    A^ ->{y6} C^ ->{y6*} C^{y6*}
+   |                              Required: A^ => C^ =>² C
    |
    |                              Note that capability `y6*` cannot flow into capture set {}.
    |

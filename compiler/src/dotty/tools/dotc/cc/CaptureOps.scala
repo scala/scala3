@@ -516,6 +516,25 @@ extension (tp: MethodOrPoly)
   def marksExistentialScope(using Context): Boolean =
     !tp.resType.isInstanceOf[MethodOrPoly]
 
+  /** Does the result type carry a `ResultCap` (i.e. a `fresh` capability)
+   *  whose binder is `tp` itself? Such a capability uses `tp`'s parameter
+   *  list as its existential scope — keeping the `(x: T)` binder visible
+   *  in printed types preserves that scoping marker, even when no
+   *  `TermParamRef` of `tp` is otherwise referenced.
+   */
+  def hasResultCapScopedHere(using Context): Boolean =
+    object scan extends TypeAccumulator[Boolean]:
+      def apply(found: Boolean, t: Type): Boolean =
+        if found then true
+        else t match
+          case CapturingType(parent, refs) =>
+            val hit = refs.elems.exists:
+              case rc: Capabilities.ResultCap => rc.binder eq tp
+              case _ => false
+            if hit then true else apply(found, parent)
+          case _ => foldOver(found, t)
+    scan(false, tp.resType)
+
 extension (ref: TermRef | ThisType)
   /** Map a local mutable var to its mirror */
   def mapLocalMutable(using Context): TermRef | ThisType = ref match

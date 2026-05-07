@@ -50,7 +50,7 @@
 -- Error: tests/neg-custom-args/captures/lazyref.scala:29:9 ------------------------------------------------------------
 29 |    .map(g) // error: separation failure
    |         ^
-   |Separation failure: argument of type  (x: Int) ->{cap2} Int
+   |Separation failure: argument of type  Int ->{cap2} Int
    |to method map: [U](f: T => U): LazyRef[U]^{f, LazyRef.this}
    |corresponds to capture-polymorphic formal parameter f of type  Int => Int
    |and hides capabilities  {cap2}.

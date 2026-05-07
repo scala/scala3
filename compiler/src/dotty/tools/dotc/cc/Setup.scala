@@ -221,14 +221,26 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     protected def innerApply(tp: Type): Type
 
+    /** Hook for `mapInferred` to attach a capture-set variable to a
+     *  dependent function type rebuilt by `apply`. Closure types that the
+     *  typer materialized as `RefinedType(FunctionN, apply, MethodType)` (in
+     *  order to preserve user-written parameter names) arrive here without a
+     *  capture set; `addVar` only handles the `case _ =>` branch in
+     *  `innerApply` and would skip them. Default is identity for callers
+     *  that are not transforming inferred types.
+     */
+    protected def addRefinedFunctionVar(tp: Type): Type = tp
+
     final def apply(tp: Type) =
       val saved = isTopLevel
       if variance < 0 then isTopLevel = false
       try tp match
         case defn.RefinedFunctionOf(rinfo: MethodType) =>
           val rinfo1 = apply(rinfo)
-          if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
-          else tp
+          val rebuilt =
+            if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
+            else tp
+          addRefinedFunctionVar(rebuilt)
         case _ =>
           innerApply(tp)
       finally isTopLevel = saved
@@ -316,6 +328,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       variance = initialVariance
       var refiningNames: Set[Name] = Set()
+
+      /** Attach a fresh capture-set variable to a dependent function type
+       *  rebuilt by `apply`. This mirrors what `addVar` does for plain
+       *  `FunctionN`: the variable is the slot the capture solver later
+       *  fills with the body's actual captures.
+       */
+      override protected def addRefinedFunctionVar(tp: Type): Type = tp match
+        case CapturingOrRetainsType(_, _) => tp
+        case _: RefinedType if needsVariable(tp) =>
+          CapturingType(tp,
+            CaptureSet.VarInTypeTree(ctx.owner, SimpleIdentitySet.empty,
+              nestedOK = !ctx.mode.is(Mode.CCPreciseOwner),
+              isRefining = inCaptureRefinement))
+        case _ => tp
 
       /** Refine a possibly applied class type C where the class has tracked parameters
        *  x_1: T_1, ..., x_n: T_n to C { val x_1: T_1^{CV_1}, ..., val x_n: T_n^{CV_n} }

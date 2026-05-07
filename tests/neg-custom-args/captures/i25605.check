@@ -5,7 +5,7 @@
   |            The leakage occurred when trying to match the following types:
   |
   |            Found:    [R] => (x: IO^, op: IO^{x} => R) ->'s2 R
-  |            Required: [R] => (x: IO^, op: IO^'s1 => R) -> R
+  |            Required: [R] => (IO^, IO^'s1 => R) -> R
   |
   |            where:    => and ^ refer to the root capability caps.any
   |
@@ -17,7 +17,7 @@
   |           The leakage occurred when trying to match the following types:
   |
   |           Found:    [R] => (x: IO^, op: IO^{x} => R) ->'s4 R
-  |           Required: [R] => (x: IO^, op: IO^'s3 => R) -> R
+  |           Required: [R] => (IO^, IO^'s3 => R) -> R
   |
   |           where:    => and ^ refer to the root capability caps.any
   |

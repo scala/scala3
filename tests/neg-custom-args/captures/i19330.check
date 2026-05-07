@@ -16,14 +16,14 @@
 22 |  val bad: bar.T = foo(bar) // error
    |                   ^^^^^^^^
    |                   Found:    bar.T
-   |                   Required: () ->{any} Logger^
+   |                   Required: () => Logger^
    |
-   |                   Note that capability `any²` cannot flow into capture set {any}
-   |                   because any² in class Bar is not visible from any in value bad.
+   |                   Note that capability `any` cannot flow into capture set {any²}
+   |                   because any in class Bar is not visible from any² in value bad.
    |
    |                   where:    ^    refers to a root capability in the type of value bad
-   |                             any  is a root capability in the type of value bad
-   |                             any² is a root capability in the type of type T
+   |                             any  is a root capability in the type of type T
+   |                             any² is a root capability in the type of value bad
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------

@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i23850.scala:15:46 ---------------------------------------
 15 |  val addWritesToConsole: (Int, Int) -> Int = (a, b) => // error
    |                                              ^
-   |Found:    (a: Int, b: Int) ->{test} Int
+   |Found:    (Int, Int) ->{test} Int
    |Required: (Int, Int) -> Int
    |
    |Note that capability `any` cannot flow into capture set {}.

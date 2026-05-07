@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:6:31 ----------------------------------
 6 |  val _: (x: C) => C^{fresh} = b // error
   |                               ^
-  |                        Found:    (b : C ->{any} C)
-  |                        Required: (x: C^) ->{any²} C^{fresh}
+  |                        Found:    (b : C => C)
+  |                        Required: (x: C^) => C^{fresh}
   |
   |                        Note that capability `any` cannot flow into capture set {any²}.
   |
@@ -15,8 +15,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:7:18 ----------------------------------
 7 |  val _: C => C = a // error
   |                  ^
-  |                Found:    (a : (x: C) ->{any} C)
-  |                Required: C^ ->{any²} C^²
+  |                Found:    (a : (x: C) => C)
+  |                Required: C^ => C^²
   |
   |                Note that capability `any` cannot flow into capture set {any²}.
   |
