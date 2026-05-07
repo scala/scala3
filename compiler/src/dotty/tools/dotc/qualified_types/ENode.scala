@@ -62,17 +62,17 @@ enum ENode extends Showable:
   case TypeApply(fn: ENode, args: List[Type])
   case Lambda(paramTps: List[Type], retTp: Type, body: ENode)
 
-  require(
-    this match
-      case Constructor(constr) =>
-        constr.lastKnownDenotation.isConstructor
-      case Lambda(paramTps, retTp, body) =>
-        paramTps.zipWithIndex.forall: (tp, index) =>
-          tp match
-            case ENodeVar(ENodeVarKind.BoundParam, i) => i < index
-            case _ => true
-      case _ => true
-  )
+  // require(
+  //  this match
+  //    case Constructor(constr) =>
+  //      constr.lastKnownDenotation.isConstructor
+  //    case Lambda(paramTps, retTp, body) =>
+  //      paramTps.zipWithIndex.forall: (tp, index) =>
+  //        tp match
+  //          case ENodeVar(ENodeVarKind.BoundParam, i) => i < index
+  //          case _ => true
+  //    case _ => true
+  // )
 
   def prettyString(printFullPaths: Boolean = false): String =
 
@@ -706,7 +706,7 @@ object ENode:
           // instrumentation calls, local defs) are skipped as they don't
           // affect the block's result value.
           //
-          // FIXEME: types embedded in the tree (e.g., TypeApply args) may
+          // TODO(mbovel): types embedded in the tree (e.g., TypeApply args) may
           // still contain TermRefs to inlined vals.
           var bindings = valBindings
           var ok = true
@@ -798,12 +798,17 @@ object ENode:
     trace(i"termAssumptions($tp)", Printers.qualifiedTypes):
       tp match
         case tp: TermRef =>
-          tp.symbol.defTree match
+          val skolemId = ctx.base.qualifierSkolemIndexBySymbol.get(tp.symbol)
+          val skolemAssumptions = skolemId.toList.map: id =>
+            OpApply(ENode.Op.Equal, List(Atom(ENodeVar(ENodeVarKind.Skolem, id)(SkolemType(tp.widen))), singleton(tp)))
+          val defTree = tp.symbol.defTree
+          val valAssumptions = defTree match
             case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>
               fromTree(valDef.rhs) match
                 case Some(treeNode) => OpApply(ENode.Op.Equal, List(treeNode, singleton(tp))) :: assumptions(treeNode)
                 case None => Nil
             case _ => Nil
+          valAssumptions ++ skolemAssumptions
         case _ => Nil
 
   private def typeAssumptions(rootTp: SingletonType)(using Context): List[ENode] =
