@@ -58,7 +58,6 @@ class Compiler {
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
   protected def transformPhases: List[List[Phase]] =
-    List(qualified_types.LiftArgs()) :: // Lift arguments in runtime checks of qualified types before coverage
     List(new InstrumentCoverage) ::  // Perform instrumentation for code coverage (if -coverage-out is set)
     List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
          new FirstTransform,         // Some transformations to put trees into a canonical form
@@ -111,6 +110,7 @@ class Compiler {
          new ParamForwarding,        // Add forwarders for aliases of superclass parameters
          new TupleOptimizations,     // Optimize generic operations on tuples
          new LetOverApply,           // Lift blocks from receivers of applications
+         qualified_types.LiftArgs(), // Lift arguments in qualified types used for runtime checks
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implementation types

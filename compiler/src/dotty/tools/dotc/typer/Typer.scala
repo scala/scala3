@@ -1645,8 +1645,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (noLeaks(tree)) tree
     else {
       fullyDefinedType(tree.tpe, "block", tree.srcPos)
-      val avoidingType0 = QualifiedTypes.ensureNoLocalRefsInQualifier(tree.tpe, localSyms)
-      var avoidingType = TypeOps.avoid(avoidingType0, localSyms)
+      var avoidingType = TypeOps.avoid(tree.tpe, localSyms)
       val ptDefined = isFullyDefined(pt, ForceDegree.none)
       if (ptDefined && !(avoidingType.widenExpr <:< pt)) avoidingType = pt
       val tree1 = ascribeType(tree, avoidingType)
