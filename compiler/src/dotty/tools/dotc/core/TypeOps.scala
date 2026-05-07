@@ -21,6 +21,7 @@ import reporting.TestingReporter
 import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed}
 import CaptureSet.{IdentityCaptRefMap, VarState}
+import qualified_types.{QualifiedType, QualifiedTypes}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -499,6 +500,12 @@ object TypeOps:
         case tl: HKTypeLambda =>
           localParamRefs ++= tl.paramRefs
           mapOver(tl)
+        case QualifiedType(parent, qualifier) =>
+          // Don't traverse into qualifier bodies: avoidRefsInQualifiers handles
+          // them after widening, replacing forbidden TermRefs with ENodeVar skolems.
+          val parent1 = apply(parent)
+          if parent1 eq parent then tp
+          else QualifiedType(parent1, qualifier)
         case _ =>
           super.apply(tp)
     end apply
@@ -580,8 +587,8 @@ object TypeOps:
           super.apply(tp)
       end apply
     }
-
-    widenMap(tp)
+    val tp1 = widenMap(tp)
+    QualifiedTypes.avoidRefs(widenMap(tp), symsToAvoid)
   }
 
   /** An argument bounds violation is a triple consisting of

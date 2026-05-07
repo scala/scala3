@@ -21,11 +21,9 @@ import dotty.tools.dotc.ast.tpd.{
 }
 import dotty.tools.dotc.config.{Feature, Printers}
 import dotty.tools.dotc.config.Feature.QualifiedTypesMode
-import dotty.tools.dotc.core.Atoms
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
-import dotty.tools.dotc.core.Decorators.{em, i, toTermName}
-import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Decorators.{em, i}
 import dotty.tools.dotc.core.Symbols.{defn, Symbol}
 import dotty.tools.dotc.core.Types.{
   AndType,
@@ -60,6 +58,33 @@ object QualifiedTypes:
    */
   val QualifierSkolemIndex: Property.StickyKey[Int] = Property.StickyKey()
 
+  def treeSkolemIndex(tree: Tree)(using Context): Int =
+    require(!tree.isEmpty, "Tree must be non-empty to have a skolem index attached")
+    trace(i"treeSkolemIndex($tree)", Printers.qualifiedTypes):
+      val expr = tpd.stripBlock(tree)
+      expr.getAttachment(QualifierSkolemIndex) match
+        case Some(i) =>
+          i
+        case None =>
+          val i = ctx.base.qualifierSkolemIndexCounter.fresh()
+          expr.putAttachment(QualifierSkolemIndex, i)
+          i
+
+  def symbolSkolemIndex(sym: Symbol)(using Context): Int =
+    trace(i"symbolSkolemIndex(${sym.show})", Printers.qualifiedTypes):
+      ctx.base.qualifierSkolemIndexBySymbol.get(sym) match
+        case Some(i) =>
+          i
+        case None =>
+          val i =
+            sym.defTree match
+              case valDef: tpd.ValDef if !valDef.rhs.isEmpty =>
+                treeSkolemIndex(valDef.rhs)
+              case _ =>
+                ctx.base.qualifierSkolemIndexCounter.fresh()
+          ctx.base.qualifierSkolemIndexBySymbol(sym) = i
+          i
+
   /** Inside any `@qualified` annotation occurring in `tp`, substitute
    *  the parameter reference `pref` with an `ENodeVar` (of kind `Skolem`)
    *  whose index is stable across invocations for the same `argTree` (via
@@ -75,13 +100,7 @@ object QualifiedTypes:
    */
   def substParamInQualifiers(tp: Type, pref: ParamRef, argType: Type, argTree: tpd.Tree | Null)(using Context): Type =
     if argTree == null || !Feature.qualifiedTypesEnabled then return tp
-    val idx = argTree.getAttachment(QualifierSkolemIndex) match
-      case Some(i) => i
-      case None =>
-        val i = ctx.base.qualifierSkolemIndexCounter.fresh()
-        argTree.putAttachment(QualifierSkolemIndex, i)
-        i
-    val replacement = ENodeVar(ENodeVarKind.Skolem, idx)(argType)
+    val replacement = ENodeVar(ENodeVarKind.Skolem, treeSkolemIndex(argTree))(argType)
     val replaceMap = new TypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
@@ -96,26 +115,19 @@ object QualifiedTypes:
         case _ => mapOver(t)
     replaceMap(tp)
 
-  def ensureNoLocalRefsInQualifier(tp: Type, localSyms: List[Symbol])(using Context): Type =
+  def avoidRefs(tp: Type, localSyms: List[Symbol])(using Context): Type =
     if !Feature.qualifiedTypesEnabled then return tp
     val avoidMap = new TypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
           val parent1 = apply(parent)
           val qualifier1 =
-            val avoidMap = new TypeMap:
-              def apply(t2: Type): Type =
-                t2 match
-                  case tp: TermRef if localSyms.contains(tp.symbol) =>
-                    val idx = tp.symbol.defTree.getAttachment(QualifierSkolemIndex) match
-                      case Some(i) => i
-                      case None =>
-                        val i = ctx.base.qualifierSkolemIndexCounter.fresh()
-                        tp.symbol.defTree.putAttachment(QualifierSkolemIndex, i)
-                        i
-                    ENodeVar(ENodeVarKind.Skolem, idx)(SkolemType(mapOver(tp.underlying)))
-                  case _ => mapOver(t2)
-            qualifier.mapTypes(avoidMap).asInstanceOf[ENode.Lambda]
+            val innerMap = new TypeMap:
+              def apply(t2: Type): Type = t2 match
+                case ref: TermRef if localSyms.contains(ref.symbol) =>
+                  ENodeVar(ENodeVarKind.Skolem, symbolSkolemIndex(ref.symbol))(SkolemType(mapOver(ref.underlying)))
+                case _ => mapOver(t2)
+            qualifier.mapTypes(innerMap).asInstanceOf[ENode.Lambda]
           QualifiedType(parent1, qualifier1)
         case _ => mapOver(t)
     avoidMap(tp)

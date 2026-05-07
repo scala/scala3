@@ -14,7 +14,7 @@ package example {
         val d: Int with arg(0) == skolem(1) =
           {
             val u: Int = example.impure()
-            example.id(u).$asInstanceOf[Int with arg(0) == skolem(1)]
+            example.id(u):Int with (arg(0) == skolem(1))
           }
         def inferred(): Int = example.id(example.impure())
         c + d + inferred()
