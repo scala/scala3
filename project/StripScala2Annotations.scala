@@ -8,7 +8,6 @@ import java.nio.ByteBuffer
 import sbt._
 
 object StripScala2Annotations {
-
   /** Scala 2 pickle annotation descriptors that should be stripped from class files */
   private val Scala2PickleAnnotations = Set(
     "Lscala/reflect/ScalaSignature;",
@@ -204,5 +203,4 @@ object StripScala2Annotations {
       new ByteVector(0)
     }
   }
-
 }

@@ -1,10 +1,10 @@
 package dotty.tools.sbtplugin
 
 import java.io.File
+
 import sbt._
 
 object Dist {
-
   def generateVersionFile(
     base: File,
     distDir: File,
@@ -64,5 +64,4 @@ object Dist {
     // Output the version number and Git revision
     write("VERSION", s"version:=${progVersion}\nrevision:=${gitRevision}\nbuildTime:=${buildTime}\n")
   }
-
 }

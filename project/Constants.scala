@@ -1,4 +1,3 @@
-
 object Constants {
   val homepageUrl = "https://scala-lang.org/"
   val dottyOrganization = "org.scala-lang"

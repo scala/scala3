@@ -10,7 +10,6 @@ import scala.jdk.CollectionConverters._
 import scala.util.Using
 
 object ScalaJarValidate {
-
   import StripScala2Annotations.{
     Scala2PickleAttributes,
     extractSourceFile,
@@ -146,5 +145,4 @@ object ScalaJarValidate {
       )
     }
   }
-
 }
