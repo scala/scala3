@@ -990,6 +990,12 @@ object Contexts {
      */
     var qualifierSkolemIndexCounter: qualified_types.QualifierSkolemIndexCounter = qualified_types.QualifierSkolemIndexCounter()
 
+    /** Maps local val symbols to a stable skolem index used inside qualifiers.
+     *  Keyed by symbol to avoid relying on `sym.defTree` (which may be empty for
+     *  coverage-lifted vals). Cleared per run in `initialize()`.
+     */
+    val qualifierSkolemIndexBySymbol: collection.mutable.HashMap[Symbols.Symbol, Int] = collection.mutable.HashMap()
+
     /** The standard definitions */
     val definitions: Definitions = new Definitions
 
@@ -1012,6 +1018,7 @@ object Contexts {
       recursiveDepth = if ctx.settings.XnoEnrichErrorMessages.value then Int.MinValue else 0
       qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
       qualifierSkolemIndexCounter = qualified_types.QualifierSkolemIndexCounter()
+      qualifierSkolemIndexBySymbol.clear()
       definitions.init()
     }
 
