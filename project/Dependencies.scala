@@ -4,13 +4,13 @@ import sbt._
  *  to ensure the same version of the dependency is used in all projects
  */
 object Dependencies {
-  val jacksonVersion = "3.1.2"
+  private val jacksonVersion = "3.1.2"
   val `jackson-databind` =
     "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val `jackson-dataformat-yaml` =
     "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  val flexmarkVersion = "0.64.8"
+  private val flexmarkVersion = "0.64.8"
 
   val flexmarkDeps = Seq(
     "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,

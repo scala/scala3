@@ -1,7 +1,6 @@
 package dotty.tools.sbtplugin
 
 object ScalaLibraryFilesToCopy {
-
   lazy val filesToCopy = Set(
     "scala/Function0",
     "scala/Function1",
@@ -53,5 +52,4 @@ object ScalaLibraryFilesToCopy {
     "scala/util/Sorting",
     "scala/util/hashing/MurmurHash3",
   )
-
 }

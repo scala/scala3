@@ -1,7 +1,6 @@
 package dotty.tools.sbtplugin
 
 object CompatMode {
-
   final val BinaryCompatible = 0
   final val SourceAndBinaryCompatible = 1
 
@@ -12,5 +11,4 @@ object CompatMode {
       case _                   => CompatMode.SourceAndBinaryCompatible
     }
   }
-
 }

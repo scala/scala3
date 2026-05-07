@@ -1,6 +1,4 @@
-
 object Shading {
-
   /** Replace package names in package definitions, for shading.
    * It assumes the full package def is written on a single line.
    * It does not adapt the imports accordingly.
@@ -63,5 +61,4 @@ object Shading {
     }
     recur(lines)
   }
-
 }
