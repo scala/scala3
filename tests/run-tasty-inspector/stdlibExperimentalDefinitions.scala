@@ -62,6 +62,8 @@ val experimentalDefinitionInLibrary = Set(
 
   // Experimental feature: qualified types
   "scala.annotation.qualified",
+  "scala.qualifiedTypes.internal",
+  "scala.qualifiedTypes.internal$",
 
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
