@@ -250,7 +250,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if expand then
           depFun(
               args.init, args.last,
-              isContextual = defn.isContextFunctionClass(tycon.classSymbol)
+              isContextual = defn.isContextFunctionClass(tycon.classSymbol),
+              paramNames = ClosureParamNames.of(original)
             ).showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
         else tp
       case _ => tp

@@ -440,7 +440,9 @@ trait TypeAssigner {
           case pt: PolyType =>
             pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
         val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
-        methodicType.toFunctionType(isJava = meth.symbol.is(JavaDefined))
+        val funType = methodicType.toFunctionType(isJava = meth.symbol.is(JavaDefined))
+        cc.ClosureParamNames.record(funType, methodicType)
+        funType
       else target.tpe)
 
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {

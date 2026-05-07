@@ -4836,7 +4836,10 @@ object Types extends TypeUtils {
 
     def derivedAppliedType(tycon: Type, args: List[Type])(using Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
-      else tycon.appliedTo(args)
+      else
+        val newTp = tycon.appliedTo(args)
+        cc.ClosureParamNames.propagate(this, newTp)
+        newTp
 
     override def computeHash(bs: Binders): Int = doHash(bs, tycon, args)
 
