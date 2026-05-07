@@ -315,8 +315,8 @@ enum ENode extends Showable:
   private class NormalizeMap(using Context) extends TypeMap:
     def apply(tp: Type): Type =
       tp match
-        case tp: TypeVar if tp.isPermanentlyInstantiated =>
-          apply(tp.permanentInst)
+        case tp: TypeVar if tp.isInstantiated =>
+          apply(tp.stripTypeVar)
         case tp: NamedType =>
           val dealiased = tp.dealiasKeepAnnotsAndOpaques
           if dealiased ne tp then
@@ -766,15 +766,7 @@ object ENode:
 
   def substParamRefs(tp: Type, paramSyms: List[Symbol], paramTps: List[Type])(using Context): Type =
     trace(i"substParamRefs($tp, $paramSyms, $paramTps)", Printers.qualifiedTypes):
-      val substituted = tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeVar(ENodeVarKind.BoundParam, i)(tp)).toList)
-      // Strip instantiated TypeVars recursively. Without this, types captured at
-      // typer time (with un-instantiated TypeVars) would not be `==` to the same
-      // types observed after the typer has resolved them, breaking ENode equality
-      // on embedded TypeApply args during retyping (e.g., post-instrumentCoverage).
-      new StripTypeVarsMap()(substituted)
-
-  private class StripTypeVarsMap(using Context) extends TypeMap:
-    def apply(tp: Type): Type = mapOver(tp.stripTypeVar)
+      tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeVar(ENodeVarKind.BoundParam, i)(tp)).toList)
 
   def selfify(tree: tpd.Tree)(using Context): Option[ENode.Lambda] =
     trace(i"ENode.selfify $tree", Printers.qualifiedTypes):
