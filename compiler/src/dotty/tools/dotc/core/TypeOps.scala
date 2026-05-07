@@ -586,7 +586,6 @@ object TypeOps:
           super.apply(tp)
       end apply
     }
-    val tp1 = widenMap(tp)
     QualifiedTypes.avoidRefs(widenMap(tp), symsToAvoid)
   }
 

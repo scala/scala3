@@ -111,7 +111,8 @@ object QualifiedTypes:
                 if t2 == pref then replacement
                 else mapOver(t2)
             qualifier.mapTypes(substMap).asInstanceOf[ENode.Lambda]
-          QualifiedType(parent1, qualifier1)
+          if (parent1 eq parent) && (qualifier1 eq qualifier) then t
+          else QualifiedType(parent1, qualifier1)
         case _ => mapOver(t)
     replaceMap(tp)
 
@@ -128,7 +129,8 @@ object QualifiedTypes:
                   ENodeVar(ENodeVarKind.Skolem, symbolSkolemIndex(ref.symbol))(SkolemType(mapOver(ref.underlying)))
                 case _ => mapOver(t2)
             qualifier.mapTypes(innerMap).asInstanceOf[ENode.Lambda]
-          QualifiedType(parent1, qualifier1)
+          if (parent1 eq parent) && (qualifier1 eq qualifier) then t
+          else QualifiedType(parent1, qualifier1)
         case _ => mapOver(t)
     avoidMap(tp)
 
