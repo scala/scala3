@@ -224,7 +224,14 @@ object Tokens extends TokensCommon {
   final val canStartInfixExprTokens =
     atomicExprTokens
     | openParensTokens
-    | BitSet(QUOTE, NEW)
+    | BitSet(QUOTE, NEW, HASH)
+    // HASH is included for SIP-80 `#X` companion shorthand. The parser checks
+    // `featureEnabled(hashCompanionShorthand)` at the actual `case HASH` arm in
+    // `simpleExpr` / `simplePattern`, so listing HASH here without the feature
+    // import does not change behaviour: it lets the operator-parsing path
+    // recognise `#X` as a starter, but `simpleExpr` then errors normally if the
+    // import is absent. (HASH still has its existing role at type position
+    // for projection `T#X`, which is unaffected.)
 
   final val canStartExprTokens3: TokenSet =
     canStartInfixExprTokens | BitSet(INDENT, IF, WHILE, FOR, TRY, THROW)

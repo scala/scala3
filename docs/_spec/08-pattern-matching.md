@@ -24,6 +24,7 @@ chapter: 8
                     |  StableId ‘(’ [Patterns] ‘)’
                     |  StableId ‘(’ [Patterns ‘,’] [id ‘@’] ‘_’ ‘*’ ‘)’
                     |  ‘(’ [Patterns] ‘)’
+                    |  ‘#’ id [TypeArgs] [ArgumentPatterns]   -- under experimental.hashCompanionShorthand (SIP-80)
                     |  XmlPattern
   Patterns        ::=  Pattern {‘,’ Patterns}
 ```

@@ -1138,6 +1138,100 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree1
   }
 
+  /** Type a `#`-companion shorthand `#X` (SIP-80) by resolving it as `T.X` where
+   *  `T` is the principal companion-bearing class derived from the expected type.
+   *
+   *  Resolution algorithm:
+   *    1. Reduce `pt` (strip prototype layers; read upper bound of uninstantiated
+   *       TypeVar; peel `T | Null` / `Null | T`; widen, drop dependent refinements).
+   *    2. Locate the alias's own companion via `prefix.member(name.toTermName)`,
+   *       falling back to `classSymbol.companionModule`. The first form makes
+   *       opaque type aliases pick their own companion rather than the underlying
+   *       class's; transparent aliases / `import` / `export` work transparently.
+   *    3. Build `Select(companionRef, name)` and re-typecheck against `pt`.
+   *  Implicit conversions, overload selection, and pattern-mode handling fall out
+   *  of the reuse of `typedSelect` / `adapt`.
+   */
+  def typedHashSelect(tree: untpd.HashSelect, pt: Type)(using Context): Tree =
+    record("typedHashSelect")
+    // Gating happens at the parser via `featureEnabled(hashCompanionShorthand)`.
+    // If we reach here, the import (or `-language:experimental.hashCompanionShorthand`)
+    // is in scope and the parser produced a `HashSelect` node.
+
+    def principalTarget(tp: Type): Type = tp match
+      case tp: SelectionProto => principalTarget(tp.memberProto)
+      case tp: IgnoredProto   => principalTarget(tp.ignored)
+      case tp: FunProto       => principalTarget(tp.resultType)
+      case tp: PolyProto      => principalTarget(tp.resType)
+      case tp: ProtoType      => NoType
+      case tp: TypeBounds     => NoType
+      case tp: TypeVar =>
+        // Use the constraint's current upper bound when the variable is not yet
+        // instantiated. For `Some(#Red)` with target `Option[Color]`, the typer
+        // calls `constrainResult(Some[A], Option[Color])` to bound A <: Color.
+        val inst = tp.instanceOpt
+        if inst.exists then principalTarget(inst)
+        else
+          val hi = TypeComparer.fullUpperBound(tp.origin)
+          if !hi.exists || hi.isExactlyAny then NoType
+          else principalTarget(hi)
+      case tp if tp eq WildcardType => NoType
+      case tp =>
+        val w = tp.widenExpr
+        w match
+          case w: TypeVar => principalTarget(w)
+          // SIP-80: `T | Null` (and `Null | T`) reduces to `T`. `Null` has no
+          // useful companion members, and the union is the explicit-nulls
+          // idiom for a nullable `T`.
+          case OrType(lhs, rhs) if rhs.classSymbol == defn.NullClass => principalTarget(lhs)
+          case OrType(lhs, rhs) if lhs.classSymbol == defn.NullClass => principalTarget(rhs)
+          case _ => w.dropDependentRefinement
+
+    val target = principalTarget(pt)
+    if !target.exists then
+      return errorTree(tree,
+        em"the expected type of `#${tree.name}` cannot be determined here; the `#` companion shorthand requires a known target type",
+        tree.srcPos)
+
+    // Companion lookup: prefer the alias's own companion via prefix.member so
+    // opaque type aliases pick their own companion rather than the underlying
+    // class's. For ordinary classes this also gives the right answer because
+    // the prefix has the companion module as a member.
+    def companionByPrefix: Symbol = target match
+      case ref: TypeRef =>
+        val nameAsTerm = ref.name.toTermName
+        val prefix = ref.prefix
+        if prefix.exists && prefix.ne(NoPrefix) then
+          val mem = prefix.member(nameAsTerm)
+          if mem.exists then mem.suchThat(_.is(Module)).symbol else NoSymbol
+        else NoSymbol
+      case _ => NoSymbol
+
+    val viaPrefix = companionByPrefix
+    val companion =
+      if viaPrefix.exists then viaPrefix
+      else
+        val cls = target.classSymbol
+        if cls.exists then cls.companionModule else NoSymbol
+
+    if !companion.exists then
+      return errorTree(tree,
+        em"type $target has no companion object; `#${tree.name}` cannot be resolved (SIP-80)",
+        tree.srcPos)
+
+    val prefix = target match
+      case ref: TypeRef => ref.prefix
+      case _            => target.normalizedPrefix
+    val companionRef =
+      if prefix.exists && prefix.ne(NoPrefix) then
+        tpd.ref(TermRef(prefix, companion.asTerm)).withSpan(tree.span.startPos)
+      else
+        tpd.ref(companion).withSpan(tree.span.startPos)
+
+    val select = untpd.cpy.Select(tree)(untpd.TypedSplice(companionRef), tree.name)
+    typedSelect(select, pt)
+  end typedHashSelect
+
   def typedThis(tree: untpd.This)(using Context): Tree = {
     record("typedThis")
     assignType(tree)
@@ -3897,6 +3991,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.QuotePattern => typedQuotePattern(tree, pt)
           case tree: untpd.SplicePattern => typedSplicePattern(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
+          case tree: untpd.HashSelect => typedHashSelect(tree, pt)
           case tree: untpd.Hole => typedHole(tree, pt)
           case tree: untpd.Parens =>
             checkDeprecatedAssignmentSyntax(tree)

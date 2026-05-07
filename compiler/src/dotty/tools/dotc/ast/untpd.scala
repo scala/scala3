@@ -122,6 +122,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBoundTypeTree(tycon: Tree, paramName: TypeName, ownName: TermName)(implicit @constructorOnly src: SourceFile) extends Tree
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
+  /** `#X` in a target-typed position (SIP-80, experimental.hashCompanionShorthand).
+   *  Resolved by the Typer to `Select(T, X)` where T is the principal expected type.
+   */
+  case class HashSelect(name: TermName)(implicit @constructorOnly src: SourceFile) extends TermTree
+
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
     // TODO: Make bound a typed tree?
 
@@ -764,6 +769,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: MacroTree if expr `eq` tree.expr => tree
       case _ => finalize(tree, untpd.MacroTree(expr)(using tree.source))
     }
+    def HashSelect(tree: Tree)(name: TermName)(using Context): Tree = tree match {
+      case tree: HashSelect if name == tree.name => tree
+      case _ => finalize(tree, untpd.HashSelect(name)(using tree.source))
+    }
   }
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
@@ -817,6 +826,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         tree
       case MacroTree(expr) =>
         cpy.MacroTree(tree)(transform(expr))
+      case HashSelect(_) =>
+        tree
       case CapturesAndResult(refs, parent) =>
         cpy.CapturesAndResult(tree)(transform(refs), transform(parent))
       case UseRef(ref, initially) =>
@@ -878,6 +889,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, splice)
       case MacroTree(expr) =>
         this(x, expr)
+      case HashSelect(_) =>
+        x
       case CapturesAndResult(refs, parent) =>
         this(this(x, refs), parent)
       case UseRef(ref, _) =>

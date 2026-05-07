@@ -2840,6 +2840,22 @@ trait Applications extends Compatibility {
       case arg :: args1 if !altFormals.exists(_.isEmpty) =>
         def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
         val formalsForArg: List[Type] = altFormals.map(_.head)
+        // SIP-80: when an argument is `#X`, pre-type it with the common formal
+        // shared across all surviving overload candidates. This handles the
+        // overload-with-default-args case (`def bar(a: Animal)` together with
+        // `def bar(a: Animal, b: Animal = ...)` — both share `Animal` at
+        // position 0, so `bar(#Cat)` resolves cleanly), and it stops a
+        // partially-typed `HashSelect` from leaking into PostTyper.
+        arg match
+          case _: untpd.HashSelect
+              if formalsForArg.forall(_.exists)
+                && isUniform(formalsForArg)(_ frozen_=:= _) =>
+            val commonFormal = formalsForArg.head
+            if isFullyDefined(commonFormal, ForceDegree.flipBottom) then
+              withMode(Mode.ImplicitsEnabled) {
+                pt.cacheArg(arg, pt.typedArg(arg, commonFormal))
+              }
+          case _ =>
         def argTypesOfFormal(formal: Type): List[Type] =
           formal.dealias match {
             case defn.FunctionOf(args, result, isImplicit) => args

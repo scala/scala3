@@ -181,6 +181,13 @@ private[scala] object language:
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for the `#` companion shorthand: a leading `#`
+     *  followed by an identifier in target-typed positions desugars to `T.X`,
+     *  where `T` is the expected type. See SIP-80.
+     */
+    @compileTimeOnly("`hashCompanionShorthand` can only be used at compile time in import statements")
+    object hashCompanionShorthand
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
