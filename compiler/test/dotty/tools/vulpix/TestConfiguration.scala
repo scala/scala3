@@ -72,7 +72,7 @@ object TestConfiguration {
     replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   def mkClasspath(classpaths: List[String]): String =
-    classpaths.map({ p =>
+    classpaths.flatMap(_.split(File.pathSeparator)).map({ p =>
       val file = new java.io.File(p)
       assert(file.exists, s"File $p couldn't be found.")
       file.getAbsolutePath

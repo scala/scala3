@@ -1,0 +1,151 @@
+//| mill-version: 1.1.5-25-21a88e
+//| mill-jvm-version: 17
+//| bspScriptIgnore:
+//| - "bench/"
+//| - "bin/"
+//| - "project/"
+//| - "sandbox/"
+//| - "sbt-test/"
+//| - "tests/"
+
+package build
+
+import mainargs.arg
+import mill.*
+import mill.api.BuildCtx
+
+import scala3build.*
+
+import java.io.File
+
+// projects published locally by "./mill publishLocal" and put in the distribution
+def projects(implicit mode: Mode) = Seq(
+  build.library(),
+  build.compiler(),
+  build.interfaces,
+  build.library.`library-3`(),
+  build.repl(),
+  build.`sbt-bridge`(), // sbt build comment: for scala-cli
+  build.staging(),
+  build.`tasty-inspector`(),
+  build.scaladoc(),
+  build.tasty()
+)
+
+
+private def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
+  val (beforeCp, fromCp) = args.span(_ != "-classpath")
+  val classpath = fromCp.drop(1).headOption.fold(cp)(_ + File.pathSeparator + cp)
+  "-classpath" :: classpath :: beforeCp ::: fromCp.drop(2)
+}
+
+/** Runs scalac built from sources */
+def scalac(args0: String*): Task.Command[Unit] = {
+  val mode = Mode.NonBootstrapped
+  val project = build.compiler()(using mode)
+  val withCompilerExtraClassPath =
+    if (args0.contains("-with-compiler"))
+      Task.Anon {
+        val externalDeps = build.compiler()(using mode).resolvedMvnDeps().map(_.path)
+        def findArtifactPath(name: String) =
+          externalDeps.find(_.last.startsWith(name)).getOrElse {
+            Task.fail(s"Cannot find $name in compiler class path")
+          }
+
+        val dottyInterfaces = build.interfaces.jar().path.toString
+        val dottyStaging = build.staging()(using mode).jar().path.toString
+        val dottyTastyInspector = build.`tasty-inspector`()(using mode).jar().path.toString
+        val tastyCore = build.tasty()(using mode).jar().path.toString
+        val asm = findArtifactPath("scala-asm").toString
+        val compilerInterface = findArtifactPath("compiler-interface").toString
+        Seq(dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
+      }
+    else
+      Task.Anon(Nil)
+  Task.Command(exclusive = true) {
+
+    val stdlib = build.library()(using mode).jar().path.toString
+    val dottyCompiler = build.compiler()(using mode).jar().path.toString
+
+    val decompile = args0.contains("-decompile")
+    val printTasty = args0.contains("-print-tasty")
+    val debugFromTasty = args0.contains("-Ythrough-tasty")
+    val defaultOutputDirectory =
+      if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil
+      else List("-d", (BuildCtx.workspaceRoot / "out/default-last-scalac-out.jar").toString)
+    val args = args0.toList.filter(arg => arg != "-repl" && arg != "-decompile" &&
+        arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
+    val main =
+      if (decompile) "dotty.tools.dotc.decompiler.Main"
+      else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
+      else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
+      else "dotty.tools.dotc.Main"
+
+    var extraClasspath = Seq(stdlib)
+
+    if (decompile && !args.contains("-classpath"))
+      extraClasspath ++= Seq(".")
+
+    if (args0.contains("-with-compiler"))
+      Task.fail("-with-compiler should only be used with a bootstrapped compiler")
+
+    if (args0.contains("-with-compiler")) {
+      extraClasspath ++= Seq(dottyCompiler)
+      extraClasspath ++= withCompilerExtraClassPath()
+    }
+
+    val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+
+    val runner = project.runner()
+    runner.run(args = defaultOutputDirectory ::: wrappedArgs, mainClass = main, workingDir = BuildCtx.workspaceRoot)
+  }
+}
+
+/** Runs scala built from sources, via Scala CLI */
+def scala(args: String*): Task.Command[Unit] = Task.Command(exclusive = true) {
+  val jvmDist = build.dist.jvm().path
+  val scalaScript = jvmDist / "bin/scala"
+  os.proc(scalaScript, args).call(
+    cwd = BuildCtx.workspaceRoot,
+    stdin = os.Inherit,
+    stdout = os.Inherit
+  )
+}
+
+/** Publishes locally the main Scala 3 modules */
+def publishLocal(
+  localIvyRepo: String = null,
+  sources: Boolean = true,
+  doc: Boolean = false // much faster without this
+): Task.Command[Unit] = {
+  val projects0 = projects(using Mode.Bootstrapped)
+  val tasks = Task.traverse(projects0)(_.publishLocal(localIvyRepo = localIvyRepo, sources = sources, doc = doc))
+  Task.Command {
+    tasks()
+  }
+}
+
+/**
+ * By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*, excluding tests tagged with dotty.SlowTests.
+ */
+def testCompilation(
+  @arg(doc = "runs tests in dotty.tools.dotc.FromTastyTests")
+  fromTasty: Boolean = false,
+  @arg(doc = "override the checkfiles that did not match with the current output")
+  updateCheckfiles: Boolean = false,
+  @arg(doc = "re-run only failed tests")
+  failed: Boolean = false,
+  @arg(doc = "enable Scoverage instrumentation phase for compilation tests")
+  enableCoveragePhase: Boolean = false,
+  coverage: Boolean = false,
+  @arg(doc = "substring of the path of the tests file")
+  filter: Args
+): Task.Command[Unit] =
+  build.compiler.testCompilation(
+    fromTasty = fromTasty,
+    updateCheckfiles = updateCheckfiles,
+    failed = failed,
+    enableCoveragePhase = enableCoveragePhase,
+    coverage = coverage,
+    filter = filter
+  )

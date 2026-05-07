@@ -1,0 +1,125 @@
+import mill.Task
+import mill.api.{BuildCtx, BuildInfo, PathRef}
+import mill.meta.MillBuildRootModule
+import mill.scalalib.*
+
+/**
+ * Module that configures the Mill build itself
+ */
+object `package` extends MillBuildRootModule {
+
+  // Scala.js version, that we need here to bring Scala.js tooling in the Mill build
+  // We get that version from the sbt build, extracting it from project/plugins.sbt.
+  lazy val scalaJSVersion = {
+    val subPath = os.sub / "project/plugins.sbt"
+    val pluginsSbtLines = BuildCtx.withFilesystemCheckerDisabled {
+      os.read.lines(BuildCtx.workspaceRoot / subPath)
+    }
+    val prefix = """addSbtPlugin("org.scala-js" % "sbt-scalajs" % """"
+    val suffix = """")"""
+    pluginsSbtLines
+      .collectFirst {
+        case line if line.startsWith(prefix) && line.endsWith(suffix) =>
+          line.stripPrefix(prefix).stripSuffix(suffix)
+      }
+      .getOrElse {
+        sys.error(s"Could not find Scala.js version in $subPath")
+      }
+  }
+
+  def mvnDeps = Seq(
+    // Mill MiMA plugin
+    mvn"com.github.lolgab::mill-mima_mill1:0.2.1",
+    // Mill plugin for missinglink
+    mvn"io.github.alexarchambault::mill-missinglink_mill1:0.1.0",
+    // needed to checkout auxiliary repositories during the build, and to read
+    // the current commit hash
+    mvn"org.eclipse.jgit:org.eclipse.jgit:7.5.0.202512021534-r",
+    mvn"org.ow2.asm:asm:9.9",
+    mvn"org.yaml:snakeyaml:2.4",
+    // Scala.js-related dependencies
+    mvn"com.lihaoyi::mill-libs-scalajslib-config-1:${BuildInfo.millVersion}",
+    mvn"org.scala-js:scalajs-linker_2.13:$scalaJSVersion",
+    mvn"org.scala-js:scalajs-js-envs_2.13:1.4.0",
+    // packaging dependencies
+    mvn"org.virtuslab::scala-packager:0.2.2"
+  )
+
+  /**
+   * The `project/` directory, brought via `Task.Source`
+   *
+   * Using `Task.Source` makes Mill watch that directory for changes
+   * when running tasks that depend on it.
+   */
+  def projectDir = Task.Source(BuildCtx.workspaceRoot / "project")
+
+  // Comment at the top of sbt build sources that we also use in the Mill build
+  private def specialComment = "// This file is used in the Mill build too. Do not modify this comment."
+
+  /** Sources shared with the sbt build */
+  def sharedBuildFiles = Task {
+    val dir = projectDir().path
+    os.list(dir)
+      .filter(_.ext == "scala")
+      .filter(os.isFile)
+      .filter { f =>
+        os.read.lines(f)
+          .iterator
+          .map(_.trim)
+          .filter(_.nonEmpty)
+          .find(_ => true)
+          .contains(specialComment)
+      }
+      .map(PathRef(_))
+  }
+
+  /**
+   * Adds the sources shared with the sbt build in the Mill build
+   *
+   * We change the package of these sources, so that they're all in package scala3build.
+   *
+   * We do that using "wrapped sources". We post-process these sources, wrapping them between
+   * "package scala3build {" and "}", like how Mill does with the "*.mill" files.
+   *
+   * Doing this through `JavaModule#wrappedSources` makes Mill pass details about that wrapping
+   * to BSP clients via the buildTarget/wrappedSources request.
+   */
+  def wrappedSources = Task {
+    val dir = Task.dest
+    val nl = System.lineSeparator()
+    val extraSources = sharedBuildFiles().map { originalRef =>
+      val generated = dir / originalRef.path.subRelativeTo(BuildCtx.workspaceRoot)
+      val processedOriginalContent = {
+        val originalContent = os.read(originalRef.path)
+        val hasPackage = originalContent.linesIterator.exists(_.startsWith("package "))
+        if (hasPackage)
+          originalContent.linesIterator
+            .zip(originalContent.linesWithSeparators)
+            .map {
+              case (line, lineWithSep) =>
+                if (line.startsWith("package ")) lineWithSep.drop(line.length)
+                else lineWithSep
+            }
+            .mkString
+        else
+          originalContent
+      }
+      val generatedContent = "package scala3build {" + nl + nl +
+        s"//SOURCECODE_ORIGINAL_FILE_PATH=${originalRef.path}" + nl +
+        "//SOURCECODE_ORIGINAL_CODE_START_MARKER" + nl +
+        processedOriginalContent + nl +
+        "}"
+      os.write(generated, generatedContent, createFolders = true)
+      (originalRef, PathRef(generated))
+    }
+    super.wrappedSources() ++ extraSources
+  }
+
+  def sources = Task {
+    // Adds tasty sources in the Mill build
+    val extraSrcDir = BuildCtx.withFilesystemCheckerDisabled {
+      PathRef(BuildCtx.workspaceRoot / "tasty/src")
+    }
+    super.sources() ++ Seq(extraSrcDir)
+  }
+}

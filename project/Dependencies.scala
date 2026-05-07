@@ -1,16 +1,18 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 import sbt._
 
 /** A dependency shared between multiple projects should be put here
  *  to ensure the same version of the dependency is used in all projects
  */
 object Dependencies {
-  private val jacksonVersion = "3.1.2"
+  val jacksonVersion = "3.1.2"
   val `jackson-databind` =
     "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val `jackson-dataformat-yaml` =
     "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val flexmarkVersion = "0.64.8"
+  val flexmarkVersion = "0.64.8"
 
   val flexmarkDeps = Seq(
     "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
