@@ -346,7 +346,10 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val inlineSpecializedMethods = new TreeMapWithPreciseStatContexts {
       override def transform(tree: Tree)(using Context): Tree = tree match {
         case app: Apply if app.symbol.isSpecializedMethod =>
-          super.transform(Inlines.inlineCall(tree))
+          val inlinedTree = Inlines.inlineCall(tree).asInstanceOf[Inlined]
+          val callTrace = Inlines.inlineCallTrace(tree.symbol, inlinedTree.sourcePos)(using ctx.withSource(inlinedTree.source))
+          val flattenedTree = cpy.Inlined(inlinedTree)(callTrace, inlinedTree.bindings, inlinedTree.expansion)(using inlineContext(inlinedTree))
+          super.transform(flattenedTree)
         case tree => super.transform(tree)
       }
     }
