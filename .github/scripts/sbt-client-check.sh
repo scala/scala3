@@ -5,14 +5,13 @@ set -uo pipefail
 
 COMMAND="$1"
 EXPECTED="$2"
+LOG=$(mktemp)
 
-OUTPUT=$(sbt -no-colors --client "$COMMAND" 2>&1 || true)
-if printf '%s\n' "$OUTPUT" | grep -Faq "$EXPECTED"; then
+sbt -no-colors --client "$COMMAND" 2>&1 | tee "$LOG" || true
+
+if grep -Faq "$EXPECTED" "$LOG"; then
   echo "PASS: sbt --client \"$COMMAND\" works"
 else
   echo "FAIL: sbt --client \"$COMMAND\" did not produce expected output (looking for: $EXPECTED)"
-  echo "--- OUTPUT BEGIN ---"
-  echo "$OUTPUT"
-  echo "--- OUTPUT END ---"
   exit 1
 fi

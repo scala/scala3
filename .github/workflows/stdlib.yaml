@@ -360,45 +360,13 @@ jobs:
       - name: Print sbt version
         run: sbt -version
       - name: Kill sbt server
-        run: |
-          LOG=$(mktemp)
-          sbt -no-colors --client shutdown 2>&1 | tee "$LOG" || true
-          if grep -Faq "no sbt server is running" "$LOG"; then
-            echo 'PASS: sbt --client shutdown works'
-          else
-            echo 'FAIL: sbt --client shutdown did not produce expected output'
-            exit 1
-          fi
+        run: .github/scripts/sbt-client-check.sh "shutdown" "no sbt server is running"
       - name: Test `sbt --client compile`
-        run: |
-          LOG=$(mktemp)
-          sbt -no-colors --client compile 2>&1 | tee "$LOG" || true
-          if grep -Faq "compiling" "$LOG"; then
-            echo 'PASS: sbt --client compile works'
-          else
-            echo 'FAIL: sbt --client compile did not produce expected output'
-            exit 1
-          fi
+        run: .github/scripts/sbt-client-check.sh "compile" "compiling"
       - name: Test `sbt --client "scalac ..."`
-        run: |
-          LOG=$(mktemp)
-          sbt -no-colors --client "scalac -color:never -Vprint:typer tests/run/hello.scala" 2>&1 | tee "$LOG" || true
-          if grep -Faq "hello dotty!" "$LOG"; then
-            echo 'PASS: sbt --client "scalac ..." works'
-          else
-            echo 'FAIL: sbt --client "scalac ..." did not produce expected output'
-            exit 1
-          fi
+        run: .github/scripts/sbt-client-check.sh "scalac -color:never -Vprint:typer tests/run/hello.scala" "hello dotty!"
       - name: Test `sbt --client "testCompilation ..."`
-        run: |
-          LOG=$(mktemp)
-          sbt -no-colors --client "testCompilation hello" 2>&1 | tee "$LOG" || true
-          if grep -Faq "Failed 0, Errors 0" "$LOG"; then
-            echo 'PASS: sbt --client "testCompilation ..." works'
-          else
-            echo 'FAIL: sbt --client "testCompilation ..." did not produce expected output'
-            exit 1
-          fi
+        run: .github/scripts/sbt-client-check.sh "testCompilation hello" "Failed 0, Errors 0"
 
   scripted-tests:
     runs-on: ubuntu-latest
