@@ -21,5 +21,3 @@ trait JdbcEncoder0LowPriorityImplicits:
       case Schema.Tuple2(left, right) =>
         JdbcEncoder.tuple2Encoder(using self.fromSchema(using left), self.fromSchema(using right))
       case _ => null
-
-

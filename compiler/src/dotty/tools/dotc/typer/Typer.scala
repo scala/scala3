@@ -5252,6 +5252,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     || methType.isContextualMethod && !isUsingApply
        && pt.args.nonEmpty && pt.args.head.span.exists
        && !methType.resType.isInstanceOf[MethodOrPoly] // only when the `using` clause is the final parameter list
+       && methType.paramNames.forall(_.is(ContextBoundParamName)) // only context-bound parameters (legacy Scala 2 style)
        && MigrationVersion.ImplicitParamsWithoutUsing.needsPatch
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
