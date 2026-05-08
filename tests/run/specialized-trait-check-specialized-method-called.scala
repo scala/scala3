@@ -13,7 +13,7 @@ inline trait Foo[T: Specialized](x: T):
     assert(stackTrace.toList.tail.takeWhile(call => call.getMethodName().startsWith("foo")).length == 1)
 
     // We call this method on the correct impl class
-    assert(Thread.currentThread.getStackTrace()(1).getClassName() == "Foo$impl$Int$")
+    assert(Thread.currentThread.getStackTrace()(1).getClassName() == "Foo$impl$Int")
     x
 
 def f(b: Foo[Int]) = 

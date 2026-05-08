@@ -515,7 +515,7 @@ object DesugarSpecializedTraits:
   // TODO: What happens with this name generation if we have Vec[Vec[T]] for example? We potentially don't have an Ident
   // TODO: Check what happens here when we have a case where the types being specialized into are user defined instead of primitives or type vars.
   private def generateName(specialization: Specialization, suffix: String)(using Context) = // TODO: Probably don't use show
-    specialization.specializedTypeArgs.collect(t => t.tpe.show ++ str.SPECIALIZED_TRAIT_TYPE_SEP).foldLeft((specialization.traitSymbol.name ++ suffix).asTypeName)((n1, n2) => n1 ++ n2)
+    (specialization.traitSymbol.name ++ suffix).asTypeName ++ specialization.specializedTypeArgs.map(t => t.tpe.show).mkString(str.SPECIALIZED_TRAIT_TYPE_SEP)
 
   private[transform] def newSpecializedTraitName(specialization: Specialization)(using Context): TypeName = 
     generateName(specialization, str.SPECIALIZED_TRAIT_SUFFIX)
