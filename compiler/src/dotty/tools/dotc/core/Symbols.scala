@@ -973,6 +973,12 @@ object Symbols extends SymUtils {
 
       copies.foreach(_.ensureCompleted()) // avoid memory leak
 
+      copies.zip(originals).foreach { (copied, original) => 
+        if copied.retainsDefTree then
+          copied.defTree = original.defTree
+      }
+    
+
       // Update Child annotations of classes encountered previously to new values
       // if some child is among the mapped symbols
       for orig <- ttmap1.substFrom do
