@@ -588,26 +588,26 @@ end SpecializedTraitCache
 class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(using Context): // TODO: Can we get away with List[Type]
   val specializedTypeParams: List[Type] = Specialization.classSpecializedTypeParams(traitSymbol) // Type parameters marked with Specialized
   
-  private val specializedTypeParamsSet = specializedTypeParams.toSet
+  // private val specializedTypeParamsSet = specializedTypeParams.toSet // TODO: We can bring this back if we manage to get the =:= type hashing but it's really not a big deal given the expected number of type parameters.
   private val paramToArgList = traitSymbol.typeParams.map(_.typeRef.asInstanceOf[Type]).zip(typeArguments)
 
-  val unspecializedTypeParams: List[Type] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._1) // Type parameters not marked with Specialized
-  val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._2) // Type arguments provided to parameters that are marked with Specialized at their definition
-  val unspecializedTypeArgs: List[Tree] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParamsSet(tParam)).map(_._2) // Type arguments provided to parameters that are not marked with Specialized at their definition 
+  val unspecializedTypeParams: List[Type] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._1) // Type parameters not marked with Specialized
+  val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are marked with Specialized at their definition
+  val unspecializedTypeArgs: List[Tree] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are not marked with Specialized at their definition 
 
-  val specializedTypeParamsToTypeArgumentsMap: Map[Type, Tree] = paramToArgList.toMap.filter((k, v) => specializedTypeParamsSet(k))
+  val specializedTypeParamsToTypeArgumentsMap: Map[Type, Tree] = paramToArgList.toMap.filter((k, v) => specializedTypeParams.exists(_ =:= k))
   val specialization: List[Tree] = traitSymbol.typeParams.map(_.typeRef).map(specializedTypeParamsToTypeArgumentsMap.applyOrElse(_, TypeTree(_))) // TODO: Don't really like this name
 
   def constructorTypeParams: List[Type] = traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef)
-  def unspecializedConstructorParams: List[Symbol] = traitSymbol.primaryConstructor.rawParamss.head.zip(traitSymbol.typeParams).filterNot((constrParam, typeParam) => specializedTypeParamsSet(typeParam.typeRef)).map((constrParam, typeParam) => constrParam)
+  def unspecializedConstructorParams: List[Symbol] = traitSymbol.primaryConstructor.rawParamss.head.zip(traitSymbol.typeParams).filterNot((constrParam, typeParam) => specializedTypeParams.exists(_ =:= typeParam.typeRef)).map((constrParam, typeParam) => constrParam)
   def specializedConstructorParamToArgumentTypeMap: Map[Type, Type] = 
-    traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef).zip(paramToArgList).filter((constrParam, paramArg) => specializedTypeParamsSet(paramArg._1)).map((constrParam, paramArg) => (constrParam, paramArg._2.tpe)).toMap
+    traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef).zip(paramToArgList).filter((constrParam, paramArg) => specializedTypeParams.exists(_ =:= paramArg._1)).map((constrParam, paramArg) => (constrParam, paramArg._2.tpe)).toMap
 
   val hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
 
   def mapUnspecializedArgs(unspec: List[Tree]): List[Tree] = paramToArgList.foldLeft((List.empty[Tree], unspec))((resUnspec, paramArg) => ((resUnspec, paramArg): @unchecked) match {
-    case ((result, unspec), (param, arg)) if specializedTypeParamsSet(param) => (arg :: result, unspec)
-    case ((result, head :: rest), (param, arg))                              => (head :: result, rest)
+    case ((result, unspec), (param, arg)) if specializedTypeParams.exists(_ =:= param) => (arg :: result, unspec)
+    case ((result, head :: rest), (param, arg))                                        => (head :: result, rest)
   })._1.reverse
 
   /* If inline trait Foo[T] has a method taking another Foo[T] there's no point specializing the reference
