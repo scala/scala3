@@ -96,15 +96,20 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
   /* Fix constructor so that it:
       1) Has correct generic type parameters
-      2) Returns the correct type corresponding to those type parameters applied */
-  private def fixConstructor(init: Symbol, traitOrClassSymbol: ClassSymbol)(using Context) = 
+      2) Returns the correct type corresponding to those type parameters applied 
+      3) Has correct parameter names corresponding to targetParamNames */
+  private def fixConstructor(init: Symbol, traitOrClassSymbol: ClassSymbol, targetParamNames: List[List[TermName]] = List())(using Context) = 
     val rt = traitOrClassSymbol.typeRef.appliedTo(traitOrClassSymbol.typeParams.map(_.typeRef))
-    def resultType(tpe: Type): Option[Type] = tpe match {
-        case mt @ MethodType(paramNames) => Some(mt.derivedLambdaType(paramNames, mt.paramInfos, resultType(mt.resultType).getOrElse(rt)))
-        case pt : PolyType => Some(pt.derivedLambdaType(pt.paramNames, pt.paramInfos, resultType(pt.resType).get))
+    def resultType(tpe: Type, targetParamNames: List[List[TermName]]): Option[Type] = 
+      tpe match {
+        case mt @ MethodType(paramNames) => targetParamNames match {
+          case head :: tail => Some(mt.derivedLambdaType(head, mt.paramInfos, resultType(mt.resultType, tail).getOrElse(rt)))
+          case Nil          => Some(mt.derivedLambdaType(paramNames, mt.paramInfos, resultType(mt.resultType, targetParamNames).getOrElse(rt)))
+        }
+        case pt : PolyType => Some(pt.derivedLambdaType(pt.paramNames, pt.paramInfos, resultType(pt.resType, targetParamNames).get))
         case _ => None
     }
-    init.info = resultType(init.info).get
+    init.info = resultType(init.info, targetParamNames).get
     init.info = PolyType.fromParams(init.owner.typeParams, init.info)
 
   private def buildTypeParameters(traitOrClassSymbol: ClassSymbol, specialization: Specialization)(using Context) =
@@ -177,7 +182,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     init.info = specialization.traitSymbol.primaryConstructor.info.appliedTo( // Type Arg if specialized; otherwise we want our type param.
       specialization.constructorTypeParams.map(par => specialization.specializedConstructorParamToArgumentTypeMap.applyOrElse(par, _.subst(oldTypeParams, classSymbol.typeParams.map(_.typeRef))))
     )
-    fixConstructor(init, classSymbol)
+    fixConstructor(init, classSymbol, valueParams.map(_.map(_.name.asTermName)))
 
     /* Build param accessors */
     val paramAccessorss = valueParams.map(params => params.map(s => s.copy(owner = classSymbol, flags=(s.flags|Flags.LocalParamAccessor) &~ Flags.Param, info = s.info.subst(initTypeParams, classSymbol.typeParams.map(_.typeRef)))))
