@@ -636,6 +636,9 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val
 
   override def hashCode(): Int = 
     (traitSymbol, specializedTypeArgs.map(_.tpe.widen.dealias.show)).hashCode() // TODO: Consider not using show for this for performance reasons (correctness also?)
+  
+  override def toString(): String = 
+    s"Specialization(${traitSymbol}, ${typeArguments}, ${span})"
 end Specialization
 
 object Specialization:
