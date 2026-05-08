@@ -41,26 +41,96 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) =>
         // If tvar has a lower or upper bound:
         //   1. If the bound is not another type variable, use this as approximation.
-        //   2. Otherwise, if the type can be forced to be fully defined, use that type
+        //   2. Otherwise, if the bound is itself an unsolved type variable whose
+        //      transitive bound (in the same direction) is ground, first
+        //      instantiate that parent tvar from its bound, then re-check (1).
+        //      This handles patterns like `refineToOrDie` inside `Managed.make`
+        //      where the immediate upper bound is another type variable, but
+        //      transitively reachable is `Throwable`.
+        //   3. Otherwise, if the type can be forced to be fully defined, use that type
         //      as approximation.
-        //   3. Otherwise leave argument uninstantiated.
-        // The reason for (2) is that we observed complicated constraints in i23611.scala
+        //   4. Otherwise leave argument uninstantiated.
+        // The reason for (3) is that we observed complicated constraints in i23611.scala
         // that get better types if a fully defined type is computed than if several type
         // variables are approximated incrementally. This is a minimization of some ZIO code.
-        // So in order to keep backwards compatibility (where before we _only_ did 2) we
+        // So in order to keep backwards compatibility (where before we _only_ did 3) we
         // add that special case.
+        // The reason for (2) is the related zio-jms pattern; see test for reference.
         def isGroundConstr(tp: Type): Boolean = tp.dealias match
           case tvar: TypeVar if ctx.typerState.constraint.contains(tvar) => false
           case pref: TypeParamRef if ctx.typerState.constraint.contains(pref) => false
           case tp: AndOrType => isGroundConstr(tp.tp1) && isGroundConstr(tp.tp2)
           case _ => true
+        // Walk the chain of unsolved tvars (or unsolved type-param refs that
+        // map to tvars) in the bound direction, instantiating any whose own
+        // bound is ground. Returns true if any progress was made and the
+        // original bound is now ground.
+        def asTypeVar(tp: Type): TypeVar | Null = tp.dealias match
+          case tv: TypeVar if ctx.typerState.constraint.contains(tv) => tv
+          case pref: TypeParamRef if ctx.typerState.constraint.contains(pref) =>
+            ctx.typerState.constraint.typeVarOfParam(pref) match
+              case tv: TypeVar => tv
+              case _ => null
+          // An AndType whose components are =:= (e.g. `TypeVar(E) & TypeParamRef(E)`)
+          // is logically a single tvar; both components track the same underlying
+          // constraint variable.
+          case at: AndType if at.tp1 =:= at.tp2 => asTypeVar(at.tp1)
+          case _ => null
+        def forceGround(currentBound: Type, seen: Set[TypeVar], fromBelow: Boolean): Boolean =
+          val parent = asTypeVar(currentBound)
+          if parent == null || seen.contains(parent) then false
+          else
+            val parentBound =
+              if fromBelow then fullLowerBound(parent.origin)
+              else fullUpperBound(parent.origin)
+            if isGroundConstr(parentBound) then
+              parent.instantiate(fromBelow); true
+            else if forceGround(parentBound, seen + parent, fromBelow) then
+              val recheckedBound =
+                if fromBelow then fullLowerBound(parent.origin)
+                else fullUpperBound(parent.origin)
+              if isGroundConstr(recheckedBound) then
+                parent.instantiate(fromBelow); true
+              else false
+            else false
+        // After isFullyDefined succeeds with `ForceDegree.all`, `tp.dealias`
+        // may be a bottom type if the only available default for an unsolved
+        // tvar in the bound chain is its lower bound (e.g. `Nothing`).
+        // In that case, walk the chain of unsolved tvars in the bound
+        // direction and instantiate any whose own bound is ground.
+        // This handles the i26003 (zio-jms) pattern, where:
+        //   - `E1 <: E` and `E <: Throwable` are the only constraints,
+        //   - isFullyDefined defaults `E1` to `Nothing` (bottom),
+        //   - we'd rather use `Throwable` so `ClassTag[Throwable]` is
+        //     synthesized.
+        // The helper checks the *post-instantiation* state via the still-live
+        // chain of unconstrained tvars, so it is safe to call even after
+        // isFullyDefined has run.
         instArg(
             if tvar.hasLowerBound then
               if isGroundConstr(fullLowerBound(tvar.origin)) then tvar.instantiate(fromBelow = true)
+              // Try the chain-walking step first when the bound is itself an
+              // unsolved tvar; this avoids `isFullyDefined` defaulting an
+              // unsolved tvar to its lower bound (e.g. `Nothing`).
+              else if forceGround(fullLowerBound(tvar.origin), Set(tvar), fromBelow = true)
+                && ctx.typerState.constraint.contains(tvar)
+                && isGroundConstr(fullLowerBound(tvar.origin))
+              then tvar.instantiate(fromBelow = true)
               else if isFullyDefined(tp, ForceDegree.all) then tp
               else NoType
             else if tvar.hasUpperBound then
               if isGroundConstr(fullUpperBound(tvar.origin)) then tvar.instantiate(fromBelow = false)
+              // Prefer `failBottom`: if the only way to fully define `tp` is
+              // to default an unsolved tvar to its lower bound (a bottom
+              // type), bail and let the chain-walking fallback take over.
+              else if isFullyDefined(tp, ForceDegree.failBottom) then tp
+              else if ctx.typerState.constraint.contains(tvar)
+                && forceGround(fullUpperBound(tvar.origin), Set(tvar), fromBelow = false)
+                && isGroundConstr(fullUpperBound(tvar.origin))
+              then tvar.instantiate(fromBelow = false)
+              // Last resort: full force, accepting bottom defaults. Preserves
+              // backward compatibility for cases like i23611 where the
+              // surrounding flow already pinned the answer.
               else if isFullyDefined(tp, ForceDegree.all) then tp
               else NoType
             else
