@@ -34,7 +34,8 @@ class ReplaceInlinedTraitSymbols extends MiniPhase:
     if ctx.inlineTraitState.inlinedSymbolIsRegistered(tree.symbol, qualType) then
       val newSym = ctx.inlineTraitState.lookupInlinedSymbol(tree.symbol, qualType)
       assert(tree.symbol.isTerm)
-      tree.withType(newSym.termRef)
+      tpd.Select(tree.qualifier, tree.name)
+      tree.withType(tree.qualifier.tpe.select(newSym))
     else
       tree
       
