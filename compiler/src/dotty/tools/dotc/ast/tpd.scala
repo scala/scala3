@@ -1212,7 +1212,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureHasSym(sym: Symbol)(using Context): Unit =
       if sym.exists && sym != tree.symbol then
         typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
-        tree.overwriteType(NamedType(sym.owner.thisType, sym.asTerm.name, sym.denot))
+        tree.overwriteType(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
