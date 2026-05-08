@@ -52,6 +52,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
   override def changesParents: Boolean = true 
   override def allowsImplicitSearch: Boolean = true
 
+  private var specializedTraitCache = SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass)
+
   private def newInterfaceTrait(specialization: Specialization, specializations: SpecializedTraitCache)(using Context): (ClassSymbol, SpecializedTraitCache) = {
     val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
       def apply(t: Type) = specialization.specializedTypeParamsToTypeArgumentsMap.view.mapValues(_.tpe).applyOrElse(t, mapOver) // TODO: If we can do just types we can get rid of this 
@@ -449,7 +451,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
             case _ =>
           }
           
-          val (stats1, _) = transformStatements(stats, tree.span, SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass)) // TODO: Fix span
+          val (stats1, specializedTraitCache2) = transformStatements(stats, tree.span, specializedTraitCache) // TODO: Fix span
+          specializedTraitCache = specializedTraitCache2 // TODO: Maybe avoid mutation here
           cpy.PackageDef(pkg)(pid, stats1)
       }
 
