@@ -357,6 +357,8 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
+      - name: Print sbt version
+        run: sbt -version
       - name: Kill sbt server
         run: .github/scripts/sbt-client-check.sh "shutdown" "no sbt server is running"
       - name: Test `sbt --client compile`
