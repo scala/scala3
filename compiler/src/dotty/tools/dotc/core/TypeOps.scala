@@ -586,18 +586,7 @@ object TypeOps:
           super.apply(tp)
       end apply
     }
-    val widened = widenMap(tp)
-    val withSkolems = QualifiedTypes.avoidRefs(widened, symsToAvoid)
-    // After replacing local TermRefs with skolems, weaken qualifiers whose
-    // body now depends on those skolems — those qualifiers cannot survive in
-    // a type that's about to escape the local scope.
-    if Feature.qualifiedTypesEnabled && symsToAvoid.nonEmpty then
-      val avoidedIndices = symsToAvoid.iterator
-        .flatMap(s => ctx.base.qualifierSkolemIndexBySymbol.get(s))
-        .toSet
-      QualifiedTypes.avoidQualifierVars(withSkolems,
-        v => v.kind == qualified_types.ENodeVarKind.Skolem && avoidedIndices.contains(v.index))
-    else withSkolems
+    QualifiedTypes.avoidRefs(widenMap(tp), symsToAvoid)
   }
 
   /** An argument bounds violation is a triple consisting of
