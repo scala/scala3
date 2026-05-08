@@ -1942,7 +1942,8 @@ object Parsers {
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
-    def refinedType() = refinedTypeRest(withType())
+    def refinedType(wrapWithRewriteInParens: Boolean = false): Tree =
+      refinedTypeRest(withType(wrapWithRewriteInParens))
 
     /** Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
      *  if followed by `{`, `->`, or `?->`,
@@ -1981,10 +1982,18 @@ object Parsers {
     }
 
     /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
+     *
+     *  When `wrapRewriteInParens` is set and a `with` is rewritten to `&`,
+     *  parentheses are also patched around the whole `WithType`. This is needed
+     *  in positions where the surrounding grammar expects a `RefinedType` (which
+     *  accepts `with`) but not a full `InfixType` (which would be needed for `&`),
+     *  such as the type ascription of a typed pattern (`case x: A with B =>`).
+     *  Without the parens, the rewritten code would not parse.
      */
-    def withType(): Tree = withTypeRest(annotType())
+    def withType(wrapRewriteInParens: Boolean = false): Tree =
+      withTypeRest(annotType(), wrapRewriteInParens)
 
-    def withTypeRest(t: Tree): Tree =
+    def withTypeRest(t: Tree, wrapRewriteInParens: Boolean = false): Tree =
       if in.token == WITH then
         val withOffset = in.offset
         in.nextToken()
@@ -1998,7 +2007,11 @@ object Parsers {
             MigrationVersion.WithOperator)
           if MigrationVersion.WithOperator.needsPatch then
             patch(source, withSpan, "&")
-          atSpan(startOffset(t)) { makeAndType(t, withType()) }
+          val rest = withType()
+          if MigrationVersion.WithOperator.needsPatch && wrapRewriteInParens then
+            patch(source, Span(t.span.start, t.span.start), "(")
+            patch(source, Span(rest.span.end, rest.span.end), ")")
+          atSpan(startOffset(t)) { makeAndType(t, rest) }
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
@@ -2393,7 +2406,7 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then rejectWildcardType(refinedType())
+      else if location.inPattern then rejectWildcardType(refinedType(wrapWithRewriteInParens = true))
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -3446,7 +3459,7 @@ object Parsers {
       case GIVEN =>
         atSpan(in.offset) {
           val givenMod = atSpan(in.skipToken())(Mod.Given())
-          val typed = Typed(Ident(nme.WILDCARD), refinedType())
+          val typed = Typed(Ident(nme.WILDCARD), refinedType(wrapWithRewriteInParens = true))
           Bind(nme.WILDCARD, typed).withMods(addMod(Modifiers(), givenMod))
         }
       case _ =>
