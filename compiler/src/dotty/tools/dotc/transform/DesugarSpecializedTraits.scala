@@ -43,6 +43,9 @@ import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.InlineMethod
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
+import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.util.Spans.spanCoord
+import dotty.tools.dotc.util.Spans.NoSpan
 
 class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
@@ -62,7 +65,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     // Parents may be specializable and so we need to specialize them as well
     // See ArrayIterator extends Iterator in specialized-trait-collections-example.scala
     val specializations1 = inheritedParents.foldLeft(specializations)((specializations, parent) => 
-        parent match {
+        (parent, specialization.span) match {
           case Specialization(spec) if spec.isSpecialized => specializations.addInterface(spec) 
           case _ => specializations
         }
@@ -80,7 +83,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       parents,
       NoType, // TODO: What happens if the creator of the specialized inline trait provides a self type? 
       specialization.traitSymbol.privateWithin,
-      specialization.traitSymbol.coord,
+      spanCoord(specialization.span),
       specialization.traitSymbol.compilationUnitInfo
     )
 
@@ -88,10 +91,10 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     (traitSymbol.entered, specializations1)
   }
 
-  private def buildInterfaceTraitTree(interfaceSymbol: ClassSymbol)(using Context) = {
-    val init = newDefaultConstructor(interfaceSymbol)
+  private def buildInterfaceTraitTree(specialization: Specialization, interfaceSymbol: ClassSymbol)(using Context) = {
+    val init = newConstructor(interfaceSymbol, EmptyFlags, Nil, Nil, coord=spanCoord(specialization.span))
     fixConstructor(init, interfaceSymbol)
-    ClassDef(interfaceSymbol, DefDef(init.entered), Nil)
+    ClassDef(interfaceSymbol, DefDef(init.entered), Nil).withSpan(specialization.span)
   }
 
   /* Fix constructor so that it:
@@ -146,7 +149,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       parents,
       NoType, // TODO: What happens if the creator of the specialized inline trait provides a self type? 
       specialization.traitSymbol.privateWithin,
-      specialization.traitSymbol.coord,
+      spanCoord(specialization.span),
       specialization.traitSymbol.compilationUnitInfo
     )
 
@@ -166,8 +169,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val traitSpParent = freshTypeVarMap(traitSpParent_)
     val originalTraitSpecializedParent = freshTypeVarMap(originalTraitSpecializedParent_)
 
-    val init = newDefaultConstructor(classSymbol)
-    
+    val init = newConstructor(classSymbol, EmptyFlags, Nil, Nil, coord=spanCoord(specialization.span))
     val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
       def apply(t: Type) = specialization.specializedConstructorParamToArgumentTypeMap.applyOrElse(t, mapOver)
     
@@ -192,7 +194,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val newParamss = paramAccessorss.nestedMap(ref(_))
     val newParams1 = if (newParamss.length == 1) then newParamss ++ List(List()) else newParamss
     // TODO: Clean and robust
-    val classDef = ClassDefWithParents(
+    ClassDefWithParents(
       classSymbol,
       DefDef(init.asTerm.entered), 
       List(
@@ -205,8 +207,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         ),
         // Put into body of class
         paramAccessorss.flatMap(syms => syms.map(sym => tpd.ValDef(sym.asTerm)))
-      )
-    classDef
+      ).withSpan(specialization.span)
   }
 
   private def replaceSpecializedSymbolsMap(specializations: SpecializedTraitCache)(using Context) =
@@ -234,14 +235,14 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         t.tpe match {
           case a: AndType => /* Multiple mixed in traits will be typed as an AndType */ 
             deandify(a).foreach(trt =>
-              Specialization.unapply(trt).foreach {spec => 
+              Specialization.unapply(trt, t.span).foreach {spec => 
                 if spec.hasSpecializedParams then
                   report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", an.srcPos)
               }
             )
             tree
           case tpe =>
-            Specialization.unapply(tpe).map(spec => 
+            Specialization.unapply(tpe, t.span).map(spec => 
                 {
                 if spec.hasSpecializedParams then
                   if tmpl.body.filterNot(x => x.symbol.name.is(ContextBoundParamName)).nonEmpty then // Only allowed to contain evidence parameters
@@ -270,7 +271,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
           val argss = tpd.allArgss(tree)
           argss match {
             case typeArgs :: valueArgss => 
-              val spec = Specialization(fun.symbol.owner, typeArgs)
+              val spec = Specialization(fun.symbol.owner, typeArgs, app.span)
               {
                 for (specializedSymbol <- specializations.getInterfaceSymbol(spec))
                 yield New(ref(specializedSymbol)).select(init).appliedToTypeTrees(spec.unspecializedTypeArgs).appliedToNone
@@ -340,7 +341,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
   )
 
   // Returns (new stmts including original, new symbols including original)
-  private def transformStatements(stats1: List[Tree], span: Span, specializations: SpecializedTraitCache)(using Context): (List[Tree], SpecializedTraitCache) = {
+  private def transformStatements(stats1: List[Tree], specializations: SpecializedTraitCache)(using Context): (List[Tree], SpecializedTraitCache) = {
 
     val inlineSpecializedMethods = new TreeMapWithPreciseStatContexts {
       override def transform(tree: Tree)(using Context): Tree = tree match { // HACK: This seems to do what we want but I don't understand why we don't do this by default? Surely we should apply transformDefs over template body?
@@ -392,14 +393,14 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val generatedTraitStats1 = generatedTraitStats.map {
       case tree: TypeDef =>
         assert(tree.symbol.isInlineTrait)
-        val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree.withSpan(span)),allowSpecialized=true).asInstanceOf[TypeDef]
+        val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree),allowSpecialized=true).asInstanceOf[TypeDef]
         cpy.TypeDef(inlined)(name = inlined.name, rhs = inlineInlineTraits(inlined.rhs)).withSpan(inlined.span)
     } 
 
     val generatedClassStats1 = generatedClassStats.map {
       case tree: TypeDef =>
         assert(Inlines.needsInlining(tree, allowSpecializedTraits=true))
-        val inlined = Inlines.inlineParentInlineTraits(tree.withSpan(span), allowSpecialized=true).asInstanceOf[TypeDef]
+        val inlined = Inlines.inlineParentInlineTraits(tree, allowSpecialized=true).asInstanceOf[TypeDef]
         cpy.TypeDef(inlined)(name = inlined.name, rhs = inlineInlineTraits(inlined.rhs)).withSpan(inlined.span)
     }.tapEach:  // We can do parent removal earlier for $impl$ classes as we don't depend on the parents later.
         _.updateParents { parents => (parents: @unchecked) match
@@ -411,8 +412,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
         (generatedTraitStats1, generatedClassStats1, specializations2)
       else 
-        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, span, specializations2)
-        val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, span, specializations3)
+        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, specializations2)
+        val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, specializations3)
         
         /* We need to do the parent removal after inlining into the $impl$ classes otherwise we break
             overriding/interface implementation rules during the inlining. The $impl$ inlining
@@ -458,7 +459,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
             case _ =>
           }
           
-          val (stats1, specializedTraitCache2) = transformStatements(stats, tree.span, specializedTraitCache) // TODO: Fix span
+          val (stats1, specializedTraitCache2) = transformStatements(stats, specializedTraitCache) // TODO: Fix span
           specializedTraitCache = specializedTraitCache2 // TODO: Maybe avoid mutation here
           cpy.PackageDef(pkg)(pid, stats1)
       }
@@ -467,7 +468,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     stats.foldLeft(specializations)((specializations, tree) => {
       tree.deepFold(specializations)((specializations, tree) => tree match
         case Typed(Apply(Select(New(anon),ctor),List()), t: TypeTree) if anon.symbol.isAnonymousClass =>
-          t.tpe match {
+          (t.tpe, t.span) match {
             case Specialization(spec) if spec.isSpecialized => specializations.addInterfaceAndImplementation(spec)
             case _ => specializations
           }
@@ -563,7 +564,7 @@ class SpecializedTraitCache(
   def getInterfaceSymbol(spec: Specialization): Option[ClassSymbol] = newInterfaceSymbols.orElse(interfaceSymbols).lift(spec)
   def getImplementationSymbol(spec: Specialization): Option[ClassSymbol] = newImplementationSymbols.orElse(implementationSymbols).lift(spec)
 
-  def getNewInterfaceSymbols = newInterfaceSymbols.values 
+  def getNewInterfaceSymbols: List[(Specialization, ClassSymbol)] = newInterfaceSymbols.toList
   def getNewImplementationSymbols: List[(Specialization, ClassSymbol, ClassSymbol)] = newImplementationSymbols.map((k, v) => (k, getInterfaceSymbol(k).get, v)).toList
 
   def addInterface(spec: Specialization)(using Context): SpecializedTraitCache = 
@@ -592,7 +593,7 @@ class SpecializedTraitCache(
 end SpecializedTraitCache
 
 /* Represents an application traitSymbol[typeArguments] */
-class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree])(using Context): // TODO: Can we get away with List[Type]
+class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val span: Span)(using Context): // TODO: Can we get away with List[Type]
   val specializedTypeParams: List[Type] = Specialization.classSpecializedTypeParams(traitSymbol) // Type parameters marked with Specialized
   
   // private val specializedTypeParamsSet = specializedTypeParams.toSet // TODO: We can bring this back if we manage to get the =:= type hashing but it's really not a big deal given the expected number of type parameters.
@@ -643,13 +644,18 @@ object Specialization:
   }
 
   def unapply(tpt: Tree)(using Context): Option[Specialization] = tpt match {
-    case AppliedTypeTree(specializedTrait: Ident, concreteTypeTrees: List[Tree]) => Some(Specialization(specializedTrait.denot.symbol, concreteTypeTrees))
-    case t: TypeTree => Specialization.unapply(t.tpe)
+    case AppliedTypeTree(specializedTrait: Ident, concreteTypeTrees: List[Tree]) => Some(Specialization(specializedTrait.denot.symbol, concreteTypeTrees, tpt.span))
+    case t: TypeTree => Specialization.unapply(t.tpe, t.span)
     case _ => None
   }
   
+  def unapply(typeSpan: (Type, Span))(using Context): Option[Specialization] = typeSpan match {
+    case (AppliedType(tycon: Type, args: List[Type]), span) => Some(Specialization(tycon.typeSymbol, args.map(TypeTree(_)), span))
+    case _ => None
+  }
+
   def unapply(tpe: Type)(using Context): Option[Specialization] = tpe match {
-    case AppliedType(tycon: Type, args: List[Type]) => Some(Specialization(tycon.typeSymbol, args.map(TypeTree(_))))
+    case AppliedType(tycon: Type, args: List[Type]) => Some(Specialization(tycon.typeSymbol, args.map(TypeTree(_)), NoSpan))
     case _ => None
   }
 
@@ -661,8 +667,8 @@ object Specialization:
     tree match {
       case TypeDef(anon, Template(_, parentCalls: List[Tree], _, _)) =>
         parentCalls match {
-          case _ :+ Apply(Apply(t@tpe, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
-            val spec = Specialization.unapply(t.tpe.resultType.resultType)
+          case _ :+ Apply(Apply(t, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
+            val spec = Specialization.unapply(t.tpe.resultType.resultType, t.span)
             spec.get.hasSpecializedParams
           case _ => false
         }
