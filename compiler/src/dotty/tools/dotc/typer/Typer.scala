@@ -5251,6 +5251,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     || methType.isImplicitMethod && isUsingApply // for a transition allow `using` arguments for regular implicit parameters
     || methType.isContextualMethod && !isUsingApply
        && pt.args.nonEmpty && pt.args.head.span.exists
+       && !methType.resType.isInstanceOf[MethodOrPoly] // only when the `using` clause is the final parameter list
        && MigrationVersion.ImplicitParamsWithoutUsing.needsPatch
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern

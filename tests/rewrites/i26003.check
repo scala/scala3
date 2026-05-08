@@ -17,8 +17,9 @@ object JdbcEncoder:
 trait JdbcEncoder0LowPriorityImplicits:
   self =>
   def fromSchema[A](implicit schema: Schema[A]): JdbcEncoder[A] =
-    schema match {
+    schema match
       case Schema.Tuple2(left, right) =>
         JdbcEncoder.tuple2Encoder(using self.fromSchema(using left), self.fromSchema(using right))
       case _ => null
-    }
+
+
