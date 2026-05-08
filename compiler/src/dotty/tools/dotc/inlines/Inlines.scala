@@ -120,10 +120,13 @@ object Inlines:
   private[dotc] def symbolFromParent(parent: Tree)(using Context): Symbol =
     if parent.symbol.isConstructor then parent.symbol.owner else parent.tpe.typeSymbol
 
-  private def inlineTraitAncestors(cls: TypeDef, allowSpecialized: Boolean)(using Context): List[Tree] = cls match {
+  private def inlineTraitAncestors(cls: TypeDef, allowSpecialized: Boolean, allowNonSpecialized: Boolean)(using Context): List[Tree] = cls match {
     case tpd.TypeDef(_, tmpl: Template) =>
       val parentTrees: Map[Symbol, Tree] = tmpl.parents.map(par => symbolFromParent(par) -> par).toMap.filter(_._1.isInlineTrait)
-      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym.isInlineTrait && sym != cls.symbol && (allowSpecialized || !sym.isSpecializedTrait) )
+      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym != cls.symbol &&
+          ((sym.isInlineTrait && !sym.isSpecializedTrait && allowNonSpecialized) || 
+           (sym.isInlineTrait && sym.isSpecializedTrait && allowSpecialized))
+        )
       ancestors.flatMap(ancestor =>
         def baseTree =
           cls.tpe.baseType(ancestor) match
@@ -333,7 +336,7 @@ object Inlines:
         )
     OverridingPairsChecker(clsSym, clsSym.thisType).checkAll(checkInlineTraitOverride) 
 
-  def inlineParentInlineTraits(cls: Tree, allowSpecialized: Boolean=false)(using Context): Tree =
+  def inlineParentInlineTraits(cls: Tree, allowSpecialized: Boolean=false, allowNonSpecialized: Boolean=true)(using Context): Tree =
     cls match {
       // case cls @ tpd.TypeDef(_, impl: Template) if cls.symbol.owner.ownersIterator.exists(_.isInlineTrait) => // TODO: We can relax this if we use a seen list to avoid cycles
       //   report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
@@ -341,7 +344,7 @@ object Inlines:
       case cls @ tpd.TypeDef(_, impl: Template) =>
         checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
-        val ancestors = inlineTraitAncestors(cls, allowSpecialized)
+        val ancestors = inlineTraitAncestors(cls, allowSpecialized, allowNonSpecialized)
         val cycleFound = ancestors.exists { parent =>
           if cls.symbol.ownersIterator.contains(symbolFromParent(parent)) then
             // TODO: This appears at the inline trait D line rather than the line corresponding to the inlining - should we be worried ? 

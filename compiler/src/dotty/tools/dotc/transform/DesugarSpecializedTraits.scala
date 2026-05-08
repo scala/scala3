@@ -402,36 +402,39 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         }
       .map(refreshClassDef)
 
-    if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
-      (stats.map(replaceSpecializedSymbolsMap(specializations2)(_)), specializations2) // TODO: Check if this shouldn't be the same as the one belwo!?
-    else 
-      val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, span, specializations2)
-      val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, span, specializations3)
-      
-      /* We need to do the parent removal after inlining into the $impl$ classes otherwise we break
-          overriding/interface implementation rules during the inlining. The $impl$ inlining
-          can also happen in the recursive calls, and so we need to do this right at the end (after the recursive calls): */
-      val generatedTraitStats3 = 
-        generatedTraitStats2.tapEach: stat => 
-          if stat.symbol.isSpecializedTraitInterface then // We could have $impl$ classes from recursive calls as well.
-            stat.updateParents { parents => (parents: @unchecked) match
-              case obj :: Specialization(originalSpec) :: parents if specializations4.getInterfaceSymbol(originalSpec).get == stat.symbol.asClass => 
-                obj :: parents
-              case obj :: parents => obj :: parents // We already removed the relevant parent.
-          }
-        .map(refreshClassDef)
-      
-      val stats2 = generatedTraitStats3 ++ 
-                    generatedClassStats2 ++ 
-                    stats.map(stat => 
-                      replaceSpecializedSymbolsMap(specializations4)( // Foo[Int] -> Foo$sp$Int in user code. 
-                      if (!stat.symbol.isSpecializedTraitImplementationClass && !stat.symbol.isSpecializedTraitInterface) then // We already processed these in an earlier recursive call
-                        Inlines.inlineParentInlineTraits(stat, allowSpecialized = true) // Perform inlining into class Bar extends Foo[Int] from user code.
-                      else
-                        stat
-                    ))
+    
+    val (generatedTraitStatsFinal, generatedClassStatsFinal, specializationsFinal) = 
+      if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
+        (generatedTraitStats1, generatedClassStats1, specializations2)
+      else 
+        val (generatedTraitStats2, specializations3) = transformStatements(generatedTraitStats1, span, specializations2)
+        val (generatedClassStats2, specializations4) = transformStatements(generatedClassStats1, span, specializations3)
+        
+        /* We need to do the parent removal after inlining into the $impl$ classes otherwise we break
+            overriding/interface implementation rules during the inlining. The $impl$ inlining
+            can also happen in the recursive calls, and so we need to do this right at the end (after the recursive calls): */
+        val generatedTraitStats3 = 
+          generatedTraitStats2.tapEach: stat => 
+            if stat.symbol.isSpecializedTraitInterface then // We could have $impl$ classes from recursive calls as well.
+              stat.updateParents { parents => (parents: @unchecked) match
+                case obj :: Specialization(originalSpec) :: parents if specializations4.getInterfaceSymbol(originalSpec).get == stat.symbol.asClass => 
+                  obj :: parents
+                case obj :: parents => obj :: parents // We already removed the relevant parent.
+            }
+          .map(refreshClassDef)
+        (generatedTraitStats3, generatedClassStats2, specializations4)
 
-      (stats2.map(removeRedundantOverridesMap(_)), specializations4)
+    val statsFinal = generatedTraitStatsFinal ++ 
+                     generatedClassStatsFinal ++ 
+                     stats.map(stat => 
+                       replaceSpecializedSymbolsMap(specializationsFinal)( // Foo[Int] -> Foo$sp$Int in user code. 
+                       if (!stat.symbol.isSpecializedTraitImplementationClass && !stat.symbol.isSpecializedTraitInterface) then // We already processed these in an earlier recursive call
+                         Inlines.inlineParentInlineTraits(stat, allowSpecialized = true, allowNonSpecialized = false) // Perform inlining into class Bar extends Foo[Int] from user code. // TODO: I don't really like this gating. 
+                       else
+                         stat
+                     ))
+
+    (statsFinal.map(removeRedundantOverridesMap(_)), specializationsFinal)
   }
     
   override protected def newTransformer(using Context): Transformer = new Transformer:
