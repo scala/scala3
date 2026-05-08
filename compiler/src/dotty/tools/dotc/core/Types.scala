@@ -1357,12 +1357,6 @@ object Types extends TypeUtils {
       case _ => this
     }
 
-    /* Extract annotations and opaque type laiases; removing the internal type.  */
-    def extractAnnotationsAndOpaqueTypeAliases(using Context): Type = this match {
-      case AnnotatedType(tp1, annot) => AnnotatedType(tp1.extractAnnotationsAndOpaqueTypeAliases, annot)
-      case RefinedType(parent, rname, TypeAlias(alias)) => RefinedType(parent.extractAnnotationsAndOpaqueTypeAliases, rname, TypeAlias(alias))
-      case _ => NoType
-    }
 
     /** Strip PolyType prefixes */
     def stripPoly(using Context): Type = this match {

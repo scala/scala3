@@ -358,11 +358,6 @@ object Inlines:
             ancestors.foldLeft((List.empty[Tree], impl.body)){
               case ((inlineDefs, childDefs), parent) =>
                   val parentTraitInliner = InlineParentTrait(parent)
-                  
-                  // Update self type
-                  val newSelfType = cls.symbol.asClass.classDenot.givenSelfType & parentTraitInliner.inlinedSelfType.extractAnnotationsAndOpaqueTypeAliases
-                  cls.symbol.info = cls.symbol.asClass.classInfo.derivedClassInfo(selfInfo=newSelfType)
-                  
                   // Inline body
                   val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
                   val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
@@ -380,16 +375,7 @@ object Inlines:
               otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
           do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
 
-          val impl1 = cpy.Template(impl)(body = newbody, 
-            self=
-              if cls.symbol.asClass.classDenot.givenSelfType.exists then
-                cpy.ValDef(impl.self)(tpt=
-                TypeTree(cls.symbol.asClass.classDenot.givenSelfType)
-                                          .withSpan(impl.self.tpt.span.orElse(cls.symbol.span)))
-                                          .withSpan(impl.self.span.orElse(cls.symbol.span))
-                                          .cloneIn(cls.symbol.source)
-              else impl.self
-            )
+          val impl1 = cpy.Template(impl)(body = newbody)
 
           cpy.TypeDef(cls)(rhs = impl1)
         }
@@ -857,10 +843,12 @@ object Inlines:
       paramAccessorsMapper.registerParamValuesOf(parent)
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol) && stat.symbol.is(Deferred))
 
-      stats.map{  // Private symbols must be entered before the RHSs are inlined
+      val stats1 = stats.map{  // Private symbols must be entered before the RHSs are inlined
         case member: MemberDef => Left((member, inlinedSym(member.symbol, overriddenDecls)))
         case stat => Right(stat)
-      }.map{
+      }
+      ctx.owner.info = ctx.owner.asClass.classInfo.integrateOpaqueMembers
+      stats1.map{
         case Left((tree, inlinedSym)) => expandStat(tree, inlinedSym)
         case Right(tree) => inlinedRhs(tree)
       }
@@ -1041,11 +1029,13 @@ object Inlines:
     */
 
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
-      val tdef2 = tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
       if inlinedSym.isOpaqueAlias then
-        cpy.TypeDef(tdef2)(rhs=TypeTree(inlinedSym.opaqueAlias))
+        val inlinedRhsType = inlinerTypeMap(tdef.rhs.tpe)
+        inlinedSym.info = inlinedSym.opaqueToBounds(TypeAlias(inlinedRhsType), tdef.rhs, List())
+        inlinedSym.typeRef.recomputeDenot()
+        ctx.typeAssigner.assignType(untpd.TypeDef(inlinedSym.name.asTypeName, TypeTree(inlinedRhsType)), inlinedSym).withSpan(parent.span)
       else
-        tdef2
+        tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
       
 
     private def inlinedRhs(vddef: ValOrDefDef, inlinedSym: Symbol)(using Context): Tree =
