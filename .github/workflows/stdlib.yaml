@@ -361,50 +361,42 @@ jobs:
         run: sbt -version
       - name: Kill sbt server
         run: |
-          OUTPUT=$(sbt -no-colors --client shutdown 2>&1 || true)
-          if printf '%s\n' "$OUTPUT" | grep -Faq "no sbt server is running"; then
+          LOG=$(mktemp)
+          sbt -no-colors --client shutdown 2>&1 | tee "$LOG" || true
+          if grep -Faq "no sbt server is running" "$LOG"; then
             echo 'PASS: sbt --client shutdown works'
           else
             echo 'FAIL: sbt --client shutdown did not produce expected output'
-            echo "--- OUTPUT BEGIN ---"
-            echo "$OUTPUT"
-            echo "--- OUTPUT END ---"
             exit 1
           fi
       - name: Test `sbt --client compile`
         run: |
-          OUTPUT=$(sbt -no-colors --client compile 2>&1 || true)
-          if printf '%s\n' "$OUTPUT" | grep -Faq "compiling"; then
+          LOG=$(mktemp)
+          sbt -no-colors --client compile 2>&1 | tee "$LOG" || true
+          if grep -Faq "compiling" "$LOG"; then
             echo 'PASS: sbt --client compile works'
           else
             echo 'FAIL: sbt --client compile did not produce expected output'
-            echo "--- OUTPUT BEGIN ---"
-            echo "$OUTPUT"
-            echo "--- OUTPUT END ---"
             exit 1
           fi
       - name: Test `sbt --client "scalac ..."`
         run: |
-          OUTPUT=$(sbt -no-colors --client "scalac -color:never -Vprint:typer tests/run/hello.scala" 2>&1 || true)
-          if printf '%s\n' "$OUTPUT" | grep -Faq "hello dotty!"; then
+          LOG=$(mktemp)
+          sbt -no-colors --client "scalac -color:never -Vprint:typer tests/run/hello.scala" 2>&1 | tee "$LOG" || true
+          if grep -Faq "hello dotty!" "$LOG"; then
             echo 'PASS: sbt --client "scalac ..." works'
           else
             echo 'FAIL: sbt --client "scalac ..." did not produce expected output'
-            echo "--- OUTPUT BEGIN ---"
-            echo "$OUTPUT"
-            echo "--- OUTPUT END ---"
             exit 1
           fi
       - name: Test `sbt --client "testCompilation ..."`
         run: |
-          OUTPUT=$(sbt -no-colors --client "testCompilation hello" 2>&1 || true)
-          if printf '%s\n' "$OUTPUT" | grep -Faq "Failed 0, Errors 0"; then
+          LOG=$(mktemp)
+          sbt -no-colors --client "testCompilation hello" 2>&1 | tee "$LOG" || true
+          if grep -Faq "Failed 0, Errors 0" "$LOG"; then
             echo 'PASS: sbt --client "testCompilation ..." works'
           else
             echo 'FAIL: sbt --client "testCompilation ..." did not produce expected output'
-            echo "--- OUTPUT BEGIN ---"
-            echo "$OUTPUT"
-            echo "--- OUTPUT END ---"
             exit 1
           fi
 
