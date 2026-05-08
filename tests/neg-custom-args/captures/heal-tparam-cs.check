@@ -17,7 +17,7 @@
 15 |    localCap { c =>  // error
    |    ^
    |    Found:    (c1: Capp^'s3) ->'s4 () ->{c1} Unit
-   |    Required: Capp^ -> () => Unit
+   |    Required: Capp^ -> () ->{any} Unit
    |
    |    Note that capability `c1` cannot flow into capture set {any}
    |    because (c1 : Capp^'s3) is not visible from any in value test2.

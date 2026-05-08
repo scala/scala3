@@ -19,15 +19,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:54:27 --------------------------------------
 54 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           Found:    Id[() => Unit, () -> Unit]^'s1
-   |                           Required: Id[() => Unit, () => Unit]
+   |                           Found:    Id[() ->{any} Unit, () -> Unit]^'s1
+   |                           Required: Id[() ->{any²} Unit, () => Unit]
    |
-   |                           Note that capability `any` cannot flow into capture set {any²}
-   |                           because any is not visible from any² in value id.
+   |                           Note that capability `any²` cannot flow into capture set {any}
+   |                           because any² is not visible from any in value id.
    |
    |                           where:    =>   refers to a root capability in the type of value id
-   |                                     any  is the root capability caps.any
-   |                                     any² is a root capability created in value id
+   |                                     any  is a root capability created in value id
+   |                                     any² is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:59:32 --------------------------------------

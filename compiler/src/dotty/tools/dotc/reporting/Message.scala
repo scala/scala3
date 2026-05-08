@@ -291,17 +291,32 @@ object Message:
 
     override def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
       refs match
-        case refs: CaptureSet if isElidableUniversal(refs) && seen.isActive =>
+        case refs: CaptureSet if isElidableArrowCaptures(refs) && seen.isActive =>
           seen.record(arrow(isContextual, isPure = false), isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
         case _ =>
           super.funMiddleText(isContextual, isPure, refs)
 
     override def isElidableUniversal(refs: GeneralCaptureSet): Boolean =
-      super.isElidableUniversal(refs) && (refs, msg).match
-        case (refs: CaptureSet, msg: TypeMismatch) =>
-          msg.notes.forall: note =>
-            (refs.elems ** note.mentions).isEmpty
-        case _ => true
+      super.isElidableUniversal(refs) && safeToElide(refs)
+
+    override def isElidableArrowCaptures(refs: GeneralCaptureSet): Boolean =
+      super.isElidableArrowCaptures(refs) && safeToElide(refs)
+
+    /** Don't elide a function-arrow capture set if the diagnostic's notes
+     *  mention a capability also present in `refs` — the reader needs to
+     *  correlate the type with the surrounding text (e.g. `any` vs `any²`).
+     *  For a `ResultCap`, also check its origin, because notes typically
+     *  reference the pre-`toResult` capability rather than the rewritten one.
+     */
+    private def safeToElide(refs: GeneralCaptureSet): Boolean = (refs, msg) match
+      case (refs: CaptureSet, msg: TypeMismatch) =>
+        msg.notes.forall: note =>
+          refs.elems.forall: e =>
+            !note.mentions.contains(e)
+            && (e match
+              case rc: ResultCap => !note.mentions.contains(rc.origin)
+              case _ => true)
+      case _ => true
 
     override def toText(tp: Type): Text =
       if !tp.exists || tp.isErroneous then seen.nonSensical = true

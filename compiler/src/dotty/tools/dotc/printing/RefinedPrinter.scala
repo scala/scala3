@@ -175,25 +175,26 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       isContextual = tsym.name.isContextFunction,
       isPure = Feature.pureFunsEnabled && !tsym.name.isImpureFunction)
 
+  /** Like `isElidableUniversal`, but also accepts a `ResultCap` whose
+   *  origin is a `LocalCap`. That shape is the result of `cc.toResult`
+   *  rewriting the `LocalCap` that `=>` desugars to into an
+   *  existentially-bound `ResultCap`; recognising it here restores the
+   *  `=>` shortcut. A `ResultCap` originating from a user-written
+   *  `caps.fresh` has `GlobalAny` as its origin and is *not* elided.
+   */
+  protected def isElidableArrowCaptures(refs: GeneralCaptureSet): Boolean =
+    isElidableUniversal(refs) || (refs match
+      case refs: CaptureSet =>
+        !refs.elems.isEmpty
+          && refs.elems.forall:
+            case _: Capabilities.LocalCap => true
+            case Capabilities.GlobalAny => true
+            case rc: Capabilities.ResultCap => rc.origin.isInstanceOf[Capabilities.LocalCap]
+            case _ => false
+          && !ccVerbose
+      case _ => false)
+
   protected def funMiddleText(isContextual: Boolean, isPure: Boolean, refs: GeneralCaptureSet | Null): Text =
-    /** Like `isElidableUniversal`, but also accepts a `ResultCap` whose
-     *  origin is a `LocalCap`. That shape is the result of `cc.toResult`
-     *  rewriting the `LocalCap` that `=>` desugars to into an
-     *  existentially-bound `ResultCap`; recognising it here restores the
-     *  `=>` shortcut. A `ResultCap` originating from a user-written
-     *  `caps.fresh` has `GlobalAny` as its origin and is *not* elided.
-     */
-    def isElidableArrowCaptures(refs: GeneralCaptureSet): Boolean =
-      isElidableUniversal(refs) || (refs match
-        case refs: CaptureSet =>
-          !refs.elems.isEmpty
-            && refs.elems.forall:
-              case _: Capabilities.LocalCap => true
-              case Capabilities.GlobalAny => true
-              case rc: Capabilities.ResultCap => rc.origin.isInstanceOf[Capabilities.LocalCap]
-              case _ => false
-            && !ccVerbose
-        case _ => false)
     val (printPure, refsText) =
       if refs == null then (isPure, Str(""))
       else if isElidableArrowCaptures(refs) then (false, Str(""))

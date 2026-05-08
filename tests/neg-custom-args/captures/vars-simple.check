@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:15:9 -----------------------------------
 15 |    a = (g: String => String)      // error
    |         ^^^^^^^^^^^^^^^^^^^
-   |         Found:    String => String
+   |         Found:    String ->{any} String
    |         Required: String ->{cap1, cap2} String
    |
    |         Note that capability `any` cannot flow into capture set {cap1, cap2}.
