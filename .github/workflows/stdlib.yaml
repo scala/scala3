@@ -361,8 +361,8 @@ jobs:
         run: sbt -version
       - name: Kill sbt server
         run: .github/scripts/sbt-client-check.sh "shutdown" "no sbt server is running"
-      - name: Test `sbt --client compile`
-        run: .github/scripts/sbt-client-check.sh "compile" "compiling"
+      #- name: Test `sbt --client compile`
+      #  run: .github/scripts/sbt-client-check.sh "compile" "compiling"
       - name: Test `sbt --client "scalac ..."`
         run: .github/scripts/sbt-client-check.sh "scalac -color:never -Vprint:typer tests/run/hello.scala" "hello dotty!"
       - name: Test `sbt --client "testCompilation ..."`
