@@ -344,7 +344,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
   private def transformStatements(stats1: List[Tree], specializations: SpecializedTraitCache)(using Context): (List[Tree], SpecializedTraitCache) = {
 
     val inlineSpecializedMethods = new TreeMapWithPreciseStatContexts {
-      override def transform(tree: Tree)(using Context): Tree = tree match { // HACK: This seems to do what we want but I don't understand why we don't do this by default? Surely we should apply transformDefs over template body?
+      override def transform(tree: Tree)(using Context): Tree = tree match {
         case app: Apply if app.symbol.isSpecializedMethod =>
           super.transform(Inlines.inlineCall(tree))
         case tree => super.transform(tree)
