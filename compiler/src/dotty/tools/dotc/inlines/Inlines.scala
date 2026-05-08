@@ -1049,14 +1049,14 @@ object Inlines:
 
         val symbolMap = mutable.Map[Symbol, Symbol]()
         // TODO make version of inlined that does not return bindings?
-        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parentSym.span), Nil, inlined(rhs)._2).withSpan(parent.span)
+        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parentSym.span), Nil, inlined(rhs)._2).withSpan(parent.span) // TODO: This inlines also calls to inline defs that were made in the inline trait body, is that desirable? 
         
         // In case of nested inline trait inlines, because BodyAnnotation is out of date,
         // body inlined misses nested expansion, but we have the symbols for the items that should be there
         // Remove them so that they can be inlined prperly later.
         val ttmap = TreeTypeMap(treeMap = {
           case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) => 
-            val newSym = tree.symbol.copy()
+            val newSym = tree.symbol.copy(coord = spanCoord(tree.span))               // Coord should correspond to original location because we will inline from there.
             newSym.info = ClassInfo(tree.symbol.owner.thisType, newSym.asClass, tree.symbol.asClass.parentTypes, Scopes.newScope)
 
             val newConstructorSymbol = tree.symbol.primaryConstructor.copy(owner = newSym)
@@ -1072,7 +1072,7 @@ object Inlines:
 
             val childSyms = tree.symbol.info.decls
               .filter(sym => tmpl.body.exists(vddef => vddef.symbol == sym))
-              .tapEach(sym => symbolMap(sym) = sym.copy(owner = newSym))
+              .tapEach(sym => symbolMap(sym) = sym.copy(owner = newSym, coord=sym.coord))
               .map(symbolMap)
 
             childSyms.foreach(p => p.entered)
