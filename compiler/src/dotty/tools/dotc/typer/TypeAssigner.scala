@@ -164,10 +164,47 @@ trait TypeAssigner {
           else
             qualType.findMember(name, pre)
 
-        if reallyExists(mbr) && NamedType.validPrefix(qualType) then qualType.select(name, mbr)
+        if reallyExists(mbr) && NamedType.validPrefix(qualType) then
+          val sel = qualType.select(name, mbr)
+          // When the qualifier is an `Inlined` node with bindings, the qualifier's
+          // `tpe` was type-avoided to drop refs to local bindings (e.g., the proxy
+          // val for an inline-bound parameter). For invariant type-parameter args
+          // referenced in the member's signature, that avoidance widens
+          // `am$proxy.Context` to a wildcard `?` and produces an unhelpful
+          // projection like `Wrap[F, ?]#C` in the inserted-apply parameter's
+          // prototype. Fix #26031 by re-deriving the member's info from the
+          // precise expansion type when, and only when, the avoided form
+          // contains such a wildcard projection on a class type parameter that
+          // appears in the resulting parameter list. The Select's prefix stays
+          // avoided so the saved tree does not leak local-binding refs.
+          qual1 match
+            case Inlined(_, bindings, expansion) if bindings.nonEmpty
+                && containsArgWildcardProjection(sel.widen) =>
+              val precisePre = expansion.tpe.widenIfUnstable
+              val preciseMbr = precisePre.findMember(name, maybeSkolemizePrefix(precisePre, name))
+              if reallyExists(preciseMbr) && NamedType.validPrefix(precisePre)
+              then qualType.select(name, preciseMbr)
+              else sel
+            case _ => sel
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
         else NoType
   end selectionType
+
+  /** Does `tp` contain a `T#C` projection where `T` is an applied type whose
+   *  argument at `C`'s class-type-parameter position is a wildcard (i.e., a
+   *  `TypeBounds`)? Used by `selectionType` to detect when avoidance widening
+   *  has lost path precision needed by downstream apply-method prototypes —
+   *  see scala/scala3#26031.
+   */
+  private def containsArgWildcardProjection(tp: Type)(using Context): Boolean =
+    tp.existsPart({
+      case tr: TypeRef if tr.symbol.isAllOf(ClassTypeParam) =>
+        tr.argForParam(tr.prefix, widenAbstract = false) match
+          case other: TypeRef => (other.prefix eq tr.prefix) // not reduced — wildcard arg kept it as a projection
+          case _: TypeBounds => true
+          case _ => false
+      case _ => false
+    }, StopAt.None)
 
   def importSuggestionAddendum(pt: Type)(using Context): String = ""
 
