@@ -2243,17 +2243,26 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       //    C[?] <: C[TV]
       //
       // where TV is a type variable. See i2397.scala for an example of the latter.
-      def matchAbstractTypeMember(info1: Type): Boolean = info1 match {
-        case TypeBounds(lo, hi) if lo ne hi =>
-          tp2.refinedInfo match {
-            case rinfo2: TypeBounds if tp1.isStable =>
-              val ref1 = tp1.widenExpr.select(name)
-              isSubType(rinfo2.lo, ref1) && isSubType(ref1, rinfo2.hi)
-            case _ =>
-              false
-          }
-        case _ => false
-      }
+      def matchAbstractTypeMember(info1: Type): Boolean =
+        // For inline parameters we treat references as stable for the purpose of
+        // forming a path-dependent type member projection. Inline expansion will
+        // bind such a parameter to a stable proxy at every call site, so the
+        // path dependency `am.T` is well-defined post-expansion. See
+        // scala/scala3#13899.
+        def stableEnoughForMember(tp: Type): Boolean = tp match
+          case tp: TermRef => tp.symbol.isAllOf(InlineParam) || tp.isStable
+          case _ => tp.isStable
+        info1 match {
+          case TypeBounds(lo, hi) if lo ne hi =>
+            tp2.refinedInfo match {
+              case rinfo2: TypeBounds if stableEnoughForMember(tp1) =>
+                val ref1 = tp1.widenExpr.select(name)
+                isSubType(rinfo2.lo, ref1) && isSubType(ref1, rinfo2.hi)
+              case _ =>
+                false
+            }
+          case _ => false
+        }
 
       // An additional check for type member matching: If the refinement of the
       // supertype `tp2` does not refer to a member symbol defined in the parent of `tp2`.

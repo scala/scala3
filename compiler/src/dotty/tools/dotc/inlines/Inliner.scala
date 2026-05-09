@@ -683,8 +683,16 @@ class Inliner(val call: tpd.Tree)(using Context):
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
             case t: SingletonType =>
-              if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
-              else paramProxy.getOrElse(t, mapOver(t))
+              // Path-dependent type members of an inline parameter are valid:
+              // inline expansion always binds the parameter to a stable proxy, so
+              // a `am.T` projection that survived def-typing is well-formed
+              // post-inlining and should be substituted via the proxy rather than
+              // widened. See scala/scala3#13899.
+              paramProxy.get(t) match
+                case Some(proxy) => proxy
+                case None =>
+                  if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
+                  else mapOver(t)
             case t => mapOver(t)
           }
         },
