@@ -838,7 +838,7 @@ trait Implicits:
     && ctx.mode.is(Mode.ImplicitsEnabled)
     && from.isValueType
     && (  from.isValueSubType(to)
-       || inferView(dummyTreeOfType(from), to)
+       || inferView(dummyTreeOfType(from).withSpan(ctx.tree.span), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
           // TODO: investigate why we can't TyperState#test here
        )
