@@ -458,7 +458,11 @@ class Inliner(val call: tpd.Tree)(using Context):
             // `CVec = $p1.Mat`). Refs to non-opaque members (regular classes,
             // objects, values) are left untouched, so refinement RHS shapes that
             // tests like tests/pos/i22974c.scala depend on are preserved.
-            val finalRefinedType = mapRefinementOpaqueAliasesToProxies(rawRefinedType)
+            // We must skip aliases whose prefix is `ref` itself: rewriting them
+            // to point at the just-pre-registered proxy would create a self-
+            // referential refinement (e.g. `proxy.A = proxy.A`) that the typer
+            // explodes on (cf. lepus regression).
+            val finalRefinedType = mapRefinementOpaqueAliasesToProxies(rawRefinedType, ref)
             if finalRefinedType ne rawRefinedType then
               refiningSym.info = finalRefinedType
             val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(finalRefinedType), inferred = true).withSpan(span)
@@ -491,29 +495,40 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  `opaque type CVec <: Mat = Mat` and `opaque type B = Opaque.A`
    *  (cf. scala/scala3#26022 and scala/scala3#17243).
    */
-  private def mapRefinementOpaqueAliasesToProxies(tp: Type)(using Context): Type = tp match
+  private def mapRefinementOpaqueAliasesToProxies(tp: Type, currentRef: TermRef)(using Context): Type = tp match
     case RefinedType(parent, name, TypeAlias(alias)) =>
-      val newAlias = remapOpaqueAliasChain(alias)
-      val newParent = mapRefinementOpaqueAliasesToProxies(parent)
+      val newAlias = remapOpaqueAliasChain(alias, currentRef)
+      val newParent = mapRefinementOpaqueAliasesToProxies(parent, currentRef)
       if (newAlias eq alias) && (newParent eq parent) then tp
       else RefinedType(newParent, name, TypeAlias(newAlias))
     case _ => tp
 
   /** If `alias` is a TypeRef (possibly underneath an AppliedType) whose member
    *  is itself an opaque alias on a TermRef that has a proxy in `opaqueProxies`,
-   *  return the same type with the prefix replaced by the proxy. Otherwise return
-   *  `alias` unchanged.
+   *  return the same type with the prefix replaced by the proxy. Aliases whose
+   *  prefix is `currentRef` (the term-ref whose proxy is currently being built)
+   *  are dealiased one step inside the module and re-processed instead — pointing
+   *  them at the in-progress proxy of `currentRef` would make the proxy's
+   *  refinement self-referential, which the typer's avoid-local-references walk
+   *  explodes on when several chained opaque aliases share the same module
+   *  (cf. lepus regression).
    */
-  private def remapOpaqueAliasChain(alias: Type)(using Context): Type = alias match
+  private def remapOpaqueAliasChain(alias: Type, currentRef: TermRef)(using Context): Type = alias match
     case tp: TypeRef =>
       tp.prefix match
+        case prefix: TermRef if tp.symbol.isOpaqueAlias && (prefix eq currentRef) =>
+          val underlying = tp.symbol.opaqueAlias
+          if underlying.exists then
+            val seen = underlying.stripLazyRef.asSeenFrom(prefix, prefix.classSymbol)
+            remapOpaqueAliasChain(seen, currentRef)
+          else alias
         case prefix: TermRef if tp.symbol.isOpaqueAlias =>
           mapRef(prefix) match
             case Some(proxy) => TypeRef(proxy, tp.symbol)
             case None => alias
         case _ => alias
     case AppliedType(tycon, args) =>
-      val newTycon = remapOpaqueAliasChain(tycon)
+      val newTycon = remapOpaqueAliasChain(tycon, currentRef)
       if newTycon eq tycon then alias
       else AppliedType(newTycon, args)
     case _ => alias
@@ -633,13 +648,22 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  abstract type member, return its upper bound mapped through `mapOpaques`;
    *  otherwise `NoType`. Used to widen the cast type so opaque-aliased members
    *  reachable only via an abstract upper bound resolve in the inlined body.
+   *
+   *  When `tp` is `AppliedType(tycon, args)` and `tycon`'s upper bound is a
+   *  HKTypeLambda (a higher-kinded abstract type like `type T[+A] <: Base & Tag`),
+   *  the lambda is applied to `args` so the result is a value type — otherwise
+   *  the caller would build an `AndType(value, hkLambda)` and trip
+   *  `expectValueTypeOrWildcard`.
    */
   private def mappedUpperBoundFor(tp: Type)(using Context): Type = tp match
     case tp: TypeRef if isUserAbstractType(tp.symbol) =>
       tp.info match
         case bounds: TypeBounds => mapOpaques.typeMap(bounds.hi)
         case _ => NoType
-    case AppliedType(tycon, _) => mappedUpperBoundFor(tycon)
+    case AppliedType(tycon, args) =>
+      mappedUpperBoundFor(tycon) match
+        case lambda: HKTypeLambda => lambda.appliedTo(args)
+        case other => other
     case _ => NoType
 
   private def canElideThis(tpe: ThisType): Boolean =
