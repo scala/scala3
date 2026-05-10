@@ -899,51 +899,51 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @return an array of strings computed by splitting this string around occurrences of the separator character
    */
   def split(separator: Char): Array[String] = {
-		var end = s.length
-		if (end == 0) return Array("")
+    var end = s.length
+    if (end == 0) return Array("")
 
-		while (end != 0 && s(end - 1) == ch) end -= 1
-		if (end == 0) return Array.empty
+    while (end != 0 && s(end - 1) == separator) end -= 1
+    if (end == 0) return Array.empty
 
-		val builder = Array.newBuilder[String]
+    val builder = Array.newBuilder[String]
 
-		if (!ch.isSurrogate) {
-			@tailrec
-			def collect(start: Int): Unit =
-				s.indexOf(ch, start) match {
-					case -1 =>
-						builder += s.substring(start)
-					case idx =>
-						builder += s.substring(start, idx)
-						if (idx != end) collect(idx + 1)
-				}
-			collect(0)
-		} else {
-			// If we over-trimmed the rightmost low surrogate, put it back
-			val isLowSurrogate = ch.isLowSurrogate
-			if (isLowSurrogate && end != s.length && s(end - 1).isHighSurrogate) end += 1
+    if (!separator.isSurrogate) {
+      @tailrec
+      def collect(start: Int): Unit =
+        s.indexOf(separator, start) match {
+          case -1 =>
+            builder += s.substring(start)
+          case idx =>
+            builder += s.substring(start, idx)
+            if (idx != end) collect(idx + 1)
+        }
+      collect(0)
+    } else {
+      // If we over-trimmed the rightmost low surrogate, put it back
+      val isLowSurrogate = separator.isLowSurrogate
+      if (isLowSurrogate && end != s.length && s(end - 1).isHighSurrogate) end += 1
 
-			@tailrec
-			def collect(start: Int, searchFrom: Int): Unit =
-				s.indexOf(ch, searchFrom) match {
-					case -1 =>
-						builder += s.substring(start)
-					case idx =>
-						if (idx == end) {
-							builder += s.substring(start, idx)
-						} else if (isLowSurrogate && idx != 0 && s(idx - 1).isHighSurrogate) {
-							collect(start, idx + 1) // skip this match
-						} else if (!isLowSurrogate && s(idx + 1).isLowSurrogate) {
-							collect(start, idx + 2) // skip this match
-						} else {
-							builder += s.substring(start, idx)
-							collect(idx + 1, idx + 1)
-						}
-				}
-			collect(0, 0)
-		}
+      @tailrec
+      def collect(start: Int, searchFrom: Int): Unit =
+        s.indexOf(separator, searchFrom) match {
+          case -1 =>
+            builder += s.substring(start)
+          case idx =>
+            if (idx == end) {
+              builder += s.substring(start, idx)
+            } else if (isLowSurrogate && idx != 0 && s(idx - 1).isHighSurrogate) {
+              collect(start, idx + 1) // skip this match
+            } else if (!isLowSurrogate && s(idx + 1).isLowSurrogate) {
+              collect(start, idx + 2) // skip this match
+            } else {
+              builder += s.substring(start, idx)
+              collect(idx + 1, idx + 1)
+            }
+        }
+      collect(0, 0)
+    }
 
-		builder.result
+    builder.result
   }
 
   @throws(classOf[java.util.regex.PatternSyntaxException])
