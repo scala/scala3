@@ -84,7 +84,10 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   }
 }
 
-/** Base implementation type of bitsets. */
+/** Base implementation type of bitsets.
+ *
+ *  @tparam C the type of the bitset itself, used for return types of operations
+ */
 transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
   extends SortedSetOps[Int, SortedSet, C] { self =>
   import BitSetOps._
@@ -100,10 +103,15 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
 
   /** The words at index `idx`, or 0L if outside the range of the set
    *  **Note:** requires `idx >= 0`
+   *
+   *  @param idx the index of the word to retrieve, must be non-negative
    */
   protected[collection] def word(idx: Int): Long
 
-  /** Creates a new set of this kind from an array of longs */
+  /** Creates a new set of this kind from an array of longs
+   *
+   *  @param elems the array of 64-bit words representing the bit mask for the new set
+   */
   protected[collection] def fromBitMaskNoCopy(elems: Array[Long]): C
 
   def contains(elem: Int): Boolean =
