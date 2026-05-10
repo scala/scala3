@@ -908,7 +908,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     val builder = Array.newBuilder[String]
 
     if (!separator.isSurrogate) {
-      @tailrec
+      @annotation.tailrec
       def collect(start: Int): Unit =
         s.indexOf(separator, start) match {
           case -1 =>
@@ -923,7 +923,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       val isLowSurrogate = separator.isLowSurrogate
       if (isLowSurrogate && end != s.length && s(end - 1).isHighSurrogate) end += 1
 
-      @tailrec
+      @annotation.tailrec
       def collect(start: Int, searchFrom: Int): Unit =
         s.indexOf(separator, searchFrom) match {
           case -1 =>
