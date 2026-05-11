@@ -834,8 +834,8 @@ object TreeChecker {
 
   def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
     if ctx.settings.XcheckMacros.value then
-      // We want make sure that transparent inline macros are checked in the same way that
-      // non transparent macros are, so we try to prepare a context which would make
+      // We want to make sure that transparent inline macros are checked in the same way that
+      // non-transparent macros are, so we try to prepare a context which would make
       // the checks behave the same way for both types of macros.
       //
       // E.g. Different instances of skolem types are by definition not able to be a subtype of
