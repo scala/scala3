@@ -32,12 +32,12 @@ object GenericSignatures {
    *  @param info The type of the symbol
    *  @return The signature if it could be generated, `null` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(using Context): String | Null =
+  def javaSig(sym0: Symbol, info: Type)(using Context): StringBuilder | Null =
     // Avoid generating a signature for non-class local symbols.
     if (sym0.isLocal && !sym0.isClass) || (sym0.isField && info.isPrimitiveValueType) then null
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
-  private final def javaSig0(sym0: Symbol, info: Type)(using Context): String = {
+  private final def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder = {
     // This works as long as mangled names are always valid Java identifiers,
     // if we change our name encoding, we'll have to `throw new UnknownSig` here for
     // names which are not valid Java identifiers (see git history of this method).
@@ -456,7 +456,7 @@ object GenericSignatures {
       builder.append('^')
       jsig(t, toplevel = true)
     }
-    builder.toString
+    builder
   }
 
   /* Drop redundant types (ones which are implemented by some other parent) from the immediate parents.

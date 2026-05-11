@@ -371,8 +371,8 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         if ctx.base.settings.XnoGenericSig.value then null
         else
           val genSig = getGenericSignatureHelper(sym, owner, computeMemberType())
-          if genSig == descriptor then null
-          else genSig
+          if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
+          else genSig.toString
       }
     }
 
@@ -596,7 +596,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
 
   } // end of class JMirrorBuilder
 
-  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): String | Null = {
+  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
     val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
     if (erasedTypeSym.isPrimitiveValueClass) {
       // Suppress signatures for symbols whose types erase in the end to primitive
@@ -605,7 +605,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
     } else {
       val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
       if (jsOpt != null && ctx.settings.XverifySignatures.value) {
-        verifySignature(sym, jsOpt)
+        verifySignature(sym, jsOpt.toString)
       }
       jsOpt
     }
@@ -637,7 +637,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
     }
   }
 
-  private def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol, descriptor: String | Null)(using Context): String = {
+  private def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol, descriptor: String | Null)(using Context): String | Null = {
     // scala/bug#3452 Static forwarder generation uses the same erased signature as the method if forwards to.
     // By rights, it should use the signature as-seen-from the module class, and add suitable
     // primitive and value-class boxing/unboxing.
@@ -649,8 +649,8 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
       if (erasedMemberType =:= sym.denot.info)
         val gensig = getGenericSignatureHelper(sym, moduleClass, memberTpe)
-        if gensig == descriptor then null
-        else gensig
+        if gensig == null || descriptor.contentEquals(gensig) then null
+        else gensig.toString
       else null
     else null
   }
