@@ -10,15 +10,13 @@ import core.Flags.*
 import core.Names.Name
 import core.NameOps.isContextFunction
 import core.Symbols.*
-import core.TypeApplications.{EtaExpansion, TypeParamInfo}
-import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement, tupleArity}
+import core.TypeApplications.TypeParamInfo
+import core.TypeErasure.*
 import core.Types.*
 import core.classfile.ClassfileConstants
+import dotty.tools.dotc.core.Decorators.i
 
-import config.Printers.transforms
-import reporting.trace
 import java.lang.StringBuilder
-
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
@@ -32,14 +30,14 @@ object GenericSignatures {
    *
    *  @param sym0 The symbol for which to define the signature
    *  @param info The type of the symbol
-   *  @return The signature if it could be generated, `None` otherwise.
+   *  @return The signature if it could be generated, `null` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(using Context): Option[String] =
+  def javaSig(sym0: Symbol, info: Type)(using Context): String | Null =
     // Avoid generating a signature for non-class local symbols.
-    if (sym0.isLocal && !sym0.isClass) None
+    if (sym0.isLocal && !sym0.isClass) || (sym0.isField && info.isPrimitiveValueType) then null
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
-  private final def javaSig0(sym0: Symbol, info: Type)(using Context): Option[String] = {
+  private final def javaSig0(sym0: Symbol, info: Type)(using Context): String = {
     // This works as long as mangled names are always valid Java identifiers,
     // if we change our name encoding, we'll have to `throw new UnknownSig` here for
     // names which are not valid Java identifiers (see git history of this method).
@@ -241,14 +239,15 @@ object GenericSignatures {
 
       if (pre.exists) {
         val preRebound = pre.baseType(sym.owner) // #2585
-        if (needsJavaSig(preRebound, Nil)) {
+        if (preRebound.exists) {
           val i = builder.length()
           jsig(preRebound)
-          if (builder.charAt(i) == 'L') {
-            builder.delete(builder.length() - 1, builder.length())// delete ';'
-                                                                  // If the prefix is a module, drop the '$'. Classes (or modules) nested in modules
-                                                                  // are separated by a single '$' in the filename: `object o { object i }` is o$i$.
-            if (preRebound.typeSymbol.is(ModuleClass))
+          if (i < builder.length() && builder.charAt(i) == 'L') {
+            builder.delete(builder.length() - 1, builder.length()) // delete ';'
+            // If the prefix is a module, drop the '$'. Classes (or modules) nested in modules
+            // are separated by a single '$' in the filename: `object o { object i }` is o$i$.
+            val isModule = builder.charAt(builder.length() - 1) == '$'
+            if isModule then
               builder.delete(builder.length() - 1, builder.length())
 
             // Ensure every '.' in the generated signature immediately follows
@@ -257,14 +256,13 @@ object GenericSignatures {
             // rewriting explained at rebindInnerClass.
 
             // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
-            val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
-            builder.append(delimiter).append(sanitizeName(sym.name))
-          }
-          else fullNameInSig(sym)
-        }
-        else fullNameInSig(sym)
-      }
-      else fullNameInSig(sym)
+            val delimiter = if isModule then '$'
+                            else if (preRebound.typeSymbol.isClass && !preRebound.typeSymbol.is(ModuleClass)) || preRebound.typeSymbol.is(Trait) then '.'
+                            else '/'
+            builder.append(delimiter).append(sanitizeName(sym.targetName))
+          } else fullNameInSig(sym)
+        } else fullNameInSig(sym)
+      } else fullNameInSig(sym)
 
       if (args.nonEmpty) {
         builder.append('<')
@@ -279,6 +277,18 @@ object GenericSignatures {
 
     def jsig(tp0: Type, toplevel: Boolean = false, vcBoxing: ValueClassBoxing = ValueClassBoxing.Unbox): Unit = {
       inline def jsig1(tp0: Type): Unit = jsig(tp0)
+
+      def arraySig(elemtp: Type): Unit =
+        if (isGenericArrayElement(elemtp, isScala2 = false))
+          jsig1(defn.ObjectType)
+        else
+          builder.append(ClassfileConstants.ARRAY_TAG)
+          elemtp match
+            case TypeBounds(lo, hi) => jsig1(hi.widenDealias)
+            // derived VCs are not unboxed inside arrays,
+            // i.e., `Array[VC]` where `class VC(n: X) extends AnyVal`
+            // is `[LVC;`, not `[LX;`
+            case _ => jsig(elemtp, vcBoxing = ValueClassBoxing.UnboxOnlyPrimitives)
 
       val tp = tp0.dealias
       tp match {
@@ -313,19 +323,15 @@ object GenericSignatures {
           jsig(ref.underlying, toplevel = toplevel, vcBoxing = vcBoxing)
 
         case defn.ArrayOf(elemtp) =>
-          if (isGenericArrayElement(elemtp, isScala2 = false))
-            jsig1(defn.ObjectType)
-          else
-            builder.append(ClassfileConstants.ARRAY_TAG)
-            elemtp match
-              case TypeBounds(lo, hi) => jsig1(hi.widenDealias)
-              // derived VCs are not unboxed inside arrays,
-              // i.e., `Array[VC]` where `class VC(n: X) extends AnyVal`
-              // is `[LVC;`, not `[LX;`
-              case _ => jsig(elemtp, vcBoxing = ValueClassBoxing.UnboxOnlyPrimitives)
+          arraySig(elemtp)
+
+        case JavaArrayType(elemtp) =>
+          arraySig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
-          if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
+          if sym.isRoot || sym.isEmptyPackage then
+            ()
+          else if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
             jsig1(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType || sym.info.isLambdaSub, "Unexpected alias type: " + sym)
@@ -433,27 +439,25 @@ object GenericSignatures {
         case hktl: HKTypeLambda =>
           jsig(hktl.finalResultType, toplevel, vcBoxing)
 
+        case ErasedValueType(tycon, underlying) =>
+          if vcBoxing == ValueClassBoxing.Unbox || (vcBoxing == ValueClassBoxing.UnboxOnlyPrimitives && underlying.isPrimitiveValueType)
+          then jsig(underlying, toplevel, vcBoxing)
+          else jsig(tycon, toplevel, vcBoxing)
+
         case _ =>
           val etp = erasure(tp)
-          if (etp eq tp) throw new UnknownSig
-          else jsig(etp, toplevel, vcBoxing)
+          assert(etp != tp, i"recursive! $etp == $tp")
+          jsig(etp, toplevel, vcBoxing)
       }
     }
     val throwsArgs = sym0.annotations flatMap ThrownException.unapply
-    if (needsJavaSig(info, throwsArgs))
-      try {
-        jsig(info, toplevel = true)
-        throwsArgs.foreach { t =>
-          builder.append('^')
-          jsig(t, toplevel = true)
-        }
-        Some(builder.toString)
-      }
-      catch { case _: UnknownSig => None }
-    else None
+    jsig(info, toplevel = true)
+    throwsArgs.foreach { t =>
+      builder.append('^')
+      jsig(t, toplevel = true)
+    }
+    builder.toString
   }
-
-  private class UnknownSig extends Exception
 
   /* Drop redundant types (ones which are implemented by some other parent) from the immediate parents.
    * This is important on Android because there is otherwise an interface explosion.
@@ -535,6 +539,7 @@ object GenericSignatures {
             case _ => ResolvedAppliedType.NotResolved
         case _ => ResolvedAppliedType.NotResolved
 
+    @tailrec
     def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
       case TypeParamRef(_, _) =>
         Some((tp.typeSymbol, tp, Nil))
@@ -550,38 +555,6 @@ object GenericSignatures {
           case ResolvedAppliedType.Bail => None
       case _ =>
         None
-  }
-
-  private def needsJavaSig(tp: Type, throwsArgs: List[Type])(using Context): Boolean = !ctx.settings.XnoGenericSig.value && {
-      def needs(tp: Type) = (new NeedsSigCollector).apply(false, tp)
-      needs(tp) || throwsArgs.exists(needs)
-  }
-
-  private class NeedsSigCollector(using Context) extends TypeAccumulator[Boolean] {
-    override def apply(x: Boolean, tp: Type): Boolean =
-      if (!x)
-        tp.dealias match {
-          case RefinedType(parent, refinedName, refinedInfo) =>
-            val sym = parent.typeSymbol
-            if (sym == defn.ArrayClass) foldOver(x, refinedInfo)
-            else true
-          case tref @ TypeRef(pre, name) =>
-            val sym = tref.typeSymbol
-            if (sym.is(TypeParam) || sym.typeParams.nonEmpty) true
-            else if (sym.isClass) foldOver(x, rebindInnerClass(pre, sym)) // #2585
-            else foldOver(x, pre)
-          case PolyType(_, _) =>
-            true
-          case ClassInfo(_, _, parents, _, _) =>
-            foldOver(tp.typeParams.nonEmpty, parents)
-          case AnnotatedType(tpe, _) =>
-            foldOver(x, tpe)
-          case ExprType(tpe) =>
-            true
-          case tp =>
-            foldOver(x, tp)
-        }
-      else x
   }
 
   private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) =

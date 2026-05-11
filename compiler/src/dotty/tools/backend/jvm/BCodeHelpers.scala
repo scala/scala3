@@ -370,7 +370,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
 
         if ctx.base.settings.XnoGenericSig.value then null
         else
-          val genSig = getGenericSignatureHelper(sym, owner, computeMemberType()).orNull
+          val genSig = getGenericSignatureHelper(sym, owner, computeMemberType())
           if genSig == descriptor then null
           else genSig
       }
@@ -596,16 +596,16 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
 
   } // end of class JMirrorBuilder
 
-  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): Option[String] = {
+  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): String | Null = {
     val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
     if (erasedTypeSym.isPrimitiveValueClass) {
       // Suppress signatures for symbols whose types erase in the end to primitive
       // value types. This is needed to fix #7416.
-      None
+      null
     } else {
       val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
-      if (ctx.settings.XverifySignatures.value) {
-        jsOpt.foreach(verifySignature(sym, _))
+      if (jsOpt != null && ctx.settings.XverifySignatures.value) {
+        verifySignature(sym, jsOpt)
       }
       jsOpt
     }
@@ -648,7 +648,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
       val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
       if (erasedMemberType =:= sym.denot.info)
-        val gensig = getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
+        val gensig = getGenericSignatureHelper(sym, moduleClass, memberTpe)
         if gensig == descriptor then null
         else gensig
       else null
