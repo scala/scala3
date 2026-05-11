@@ -343,6 +343,31 @@ jobs:
       - name: Test Language Server
         run: ./project/scripts/sbt scala3-language-server/test
 
+  test-dev-commands:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Print sbt version
+        run: sbt -version
+      - name: Kill sbt server
+        run: .github/scripts/sbt-client-check.sh "shutdown" "no sbt server is running"
+      - name: Test `sbt --client compile`
+        run: .github/scripts/sbt-client-check.sh "compile" "compiling"
+      - name: Test `sbt --client "scalac ..."`
+        run: .github/scripts/sbt-client-check.sh "scalac -color:never -Vprint:typer tests/run/hello.scala" "hello dotty!"
+      - name: Test `sbt --client "testCompilation ..."`
+        run: .github/scripts/sbt-client-check.sh "testCompilation hello" "Failed 0, Errors 0"
+
   scripted-tests:
     runs-on: ubuntu-latest
     steps:
