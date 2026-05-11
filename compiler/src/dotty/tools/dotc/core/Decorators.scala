@@ -4,7 +4,6 @@ package core
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import scala.util.control.NonFatal
 
 import Contexts.*, Names.*, Phases.*, Symbols.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
@@ -286,7 +285,7 @@ object Decorators {
         try x.show
         catch
           case ex: CyclicReference => "... (caught cyclic reference) ..."
-          case NonFatal(ex)
+          case ex: Exception
           if !ctx.settings.YshowPrintErrors.value =>
             s"... (cannot display due to ${ex.className} ${ex.getMessage}) ..."
       case _ => String.valueOf(x)

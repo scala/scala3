@@ -1,7 +1,5 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.JarArchive
 import dotty.tools.io.PlainFile
@@ -82,7 +80,6 @@ object FileWriters {
   enum Report:
     case Error(message: Context => Message, position: SourcePosition)
     case Warning(message: Context => Message, position: SourcePosition)
-    case OptimizerWarning(message: Context => Message, site: String, position: SourcePosition)
     case Log(message: String)
 
   final class BufferingReporter extends DelayedReporter {
@@ -144,7 +141,7 @@ object FileWriters {
       val debug = ctx.settings.Ydebug.value
 
     def readRun(using ctx: Context): ReadOnlyRun = new:
-      val suspendedAtTyperPhase = ctx.run.suspendedAtTyperPhase
+      val suspendedAtTyperPhase = ctx.run.nn.suspendedAtTyperPhase
 
     def buffered(using Context): BufferedReadOnlyContext = new:
       val settings = readSettings
@@ -224,7 +221,7 @@ object FileWriters {
         new JarEntryWriter(jarFile, jarManifestMainClass, jarCompressionLevel)
       }
       else if (file.isVirtual) new VirtualFileWriter(file)
-      else if (file.isDirectory) new DirEntryWriter(file.file.toPath)
+      else if (file.isDirectory) new DirEntryWriter(file.file.nn.toPath)
       else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
@@ -331,7 +328,7 @@ object FileWriters {
         catch {
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave a empty of half-written classfile around after an interrupt
-            catch { case _: Throwable => () }
+            catch { case _: java.io.IOException => () }
             throw ex
         }
         os.close()
@@ -375,5 +372,5 @@ object FileWriters {
   }
 
   /** Can't output a file due to the state of the file system. */
-  class FileConflictException(msg: String, cause: Throwable = null) extends IOException(msg, cause)
+  class FileConflictException(msg: String, cause: Throwable | Null = null) extends IOException(msg, cause)
 }

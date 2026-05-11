@@ -3,10 +3,15 @@ package tools
 package vulpix
 
 import scala.language.unsafeNulls
+import scala.util.Properties.javaSpecVersion
 
 import java.io.File
 
+import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
+
 object TestConfiguration {
+
+  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse("17"))
 
   val pageWidth = 120
 
@@ -57,6 +62,10 @@ object TestConfiguration {
       Properties.dottyRepl,
       Properties.jlineTerminal,
       Properties.jlineReader,
+      Properties.fansi,
+      Properties.pprint,
+      Properties.sourcecode,
+      Properties.scalaXml
   ))
 
   lazy val replWithStagingClasspath = 

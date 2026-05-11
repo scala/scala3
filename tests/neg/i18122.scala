@@ -40,9 +40,9 @@ object Test {
     bar2(x = 1, 2, 3)
     bar1(x = 1, ys = 2, 3)
     bar2(x = 1, ys = 2, 3)
-    bar1(x = 1, 2, ys = 3)  // error: positional after named
+    bar1(x = 1, 2, ys = 3)  // error: parameter ys is already instantiated
     bar1(1, 2, ys = 3)      // error: parameter ys is already instantiated
-    bar2(x = 1, 2, ys = 3)  // error: positional after named
+    bar2(x = 1, 2, ys = 3)  // error: parameter ys is already instantiated
     bar1(ys = 1, 2, x = 3)  // error: positional after named
     bar2(ys = 1, 2, x = 3)  // error: positional after named
   }

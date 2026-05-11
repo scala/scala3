@@ -1,0 +1,14 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> class IO extends SharedCapability
+// defined class IO
+scala> @assumeSafe val io: IO^ = null
+val io: IO^ = null
+scala> val x = io
+val x: IO^{io} = null
+scala> import language.experimental.safe
+scala> val y: IO^{io} = io
+val y: IO^{io} = null
+scala> def f(x: Any): Unit = ()
+def f(x: Any): Unit
+scala> f(y)

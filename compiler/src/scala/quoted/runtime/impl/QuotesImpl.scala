@@ -1,8 +1,6 @@
 package scala.quoted
 package runtime.impl
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
@@ -255,7 +253,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           throw new RuntimeException(
             "Symbols necessary for creation of the ClassDef tree could not be found."
           )
-        val paramsAccessDefs: List[untpd.ParamClause] =
+        val paramsAccessDefs: List[ParamClause] =
           cls.primaryConstructor.paramSymss.map { paramSym =>
             if paramSym.headOption.map(_.isType).getOrElse(false) then
               paramSym.map { symm =>
@@ -579,7 +577,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
-        tpd.cpy.Select(original)(qualifier, name.toTermName)
+        original match
+          case original: tpd.Select if original.name.toString == name =>
+            // Name unchanged: preserve original Name object and use tpd.cpy.Select
+            // which correctly handles qualifier type changes via derivedSelect
+            tpd.cpy.Select(original)(qualifier, original.name)
+          case _ =>
+            // Name changed: resolve the name and create a fresh Select with proper type
+            val simpleName = name.toTermName
+            val resolvedName =
+              val member = qualifier.tpe.member(simpleName)
+              if member.exists then simpleName
+              else
+                val unmangled = simpleName.unmangle(NameKinds.Scala2MethodNameKinds)
+                if (unmangled ne simpleName) && qualifier.tpe.member(unmangled).exists then unmangled
+                else simpleName
+            tpd.Select(qualifier, resolvedName)
       def unapply(x: Select): (Term, String) =
         (x.qualifier, x.name.toString)
     end Select
@@ -1891,7 +1904,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           // even if that symbol is not a direct member of that prefix, but a nested one.
           def isTypeRelatedToThePassedMember =
             import scala.util.boundary
-            boundary {
+            // the symbol for `self` will not exist for LambdaTypes,
+            // which don't seem to be supported by asSeenFrom anyway
+            // (but also don't seem to cause crashes, and return no-op member.info,
+            // which we might not be able to access otherwise, so we need to allow this).
+            val isLambdaType = self.isInstanceOf[LambdaType]
+            isLambdaType || boundary {
               var checked: Symbol = member
               while(checked.exists) {
                 if self.derivesFrom(checked)
@@ -1902,6 +1920,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               }
               boundary.break(false)
             }
+
           xCheckMacroAssert(isTypeRelatedToThePassedMember, s"$member is not a member of ${self.show}")
 
           // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
@@ -3366,7 +3385,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given SourceFileMethods: SourceFileMethods with
       extension (self: SourceFile)
-        def jpath: java.nio.file.Path = self.file.jpath
+        @deprecated("Use getJPath, name, or path instead of jpath", "3.0.2")
+        def jpath: java.nio.file.Path =
+          self.file.jpath.asInstanceOf[java.nio.file.Path] // the cast is the reason this is deprecated
+
         def getJPath: Option[java.nio.file.Path] = Option(self.file.jpath)
         def name: String = self.name
         def path: String = self.path
@@ -3431,7 +3453,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     private def optional[T <: dotc.ast.Trees.Tree[?]](tree: T): Option[tree.type] =
       if tree.isEmpty then None else Some(tree)
 
-    private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
+    private def withDefaultPos[T <: untpd.Tree](fn: Context ?=> T): T =
       fn(using ctx.withSource(Position.ofMacroExpansion.source)).withSpan(Position.ofMacroExpansion.span)
 
     /** Checks that all definitions in this tree have the expected owner.
@@ -3586,7 +3608,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V1(typeHole), PickledQuotes.ExprHole.V1(termHole))
     new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
-  def unpickleExprV2[T](pickled: String | List[String], types: Seq[Type[?]], termHole: Null | ((Int, Seq[Type[?] | Expr[Any]], Quotes) => Expr[?])): scala.quoted.Expr[T] =
+  def unpickleExprV2[T](pickled: String | List[String], types: Null | Seq[Type[?]], termHole: Null | ((Int, Seq[Type[?] | Expr[Any]], Quotes) => Expr[?])): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V2(types), PickledQuotes.ExprHole.V2(termHole))
     new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
@@ -3594,7 +3616,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V1(typeHole))
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 
-  def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Seq[Type[?]]): scala.quoted.Type[T] =
+  def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Null | Seq[Type[?]]): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V2(types))
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 

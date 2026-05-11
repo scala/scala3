@@ -6,6 +6,36 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 
 ## Introduction
 
+```scala sc-hidden sc-name:polymorphism-cc-context
+import language.experimental.captureChecking
+import caps.*
+```
+
+```scala sc-hidden sc-name:polymorphism-listener-context sc-compile-with:polymorphism-cc-context
+trait Listener
+```
+
+```scala sc-hidden sc-name:polymorphism-lzylist-context sc-compile-with:polymorphism-cc-context
+trait LzyList[+A]
+```
+
+```scala sc-hidden sc-name:polymorphism-test1-context sc-compile-with:polymorphism-cc-context
+trait List[+A]:
+  def map[B](f: A => B): List[B]
+  def foreach(f: A => Unit): Unit
+
+class Async extends SharedCapability
+```
+
+```scala sc-hidden sc-name:polymorphism-reactor-context sc-compile-with:polymorphism-cc-context
+trait Event
+```
+
+```scala sc-hidden sc-name:polymorphism-gui-context sc-compile-with:polymorphism-cc-context
+object ui extends SharedCapability
+object log extends SharedCapability
+```
+
 Capture checking supports capture-polymorphic programming in two complementary styles:
 
 1.	**Implicit** capture polymorphism, which is the default and has minimal syntactic overhead.
@@ -16,9 +46,9 @@ between polymorphism through subtyping versus parametric polymorphism through ty
 
 ### Implicit Polymorphism
 
-In many cases, such a higher-order functions, we do not need new syntax to be polymorphic over
+In many cases, such as higher-order functions, we do not need new syntax to be polymorphic over
 capturing types. The classic example is `map` over lists:
-```scala sc:nocompile
+```scala
 trait List[+A]:
   // Works for pure functions AND capturing functions!
   def map[B](f: A => B): List[B]
@@ -48,7 +78,7 @@ with explicit generic effect parameters.
 In some situations, it is convenient or necessary to parameterize definitions by a capture set.
 This allows an API to state precisely which capabilities its clients may use. Consider a `Source`
 that stores `Listeners`:
-```scala sc:nocompile
+```scala sc-name:polymorphism-source sc-compile-with:polymorphism-listener-context
 class Source[X^]:
   private var listeners: Set[Listener^{X}] = Set.empty
   def register(x: Listener^{X}): Unit =
@@ -81,15 +111,14 @@ be erased entirely by the compiler in the future.
 Capture-set variables are inferred in the same way as ordinary type variables.
 They can also be instantiated explicitly with capture-set literals or other
 capture-set variables:
-```scala sc:nocompile
-class Async extends caps.SharedCapability
+```scala sc-compile-with:polymorphism-source,polymorphism-test1-context
 
 def listener(a: Async): Listener^{a} = ???
 
 def test1[X^](async1: Async, others: List[Async^{X}]) =
   val src = Source[{async1, X}]
   src.register(listener(async1))
-  others.map(listener).foreach(src.register)
+  others.map(x => listener(x)).foreach(src.register)
   val ls: Set[Listener^{async1, X}] = src.allListeners
 ```
 Here, `src` accepts listeners that may capture either the specific capability `async1` or any element of
@@ -115,9 +144,9 @@ def collect[T, C^](fs: Set[Future[T]^{C}])(using Async^): Stream[Future[T]^{C}] 
 A common use case for explicit capture parameters is when a mutable object’s reachable capabilities
 _grow_ due to mutation. For example, concatenating effectful iterators:
 ```scala sc:nocompile
-class ConcatIterator[A, C^](var iterators: mutable.List[IterableOnce[A]^{C}]):
+class ConcatIterator[A, C^](var iterators: mutable.ListBuffer[IterableOnce[A]^{C}]):
   def concat(it: IterableOnce[A]^): ConcatIterator[A, {C, it}]^{this, it} =
-    iterators ++= it                             //            ^
+    iterators += it                              //          ^
     this                                         // track contents of `it` in the result
 ```
 In such cases, the type system must ensure that any existing aliases of the iterator become invalid
@@ -145,7 +174,7 @@ implicitly or would otherwise be unclear.
 
 Capture parameters can also be introduced as *capability members*, in the same way that type
 parameters can be replaced with type members. The earlier example
-```scala sc:nocompile
+```scala sc-compile-with:polymorphism-listener-context
 class Source[X^]:
   private var listeners: Set[Listener^{X}] = Set.empty
 ```
@@ -164,13 +193,13 @@ A capability member behaves like a path-dependent capture-set variable. It may a
 annotations using paths such as `{this.X}`.
 
 Capability members can also have capture-set bounds, restricting which capabilities they may contain:
-```scala sc:nocompile
+```scala sc-name:polymorphism-reactor sc-compile-with:polymorphism-reactor-context
 trait Reactor:
   type Cap^ <: {caps.any}
   def onEvent(h: Event ->{this.Cap} Unit): Unit
 ```
 Each implementation of Reactor may refine `Cap^` to a more specific capture set:
-```scala sc:nocompile
+```scala sc-compile-with:polymorphism-reactor,polymorphism-gui-context
 trait GUIReactor extends Reactor:
   type Cap^ <: {ui, log}
 ```

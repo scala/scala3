@@ -179,7 +179,7 @@ object NameKinds {
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
     def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
-      case DerivedName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
+      case DerivedName(underlying, info: this.NumberedInfo) if info.kind.tag == this.tag => Some((underlying, info.num))
       case _ => None
     }
     protected def skipSeparatorAndNum(name: SimpleName, separator: String): Int =
@@ -407,6 +407,7 @@ object NameKinds {
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
   val SyntheticSetterName: SuffixNameKind = new SuffixNameKind(SETTER, "_$eq")
   val LazyVarHandleName: SuffixNameKind = new SuffixNameKind(LAZYVALVARHANDLE, "$lzyHandle")
+  val ReplAssignName: SuffixNameKind = new SuffixNameKind(REPL_ASSIGN, str.REPL_ASSIGN_SUFFIX)
 
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(SIGNED) {

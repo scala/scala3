@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/global-capability.scala:3:7 ---------------------------------------------------
+3 |object Console: // error
+  |       ^
+  |       object Console needs to extend Capability since it has a field `out` with `any` in its type.
+-- Error: tests/neg-custom-args/captures/global-capability.scala:7:7 ---------------------------------------------------
+7 |object Console2: // error
+  |       ^
+  |       object Console2 needs to extend Capability since it has fields `out`, `in` with `any` in their types.

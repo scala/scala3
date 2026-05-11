@@ -3,9 +3,7 @@ package immutable
 
 import org.junit.Assert.*
 import org.junit.Test
-import org.junit.Ignore
 
-import java.io.NotSerializableException
 import scala.annotation.unused
 import scala.collection.immutable.LazyListTest.sd
 import scala.collection.mutable.{Builder, ListBuffer}
@@ -52,14 +50,6 @@ class LazyListTest {
     val ll = 1 #:: { if (bad) { bad = false; throw new RuntimeException() }; 2} #:: LazyList.empty
     try ll.toList catch { case _: RuntimeException => () }
     assertTrue(ll.toList == List(1, 2))
-  }
-
-  @Ignore @Test def racySerialization(): Unit = {
-    import sd.*
-    val ll = 1 #:: { Thread.sleep(500); 2} #:: LazyList.empty
-    new Thread(() => println(ll.toList)).start()
-    Thread.sleep(200)
-    AssertUtil.assertThrows[NotSerializableException](serialize(ll), _.contains("MidEvaluation"))
   }
 
   @Test def storeNull(): Unit = {

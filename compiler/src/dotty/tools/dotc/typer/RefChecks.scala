@@ -20,6 +20,7 @@ import config.SourceVersion.`3.0`
 import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
+import Annotations.Annotation
 import Constants.Constant
 import cc.{stripCapturing, CCState}
 import cc.Mutability.isUpdateMethod
@@ -455,12 +456,17 @@ object RefChecks {
         if trueMatch && noErrorType then
           emitOverrideError(overrideErrorMsg(msg, compareTypes))
 
-      def overrideDeprecation(what: String, member: Symbol, other: Symbol, fix: String): Unit =
-        report.deprecationWarning(
-          em"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
-          if member.owner == clazz then member.srcPos else clazz.srcPos,
-          origin = other.showFullName
-        )
+      def overrideDeprecation(annot: Annotation, member: Symbol, other: Symbol): Unit =
+        if !CrossVersionChecks.skipDeprecation(member) then
+          val message =
+            annot.argumentConstantString(0).filter(_.nonEmpty)
+              .getOrElse(s"${infoString(member)} should be removed or renamed.")
+          val since = annot.argumentConstantString(1).filter(_.nonEmpty).map(" since " + _).getOrElse("")
+          val composed =
+            em"""overriding ${infoStringWithLocation(other)} is deprecated$since;
+                |  $message"""
+          val pos = if member.owner == clazz then member.srcPos else clazz.srcPos
+          report.deprecationWarning(msg = composed, pos, origin = other.showFullName)
 
       def autoOverride(sym: Symbol) =
         sym.is(Synthetic) && (
@@ -630,8 +636,8 @@ object RefChecks {
         overrideError("also needs to be declared with @publicInBinary")
       else if !other.isPreview && member.hasAnnotation(defn.PreviewAnnot) then // (1.15)
         overrideError("may not override non-preview member")
-      else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
-        overrideDeprecation("", member, other, "removed or renamed")
+      else
+        other.getAnnotation(defn.DeprecatedOverridingAnnot).foreach(overrideDeprecation(_, member, other))
     end checkOverride
 
     checker.checkAll(checkOverride)
@@ -727,11 +733,27 @@ object RefChecks {
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
+        /** Replace synthetic parameter names (x$0, x$1, ...) with
+         *  dollar-free versions (x0, x1, ...) so that stub implementations
+         *  are directly usable as valid Scala identifiers.
+         */
+        def replaceSyntheticParamNames(tp: Type): Type = tp match
+          case mt: MethodType if mt.allParamNamesSynthetic =>
+            val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
+            mt.derivedLambdaType(newNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
+          case mt: MethodType =>
+            mt.derivedLambdaType(mt.paramNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
+          case pt: PolyType =>
+            pt.derivedLambdaType(pt.paramNames, pt.paramInfos, replaceSyntheticParamNames(pt.resType))
+          case _ => tp
+
         def stubImplementations: List[String] = {
           // Grouping missing methods by the declaring class
           val regrouped = missingMethods.groupBy(_.owner).toList
           def membersStrings(members: List[Symbol]) =
-            members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl + " = ???")
+            members.sortBy(_.name.toString).map: sym =>
+              val denot = sym.asSeenFrom(clazz.thisType)
+              denot.mapInfo(replaceSyntheticParamNames).showDcl + " = ???"
 
           if (regrouped.tail.isEmpty)
             membersStrings(regrouped.head._2)
@@ -756,9 +778,11 @@ object RefChecks {
 
         for (member <- missingMethods) {
           def showDclAndLocation(sym: Symbol) =
-            s"${sym.showDcl} in ${sym.owner.showLocated}"
+            s"${sym.mapInfo(replaceSyntheticParamNames).showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
-            abstractClassError(false, s"${showDclAndLocation(member)} is not defined $msg")
+            val notdefined = s"${showDclAndLocation(member)} is not defined"
+            val text = if !msg.isEmpty then s"$notdefined $msg" else notdefined
+            abstractClassError(mustBeMixin = false, text)
           val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -924,8 +948,22 @@ object RefChecks {
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
 
-      if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazzNamePos)
+      if abstractErrors.nonEmpty then
+        val isEnumAnonCls = // courtesy of Checking.checkEnum
+          clazz.isAnonymousClass
+          && clazz.owner.isTerm
+          && {
+               clazz.owner.isAllOf(EnumCase)
+            || (clazz.owner.name eq nme.DOLLAR_NEW) && clazz.owner.isAllOf(Private | Synthetic)
+          }
+        if !isEnumAnonCls then
+          report.error(abstractErrorMessage, clazzNamePos)
+        else if clazz.owner.isAllOf(EnumCase) then
+          report.error(abstractErrorMessage, clazz.owner.srcPos)
+        else
+          val e = clazz.parentSyms.head
+          for child <- e.children if child.info.typeSymbol == e do // report all simple cases
+            report.error(abstractErrorMessage, child.srcPos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
@@ -1305,11 +1343,13 @@ object RefChecks {
   end checkImplicitNotFoundAnnotation
 
   def checkAnyRefMethodCall(tree: Tree)(using Context): Unit =
+    extension (c: Context) def enclosingClass: Symbol =
+      c.outersIterator.find(_.isClassDefContext).map(_.owner).getOrElse(NoSymbol)
     if tree.symbol.exists && defn.topClasses.contains(tree.symbol.owner) then
       tree.tpe match
-        case tp: NamedType if tp.prefix.typeSymbol != ctx.owner.enclosingClass =>
+        case tp: NamedType if tp.prefix.typeSymbol != ctx.enclosingClass =>
           report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
-        case _ => ()
+        case _ =>
 }
 import RefChecks.*
 

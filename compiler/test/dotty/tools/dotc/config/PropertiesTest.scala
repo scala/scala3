@@ -2,11 +2,11 @@ package dotty.tools.dotc.config
 
 import org.junit.Before
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 import scala.language.unsafeNulls
 
 class PropertiesTest {
-  final val TestProperty = "dotty.tools.dotc.config.PropertiesTest.__test_property__"
+  final val TestProperty = "dotty.tools.dotc.config.PropertiesTest.*_test_property__"
 
   @Before
   def beforeEach(): Unit = {

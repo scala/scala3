@@ -13,7 +13,6 @@ import Scala3.{*, given}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.util.control.NonFatal
 
 // The API here is a little tricky because it's used both as a stateful builder with local symbols,
 // and for non-local symbols that do not need any state through the companion object.
@@ -116,7 +115,7 @@ private[semanticdb] object SemanticSymbolBuilder:
           val pkg = s.split('/').map(stripBackticks).mkString(".")
           requiredPackage(pkg) :: Nil
         catch
-          case NonFatal(_) =>
+          case _: Exception =>
             Nil
       else
         val (desc, parent) = DescriptorParser(s)
@@ -198,7 +197,7 @@ private[semanticdb] object SemanticSymbolBuilder:
     try
       val res = loop(sym)
       res.filterNot(_ == NoSymbol)
-    catch case NonFatal(e) => Nil
+    catch case e: Exception => Nil
   end inverseSymbol
 
   private def addName(b: StringBuilder, name: Name): Unit =

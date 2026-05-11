@@ -4,11 +4,11 @@ package tools.dotc
 import scala.language.unsafeNulls
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.experimental.categories.Category
-import interfaces._
+import interfaces.*
 import scala.collection.mutable.ListBuffer
-import java.nio.file._
+import java.nio.file.*
 
 /** Test that demonstrates how to use dotty-interfaces
  *

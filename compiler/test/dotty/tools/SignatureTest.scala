@@ -2,18 +2,18 @@ package dotty.tools
 
 import vulpix.TestConfiguration
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 import dotc.ast.untpd
-import dotc.core.Decorators._
-import dotc.core.Contexts._
-import dotc.core.Flags._
-import dotc.core.Phases._
-import dotc.core.Names._
-import dotc.core.Types._
-import dotc.core.Symbols._
-import dotc.core.StdNames._
+import dotc.core.Decorators.*
+import dotc.core.Contexts.*
+import dotc.core.Flags.*
+import dotc.core.Phases.*
+import dotc.core.Names.*
+import dotc.core.Types.*
+import dotc.core.Symbols.*
+import dotc.core.StdNames.*
 import dotc.core.Signature
 import dotc.typer.ProtoTypes.constrained
 import dotc.typer.Inferencing.isFullyDefined
@@ -21,7 +21,7 @@ import dotc.typer.ForceDegree
 import dotc.util.NoSourcePosition
 
 import java.io.File
-import java.nio.file._
+import java.nio.file.*
 
 class SignatureTest:
   @Test def signatureCaching: Unit =

@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.language.unsafeNulls
-
 import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
 import core.StdNames.*, core.Comments.*
 import util.SourceFile
@@ -20,7 +18,7 @@ import config.Feature
 import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
-import reporting.{NoProfile, Profile, Message}
+import reporting.*
 
 import java.util.Objects
 import dotty.tools.dotc.reporting.Message.rewriteNotice
@@ -55,10 +53,10 @@ object Scanners {
     var lineOffset: Offset = -1
 
     /** the name of an identifier */
-    var name: SimpleName = null
+    var name: SimpleName | Null = null
 
     /** the string value of a literal */
-    var strVal: String = null
+    var strVal: String | Null = null
 
     /** the base of a number */
     var base: Int = 0
@@ -76,7 +74,7 @@ object Scanners {
     def isNewLine = token == NEWLINE || token == NEWLINES
     def isStatSep = isNewLine || token == SEMI
     def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
-    def isIdent(name: Name) = token == IDENTIFIER && this.name == name
+    def isIdent(name: Name) = token == IDENTIFIER && (this.name: Name | Null) == (name: Name | Null)
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
@@ -89,7 +87,7 @@ object Scanners {
 
     def isOperator =
       token == BACKQUOTED_IDENT
-      || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+      || token == IDENTIFIER && isOperatorPart(name.nn(name.nn.length - 1))
 
     def isArrow =
       token == ARROW || token == CTXARROW
@@ -152,7 +150,7 @@ object Scanners {
       litBuf.clear()
       target.token = idtoken
       if idtoken == IDENTIFIER then
-        val converted = toToken(target.name)
+        val converted = toToken(target.name.nn)
         if converted != END || (target eq this) then target.token = converted
 
     /** The token for given `name`. Either IDENTIFIER or a keyword. */
@@ -283,7 +281,8 @@ object Scanners {
 
     private def lastKnownIndentWidth: IndentWidth =
       def recur(r: Region): IndentWidth =
-        if r.knownWidth == null then recur(r.enclosing) else r.knownWidth
+        val knownWidth = r.knownWidth
+        if knownWidth == null then recur(r.enclosing) else knownWidth
       recur(currentRegion)
 
     private var skipping = false
@@ -369,7 +368,7 @@ object Scanners {
         }
       case OUTDENT =>
         currentRegion match
-          case r: Indented => currentRegion = r.enclosing
+          case r: Indented if !r.isOutermost => currentRegion = r.enclosing
           case _ =>
       case STRINGLIT =>
         currentRegion match {
@@ -604,7 +603,7 @@ object Scanners {
         case r =>
           indentIsSignificant = indentSyntax
           r.proposeKnownWidth(nextWidth, lastToken)
-          lastWidth = r.knownWidth
+          lastWidth = r.indentWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
       // can emit OUTDENT if line is not non-empty blank line at EOF
@@ -656,7 +655,7 @@ object Scanners {
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
                     insert(OUTDENT, offset)
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
-                  report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
+                  report.warning(IndentationWarning(isLeft = true, missing = RBRACE), sourcePos())
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
@@ -717,16 +716,17 @@ object Scanners {
           token = INDENT
 
     /** Insert an <outdent> token if next token closes an indentation region.
-     *  Exception: continue if indentation region belongs to a `match` and next token is `case`.
+     *  or next token is a comma and we expect a comma in an outer region.
+     *  Exception: don't insert <outdent> in front of case.
      */
     def observeOutdented(): Unit = currentRegion match
       case r: Indented
       if !r.isOutermost
-         && closingRegionTokens.contains(token)
-         && !(token == CASE && r.prefix == MATCH)
-         && next.token == EMPTY  // can be violated for ill-formed programs, e.g. neg/i12605.scala
-      =>
-        insert(OUTDENT, offset)
+          && (acceptOutdentTokens.contains(token)
+              || token == COMMA && r.outer.nn.commasExpectedInEnclosing) // nn ok, we are not the outermost region
+          && next.token == EMPTY
+        =>
+          insert(OUTDENT, offset)
       case _ =>
 
     def peekAhead() =
@@ -746,7 +746,7 @@ object Scanners {
      *         SEMI + ELSE => ELSE, COLON following id/)/] => COLONfollow
      *  - Insert missing OUTDENTs at EOF
      */
-    def postProcessToken(lastToken: Token, lastName: SimpleName): Unit = {
+    def postProcessToken(lastToken: Token, lastName: SimpleName | Null): Unit = {
       def fuse(tok: Int) = {
         token = tok
         offset = prev.offset
@@ -763,25 +763,20 @@ object Scanners {
           peekAhead()
           if (token != ELSE) reset()
         case COMMA =>
-          def isEnclosedInParens(r: Region): Boolean = r match
-            case r: Indented => isEnclosedInParens(r.outer)
-            case _: InParens => true
-            case _ => false
+          if closingParens.contains(currentRegion.closedBy) && currentRegion.commasExpected then
+            peekAhead()
+            if isAfterLineEnd && closingParens.contains(token) then
+              // encountered a trailing comma
+              // reset only the lastOffset
+              // so that the tree's span is correct
+              lastOffset = prev.lastOffset
+            else
+              reset()
+        case ARROW =>
           currentRegion match
-            case r: Indented if isEnclosedInParens(r.outer) =>
-              insert(OUTDENT, offset)
-            case _ =>
-              peekAhead()
-              if isAfterLineEnd
-                 && currentRegion.commasExpected
-                 && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
-              then
-                // encountered a trailing comma
-                // reset only the lastOffset
-                // so that the tree's span is correct
-                lastOffset = prev.lastOffset
-              else
-                reset()
+          case r: Indented if r.outer.isInstanceOf[InCase] =>
+            insert(OUTDENT, offset)
+          case _ =>
         case END =>
           if !isEndMarker then token = IDENTIFIER
         case COLONop =>
@@ -1167,9 +1162,9 @@ object Scanners {
       if (ch == '`') {
         nextChar()
         finishNamedToken(BACKQUOTED_IDENT, target = this)
-        if (name.length == 0)
+        if (name.nn.length == 0)
           error(em"empty quoted identifier")
-        else if (name == nme.WILDCARD)
+        else if (name.nn == nme.WILDCARD)
           error(em"wildcard invalid as backquoted identifier")
       }
       else error(em"unclosed quoted identifier")
@@ -1231,11 +1226,14 @@ object Scanners {
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
-      && (softModifierNames.contains(name)
-        || name == nme.erased && erasedEnabled
-        || name == nme.tracked && trackedEnabled
-        || name == nme.update && Feature.ccEnabled
-        || name == nme.consume && Feature.ccEnabled)
+      && {
+        val name = this.name.nn
+        (softModifierNames.contains(name)
+          || name == nme.erased && erasedEnabled
+          || name == nme.tracked && trackedEnabled
+          || name == nme.update && Feature.ccEnabled
+          || name == nme.consume && Feature.ccEnabled)
+      }
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
@@ -1623,7 +1621,8 @@ object Scanners {
 
     /** The indentation width, Zero if not known */
     final def indentWidth: IndentWidth =
-      if knownWidth == null then IndentWidth.Zero else knownWidth
+      val known = knownWidth
+      if known == null then IndentWidth.Zero else known
 
     def proposeKnownWidth(width: IndentWidth, lastToken: Token) =
       if knownWidth == null then
@@ -1665,7 +1664,13 @@ object Scanners {
 
     def commasExpected = myCommasExpected
 
+    def commasExpectedInEnclosing: Boolean =
+      commasExpected || this.match
+        case r: Indented => !r.isOutermost && r.outer.nn.commasExpectedInEnclosing
+        case _ => false
+
     def toList: List[Region] =
+      val outer = this.outer
       this :: (if outer == null then Nil else outer.toList)
 
     private def delimiter = this match

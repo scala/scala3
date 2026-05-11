@@ -36,12 +36,12 @@ final class PcConvertToNamedLambdaParameters(
       uri,
       SourceFile.virtual(filePath.toString, params.text)
     )
-    given newctx: Context = driver.localContext(params)
+    given ctx: Context = driver.currentCtx
     val pos = driver.sourcePosition(params)
     val trees = driver.openedTrees(uri)
     val treeList = Interactive.pathTo(trees, pos)
     // Extractor for a lambda function (needs context, so has to be defined here)
-    val LambdaExtractor = Lambda(using newctx)
+    val LambdaExtractor = Lambda(using ctx)
     // select the most inner wildcard lambda
     val firstLambda = treeList.collectFirst {
       case LambdaExtractor(params, rhsFn) if params.forall(isWildcardParam) =>

@@ -84,7 +84,7 @@ This release ships with the following features:
 [7]: reference/contextual/by-name-context-parameters.html
 [8]: https://infoscience.epfl.ch/record/228518
 [9]: http://docs.scala-lang.org/sips/pending/static-members.html
-[10]: http://docs.scala-lang.org/sips/pending/improved-lazy-val-initialization.html
+[10]: https://docs.scala-lang.org/scala3/reference/changed-features/lazy-vals-init.html
 [11]: http://magarciaepfl.github.io/scala/
 [12]: https://github.com/scala/scala3/commit/b2215ed23311b2c99ea638f9d7fcad9737dba588
 [13]: https://github.com/scala/scala3/pull/187

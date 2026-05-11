@@ -7,7 +7,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     println("B: " + classOf[B].getGenericSuperclass.getTypeName)
     println("C: " + classOf[C].getGenericSuperclass.getTypeName)
-    println("D: " + classOf[B].getGenericSuperclass.getTypeName)
-    println("E: " + classOf[C].getGenericSuperclass.getTypeName)
+    println("D: " + classOf[D].getGenericSuperclass.getTypeName)
+    println("E: " + classOf[E].getGenericSuperclass.getTypeName)
   }
 }

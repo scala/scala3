@@ -37,12 +37,11 @@ object SignatureHelpProvider:
         val pos = driver.sourcePosition(params, isZeroExtent = false)
         val path = Interactive.pathTo(unit.tpdTree, pos.span)(using driver.currentCtx)
 
-        val localizedContext = Interactive.contextOfPath(path)(using driver.currentCtx)
-        val indexedContext = IndexedContext(pos)(using driver.currentCtx)
+        val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
+        val indexedContext = IndexedContext(pos, path, newctx)
 
-        given Context = localizedContext.fresh
-          .setCompilationUnit(unit)
-          .setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext))
+        given Context =
+          newctx.setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext))
 
         val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
 

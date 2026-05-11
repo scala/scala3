@@ -475,7 +475,7 @@ object TypeOps:
       try
         tp match
           case tp: TermRef if toAvoid(tp) =>
-            tp.info.widenExpr.dealias match {
+            tp.info.widenExpr.dealiasKeepRefiningAnnots match {
               case info: SingletonType => apply(info)
               case info => range(defn.NothingType, apply(info))
             }
@@ -504,8 +504,7 @@ object TypeOps:
             mapOver(tl)
           case _ =>
             super.apply(tp)
-      catch case ex: Throwable =>
-        handleRecursive("traversing for avoiding local references", s"${tp.show}" , ex)
+      catch case ex: Throwable => handleRecursive("traversing for avoiding local references", s"${tp.show}", ex)
     end apply
 
     /** Three deviations from standard derivedSelect:

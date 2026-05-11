@@ -12,10 +12,13 @@ object SJSPlatform {
     ctx.platform.asInstanceOf[SJSPlatform]
 }
 
-class SJSPlatform()(using Context) extends JavaPlatform {
+class SJSPlatform extends JavaPlatform {
 
   /** Scala.js-specific definitions. */
   val jsDefinitions: JSDefinitions = new JSDefinitions()
+
+  override def init()(using Context): Unit =
+    jsDefinitions.init()
 
   /** Is the SAMType `cls` also a SAM under the rules of the Scala.js back-end? */
   override def isSam(cls: ClassSymbol)(using Context): Boolean =
@@ -32,4 +35,10 @@ class SJSPlatform()(using Context) extends JavaPlatform {
    */
   override def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     !sym.isSubClass(jsDefinitions.JSAnyClass)
+
+  override def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean =
+    // because we deal with primitive types, we also have to deal with the boxed version,
+    // otherwise the compiler will error with, e.g., "cannot test if scala.Double is a subtype of java.lang.Integer"
+    (defn.ScalaNumericValueClasses()(c) || defn.ScalaNumericBoxedClasses()(c)) &&
+      (defn.ScalaNumericValueClasses()(potentialSuperClass) || defn.ScalaNumericBoxedClasses()(potentialSuperClass))
 }

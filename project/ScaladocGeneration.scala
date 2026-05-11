@@ -145,6 +145,10 @@ object ScaladocGeneration {
     def key: String = "-suppressCC"
   }
 
+  case class NoSnippetNamesFor(value: List[String]) extends Arg[List[String]] {
+    def key: String = "-no-snippet-names-for"
+  }
+
   case class GenerateAPI(value: Boolean) extends Arg[Boolean] {
     def key: String = "-Ygenerate-api"
   }

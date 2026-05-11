@@ -2,7 +2,7 @@ package dotty
 
 import scala.language.unsafeNulls
 
-import java.nio.file._
+import java.nio.file.*
 
 /** Runtime properties from defines or environmnent */
 object Properties {
@@ -95,6 +95,18 @@ object Properties {
 
   /** jline-reader jar */
   def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
+
+  /** pprint jar */
+  def pprint: String = sys.props("dotty.tests.classes.pprint")
+
+  /** fansi jar */
+  def fansi: String = sys.props("dotty.tests.classes.fansi")
+
+  /** fansi jar */
+  def sourcecode: String = sys.props("dotty.tests.classes.sourcecode")
+
+  /** scala-xml jar */
+  def scalaXml: String = sys.props("dotty.tests.classes.scalaXml")
 
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")

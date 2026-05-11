@@ -1,0 +1,31 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25863.scala:13:34 ---------------------------------------
+13 |    val error = make[File^{file}](fun, file)  // error, which is expected
+   |                                  ^^^
+   |                                  Found:    File^ ->{file} Unit
+   |                                  Required: File^{file} -> Unit
+   |
+   |                                  Note that capability `file` cannot flow into capture set {}.
+   |
+   |                                  where:    ^ refers to the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25863.scala:14:23 ---------------------------------------
+14 |    val ok = make(fun, file)   // error, as expected
+   |                       ^^^^
+   |                       Found:    File^{file}
+   |                       Required: File^'s1
+   |
+   |                       Note that capability `file` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25863.scala:15:26 ---------------------------------------
+15 |    val ok1 = make1(file, fun)   // error
+   |                          ^^^
+   |                          Found:    File^ ->{file} Unit
+   |                          Required: File^{file} -> Unit
+   |
+   |                          Note that capability `file` cannot flow into capture set {}.
+   |
+   |                          where:    ^ refers to the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`

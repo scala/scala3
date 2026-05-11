@@ -160,7 +160,10 @@ object BasicIO {
   private def processErrFully(log: ProcessLogger) = processFully(log err _)
   private def processOutFully(log: ProcessLogger) = processFully(log out _)
 
-  /** Closes a `Closeable` without throwing an exception. */
+  /** Closes a `Closeable` without throwing an exception.
+   *
+   *  @param c the `Closeable` resource to close; any `IOException` thrown during closing is silently ignored
+   */
   def close(c: Closeable) = try c.close() catch { case _: IOException => () }
 
   /** Returns a function `InputStream => Unit` that appends all data read to the
@@ -193,6 +196,9 @@ object BasicIO {
 
   /** Calls `processLine` with the result of `readLine` until the latter returns
    *  `null` or the current thread is interrupted.
+   *
+   *  @param processLine a function called with each line read from the input
+   *  @param readLine a function that returns the next line, or `null` when finished
    */
   def processLinesFully(processLine: String => Unit)(readLine: () => String): Unit = {
     def working = !Thread.currentThread.isInterrupted
@@ -214,12 +220,17 @@ object BasicIO {
     readFully()
   }
 
-  /** Copies contents of stdin to the `OutputStream`. */
+  /** Copies contents of stdin to the `OutputStream`.
+   *
+   *  @param o the `OutputStream` (typically a process's input stream) to which stdin contents are copied
+   */
   def connectToIn(o: OutputStream): Unit = transferFully(Uncloseable protect stdin, o)
 
   /** Returns a function `OutputStream => Unit` that either reads the content
    *  from stdin or does nothing but close the stream. This function can be used by
    *  [[scala.sys.process.ProcessIO]].
+   *
+   *  @param connect if true, stdin is connected to the process input; if false, the process input stream is not connected
    */
   def input(connect: Boolean): OutputStream => Unit = if (connect) connectToStdIn else connectNoOp
 
@@ -229,10 +240,16 @@ object BasicIO {
   /** A sentinel value telling ProcessBuilderImpl not to process. */
   private[process] val connectNoOp: OutputStream => Unit = _ => ()
 
-  /** Returns a `ProcessIO` connected to stdout and stderr, and, optionally, stdin. */
+  /** Returns a `ProcessIO` connected to stdout and stderr, and, optionally, stdin.
+   *
+   *  @param connectInput if true, stdin is connected to the process input
+   */
   def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
 
-  /** Returns a `ProcessIO` connected to stdout, stderr and the provided `in`. */
+  /** Returns a `ProcessIO` connected to stdout, stderr and the provided `in`.
+   *
+   *  @param in a function to handle the process input stream
+   */
   def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, toStdOut, toStdErr)
 
   /** Sends all the input from the stream to stderr, and closes the input stream
@@ -247,6 +264,9 @@ object BasicIO {
 
   /** Copies all input from the input stream to the output stream. Closes the
    *  input stream once it's all read.
+   *
+   *  @param in the input stream to read from
+   *  @param out the output stream to write to
    */
   def transferFully(in: InputStream, out: OutputStream): Unit =
     try transferFullyImpl(in, out)

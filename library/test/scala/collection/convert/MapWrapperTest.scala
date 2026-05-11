@@ -3,7 +3,7 @@ package scala.collection.convert
 import java.{util => jutil}
 
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
-import org.junit.{Ignore, Test}
+import org.junit.Test
 
 import scala.jdk.CollectionConverters.*
 import tools.AssertUtil.assertThrows
@@ -81,7 +81,7 @@ class MapWrapperTest {
   }
 
   // was: induce intermittent failure due to contention, where updater is called more than once
-  @Test @Ignore("busy work") def `t12586 updateWith should delegate to compute`: Unit = {
+  @Test def `t12586 updateWith should delegate to compute`: Unit = {
     import jutil.concurrent.ConcurrentHashMap
     val limit = 100      // retries until trigger
     @volatile var count = 0

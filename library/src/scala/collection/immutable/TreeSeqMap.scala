@@ -36,7 +36,7 @@ import scala.annotation.tailrec
   * use).
   *
   * Internally, an ordinal counter is increased for each insertion/modification
-  * and then the current ordinal is used as key in the tree map. After 2^32^
+  * and then the current ordinal is used as key in the tree map. After 2<sup>32</sup>
   * insertions/modifications the entire map is copied (thus resetting the ordinal
   * counter).
   *

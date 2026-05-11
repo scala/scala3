@@ -6,7 +6,7 @@ redirectFrom: /docs/contributing/workflow/testing.html
 
 It is important to add tests before a pull request, to verify that everything is working as expected,
 and act as proof of what is valid/invalid Scala code (in case it is broken in the future).
-In this section you will see the testing procedures in Scala 3.
+In this section you will see the testing procedures in Scala 3. For now, Java 17 should be used for development. Make sure you have JDK 17 installed and configured.
 
 ## Running all Tests
 

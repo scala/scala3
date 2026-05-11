@@ -348,39 +348,39 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
 
 ### Type and Value Parameters
 ```
-ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
-ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] id [HkTypeParamClause] TypeAndCtxBounds
+ClsTypeParamClause ::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
+ClsTypeParam       ::=  {Annotation} [‘+’ | ‘-’] id [HkTypeParamClause] TypeAndCtxBounds
 
-DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeAndCtxBounds
+DefTypeParamClause ::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
+DefTypeParam       ::=  {Annotation} id [HkTypeParamClause] TypeAndCtxBounds
 
-TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-TypTypeParam      ::=  {Annotation} (id | ‘_’) [HkTypeParamClause] TypeBounds
+TypTypeParamClause ::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
+TypTypeParam       ::=  {Annotation} (id | ‘_’) [HkTypeParamClause] TypeBounds
 
-HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
-HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id  | ‘_’) [HkTypeParamClause] TypeBounds
+HkTypeParamClause  ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
+HkTypeParam        ::=  {Annotation} [‘+’ | ‘-’] (id  | ‘_’) [HkTypeParamClause] TypeBounds
 
-ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
-                    |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
-ClsParams         ::=  ClsParam {‘,’ ClsParam}
-ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’)] Param
+ClsParamClauses    ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
+ClsParamClause     ::=  [nl] ‘(’ ClsParams ‘)’
+                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
+ClsParams          ::=  ClsParam {‘,’ ClsParam}
+ClsParam           ::=  {Annotation} [{Modifier} (‘val’ | ‘var’)] Param
 
-DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
-DefParamClause    ::=  DefTypeParamClause
-                    |  DefTermParamClause
-                    |  UsingParamClause
-ConstrParamClauses::=  ConstrParamClause {ConstrParamClause}
-ConstrParamClause ::=  DefTermParamClause
-                    |  UsingParamClause
+DefParamClauses    ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
+DefParamClause     ::=  DefTypeParamClause
+                     |  DefTermParamClause
+                     |  UsingParamClause
+ConstrParamClauses ::=  ConstrParamClause {ConstrParamClause}
+ConstrParamClause  ::=  DefTermParamClause
+                     |  UsingParamClause
 
-DefTermParamClause::=  [nl] ‘(’ [DefTermParams] ‘)’
-UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) ‘)’
-DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
+DefTermParamClause ::=  [nl] ‘(’ [DefTermParams] ‘)’
+UsingParamClause   ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) ‘)’
+DefImplicitClause  ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
 
-DefTermParams     ::= DefTermParam {‘,’ DefTermParam}
-DefTermParam      ::= {Annotation} [‘inline’] Param
-Param             ::=  id ‘:’ ParamType [‘=’ Expr]
+DefTermParams      ::= DefTermParam {‘,’ DefTermParam}
+DefTermParam       ::= {Annotation} [‘inline’] Param
+Param              ::=  id ‘:’ ParamType [‘=’ Expr]
 ```
 
 ### Bindings and Imports

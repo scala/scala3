@@ -1,5 +1,5 @@
-
 package scala
+package lang
 
 import org.junit.{Assert, Test}
 import scala.util.chaining.*
@@ -11,61 +11,61 @@ class RicherTest {
   private def assertEqualTo(expected: Int)(actual: Int) = Assert.assertEquals(expected, actual)
   private def assertEqualTo[A](expected: List[A])(actual: List[A]) = Assert.assertEquals(expected, actual)
 
-  /*@Test def `Byte expansions should be byte-sized`(): Unit = {
-    val sixteen = 16.toByte
+  @Test def `Byte expansions should be byte-sized`(): Unit = {
+    val sixteen = 16.toByte.toInt
     assertEqualTo(x"1_0000")(sixteen.toBinaryString)
     assertEqualTo("10")(sixteen.toHexString)
     assertEqualTo("20")(sixteen.toOctalString)
-    val max = 0x7F.toByte
+    val max = 0x7F.toByte.toInt
     assertEqualTo(x"111_1111")(max.toBinaryString)
     assertEqualTo("7f")(max.toHexString)
     assertEqualTo("177")(max.toOctalString)
-    val extended = 0x80.toByte
+    val extended = 0x80.toByte.toInt
     assertEqualTo("1" * 24 + x"1000_0000")(extended.toBinaryString)
     assertEqualTo(x"ffff_ff80")(extended.toHexString)
     assertEqualTo("37777777600")(extended.toOctalString)
-    val neg = -1.toByte
+    val neg = -1.toByte.toInt
     assertEqualTo("1" * 32)(neg.toBinaryString)
     assertEqualTo("f" * 8)(neg.toHexString)
     assertEqualTo("3" + "7" * 10)(neg.toOctalString)
   }
   @Test def `Short expansions should be short-sized`(): Unit = {
-    val sixteen = 16.toShort
+    val sixteen = 16.toShort.toInt
     assertEqualTo(x"1_0000")(sixteen.toBinaryString)
     assertEqualTo("10")(sixteen.toHexString)
     assertEqualTo("20")(sixteen.toOctalString)
-    val max = 0x7FFF.toShort
+    val max = 0x7FFF.toShort.toInt
     assertEqualTo(x"111_1111_1111_1111")(max.toBinaryString)
     assertEqualTo("7fff")(max.toHexString)
     assertEqualTo("77777")(max.toOctalString)
-    val extended = 0x8000.toShort
+    val extended = 0x8000.toShort.toInt
     assertEqualTo(x"1111_1111_1111_1111_1000_0000_0000_0000")(extended.toBinaryString)
     assertEqualTo(x"ffff_8000")(extended.toHexString)
     assertEqualTo(x"37777700000")(extended.toOctalString)
-    val neg = -1.toShort
+    val neg = -1.toShort.toInt
     assertEqualTo("1" * 32)(neg.toBinaryString)
     assertEqualTo(x"ffff_ffff")(neg.toHexString)
     assertEqualTo(x"37777777777")(neg.toOctalString)
   }
   // same as short, but uses int conversion because unsigned
   @Test def `Char expansions should be char-sized`(): Unit = {
-    val sixteen = 16.toChar
+    val sixteen = 16.toChar.toInt
     assertEqualTo(x"1_0000")(sixteen.toBinaryString)
     assertEqualTo("10")(sixteen.toHexString)
     assertEqualTo("20")(sixteen.toOctalString)
-    val max = 0x7FFF.toChar
+    val max = 0x7FFF.toChar.toInt
     assertEqualTo(x"111_1111_1111_1111")(max.toBinaryString)
     assertEqualTo("7fff")(max.toHexString)
     assertEqualTo("77777")(max.toOctalString)
-    val extended = 0x8000.toChar
+    val extended = 0x8000.toChar.toInt
     assertEqualTo(x"1000_0000_0000_0000")(extended.toBinaryString)
     assertEqualTo("8000")(extended.toHexString)
     assertEqualTo(x"10_0000")(extended.toOctalString)
-    val neg = -1.toChar
+    val neg = -1.toChar.toInt
     assertEqualTo("1" * 16)(neg.toBinaryString)
     assertEqualTo("ffff")(neg.toHexString)
     assertEqualTo(x"17_7777")(neg.toOctalString)
-  }*/
+  }
   @Test def `Chars are digits`(): Unit = {
     assertEqualTo(1)('1'.asDigit)
     assertEqualTo(10)('A'.asDigit)

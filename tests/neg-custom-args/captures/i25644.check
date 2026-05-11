@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/i25644.scala:7:42 -------------------------------------------------------------
+7 |  update def update(i: Int, x: T): Unit = elems(i) = x // error
+  |                                          ^^^^^
+  |                                          Cannot call update method update of Arr.this.elems
+  |                                          since its capture set {Arr.this.elems} is read-only.

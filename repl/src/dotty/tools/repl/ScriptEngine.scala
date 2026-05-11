@@ -27,7 +27,7 @@ class ScriptEngine extends AbstractScriptEngine {
       "-Xrepl-disable-display",
       "-Xrepl-interrupt-instrumentation",
       "false"
-    ), Console.out, None)
+    ))
 
   private val rendering = new Rendering(Some(getClass.getClassLoader))
   private var state: State = driver.initialState

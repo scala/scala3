@@ -143,7 +143,6 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
-         new CollectEntryPoints,     // Collect all entry points and save them in the context
          new RepeatableAnnotations) :: // Aggregate repeatable annotations
     Nil
 
@@ -153,11 +152,11 @@ class Compiler {
     List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 
-  // TODO: Initially 0, so that the first nextRunId call would return InitialRunId == 1
-  // Changing the initial runId from 1 to 0 makes the scala2-library-bootstrap fail to compile,
+  // TODO: Initially InitialRunId - 1, so that the first nextRunId call would return InitialRunId
+  // Setting the initial runId to InitialRunId - 1 makes the scala2-library-bootstrap fail to compile,
   // when the underlying issue is fixed, please update dotc.profiler.RealProfiler.chromeTrace logic
-  private var runId: Int = 1
-  def nextRunId: Int = {
+  private var runId: Periods.RunId = Periods.InitialRunId
+  def nextRunId: Periods.RunId = {
     runId += 1; runId
   }
 

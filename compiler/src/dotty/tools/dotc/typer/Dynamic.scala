@@ -245,7 +245,7 @@ trait Dynamic {
           if tpe.classSymbol.isDerivedValueClass && qual.tpe <:< defn.ReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType
-            New(tpe.widen, tree.cast(underlying) :: Nil)
+            New(tpe.widen.dealias, tree.cast(underlying) :: Nil)
           else
             tree
         maybeBoxed.cast(tpe)

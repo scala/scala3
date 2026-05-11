@@ -2,7 +2,6 @@ package scala.collection
 
 import org.junit.Assert.{assertEquals, assertFalse, assertSame, assertTrue}
 import org.junit.Test
-import org.junit.Ignore
 
 import tools.AssertUtil.*
 import scala.util.chaining.*
@@ -824,7 +823,7 @@ class IteratorTest {
     assertTrue(executed)
   }
 
-  @Ignore @Test def `flatMap is memory efficient in previous element`: Unit = bailable("flatMap") {
+  @Test def `flatMap is memory efficient in previous element`: Unit = bailable("flatMap") {
     // Array.iterator holds onto array reference; by contrast, iterating over List walks tail.
     // Avoid reaching seq1 through test class. Avoid testing Array.iterator.
     class C extends Iterable[String] {

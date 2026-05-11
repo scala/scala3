@@ -71,7 +71,7 @@ final class PcInlineValueProvider(
       endOffset: Int,
       range: l.Range
   ): l.Range =
-    val (startWithSpace, endWithSpace): (Int, Int) =
+    val (startWithSpace: Int, endWithSpace: Int) =
       extendRangeToIncludeWhiteCharsAndTheFollowingNewLine(
         text
       )(startOffset, endOffset)
@@ -113,7 +113,7 @@ final class PcInlineValueProvider(
         }
         .toRight(Errors.didNotFindDefinition)
       path = Interactive.pathTo(unit.tpdTree, definition.tree.rhs.span)(using newctx)
-      indexedContext = IndexedContext(definition.tree.namePos)(using Interactive.contextOfPath(path)(using newctx))
+      indexedContext = IndexedContext(definition.tree.namePos, path, newctx)
       symbols = symbolsUsedInDefn(definition.tree.rhs, indexedContext)
       references <- getReferencesToInline(definition, allOccurences, symbols)
     yield
@@ -268,9 +268,7 @@ final class PcInlineValueProvider(
     def buildRef(occurrence: Occurence): Either[String, Reference] =
       val path =
         Interactive.pathTo(unit.tpdTree, occurrence.pos.span)(using newctx)
-      val indexedContext = IndexedContext(pos)(
-        using Interactive.contextOfPath(path)(using newctx)
-      )
+      val indexedContext = IndexedContext(pos, path, newctx)
       import indexedContext.ctx
       val conflictingSymbols = symbols
         .withFilter {

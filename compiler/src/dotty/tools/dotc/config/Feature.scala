@@ -148,11 +148,15 @@ object Feature:
     || ctx.compilationUnit.knowsPureFuns
     || ccEnabled
 
-  /** Is capture checking enabled for this compilation unit? */
-  def ccEnabled(using Context) =
+  /** Is capture checking enabled by a command-line setting? */
+  def ccEnabledBySetting(using Context): Boolean =
     enabledBySetting(captureChecking)
     || enabledBySetting(separationChecking)
     || enabledBySetting(safe)
+
+  /** Is capture checking enabled for this compilation unit? */
+  def ccEnabled(using Context) =
+    ccEnabledBySetting
     || ctx.originalCompilationUnit.needsCaptureChecking
 
   /** Is separation checking enabled for this compilation unit? */
@@ -174,7 +178,7 @@ object Feature:
   /** Is captureChecking enabled for any of the currently compiled compilation units? */
   def ccEnabledSomewhere(using Context) =
     if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
-    else enabledBySetting(captureChecking)
+    else ccEnabled
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -208,7 +212,8 @@ object Feature:
       report.error(experimentalUseSite(which) + note, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
-    ccEnabled && defn.ccExperimental.contains(sym)
+    ccEnabled && (defn.ccExperimental.contains(sym)
+      || sym.exists && defn.ccExperimental.contains(sym.owner))
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     val experimentalSym =
@@ -244,10 +249,17 @@ object Feature:
   def isExperimentalEnabledByImport(using Context): Boolean =
     experimentalAutoEnableFeatures.exists(enabledByImport)
 
-  /** Handle language import `import language.<prefix>.<imported>` if it is one
-   *  of the global imports `pureFunctions` or `captureChecking`. In this case
-   *  make the compilation unit's and current run's fields accordingly.
-   *  @return true iff import that was handled
+  /** Global language imports that affect parsing and must be handled specially.
+   *  These need per-compilation-unit flags (set in `handleGlobalLanguageImport`)
+   *  and also require propagation to rootCtx in the REPL and hoisting in the
+   *  snippet compiler so they take effect across inputs (i16250).
+   */
+  val globalLanguageImports: Set[TermName] =
+    Set(pureFunctions, captureChecking, separationChecking, safe)
+
+  /** Handle a global language import `import language.<prefix>.<imported>`.
+   *  Sets the compilation unit's and current run's fields accordingly.
+   *  @return true iff the import was handled
    */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
     QualifiedName(prefix, imported.asTermName) match

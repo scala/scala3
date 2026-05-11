@@ -1,7 +1,7 @@
 package scala
 
 import org.junit.Assert.*
-import org.junit.{Ignore, Test}
+import org.junit.Test
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -52,15 +52,11 @@ class CollectTest {
   def testStreamCollectFirst(): Unit =
     testing(Seq(1), Some(1))(Stream.continually(1) collectFirst { case x if f(x) && x < 2 => x})
 
-  @Ignore @Test
+  @Test
   def testIteratorCollect(): Unit =
-    testing(???)((Iterator(1, 2) collect { case x if f(x) && x < 2 => x}).toList)
+    testing(Seq(1, 2), List(1))((Iterator(1, 2) collect { case x if f(x) && x < 2 => x}).toList)
 
-  @Ignore @Test
-  def testListViewCollect(): Unit =
-    testing(???)((Iterator(1, 2) collect { case x if f(x) && x < 2 => x}).toList)
-
-  @Ignore @Test
+  @Test
   def testFutureCollect(): Unit = {
     // This would do the trick in Future.collect, but I haven't added this yet as there is a tradeoff
     // with extra allocations to consider.
@@ -69,11 +65,11 @@ class CollectTest {
     //   case Some(x) => p success x
     //   case None    => fail(v)
     // }
-    testing(???) {
-      import scala.concurrent.Await
-      import scala.concurrent.ExecutionContext.Implicits.global
-      import scala.concurrent.duration.Duration
-      val result = scala.concurrent.Future(1) collect { case x if f(x) => x}
+    import scala.concurrent.Await
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import scala.concurrent.duration.Duration
+    testing(Seq(1), 1) {
+      val result = scala.concurrent.Future(1) collect { case x if f(x) => x }
       Await.result(result, Duration.Inf)
     }
   }

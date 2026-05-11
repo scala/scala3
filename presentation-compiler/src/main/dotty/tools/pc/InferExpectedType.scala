@@ -40,14 +40,13 @@ class InferExpectedType(
       case Some(unit) =>
         val path =
           Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx)
-        val newctx = ctx.fresh.setCompilationUnit(unit)
+        val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
         val tpdPath =
           Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
-        val locatedCtx =
-          Interactive.contextOfPath(tpdPath)(using newctx)
-        val indexedCtx = IndexedContext(pos)(using locatedCtx)
+        val indexedContext = IndexedContext(pos, tpdPath, newctx)
+        import indexedContext.ctx
         val printer =
-          ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedCtx)
+          ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
         InferCompletionType.inferType(path)(using newctx).map {
           tpe => printer.tpe(tpe)
         }

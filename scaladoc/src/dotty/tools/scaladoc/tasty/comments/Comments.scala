@@ -89,7 +89,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
   private given qctx.type = qctx
 
   lazy val srcPos = if owner == qctx.reflect.defn.RootClass then {
-    val sourceFile = dctx.args.rootDocPath.map(p => dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(p), scala.io.Codec.UTF8))
+    val sourceFile = dctx.args.rootDocPath.map(p => dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(p).nn, scala.io.Codec.UTF8))
     sourceFile.fold(dotty.tools.dotc.util.NoSourcePosition)(sf => dotty.tools.dotc.util.SourcePosition(sf, dotty.tools.dotc.util.Spans.NoSpan))
   } else owner.pos.get.asInstanceOf[dotty.tools.dotc.util.SrcPos]
 
@@ -137,9 +137,9 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
       val scDataCollector = SnippetCompilerDataCollector[qctx.type](qctx)
       val data = scDataCollector.getSnippetCompilerData(s, s)
       val sourceFile = scDataCollector.getSourceFile(s)
-      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
+      (snippet: SnippetSource, argOverride: Option[SnippetCompilerArg]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.merge(_))
-          val res = snippetChecker.checkSnippet(str, Some(data), arg, lineOffset, sourceFile)
+          val res = snippetChecker.checkSnippet(snippet, Some(data), arg, sourceFile, SnippetChecker.docCommentColumnOffset)
           res.filter(r => !r.isSuccessful).foreach(_.reportMessages()(using compilerContext))
           res
       }

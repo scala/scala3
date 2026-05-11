@@ -4,7 +4,7 @@
   |  Exception occurred while executing macro expansion.
   |  java.lang.AssertionError: class X is not a member of A
   |  	at TestMacro$.testImpl$$anonfun$1(Macro_1.scala:8)
-  |  	at scala.collection.immutable.List.map(List.scala:240)
+  |  	at scala.collection.immutable.List.map(List.scala:244)
   |  	at TestMacro$.testImpl(Macro_1.scala:7)
   |
   |---------------------------------------------------------------------------------------------------------------------
