@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.language.unsafeNulls
-
 import java.net.URI
 import java.io.*
 import java.nio.file.*
@@ -113,9 +111,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val classNames = new mutable.ListBuffer[TypeName]
       val output = ctx.settings.outputDir.value
       if (output.isDirectory)
-        classesFromDir(output.jpath, classNames)
+        classesFromDir(output.jpath.nn, classNames)
       else
-        classesFromZip(output.file, classNames)
+        classesFromZip(output.file.nn, classNames)
       classNames.flatMap { cls =>
         treesFromClassName(cls, id)
       }

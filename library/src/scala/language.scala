@@ -38,7 +38,6 @@ import scala.annotation.compileTimeOnly
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features
  *  @groupprio experimental 10
-
  */
 object language {
 
@@ -225,14 +224,14 @@ object language {
 
     /** Experimental support for named type arguments.
       *
-      * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/named-typeargs]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/experimental/named-typeargs]]
       */
     @compileTimeOnly("`namedTypeArguments` can only be used at compile time in import statements")
     object namedTypeArguments
 
     /** Experimental support for generic number literals.
       *
-      * @see [[https://nightly.scala-lang.org/docs/reference/changed-features/numeric-literals]]
+      * @see [[https://nightly.scala-lang.org/docs/reference/experimental/numeric-literals]]
       */
     @compileTimeOnly("`genericNumberLiterals` can only be used at compile time in import statements")
     object genericNumberLiterals
@@ -297,7 +296,7 @@ object language {
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/into-modifier]]
+     *  @see [[https://nightly.scala-lang.org/docs/reference/preview/into]]
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
     @deprecated("The into language import is no longer needed since the feature is now in preview", since = "3.8")
@@ -373,6 +372,11 @@ object language {
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for safe mode
+     */
+    @compileTimeOnly("`safe` can only be used at compile time in import statements")
+    object safe
   }
 
     /** The deprecated object contains features that are no longer officially suypported in Scala.
@@ -437,7 +441,7 @@ object language {
   /** Unsafe Nulls fot Explicit Nulls
     * Inside the "unsafe" scope, `Null` is considered as a subtype of all reference types.
     *
-    * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/explicit-nulls.html]]
+    * @see [[https://nightly.scala-lang.org/docs/reference/experimental/explicit-nulls]]
     */
   @compileTimeOnly("`unsafeNulls` can only be used at compile time in import statements")
   object unsafeNulls
@@ -596,4 +600,22 @@ object language {
     */
   @compileTimeOnly("`3.9` can only be used at compile time in import statements")
   object `3.9`
+
+  /** Sets source version to 3.10-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.10-migration` can only be used at compile time in import statements")
+  object `3.10-migration`
+
+  /** Sets source version to 3.10
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.10` can only be used at compile time in import statements")
+  object `3.10`
+
+  // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!
+  // When adding a new `3.x` / `3.x-migration` here, add matching tests:
+  // `tests/pos/source-import-3-x.scala` and `tests/pos/source-import-3-x-migration.scala`.
 }

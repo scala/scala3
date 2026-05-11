@@ -1,20 +1,20 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
+import dotty.DottyBytecodeTest
 
-import org.junit.Assert._
+import scala.language.unsafeNulls
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.tools.asm
-import asm._
-import asm.tree._
-
+import scala.tools.asm.*
+import scala.tools.asm.tree.*
 import scala.tools.asm.Opcodes
-import scala.jdk.CollectionConverters._
-import Opcodes._
+import scala.tools.asm.Opcodes.*
+import scala.jdk.CollectionConverters.*
 
 class DottyBytecodeTests extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
   @Test def nullChecks = {
     val source = """
                  |class Foo {
@@ -425,7 +425,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   @Test def dontWrapArraysInJavaVarargs = {
     val source =
       """
-        |import java.nio.file._
+        |import java.nio.file.*
         |class Test {
         |  def test(xs: Array[String]) = {
         |     val p4 = Paths.get("Hello", xs*)
@@ -1192,21 +1192,11 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         Field(GETSTATIC, "scala/package$", "MODULE$", "Lscala/package$;"),
         Invoke(INVOKEVIRTUAL, "scala/package$", "Nil", "()Lscala/collection/immutable/Nil$;", false),
         VarOp(ALOAD, 2),
-        VarOp(ASTORE, 7),
-        Op(DUP),
-        Jump(IFNONNULL, Label(31)),
-        Op(POP),
-        VarOp(ALOAD, 7),
-        Jump(IFNULL, Label(36)),
-        Jump(GOTO, Label(40)),
-        Label(31),
-        VarOp(ALOAD, 7),
-        Invoke(INVOKEVIRTUAL, "java/lang/Object", "equals", "(Ljava/lang/Object;)Z", false),
-        Jump(IFEQ, Label(40)),
-        Label(36),
+        Invoke(INVOKESTATIC, "java/util/Objects", "equals", "(Ljava/lang/Object;Ljava/lang/Object;)Z", false),
+        Jump(IFEQ, Label(28)),
         IntOp(BIPUSH, 20),
         Op(IRETURN),
-        Label(40),
+        Label(28),
         TypeOp(NEW, "scala/MatchError"),
         Op(DUP),
         VarOp(ALOAD, 2),
@@ -1991,17 +1981,16 @@ class DottyBytecodeTests extends DottyBytecodeTest {
    * https://github.com/scala/scala3/issues/20496
    */
   @Test def deterministicAdditionalImports = {
+    val javaSource =
+    """interface Actor { default void receive() { } }
+      |interface Timers { default void timers() { } }""".stripMargin
     val source =
-    """trait Actor:
-        |  def receive() = ()
-        |trait Timers:
-        |  def timers() = ()
-        |abstract class ShardCoordinator extends Actor with Timers
-        |class PersistentShardCoordinator extends ShardCoordinator:
-        |  def foo =
-        |    super.receive()
-        |    super.timers()""".stripMargin
-    checkBCode(source) { dir =>
+    """abstract class ShardCoordinator extends Actor with Timers
+      |class PersistentShardCoordinator extends ShardCoordinator:
+      |  def foo =
+      |    super.receive()
+      |    super.timers()""".stripMargin
+    checkBCode(scalaSources = List(source), javaSources = List(javaSource)) { dir =>
       val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
 

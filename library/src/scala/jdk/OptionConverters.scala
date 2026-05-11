@@ -31,21 +31,25 @@ import java.util.{Optional, OptionalDouble, OptionalInt, OptionalLong}
  *
  *  Example usage:
  *
- *  ```
- *   import scala.jdk.OptionConverters._
- *   val a = Option("example").toJava      // Creates java.util.Optional[String] containing "example"
- *   val b = (None: Option[String]).toJava // Creates an empty java.util.Optional[String]
- *   val c = a.toScala                     // Back to Option("example")
- *   val d = b.toScala                     // Back to None typed as Option[String]
- *   val e = Option(2.7).toJava            // java.util.Optional[Double] containing boxed 2.7
- *   val f = Option(2.7).toJavaPrimitive   // java.util.OptionalDouble containing 2.7 (not boxed)
- *   val g = f.toScala                     // Back to Option(2.7)
- *   val h = f.toJavaGeneric               // Same as e
- *   val i = e.toJavaPrimitive             // Same as f
+ *  ```scala sc:compile
+ *  import scala.jdk.OptionConverters.*
+ *  val a = Option("example").toJava      // Creates java.util.Optional[String] containing "example"
+ *  val b = (None: Option[String]).toJava // Creates an empty java.util.Optional[String]
+ *  val c = a.toScala                     // Back to Option("example")
+ *  val d = b.toScala                     // Back to None typed as Option[String]
+ *  val e = Option(2.7).toJava            // java.util.Optional[Double] containing boxed 2.7
+ *  val f = Option(2.7).toJavaPrimitive   // java.util.OptionalDouble containing 2.7 (not boxed)
+ *  val g = f.toScala                     // Back to Option(2.7)
+ *  val h = f.toJavaGeneric               // Same as e
+ *  val i = e.toJavaPrimitive             // Same as f
  *  ```
  */
 object OptionConverters {
-  /** Provides conversions from Java `Optional` to Scala `Option` and specialized `Optional` types. */
+  /** Provides conversions from Java `Optional` to Scala `Option` and specialized `Optional` types.
+   *
+   *  @tparam A the type of the value contained in the `Optional`
+   *  @param o the Java `Optional` to convert
+   */
   implicit class RichOptional[A](private val o: java.util.Optional[A]) extends AnyVal {
     /** Converts a Java `Optional` to a Scala `Option`. */
     def toScala: Option[A] = if (o.isPresent) Some(o.get) else None
@@ -54,11 +58,19 @@ object OptionConverters {
     @deprecated("Use `toScala` instead", "2.13.0")
     def asScala: Option[A] = if (o.isPresent) Some(o.get) else None
 
-    /** Converts a generic Java `Optional` to a specialized variant. */
+    /** Converts a generic Java `Optional` to a specialized variant.
+     *
+     *  @tparam O the target specialized Java `Optional` type, inferred from the available `OptionShape` instance (e.g., `OptionalInt`, `OptionalDouble`, `OptionalLong`)
+     *  @param shape implicit evidence that defines how to convert between `Optional[A]` and the specialized type `O`
+     */
     def toJavaPrimitive[O](implicit shape: OptionShape[A, O]): O = shape.fromJava(o)
   }
 
-  /** Provides conversions from Scala `Option` to Java `Optional` types. */
+  /** Provides conversions from Scala `Option` to Java `Optional` types.
+   *
+   *  @tparam A the type of the value contained in the `Option`
+   *  @param o the Scala `Option` to convert
+   */
   implicit class RichOption[A](private val o: Option[A]) extends AnyVal {
     /** Converts a Scala `Option` to a generic Java `Optional`. */
     def toJava: Optional[A] = o match { case Some(a) => Optional.ofNullable(a); case _ => Optional.empty[A] }
@@ -67,11 +79,18 @@ object OptionConverters {
     @deprecated("Use `toJava` instead", "2.13.0")
     def asJava: Optional[A] = o match { case Some(a) => Optional.ofNullable(a); case _ => Optional.empty[A] }
 
-    /** Converts a Scala `Option` to a specialized Java `Optional`. */
+    /** Converts a Scala `Option` to a specialized Java `Optional`.
+     *
+     *  @tparam O the specialized Java `Optional` type (e.g., `OptionalInt`, `OptionalDouble`, `OptionalLong`)
+     *  @param shape implicit evidence that defines how to convert between `Option[A]` and the specialized type `O`
+     */
     def toJavaPrimitive[O](implicit shape: OptionShape[A, O]): O = shape.fromScala(o)
   }
 
-  /** Provides conversions from `OptionalDouble` to Scala `Option` and the generic `Optional`. */
+  /** Provides conversions from `OptionalDouble` to Scala `Option` and the generic `Optional`.
+   *
+   *  @param o the Java `OptionalDouble` to convert
+   */
   implicit class RichOptionalDouble(private val o: OptionalDouble) extends AnyVal {
     /** Converts a Java `OptionalDouble` to a Scala `Option`. */
     def toScala: Option[Double] = if (o.isPresent) Some(o.getAsDouble) else None
@@ -84,7 +103,10 @@ object OptionConverters {
     def toJavaGeneric: Optional[Double] = if (o.isPresent) Optional.of(o.getAsDouble) else Optional.empty[Double]
   }
 
-  /** Provides conversions from `OptionalInt` to Scala `Option` and the generic `Optional`. */
+  /** Provides conversions from `OptionalInt` to Scala `Option` and the generic `Optional`.
+   *
+   *  @param o the Java `OptionalInt` to convert
+   */
   implicit class RichOptionalInt(private val o: OptionalInt) extends AnyVal {
     /** Converts a Java `OptionalInt` to a Scala `Option`. */
     def toScala: Option[Int] = if (o.isPresent) Some(o.getAsInt) else None
@@ -97,7 +119,10 @@ object OptionConverters {
     def toJavaGeneric: Optional[Int] = if (o.isPresent) Optional.of(o.getAsInt) else Optional.empty[Int]
   }
 
-  /** Provides conversions from `OptionalLong` to Scala `Option` and the generic `Optional`. */
+  /** Provides conversions from `OptionalLong` to Scala `Option` and the generic `Optional`.
+   *
+   *  @param o the Java `OptionalLong` to convert
+   */
   implicit class RichOptionalLong(private val o: OptionalLong) extends AnyVal {
     /** Converts a Java `OptionalLong` to a Scala `Option`. */
     def toScala: Option[Long] = if (o.isPresent) Some(o.getAsLong) else None

@@ -6,7 +6,6 @@ import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.report
 
@@ -17,18 +16,30 @@ import Contexts.*
 import Phases.*
 import Symbols.*
 import StdNames.nme
-
-import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler }
+import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.util
+import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.util.NoSourcePosition
-import DottyBackendInterface.symExtensions
+import SymbolUtils.given
+import dotty.tools.backend.ScalaPrimitives
+import opt.CallGraph
 
-class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, val frontendAccess: PostProcessorFrontendAccess, val ts: CoreBTypesFromSymbols)(using Context) {
+class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypes)(using Context) {
+  private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+    val ts: CoreBTypes = CodeGen.this.ts
+
+    def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit =
+      callGraph.callsitePositions.get(m) = pos match {
+        case p: Positioned => p.sourcePos
+        case null => NoSourcePosition
+      }
+  }
+  private val impl = new Impl()
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
@@ -74,10 +85,7 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
         registerGeneratedClass(mainClassNode, isArtifact = false)
         registerGeneratedClass(mirrorClassNode, isArtifact = true)
       catch
-        case ex: InterruptedException => throw ex
-        case ex: CompilationUnit.SuspendException => throw ex
-        case ex: Throwable =>
-          if !ex.isInstanceOf[TypeError] then ex.printStackTrace()
+        case ex: TypeError =>
           report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", cd.sourcePos)
 
 
@@ -156,8 +164,4 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: DottyPrimitives, v
     mirrorCodeGen.genMirrorClass(classSym, unit)
   }
 
-  private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
-    val ts: CoreBTypesFromSymbols = CodeGen.this.ts
-  }
-  private val impl = new Impl()
 }

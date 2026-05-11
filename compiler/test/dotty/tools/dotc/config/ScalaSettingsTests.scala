@@ -2,11 +2,11 @@ package dotty.tools.dotc
 package config
 
 import CommandLineParser.tokenize
-import Settings._
+import Settings.*
 import dotty.tools.Useables.given
-import dotty.tools.dotc.config.ScalaSettingCategories._
+import dotty.tools.dotc.config.ScalaSettingCategories.*
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 import core.Decorators.toMessage
 import dotty.tools.io.{Path, PlainFile}
 
@@ -87,7 +87,7 @@ class ScalaSettingsTests:
     val feat = new Diagnostic.FeatureWarning(msg, util.NoSourcePosition)
     assertEquals(Action.Error, sut.action(feat))
     val warn = new Diagnostic.Warning(msg, util.NoSourcePosition)
-    assertEquals(Action.Warning, sut.action(warn))
+    assertEquals(Action.Default, sut.action(warn))
     val nowr = new Diagnostic.Warning("This is a problem.".toMessage, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(nowr))
 
@@ -240,7 +240,7 @@ class ScalaSettingsTests:
         )
       )
     )
-    assertEquals(result, Right(reporting.Action.Warning))
+    assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `WConf src filter silences warnings from a matching path for real file`: Unit =
     val result = Using.resource(Files.createTempFile("myfile", ".scala").nn) { file =>
@@ -270,7 +270,7 @@ class ScalaSettingsTests:
         )
       )
     }(using Files.deleteIfExists(_))
-    assertEquals(result, Right(reporting.Action.Warning))
+    assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `WConf src filter reports an error on an invalid regex`: Unit =
     val result = wconfSrcFilterTest(

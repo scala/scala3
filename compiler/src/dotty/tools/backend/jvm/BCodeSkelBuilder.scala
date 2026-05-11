@@ -15,13 +15,13 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
-
-import DottyBackendInterface.{symExtensions, *}
+import SymbolUtils.given
+import dotty.tools.dotc.core.NameOps.isStaticConstructorName
 import tpd.*
 
 /*
@@ -130,7 +130,6 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
   abstract class PlainSkelBuilder(cunit: CompilationUnit)
     extends BCClassGen
     with    BCAnnotGen
-    with    BCInnerClassGen
     with    JAndroidBuilder
     with    BCForwardersGen
     with    BCPickles
@@ -155,14 +154,14 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      funSym.info.firstParamTypes.map(toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+      funSym.info.firstParamTypes.map(ts.toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol): BType = {
-      toTypeKind(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
+      ts.toTypeKind(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
-    def tpeTK(tree: Tree): BType = { toTypeKind(tree.tpe) }
+    def tpeTK(tree: Tree): BType = { ts.toTypeKind(tree.tpe) }
 
     override def getCurrentCUnit(): CompilationUnit = { cunit }
 
@@ -175,14 +174,14 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       claszSymbol       = cd0.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
       isCZStaticModule  = claszSymbol.isStaticModuleClass
-      thisName          = internalName(claszSymbol)
+      thisName          = ts.internalName(claszSymbol)
 
       cnode = new ClassNode1()
 
       val cd = if (isCZStaticModule) {
         // Move statements from the primary constructor following the superclass constructor call to
         // a newly synthesised tree representing the "<clinit>", which also assigns the MODULE$ field.
-        // Because the assigments to both the module instance fields, and the fields of the module itself
+        // Because the assignments to both the module instance fields, and the fields of the module itself
         // are in the <clinit>, these fields can be static + final.
 
         // Should we do this transformation earlier, say in Constructors? Or would that just cause
@@ -212,7 +211,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
             f.setFlag(JavaStatic)
         }
 
-        val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
+        val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.name.isStaticConstructorName)
 
         val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
         val clInitSymbol: TermSymbol =
@@ -268,7 +267,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         cpy.TypeDef(cd0)(rhs = impl2)
       } else cd0
 
-      val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.isStaticConstructor)
+      val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.name.isStaticConstructorName)
       if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
 
       val optSerial: Option[Long] =
@@ -291,8 +290,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       // This needs to wait until now since it uses `superCallTargets` which is populating while emitting the class body
       initJClass(cnode)
 
-      if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
-        AsmUtils.traceClass(cnode)
+      TraceUtils.traceClassIfRequested(cnode)
 
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
 
@@ -304,7 +302,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) ts.ObjectRef.internalName else internalName(ps.head.typeSymbol)
+      val superClass: String = if (ps.isEmpty) ts.ObjectRef.internalName else ts.internalName(ps.head.typeSymbol)
 
       // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
       // (This somewhat convoluted sequence of operations exists to maintain the exact order of inheritance from a previous version.
@@ -339,15 +337,20 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       val flags = BCodeUtils.javaFlags(claszSymbol)
 
       val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
+      val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
+                                              else BCodeUtils.checkConstantStringLength(thisName)
+      if !lengthOk then
+        report.error("Class name is too long for the JVM", claszSymbol.srcPos)
+        return
       cnode.visit(backendUtils.classfileVersion, flags,
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
 
-      if (emitSource) {
+      if (BackendUtils.emitSource) {
         cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      BCodeAsmCommon.enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
+      BCodeAsmCommon.enclosingMethodAttribute(claszSymbol, ts.internalName, ts.asmMethodType(_).descriptor) match {
         case Some(BCodeAsmCommon.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
           cnode.visitOuterClass(className, methodName, methodDescriptor)
         case _ => ()
@@ -384,7 +387,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     private def fabricateStaticInitAndroid(): Unit = {
 
       val clinit: asm.MethodVisitor = cnode.visitMethod(
-        GenBCodeOps.PublicStatic, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
+        asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
         CLASS_CONSTRUCTOR_NAME,
         "()V",
         null, // no java-generic-signature
@@ -423,7 +426,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         val javagensig = getGenericSignature(f, claszSymbol)
         val flags = javaFieldFlags(f)
 
-        assert(!f.isStaticMember || !claszSymbol.isInterface || !f.is(Mutable),
+        assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
           s"interface $claszSymbol cannot have non-final static field $f")
 
         val jfield = new asm.tree.FieldNode(
@@ -642,7 +645,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         case _                     => a
       }
 
-      if (emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
+      if (BackendUtils.emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
         val nr =
           val sourcePos = tree.sourcePos
           (
@@ -690,7 +693,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         case ValDef(name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
         case dd: DefDef =>
-          /* First generate a static forwarder if this is a non-private trait
+          /* First generate a static forwarder if this is a non-private
            * trait method. This is required for super calls to this method, which
            * go through the static forwarder in order to work around limitations
            * of the JVM.
@@ -708,7 +711,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
            */
           val sym = dd.symbol
           val needsStaticImplMethod =
-            claszSymbol.isInterface && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
+            claszSymbol.is(Trait) && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
           if needsStaticImplMethod then
             if sym.name == nme.TRAIT_CONSTRUCTOR then
               genTraitConstructorDefDef(dd)
@@ -731,7 +734,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    def initJMethod(flags: Int, params: List[Symbol]): Unit = {
+    private def initJMethod(flags: Int, params: List[Symbol]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
@@ -741,7 +744,12 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         if (isMethSymStaticCtor) CLASS_CONSTRUCTOR_NAME
         else jMethodName
 
-      val mdesc = asmMethodType(methSymbol).descriptor
+      val mdesc = ts.asmMethodType(methSymbol).descriptor
+      val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
+                                        else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
+      if !lengthOk then
+        report.error("Method signature is too long for the JVM", methSymbol.srcPos)
+        return
       mnode = cnode.visitMethod(
         flags,
         bytecodeName,
@@ -778,7 +786,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      */
     private def makeStatifiedDefDef(dd: DefDef): DefDef =
       val origSym = dd.symbol.asTerm
-      val newSym = makeStatifiedDefSymbol(origSym, origSym.name)
+      val newSym = BackendUtils.makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
         val selfParamRef :: regularParamRefs = paramRefss.head: @unchecked
         val enclosingClass = origSym.owner.asClass
@@ -786,7 +794,10 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
             .subst(dd.termParamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
           treeMap = {
-            case tree: This if tree.symbol == enclosingClass => selfParamRef
+            case tree: This if tree.symbol == enclosingClass =>
+              // Since we want the positions to be accurate in the bytecode, we preserve
+              // the original span of the `this` node when we `statify` it.
+              selfParamRef.withSpan(tree.span)
             case tree => tree
           },
           oldOwners = origSym :: Nil,
@@ -810,24 +821,18 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
      * encode super calls.
      */
     private def makeStaticForwarder(dd: DefDef): DefDef =
+      // !!!
+      // This logic is somewhat duplicated in the inline info definition, which is not very clean,
+      // but remember to change it there if you make changes here
+      // !!!
       val origSym = dd.symbol.asTerm
-      val name = traitSuperAccessorName(origSym).toTermName
-      val sym = makeStatifiedDefSymbol(origSym, name)
+      val name = BackendUtils.traitSuperAccessorName(origSym).toTermName
+      val sym = BackendUtils.makeStatifiedDefSymbol(origSym, name)
       tpd.DefDef(sym, { paramss =>
         val params = paramss.head
         tpd.Apply(params.head.select(origSym), params.tail)
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
-
-    private def makeStatifiedDefSymbol(origSym: TermSymbol, name: TermName): TermSymbol =
-      val info = origSym.info match
-        case mt: MethodType =>
-          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
-      origSym.copy(
-        name = name.toTermName,
-        flags = Method | JavaStatic,
-        info = info
-      ).asTerm
 
     def genDefDef(dd: DefDef): Unit = {
       val rhs = dd.rhs
@@ -838,8 +843,8 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
 
       methSymbol  = dd.symbol
       jMethodName = methSymbol.javaSimpleName
-      returnType  = asmMethodType(methSymbol).returnType
-      isMethSymStaticCtor = methSymbol.isStaticConstructor
+      returnType  = ts.asmMethodType(methSymbol).returnType
+      isMethSymStaticCtor = methSymbol.name.isStaticConstructorName
 
       resetMethodBookkeeping(dd)
 
@@ -862,7 +867,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       }
 
       val isNative         = methSymbol.hasAnnotation(NativeAttr)
-      val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
+      val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.is(Trait) && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
       val flags =
         import GenBCodeOps.addFlagIf
         BCodeUtils.javaFlags(methSymbol)
@@ -873,7 +878,9 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
       val paramSyms = params.map(_.symbol)
       initJMethod(flags, paramSyms)
-
+      if mnode eq null then
+        // we failed to emit the method header, no point in continuing
+        return
 
       if (!isAbstractMethod && !isNative) {
         // #14773 Reuse locals slots for tailrec-generated mutable vars
@@ -918,7 +925,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
           else
             genLoadTo(trimmedRhs, returnType, LoadDestination.Return)
 
-          if (emitVars) {
+          if (BackendUtils.emitVars) {
             // add entries to LocalVariableTable JVM attribute
             val onePastLastProgramPoint = currProgramPoint()
             val hasStaticBitSet = ((flags & asm.Opcodes.ACC_STATIC) != 0)
@@ -945,8 +952,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         // The only non-instruction nodes to be found are LabelNode and LineNumberNode.
       }
 
-      if (AsmUtils.traceMethodEnabled && mnode.name.contains(AsmUtils.traceMethodPattern))
-        AsmUtils.traceMethod(mnode)
+      TraceUtils.traceMethodIfRequested(mnode)
 
       mnode = null
     } // end of method genDefDef()
@@ -988,9 +994,9 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         )
         // INVOKESTATIC CREATOR(): android.os.Parcelable$Creator; -- TODO where does this Android method come from?
         val callee = claszSymbol.companionModule.info.member(androidFieldName).symbol
-        val jowner = internalName(callee.owner)
+        val jowner = ts.internalName(callee.owner)
         val jname  = callee.javaSimpleName
-        val jtype  = asmMethodType(callee).descriptor
+        val jtype  = ts.asmMethodType(callee).descriptor
         insnParcA  = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESTATIC, jowner, jname, jtype, false)
         // PUTSTATIC `thisName`.CREATOR;
         insnParcB  = new asm.tree.FieldInsnNode(asm.Opcodes.PUTSTATIC, thisName, "CREATOR", andrFieldDescr)

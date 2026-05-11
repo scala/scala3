@@ -1,0 +1,35 @@
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:10:26 -----------------------------------------
+10 |class B(val c: C) extends Foo, Stateful: // error
+   |                          ^^^
+   |                   illegal inheritance: class B which extends `Stateful` is not allowed to also extend class Foo
+   |                   since class Foo is an exclusive capability but does not extend `Stateful`.
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:50:10 -----------------------------------------
+50 |  println(b) // error
+   |          ^
+   |   Separation failure: Illegal access to b.rd, which was passed as a consume parameter to constructor of class A
+   |   on line 26 and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:51:10 -----------------------------------------
+51 |  println(b2) // error
+   |          ^^
+   | Separation failure: Illegal access to b2.rd, which was passed as a consume parameter to constructor of class A2
+   | on line 28 and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:52:10 -----------------------------------------
+52 |  println(b3) // error
+   |          ^^
+   | Separation failure: Illegal access to b3.rd, which was passed as a consume parameter to constructor of class A3
+   | on line 30 and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:53:10 -----------------------------------------
+53 |  println(b4) // error
+   |          ^^
+   | Separation failure: Illegal access to b4.rd, which was passed as a consume parameter to constructor of class A2
+   | on line 32 and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:54:10 -----------------------------------------
+54 |  println(b5) // error
+   |          ^^
+   |  Separation failure: Illegal access to b5.rd, which was passed as a consume parameter to constructor of class A
+   |  on line 35 and therefore is no longer available.
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:55:10 -----------------------------------------
+55 |  println(b6) // error
+   |          ^^
+   | Separation failure: Illegal access to b6.rd, which was passed as a consume parameter to constructor of class A2
+   | on line 37 and therefore is no longer available.

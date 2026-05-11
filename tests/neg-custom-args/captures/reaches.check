@@ -51,7 +51,7 @@
    |
    |Note that capability `any` cannot flow into capture set {id*}.
    |
-   |where:    any is a root capability created in value f1 when instantiating method apply's type (x: File^): File^{fresh}
+   |where:    any is a root capability created in value f1 when instantiating function value id's type (x: File^): File^{fresh}
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------

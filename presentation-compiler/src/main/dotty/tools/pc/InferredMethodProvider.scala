@@ -67,15 +67,16 @@ final class InferredMethodProvider(
     val path =
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
 
-    given locatedCtx: Context = driver.localContext(params)
-    val indexedCtx = IndexedContext(pos)(using locatedCtx)
+    val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
+    val indexedContext = IndexedContext(pos, path, newctx)
+    import indexedContext.ctx
 
     val autoImportsGen = AutoImports.generator(
       pos,
       sourceText,
       unit.tpdTree,
       unit.comments,
-      indexedCtx,
+      indexedContext,
       config
     )
 
@@ -83,7 +84,7 @@ final class InferredMethodProvider(
       symbolSearch,
       includeDefaultParam = IncludeDefaultParam.ResolveLater,
       isTextEdit = true
-    )(using indexedCtx)
+    )(using indexedContext)
 
     def imports: List[TextEdit] =
       printer.imports(autoImportsGen)

@@ -46,7 +46,7 @@ object any extends Capability
 @experimental
 object fresh extends Capability
 
-@experimental // TODO: Drop once we bootstrap with 3.8.2
+@experimental // TODO: Drop once we bootstrap with 3.8.4 (is still being used by non-bootstrap compiler)
 @deprecated
 object cap extends Capability
 
@@ -90,20 +90,20 @@ trait Control extends SharedCapability, Classifier
  *  These  classes typically contain mutable variables and/or update methods.
  */
 @experimental
-trait Stateful extends ExclusiveCapability
+trait Stateful
 
 /** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
  *  extending Separate is created, a fresh `any` is automatically added to the value's capture set.
  */
-@experimental
-trait Separate extends Stateful
+@experimental @deprecated
+trait Separate extends Stateful, ExclusiveCapability
 
 /** Marker trait for classes that are not subject to scoping restrictions of captured capabilities. */
 @experimental
-trait Unscoped extends Stateful, Classifier
+trait Unscoped extends ExclusiveCapability, Classifier
 
 @experimental
-trait Mutable extends Stateful, Separate, Unscoped
+trait Mutable extends Stateful, Unscoped
 
 /** Marker trait for classes with reader methods, typically extended by Mutable classes. */
 @experimental
@@ -141,6 +141,20 @@ object Contains:
 @experimental
 final class reserve extends annotation.StaticAnnotation
 
+/** An annotation for definitions that should not be accessible from code
+ *  compiled under safe mode.
+ */
+@experimental
+@getter @setter @beanGetter @beanSetter @field
+final class rejectSafe(message: String = "") extends scala.annotation.ConstantAnnotation
+
+/** An annotation for definitions that are assumed to be accessible from code
+ *  compiled under safe mode.
+ */
+@experimental
+@getter @setter @beanGetter @beanSetter @field
+final class assumeSafe extends scala.annotation.ConstantAnnotation
+
 /** Allowed only for source versions up to 3.7:
  *  An annotation on parameters `x` stating that the method's body makes
  *  use of the reach capability `x*`. Consequently, when calling the method
@@ -167,7 +181,17 @@ object internal:
   @getter @param
   final class consume extends annotation.StaticAnnotation
 
+  /** An annotation on a type indicating that the type was inferred. Added
+   *  during inlining when we want to mark portions of an otherwise explicit type
+   *  as inferred.
+   */
   final class inferred extends annotation.StaticAnnotation
+
+  /** An annotation on a type indicating that the type was declared. Added
+   *  during PostTyper when we want to mark types of closure parameters as
+   *  explicit, even if the closure type as a whole is inferred.
+   */
+  final class declared extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
@@ -176,21 +200,6 @@ object internal:
    */
   @deprecated
   final class refineOverride extends annotation.StaticAnnotation
-
-  /** An annotation used internally for root capability wrappers of `any` that
-   *  represent either Fresh or Result capabilities.
-   *  A capability is encoded as `caps.any @rootCapability(...)` where
-   *  `rootCapability(...)` is a special kind of annotation of type `root.Annot`
-   *  that contains either a hidden set for Fresh instances or a method type binder
-   *  for Result instances.
-   */
-  final class rootCapability extends annotation.StaticAnnotation
-
-  /** An annotation used internally to mark a function type that was
-   *  converted to a dependent function type during setup of inferred types.
-   *  Such function types should not map roots to result variables.
-   */
-  final class inferredDepFun extends annotation.StaticAnnotation
 
   /** An erasedValue issued internally by the compiler. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed
@@ -215,6 +224,7 @@ end internal
 def freeze(@internal.consume x: Mutable | Array[?]): x.type = x
 
 @experimental
+@rejectSafe("it is unavailable in safe mode")
 object unsafe:
   /** Three usages:
    *

@@ -52,20 +52,20 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     super.render()
 
   private def serializeSideMenu() =
-    import com.fasterxml.jackson.databind.*
-    import com.fasterxml.jackson.databind.node.ObjectNode
-    import com.fasterxml.jackson.databind.node.TextNode
-    val mapper = new ObjectMapper();
+    import _root_.tools.jackson.databind.json.JsonMapper
+    import _root_.tools.jackson.databind.node.ObjectNode
+    import _root_.tools.jackson.databind.node.StringNode
+    val mapper = JsonMapper.builder().build()
 
     def serializePage(page: Page): ObjectNode =
       import scala.jdk.CollectionConverters.SeqHasAsJava
       val children = mapper.createArrayNode().addAll(page.children.filterNot(_.hidden).map(serializePage).asJava)
-      val location = mapper.createArrayNode().addAll(rawLocation(page.link.dri).map(TextNode(_)).asJava)
+      val location = mapper.createArrayNode().addAll(rawLocation(page.link.dri).map(StringNode(_)).asJava)
       val obj = mapper.createObjectNode()
-      obj.set("name", new TextNode(page.link.name))
+      obj.set("name", new StringNode(page.link.name))
       obj.set("location", location)
       obj.set("kind", page.content match
-        case m: Member if m.needsOwnPage => new TextNode(m.kind.name)
+        case m: Member if m.needsOwnPage => new StringNode(m.kind.name)
         case _ => null
       )
       obj.set("children", children)
@@ -92,7 +92,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
               .map(from => Resource.File(resourceFile.toPath.relativize(from).toString, from))
           }.fold (
             { t =>
-              report.warn(s"Error occured while processing _assets file.", t)
+              report.warn(s"Error occurred while processing _assets file.", t)
               Seq.empty
             },
             identity

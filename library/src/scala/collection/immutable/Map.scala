@@ -23,7 +23,11 @@ import scala.collection.immutable.Map.Map4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 import SeqMap.{SeqMap1, SeqMap2, SeqMap3, SeqMap4}
 
-/** Base type of immutable Maps. */
+/** Base type of immutable Maps.
+ *
+ *  @tparam K the type of the keys in this map
+ *  @tparam V the type of the values associated with the keys
+ */
 trait Map[K, +V]
   extends Iterable[(K, V)]
      with collection.Map[K, V]
@@ -40,6 +44,7 @@ trait Map[K, +V]
    *
    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
    *
+   *  @tparam V1 the type of the values returned by the default function, which must be a supertype of `V`
    *  @param d     the function mapping keys to values, used for non-present keys
    *  @return      a wrapper of the map with a default value
    */
@@ -51,6 +56,7 @@ trait Map[K, +V]
    *
    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
    *
+   *  @tparam V1 the type of the default value, which must be a supertype of `V`
    *  @param d     default value used for non-present keys
    *  @return      a wrapper of the map with a default value
    */
@@ -61,6 +67,10 @@ trait Map[K, +V]
  *
  *  @define coll immutable map
  *  @define Coll `immutable.Map`
+ *
+ *  @tparam K the type of the keys in this map
+ *  @tparam V the type of the values associated with the keys
+ *  @tparam CC the type constructor of the resulting map (e.g., `Map`, `HashMap`)
  */
 transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]
@@ -76,7 +86,10 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
    */
   def removed(key: K): C
 
-  /** Alias for `removed`. */
+  /** Alias for `removed`.
+   *
+   *  @param key the key to remove from this map
+   */
   @`inline` final def - (key: K): C = removed(key)
 
   @deprecated("Use -- with an explicit collection", "2.13.0")
@@ -93,7 +106,10 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
    */
   def removedAll(keys: IterableOnce[K]^): C = keys.iterator.foldLeft[C](coll)(_ - _)
 
-  /** Alias for `removedAll`. */
+  /** Alias for `removedAll`.
+   *
+   *  @param keys the collection of keys to remove from this map
+   */
   @`inline` final override def -- (keys: IterableOnce[K]^): C = removedAll(keys)
 
   /** Creates a new map obtained by updating this map with a given key/value pair.
@@ -111,6 +127,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
    *  If the remapping function returns `None`, the mapping is removed (or remains absent if initially absent).
    *  If the function itself throws an exception, the exception is rethrown, and the current mapping is left unchanged.
    *
+   *  @tparam V1 the type of the values in the returned map, which must be a supertype of `V`
    *  @param key the key value
    *  @param remappingFunction a function that receives current optionally mapped value and returns a new mapping
    *  @return A new map with the updated mapping with the key
@@ -136,6 +153,7 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
   /** This function transforms all the values of mappings contained
    *  in this map with function `f`.
    *
+   *  @tparam W the type of the transformed values
    *  @param f A function over keys and values
    *  @return  the updated map
    */
@@ -664,7 +682,11 @@ object Map extends MapFactory[Map] {
   }
 }
 
-/** Explicit instantiation of the `Map` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Map` trait to reduce class file size in subclasses.
+ *
+ *  @tparam K the type of the keys in this map
+ *  @tparam V the type of the values associated with the keys
+ */
 abstract class AbstractMap[K, +V] extends scala.collection.AbstractMap[K, V] with Map[K, V]
 
 private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, V), Map[K, V]] {

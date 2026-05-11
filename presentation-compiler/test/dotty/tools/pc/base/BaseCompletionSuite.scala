@@ -32,7 +32,7 @@ abstract class BaseCompletionSuite extends BasePCSuite:
     result.setItems(newItems.asJava)
     result
 
-  private def getItems(
+  protected def getItems(
       original: String,
       filename: String = "A.scala"
   ): Seq[CompletionItem] =

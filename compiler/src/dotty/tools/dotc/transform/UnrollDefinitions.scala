@@ -42,7 +42,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
   override def changesMembers: Boolean = true
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if ctx.compilationUnit.hasUnrollDefs then
       super.run // create and run the transformer on the current compilation unit
 

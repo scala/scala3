@@ -23,6 +23,8 @@ import language.experimental.captureChecking
  *
  *  In Dotty, ambiguity is a global error, and therefore cannot be used to implement negation.
  *  Instead, `NotGiven` is treated natively in implicit search.
+ *
+ *  @tparam T the type for which no implicit instance should be available
  */
 final class NotGiven[+T] private ()
 

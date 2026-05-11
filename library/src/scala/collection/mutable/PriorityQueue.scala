@@ -47,17 +47,16 @@ import scala.math.Ordering
  *  the invariant of the underlying heap-ordered tree. Note that [[clone]]
  *  does not rebuild the underlying tree.
  *
- *  ```
- *  scala> val pq = collection.mutable.PriorityQueue(1, 2, 5, 3, 7)
- *  val pq: scala.collection.mutable.PriorityQueue[Int] = PriorityQueue(7, 3, 5, 1, 2)
+ *  ```scala sc:compile
+ *  val pq = collection.mutable.PriorityQueue(1, 2, 5, 3, 7)
+ *  // pq: scala.collection.mutable.PriorityQueue[Int] = PriorityQueue(7, 3, 5, 1, 2)
  *
- *  scala> pq.toList              // also not in order
- *  val res0: List[Int] = List(7, 3, 5, 1, 2)
+ *  pq.toList              // also not in order
+ *  // res0: List[Int] = List(7, 3, 5, 1, 2)
  *
- *  scala> pq.clone.dequeueAll
- *  val res1: Seq[Int] = ArraySeq(7, 5, 3, 2, 1)
- *  ```
- *
+ *  pq.clone.dequeueAll
+ *  // res1: Seq[Int] = ArraySeq(7, 5, 3, 2, 1)
+ *  ``` *
  *  @tparam A    type of the elements in this priority queue.
  *  @param ord   implicit ordering used to compare the elements of type `A`.
  *
@@ -264,7 +263,10 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     } else
       throw new NoSuchElementException("no element to remove from heap")
 
-  /** Dequeues all elements and returns them in a sequence, in priority order. */
+  /** Dequeues all elements and returns them in a sequence, in priority order.
+   *
+   *  @tparam A1 a supertype of the element type `A`, allowing the result to be typed more broadly
+   */
   def dequeueAll[A1 >: A]: immutable.Seq[A1] = {
     val b = ArrayBuilder.make[Any]
     b.sizeHint(size)
@@ -347,6 +349,8 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   /** Returns a regular queue containing the same elements.
    *
    *  Note: the order of elements is undefined.
+   *
+   *  @return a mutable `Queue` containing all elements of this priority queue
    */
   def toQueue: Queue[A] = new Queue[A] ++= this.iterator
 

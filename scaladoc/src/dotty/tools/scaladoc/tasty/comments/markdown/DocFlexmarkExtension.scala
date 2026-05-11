@@ -88,7 +88,7 @@ object DocFlexmarkRenderer:
     val opts = MarkdownParser.mkMarkdownOptions(
       Seq(
         DocFlexmarkRenderer(renderLink),
-        SnippetRenderingExtension,
+        SnippetRenderingExtension(),
         SectionRenderingExtension
       )
     )

@@ -47,7 +47,7 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
 
   /** Uses creationContext to produce the message */
   override def getMessage: String =
-    try toMessage.message catch case ex: Throwable => "TypeError"
+    try toMessage.message catch case _: Exception => "TypeError"
 
 object TypeError:
   def apply(msg: Message)(using Context) = new TypeError:
@@ -131,7 +131,7 @@ end RecursionOverflow
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive:
-  inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
+  private inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
     var e: Throwable | Null = exc
     while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
     e

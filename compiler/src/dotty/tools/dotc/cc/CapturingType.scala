@@ -33,7 +33,7 @@ object CapturingType:
    *  boxing status is the same or if A is boxed.
    */
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
-    assert(!boxed || !parent.derivesFrom(defn.Caps_CapSet))
+    assert(!boxed || !parent.derivesFromCapSet)
     if refs.isAlwaysEmpty && !refs.keepAlways && !parent.derivesFromCapability then
       parent
     else parent match

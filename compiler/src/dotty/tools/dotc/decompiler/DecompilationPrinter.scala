@@ -20,7 +20,7 @@ class DecompilationPrinter extends Phase {
 
   override def phaseName: String = "decompilationPrinter"
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if (ctx.settings.outputDir.isDefault) printToOutput(System.out)
     else {
       val outputDir = ctx.settings.outputDir.value

@@ -1,6 +1,6 @@
 trait Foo extends caps.ExclusiveCapability
 
-trait Bar extends Foo, caps.Stateful
+trait Bar extends Foo, caps.Stateful // was error
 
 def Test =
 

@@ -4,11 +4,11 @@ import caps.*
 class Stream extends SharedCapability:
   def println(): Unit = ()
 
-object Console:
+object Console extends SharedCapability:
   val out: Stream = new Stream()
   def println(): Unit = out.println()
 
-object M:
+object M extends SharedCapability:
   val c: Stream = new Stream()
 
 object Console2 uses Console:
@@ -19,7 +19,7 @@ object N:
   Console.println()  // error
   Console2.println() // error
 
-object N2 uses_init Console, Console2, M.c:
+object N2 uses Console initially, Console2 initially, M.c initially:
   M.c.println()
   Console.println()
   Console2.println()

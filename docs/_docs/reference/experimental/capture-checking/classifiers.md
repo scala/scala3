@@ -4,9 +4,6 @@ title: "Capability Classifiers"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/classifiers.html
 ---
 
-```scala sc:nocompile sc-name:preamble
-```
-
 ## Introduction
 
 Capabilities are extremely versatile. They can express concepts from many different domains. Exceptions, continuations, I/O, mutation, information flow, security permissions, are just some examples, the list goes on.
@@ -14,19 +11,24 @@ Capabilities are extremely versatile. They can express concepts from many differ
 Sometimes it is important to restrict, or: _classify_ what kind of capabilities are expected or returned in a context. For instance, we might want to allow only control capabilities such as `CanThrow`s or boundary `Label`s but no
 other capabilities. Or might want to allow mutation, but no other side effects. This is achieved by having a capability class extend a _classifier_.
 
+```scala sc-hidden sc-name:classifiers-cc-context
+import language.experimental.captureChecking
+import caps.*
+```
+
 For instance, the `scala.caps` package defines a classifier trait called `Control`,
 like this:
-```scala sc:nocompile sc-compile-with:preamble
-  trait Control extends SharedCapability, Classifier
+```scala sc:nocompile
+trait Control extends SharedCapability, Classifier
 ```
 The [Gears library](https://lampepfl.github.io/gears/) then defines a capability class `Async` which extends `Control`.
 
-```scala sc:nocompile sc-compile-with:preamble
-  trait Async extends Control
+```scala sc-name:classifiers-async sc-compile-with:classifiers-cc-context
+trait Async extends Control
 ```
 Unlike normal inheritance, classifiers also restrict the capture set of a capability. For instance, say we have a function
-```scala sc:nocompile sc-compile-with:preamble
-  def f(using async: Async^) = body
+```scala sc-compile-with:classifiers-async
+def f(using async: Async^) = ()
 ```
 (the `^` is as usual redundant here since `Async` is a capability trait).
 Then we have the guarantee that any actual `async` argument can only capture
@@ -40,17 +42,16 @@ Classifiers are unique: a class cannot extend directly or transitively at the sa
 ### Predefined Classifiers
 
 The `caps` object defines the `Classifier` trait itself and some traits that extend it:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 trait Classifier
 
 sealed trait Capability
 
-trait SharedCapability extends Capability Classifier
+trait SharedCapability extends Capability, Classifier
 trait Control extends SharedCapability, Classifier
 
 trait ExclusiveCapability extends Capability
-trait Stateful extends ExclusiveCapability
-trait Unscoped extends Stateful, Classifier
+trait Unscoped extends ExclusiveCapability, Classifier
 ```
 Here is a graph showing the hierarchy of predefined capability traits. Classifier traits are underlined.
 ```
@@ -61,8 +62,6 @@ Here is a graph showing the hierarchy of predefined capability traits. Classifie
            /              \
  SharedCapability     ExclusiveCapability
  ----------------            |
-        |                    |
-        |                 Stateful
         |                    |
         |                    |
      Control              Unscoped
@@ -88,10 +87,15 @@ Consider the following problem: The `Try.apply` method takes in its `body` param
 the `get` method of a `Try` object. What should a capability-aware signature of `Try` be?
 
 The body passed to `Try.apply` can have arbitrary effects, so it can retain arbitrary capabilities. Yet the resulting `Try` object will retain only those capabilities of `body` which are classified as `Control`. So the signature of `Try.apply` should look like this:
-```scala sc:nocompile sc-compile-with:preamble
-object Try:
-  def apply[T](body: => T): Try[T]^{body.only[Control]}
+```scala sc-hidden sc-name:classifiers-try-context sc-compile-with:classifiers-cc-context
+class Try[+T]
 ```
+
+```scala sc-compile-with:classifiers-try-context
+object Try:
+  def apply[T](body: => T): Try[T]^{body.only[Control]} = ???
+```
+
 Note a new form of capability in the result's capture set: `body.only[Control]`. This is called a _restricted capability_. The general form of a restricted capability is
 `c.only[A]` where
 
@@ -107,7 +111,7 @@ Then the result of `Try { expr }` would have type `Try^{async}`. We drop `io` si
 `io`'s type is a `Capability` class that does not extend `Control`.
 
 If `expr` would use an additional capability `proc: () => Unit`, then `proc` would also show up in the result capture set. Since `proc` is fully effect-polymorphic, we can't exclude that it retains `Control` capabilities, so we have to keep it in the restricted capture set. These elements are shown together in the following example:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 class IO extends caps.SharedCapability
 class Async extends caps.Control
 

@@ -26,7 +26,6 @@ import annotation.internal.preview
  */
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
-  self =>
     /** Converts value `x` of type `T` to type `U`. */
     def apply(x: T): U
 

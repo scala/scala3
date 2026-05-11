@@ -24,7 +24,6 @@ object Levels:
     parReduce(1 to 1000): (x, y) =>
       x + y + read() // should be ok
 
-    parReduce(1 to 1000): (x, y) => // error
-      write(x)
+    parReduce(1 to 1000): (x, y) =>
+      write(x) // error
       x + y + read()
-

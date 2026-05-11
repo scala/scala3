@@ -7,6 +7,9 @@ import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import FileUtils.*
 import dotty.tools.io.ClassPath
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.interactive.LogicalSourcePath
+import dotty.tools.dotc.interactive.LogicalPackagesProvider
+import dotty.tools.dotc.interactive.LogicalPackage
 import java.nio.file.Files
 
 /**
@@ -23,11 +26,15 @@ class ClassPathFactory {
     * Creators for sub classpaths which preserve this context.
     */
   def sourcesInPath(path: String)(using Context): List[ClassPath] =
-    for
-      file <- expandPath(path, expandStar = false)
-      dir <- Option(AbstractFile.getDirectory(file))
-    yield createSourcePath(dir)
-
+    // We also accept files in case of YlogicalPackageLoading
+    if ctx.settings.sourcepath.value.nonEmpty && ctx.settings.YlogicalPackageLoading.value then
+      val rootPackage: LogicalPackage = new LogicalPackagesProvider(path).root
+      List(new LogicalSourcePath(path, rootPackage))
+    else
+      for
+        file <- expandPath(path, expandStar = false)
+        dir <- Option(AbstractFile.getDirectory(file))
+      yield createSourcePath(dir)
 
   def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
 
@@ -53,10 +60,10 @@ class ClassPathFactory {
 
   // Internal
   protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
-    val files = for {
+    val files: List[AbstractFile] = for {
       file <- expandPath(path, expand)
       dir <- {
-        def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file)) else None
+        def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None
         Option(AbstractFile.getDirectory(file)).orElse(asImage)
       }
     }
@@ -70,7 +77,7 @@ class ClassPathFactory {
           path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield
-          newClassPath(AbstractFile.getFile(path))
+          newClassPath(AbstractFile.getFile(path).nn) // .nn ok because of Files.exists(path)
       else
         Seq.empty
 

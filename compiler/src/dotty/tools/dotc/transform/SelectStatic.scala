@@ -75,8 +75,6 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def normalize(t: Tree)(using Context) = t match {
-    case Select(Block(stats, qual), nm) =>
-      Block(stats, cpy.Select(t)(qual, nm))
     case Apply(Block(stats, qual), nm) =>
       Block(stats, Apply(qual, nm))
     case TypeApply(Block(stats, qual), nm) =>

@@ -1,6 +1,6 @@
 package dotty.tools.backend.jvm
 
-import java.io.{DataOutputStream, File, IOException, BufferedOutputStream, FileOutputStream}
+import java.io.{BufferedOutputStream, DataOutputStream, File, FileOutputStream, IOException}
 import java.nio.ByteBuffer
 import java.nio.channels.{ClosedByInterruptException, FileChannel}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -9,13 +9,13 @@ import java.nio.file.attribute.FileAttribute
 import java.util
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.{CRC32, Deflater, ZipEntry, ZipOutputStream}
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.chaining.*
 import dotty.tools.io.{AbstractFile, PlainFile, VirtualFile}
 import dotty.tools.io.PlainFile.toPlainFile
 import BTypes.InternalName
+import dotty.tools.dotc.report
 import dotty.tools.io.JarArchive
 
 /** !!! This file is now copied in `dotty.tools.io.FileWriters` in a more general way that does not rely upon
@@ -23,8 +23,8 @@ import dotty.tools.io.JarArchive
  *
  * Until then, any changes to this file should be copied to `dotty.tools.io.FileWriters` as well.
  */
-class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
-  import frontendAccess.{compilerSettings, backendReporting}
+class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess)(using ctx: Context) {
+  import frontendAccess.compilerSettings
 
   sealed trait TastyWriter {
     def writeTasty(name: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): Unit
@@ -58,17 +58,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
   object ClassfileWriter {
     private def getDirectory(dir: String): Path = Paths.get(dir)
 
-    def apply(): ClassfileWriter = {
-      val jarManifestMainClass: Option[String] = compilerSettings.mainClass.orElse {
-        frontendAccess.getEntryPoints match {
-          case List(name) => Some(name)
-          case es =>
-            if es.isEmpty then backendReporting.log("No Main-Class designated or discovered.")
-            else backendReporting.log(s"No Main-Class due to multiple entry points:\n  ${es.mkString("\n  ")}")
-            None
-        }
-      }
-
+    def apply(jarManifestMainClass: Option[String]): ClassfileWriter = {
       // In Scala 2 depenening on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
       val basicClassWriter = new SingleClassWriter(
@@ -78,7 +68,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
       val withAdditionalFormats =
         compilerSettings.dumpClassesDirectory
           .map(getDirectory)
-          .filter{path => Files.exists(path).tap{ok => if !ok then backendReporting.error(em"Output dir does not exist: ${path.toString}")}}
+          .filter{path => Files.exists(path).tap{ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")}}
           .map(out => FileWriter(out.toPlainFile, None))
           .fold[ClassfileWriter](basicClassWriter)(new DebugClassWriter(basicClassWriter, _))
 
@@ -199,7 +189,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
     private def checkName(component: Path): Unit = if (isWindows) {
       val specials = raw"(?i)CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]".r
       val name = component.toString
-      def warnSpecial(): Unit = backendReporting.warning(em"path component is special Windows device: ${name}")
+      def warnSpecial(): Unit = report.warning(em"path component is special Windows device: ${name}")
       specials.findPrefixOf(name).foreach(prefix => if (prefix.length == name.length || name(prefix.length) == '.') warnSpecial())
     }
 
@@ -248,18 +238,18 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
         catch {
           case ex: ClosedByInterruptException =>
             try Files.deleteIfExists(path) // don't leave a empty of half-written classfile around after an interrupt
-            catch { case _: Throwable => () }
+            catch { case _: java.io.IOException => () }
             throw ex
         }
         os.close()
       } catch {
         case e: FileConflictException =>
-          backendReporting.error(em"error writing ${path.toString}: ${e.getMessage}")
+          report.error(em"error writing ${path.toString}: ${e.getMessage}")
         case e: java.nio.file.FileSystemException =>
           if (compilerSettings.debug) e.printStackTrace()
-          backendReporting.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
+          report.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
       }
-      AbstractFile.getFile(path)
+      AbstractFile.getFile(path).nn // we just wrote the file, so it had better exist
     }
 
     override def close(): Unit = ()

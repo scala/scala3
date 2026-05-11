@@ -48,12 +48,11 @@ final class ExtractMethodProvider(
     val pos = driver.sourcePosition(range).startPos
     val path =
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
-    given locatedCtx: Context =
-      val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-      Interactive.contextOfPath(path)(using newctx)
-    val indexedCtx = IndexedContext(pos)(using locatedCtx)
+    val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
+    val indexedContext = IndexedContext(pos, path, newctx)
+    import indexedContext.ctx
     val printer =
-      ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedCtx)
+      ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext)
     def prettyPrint(tpe: Type) =
       def prettyPrintReturnType(tpe: Type): String =
         tpe match
@@ -135,7 +134,7 @@ final class ExtractMethodProvider(
         val extractedPos = head.sourcePos.withEnd(expr.sourcePos.end)
         val exprType = prettyPrint(expr.typeOpt.widen)
         val name =
-          genName(indexedCtx.scopeSymbols.map(_.decodedName).toSet, "newMethod")
+          genName(indexedContext.scopeSymbols.map(_.decodedName).toSet, "newMethod")
         val (allMethodParams, typeParams) =
           localRefs(extracted, stat.sourcePos, extractedPos)
         val (methodParams, implicitParams) = allMethodParams.partition(!_.isOneOf(Flags.GivenOrImplicit))

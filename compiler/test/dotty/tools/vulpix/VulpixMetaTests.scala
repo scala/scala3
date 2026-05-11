@@ -3,8 +3,8 @@ package vulpix
 
 import org.junit.{ Test, AfterClass }
 import org.junit.experimental.categories.Category
-import scala.concurrent.duration._
-import TestConfiguration._
+import scala.concurrent.duration.*
+import TestConfiguration.*
 
 /** Meta tests for the Vulpix test suite. This test follows the structure of
  *  CompilationTests.scala. It is meant to be called from bash to diff with
@@ -12,7 +12,7 @@ import TestConfiguration._
  */
 @Category(Array(classOf[dotty.VulpixMetaTests]))
 class VulpixMetaTests {
-  import VulpixMetaTests._
+  import VulpixMetaTests.*
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   implicit def testGroup: TestGroup = TestGroup("VulpixMetaTests")

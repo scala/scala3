@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import scala.language.unsafeNulls
-
 import java.net.{URI, URISyntaxException}
 
 import dotty.tools.dotc.core.*
@@ -66,15 +64,15 @@ class JSPositions()(using Context) {
   private object span2irPosCache {
     import dotty.tools.dotc.util.*
 
-    private var lastDotcSource: SourceFile = null
-    private var lastIRSource: ir.Position.SourceFile = null
+    private var lastDotcSource: SourceFile | Null = null
+    private var lastIRSource: ir.Position.SourceFile | Null = null
 
     def toIRSource(dotcSource: SourceFile): ir.Position.SourceFile = {
       if (dotcSource != lastDotcSource) {
         lastIRSource = convert(dotcSource)
         lastDotcSource = dotcSource
       }
-      lastIRSource
+      lastIRSource.nn
     }
 
     private def convert(dotcSource: SourceFile): ir.Position.SourceFile = {

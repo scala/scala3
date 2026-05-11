@@ -105,7 +105,14 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
 
   /** Inserts a key value pair, overwriting the old pair if the keys match.
    *
-   *  @return        true if successful, false otherwise
+   *  @param k the key to insert
+   *  @param v the value to associate with `k`
+   *  @param hc the hashcode of `k`
+   *  @param lev the current level in the trie (in bits, increments of 5)
+   *  @param parent the parent i-node, or null if this is the root
+   *  @param startgen the generation of the root when the operation started
+   *  @param ct the TrieMap instance
+   *  @return        true if the insertion was committed, false if a retry is needed
    */
   @tailrec def rec_insert(k: K, v: V, hc: Int, lev: Int, parent: INode[K, V] | Null, startgen: Gen, ct: TrieMap[K, V]): Boolean = {
     val m = GCAS_READ(ct) // use -Yinline!
@@ -161,7 +168,13 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
    *  @param fullEquals whether to use reference or full equals when comparing `v` to the current value
    *  @param hc the hashcode of `k`
    *
-   *  @return     null if unsuccessful, Option[V] otherwise (indicating previous value bound to the key)
+   *  @param k the key to insert
+   *  @param v the value to associate with `k`
+   *  @param lev the current level in the trie (in bits, increments of 5)
+   *  @param parent the parent i-node, or null if this is the root
+   *  @param startgen the generation of the root when the operation started
+   *  @param ct the TrieMap instance
+   *  @return     null if unsuccessful, `Option[V]` otherwise (indicating the previous value bound to the key)
    */
   @tailrec def rec_insertif(k: K, v: V, hc: Int, cond: AnyRef, fullEquals: Boolean, lev: Int, parent: INode[K, V] | Null, startgen: Gen, ct: TrieMap[K, V]): Option[V] | Null = {
     val m = GCAS_READ(ct)  // use -Yinline!
@@ -256,6 +269,11 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
    *
    *  @param hc        the hashcode of `k`
    *
+   *  @param k the key to look up
+   *  @param lev the current level in the trie (in bits, increments of 5)
+   *  @param parent the parent i-node, or null if this is the root
+   *  @param startgen the generation of the root when the operation started
+   *  @param ct the TrieMap instance
    *  @return          NO_SUCH_ELEMENT_SENTINEL if no value has been found, RESTART if the operation wasn't successful,
    *                   or any other value otherwise
    */
@@ -306,6 +324,12 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
    *  @param removalPolicy policy deciding whether to remove `k` based on `v` and the
    *                       current value associated with `k` (Always, FullEquals, or ReferenceEq)
    *
+   *  @param k the key to remove
+   *  @param v the value to compare against when `removalPolicy` requires it
+   *  @param lev the current level in the trie (in bits, increments of 5)
+   *  @param parent the parent i-node, or null if this is the root
+   *  @param startgen the generation of the root when the operation started
+   *  @param ct the TrieMap instance
    *  @return              null if not successful, an Option[V] indicating the previous value otherwise
    */
   def rec_remove(
@@ -587,6 +611,9 @@ private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[Ba
 
   /** Returns a copy of this cnode such that all the i-nodes below it are copied
    *  to the specified generation `ngen`.
+   *
+   *  @param ngen the new generation to copy i-nodes into
+   *  @param ct the TrieMap instance
    */
   def renewed(ngen: Gen, ct: TrieMap[K, V]) = {
     var i = 0
@@ -814,7 +841,7 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
    *  @param k  the key to look up
    *  @param hc the hashcode of `k`
    *
-   *  @return the value: V associated with `k`, if it exists. Otherwise, INodeBase.NO_SUCH_ELEMENT_SENTINEL
+   *  @return the value associated with `k` if it exists, or `INodeBase.NO_SUCH_ELEMENT_SENTINEL` if not found
    */
   @tailrec private def lookuphc(k: K, hc: Int): AnyRef = {
     val r = RDCSS_READ_ROOT()
@@ -826,9 +853,10 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
   /** Removes a key-value pair from the map
    *
    *  @param k the key to remove
-   *  @param v the value compare with the value found associated with the key
+   *  @param v the value to compare against the current value associated with the key
    *  @param removalPolicy policy deciding whether to remove `k` based on `v` and the
    *                       current value associated with `k` (Always, FullEquals, or ReferenceEq)
+   *  @param hc the hashcode of `k`
    *  @return an `Option[V]` indicating the previous value
    */
   @tailrec private def removehc(k: K, v: V, removalPolicy: Int, hc: Int): Option[V] = {
@@ -855,6 +883,8 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
    *  This means that the work of rebuilding both the snapshot and this
    *  TrieMap is distributed across all the threads doing updates or accesses
    *  subsequent to the snapshot creation.
+   *
+   *  @return a new mutable `TrieMap` snapshot that shares structure with this map
    */
   @tailrec def snapshot(): TrieMap[K, V] = {
     val r = RDCSS_READ_ROOT()
@@ -874,6 +904,8 @@ final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater
    *  the `snapshot` method, but the obtained snapshot cannot be modified.
    *
    *  This method is used by other methods such as `size` and `iterator`.
+   *
+   *  @return an immutable read-only snapshot of this map
    */
   @tailrec def readOnlySnapshot(): scala.collection.Map[K, V] = {
     val r = RDCSS_READ_ROOT()

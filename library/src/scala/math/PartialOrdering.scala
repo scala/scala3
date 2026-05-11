@@ -38,6 +38,8 @@ import scala.language.`2.13`
  *  `lteq(x, y) && lteq(y, x) == **true**`. This equivalence relation is
  *  exposed as the `equiv` method, inherited from the
  *  [[scala.math.Equiv Equiv]] trait.
+ *
+ *  @tparam T the type of elements being ordered
  */
 
 trait PartialOrdering[T] extends Equiv[T] {
@@ -49,26 +51,47 @@ trait PartialOrdering[T] extends Equiv[T] {
    *  - `r < 0`    iff    `x < y`
    *  - `r == 0`   iff    `x == y`
    *  - `r > 0`    iff    `x > y`
+   *
+   *  @param x the first element to compare
+   *  @param y the second element to compare
    */
   def tryCompare(x: T, y: T): Option[Int]
 
-  /** Returns `**true**` iff `x` comes before `y` in the ordering. */
+  /** Returns `**true**` iff `x` comes before `y` in the ordering.
+   *
+   *  @param x the first element to compare
+   *  @param y the second element to compare
+   */
   def lteq(x: T, y: T): Boolean
 
-  /** Returns `**true**` iff `y` comes before `x` in the ordering. */
+  /** Returns `**true**` iff `y` comes before `x` in the ordering.
+   *
+   *  @param x the first element to compare
+   *  @param y the second element to compare
+   */
   def gteq(x: T, y: T): Boolean = lteq(y, x)
 
   /** Returns `**true**` iff `x` comes before `y` in the ordering
    *  and is not the same as `y`.
+   *
+   *  @param x the first element to compare
+   *  @param y the second element to compare
    */
   def lt(x: T, y: T): Boolean = lteq(x, y) && !equiv(x, y)
 
   /** Returns `**true**` iff `y` comes before `x` in the ordering
    *  and is not the same as `x`.
+   *
+   *  @param x the first element to compare
+   *  @param y the second element to compare
    */
   def gt(x: T, y: T): Boolean = gteq(x, y) && !equiv(x, y)
 
-  /** Returns `**true**` iff `x` is equivalent to `y` in the ordering. */
+  /** Returns `**true**` iff `x` is equivalent to `y` in the ordering.
+   *
+   *  @param x the first element to compare
+   *  @param y the second element to compare
+   */
   def equiv(x: T, y: T): Boolean = lteq(x,y) && lteq(y,x)
 
   def reverse : PartialOrdering[T] = new PartialOrdering[T] {

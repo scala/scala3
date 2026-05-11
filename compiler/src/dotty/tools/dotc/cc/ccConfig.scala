@@ -54,7 +54,7 @@ object ccConfig:
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using ctx: Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.9`)
 
   /** Allow @use annotations */
   def allowUse(using Context): Boolean =
@@ -65,6 +65,6 @@ object ccConfig:
    *  Enabled under separation checking
    */
   def strictMutability(using Context): Boolean =
-    Feature.enabled(Feature.separationChecking)
+    Feature.enabled(Feature.separationChecking) || Feature.enabled(Feature.safe)
 
 end ccConfig

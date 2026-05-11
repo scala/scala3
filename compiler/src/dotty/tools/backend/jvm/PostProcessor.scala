@@ -1,24 +1,34 @@
 package dotty.tools.backend.jvm
 
 import java.util.concurrent.ConcurrentHashMap
-
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
+
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
+import dotty.tools.backend.jvm.opt.*
+import dotty.tools.dotc.report
+
+import scala.tools.asm
 
 /**
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val ts: CoreBTypes)(using Context) {
+class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
+                    private val byteCodeRepository: BCodeRepository, private val bTypesFromClassfile: BTypesFromClassfile,
+                    private val backendUtils: BackendUtils, private val ts: CoreBTypes)(using Context) {
 
-  private val backendUtils        = new BackendUtils(frontendAccess, ts)
+  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, ts)
+  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile)
+  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
+  private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, inliner, ts, bTypesFromClassfile)
   val classfileWriters            = new ClassfileWriters(frontendAccess)
-  val classfileWriter             = classfileWriters.ClassfileWriter()
+  val classfileWriter             = classfileWriters.ClassfileWriter(frontendAccess.compilerSettings.mainClass)
 
 
   private type ClassnamePosition = (String, SourcePosition)
@@ -29,22 +39,23 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
     val internalName = classNode.name.nn
     val bytes =
       try
-        if !clazz.isArtifact then setSerializableLambdas(classNode)
+        if !clazz.isArtifact then
+          localOpt.methodOptimizations(classNode)
+          setSerializableLambdas(classNode)
         warnCaseInsensitiveOverwrite(clazz)
         setInnerClasses(classNode)
         serializeClass(classNode)
       catch
         case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
-          frontendAccess.backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
+          report.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
-        case ex: Throwable =>
+        case ex: Exception =>
           if frontendAccess.compilerSettings.debug then ex.printStackTrace()
-          frontendAccess.backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
+          report.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
     if bytes != null then
-      if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
-        AsmUtils.traceClass(bytes)
+      TraceUtils.traceSerializedClassIfRequested(internalName, bytes)
       val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
       clazz.onFileCreated(clsFile)
   }
@@ -53,6 +64,24 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
     val GeneratedTasty(classNode, tastyGenerator) = tasty
     val internalName = classNode.name.nn
     classfileWriter.writeTasty(classNode.name.nn, tastyGenerator(), sourceFile)
+  }
+
+  def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
+    // add classes to the bytecode repo before building the call graph: the latter needs to
+    // look up classes and methods in the code repo.
+    for u <- generatedUnits
+        c <- u.classes
+    do
+      byteCodeRepository.add(c.classNode, Some(u.sourceFile.canonicalPath))
+    for u <- generatedUnits
+        c <- u.classes
+        if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
+    do
+      callGraph.addClass(c.classNode)
+    if frontendAccess.compilerSettings.optInlinerEnabled then
+      inliner.runInlinerAndClosureOptimizer()
+    else if frontendAccess.compilerSettings.optClosureInvocations then
+      closureOptimizer.rewriteClosureApplyInvocations(None, scala.collection.mutable.Map.empty)
   }
 
   private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
@@ -71,10 +100,10 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
           else s" (defined in ${pos2.source.file.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
-          frontendAccess.backendReporting.error(
+          report.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
         else
-          frontendAccess.backendReporting.warning(
+          report.warning(
             em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
                 |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
     }
@@ -95,7 +124,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
-    val cw = new ClassWriterWithBTypeLub(backendUtils.extraProc)
+    val cw = new ClassWriterWithBTypeLub(asm.ClassWriter.COMPUTE_MAXS | asm.ClassWriter.COMPUTE_FRAMES)
     classNode.accept(cw)
     cw.toByteArray.nn
   }
@@ -119,9 +148,9 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, private val
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
       // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
-      val a = ts.classBTypeFromInternalName(inameA)
-      val b = ts.classBTypeFromInternalName(inameB)
-      val lub = a.jvmWiseLUB(b).get
+      val a = ts.classBTypeFromInternalName(inameA).get
+      val b = ts.classBTypeFromInternalName(inameB).get
+      val lub = a.jvmWiseLUB(b)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.

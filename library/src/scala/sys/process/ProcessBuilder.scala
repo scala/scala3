@@ -145,6 +145,8 @@ trait ProcessBuilder extends Source with Sink {
   /** Starts the process represented by this builder, blocks until it exits, and
    *  returns the output as a String.  Standard error is sent to the provided
    *  ProcessLogger.  If the exit code is non-zero, an exception is thrown.
+   *
+   *  @param log the `ProcessLogger` to receive standard error output
    */
   def !!(log: ProcessLogger): String
 
@@ -159,6 +161,8 @@ trait ProcessBuilder extends Source with Sink {
    *  returns the output as a String.  Standard error is sent to the provided
    *  ProcessLogger.  If the exit code is non-zero, an exception is thrown.  The
    *  newly started process reads from standard input of the current process.
+   *
+   *  @param log the `ProcessLogger` to receive standard error output
    */
   def !!<(log: ProcessLogger): String
 
@@ -178,6 +182,8 @@ trait ProcessBuilder extends Source with Sink {
    *  Standard error is sent to the console.  If the process exits
    *  with a non-zero value, the `LazyList` will provide all lines up to termination
    *  and then throw an exception.
+   *
+   *  @param capacity the maximum number of lines to buffer before blocking the producer
    */
   def lazyLines(capacity: Integer): LazyList[String]
 
@@ -186,6 +192,8 @@ trait ProcessBuilder extends Source with Sink {
    *  completed.  Standard error is sent to the provided `ProcessLogger`.  If the
    *  process exits with a non-zero value, the `LazyList` will provide all lines up
    *  to termination and then throw an exception.
+   *
+   *  @param log the `ProcessLogger` to receive standard error output
    */
   def lazyLines(log: ProcessLogger): LazyList[String]
 
@@ -197,6 +205,9 @@ trait ProcessBuilder extends Source with Sink {
    *  Standard error is sent to the provided `ProcessLogger`.  If the
    *  process exits with a non-zero value, the `LazyList` will provide all lines up
    *  to termination and then throw an exception.
+   *
+   *  @param log the `ProcessLogger` to receive standard error output
+   *  @param capacity the maximum number of lines to buffer before blocking the producer
    */
   def lazyLines(log: ProcessLogger, capacity: Integer): LazyList[String]
 
@@ -216,6 +227,8 @@ trait ProcessBuilder extends Source with Sink {
    *  Standard error is sent to the console. If the process exits
    *  with a non-zero value, the `LazyList` will provide all lines up to termination
    *  but will not throw an exception.
+   *
+   *  @param capacity the maximum number of lines to buffer before blocking the producer
    */
   def lazyLines_!(capacity: Integer): LazyList[String]
 
@@ -224,6 +237,8 @@ trait ProcessBuilder extends Source with Sink {
    *  completed.  Standard error is sent to the provided `ProcessLogger`. If the
    *  process exits with a non-zero value, the `LazyList` will provide all lines up
    *  to termination but will not throw an exception.
+   *
+   *  @param log the `ProcessLogger` to receive standard error output
    */
   def lazyLines_!(log: ProcessLogger): LazyList[String]
 
@@ -235,6 +250,9 @@ trait ProcessBuilder extends Source with Sink {
    *  Standard error is sent to the provided `ProcessLogger`. If the
    *  process exits with a non-zero value, the `LazyList` will provide all lines up
    *  to termination but will not throw an exception.
+   *
+   *  @param log the `ProcessLogger` to receive standard error output
+   *  @param capacity the maximum number of lines to buffer before blocking the producer
    */
   def lazyLines_!(log: ProcessLogger, capacity: Integer): LazyList[String]
 
@@ -330,6 +348,8 @@ trait ProcessBuilder extends Source with Sink {
   /** Starts the process represented by this builder, blocks until it exits, and
    *  returns the exit code.  Standard output and error are sent to the given
    *  ProcessLogger.
+   *
+   *  @param log the `ProcessLogger` to receive standard output and error
    */
   def !(log: ProcessLogger): Int
 
@@ -343,53 +363,82 @@ trait ProcessBuilder extends Source with Sink {
    *  returns the exit code.  Standard output and error are sent to the given
    *  ProcessLogger.  The newly started process reads from standard input of the
    *  current process.
+   *
+   *  @param log the `ProcessLogger` to receive standard output and error
    */
   def !<(log: ProcessLogger): Int
 
   /** Starts the process represented by this builder.  Standard output and error
    *  are sent to the console.
+   *
+   *  @return the started `Process`
    */
   def run(): Process
 
   /** Starts the process represented by this builder.  Standard output and error
    *  are sent to the given ProcessLogger.
+   *
+   *  @param log the `ProcessLogger` to receive standard output and error
+   *  @return the started `Process`
    */
   def run(log: ProcessLogger): Process
 
   /** Starts the process represented by this builder.  I/O is handled by the
    *  given ProcessIO instance.
+   *
+   *  @param io the `ProcessIO` that handles the process's standard input, output, and error streams
+   *  @return the started `Process`
    */
   def run(io: ProcessIO): Process
 
   /** Starts the process represented by this builder.  Standard output and error
    *  are sent to the console.  The newly started process reads from standard
    *  input of the current process if `connectInput` is true.
+   *
+   *  @param connectInput whether to connect the process's standard input to the current process's stdin
+   *  @return the started `Process`
    */
   def run(connectInput: Boolean): Process
 
   /** Starts the process represented by this builder.  Standard output and error
    *  are sent to the given ProcessLogger.  The newly started process reads from
    *  standard input of the current process if `connectInput` is true.
+   *
+   *  @param log the `ProcessLogger` to receive standard output and error
+   *  @param connectInput whether to connect the process's standard input to the current process's stdin
+   *  @return the started `Process`
    */
   def run(log: ProcessLogger, connectInput: Boolean): Process
 
   /** Constructs a command that runs this command first and then `other` if this
    *  command succeeds.
+   *
+   *  @param other the command to run if this one returns an exit code of zero
+   *  @return a new `ProcessBuilder` that sequences this and `other` conditionally
    */
   def #&& (other: ProcessBuilder): ProcessBuilder
 
   /** Constructs a command that runs this command first and then `other` if this
    *  command does not succeed.
+   *
+   *  @param other the command to run if this one returns a non-zero exit code
+   *  @return a new `ProcessBuilder` that sequences this and `other` conditionally
    */
   def #|| (other: ProcessBuilder): ProcessBuilder
 
   /** Constructs a command that will run this command and pipes the output to
    *  `other`.  `other` must be a simple command.
+   *
+   *  @param other the command to receive the output of this process as its input
+   *  @return a new `ProcessBuilder` that pipes output from this to `other`
    */
   def #| (other: ProcessBuilder): ProcessBuilder
 
   /** Constructs a command that will run this command and then `other`.  The
    *  exit code will be the exit code of `other`.
+   *
+   *  @param other the command to run after this one, regardless of exit code
+   *  @return a new `ProcessBuilder` that sequences this and `other` unconditionally
    */
   def ### (other: ProcessBuilder): ProcessBuilder
 
@@ -417,16 +466,32 @@ object ProcessBuilder extends ProcessBuilderImpl {
    *  [[scala.sys.process.ProcessBuilder.Sink]] from a file.
    */
   trait FileBuilder extends Sink with Source {
-    /** Appends the contents of a `java.io.File` to this file. */
+    /** Appends the contents of a `java.io.File` to this file.
+     *
+     *  @param f the file whose contents will be appended
+     *  @return a `ProcessBuilder` that appends `f` to this file when run
+     */
     def #<<(f: File): ProcessBuilder
 
-    /** Appends the contents from a `java.net.URL` to this file. */
+    /** Appends the contents from a `java.net.URL` to this file.
+     *
+     *  @param u the URL whose contents will be appended
+     *  @return a `ProcessBuilder` that appends `u` to this file when run
+     */
     def #<<(u: URL): ProcessBuilder
 
-    /** Appends the contents of a `java.io.InputStream` to this file. */
+    /** Appends the contents of a `java.io.InputStream` to this file.
+     *
+     *  @param i the input stream whose contents will be appended
+     *  @return a `ProcessBuilder` that appends `i` to this file when run
+     */
     def #<<(i: => InputStream): ProcessBuilder
 
-    /** Appends the contents of a [[scala.sys.process.ProcessBuilder]] to this file. */
+    /** Appends the contents of a [[scala.sys.process.ProcessBuilder]] to this file.
+     *
+     *  @param p the process builder whose output will be appended
+     *  @return a `ProcessBuilder` that appends `p`'s output to this file when run
+     */
     def #<<(p: ProcessBuilder): ProcessBuilder
   }
 
@@ -436,19 +501,34 @@ object ProcessBuilder extends ProcessBuilderImpl {
   trait Source {
     protected def toSource: ProcessBuilder
 
-    /** Writes the output stream of this process to the given file. */
+    /** Writes the output stream of this process to the given file.
+     *
+     *  @param f the file to write the output to
+     *  @return a `ProcessBuilder` that redirects output to `f`
+     */
     def #> (f: File): ProcessBuilder = toFile(f, append = false)
 
-    /** Appends the output stream of this process to the given file. */
+    /** Appends the output stream of this process to the given file.
+     *
+     *  @param f the file to append the output to
+     *  @return a `ProcessBuilder` that appends output to `f`
+     */
     def #>> (f: File): ProcessBuilder = toFile(f, append = true)
 
     /** Writes the output stream of this process to the given OutputStream. The
      *  argument is call-by-name, so the stream is recreated, written, and closed each
      *  time this process is executed.
+     *
+     *  @param out the output stream to write to, created anew for each execution
+     *  @return a `ProcessBuilder` that redirects output to `out`
      */
     def #>(out: => OutputStream): ProcessBuilder = #> (new OStreamBuilder(out, "<output stream>"))
 
-    /** Writes the output stream of this process to a [[scala.sys.process.ProcessBuilder]]. */
+    /** Writes the output stream of this process to a [[scala.sys.process.ProcessBuilder]].
+     *
+     *  @param b the process builder to receive this process's output as input
+     *  @return a `ProcessBuilder` that pipes output to `b`
+     */
     def #>(b: ProcessBuilder): ProcessBuilder = new PipedBuilder(toSource, b, toError = false)
 
     /** Returns a [[scala.sys.process.ProcessBuilder]] representing this `Source`. */
@@ -462,19 +542,34 @@ object ProcessBuilder extends ProcessBuilderImpl {
   trait Sink {
     protected def toSink: ProcessBuilder
 
-    /** Reads the given file into the input stream of this process. */
+    /** Reads the given file into the input stream of this process.
+     *
+     *  @param f the file to read from as input
+     *  @return a `ProcessBuilder` that reads input from `f`
+     */
     def #< (f: File): ProcessBuilder = #< (new FileInput(f))
 
-    /** Reads the given URL into the input stream of this process. */
+    /** Reads the given URL into the input stream of this process.
+     *
+     *  @param f the `URL` to read from as input
+     *  @return a `ProcessBuilder` that reads input from `f`
+     */
     def #< (f: URL): ProcessBuilder = #< (new URLInput(f))
 
     /** Reads the given InputStream into the input stream of this process. The
      *  argument is call-by-name, so the stream is recreated, read, and closed each
      *  time this process is executed.
+     *
+     *  @param in the input stream to read from, created anew for each execution
+     *  @return a `ProcessBuilder` that reads input from `in`
      */
     def #<(in: => InputStream): ProcessBuilder = #< (new IStreamBuilder(in, "<input stream>"))
 
-    /** Reads the output of a [[scala.sys.process.ProcessBuilder]] into the input stream of this process. */
+    /** Reads the output of a [[scala.sys.process.ProcessBuilder]] into the input stream of this process.
+     *
+     *  @param b the process builder whose output will be used as input to this process
+     *  @return a `ProcessBuilder` that pipes `b`'s output to this process
+     */
     def #<(b: ProcessBuilder): ProcessBuilder = new PipedBuilder(b, toSink, toError = false)
   }
 }

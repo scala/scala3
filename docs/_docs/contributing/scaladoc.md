@@ -46,21 +46,15 @@ More information about specific scaladoc flags you can find inside [Usage docs](
 
 ## Developing
 
-For every PR named with prefix `scaladoc/`, we build documentation for scaladoc and Dotty. For example, for
-PR `scaladoc/update-docs` you can find them at:
-
-- <https://scala3doc.virtuslab.com/pr-update-docs/self/main/index.html>
-- <https://scala3doc.virtuslab.com/pr-update-docs/scala3/main/index.html>
-- <https://scala3doc.virtuslab.com/pr-update-docs/testcases/main/index.html>
-
-Note that these correspond to the contents of `output` directory - that's
-precisely what they are.
-
-You can also find the result of building the same sites for latest `master` at:
-
-- <https://scala3doc.virtuslab.com/master/self/main/index.html>
-- <https://scala3doc.virtuslab.com/master/scala3/main/index.html>
-- <https://scala3doc.virtuslab.com/master/testcases/main/index.html>
+For every PR named with prefix `scaladoc/`, we build documentation for scaladoc and Dotty.
+These can be build locally using:
+```sh
+sbt scaladoc/generateSelfDocumentation
+sbt scaladoc/generateTestcasesDocumentation
+sbt scaladoc/generateScalaDocumentation
+sbt scaladoc/generateReferenceDocumentation
+```
+Note that these correspond to the contents of `output` directory.
 
 You can run the Scaladoc tool from the sbt prompt as a user would run it
 with `scaladoc/run`, passing `-d <directory>` and some `.tasty` files as
@@ -140,4 +134,4 @@ Tasty Reflect is the dedicated way in Scala 3 of accessing this information.
 
 ## Credits
 
-- [Flatart](https://www.iconfinder.com/Flatart) - Gitter icon
+- Flatart - Gitter icon
