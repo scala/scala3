@@ -75,7 +75,11 @@ class TreeChecker extends Phase with SymTransformer {
         sym.isRefinementClass
 
       assert(validSuperclass, i"$sym has no superclass set")
-      testDuplicate(sym, seenClasses, "class")
+
+       // Multiple references to specialized traits will specialize multiple times, but they lead to the same
+       // interface and implementation classes every time, so we can allow duplicates and pick one arbitrarily.  
+      if !(sym.isSpecializedTraitInterface || sym.isSpecializedTraitImplementationClass) then
+        testDuplicate(sym, seenClasses, "class")
     }
 
     val badDeferredAndPrivate =
