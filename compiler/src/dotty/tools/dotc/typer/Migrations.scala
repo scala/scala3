@@ -107,8 +107,13 @@ trait Migrations:
    */
   def contextBoundParams(tree: Tree, tp: Type, pt: FunProto)(using Context): Unit =
     val mversion = mv.ExplicitContextBoundArgument
+    // Context bounds in `-source:3.6+` already desugar to a `using` clause, so the
+    // method type is `ContextualMethodType`. The `ImplicitParamsWithoutUsing`
+    // migration (handled by `implicitParams` below) covers calling those positionally;
+    // emitting the older `ExplicitContextBoundArgument` migration here would be a
+    // hard error past `3.5` and prevent the rewrite from being applied. See #26003.
     def isContextBoundParams = tp.stripPoly match
-      case MethodType(ContextBoundParamName(_) :: _) => true
+      case mt @ MethodType(ContextBoundParamName(_) :: _) if !mt.isContextualMethod => true
       case _ => false
     if sourceVersion.isAtLeast(`3.4`)
       && isContextBoundParams
@@ -134,7 +139,12 @@ trait Migrations:
   /** Report implicit parameter lists and rewrite implicit parameter list to contextual params */
   def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
     val mversion = mv.ImplicitParamsWithoutUsing
-    if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty && pt.args.head.span.exists then
+    // Fire for old-style `implicit` parameter lists (ImplicitMethodType) and also
+    // for `using` clauses (ContextualMethodType) that are passed positional arguments.
+    // The latter covers methods with desugared context bounds (e.g. `def f[A: B]`)
+    // that under -source:3.6+ become `using` clauses but were previously legal to
+    // call without `using`. See issue #26003.
+    if tp.isImplicitMethod && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty && pt.args.head.span.exists then
       // The application can only be rewritten if it uses parentheses syntax.
       // See issue #22927 and related tests.
       val hasParentheses = checkParentheses(tree, pt)

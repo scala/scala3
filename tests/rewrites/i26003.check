@@ -1,0 +1,23 @@
+//> using options -source 3.7-migration
+
+// https://github.com/scala/scala3/issues/26003
+
+trait Schema[A]
+object Schema:
+  case class Tuple2[A, B](left: Schema[A], right: Schema[B]) extends Schema[(A, B)]
+
+trait JdbcEncoder[-A]
+object JdbcEncoder:
+  implicit val intEncoder: JdbcEncoder[Int] = new JdbcEncoder[Int] {}
+  implicit val stringEncoder: JdbcEncoder[String] = new JdbcEncoder[String] {}
+  implicit val byteChunkEncoder: JdbcEncoder[Array[Byte]] = new JdbcEncoder[Array[Byte]] {}
+  implicit val uuidEncoder: JdbcEncoder[java.util.UUID] = new JdbcEncoder[java.util.UUID] {}
+  implicit def tuple2Encoder[A: JdbcEncoder, B: JdbcEncoder]: JdbcEncoder[(A, B)] = new JdbcEncoder[(A, B)] {}
+
+trait JdbcEncoder0LowPriorityImplicits:
+  self =>
+  def fromSchema[A](implicit schema: Schema[A]): JdbcEncoder[A] =
+    schema match
+      case Schema.Tuple2(left, right) =>
+        JdbcEncoder.tuple2Encoder(using self.fromSchema(using left), self.fromSchema(using right))
+      case _ => null

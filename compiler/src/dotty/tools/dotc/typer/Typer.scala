@@ -5235,15 +5235,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  This is the case if
    *   - both are contextual, or
    *   - neither is contextual, or
-   *   - the prototype is contextual and the method type is implicit.
-   *  The last rule is there for a transition period; it allows to mix `with` applications
-   *  with old-style context functions.
+   *   - the prototype is contextual and the method type is implicit, or
+   *   - the prototype passes positional arguments to a contextual method while
+   *     the `ImplicitParamsWithoutUsing` migration is active (so we can warn and
+   *     rewrite the call site to insert `using`, see issue #26003).
+   *  The last two rules are there for a transition period; they allow to mix
+   *  `with` applications with old-style context functions, respectively allow
+   *  to migrate Scala 2 / pre-3.6 code that calls a method with context bound
+   *  parameters positionally.
    *  Overridden in `ReTyper`, where all applications are treated the same
    */
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean =
     val isUsingApply = pt.applyKind == ApplyKind.Using
     methType.isContextualMethod == isUsingApply
     || methType.isImplicitMethod && isUsingApply // for a transition allow `using` arguments for regular implicit parameters
+    || methType.isContextualMethod && !isUsingApply
+       && pt.args.nonEmpty && pt.args.head.span.exists
+       && !methType.resType.isInstanceOf[MethodOrPoly] // only when the `using` clause is the final parameter list
+       && methType.paramNames.forall(_.is(ContextBoundParamName)) // only context-bound parameters (legacy Scala 2 style)
+       && MigrationVersion.ImplicitParamsWithoutUsing.needsPatch
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for
