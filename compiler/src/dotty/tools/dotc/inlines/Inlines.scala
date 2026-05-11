@@ -1049,7 +1049,7 @@ object Inlines:
 
         val symbolMap = mutable.Map[Symbol, Symbol]()
         // TODO make version of inlined that does not return bindings?
-        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parentSym.span), Nil, inlined(rhs)._2).withSpan(parent.span) // TODO: This inlines also calls to inline defs that were made in the inline trait body, is that desirable? 
+        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parentSym.span), Nil, inlined(rhs)._2.withSpan(parent.span).cloneIn(parentSym.source)).withSpan(parent.span) // TODO: This inlines also calls to inline defs that were made in the inline trait body, is that desirable? 
         
         // In case of nested inline trait inlines, because BodyAnnotation is out of date,
         // body inlined misses nested expansion, but we have the symbols for the items that should be there
