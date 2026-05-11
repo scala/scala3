@@ -34,7 +34,9 @@ object GenericSignatures {
    */
   def javaSig(sym0: Symbol, info: Type)(using Context): StringBuilder | Null =
     // Avoid generating a signature for non-class local symbols.
-    if (sym0.isLocal && !sym0.isClass) || (sym0.isField && info.isPrimitiveValueType) then null
+    // TODO: why does isPrimitiveValueType throw an assertionerror for, e.g., MethodType(List(), List(), TypeRef(ThisType(TypeRef(ThisType(TypeRef(NoPrefix,module class ast)),module class Trees$)),class Thicket)) in in union dotty.tools.dotc.ast.Trees.Apply[dotty.tools.dotc.core.Types.Type] | (): dotty.tools.dotc.ast.Trees.Thicket
+    // (and more generally, it could do less work...)
+    if (sym0.isLocal && !sym0.isClass) || (sym0.isField && !info.isInstanceOf[AndOrType] && info.isPrimitiveValueType) then null
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
   private final def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder = {
