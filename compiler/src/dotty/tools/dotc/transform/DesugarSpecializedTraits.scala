@@ -503,6 +503,17 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
                 report.error(s"${tr.typeSymbol} used in a Specialized position, so it must be marked as Specialized at its definition.", tr.denot.symbol.srcPos)
             specializations
           }
+        
+        case app @ Apply(_, _) => tpd.methPart(app) match { // class / object Bar extends Foo[Int](params)
+          case fun @ Select(New(tpt), init) if fun.symbol.isConstructor => tpd.allArgss(tree) match {
+              case typeArgs :: valueArgss => 
+                val spec = Specialization(fun.symbol.owner, typeArgs, app.span)
+                if spec.isSpecialized then specializations.addInterface(spec) else specializations
+              case _ => specializations
+            }
+          case _ => specializations
+        }
+
         case _ => specializations
       )
     })
