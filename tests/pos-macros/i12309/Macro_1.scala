@@ -12,7 +12,7 @@ object TestMacro {
       val result: String = "xxx"
       result
     }.asTerm
-    val resultDefSymbol = Symbol.newMethod(Symbol.spliceOwner, "getResult", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[String]))
+    val resultDefSymbol = Symbol.newMethod(Symbol.spliceOwner, "$anonfun$getResult", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[String]))
     val resultDef = DefDef(resultDefSymbol, { case _ => Some(resultDefBody().changeOwner(resultDefSymbol)) })
     val resultExpr = Block(List(resultDef), Closure(Ref(resultDefSymbol), None)).asExprOf[() => String]
 
