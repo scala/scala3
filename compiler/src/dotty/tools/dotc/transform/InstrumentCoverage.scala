@@ -73,14 +73,16 @@ object LiftCoverage extends LiftImpure:
     if liftingArgs then noLiftArg(expr)
     else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
 
-  /** Preserve singleton precision for lifted coverage temps when the underlying value is a
-   *  compile-time constant (same notion ConstFold uses), so constant re-folding after lifting
-   *  still matches the original inferred singleton type. Everything else uses the base widen.
+  /** Preserve precision for lifted coverage temps when widening would break later checks:
+   *  compile-time constants need their singleton type, and capture-converted types need
+   *  their local TypeBox#CAP references.
    */
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
-    val dealiased = expr.tpe.dealias.deskolemized
-    dealiased.widenTermRefExpr.normalized.simplified match
-      case _: ConstantType => dealiased
+    val dealiased = expr.tpe.dealias
+    val deskolemized = dealiased.deskolemized
+    deskolemized.widenTermRefExpr.normalized.simplified match
+      case _: ConstantType => deskolemized
+      case _ if dealiased.existsPart(_.typeSymbol == defn.TypeBox_CAP) => dealiased
       case _ => super.liftedExprType(expr)
 
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
