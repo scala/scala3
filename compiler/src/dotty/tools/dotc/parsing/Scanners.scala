@@ -369,7 +369,7 @@ object Scanners {
         }
       case OUTDENT =>
         currentRegion match
-          case r: Indented => currentRegion = r.enclosing
+          case r: Indented if !r.isOutermost => currentRegion = r.enclosing
           case _ =>
       case STRINGLIT =>
         currentRegion match {
