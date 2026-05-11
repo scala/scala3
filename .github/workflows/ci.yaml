@@ -126,7 +126,7 @@ jobs:
 
       # Extract the release tag
       - name: Extract the release tag
-        run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
+        run : echo "RELEASE_TAG='${GITHUB_REF#*refs/tags/}'" >> $GITHUB_ENV
 
       - name: Check compiler version
         shell: bash
