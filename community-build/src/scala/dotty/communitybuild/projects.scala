@@ -823,7 +823,6 @@ def allProjects = List(
   projects.libretto,
   projects.jacksonModuleScala,
   projects.specs2,
-  projects.coop,
   projects.spire,
   projects.http4s,
   projects.parboiled2,
