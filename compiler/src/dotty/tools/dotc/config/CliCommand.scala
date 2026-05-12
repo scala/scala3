@@ -60,7 +60,7 @@ trait CliCommand:
         case _: Int | _: String => s.default.toString
         case _ => ""
       val deprecationMessage = s.deprecation.map(d => s"Option deprecated.\n${d.msg}").getOrElse("")
-      val info = List(deprecationMessage, shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices : ${s.legalChoices}" else "")
+      val info = List(deprecationMessage, shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices: ${s.legalChoices}" else "")
       (s.name, info.filter(_.nonEmpty).mkString("\n"))
     end help
 

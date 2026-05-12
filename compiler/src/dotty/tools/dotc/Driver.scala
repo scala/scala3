@@ -101,7 +101,7 @@ class Driver {
               case badReporter => report.error:
                 em"Not a reporter: ${ctx.settings.Yreporter.value}"
             catch case e: ReflectiveOperationException => report.error:
-              em"Could not create reporter ${ctx.settings.Yreporter.value}: ${e}"
+              em"Could not create reporter ${ctx.settings.Yreporter.value}: $e"
   }
 
   /** Setup extra classpath of tasty and jar files */

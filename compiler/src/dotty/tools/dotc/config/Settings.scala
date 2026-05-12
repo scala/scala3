@@ -136,7 +136,7 @@ object Settings:
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
-      case _: T => state.update(idx, x)
+      case "help" | _: T => state.update(idx, x) // always ok to store "help" because we'll exit after printing help text
       case _ => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: $ct")
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
@@ -255,7 +255,8 @@ object Settings:
           val msg = s"missing argument for option $name"
           if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored", args) else state.fail(msg, args)
 
-        if ct == BooleanTag then setBoolean(argRest, args)
+        if argRest == "help" then update(argRest, argRest, args)
+        else if ct == BooleanTag then setBoolean(argRest, args)
         else if ct == OptionTag then update(Some(propertyClass.get.getConstructor().newInstance()), "", args)
         else
           // `-option:v` or `-option v`
