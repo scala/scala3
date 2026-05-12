@@ -753,14 +753,16 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =
-      def isSecondaryCtorDelegateCall: Boolean = tree.fun match
+      def isSecondaryCtorDelegateCall(fun: Tree): Boolean = fun match
         case Select(This(_), nme.CONSTRUCTOR) => true
+        case Apply(fn, _)                     => isSecondaryCtorDelegateCall(fn)
+        case TypeApply(fn, _)                 => isSecondaryCtorDelegateCall(fn)
         case _                                => false
 
       val sym = tree.symbol
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
-      && !(sym.isClassConstructor && isSecondaryCtorDelegateCall)
+      && !(sym.isClassConstructor && isSecondaryCtorDelegateCall(tree.fun))
       && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>
