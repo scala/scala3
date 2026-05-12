@@ -1700,7 +1700,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(params: List[ValDef]): TermParamClause =
         if xCheckMacro then
           val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
-          xCheckMacroAssert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
+          xCheckMacroAssert(implicitParams == 0 || implicitParams == params.size, "Expected all or none of parameters to be implicit")
         params
       def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x)
     end TermParamClause
