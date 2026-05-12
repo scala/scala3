@@ -195,10 +195,10 @@ object TreeChecker {
     }
   }.apply(tp0)
 
-  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree])(using Context): Unit =
+  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree], assertionFunc: (Boolean, String) => Unit)(using Context): Unit =
     val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
     val treeParents = parents.map(_.tpe.dealias.typeSymbol)
-    assert(symbolParents == treeParents,
+    assertionFunc(symbolParents == treeParents,
       i"""Parents of class symbol differs from the parents in the tree for $sym
           |
           |Parents in symbol: $symbolParents
@@ -576,7 +576,7 @@ object TreeChecker {
       assert(ctx.owner.isClass)
       val sym = ctx.owner.asClass
       if !sym.isPrimitiveValueClass then
-        TreeChecker.checkParents(sym, impl.parents)
+        TreeChecker.checkParents(sym, impl.parents, assert)
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
