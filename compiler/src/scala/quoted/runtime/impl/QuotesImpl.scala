@@ -281,7 +281,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
 
       def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) = {
-        if xCheckMacro then TreeChecker.checkParents(module.moduleClass.asClass, parents)
+        if xCheckMacro then TreeChecker.checkParents(module.moduleClass.asClass, parents, xCheckMacroAssert)
         val cls = module.moduleClass
         val clsDef = ClassDef(cls, parents, body)
         val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
@@ -1700,7 +1700,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(params: List[ValDef]): TermParamClause =
         if xCheckMacro then
           val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
-          assert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
+          xCheckMacroAssert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
         params
       def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x)
     end TermParamClause
@@ -2882,7 +2882,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         cls
 
       def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
-        assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        xCheckMacroAssert!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
         val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
           owner,
           name.toTermName,
@@ -3557,7 +3557,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         // start stack trace at the place where the user called the reflection method
         error.setStackTrace(
           error.getStackTrace
-            .dropWhile(_.getClassName().startsWith("scala.quoted.runtime.impl")))
+            .dropWhile(l => l.getClassName().startsWith("scala.quoted.runtime.impl") || l.getClassName().startsWith("dotty.tools.dotc")))
       throw error
 
     object Printer extends PrinterModule:
