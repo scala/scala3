@@ -15,7 +15,7 @@ trait Collection:
 
     /** Returns `true` iff `self` is empty. */
     def isEmpty: Boolean =
-      startPosition `eq` endPosition
+      startPosition eq endPosition
 
     /** Returns the number of elements in `self`.
       *
@@ -25,7 +25,7 @@ trait Collection:
     def count: Int =
       val e = endPosition
       def loop(p: Position, n: Int): Int =
-        if p `eq` e then n else loop(self.positionAfter(p), n + 1)
+        if p eq e then n else loop(self.positionAfter(p), n + 1)
       loop(startPosition, 0)
 
     /** Returns the position of `self`'s first element', or `endPosition` if `self` is empty.
@@ -70,12 +70,12 @@ trait Collection:
       */
     def isBefore(i: Position, j: Position): Boolean =
       val e = self.endPosition
-      if i `eq` e then false
-      else if j `eq` e then true
+      if i eq e then false
+      else if j eq e then true
       else
         def recur(n: Position): Boolean =
-          if n `eq` j then true
-          else if n `eq` e then false
+          if n eq j then true
+          else if n eq e then false
           else recur(self.positionAfter(n))
         recur(self.positionAfter(i))
 
@@ -110,7 +110,7 @@ extension [Self: Collection](self: Self)
     else
       val p = self.startPosition
       val q = self.positionAfter(p)
-      val t = Slice(self, Range(q, self.endPosition, (a, b) => (a `eq` b) || self.isBefore(a, b)))
+      val t = Slice(self, Range(q, self.endPosition, (a, b) => (a eq b) || self.isBefore(a, b)))
       Some((self.at(p), t))
 
   def headAndTail2: Option[(Self.Element, Self.Slice2)] =
@@ -119,7 +119,7 @@ extension [Self: Collection](self: Self)
     else
       val p = self.startPosition
       val q = self.positionAfter(p)
-      val t = Self.Slice2(self, Range(q, self.endPosition, (a, b) => (a `eq` b) || self.isBefore(a, b)))
+      val t = Self.Slice2(self, Range(q, self.endPosition, (a, b) => (a eq b) || self.isBefore(a, b)))
       Some((self.at(p), t))
 
   /** Applies `combine` on `partialResult` and each element of `self`, in order.
@@ -130,7 +130,7 @@ extension [Self: Collection](self: Self)
   def reduce[T](partialResult: T)(combine: (T, Self.Element) => T): T =
     val e = self.endPosition
     def loop(p: Self.Position, r: T): T =
-      if p `eq` e then r
+      if p eq e then r
       else loop(self.positionAfter(p), combine(r, self.at(p)))
     loop(self.startPosition, partialResult)
 
@@ -146,7 +146,7 @@ extension [Self: Collection](self: Self)
   def forEach(action: Self.Element => Boolean): Boolean =
     val e = self.endPosition
     def loop(p: Self.Position): Boolean =
-      if p `eq` e then true
+      if p eq e then true
       else if !action(self.at(p)) then false
       else loop(self.positionAfter(p))
     loop(self.startPosition)
@@ -194,7 +194,7 @@ extension [Self: Collection](self: Self)
   def firstPositionWhere(predicate: Self.Element => Boolean): Option[Self.Position] =
     val e = self.endPosition
     def loop(p: Self.Position): Option[Self.Position] =
-      if p `eq` e then None
+      if p eq e then None
       else if predicate(self.at(p)) then Some(p)
       else loop(self.positionAfter(p))
     loop(self.startPosition)
@@ -243,7 +243,7 @@ extension [Self: Collection](self: Self)
     else
       val e = self.endPosition
       def loop(p: Self.Position, least: Self.Element): Self.Element =
-        if p `eq` e then
+        if p eq e then
           least
         else
           val x = self.at(p)
@@ -255,9 +255,9 @@ extension [Self: Collection](self: Self)
   /** Returns `true` if `self` contains the same elements as `other`, in the same order. */
   def elementsEqual[T: Collection { type Element = Self.Element } ](other: T): Boolean =
     def loop(i: Self.Position, j: T.Position): Boolean =
-      if i `eq` self.endPosition then
-        j `eq` other.endPosition
-      else if j `eq` other.endPosition then
+      if i eq self.endPosition then
+        j eq other.endPosition
+      else if j eq other.endPosition then
         false
       else if self.at(i) `neq` other.at(j)then
         false
