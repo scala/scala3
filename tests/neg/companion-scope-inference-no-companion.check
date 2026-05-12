@@ -1,0 +1,14 @@
+-- [E006] Not Found Error: tests/neg/companion-scope-inference-no-companion.scala:8:16 ---------------------------------
+8 |  val x: Bare = Foo // error
+  |                ^^^
+  |                Not found: Foo
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/companion-scope-inference-no-companion.scala:12:25 --------------------------------
+12 |  val f: Int => String = NotThere // error
+   |                         ^^^^^^^^
+   |                      Not found: NotThere
+   |
+   |                      Searched expected type `Int => String`'s companion; no term-level member named `NotThere`.
+   |
+   | longer explanation available when compiling with `-explain`

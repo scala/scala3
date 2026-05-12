@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-default-args.scala:19:19 ------------------
+19 |  val r: Int = bar(Cat) // error
+   |                   ^^^
+   |                   Found:    (SameFirstFormal.Cat : String)
+   |                   Required: Animal
+   |
+   |                   Note: `Animal` has a member named `Cat`; qualify as `Animal.Cat` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

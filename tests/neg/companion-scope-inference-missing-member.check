@@ -1,0 +1,8 @@
+-- [E006] Not Found Error: tests/neg/companion-scope-inference-missing-member.scala:13:19 ------------------------------
+13 |  val bad: Color = Purple // error
+   |                   ^^^^^^
+   |                  Not found: Purple - did you mean Tuple?
+   |
+   |                  Searched expected type `MissingMember.Color`'s companion; no term-level member named `Purple`.
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-conversion.scala:22:14 --------------------
+22 |  parseStrict(INFO) // error
+   |              ^^^^
+   | Found:    (Conversion.INFO : Int)
+   | Required: Conversion.ParserLogLevel
+   |
+   | Note: `Conversion.LogLevel` has a member named `INFO`; qualify as `Conversion.LogLevel.INFO` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

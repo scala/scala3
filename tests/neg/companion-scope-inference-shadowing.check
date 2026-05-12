@@ -1,0 +1,4 @@
+-- [E119] Type Error: tests/neg/companion-scope-inference-shadowing.scala:38:6 -----------------------------------------
+38 |  log(Error) // error
+   |      ^^^^^
+   |      Java defined class Error is not a value

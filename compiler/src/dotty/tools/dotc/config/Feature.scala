@@ -41,6 +41,7 @@ object Feature:
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
+  val companionScopeInference = experimental("companionScopeInference")
   val safe = experimental("safe")
 
   val nonViralExperimentalFeatures: Set[TermName] =
@@ -80,6 +81,7 @@ object Feature:
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
+    (companionScopeInference, "Allow companion scope inference: a bare identifier in a target-typed position falls back to the expected type's companion when not in scope"),
     (safe, "Require safe mode"),
   )
 

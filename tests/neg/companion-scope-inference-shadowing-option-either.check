@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-option-either.scala:17:30 -----------------
+17 |  val o: Option[Color] = Some(Red) // error
+   |                              ^^^
+   |Found:    (OptionEitherShadow.Red : Int)
+   |Required: OptionEitherShadow.Color
+   |
+   |Note: `OptionEitherShadow.Color` has a member named `Red`; qualify as `OptionEitherShadow.Color.Red` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-infix.scala:22:35 -------------------------
+22 |  val eq: Boolean = c matchesColor Red // error
+   |                                   ^^^
+   |                   Found:    (Infix.Red : String)
+   |                   Required: Infix.Color
+   |
+   |                   Note: `Infix.Color` has a member named `Red`; qualify as `Infix.Color.Red` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

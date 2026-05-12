@@ -2840,6 +2840,26 @@ trait Applications extends Compatibility {
       case arg :: args1 if !altFormals.exists(_.isEmpty) =>
         def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
         val formalsForArg: List[Type] = altFormals.map(_.head)
+        // SIP-80 companion-inference: when an argument is a bare identifier
+        // and all surviving overload candidates share the same formal at this
+        // position, pre-type the argument with that common formal so
+        // companion-inference (or normal resolution) can resolve it. This
+        // handles the overload-with-default-args case
+        // (`def bar(a: Animal)` together with `def bar(a: Animal, b: Animal
+        // = ...)` — both share `Animal` at position 0, so `bar(Cat)` resolves
+        // cleanly when `Cat` is not in lexical scope).
+        arg match
+          case ident: untpd.Ident
+              if Feature.enabled(Feature.companionScopeInference)
+                && ident.name.isTermName
+                && formalsForArg.forall(_.exists)
+                && isUniform(formalsForArg)(_ frozen_=:= _) =>
+            val commonFormal = formalsForArg.head
+            if isFullyDefined(commonFormal, ForceDegree.flipBottom) then
+              withMode(Mode.ImplicitsEnabled) {
+                pt.cacheArg(arg, pt.typedArg(arg, commonFormal))
+              }
+          case _ =>
         def argTypesOfFormal(formal: Type): List[Type] =
           formal.dealias match {
             case defn.FunctionOf(args, result, isImplicit) => args

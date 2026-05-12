@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/companion-scope-inference-shadowing-patterns.scala:21:9 --------------------------------
+21 |    case Red  => "red"   // error
+   |         ^^^
+   |         Values of types String and Patterns.Color cannot be compared with == or !=

@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-null-union.scala:17:24 --------------------
+17 |  val c: Color | Null = Red // error
+   |                        ^^^
+   |           Found:    (NullUnion.Red : Boolean)
+   |           Required: NullUnion.Color | Null
+   |
+   |           Note: `NullUnion.Color` has a member named `Red`; qualify as `NullUnion.Color.Red` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

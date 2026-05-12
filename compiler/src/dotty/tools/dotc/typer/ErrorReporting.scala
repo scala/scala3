@@ -185,6 +185,17 @@ object ErrorReporting {
         // use normalized types if that also shows an error, and both sides stripped
         // the same number of context functions. Use original types otherwise.
 
+      // SIP-80 Diagnostic 3: when a bare identifier resolved normally to
+      // some value that doesn't fit, and the expected type's companion
+      // module has a member of the same name, surface that fact. The user
+      // probably meant the companion member.
+      def companionScopeInferenceNote: List[Note] = tree match
+        case ident: Ident =>
+          CompanionScopeInference.shadowingHint(ident.name, pt) match
+            case Some(hint) => Note(hint) :: Nil
+            case None       => Nil
+        case _ => Nil
+
       def moreNotes = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           Note("\n\nMaybe you are missing an else part for the conditional?") :: Nil
@@ -204,7 +215,7 @@ object ErrorReporting {
             else i"tree:  $tree"
           Note(i"\n\nThe error occurred for a synthesized $synthText") :: Nil
         case _ =>
-          Nil
+          companionScopeInferenceNote
 
       errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ moreNotes))
     }

@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-basic.scala:24:31 -------------------------
+24 |  val s: Shape = Shape(Circle, Red) // error
+   |                               ^^^
+   |                   Found:    (Basic.Red : String)
+   |                   Required: Basic.Color
+   |
+   |                   Note: `Basic.Color` has a member named `Red`; qualify as `Basic.Color.Red` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

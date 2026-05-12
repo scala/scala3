@@ -181,6 +181,15 @@ private[scala] object language:
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
     object relaxedLambdaSyntax
+
+    /** Experimental support for companion scope inference: when a bare identifier
+     *  cannot be resolved through normal name lookup and the position has a
+     *  known expected type `T`, the compiler searches `T`'s companion module
+     *  for a term-level member of that name. See SIP-80 (companion-inference
+     *  draft).
+     */
+    @compileTimeOnly("`companionScopeInference` can only be used at compile time in import statements")
+    object companionScopeInference
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

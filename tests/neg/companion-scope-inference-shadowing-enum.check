@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-enum.scala:14:17 --------------------------
+14 |  val c: Color = Red // error
+   |                 ^^^
+   |       Found:    (EnumSupport.Red : Int)
+   |       Required: EnumSupport.Color
+   |
+   |       Note: `EnumSupport.Color` has a member named `Red`; qualify as `EnumSupport.Color.Red` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,0 +1,6 @@
+-- [E006] Not Found Error: tests/neg/companion-scope-inference-equality.scala:13:26 ------------------------------------
+13 |  val bad: Boolean = c == Red // error
+   |                          ^^^
+   |                          Not found: Red
+   |
+   | longer explanation available when compiling with `-explain`

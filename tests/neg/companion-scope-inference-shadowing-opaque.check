@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-opaque.scala:21:17 ------------------------
+21 |  val l: Level = Info // error
+   |                 ^^^^
+   |                 Found:    (OpaqueClient.Info : String)
+   |                 Required: Lib.Level
+   |
+   |                 Note: `Lib.Level` has a member named `Info`; qualify as `Lib.Level.Info` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

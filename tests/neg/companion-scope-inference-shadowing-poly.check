@@ -1,0 +1,18 @@
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-poly.scala:18:27 --------------------------
+18 |  val xs: Seq[Color] = Seq(Red, Blue) // error // error
+   |                           ^^^
+   |                           Found:    (Shadow.Red : String)
+   |                           Required: Color
+   |
+   |                           Note: `Color` has a member named `Red`; qualify as `Color.Red` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/companion-scope-inference-shadowing-poly.scala:18:32 --------------------------
+18 |  val xs: Seq[Color] = Seq(Red, Blue) // error // error
+   |                                ^^^^
+   |                             Found:    (Shadow.Blue : String)
+   |                             Required: Color
+   |
+   |                             Note: `Color` has a member named `Blue`; qualify as `Color.Blue` if you meant that.
+   |
+   | longer explanation available when compiling with `-explain`

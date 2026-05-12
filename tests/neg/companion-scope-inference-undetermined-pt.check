@@ -1,0 +1,14 @@
+-- [E006] Not Found Error: tests/neg/companion-scope-inference-undetermined-pt.scala:11:7 ------------------------------
+11 |  poly(Red) // error
+   |       ^^^
+   |       Not found: Red
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/companion-scope-inference-undetermined-pt.scala:15:4 ------------------------------
+15 |    Red // error
+   |    ^^^
+   |    Not found: Red
+   |
+   |    Searched expected type `Unit`'s companion; no term-level member named `Red`.
+   |
+   | longer explanation available when compiling with `-explain`

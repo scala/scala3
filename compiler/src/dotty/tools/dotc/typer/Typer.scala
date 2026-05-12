@@ -745,8 +745,52 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     then // we are in the arguments of a this(...) constructor call
       errorTree(tree, em"$tree is not accessible from constructor arguments")
     else
-      errorTree(tree, MissingIdent(tree, kind, name, pt))
+      tryCompanionScopeInference(tree, pt).getOrElse:
+        val baseMsg = MissingIdent(tree, kind, name, pt)
+        // SIP-80 Diagnostic 1: enrich "not found" with the searched
+        // companion when companion scope inference is enabled but couldn't find
+        // the member either. Helps the user understand WHY the fallback
+        // didn't rescue the call.
+        CompanionScopeInference.notFoundHint(name, pt) match
+          case Some(hint) => errorTree(tree, baseMsg.append(hint))
+          case None       => errorTree(tree, baseMsg)
   end typedIdent
+
+  /** SIP-80 companion-inference draft: when an identifier cannot be resolved
+   *  through normal name lookup AND the position has a known expected type
+   *  `T`, retry the lookup against the principal class of `T`'s companion.
+   *
+   *  Returns `Some(tree)` when companion scope inference succeeds, `None` otherwise
+   *  (so the caller can fall back to a standard `MissingIdent` error).
+   *  The actual target reduction and companion lookup live in
+   *  `CompanionScopeInference`, shared with the type-mismatch hint in
+   *  `ErrorReporting`.
+   */
+  private def tryCompanionScopeInference(tree: untpd.Ident, pt: Type)(using Context): Option[Tree] =
+    if !Feature.enabled(Feature.companionScopeInference) then None
+    else if !tree.name.isTermName then None
+    else
+      val target = CompanionScopeInference.principalTarget(pt)
+      if !target.exists then None
+      else
+        val companion = CompanionScopeInference.companionFor(target)
+        if !companion.exists then None
+        else
+          val termName = tree.name.toTermName
+          val member = companion.info.member(termName)
+          if !member.exists || CompanionScopeInference.isAnonymousGiven(member.symbol) then None
+          else
+            val prefix = target match
+              case ref: TypeRef => ref.prefix
+              case _            => target.normalizedPrefix
+            val companionRef =
+              if prefix.exists && prefix.ne(NoPrefix) then
+                tpd.ref(TermRef(prefix, companion.asTerm)).withSpan(tree.span.startPos)
+              else
+                tpd.ref(companion).withSpan(tree.span.startPos)
+            val select = untpd.cpy.Select(tree)(untpd.TypedSplice(companionRef), termName)
+            Some(typedSelect(select, pt))
+  end tryCompanionScopeInference
 
   def checkValue(tree: Tree)(using Context): Tree =
     val sym = tree.tpe.termSymbol

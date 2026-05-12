@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg/companion-scope-inference-shadowing-chain.scala:19:34 -----------------------------
+19 |  val a: String = describe(Mammal.Dog) // error
+   |                           ^^^^^^^^^^
+   |                           value Dog is not a member of String

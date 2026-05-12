@@ -1,0 +1,8 @@
+-- [E006] Not Found Error: tests/neg/companion-scope-inference-not-found-chain.scala:19:27 -----------------------------
+19 |  val a: String = describe(Dog) // error
+   |                           ^^^
+   |                           Not found: Dog
+   |
+   |                           Searched expected type `Chain.Animal`'s companion; no term-level member named `Dog`.
+   |
+   | longer explanation available when compiling with `-explain`
