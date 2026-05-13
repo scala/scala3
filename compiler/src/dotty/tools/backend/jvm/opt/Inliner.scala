@@ -795,7 +795,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
   private val isInternalCache = mutable.Map.empty[String, Either[OptimizerWarning, Boolean]]
   private def isInternal(name: String): Either[OptimizerWarning, Boolean] = {
     isInternalCache.getOrElseUpdate(name,
-      bTypeLoader.classBTypeFromInternalName(name) match
+      bTypeLoader.previouslyConstructedClassBType(name) match
         case Some(ct) => Right(!ct.info.inlineInfo.isAccessible)
         case None => bTypesFromClassfile.classBTypeFromParsedClassfile(name) match
           case Left(l) => Left(l)

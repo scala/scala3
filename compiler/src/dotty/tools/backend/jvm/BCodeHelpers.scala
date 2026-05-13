@@ -221,7 +221,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
             case StringTag =>
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-            case ClazzTag => av.visit(name, bTypeLoader.typeToTypeKind(TypeErasure.erasure(const.typeValue)).toASMType)
+            case ClazzTag => av.visit(name, bTypeLoader.toTypeKind(TypeErasure.erasure(const.typeValue)).toASMType)
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
@@ -429,7 +429,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
 
       mirrorMethod.visitCode()
 
-      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, bTypeLoader.symDescriptor(module))
+      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, bTypeLoader.classBTypeFromSymbol(module).descriptor)
 
       var index = 0
       for(jparamType <- paramJavaTypes) {
@@ -615,7 +615,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
      * must-single-thread
      */
     def legacyAddCreatorCode(clinit: asm.MethodVisitor, cnode: asm.tree.ClassNode, thisName: String)(using Context): Unit = {
-      val androidCreatorType = bTypeLoader.getClassBType(AndroidCreatorClass)
+      val androidCreatorType = null.asInstanceOf[ClassBType] // would hit an assert error if it ever ran because AndroidCreatorClass is NoSymbol: bTypeLoader.getClassBType(AndroidCreatorClass)
       val tdesc_creator = androidCreatorType.descriptor
 
       cnode.visitField(

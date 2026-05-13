@@ -13,14 +13,14 @@ import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, Mod
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
-import dotty.tools.dotc.core.Types.{AnnotatedType, JavaArrayType, RefinedType, SingletonType, ThisType, Type, TypeRef, abstractTermNameFilter}
+import dotty.tools.dotc.core.Types.{AnnotatedType, JavaArrayType, Type, TypeRef, abstractTermNameFilter}
 import dotty.tools.dotc.report
 
 import scala.annotation.{constructorOnly, tailrec}
 import scala.tools.asm
 import scala.tools.asm.tree.ClassNode
 
-class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader])(using @constructorOnly initctx: Context) {
+final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader])(using @constructorOnly initctx: Context) {
   // It's OK to cache type-related fields because all Contexts that go through here share their defns.
   // We eagerly fetch the definitions because we must not access the symbol table in a multithreaded way,
   // whereas it's OK if we translate the symbols to BTypes more than once, the locking overhead is not worth it.
@@ -83,7 +83,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
     ClassBType(internalName, classBTypeCache)(ct => Right(init(ct))).fold(_ => assert(false), identity)
 
   /** Obtain a previously constructed ClassBType for a given internal name, or None if no such ClassBType was constructed. */
-  def classBTypeFromInternalName(internalName: InternalName): Option[ClassBType] =
+  def previouslyConstructedClassBType(internalName: InternalName): Option[ClassBType] =
     Option(classBTypeCache.get(internalName))
 
   /**
@@ -104,7 +104,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
     val internalName = moduleClassSym.javaBinaryName.stripSuffix(StdNames.str.MODULE_SUFFIX)
     classBType(internalName)(_ =>
       ClassInfo(
-        superClass = Some(ObjectRef),
+        superClass = Some(classBTypeFromSymbol(defn.ObjectClass)),
         interfaces = Nil,
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
         nestedClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
@@ -117,23 +117,13 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
   /**
    * The class internal name for a given class symbol.
    */
-  final def internalName(sym: Symbol)(using Context): String = {
+  def internalName(sym: Symbol)(using Context): String = {
     // For each java class, the scala compiler creates a class and a module (thus a module class).
     // If the `sym` is a java module class, we use the java class instead. This ensures that the
     // ClassBType is created from the main class (instead of the module class).
     // The two symbols have the same name, so the resulting internalName is the same.
     val classSym = if (sym.is(JavaDefined) && sym.is(ModuleClass)) sym.linkedClass else sym
     getClassBType(classSym).internalName
-  }
-
-  private def assertClassNotArray(sym: Symbol)(using Context): Unit = {
-    assert(sym.isClass, sym)
-    assert(sym != defn.ArrayClass || BackendUtils.compilingArray, sym)
-  }
-
-  private def assertClassNotArrayNotPrimitive(sym: Symbol)(using Context): Unit = {
-    assertClassNotArray(sym)
-    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, s"Found $sym while compiling ${ctx.compilationUnit.source.file.name}")
   }
 
   /**
@@ -149,18 +139,20 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
    * the class descriptor of the receiver (the implementation class) is obtained by creating the
    * ClassBType.
    */
-  final def getClassBType(sym: Symbol)(using Context): ClassBType = {
-    assertClassNotArrayNotPrimitive(sym)
+  private def getClassBType(sym: Symbol)(using Context): ClassBType = {
+    assert(sym.isClass, sym)
+    assert(sym != defn.ArrayClass || BackendUtils.compilingArray, sym)
+    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, s"Found $sym while compiling ${ctx.compilationUnit.source.file.name}")
 
-    if (sym == defn.NothingClass) srNothingRef
-    else if (sym == defn.NullClass) srNullRef
+    if (sym == defn.NothingClass) classBTypeFromSymbol(srNothingClass)
+    else if (sym == defn.NullClass) classBTypeFromSymbol(srNullClass)
     else classBTypeFromSymbol(sym)
   }
 
   /*
    * must-single-thread
    */
-  final def asmMethodType(msym: Symbol)(using Context): MethodBType = {
+  def asmMethodType(msym: Symbol)(using Context): MethodBType = {
     assert(msym.is(Method), s"not a method-symbol: $msym")
     val resT: BType =
       if (msym.isClassConstructor || msym.isConstructor) UNIT
@@ -171,16 +163,9 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
   /**
    * The jvm descriptor of a type.
    */
-  final def typeDescriptor(t: Type)(using Context): String = {
+  def typeDescriptor(t: Type)(using Context): String = {
     toTypeKind(t).descriptor
   }
-
-  /**
-   * The jvm descriptor for a symbol.
-   */
-  final def symDescriptor(sym: Symbol)(using Context): String = getClassBType(sym).descriptor
-
-  final def toTypeKind(tp: Type)(using Context): BType = typeToTypeKind(tp)
 
   /**
    * This method returns the BType for a type reference, for example a parameter type.
@@ -191,7 +176,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
    * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
    * classes.
    */
-  final def typeToTypeKind(tp: Type)(using Context): BType = {
+  def toTypeKind(tp: Type)(using Context): BType = {
     /**
      * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
      * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
@@ -202,24 +187,9 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
       primitiveTypeMap.getOrElse(sym, getClassBType(sym))
     }
 
-    /**
-     * When compiling Array.scala, the type parameter T is not erased and shows up in method
-     * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
-     */
-    def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
-      assert(sym.isType && BackendUtils.compilingArray, sym)
-      ObjectRef
-    }
-
     tp.widenDealias match {
-      case JavaArrayType(el) => ArrayBType(typeToTypeKind(el)) // Array type such as Array[Int] (kept by erasure)
-      case t: TypeRef =>
-        t.info match {
-
-          case _ =>
-            if (!t.symbol.isClass) nonClassTypeRefToBType(t.symbol) // See comment on nonClassTypeRefToBType
-            else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
-        }
+      case JavaArrayType(el) => ArrayBType(toTypeKind(el)) // Array type such as Array[Int] (kept by erasure)
+      case t: TypeRef => primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
       case Types.ClassInfo(_, sym, _, _, _) => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
 
       /* AnnotatedType should (probably) be eliminated by erasure. However, we know it happens for
@@ -228,7 +198,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
         */
       case a@AnnotatedType(t, _) =>
         report.debuglog(s"typeKind of annotated type $a")
-        typeToTypeKind(t)
+        toTypeKind(t)
 
       /* The cases below should probably never occur. They are kept for now to avoid introducing
         * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
@@ -236,17 +206,7 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
         */
 
       case tp =>
-        report.warning(
-          s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
-            "If possible, please file a bug on https://github.com/scala/scala3/issues")
-
-        tp match {
-          case tp: ThisType if tp.cls == defn.ArrayClass => ObjectRef // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
-          case tp: ThisType => getClassBType(tp.cls)
-          // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
-          case t: SingletonType => typeToTypeKind(t.underlying)
-          case t: RefinedType => typeToTypeKind(t.parent)
-        }
+        throw new AssertionError(s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp.")
     }
   }
 
@@ -256,10 +216,10 @@ class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[In
   def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
     val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
       def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
-        classBTypeFromInternalName(internalName).get.info.nestedClasses
+        previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-        val c = classBTypeFromInternalName(internalName).get
+        val c = previouslyConstructedClassBType(internalName).get
         Option.when(c.isNestedClass)(c)
       }
 
