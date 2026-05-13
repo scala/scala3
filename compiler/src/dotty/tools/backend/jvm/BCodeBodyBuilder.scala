@@ -391,7 +391,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
             stack.push(prefixTK)
           }
 
-          genLoadArguments(env, fun.symbol.info.firstParamTypes.map(bTypeLoader.toTypeKind))
+          genLoadArguments(env, fun.symbol.info.firstParamTypes.map(bTypeLoader.bTypeFromType))
           stack.restoreSize(savedStackSize)
           generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
 
@@ -593,7 +593,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         case NullTag    => emit(asm.Opcodes.ACONST_NULL)
 
         case ClazzTag   =>
-          val tp = bTypeLoader.toTypeKind(const.typeValue)
+          val tp = bTypeLoader.bTypeFromType(const.typeValue)
           if tp.isPrimitive then
             val boxedClass = bTypes.boxedClassOfPrimitive(tp.asPrimitiveBType)
             mnode.visitFieldInsn(
@@ -773,7 +773,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
           val List(elemClaz, Literal(c: Constant), av: tpd.JavaSeqLiteral) = args: @unchecked
 
-          generatedType = bTypeLoader.toTypeKind(c.typeValue)
+          generatedType = bTypeLoader.bTypeFromType(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, av.elems)
         case Apply(t :TypeApply, _) =>
           generatedType =
@@ -816,7 +816,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           val ctor = fun.symbol
           assert(ctor.isClassConstructor, s"'new' call to non-constructor: ${ctor.name}")
 
-          generatedType = bTypeLoader.toTypeKind(tpt.tpe)
+          generatedType = bTypeLoader.bTypeFromType(tpt.tpe)
           assert(generatedType.isRef, s"Non reference type cannot be instantiated: $generatedType")
 
           generatedType match {
@@ -886,7 +886,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
               // Example: `class C { override def clone(): Object = "hi" }`
               // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
               val target: String = tpeTK(qual).asRefBType.classOrArrayType
-              val methodBType = bTypeLoader.asmMethodType(sym)
+              val methodBType = bTypeLoader.methodBTypeFromSymbol(sym)
               bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor, app)
               generatedType = methodBType.returnType
             } else {
@@ -924,7 +924,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     }
 
     private def genArray(elems: List[Tree], elemType: Type)(using Context): BType = {
-      val elmKind       = bTypeLoader.toTypeKind(elemType)
+      val elmKind       = bTypeLoader.bTypeFromType(elemType)
       val generatedType = ArrayBType(elmKind)
 
       bc.iconst(elems.length)
@@ -1477,13 +1477,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       val receiverName = bTypeLoader.classBTypeFromSymbol(receiverClass).internalName
 
       val jname    = method.javaSimpleName
-      val bmType   = bTypeLoader.asmMethodType(method)
+      val bmType   = bTypeLoader.methodBTypeFromSymbol(method)
       val mdescr   = bmType.descriptor
 
       val isInterface = isEmittedInterface(receiverClass)
       import InvokeStyle.*
       if (style == Super) {
-        val ownerBType = bTypeLoader.toTypeKind(method.owner.info)
+        val ownerBType = bTypeLoader.bTypeFromType(method.owner.info)
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = BackendUtils.traitSuperAccessorName(method)
@@ -1787,7 +1787,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         new asm.Handle(invokeStyle,
           bTypeLoader.classBTypeFromSymbol(lambdaTarget.owner).internalName,
           lambdaTarget.javaSimpleName,
-          bTypeLoader.asmMethodType(lambdaTarget).descriptor,
+          bTypeLoader.methodBTypeFromSymbol(lambdaTarget).descriptor,
           /* itf = */ isInterface)
 
       val (a,b) = lambdaTarget.info.firstParamTypes.splitAt(environmentSize)
@@ -1799,7 +1799,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
       val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
-      val desc = capturedParamsTypes.map(bTypeLoader.toTypeKind).mkString(("("), "", ")") + functionalInterfaceDesc
+      val desc = capturedParamsTypes.map(bTypeLoader.bTypeFromType).mkString(("("), "", ")") + functionalInterfaceDesc
 
       val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
@@ -1812,7 +1812,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       }
 
       val methodName = samMethod.javaSimpleName
-      val samMethodBType = bTypeLoader.asmMethodType(samMethod)
+      val samMethodBType = bTypeLoader.methodBTypeFromSymbol(samMethod)
       val samMethodType = samMethodBType.toASMType
 
       def boxInstantiated(instantiatedType: BType, samType: BType): BType =
@@ -1821,8 +1821,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         else instantiatedType
       // TODO specialization
       val instantiatedMethodBType = MethodBType(
-        lambdaParamTypes.map(bTypeLoader.toTypeKind),
-        boxInstantiated(bTypeLoader.toTypeKind(lambdaTarget.info.resultType), samMethodBType.returnType)
+        lambdaParamTypes.map(bTypeLoader.bTypeFromType),
+        boxInstantiated(bTypeLoader.bTypeFromType(lambdaTarget.info.resultType), samMethodBType.returnType)
       )
 
       val instantiatedMethodType = instantiatedMethodBType.toASMType
@@ -1833,7 +1833,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       val bridgeMethods = atPhase(erasurePhase){
         samMethod.allOverriddenSymbols.toList
       }
-      val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.asmMethodType(b).toASMType)
+      val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.methodBTypeFromSymbol(b).toASMType)
 
       // any methods which `samMethod` overrides need bridges made for them
       // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned

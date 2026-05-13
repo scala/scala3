@@ -99,12 +99,12 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   /*
    * must-single-thread
    */
-  def asmMethodType(msym: Symbol)(using Context): MethodBType = {
+  def methodBTypeFromSymbol(msym: Symbol)(using Context): MethodBType = {
     assert(msym.is(Method), s"not a method-symbol: $msym")
     val resT: BType =
       if (msym.isClassConstructor || msym.isConstructor) UNIT
-      else toTypeKind(msym.info.resultType)
-    MethodBType(msym.info.firstParamTypes.map(toTypeKind), resT)
+      else bTypeFromType(msym.info.resultType)
+    MethodBType(msym.info.firstParamTypes.map(bTypeFromType), resT)
   }
 
   /**
@@ -116,9 +116,9 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
    * classes.
    */
-  def toTypeKind(tp: Type)(using Context): BType = {
+  def bTypeFromType(tp: Type)(using Context): BType = {
     tp.widenDealias match {
-      case JavaArrayType(el) => ArrayBType(toTypeKind(el)) // Array type such as Array[Int] (kept by erasure)
+      case JavaArrayType(el) => ArrayBType(bTypeFromType(el)) // Array type such as Array[Int] (kept by erasure)
       case t: TypeRef => bTypeFromSymbol(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
       case Types.ClassInfo(_, sym, _, _, _) => bTypeFromSymbol(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
 
@@ -128,7 +128,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         */
       case a@AnnotatedType(t, _) =>
         report.debuglog(s"typeKind of annotated type $a")
-        toTypeKind(t)
+        bTypeFromType(t)
 
       /* The cases below should probably never occur. They are kept for now to avoid introducing
         * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
@@ -348,7 +348,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     val abstractMembers = classSym.memberNames(abstractTermNameFilter).iterator.map(classSym.classInfo.member).map(_.symbol).filter(_.is(Method)).toList
     val sam = abstractMembers match
       case List(single) =>
-        val btype = asmMethodType(single)
+        val btype = methodBTypeFromSymbol(single)
         Some(single.javaSimpleName + btype.descriptor)
       case _ => None
 
@@ -379,7 +379,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     methods.foreach {
       methodSym =>
         val name = methodSym.javaSimpleName // same as in genDefDef
-        val signature = (name, asmMethodType(methodSym).descriptor)
+        val signature = (name, methodBTypeFromSymbol(methodSym).descriptor)
 
         // In a trait, accesses to "modules" like enums are translated by the frontend as final methods,
         // even though they are logically not final since classes implementing the trait will also have that method,

@@ -151,14 +151,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def paramTKs(app: Apply, take: Int = -1)(using Context): List[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      funSym.info.firstParamTypes.map(bTypeLoader.toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+      funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol)(using Context): BType = {
-      bTypeLoader.toTypeKind(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
+      bTypeLoader.bTypeFromType(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
-    def tpeTK(tree: Tree)(using Context): BType = { bTypeLoader.toTypeKind(tree.tpe) }
+    def tpeTK(tree: Tree)(using Context): BType = { bTypeLoader.bTypeFromType(tree.tpe) }
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
@@ -350,7 +350,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         cnode.visitSource(ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.classBTypeFromSymbol(_).internalName, bTypeLoader.asmMethodType(_).descriptor) match {
+      BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.classBTypeFromSymbol(_).internalName, bTypeLoader.methodBTypeFromSymbol(_).descriptor) match {
         case Some(BCodeUtils.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
           cnode.visitOuterClass(className, methodName, methodDescriptor)
         case _ => ()
@@ -740,7 +740,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         if (isMethSymStaticCtor) CLASS_CONSTRUCTOR_NAME
         else jMethodName
 
-      val mdesc = bTypeLoader.asmMethodType(methSymbol).descriptor
+      val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
                                         else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
       if !lengthOk then
@@ -839,7 +839,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       methSymbol  = dd.symbol
       jMethodName = methSymbol.javaSimpleName
-      returnType  = bTypeLoader.asmMethodType(methSymbol).returnType
+      returnType  = bTypeLoader.methodBTypeFromSymbol(methSymbol).returnType
       isMethSymStaticCtor = methSymbol.name.isStaticConstructorName
 
       resetMethodBookkeeping(dd)
@@ -992,7 +992,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val callee = claszSymbol.companionModule.info.member(androidFieldName).symbol
         val jowner = bTypeLoader.classBTypeFromSymbol(callee.owner).internalName
         val jname  = callee.javaSimpleName
-        val jtype  = bTypeLoader.asmMethodType(callee).descriptor
+        val jtype  = bTypeLoader.methodBTypeFromSymbol(callee).descriptor
         insnParcA  = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESTATIC, jowner, jname, jtype, false)
         // PUTSTATIC `thisName`.CREATOR;
         insnParcB  = new asm.tree.FieldInsnNode(asm.Opcodes.PUTSTATIC, thisName, "CREATOR", andrFieldDescr)

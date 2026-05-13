@@ -145,7 +145,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = cw.visitAnnotation(bTypeLoader.toTypeKind(typ).descriptor, isRuntimeVisible(annot))
+        val av = cw.visitAnnotation(bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
         emitAssocs(av, assocs)
       }
 
@@ -156,7 +156,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = mw.visitAnnotation(bTypeLoader.toTypeKind(typ).descriptor, isRuntimeVisible(annot))
+        val av = mw.visitAnnotation(bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
         emitAssocs(av, assocs)
       }
 
@@ -167,7 +167,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = fw.visitAnnotation(bTypeLoader.toTypeKind(typ).descriptor, isRuntimeVisible(annot))
+        val av = fw.visitAnnotation(bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
         emitAssocs(av, assocs)
       }
 
@@ -189,7 +189,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, bTypeLoader.toTypeKind(typ).descriptor, isRuntimeVisible(annot))
+        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
         emitAssocs(pannVisitor, assocs)
       }
 
@@ -219,12 +219,12 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
             case StringTag =>
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-            case ClazzTag => av.visit(name, bTypeLoader.toTypeKind(TypeErasure.erasure(const.typeValue)).toASMType)
+            case ClazzTag => av.visit(name, bTypeLoader.bTypeFromType(TypeErasure.erasure(const.typeValue)).toASMType)
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
         case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnum) =>
-          val edesc = bTypeLoader.toTypeKind(t.tpe).descriptor // the class descriptor of the enumeration class.
+          val edesc = bTypeLoader.bTypeFromType(t.tpe).descriptor // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         // Handle final val aliases to Java enum values.
@@ -235,7 +235,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
             case _ => false
         } =>
           val enumRef = atPhase(erasurePhase)(t.symbol.info.finalResultType.asInstanceOf[TermRef])
-          val edesc = bTypeLoader.toTypeKind(enumRef).descriptor
+          val edesc = bTypeLoader.bTypeFromType(enumRef).descriptor
           val evalue = enumRef.termSymbol.javaSimpleName
           av.visitEnum(name, edesc, evalue)
         case t: SeqLiteral =>
@@ -276,7 +276,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         case t @ Apply(constr, args) if t.tpe.classSymbol.is(JavaAnnotation) =>
           val typ = t.tpe.classSymbol.denot.info
           val assocs = assocsFromApply(t)
-          val desc = bTypeLoader.toTypeKind(typ).descriptor // the class descriptor of the nested annotation class
+          val desc = bTypeLoader.bTypeFromType(typ).descriptor // the class descriptor of the nested annotation class
           val nestedVisitor = av.visitAnnotation(name, desc)
           emitAssocs(nestedVisitor, assocs)
 
@@ -382,7 +382,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean)(using Context): Unit = {
       val moduleName     = bTypeLoader.classBTypeFromSymbol(module).internalName
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(bTypeLoader.toTypeKind)
+      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
       // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,
@@ -401,7 +401,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       val (throws, others) = m.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
-      val jReturnType = bTypeLoader.toTypeKind(methodInfo.resultType)
+      val jReturnType = bTypeLoader.bTypeFromType(methodInfo.resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
       val mirrorMethodName = m.javaSimpleName
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
@@ -436,7 +436,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         index += jparamType.size
       }
 
-      mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, bTypeLoader.asmMethodType(m).descriptor, false)
+      mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, bTypeLoader.methodBTypeFromSymbol(m).descriptor, false)
       mirrorMethod.visitInsn(jReturnType.typedOpcode(asm.Opcodes.IRETURN))
 
       mirrorMethod.visitMaxs(0, 0) // just to follow protocol, dummy arguments
