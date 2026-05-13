@@ -14,10 +14,15 @@ import PostProcessorFrontendAccess.Lazy
 case class MethodNameAndType(name: String, methodType: MethodBType)
 
 final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(using Context) {
-  // Forward these for convenience
-  def ObjectRef: ClassBType = ts.ObjectRef
-  def srNothingRef: ClassBType = ts.srNothingRef
-  def srNullRef: ClassBType = ts.srNullRef
+
+  def ObjectRef: ClassBType = _ObjectRef.get
+  private lazy val _ObjectRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.ObjectClass))
+
+  def srNothingRef: ClassBType = _srNothingRef.get
+  private lazy val _srNothingRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.RuntimeNothingClass))
+
+  def srNullRef: ClassBType = _srNullRef.get
+  private lazy val _srNullRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.RuntimeNullClass))
 
   /**
    * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
@@ -135,7 +140,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
     jliLambdaMetafactoryRef.internalName,
     "altMetafactory",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ts.ObjectRef)),
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false)}
@@ -157,7 +162,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
     jliStringConcatFactoryRef.internalName,
     "makeConcatWithConstants",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ts.ObjectRef)),
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false)}
@@ -178,14 +183,14 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   )
 
   lazy val asmUnboxTo: Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ts.ObjectRef), BOOL)),
-    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ts.ObjectRef), BYTE)),
-    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ts.ObjectRef), CHAR)),
-    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ts.ObjectRef), SHORT)),
-    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ts.ObjectRef), INT)),
-    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ts.ObjectRef), LONG)),
-    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ts.ObjectRef), FLOAT)),
-    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ts.ObjectRef), DOUBLE))
+    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ObjectRef), BOOL)),
+    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ObjectRef), BYTE)),
+    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ObjectRef), CHAR)),
+    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ObjectRef), SHORT)),
+    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ObjectRef), INT)),
+    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectRef), LONG)),
+    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectRef), FLOAT)),
+    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
   )
 
   lazy val typeOfArrayOp: Map[Int, BType] = {
@@ -199,7 +204,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
         (List(LARRAY_LENGTH, LARRAY_GET, LARRAY_SET) map (_ -> LONG))   ++
         (List(FARRAY_LENGTH, FARRAY_GET, FARRAY_SET) map (_ -> FLOAT))  ++
         (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
-        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ts.ObjectRef)) *
+        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) *
     )
   }
 
@@ -245,7 +250,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private lazy val _srRefCreateMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
-      val unboxed = if primitive == defn.ObjectClass then ts.ObjectRef else ts.primitiveTypeMap(primitive)
+      val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.primitiveTypeMap(primitive)
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
@@ -296,7 +301,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val bType = ts.primitiveTypeMap(primitive)
       val name = "unboxTo" + primitive.name.toString
-      (bType, MethodNameAndType(name, MethodBType(List(ts.ObjectRef), bType)))
+      (bType, MethodNameAndType(name, MethodBType(List(ObjectRef), bType)))
     }))
   }
 
@@ -305,7 +310,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private lazy val _srRefConstructors: Lazy[Map[InternalName, MethodNameAndType]] =  ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
-      val unboxed = if primitive == defn.ObjectClass then ts.ObjectRef else ts.primitiveTypeMap(primitive)
+      val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.primitiveTypeMap(primitive)
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
@@ -327,7 +332,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
     Map.from(
       Iterator.concat(
         (1 to 22).map { n =>
-          ("scala/Tuple" + n, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List.fill(n)(ts.ObjectRef), UNIT)))
+          ("scala/Tuple" + n, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List.fill(n)(ObjectRef), UNIT)))
         },
         spec1.map { sp1 =>
           val prim = ts.primitiveTypeMap(sp1)

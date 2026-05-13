@@ -21,46 +21,14 @@ import scala.tools.asm
 import scala.tools.asm.tree.ClassNode
 
 final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader])(using @constructorOnly initctx: Context) {
-  // It's OK to cache type-related fields because all Contexts that go through here share their defns.
-  // We eagerly fetch the definitions because we must not access the symbol table in a multithreaded way,
-  // whereas it's OK if we translate the symbols to BTypes more than once, the locking overhead is not worth it.
-
   // Concurrent map because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
-  private val classBTypeCache: ConcurrentHashMap[InternalName, ClassBType] =
-    new ConcurrentHashMap[InternalName, ClassBType]
-
-  /*
-   * srNothingRef and srNullRef exist at run-time only. They are the bytecode-level manifestation (in
-   * method signatures only) of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
-   *
-   * Therefore, when srNothingRef or srNullRef are to be emitted, a mapping is needed: the internal
-   * names of NothingClass and NullClass can't be emitted as-is.
-   */
-  private val objectClass: Symbol = defn.ObjectClass
-  private var objectRefLazy: ClassBType | Null = null
-  private val srNothingClass: Symbol = requiredClass("scala.runtime.Nothing$")
-  private var srNothingRefLazy: ClassBType | Null = null
-  private val srNullClass: Symbol = requiredClass("scala.runtime.Null$")
-  private var srNullRefLazy: ClassBType | Null = null
-
-
-  def ObjectRef(using Context): ClassBType =
-    if objectRefLazy eq null then
-      objectRefLazy = classBTypeFromSymbol(objectClass)
-    objectRefLazy.nn
-
-  def srNothingRef(using Context): ClassBType =
-    if srNothingRefLazy eq null then
-      srNothingRefLazy = classBTypeFromSymbol(srNothingClass)
-    srNothingRefLazy.nn
-
-  def srNullRef(using Context): ClassBType =
-    if srNullRefLazy eq null then
-      srNullRefLazy = classBTypeFromSymbol(srNullClass)
-    srNullRefLazy.nn
+  private val classBTypeCache = new ConcurrentHashMap[InternalName, ClassBType]
 
   /** Maps primitive types to their corresponding PrimitiveBType. */
+  // It's OK to cache this because all Contexts that go through here share their defns.
+  // We eagerly fetch the definitions because we must not access the symbol table in a multithreaded way,
+  // whereas it's OK if we translate the symbols to BTypes more than once, the locking overhead is not worth it.
   val primitiveTypeMap: Map[Symbol, PrimitiveBType] = Map(
     defn.UnitClass    -> UNIT,
     defn.BooleanClass -> BOOL,
@@ -144,8 +112,8 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     assert(sym != defn.ArrayClass || BackendUtils.compilingArray, sym)
     assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, s"Found $sym while compiling ${ctx.compilationUnit.source.file.name}")
 
-    if (sym == defn.NothingClass) classBTypeFromSymbol(srNothingClass)
-    else if (sym == defn.NullClass) classBTypeFromSymbol(srNullClass)
+    if (sym == defn.NothingClass) classBTypeFromSymbol(defn.RuntimeNothingClass)
+    else if (sym == defn.NullClass) classBTypeFromSymbol(defn.RuntimeNullClass)
     else classBTypeFromSymbol(sym)
   }
 
@@ -194,7 +162,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
 
       /* AnnotatedType should (probably) be eliminated by erasure. However, we know it happens for
         * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
-        * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
+        * The type in the AnnotationInfo is an AnnotatedType. Tested in jvm/annotations.scala.
         */
       case a@AnnotatedType(t, _) =>
         report.debuglog(s"typeKind of annotated type $a")
@@ -301,17 +269,11 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
      * a module class) symbol. For example, in `class A { class B {} }`, the nestedClassSymbols
      * for A contain both the class B and the module class B.
      * Here we get rid of the module class B, making sure that the class B is present.
+     * 
+     * (In Scala 2, we had an assertion that there must be exactly 2 nested class symbols with the same name and owner,
+     *  but in Dotty there will be B & B$)
      */
-    val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => {
-      if (s.is(JavaDefined) && s.is(ModuleClass)) {
-        // We could also search in nestedClassSymbols for s.linkedClassOfClass, but sometimes that
-        // returns NoSymbol, so it doesn't work.
-        val nb = nestedClassSymbols.count(mc => mc.name == s.name && mc.owner == s.owner)
-        // this assertion is specific to how ScalaC works. It doesn't apply to dotty, as n dotty there will be B & B$
-        // assert(nb == 2, s"Java member module without member class: $s - $nestedClassSymbols")
-        false
-      } else true
-    })
+    val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => !(s.is(JavaDefined) && s.is(ModuleClass)))
 
     val memberClasses = nestedClassSymbolsNoJavaModuleClasses.map(classBTypeFromSymbol)
 

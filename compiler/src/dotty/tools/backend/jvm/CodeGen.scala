@@ -28,10 +28,7 @@ import opt.CallGraph
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
               val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
               val generatedClassHandler: GeneratedClassHandler) {
-  private class Impl extends BCodeHelpers, BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
-    val bTypeLoader: BTypeLoader = CodeGen.this.bTypeLoader
-    val bTypes: WellKnownBTypes = CodeGen.this.bTypes
-
+  private class Impl extends BCodeHelpers(bTypeLoader, bTypes), BCodeBodyBuilder(primitives), BCodeSyncAndTry {
     def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
       callGraph.callsitePositions.get(m) = pos match {
         case p: Positioned => p.sourcePos

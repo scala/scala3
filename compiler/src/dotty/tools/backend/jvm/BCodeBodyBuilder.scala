@@ -34,9 +34,6 @@ import dotty.tools.dotc.util.SrcPos
  *
  */
 trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
-
-  val bTypes: WellKnownBTypes
-
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -457,7 +454,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           if (value.tag != UnitTag) (value.tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
-            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = bTypeLoader.srNullRef
+            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = bTypes.srNullRef
             case _                  => genConstant(value, l.srcPos);     generatedType = tpeTK(tree)
           }
 
@@ -724,7 +721,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           bc.drop(l)
           if (cast) {
             mnode.visitTypeInsn(asm.Opcodes.NEW, bTypes.jlClassCastExceptionRef.internalName)
-            bc.dup(bTypeLoader.ObjectRef)
+            bc.dup(bTypes.ObjectRef)
             emit(asm.Opcodes.ATHROW)
           } else {
             bc.boolconst(false)

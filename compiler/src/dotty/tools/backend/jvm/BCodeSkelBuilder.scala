@@ -301,7 +301,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor)(using Context): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) bTypeLoader.ObjectRef.internalName else bTypeLoader.internalName(ps.head.typeSymbol)
+      val superClass: String = if (ps.isEmpty) bTypes.ObjectRef.internalName else bTypeLoader.internalName(ps.head.typeSymbol)
 
       // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
       // (This somewhat convoluted sequence of operations exists to maintain the exact order of inheritance from a previous version.

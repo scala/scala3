@@ -37,10 +37,8 @@ import dotty.tools.dotc.config.ScalaSettingsProperties
  *  @version 1.0
  *
  */
-trait BCodeHelpers extends BCodeIdiomatic {
-
-  val bTypeLoader: BTypeLoader
-
+trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) extends BCodeIdiomatic {
+  
   // OK to cache because it won't change across Contexts
   private var cachedClassfileVersion: Int | Null = null
   protected def classfileVersion(using Context): Int =
@@ -571,7 +569,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
         bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,
-        bTypeLoader.ObjectRef.internalName,
+        bTypes.ObjectRef.internalName,
         EMPTY_STRING_ARRAY
       )
 
