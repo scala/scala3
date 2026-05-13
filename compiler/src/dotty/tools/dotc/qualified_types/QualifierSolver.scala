@@ -31,7 +31,7 @@ class QualifierSolver(using Context):
     // locally-nameless representations. This ensures the shared free
     // variables are never confused with bound variables in nested lambdas.
     val paramRefs = mostPreciseNode.paramTps.zipWithIndex.map((tp, i) =>
-      ENodeVar(ENodeVarKind.OpenedParam, i)(tp)
+      ENodeVar.OpenedParam(i)(tp)
     )
     impliesRec(node1.body.substEParamRefs(0, paramRefs), node2.body.substEParamRefs(0, paramRefs))
 

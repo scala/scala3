@@ -101,7 +101,7 @@ object QualifiedTypes:
    */
   def substParamInQualifiers(tp: Type, pref: ParamRef, argType: Type, argTree: tpd.Tree | Null)(using Context): Type =
     if argTree == null || !Feature.qualifiedTypesEnabled then return tp
-    val replacement = ENodeVar(ENodeVarKind.Skolem, treeSkolemIndex(argTree))(argType)
+    val replacement = ENodeVar.Skolem(treeSkolemIndex(argTree))(argType)
     val replaceMap = new TypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
@@ -127,7 +127,7 @@ object QualifiedTypes:
             val innerMap = new TypeMap:
               def apply(t2: Type): Type = t2 match
                 case ref: TermRef if localSyms.contains(ref.symbol) =>
-                  ENodeVar(ENodeVarKind.Skolem, symbolSkolemIndex(ref.symbol))(SkolemType(mapOver(ref.underlying)))
+                  ENodeVar.Skolem(symbolSkolemIndex(ref.symbol))(SkolemType(mapOver(ref.underlying)))
                 case _ => mapOver(t2)
             qualifier.mapTypes(innerMap).asInstanceOf[ENode.Lambda]
           if (parent1 eq parent) && (qualifier1 eq qualifier) then t

@@ -6302,8 +6302,8 @@ object Types extends TypeUtils {
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedCapturingType(tp: Type, parent: Type, refs: CaptureSet): Type =
       tp.derivedCapturingType(parent, refs)
-    protected def derivedENodeVar(tp: qualified_types.ENodeVar, kind: qualified_types.ENodeVarKind, index: Int, underlying: Type): Type =
-      tp.derivedENodeVar(kind, index, underlying)
+    protected def derivedENodeVar(tp: qualified_types.ENodeVar, underlying: Type): Type =
+      tp.derivedENodeVar(underlying)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
       tp.derivedWildcardType(bounds)
     protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
@@ -6535,7 +6535,7 @@ object Types extends TypeUtils {
           derivedJavaArrayType(tp, this(tp.elemType))
 
         case tp: qualified_types.ENodeVar =>
-          derivedENodeVar(tp, tp.kind, tp.index, this(tp.underlying))
+          derivedENodeVar(tp, this(tp.underlying))
 
         case _ =>
           tp
