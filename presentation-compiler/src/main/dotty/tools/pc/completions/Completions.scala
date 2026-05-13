@@ -588,7 +588,10 @@ class Completions(
     val singletonCompletions = InferCompletionType.inferType(path).map(
       SingletonCompletions.contribute(path, _, completionPos)
     ).getOrElse(Nil)
-    (singletonCompletions ++ advanced, exclusive)
+    val companionScopeCompletions = InferCompletionType.inferType(path).map(
+      CompanionScopeCompletions.contribute(path, _, completionPos)
+    ).getOrElse(Nil)
+    (singletonCompletions ++ companionScopeCompletions ++ advanced, exclusive)
   end advancedCompletions
 
   private def isAmmoniteCompletionPosition(
