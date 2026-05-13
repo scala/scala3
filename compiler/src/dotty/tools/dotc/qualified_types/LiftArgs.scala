@@ -34,7 +34,7 @@ final class LiftArgs extends MiniPhase:
           tpt.tpe.foreachPart:
             case QualifiedType(_, qualifier) =>
               qualifier.foreachType:
-                case ENodeVar(ENodeVarKind.Skolem, id) if argSkolemIds.contains(Some(id)) =>
+                case ENodeVar.Skolem(id) if argSkolemIds.contains(Some(id)) =>
                   usedSkolemIds += id
                 case _ => ()
             case _ => ()
@@ -50,7 +50,7 @@ final class LiftArgs extends MiniPhase:
       override def apply(tp: Type): Type = tp match
         case QualifiedType(parent, qualifier) =>
           val newQualifier = qualifier.mapTypes:
-            case ENodeVar(ENodeVarKind.Skolem, id) if argSkolemIds.contains(Some(id)) =>
+            case ENodeVar.Skolem(id) if argSkolemIds.contains(Some(id)) =>
               val liftedArgIndex = argSkolemIds.indexOf(Some(id))
               liftedArgs(liftedArgIndex).tpe
             case tpe => tpe

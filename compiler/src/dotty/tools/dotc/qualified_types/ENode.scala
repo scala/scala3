@@ -69,7 +69,7 @@ enum ENode extends Showable:
   //    case Lambda(paramTps, retTp, body) =>
   //      paramTps.zipWithIndex.forall: (tp, index) =>
   //        tp match
-  //          case ENodeVar(ENodeVarKind.BoundParam, i) => i < index
+  //          case ENodeVar.BoundParam(i) => i < index
   //          case _ => true
   //    case _ => true
   // )
@@ -92,11 +92,9 @@ enum ENode extends Showable:
           printTp(tp.tref) + ".this"
         case tp: TypeVar =>
           tp.origin.paramName.toString()
-        case tp: ENodeVar =>
-          tp.kind match
-            case ENodeVarKind.BoundParam => s"arg${tp.index}"
-            case ENodeVarKind.OpenedParam => s"(op${tp.index}: ${printTp(tp.rawUnderlying)})"
-            case ENodeVarKind.Skolem => s"(sk${tp.index}: ${printTp(tp.rawUnderlying)})"
+        case tp: ENodeVar.BoundParam => s"arg${tp.index}"
+        case tp: ENodeVar.OpenedParam => s"(op${tp.index}: ${printTp(tp.rawUnderlying)})"
+        case tp: ENodeVar.Skolem => s"(sk${tp.index}: ${printTp(tp.rawUnderlying)})"
         case tp: AppliedType =>
           val argsString = tp.args.map(printTp).mkString(", ")
           s"${printTp(tp.tycon)}[$argsString]"
@@ -352,7 +350,7 @@ enum ENode extends Showable:
   private class SubstEParamsMap(from: Int, to: List[Type])(using Context) extends TypeMap:
     override def apply(tp: Type): Type =
       tp match
-        case ENodeVar(ENodeVarKind.BoundParam, i) if i >= from && i < from + to.length => to(i - from)
+        case ENodeVar.BoundParam(i) if i >= from && i < from + to.length => to(i - from)
         case tp @ AnnotatedType(parent, annot @ QualifiedAnnotation(qualifier)) =>
           // Use substEParamRefs on the qualifier lambda to properly shift
           // de Bruijn indices and avoid substituting bound variables.
@@ -766,7 +764,7 @@ object ENode:
 
   def substParamRefs(tp: Type, paramSyms: List[Symbol], paramTps: List[Type])(using Context): Type =
     trace(i"substParamRefs($tp, $paramSyms, $paramTps)", Printers.qualifiedTypes):
-      tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeVar(ENodeVarKind.BoundParam, i)(tp)).toList)
+      tp.subst(paramSyms, paramTps.zipWithIndex.map((tp, i) => ENodeVar.BoundParam(i)(tp)).toList)
 
   def selfify(tree: tpd.Tree)(using Context): Option[ENode.Lambda] =
     trace(i"ENode.selfify $tree", Printers.qualifiedTypes):
@@ -775,7 +773,7 @@ object ENode:
           Some(ENode.Lambda(
             List(tree.tpe),
             defn.BooleanType,
-            OpApply(ENode.Op.Equal, List(treeNode, ENode.Atom(ENodeVar(ENodeVarKind.BoundParam, 0)(tree.tpe))))
+            OpApply(ENode.Op.Equal, List(treeNode, ENode.Atom(ENodeVar.BoundParam(0)(tree.tpe))))
           ))
         case None => None
 
@@ -800,7 +798,7 @@ object ENode:
         case tp: TermRef =>
           val skolemId = ctx.base.qualifierSkolemIndexBySymbol.get(tp.symbol)
           val skolemAssumptions = skolemId.toList.map: id =>
-            OpApply(ENode.Op.Equal, List(Atom(ENodeVar(ENodeVarKind.Skolem, id)(SkolemType(tp.widen))), singleton(tp)))
+            OpApply(ENode.Op.Equal, List(Atom(ENodeVar.Skolem(id)(SkolemType(tp.widen))), singleton(tp)))
           val defTree = tp.symbol.defTree
           val valAssumptions = defTree match
             case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>
@@ -846,7 +844,7 @@ object ENode:
               node match
                 case Atom(tp: TermParamRef) if tp.binder eq mt =>
                   args(tp.paramNum)
-                case Atom(ENodeVar(ENodeVarKind.BoundParam, 0)) =>
+                case Atom(ENodeVar.BoundParam(0)) =>
                   applyNode
                 case node => node.mapChildren(substBody)
             List(substBody(qualifier.body))
