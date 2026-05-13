@@ -420,7 +420,7 @@ final class EGraph(_ctx: Context):
         def subst(node: ENode, depth: Int = 0): ENode =
           canonicalize(
             node match
-              case ENode.Atom(ENodeVar(ENodeVarKind.BoundParam, i))
+              case ENode.Atom(ENodeVar.BoundParam(i))
                   if i >= depth && i - depth < reversedArgs.length =>
                 reversedArgs(i - depth)
               case ENode.Atom(_) => node

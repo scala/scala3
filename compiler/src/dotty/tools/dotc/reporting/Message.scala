@@ -147,7 +147,7 @@ object Message:
               && cur.binder.paramNames == existing.binder.paramNames
             case (cur: ENodeVarEntry, existing: ENodeVarEntry) =>
               cur.bindingLevel == existing.bindingLevel
-              && cur.ref.kind == existing.ref.kind
+              && cur.ref.getClass == existing.ref.getClass
             case _ =>
               false
 
@@ -218,12 +218,12 @@ object Message:
             else "is"
           s"$relation ${ref.descr}"
         case ENodeVarEntry(ref, _) =>
-          ref.kind match
-            case qualified_types.ENodeVarKind.BoundParam =>
+          ref match
+            case _: qualified_types.ENodeVar.BoundParam =>
               s"is a lambda parameter of type ${ref.underlying.show}"
-            case qualified_types.ENodeVarKind.OpenedParam =>
+            case _: qualified_types.ENodeVar.OpenedParam =>
               s"is an opened lambda parameter of type ${ref.underlying.show}"
-            case qualified_types.ENodeVarKind.Skolem =>
+            case _: qualified_types.ENodeVar.Skolem =>
               s"is a free variable of type ${ref.underlying.show}"
     end explanation
 
@@ -294,7 +294,7 @@ object Message:
     override def enodeLambdaParamName(paramIndex: Int, paramTp: Type): Text =
       if seen.isActive then
         val entry = ENodeVarEntry(
-          qualified_types.ENodeVar(qualified_types.ENodeVarKind.BoundParam, paramIndex)(paramTp),
+          qualified_types.ENodeVar.BoundParam(paramIndex)(paramTp),
           enodeLambdaDepth - paramIndex)
         seen.record("x", isType = false, entry)
       else
