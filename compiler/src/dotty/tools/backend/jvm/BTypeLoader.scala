@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
 import dotty.tools.backend.jvm.BCodeUtils.isAnonymousOrLocalClass
 import dotty.tools.backend.jvm.SymbolUtils.symExtensions
-import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, requiredClass}
+import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Trait}
@@ -16,30 +16,19 @@ import dotty.tools.dotc.core.{StdNames, Types}
 import dotty.tools.dotc.core.Types.{AnnotatedType, JavaArrayType, Type, TypeRef, abstractTermNameFilter}
 import dotty.tools.dotc.report
 
-import scala.annotation.{constructorOnly, tailrec}
+import scala.annotation.tailrec
 import scala.tools.asm
 import scala.tools.asm.tree.ClassNode
 
-final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader])(using @constructorOnly initctx: Context) {
+final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader]) {
   // Concurrent map because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
   private val classBTypeCache = new ConcurrentHashMap[InternalName, ClassBType]
 
-  /** Maps primitive types to their corresponding PrimitiveBType. */
+  /** Maps special symbols, including primitive types, to their corresponding BType. */
   // It's OK to cache this because all Contexts that go through here share their defns.
-  // We eagerly fetch the definitions because we must not access the symbol table in a multithreaded way,
-  // whereas it's OK if we translate the symbols to BTypes more than once, the locking overhead is not worth it.
-  val primitiveTypeMap: Map[Symbol, PrimitiveBType] = Map(
-    defn.UnitClass    -> UNIT,
-    defn.BooleanClass -> BOOL,
-    defn.CharClass    -> CHAR,
-    defn.ByteClass    -> BYTE,
-    defn.ShortClass   -> SHORT,
-    defn.IntClass     -> INT,
-    defn.LongClass    -> LONG,
-    defn.FloatClass   -> FLOAT,
-    defn.DoubleClass  -> DOUBLE
-  )
+  // No locking, it's OK if this map gets initialized twice (though a little inefficient).
+  private var specialBTypes: Map[Symbol, BType] | Null = null
 
 
   /** See doc of ClassBType.apply. This is where to use that method from. */
@@ -54,6 +43,24 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   def previouslyConstructedClassBType(internalName: InternalName): Option[ClassBType] =
     Option(classBTypeCache.get(internalName))
 
+  def bTypeFromSymbol(sym: Symbol)(using Context): BType = {
+    if specialBTypes eq null then
+      specialBTypes = Map(
+        defn.UnitClass -> UNIT,
+        defn.BooleanClass -> BOOL,
+        defn.CharClass -> CHAR,
+        defn.ByteClass -> BYTE,
+        defn.ShortClass -> SHORT,
+        defn.IntClass -> INT,
+        defn.LongClass -> LONG,
+        defn.FloatClass -> FLOAT,
+        defn.DoubleClass -> DOUBLE,
+        defn.NothingClass -> classBTypeFromSymbol(defn.RuntimeNothingClass),
+        defn.NullClass -> classBTypeFromSymbol(defn.RuntimeNullClass)
+      )
+    specialBTypes.nn.getOrElse(sym, classBTypeFromSymbol(sym))
+  }
+
   /**
    * The ClassBType for a class symbol `sym`.
    */
@@ -63,7 +70,8 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     assert(
       classSym != defn.NothingClass && classSym != defn.NullClass,
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
-
+    assert(classSym != defn.ArrayClass || BackendUtils.compilingArray, classSym)
+    assert(!classSym.isPrimitiveValueClass || BackendUtils.compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
     classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
   }
 
@@ -91,30 +99,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     // ClassBType is created from the main class (instead of the module class).
     // The two symbols have the same name, so the resulting internalName is the same.
     val classSym = if (sym.is(JavaDefined) && sym.is(ModuleClass)) sym.linkedClass else sym
-    getClassBType(classSym).internalName
-  }
-
-  /**
-   * The ClassBType for a class symbol.
-   *
-   * The class symbol scala.Nothing is mapped to the class scala.runtime.Nothing$. Similarly,
-   * scala.Null is mapped to scala.runtime.Null$. This is because there exist no class files
-   * for the Nothing / Null. If used for example as a parameter type, we use the runtime classes
-   * in the classfile method signature.
-   *
-   * Note that the referenced class symbol may be an implementation class. For example when
-   * compiling a mixed-in method that forwards to the static method in the implementation class,
-   * the class descriptor of the receiver (the implementation class) is obtained by creating the
-   * ClassBType.
-   */
-  private def getClassBType(sym: Symbol)(using Context): ClassBType = {
-    assert(sym.isClass, sym)
-    assert(sym != defn.ArrayClass || BackendUtils.compilingArray, sym)
-    assert(!primitiveTypeMap.contains(sym) || BackendUtils.compilingPrimitive, s"Found $sym while compiling ${ctx.compilationUnit.source.file.name}")
-
-    if (sym == defn.NothingClass) classBTypeFromSymbol(defn.RuntimeNothingClass)
-    else if (sym == defn.NullClass) classBTypeFromSymbol(defn.RuntimeNullClass)
-    else classBTypeFromSymbol(sym)
+    classBTypeFromSymbol(classSym).internalName
   }
 
   /*
@@ -145,20 +130,10 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    * classes.
    */
   def toTypeKind(tp: Type)(using Context): BType = {
-    /**
-     * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
-     * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
-     */
-    def primitiveOrClassToBType(sym: Symbol): BType = {
-      assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || BackendUtils.compilingArray, sym)
-      primitiveTypeMap.getOrElse(sym, getClassBType(sym))
-    }
-
     tp.widenDealias match {
       case JavaArrayType(el) => ArrayBType(toTypeKind(el)) // Array type such as Array[Int] (kept by erasure)
-      case t: TypeRef => primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
-      case Types.ClassInfo(_, sym, _, _, _) => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
+      case t: TypeRef => bTypeFromSymbol(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
+      case Types.ClassInfo(_, sym, _, _, _) => bTypeFromSymbol(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
 
       /* AnnotatedType should (probably) be eliminated by erasure. However, we know it happens for
         * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
@@ -218,7 +193,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         superClassSym == defn.ObjectClass
       else
         // A ClassBType for a primitive class (scala.Boolean et al.) is only created when compiling these classes.
-        ((superClassSym != NoSymbol) && !superClassSym.is(Trait)) || primitiveTypeMap.contains(classSym),
+        ((superClassSym != NoSymbol) && !superClassSym.is(Trait)) || classSym.isPrimitiveValueClass,
       s"Bad superClass for $classSym: $superClassSym"
     )
     val superClass = if (superClassSym == NoSymbol) None
@@ -269,9 +244,9 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
      * a module class) symbol. For example, in `class A { class B {} }`, the nestedClassSymbols
      * for A contain both the class B and the module class B.
      * Here we get rid of the module class B, making sure that the class B is present.
-     * 
+     *
      * (In Scala 2, we had an assertion that there must be exactly 2 nested class symbols with the same name and owner,
-     *  but in Dotty there will be B & B$)
+     * but in Dotty there will be B & B$)
      */
     val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => !(s.is(JavaDefined) && s.is(ModuleClass)))
 

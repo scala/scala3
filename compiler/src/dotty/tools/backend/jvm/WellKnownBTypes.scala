@@ -28,8 +28,8 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
    * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
    * operand stack (ldc instruction taking a class literal), see genConstant.
    */
-  def boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType] = _boxedClassOfPrimitive.get
-  private lazy val _boxedClassOfPrimitive: Lazy[Map[PrimitiveBType, ClassBType]] = ppa.perRunLazy(Map(
+  def boxedClassOfPrimitive: Map[BType, ClassBType] = _boxedClassOfPrimitive.get
+  private lazy val _boxedClassOfPrimitive: Lazy[Map[BType, ClassBType]] = ppa.perRunLazy(Map(
     UNIT   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Void]),
     BOOL   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
     BYTE   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Byte]),
@@ -53,22 +53,22 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
       (x, Erasure.Boxing.boxMethod(x.asClass))
     }.toMap
     for ((valueClassSym, boxMethodSym) <- boxMethods)
-      yield boxMethodSym -> boxedClassOfPrimitive(ts.primitiveTypeMap(valueClassSym))
+      yield boxMethodSym -> boxedClassOfPrimitive(ts.bTypeFromSymbol(valueClassSym))
   }
 
   /**
    * Maps the method symbol for an unbox method to the primitive type of the result.
    * For example, the method symbol for `Byte.unbox()` is mapped to the PrimitiveBType BYTE. */
-  def unboxResultType: Map[Symbol, PrimitiveBType] = _unboxResultType.get
-  private lazy val _unboxResultType = ppa.perRunLazy[Map[Symbol, PrimitiveBType]]{
+  def unboxResultType: Map[Symbol, BType] = _unboxResultType.get
+  private lazy val _unboxResultType = ppa.perRunLazy[Map[Symbol, BType]]{
     val unboxMethods: Map[Symbol, Symbol] =
       defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
     for ((valueClassSym, unboxMethodSym) <- unboxMethods)
-      yield unboxMethodSym -> ts.primitiveTypeMap(valueClassSym)
+      yield unboxMethodSym -> ts.bTypeFromSymbol(valueClassSym)
   }
 
   def srBoxedUnitRef: ClassBType = _srBoxedUnitRef.get
-  private lazy val _srBoxedUnitRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass("scala.runtime.BoxedUnit")))
+  private lazy val _srBoxedUnitRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[scala.runtime.BoxedUnit]))
 
   def StringRef: ClassBType = _StringRef.get
   private lazy val _StringRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.StringClass))
@@ -106,7 +106,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private def jliLambdaMetafactoryRef: ClassBType = _jliLambdaMetafactoryRef.get
   private lazy val _jliLambdaMetafactoryRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory]))
 
-  def jliMethodHandleRef: ClassBType = _jliMethodHandleRef.get
+  private def jliMethodHandleRef: ClassBType = _jliMethodHandleRef.get
   private lazy val _jliMethodHandleRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.MethodHandleClass))
 
   private def jliMethodHandlesLookupRef: ClassBType = _jliMethodHandlesLookupRef.get
@@ -115,9 +115,8 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private def jliMethodTypeRef: ClassBType = _jliMethodTypeRef.get
   private lazy val _jliMethodTypeRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType]))
 
-  // since JDK 9
   private def jliStringConcatFactoryRef: ClassBType = _jliStringConcatFactoryRef.get
-  private lazy val _jliStringConcatFactoryRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass("java.lang.invoke.StringConcatFactory")))
+  private lazy val _jliStringConcatFactoryRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory]))
 
   private def srLambdaDeserialize: ClassBType = _srLambdaDeserialize.get
   private lazy val _srLambdaDeserialize: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize]))
@@ -213,7 +212,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private lazy val _javaBoxMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val boxed = defn.boxedClass(primitive)
-      val unboxed = ts.primitiveTypeMap(primitive)
+      val unboxed = ts.bTypeFromSymbol(primitive)
       val method = MethodNameAndType("valueOf", MethodBType(List(unboxed), boxedClassOfPrimitive(unboxed)))
       (ts.classBTypeFromSymbol(boxed).internalName, method)
     }))
@@ -225,13 +224,13 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val boxed = defn.boxedClass(primitive)
       val name = primitive.name.toString.toLowerCase + "Value"
-      (ts.classBTypeFromSymbol(boxed).internalName, MethodNameAndType(name, MethodBType(Nil, ts.primitiveTypeMap(primitive))))
+      (ts.classBTypeFromSymbol(boxed).internalName, MethodNameAndType(name, MethodBType(Nil, ts.bTypeFromSymbol(primitive))))
     }))
   }
 
   private def predefBoxingMethods(isBox: Boolean, getName: (String, String) => String): Map[String, MethodBType] =
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
-      val unboxed = ts.primitiveTypeMap(primitive)
+      val unboxed = ts.bTypeFromSymbol(primitive)
       val boxed = boxedClassOfPrimitive(unboxed)
       val name = getName(primitive.name.toString, defn.boxedClass(primitive).name.toString)
       (name, MethodBType(List(if isBox then unboxed else boxed), if isBox then boxed else unboxed))
@@ -250,12 +249,12 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private lazy val _srRefCreateMethods: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
-      val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.primitiveTypeMap(primitive)
+      val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.bTypeFromSymbol(primitive)
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
-        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), ts.classBTypeFromSymbol(refClass)))),
-        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), ts.classBTypeFromSymbol(volatileRefClass))))
+        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), ts.bTypeFromSymbol(refClass)))),
+        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), ts.bTypeFromSymbol(volatileRefClass))))
       )
     }))
   }
@@ -268,8 +267,8 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
-        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), ts.classBTypeFromSymbol(refClass)))),
-        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), ts.classBTypeFromSymbol(volatileRefClass))))
+        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), ts.bTypeFromSymbol(refClass)))),
+        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), ts.bTypeFromSymbol(volatileRefClass))))
       )
     }))
   }
@@ -279,7 +278,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private lazy val _primitiveBoxConstructors: Lazy[Map[InternalName, MethodNameAndType]] = ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val boxed = defn.boxedClass(primitive)
-      val unboxed = ts.primitiveTypeMap(primitive)
+      val unboxed = ts.bTypeFromSymbol(primitive)
       (ts.classBTypeFromSymbol(boxed).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(unboxed), UNIT)))
     }))
   }
@@ -288,7 +287,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   def srBoxesRuntimeBoxToMethods: Map[BType, MethodNameAndType] = _srBoxesRuntimeBoxToMethods.get
   private lazy val _srBoxesRuntimeBoxToMethods: Lazy[Map[BType, MethodNameAndType]] = ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
-      val bType = ts.primitiveTypeMap(primitive)
+      val bType = ts.bTypeFromSymbol(primitive)
       val boxed = boxedClassOfPrimitive(bType)
       val name = "boxTo" + defn.boxedClass(primitive).name.toString
       (bType, MethodNameAndType(name, MethodBType(List(bType), boxed)))
@@ -299,7 +298,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   def srBoxesRuntimeUnboxToMethods: Map[BType, MethodNameAndType] = _srBoxesRuntimeUnboxToMethods.get
   private lazy val _srBoxesRuntimeUnboxToMethods: Lazy[Map[BType, MethodNameAndType]] = ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
-      val bType = ts.primitiveTypeMap(primitive)
+      val bType = ts.bTypeFromSymbol(primitive)
       val name = "unboxTo" + primitive.name.toString
       (bType, MethodNameAndType(name, MethodBType(List(ObjectRef), bType)))
     }))
@@ -310,7 +309,7 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   private lazy val _srRefConstructors: Lazy[Map[InternalName, MethodNameAndType]] =  ppa.perRunLazy {
     Map.from(defn.ScalaValueClassesNoUnit().union(Set(defn.ObjectClass)).flatMap(primitive => {
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
-      val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.primitiveTypeMap(primitive)
+      val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.bTypeFromSymbol(primitive)
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
       List(
@@ -335,12 +334,12 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
           ("scala/Tuple" + n, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List.fill(n)(ObjectRef), UNIT)))
         },
         spec1.map { sp1 =>
-          val prim = ts.primitiveTypeMap(sp1)
+          val prim = ts.bTypeFromSymbol(sp1)
           ("scala/Tuple1$mc" + prim.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(), UNIT)))
         },
         for sp2a <- spec2; sp2b <- spec2 yield {
-          val primA = ts.primitiveTypeMap(sp2a)
-          val primB = ts.primitiveTypeMap(sp2b)
+          val primA = ts.bTypeFromSymbol(sp2a)
+          val primB = ts.bTypeFromSymbol(sp2b)
           ("scala/Tuple2$mc" + primA.descriptor + primB.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(primA, primB), UNIT)))
         }
       )
