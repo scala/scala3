@@ -13,8 +13,7 @@ import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, Mod
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
-import dotty.tools.dotc.core.Types.{AnnotatedType, JavaArrayType, Type, TypeRef, abstractTermNameFilter}
-import dotty.tools.dotc.report
+import dotty.tools.dotc.core.Types.{JavaArrayType, Type, TypeRef, abstractTermNameFilter}
 
 import scala.annotation.tailrec
 import scala.tools.asm
@@ -117,27 +116,12 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    * classes.
    */
   def bTypeFromType(tp: Type)(using Context): BType = {
-    tp.widenDealias match {
+    tp.widenDealias match
       case JavaArrayType(el) => ArrayBType(bTypeFromType(el)) // Array type such as Array[Int] (kept by erasure)
       case t: TypeRef => bTypeFromSymbol(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
-      case Types.ClassInfo(_, sym, _, _, _) => bTypeFromSymbol(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
-
-      /* AnnotatedType should (probably) be eliminated by erasure. However, we know it happens for
-        * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
-        * The type in the AnnotationInfo is an AnnotatedType. Tested in jvm/annotations.scala.
-        */
-      case a@AnnotatedType(t, _) =>
-        report.debuglog(s"typeKind of annotated type $a")
-        bTypeFromType(t)
-
-      /* The cases below should probably never occur. They are kept for now to avoid introducing
-        * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
-        * test suite don't produce any warning.
-        */
-
+      case Types.ClassInfo(_, sym, _, _, _) => bTypeFromSymbol(sym) // We get here, for example, for genCallMethod, which invokes bTypeFromType(method.owner.info)
       case tp =>
         throw new AssertionError(s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp.")
-    }
   }
 
   /**
