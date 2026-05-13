@@ -169,7 +169,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       claszSymbol       = cd0.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
       isCZStaticModule  = claszSymbol.isStaticModuleClass
-      thisName          = bTypeLoader.internalName(claszSymbol)
+      thisName          = bTypeLoader.classBTypeFromSymbol(claszSymbol).internalName
 
       cnode = new ClassNode1()
 
@@ -301,7 +301,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor)(using Context): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) bTypes.ObjectRef.internalName else bTypeLoader.internalName(ps.head.typeSymbol)
+      val superClass: String = if ps.isEmpty then bTypes.ObjectRef.internalName
+                               else bTypeLoader.classBTypeFromSymbol(ps.head.typeSymbol).internalName
 
       // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
       // (This somewhat convoluted sequence of operations exists to maintain the exact order of inheritance from a previous version.
@@ -349,7 +350,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         cnode.visitSource(ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.internalName, bTypeLoader.asmMethodType(_).descriptor) match {
+      BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.classBTypeFromSymbol(_).internalName, bTypeLoader.asmMethodType(_).descriptor) match {
         case Some(BCodeUtils.EnclosingMethodEntry(className, methodName, methodDescriptor)) =>
           cnode.visitOuterClass(className, methodName, methodDescriptor)
         case _ => ()
@@ -989,7 +990,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         )
         // INVOKESTATIC CREATOR(): android.os.Parcelable$Creator; -- TODO where does this Android method come from?
         val callee = claszSymbol.companionModule.info.member(androidFieldName).symbol
-        val jowner = bTypeLoader.internalName(callee.owner)
+        val jowner = bTypeLoader.classBTypeFromSymbol(callee.owner).internalName
         val jname  = callee.javaSimpleName
         val jtype  = bTypeLoader.asmMethodType(callee).descriptor
         insnParcA  = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESTATIC, jowner, jname, jtype, false)

@@ -72,7 +72,13 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
     assert(classSym != defn.ArrayClass || BackendUtils.compilingArray, classSym)
     assert(!classSym.isPrimitiveValueClass || BackendUtils.compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
-    classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
+    // For each java class, the scala compiler creates a class and a module (thus a module class).
+    // If the `sym` is a java module class, we use the java class instead. This ensures that the
+    // ClassBType is created from the main class (instead of the module class).
+    // The two symbols have the same name, so the resulting internalName is the same.
+    val classSym1 = if (classSym.is(JavaDefined) && classSym.is(ModuleClass)) classSym.linkedClass
+                    else classSym
+    classBType(classSym1.javaBinaryName)(ct => createClassInfo(ct, classSym1.asClass))
   }
 
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol)(using Context): ClassBType = {
@@ -90,18 +96,6 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     )
   }
 
-  /**
-   * The class internal name for a given class symbol.
-   */
-  def internalName(sym: Symbol)(using Context): String = {
-    // For each java class, the scala compiler creates a class and a module (thus a module class).
-    // If the `sym` is a java module class, we use the java class instead. This ensures that the
-    // ClassBType is created from the main class (instead of the module class).
-    // The two symbols have the same name, so the resulting internalName is the same.
-    val classSym = if (sym.is(JavaDefined) && sym.is(ModuleClass)) sym.linkedClass else sym
-    classBTypeFromSymbol(classSym).internalName
-  }
-
   /*
    * must-single-thread
    */
@@ -111,13 +105,6 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       if (msym.isClassConstructor || msym.isConstructor) UNIT
       else toTypeKind(msym.info.resultType)
     MethodBType(msym.info.firstParamTypes.map(toTypeKind), resT)
-  }
-
-  /**
-   * The jvm descriptor of a type.
-   */
-  def typeDescriptor(t: Type)(using Context): String = {
-    toTypeKind(t).descriptor
   }
 
   /**

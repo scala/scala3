@@ -547,7 +547,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol | Null)(using Context): Unit = {
       val useSpecificReceiver = specificReceiver != null && !field.isScalaStatic
 
-      val owner      = bTypeLoader.internalName(if (useSpecificReceiver) specificReceiver else field.owner)
+      val owner      = bTypeLoader.classBTypeFromSymbol(if (useSpecificReceiver) specificReceiver else field.owner).internalName
       val fieldJName = field.javaSimpleName
       val fieldDescr = symInfoTK(field).descriptor
       val isStatic   = field.isStaticMember
@@ -1474,7 +1474,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       }
 
       receiverClass.info // ensure types the type is up to date; erasure may add lateINTERFACE to traits
-      val receiverName = bTypeLoader.internalName(receiverClass)
+      val receiverName = bTypeLoader.classBTypeFromSymbol(receiverClass).internalName
 
       val jname    = method.javaSimpleName
       val bmType   = bTypeLoader.asmMethodType(method)
