@@ -655,10 +655,14 @@ object SpaceEngine {
         }
       }
 
+    val keepOpenWildcard =
+      val cls = unappSym.owner.linkedClass
+      cls.exists && cls.info.parents.exists(_.isInstanceOf[AppliedType])
+
     sig.map:
       case tp: WildcardType =>
         val b = tp.effectiveBounds
-        if b.lo.isNothingType && b.hi.isAny then tp
+        if keepOpenWildcard && b.lo.isNothingType && b.hi.isAny then tp
         else b.hi
       case tp => tp
   }
