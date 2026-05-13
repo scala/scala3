@@ -56,8 +56,10 @@ jobs:
     steps:
       - name: Compute the SHA256 of scala3-${{ inputs.version }}.zip in GitHub Release
         id: digest
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          curl -o artifact.zip -L https://github.com/scala/scala3/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}.zip
+          curl -o artifact.zip -L "https://github.com/scala/scala3/releases/download/$VERSION/scala3-$VERSION.zip"
           echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
 
   build-chocolatey:
