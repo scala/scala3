@@ -17,7 +17,6 @@ import dotty.tools.dotc.core.Names.{termName, Name}
 import dotty.tools.dotc.core.Names.Designator
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
-import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{
   AndType,
   AnnotatedType,
@@ -422,10 +421,31 @@ enum ENode extends Showable:
     tp.dealias match
       case tp: SkolemType =>
         tpd.ref(defn.Predef_undefined).withType(tp)
-      case tp: ENodeVar if tp.isFree =>
+      case tp: ENodeVar.Skolem =>
+        // Encode the owner as a type-level singleton (the owner's TermRef)
+        // so that TASTy round-trip preserves owner identity stably.
+        // `Skolem` is the only `ENodeVar` shape encoded to a tree.
         tpd.ref(defn.QualifiedTypesInternal_skolem)
-          .appliedToType(tp.underlying)
+          .appliedToTypes(List(tp.underlying, tp.owner.termRef))
           .appliedTo(tpd.Literal(Constant(tp.index)))
+      case tp: ENodeVar.BoundParam =>
+        // BoundParams are de Bruijn indices for an enclosing `ENode.Lambda`'s
+        // parameter. By the time `toTree` reaches this node, the enclosing
+        // `SubstEParamsMap` should have substituted the BoundParam with a
+        // `TermParamRef` bound by the surrounding tree-level lambda.
+        // Reaching this branch means a BoundParam escaped its binding scope.
+        throw AssertionError(
+          s"Cannot encode BoundParam in qualifier tree: ${tp.show}. " +
+            "BoundParams must be substituted to TermParamRefs by an enclosing lambda."
+        )
+      case tp: ENodeVar.OpenedParam =>
+        // OpenedParams are transient solver state — they should never reach
+        // tree encoding (e.g., for pickling). Reaching this branch means an
+        // unclosed lambda leaked out of the qualifier solver.
+        throw AssertionError(
+          s"Cannot encode OpenedParam in qualifier tree: ${tp.show}. " +
+            "OpenedParams should only exist within the QualifierSolver."
+        )
       case tp: TermRef if hasSkolemOrFreeVar(tp) =>
         tpd.ref(defn.Predef_undefined).withType(tp.underlying)
       case tp => tpd.singleton(tp)
@@ -668,14 +688,14 @@ object ENode:
             thenpNode <- rec(thenp)
             elsepNode <- rec(elsep)
           yield OpApply(ENode.Op.IfThenElse, List(condNode, thenpNode, elsepNode))
-        // Decode the inverse of `toTree`'s encoding of a free skolem:
-        // `skolem[T](idx)` → `ENodeVar.Skolem(ctx.owner, idx)(T)`. The owner
-        // is recovered from the surrounding `ctx.owner`, which by invariant
-        // matches the owner used at encoding time (typer-time `ctx.owner`).
-        case tpd.Apply(tpd.TypeApply(fn, List(tArg)), List(tpd.Literal(Constant(idx: Int))))
+        // Decode `skolem[T, Owner](idx)` → `ENodeVar.Skolem(ownerSym, idx)(T)`.
+        // The owner is the symbol carried by the `Owner` type-arg (a TermRef
+        // produced at encoding time from the owner symbol's `termRef`).
+        case tpd.Apply(tpd.TypeApply(fn, List(tArg, ownerArg)), List(tpd.Literal(Constant(idx: Int))))
             if fn.symbol == defn.QualifiedTypesInternal_skolem =>
           val underlying = substParamRefs(tArg.tpe, paramSyms, paramTps)
-          Some(ENode.Atom(ENodeVar.Skolem(ctx.owner, idx)(underlying)))
+          val ownerSym = ownerArg.tpe.termSymbol
+          Some(ENode.Atom(ENodeVar.Skolem(ownerSym, idx)(underlying)))
         case tpd.Apply(fun, args) =>
           for
             funNode   <- rec(fun)
