@@ -50,41 +50,41 @@ object QualifiedTypes:
    */
   val QualifiedTypeCast: Property.StickyKey[Unit] = Property.StickyKey()
 
-  /** Sticky attachment on an argument tree that records the `ENodeVar`
-   *  (of kind `Skolem`) index allocated for its skolemized version inside
+  /** Sticky attachment on an argument tree that records the
+   *  `(owner, index)` pair allocated for its skolemized version inside
    *  qualifiers. Used by [[substParamInQualifiers]] to preserve identity
    *  across re-type-checks (typer / posttyper / Ycheck) — the same argTree
-   *  always maps to the same skolem index, which is the key invariant that
-   *  makes the EGraph recognize "the same unknown" across phases.
+   *  always maps to the same `(owner, index)`, which is the key invariant
+   *  that makes the EGraph recognize "the same unknown" across phases.
    */
-  val QualifierSkolemIndex: Property.StickyKey[Int] = Property.StickyKey()
+  val QualifierSkolemIndex: Property.StickyKey[(Symbol, Int)] = Property.StickyKey()
 
-  def treeSkolemIndex(tree: Tree)(using Context): Int =
+  def treeSkolemIndex(tree: Tree, owner: Symbol)(using Context): (Symbol, Int) =
     require(!tree.isEmpty, "Tree must be non-empty to have a skolem index attached")
-    trace(i"treeSkolemIndex($tree)", Printers.qualifiedTypes):
+    trace(i"treeSkolemIndex($tree, ${owner.show})", Printers.qualifiedTypes):
       val expr = tpd.stripBlock(tree)
       expr.getAttachment(QualifierSkolemIndex) match
-        case Some(i) =>
-          i
+        case Some(pair) =>
+          pair
         case None =>
-          val i = ctx.base.qualifierSkolemIndexCounter.fresh()
-          expr.putAttachment(QualifierSkolemIndex, i)
-          i
+          val pair = (owner, ctx.base.freshSkolemIndex(owner))
+          expr.putAttachment(QualifierSkolemIndex, pair)
+          pair
 
-  def symbolSkolemIndex(sym: Symbol)(using Context): Int =
+  def symbolSkolemIndex(sym: Symbol)(using Context): (Symbol, Int) =
     trace(i"symbolSkolemIndex(${sym.show})", Printers.qualifiedTypes):
       ctx.base.qualifierSkolemIndexBySymbol.get(sym) match
-        case Some(i) =>
-          i
+        case Some(pair) =>
+          pair
         case None =>
-          val i =
+          val pair =
             sym.defTree match
               case valDef: tpd.ValDef if !valDef.rhs.isEmpty =>
-                treeSkolemIndex(valDef.rhs)
+                treeSkolemIndex(valDef.rhs, sym.owner)
               case _ =>
-                ctx.base.qualifierSkolemIndexCounter.fresh()
-          ctx.base.qualifierSkolemIndexBySymbol(sym) = i
-          i
+                (sym.owner, ctx.base.freshSkolemIndex(sym.owner))
+          ctx.base.qualifierSkolemIndexBySymbol(sym) = pair
+          pair
 
   /** Inside any `@qualified` annotation occurring in `tp`, substitute
    *  the parameter reference `pref` with an `ENodeVar` (of kind `Skolem`)
@@ -101,7 +101,8 @@ object QualifiedTypes:
    */
   def substParamInQualifiers(tp: Type, pref: ParamRef, argType: Type, argTree: tpd.Tree | Null)(using Context): Type =
     if argTree == null || !Feature.qualifiedTypesEnabled then return tp
-    val replacement = ENodeVar.Skolem(treeSkolemIndex(argTree))(argType)
+    val (skolemOwner, skolemIdx) = treeSkolemIndex(argTree, ctx.owner)
+    val replacement = ENodeVar.Skolem(skolemOwner, skolemIdx)(argType)
     val replaceMap = new TypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
@@ -127,7 +128,8 @@ object QualifiedTypes:
             val innerMap = new TypeMap:
               def apply(t2: Type): Type = t2 match
                 case ref: TermRef if localSyms.contains(ref.symbol) =>
-                  ENodeVar.Skolem(symbolSkolemIndex(ref.symbol))(SkolemType(mapOver(ref.underlying)))
+                  val (skolemOwner, skolemIdx) = symbolSkolemIndex(ref.symbol)
+                  ENodeVar.Skolem(skolemOwner, skolemIdx)(SkolemType(mapOver(ref.underlying)))
                 case _ => mapOver(t2)
             qualifier.mapTypes(innerMap).asInstanceOf[ENode.Lambda]
           if (parent1 eq parent) && (qualifier1 eq qualifier) then t
