@@ -129,7 +129,9 @@ class CompilationTests {
       compileFile("tests/pos/anonClassSubtyping.scala", defaultOptions),
       compileFile("tests/pos/extmethods.scala", defaultOptions),
       compileFile("tests/pos/companions.scala", defaultOptions),
-      compileFile("tests/pos/main.scala", defaultOptions)
+      compileFile("tests/pos/main.scala", defaultOptions),
+      compileFilesInDir("tests/pos-custom-args/qualified-types",
+        defaultOptions.and("-language:experimental.qualifiedTypes"))
     ).times(2).checkCompile()
   }
 
