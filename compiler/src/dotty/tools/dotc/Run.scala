@@ -318,6 +318,9 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    */
   var ccEnabledSomewhere = Feature.ccEnabledBySetting(using ictx)
 
+  /** If -explain-cycles is set, a trace of cyclic reference dependencies, otherwise null */
+  var cyclicReferenceTrace: CyclicReference.Trace | Null = null
+
   private var myEnrichedErrorMessage = false
 
   def compile(files: List[AbstractFile]): Unit =
@@ -440,7 +443,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
-      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
+      cyclicReferenceTrace = new CyclicReference.Trace()
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     val cancelAsyncTasty: () => Unit =
