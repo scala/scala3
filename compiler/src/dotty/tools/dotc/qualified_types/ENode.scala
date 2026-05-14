@@ -668,6 +668,14 @@ object ENode:
             thenpNode <- rec(thenp)
             elsepNode <- rec(elsep)
           yield OpApply(ENode.Op.IfThenElse, List(condNode, thenpNode, elsepNode))
+        // Decode the inverse of `toTree`'s encoding of a free skolem:
+        // `skolem[T](idx)` → `ENodeVar.Skolem(ctx.owner, idx)(T)`. The owner
+        // is recovered from the surrounding `ctx.owner`, which by invariant
+        // matches the owner used at encoding time (typer-time `ctx.owner`).
+        case tpd.Apply(tpd.TypeApply(fn, List(tArg)), List(tpd.Literal(Constant(idx: Int))))
+            if fn.symbol == defn.QualifiedTypesInternal_skolem =>
+          val underlying = substParamRefs(tArg.tpe, paramSyms, paramTps)
+          Some(ENode.Atom(ENodeVar.Skolem(ctx.owner, idx)(underlying)))
         case tpd.Apply(fun, args) =>
           for
             funNode   <- rec(fun)
