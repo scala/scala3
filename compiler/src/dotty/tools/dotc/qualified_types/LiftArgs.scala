@@ -8,6 +8,7 @@ import dotty.tools.dotc.ast.tpd.{Apply, Block, Tree, TreeOps, TypeApply, TypeTre
 import dotty.tools.dotc.config.Feature
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
+import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.SymUtils
 import dotty.tools.dotc.core.Types.{Type, TypeMap}
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -22,20 +23,21 @@ final class LiftArgs extends MiniPhase:
   override def isRunnable(using Context) = super.isRunnable && Feature.qualifiedTypesEnabled
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    val argSkolemIds = tree.args.map(_.getAttachment(QualifiedTypes.QualifierSkolemIndex))
+    val argSkolemIds: List[Option[(Symbol, Int)]] =
+      tree.args.map(_.getAttachment(QualifiedTypes.QualifierSkolemIndex))
 
     if argSkolemIds.forall(_.isEmpty) then
       return tree
 
-    val usedSkolemIds = mutable.Set[Int]()
+    val usedSkolemIds = mutable.Set[(Symbol, Int)]()
     tree.args.foreach: arg =>
       arg.foreachSubTree:
         case TypeApply(fn, List(tpt: TypeTree)) if fn.symbol.isTypeTest =>
           tpt.tpe.foreachPart:
             case QualifiedType(_, qualifier) =>
               qualifier.foreachType:
-                case ENodeVar.Skolem(id) if argSkolemIds.contains(Some(id)) =>
-                  usedSkolemIds += id
+                case ENodeVar.Skolem(owner, id) if argSkolemIds.contains(Some((owner, id))) =>
+                  usedSkolemIds += ((owner, id))
                 case _ => ()
             case _ => ()
         case _ => ()
@@ -50,8 +52,8 @@ final class LiftArgs extends MiniPhase:
       override def apply(tp: Type): Type = tp match
         case QualifiedType(parent, qualifier) =>
           val newQualifier = qualifier.mapTypes:
-            case ENodeVar.Skolem(id) if argSkolemIds.contains(Some(id)) =>
-              val liftedArgIndex = argSkolemIds.indexOf(Some(id))
+            case ENodeVar.Skolem(owner, id) if argSkolemIds.contains(Some((owner, id))) =>
+              val liftedArgIndex = argSkolemIds.indexOf(Some((owner, id)))
               liftedArgs(liftedArgIndex).tpe
             case tpe => tpe
           QualifiedType(parent, newQualifier.asInstanceOf[ENode.Lambda])
