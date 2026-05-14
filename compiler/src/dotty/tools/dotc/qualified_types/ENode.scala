@@ -796,9 +796,9 @@ object ENode:
     trace(i"termAssumptions($tp)", Printers.qualifiedTypes):
       tp match
         case tp: TermRef =>
-          val skolemId = ctx.base.qualifierSkolemIndexBySymbol.get(tp.symbol)
-          val skolemAssumptions = skolemId.toList.map: id =>
-            OpApply(ENode.Op.Equal, List(Atom(ENodeVar.Skolem(id)(SkolemType(tp.widen))), singleton(tp)))
+          val skolemInfo = ctx.base.qualifierSkolemIndexBySymbol.get(tp.symbol)
+          val skolemAssumptions = skolemInfo.toList.map: (owner, id) =>
+            OpApply(ENode.Op.Equal, List(Atom(ENodeVar.Skolem(owner, id)(SkolemType(tp.widen))), singleton(tp)))
           val defTree = tp.symbol.defTree
           val valAssumptions = defTree match
             case valDef: tpd.ValDef if !valDef.rhs.isEmpty && !valDef.symbol.is(Flags.Lazy) =>

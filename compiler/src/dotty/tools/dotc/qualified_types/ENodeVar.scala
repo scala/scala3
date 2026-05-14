@@ -2,6 +2,7 @@ package dotty.tools.dotc.qualified_types
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Hashable.Binders
+import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.{CachedProxyType, SingletonType, Type}
 
 /** A reference inside an [[ENode]] — one of three kinds, each modelled as
@@ -63,8 +64,14 @@ object ENodeVar:
    *  [[QualifiedTypes.substParamInQualifiers]] / [[QualifiedTypes.avoidRefs]]
    *  and persisted in a sticky attachment on the argument tree so its
    *  identity is preserved across re-type-checks.
+   *
+   *  Identity is `(owner, index)`: each owner symbol has its own per-owner
+   *  index space, so two skolems with the same `index` but different
+   *  owners are distinct. This makes indices stable across TASTy reads
+   *  (owner symbols are stable in TASTy by design) and yields per-function
+   *  small indices in error messages.
    */
-  final case class Skolem(index: Int)(_underlying: Type) extends ENodeVar(_underlying):
-    override def computeHash(bs: Binders): Int = doHash(2, index)
+  final case class Skolem(owner: Symbol, index: Int)(_underlying: Type) extends ENodeVar(_underlying):
+    override def computeHash(bs: Binders): Int = doHash(2, owner.id * 41 + index)
     def derivedENodeVar(underlying: Type): ENodeVar =
-      if underlying eq _underlying then this else Skolem(index)(underlying)
+      if underlying eq _underlying then this else Skolem(owner, index)(underlying)

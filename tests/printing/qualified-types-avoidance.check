@@ -11,10 +11,10 @@ package example {
     def test(): Int =
       {
         val c: Int with arg(0) == skolem(0) = example.id(example.impure())
-        val d: Int with arg(0) == skolem(1) =
+        val d: Int with arg(0) == skolem(0) =
           {
             val u: Int = example.impure()
-            example.id(u):Int with (arg(0) == skolem(1))
+            example.id(u):Int with (arg(0) == skolem(0))
           }
         def inferred(): Int = example.id(example.impure())
         c + d + inferred()
