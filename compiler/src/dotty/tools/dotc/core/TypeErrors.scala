@@ -224,27 +224,14 @@ object CyclicReference:
   type TraceElement = Context ?=> String
   type Trace = mutable.ArrayBuffer[TraceElement]
 
-  /** Do we keep track of cyclic dependencies under -explain-cyclic? */
-  def cyclesAreTraced(using Context): Boolean =
-    val run = ctx.run
-    run != null && run.cyclicReferenceTrace != null
-
-  /** @pre cyclesAreTraced */
-  def pushCyclicTrace(info: CyclicReference.TraceElement)(using Context): Unit =
-    ctx.run.nn.cyclicReferenceTrace.nn += info
-
-  /** @pre cyclesAreTraced */
-  def popCyclicTrace()(using Context): Unit =
-    ctx.run.nn.cyclicReferenceTrace.nn.dropRightInPlace(1)
-
   inline def trace[T](info: TraceElement)(inline op: => T)(using Context): T =
     val run = ctx.run
     val traceCycles = run != null && run.cyclicReferenceTrace != null
     try
-      if traceCycles then pushCyclicTrace(info)
+      if traceCycles then run.nn.cyclicReferenceTrace.nn += info
       op
     finally
-      if traceCycles then popCyclicTrace()
+      if traceCycles then run.nn.cyclicReferenceTrace.nn.dropRightInPlace(1)
 
   inline def trace[T](prefix: String, sym: Symbol)(inline op: => T)(using Context): T =
     trace((ctx: Context) ?=> i"$prefix$sym")(op)
