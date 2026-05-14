@@ -866,7 +866,7 @@ object Contexts {
   }
 
   /** A context base defines state and associated methods that exist once per
-   *  compiler run.
+   *  logical compiler instance.
    */
   class ContextBase extends ContextState
                        with Phases.PhasesBase
