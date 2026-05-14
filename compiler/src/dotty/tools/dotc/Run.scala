@@ -276,6 +276,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   var ccImportEncountered = false
 
+  /** If -explain-cycles is set, a trace of cyclic reference dependencies, otherwise null */
+  var cyclicReferenceTrace: CyclicReference.Trace | Null = null
+
   private var myEnrichedErrorMessage = false
 
   def compile(files: List[AbstractFile]): Unit =
@@ -378,7 +381,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     unfusedPhases.foreach(_.initContext(runCtx))
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
-      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
+      cyclicReferenceTrace = new CyclicReference.Trace()
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     runPhases(allPhases = fusedPhases)(using runCtx)
