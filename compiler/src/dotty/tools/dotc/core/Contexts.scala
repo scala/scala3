@@ -934,20 +934,29 @@ object Contexts {
     /** Qualified types stats, initialized in `initialize()`. */
     var qualifiedTypesStats: qualified_types.QualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = false)
 
-    /** Per-run counter for allocating unique indices for `ENodeVar`s of
-     *  kind `Skolem` — used to represent argument references inside
-     *  qualifiers. Indices are stored in a sticky attachment on the
-     *  argument tree (see `QualifiedTypes.QualifierSkolemIndex`) so they
-     *  stay stable across re-type-checks. Reset in `initialize()` to avoid
-     *  stale entries across runs.
+    /** Per-owner counters for allocating skolem indices used inside
+     *  qualifiers. Each owner symbol has its own counter, so indices are
+     *  local to the owner (a function symbol or class symbol). Indices are
+     *  stored in a sticky attachment on the argument tree (see
+     *  `QualifiedTypes.QualifierSkolemIndex`) so they stay stable across
+     *  re-type-checks. Cleared per run in `initialize()`.
      */
-    var qualifierSkolemIndexCounter: qualified_types.QualifierSkolemIndexCounter = qualified_types.QualifierSkolemIndexCounter()
+    val qualifierSkolemIndexCounterByOwner: collection.mutable.HashMap[Symbols.Symbol, qualified_types.QualifierSkolemIndexCounter] =
+      collection.mutable.HashMap()
 
-    /** Maps local val symbols to a stable skolem index used inside qualifiers.
-     *  Keyed by symbol to avoid relying on `sym.defTree` (which may be empty for
-     *  coverage-lifted vals). Cleared per run in `initialize()`.
+    /** Allocate a fresh skolem index local to the given owner. */
+    def freshSkolemIndex(owner: Symbols.Symbol): Int =
+      qualifierSkolemIndexCounterByOwner
+        .getOrElseUpdate(owner, qualified_types.QualifierSkolemIndexCounter())
+        .fresh()
+
+    /** Maps local val symbols to a stable `(owner, index)` pair used inside
+     *  qualifiers. Keyed by symbol to avoid relying on `sym.defTree` (which
+     *  may be empty for coverage-lifted vals). Cleared per run in
+     *  `initialize()`.
      */
-    val qualifierSkolemIndexBySymbol: collection.mutable.HashMap[Symbols.Symbol, Int] = collection.mutable.HashMap()
+    val qualifierSkolemIndexBySymbol: collection.mutable.HashMap[Symbols.Symbol, (Symbols.Symbol, Int)] =
+      collection.mutable.HashMap()
 
     /** The standard definitions */
     val definitions: Definitions = new Definitions
@@ -967,7 +976,7 @@ object Contexts {
         _platform = newPlatform
       platform.init()
       qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
-      qualifierSkolemIndexCounter = qualified_types.QualifierSkolemIndexCounter()
+      qualifierSkolemIndexCounterByOwner.clear()
       qualifierSkolemIndexBySymbol.clear()
       definitions.init()
     }

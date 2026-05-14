@@ -148,6 +148,10 @@ object Message:
             case (cur: ENodeVarEntry, existing: ENodeVarEntry) =>
               cur.bindingLevel == existing.bindingLevel
               && cur.ref.getClass == existing.ref.getClass
+              && ((cur.ref, existing.ref) match
+                case (cur: qualified_types.ENodeVar.Skolem, existing: qualified_types.ENodeVar.Skolem) =>
+                  cur.owner == existing.owner
+                case _ => true)
             case _ =>
               false
 
