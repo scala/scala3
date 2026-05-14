@@ -78,8 +78,7 @@ sealed trait Tuple extends Product {
 
   /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
    *  The result is typed as `(F[A1], ..., F[An])` if the tuple type is fully known.
-   *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
-   *  to be the cons type.
+   *  Otherwise the result type is `F[A1] *: Tuple`.
    */
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
@@ -89,7 +88,6 @@ sealed trait Tuple extends Product {
    */
   inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
     runtime.Tuples.take(this, n).asInstanceOf[Take[This, n.type]]
-
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
    *  all its elements except the first n ones.
