@@ -96,13 +96,14 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
       "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
     else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
 
-  protected def context: String = ex.optTrace match
-    case Some(trace) =>
+  protected def context: String =
+    val trace = ex.optTrace
+    if trace != null then
       s"\n\nThe error occurred while trying to ${
         trace.map(identity) // map with identity will turn Context ?=> String elements to String elements
           .mkString("\n  which required to ")
       }$debugInfo"
-    case None =>
+    else
       "\n\n Run with -explain-cyclic for more details."
 end CyclicMsg
 
