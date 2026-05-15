@@ -36,13 +36,12 @@ object GenericSignatures {
     // Avoid generating a signature for non-class local symbols.
     // TODO: why does isPrimitiveValueType throw an assertionerror for, e.g., MethodType(List(), List(), TypeRef(ThisType(TypeRef(ThisType(TypeRef(NoPrefix,module class ast)),module class Trees$)),class Thicket)) in in union dotty.tools.dotc.ast.Trees.Apply[dotty.tools.dotc.core.Types.Type] | (): dotty.tools.dotc.ast.Trees.Thicket
     // (and more generally, it could do less work...)
-    if (sym0.isLocal && !sym0.isClass) || (sym0.isField && !info.isInstanceOf[AndOrType] && info.isPrimitiveValueType) then null
+    if sym0.isLocal && !sym0.isClass then null
+    else if sym0.isField && !info.isInstanceOf[AndOrType] && info.isPrimitiveValueType then null
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
   private final def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder = {
-    // This works as long as mangled names are always valid Java identifiers,
-    // if we change our name encoding, we'll have to `throw new UnknownSig` here for
-    // names which are not valid Java identifiers (see git history of this method).
+    // This works as long as mangled names are always valid Java identifiers (see git history of this method).
     def sanitizeName(name: Name): String = name.mangledString
 
     val builder = new StringBuilder(64)
@@ -70,13 +69,6 @@ object GenericSignatures {
     def superSig(cls: Symbol, parents: List[Type]): Unit = {
       def isInterfaceOrTrait(sym: Symbol) = sym.is(PureInterface) || sym.is(Trait)
 
-      // a signature should always start with a class
-      def ensureClassAsFirstParent(tps: List[Type]) = tps match {
-        case Nil => defn.ObjectType :: Nil
-        case head :: tail if isInterfaceOrTrait(head.typeSymbol) => defn.ObjectType :: tps
-        case _ => tps
-      }
-
       val minParents = minimizeParents(cls, parents)
       val validParents =
         if (isTraitSignature)
@@ -84,8 +76,12 @@ object GenericSignatures {
           minParents filter (p => isInterfaceOrTrait(p.classSymbol))
         else minParents
 
-      val ps = ensureClassAsFirstParent(validParents)
-      ps.foreach(boxedSig)
+      // a signature should always start with a class
+      validParents.headOption match
+        case None => boxedSig(defn.ObjectType)
+        case Some(head) if isInterfaceOrTrait(head.typeSymbol) => boxedSig(defn.ObjectType)
+        case _ => ()
+      validParents.foreach(boxedSig)
     }
 
     def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, vcBoxing = ValueClassBoxing.Box)
@@ -123,7 +119,7 @@ object GenericSignatures {
      *  that cannot appear in the signature have been replaced
      *  by their upper-bound.
      */
-    def flattenedIntersection(tp: AndType)(using Context): List[Type] =
+    def flattenedIntersection(tp: AndType)(using Context): Iterable[Type] =
       val parents = ListBuffer[Type]()
 
       def collect(parent: Type, parents: ListBuffer[Type]): Unit = parent.widenDealias match
@@ -139,14 +135,14 @@ object GenericSignatures {
           parents += parent
 
       collect(tp, parents)
-      parents.toList
+      parents
     end flattenedIntersection
 
     /** Split the `parents` of an intersection into two subsets:
      *  those whose individual erasure matches the overall erasure
      *  of the intersection and the others.
      */
-    def splitIntersection(parents: List[Type])(using Context): (List[Type], List[Type]) =
+    def splitIntersection(parents: Iterable[Type])(using Context): (Iterable[Type], Iterable[Type]) =
       val erasedParents = parents.map(erasure)
       val erasedTp = erasedGlb(erasedParents)
       parents.zip(erasedParents)
@@ -162,7 +158,7 @@ object GenericSignatures {
       boundsSig(hiBounds(param.paramInfo.bounds))
     }
 
-    def polyParamSig(tparams: List[TypeParamInfo]): Unit =
+    def polyParamSig(tparams: Iterable[TypeParamInfo]): Unit =
       if (tparams.nonEmpty) {
         builder.append('<')
         tparams.foreach(tparamSig)
@@ -390,7 +386,7 @@ object GenericSignatures {
           val (tparams, vparams, rte) = collectMethodParams(mtd)
           if (toplevel && !sym0.isConstructor) {
             if (sym0.is(Method)) {
-              val (usedMethodTypeParamNames, usedClassTypeParams) = collectUsedTypeParams(vparams :+ rte, sym0)
+              val (usedMethodTypeParamNames, usedClassTypeParams) = collectUsedTypeParams(vparams, rte, sym0)
               val methodTypeParamNames = tparams.map(tp => sanitizeName(tp.paramName.lastPart)).toSet
               // Only add class type parameters to shadowedClassTypeParamNames if they are:
               // 1. Referenced in the method signature, AND
@@ -464,26 +460,19 @@ object GenericSignatures {
   /* Drop redundant types (ones which are implemented by some other parent) from the immediate parents.
    * This is important on Android because there is otherwise an interface explosion.
    */
-  private def minimizeParents(cls: Symbol, parents: List[Type])(using Context): List[Type] = if (parents.isEmpty) parents else {
-    // val requiredDirect: Symbol => Boolean = requiredDirectInterfaces.getOrElse(cls, Set.empty)
-    var rest   = parents.tail
-    var leaves = collection.mutable.ListBuffer.empty[Type] += parents.head
-    while (rest.nonEmpty) {
-      val candidate = rest.head
+  private def minimizeParents(cls: Symbol, parents: Iterable[Type])(using Context): Iterable[Type] = if (parents.isEmpty) parents else {
+    var leaves = collection.mutable.ListBuffer.empty[Type]
+    for candidate <- parents do
       val candidateSym = candidate.typeSymbol
-      // val required = requiredDirect(candidateSym) || !leaves.exists(t => t.typeSymbol isSubClass candidateSym)
       val required = !leaves.exists(t => t.typeSymbol.isSubClass(candidateSym))
       if (required) {
         leaves = leaves filter { t =>
           val ts = t.typeSymbol
           !(ts.is(Trait) || ts.is(PureInterface)) || !candidateSym.isSubClass(ts)
-          // requiredDirect(ts) || !ts.isTraitOrInterface || !candidateSym.isSubClass(ts)
         }
         leaves += candidate
       }
-      rest = rest.tail
-    }
-    leaves.toList
+    leaves
   }
 
   private def hiBounds(bounds: TypeBounds)(using Context): List[Type] = bounds.hi.widenDealias match {
@@ -559,7 +548,7 @@ object GenericSignatures {
         None
   }
 
-  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) =
+  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (Iterable[TypeParamInfo], Iterable[Type], Type) =
     val tparams = ListBuffer.empty[TypeParamInfo]
     val vparams = ListBuffer.empty[Type]
 
@@ -585,11 +574,11 @@ object GenericSignatures {
     end recur
 
     val rte = recur(mtd)
-    (tparams.toList, vparams.toList, rte)
+    (tparams, vparams, rte)
   end collectMethodParams
 
   /** Collect type parameters that are actually used in the given types. */
-  private def collectUsedTypeParams(types: List[Type], initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
+  private def collectUsedTypeParams(types: Iterable[Type], resType: Type, initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
     assert(initialSymbol.is(Method))
     def isTypeParameterInMethSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
       !sym.maybeOwner.isTypeParam && // check if it's not higher order type param
@@ -608,6 +597,7 @@ object GenericSignatures {
       case _ =>
 
     types.foreach(collect)
+    collect(resType)
     (usedMethodTypeParamNames.toSet, usedClassTypeParams.toSet)
   end collectUsedTypeParams
 }
