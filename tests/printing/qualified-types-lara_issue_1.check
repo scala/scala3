@@ -51,11 +51,11 @@
         <
           <<<<this:(Matrix.this : Matrix)>.size:Int>.asInstanceOf:([X0]: X0)>[
             Pos]:Pos>
-         :Pos @QualifierSkolemIndex(<0:(0 : Int)>):
-          Pos @QualifierSkolemIndex(<0:(0 : Int)>)>
+         :Pos @QualifierSkolemIndex(<1:(1 : Int)>):
+          Pos @QualifierSkolemIndex(<1:(1 : Int)>)>
       ):
-        CheckedArray with <boundArg(0):CheckedArray>.size == <skolem(0,Matrix):
-          Pos @QualifierSkolemIndex(<0:(0 : Int)>)>
+        CheckedArray with <boundArg(0):CheckedArray>.size == <skolem(1,Matrix):
+          Pos @QualifierSkolemIndex(<1:(1 : Int)>)>
       >
     def copy(width: Dim, height: Dim): Matrix =
       <<<new Matrix:Matrix>:((width: Dim, height: Dim): Matrix)>(<width:Dim>,
