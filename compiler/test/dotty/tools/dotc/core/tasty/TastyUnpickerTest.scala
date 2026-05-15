@@ -13,11 +13,7 @@ class TastyUnpickerTest {
     val base = new ContextBase
     given Context = base.initialCtx.fresh
     val bytesArray = bytes.map(_.toByte).toArray
-    val dotty = new DottyUnpickler(
-      tastyFile = new VirtualFile("bytes.tasty", bytesArray),
-      bytes = bytesArray,
-      isBestEffortTasty = false
-    )
+    val dotty = new DottyUnpickler(bytes = bytesArray)
     dotty.enter(roots = Set.empty)
     dotty.rootTrees.foreach(t => t.foreachSubTree(identity))
 
