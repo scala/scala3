@@ -20,13 +20,13 @@ class ENodeTest extends QualifiedTypesTest:
   @Test def testFromToTree1() =
     checkFromToTree(
       "(param0: Int) => param0",
-      "(_: Int) => arg(0)"
+      "(_: Int) => boundArg(0)"
     )
 
   @Test def testFromToTree2() =
     checkFromToTree(
       "(param0: Int) => param0 + 1",
-      "(_: Int) => arg(0) + 1"
+      "(_: Int) => boundArg(0) + 1"
     )
 
   @Test def testFromToTree3() =
@@ -34,7 +34,7 @@ class ENodeTest extends QualifiedTypesTest:
     // normalization. This is only done when adding E-Nodes to an E-Graph.
     checkFromToTree(
       "(param0: Int) => param0 + 1 + 1",
-      "(_: Int) => arg(0) + 1 + 1"
+      "(_: Int) => boundArg(0) + 1 + 1"
     )
 
   @Test def testFromToTree4() =
@@ -42,7 +42,7 @@ class ENodeTest extends QualifiedTypesTest:
       "(param0: Int) => (param1: Int) => param0 + param1",
       // In De Bruijn notation the outermost parameter is param1 and the
       // innermost param0
-      "(_: Int) => (_: Int) => arg(1) + arg(0)"
+      "(_: Int) => (_: Int) => boundArg(1) + boundArg(0)"
     )
 
   @Test def testFromToTree5() =
@@ -50,11 +50,11 @@ class ENodeTest extends QualifiedTypesTest:
       "(param0: Int, param1: Int) => param0 + param1",
       // Same for paramter lists with multiple parameters: the outermost
       // parameter is param1 and the innermost param0
-      "(_: Int, _: Int) => arg(1) + arg(0)"
+      "(_: Int, _: Int) => boundArg(1) + boundArg(0)"
     )
 
   @Test def testFromToTree6() =
     checkFromToTree(
       "(param0: Int, param1: Int) => (param2: Int, param3: Int) => param0 + param1 + param2 + param3",
-      "(_: Int, _: Int) => (_: Int, _: Int) => arg(3) + arg(2) + arg(1) + arg(0)"
+      "(_: Int, _: Int) => (_: Int, _: Int) => boundArg(3) + boundArg(2) + boundArg(1) + boundArg(0)"
     )
