@@ -52,15 +52,6 @@ object QualifiedTypes:
    */
   val QualifiedTypeCast: Property.StickyKey[Unit] = Property.StickyKey()
 
-  /** Sticky attachment on an argument tree that records the
-   *  `(owner, index)` pair allocated for its skolemized version inside
-   *  qualifiers. Used by [[substParamInQualifiers]] to preserve identity
-   *  across re-type-checks (typer / posttyper / Ycheck) — the same argTree
-   *  always maps to the same `(owner, index)`, which is the key invariant
-   *  that makes the EGraph recognize "the same unknown" across phases.
-   */
-  val QualifierSkolemIndex: Property.StickyKey[(Symbol, Int)] = Property.StickyKey()
-
   /** The symbol that scopes a skolem index: the closest enclosing method
    *  or class on the owner chain starting from `s`. Walks via
    *  `flagsUNSAFE` / `lastKnownDenotation` so it never forces a symbol's
@@ -79,6 +70,23 @@ object QualifiedTypes:
   /** Skolem owner walked from `ctx.owner`. */
   def skolemOwner(using Context): Symbol = skolemOwner(ctx.owner)
 
+  /** The `(owner, idx)` to use as the skolem identity for `tree`. Source
+   *  of truth, in order:
+   *
+   *  1. A `@QualifierSkolemIndex(n)` annotation on `tree.tpe` (peeled
+   *     through `Typed` / `NamedArg`). Stamped by `wrapWithSkolemIndex`
+   *     and pickled into TASTy via the `Typed` ascription's
+   *     `AnnotatedType`.
+   *  2. The same annotation on `tree.symbol` (e.g. a reference to an
+   *     EtaExpansion-lifted val). A stable `ref(lifted)` is not wrapped
+   *     by `maybeLiftQualifiedArg` because it's already `isStable`, so
+   *     its annotation lives on the symbol, not the tree.
+   *  3. Otherwise: allocate a fresh index. This branch should only fire
+   *     once per logical arg — callers must ensure the index gets stamped
+   *     somewhere persistent (typically by `wrapWithSkolemIndex` rewriting
+   *     the tree with the annotation, or `EtaExpansion.lift` stamping it
+   *     on the lifted symbol).
+   */
   def treeSkolemIndex(tree: Tree, owner: Symbol)(using Context): (Symbol, Int) =
     require(!tree.isEmpty, "Tree must be non-empty to have a skolem index attached")
     require(owner.exists, "Owner symbol must be valid to have a skolem index attached")
@@ -86,14 +94,14 @@ object QualifiedTypes:
       readSkolemIndexAnnot(tree) match
         case Some(idx) => (owner, idx)
         case None =>
-          val expr = tpd.stripBlock(tree)
-          expr.getAttachment(QualifierSkolemIndex) match
-            case Some(pair) =>
-              pair
-            case None =>
-              val pair = (owner, ctx.base.freshSkolemIndex(owner))
-              expr.putAttachment(QualifierSkolemIndex, pair)
-              pair
+          val refSym = tpd.stripBlock(tree).symbol
+          if refSym.exists then
+            refSym.getAnnotation(defn.QualifierSkolemIndexAnnot) match
+              case Some(annot) =>
+                val tpd.Literal(Constant(i: Int)) :: Nil = annot.arguments: @unchecked
+                return (owner, i)
+              case None => ()
+          (owner, ctx.base.freshSkolemIndex(owner))
 
   /** Extract the skolem index `n` from a tree whose type has been
    *  annotated `T @QualifierSkolemIndex(n)`, peeling through any leading
