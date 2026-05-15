@@ -942,6 +942,23 @@ object Contexts {
         .getOrElseUpdate(owner, qualified_types.QualifierSkolemIndexCounter())
         .fresh()
 
+    /** The `(owner, idx)` assigned to a `SkolemType` the first time it
+     *  is demoted to an `ENodeVar.Skolem` in an ENode atom. Keyed by
+     *  `SkolemType` reference identity, so every encounter of the same
+     *  skolem instance during this run resolves to the same
+     *  `ENodeVar.Skolem` — important when one `asSeenFrom` call places
+     *  the same `QualSkolemType` in multiple positions of a qualifier
+     *  body (e.g., `sk.from` and `sk.until` must unify in the EGraph
+     *  as the same receiver).
+     *
+     *  Identity is not preserved across pickle/unpickle (`SkolemType`s
+     *  are themselves freshly created per `asSeenFrom` call), so the
+     *  cache only matters within a single compilation run. Cleared per
+     *  run in `initialize()`.
+     */
+    val qualifierSkolemForSkolemType: collection.mutable.HashMap[Types.SkolemType, (Symbols.Symbol, Int)] =
+      collection.mutable.HashMap()
+
     /** The standard definitions */
     val definitions: Definitions = new Definitions
 
@@ -961,6 +978,7 @@ object Contexts {
       platform.init()
       qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
       qualifierSkolemIndexCounterByOwner.clear()
+      qualifierSkolemForSkolemType.clear()
       definitions.init()
     }
 
