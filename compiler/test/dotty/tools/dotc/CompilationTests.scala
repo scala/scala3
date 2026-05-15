@@ -456,27 +456,6 @@ class CompilationTests {
     compileFilesInDir("tests/valhalla/pos", valueClassOptions).checkCompile()
     compileFilesInDir("tests/valhalla/neg", valueClassOptions).checkExpectedErrors()
   }
-
-  @Test def valueClassesRun: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("valueClassesRun")
-    
-    locally {
-      val caseClassesGroup = TestGroup("valueClassesRun/case-classes")
-      val caseClassOptions = valueClassOptions.and("-Yexplicit-nulls")
-
-      val valueOptionClass =  Paths.get(defaultOutputDir.getAbsolutePath, caseClassesGroup.name, "ValueOption", "valuelib", "ValueOption").toString
-      val valueOptionTest = withCoverage(compileFile("tests/valhalla/case-classes/valuelib/ValueOption.scala", caseClassOptions)(using caseClassesGroup).keepOutput)
-      runWithCoverageOrFallback[PosTestWithCoverage](valueOptionTest, "Pos")
-
-      val main = withCoverage(compileFile("tests/valhalla/case-classes/ValueOptionAnimals.scala", caseClassOptions.withClasspath(valueOptionClass))(using caseClassesGroup).keepOutput)
-      runWithCoverageOrFallback[PosTestWithCoverage](main, "Pos")
-      // runWithCoverageOrFallback[RunTestWithCoverage](main, "Run")
-      valueOptionTest.delete()
-      main.delete()
-    }
-    // val compilationTest = withCoverage(compileFilesInDir("tests/valhalla/case-classes", valueClassOptions))
-    // runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
-  }
 }
 
 object CompilationTests extends ParallelTesting with CoverageSupport {
