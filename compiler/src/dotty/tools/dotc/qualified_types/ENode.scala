@@ -747,6 +747,10 @@ object ENode:
           else None
         case tpd.Inlined(_, Nil, expr) =>
           rec(expr)
+        case tpd.Typed(expr, _) =>
+          // See through type ascriptions, including our own
+          // `Typed(_, @QualifierSkolemIndex(_))` wrapping of unstable args.
+          rec(expr)
         case _ =>
           None
 

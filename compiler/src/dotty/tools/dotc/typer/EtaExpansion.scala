@@ -73,7 +73,7 @@ abstract class Lifter {
         .changeNonLocalOwners(lifted)
         .setDefTree
       if Feature.qualifiedTypesEnabled then
-        ctx.base.qualifierSkolemIndexBySymbol(lifted) = QualifiedTypes.treeSkolemIndex(expr, ctx.owner)
+        ctx.base.qualifierSkolemIndexBySymbol(lifted) = QualifiedTypes.treeSkolemIndex(expr, QualifiedTypes.skolemOwner)
       onLiftedDef(liftedTree)
       defs += liftedTree
       ref(lifted.termRef).withSpan(expr.span.focus)

@@ -21,12 +21,14 @@ import dotty.tools.dotc.ast.tpd.{
 }
 import dotty.tools.dotc.config.{Feature, Printers}
 import dotty.tools.dotc.config.Feature.QualifiedTypesMode
+import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Decorators.{em, i}
-import dotty.tools.dotc.core.Symbols.{defn, Symbol}
+import dotty.tools.dotc.core.Symbols.{defn, toDenot, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Types.{
   AndType,
+  AnnotatedType,
   ApproximatingTypeMap,
   ConstantType,
   ErrorType,
@@ -59,30 +61,101 @@ object QualifiedTypes:
    */
   val QualifierSkolemIndex: Property.StickyKey[(Symbol, Int)] = Property.StickyKey()
 
+  /** Read the skolem-index annotation from `tree` (if it has been wrapped
+   *  in `Annotated(_, @QualifierSkolemIndex(n))` by `wrapQualifiedArg`),
+   *  otherwise fall back to the per-tree sticky attachment.
+   *
+   *  The annotation-based path is pickle-stable: TASTy preserves the
+   *  `Annotated` wrapper, so re-typing an unpickled tree recovers the
+   *  same `(owner, index)`. The sticky attachment is only used as a
+   *  cache for trees not yet wrapped (e.g. constructor calls that don't
+   *  go through `ApplyToUntyped`'s `maybeLiftQualifiedArg`).
+   */
+  /** The symbol that scopes a skolem index. Walks up the owner chain to
+   *  the closest enclosing method or class, *without* forcing each
+   *  symbol's info — we may be called from a typer flow that is
+   *  currently computing the very info we'd be forcing.
+   *
+   *  Falls back to `NoSymbol` only at the very root; in practice every
+   *  caller is inside at least the root package class.
+   */
+  def skolemOwner(using Context): Symbol =
+    def walk(s: Symbol): Symbol =
+      if !s.exists then NoSymbol
+      else if s.flagsUNSAFE.is(dotty.tools.dotc.core.Flags.Method) then s
+      else if s.isClass then s
+      else walk(s.lastKnownDenotation.maybeOwner)
+    walk(ctx.owner)
+
   def treeSkolemIndex(tree: Tree, owner: Symbol)(using Context): (Symbol, Int) =
     require(!tree.isEmpty, "Tree must be non-empty to have a skolem index attached")
+    require(owner.exists, "Owner symbol must be valid to have a skolem index attached")
     trace(i"treeSkolemIndex($tree, ${owner.show})", Printers.qualifiedTypes):
-      val expr = tpd.stripBlock(tree)
-      expr.getAttachment(QualifierSkolemIndex) match
-        case Some(pair) =>
-          pair
+      readSkolemIndexAnnot(tree) match
+        case Some(idx) => (owner, idx)
         case None =>
-          val pair = (owner, ctx.base.freshSkolemIndex(owner))
-          expr.putAttachment(QualifierSkolemIndex, pair)
-          pair
+          val expr = tpd.stripBlock(tree)
+          expr.getAttachment(QualifierSkolemIndex) match
+            case Some(pair) =>
+              pair
+            case None =>
+              val pair = (owner, ctx.base.freshSkolemIndex(owner))
+              expr.putAttachment(QualifierSkolemIndex, pair)
+              pair
+
+  /** Extract the skolem index `n` from a tree whose type has been
+   *  annotated `T @QualifierSkolemIndex(n)`, peeling through any leading
+   *  `Typed`/`NamedArg` wrappers.
+   */
+  def readSkolemIndexAnnot(tree: Tree)(using Context): Option[Int] =
+    def fromType(tp: Type): Option[Int] = tp match
+      case AnnotatedType(parent, annot) if annot.symbol == defn.QualifierSkolemIndexAnnot =>
+        annot.argument(0) match
+          case Some(tpd.Literal(Constant(idx: Int))) => Some(idx)
+          case _ => fromType(parent)
+      case AnnotatedType(parent, _) => fromType(parent)
+      case _ => None
+    def loop(t: Tree): Option[Int] = t match
+      case tpd.Typed(expr, _) => fromType(t.tpe).orElse(loop(expr))
+      case tpd.NamedArg(_, expr) => loop(expr)
+      case _ => fromType(t.tpe)
+    loop(tree)
+
+  /** Wrap an argument tree as `Typed(arg, TypeTree(arg.tpe @QualifierSkolemIndex(n)))`
+   *  so the per-arg skolem identity survives TASTy round-trips. No-op if
+   *  the tree is already wrapped or qualified types are disabled.
+   *
+   *  Term annotations are carried via `Typed` (not `Annotated`, which is
+   *  for type trees only). On re-typer the wrapper persists with the
+   *  same `n`, so `treeSkolemIndex` returns the same `(owner, n)` pair.
+   */
+  def wrapWithSkolemIndex(arg: Tree)(using Context): Tree =
+    if !Feature.qualifiedTypesEnabled then arg
+    else
+      readSkolemIndexAnnot(arg) match
+        case Some(_) => arg
+        case None =>
+          val (_, idx) = treeSkolemIndex(arg, skolemOwner)
+          val annot = Annotation(defn.QualifierSkolemIndexAnnot, tpd.Literal(Constant(idx)), arg.span)
+          val annotated = AnnotatedType(arg.tpe.widen, annot)
+          tpd.Typed(arg, tpd.TypeTree(annotated, inferred = true))
 
   def symbolSkolemIndex(sym: Symbol)(using Context): (Symbol, Int) =
     trace(i"symbolSkolemIndex(${sym.show})", Printers.qualifiedTypes):
       ctx.base.qualifierSkolemIndexBySymbol.get(sym) match
-        case Some(pair) =>
-          pair
+        case Some(pair) => pair
         case None =>
-          val pair =
-            sym.defTree match
-              case valDef: tpd.ValDef if !valDef.rhs.isEmpty =>
-                treeSkolemIndex(valDef.rhs, sym.owner)
-              case _ =>
-                (sym.owner, ctx.base.freshSkolemIndex(sym.owner))
+          val idx = sym.getAnnotation(defn.QualifierSkolemIndexAnnot) match
+            case Some(annot) =>
+              val tpd.Literal(Constant(i: Int)) :: Nil = annot.arguments: @unchecked
+              i
+            case None =>
+              val fresh = ctx.base.freshSkolemIndex(sym.owner)
+              sym.addAnnotation(
+                Annotation(defn.QualifierSkolemIndexAnnot, tpd.Literal(Constant(fresh)), sym.span)
+              )
+              fresh
+          val pair = (sym.owner, idx)
           ctx.base.qualifierSkolemIndexBySymbol(sym) = pair
           pair
 
@@ -101,8 +174,8 @@ object QualifiedTypes:
    */
   def substParamInQualifiers(tp: Type, pref: ParamRef, argType: Type, argTree: tpd.Tree | Null)(using Context): Type =
     if argTree == null || !Feature.qualifiedTypesEnabled then return tp
-    val (skolemOwner, skolemIdx) = treeSkolemIndex(argTree, ctx.owner)
-    val replacement = ENodeVar.Skolem(skolemOwner, skolemIdx)(argType)
+    val (skolemOwnerSym, skolemIdx) = treeSkolemIndex(argTree, skolemOwner)
+    val replacement = ENodeVar.Skolem(skolemOwnerSym, skolemIdx)(argType)
     val replaceMap = new TypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>

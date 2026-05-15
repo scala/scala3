@@ -19,7 +19,7 @@ package example {
     type Nested =
       Int @qualified[Int]((x: Int) =>
         example.id[Boolean @qualified[Boolean]((b: Boolean) => b == x > 42)](
-          (x > 42).$asInstanceOf[Boolean with x > 42 == arg(0)])
+          (x > 42).$asInstanceOf[Boolean with x > 42 == boundArg(0)])
       )
     type Intersection = Int & Int @qualified[Int]((x: Int) => x > 0)
     type ValRefinement =
@@ -36,7 +36,7 @@ package example {
         val x5: Int @qualified[Int]((x5: Int) => x > 0) = 1
         val x6: Int =
           example.id[Int @qualified[Int]((x: Int) => x < 0)](-1) +
-            example.id[example.Neg](-1)
+            example.id[example.Neg](-1):example.Neg @QualifierSkolemIndex(0)
         ()
       }
     def implicitArgumentName(): Unit =
@@ -80,7 +80,7 @@ package example {
             case y @ _:Int @qualified[Int]((y: Int) => y > 0) =>
               println(
                 _root_.scala.StringContext.apply([""," is positive" : String]*).
-                  s([y : Any]*)
+                  s([y : Any]*):String @QualifierSkolemIndex(0)
               )
             case _ =>
               ()
@@ -94,7 +94,8 @@ package example {
              =>
               println(
                 _root_.scala.StringContext.apply(
-                  [""," and "," are both positive" : String]*).s([y,z : Any]*)
+                  [""," and "," are both positive" : String]*).s([y,z : Any]*):
+                  String @QualifierSkolemIndex(1)
               )
             case _ =>
               ()

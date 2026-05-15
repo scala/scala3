@@ -29,6 +29,7 @@ object TestSources {
 
   def posFromTastyExcludelistFile: String = "compiler/test/dotc/pos-from-tasty.excludelist"
   def posTestPicklingExcludelistFile: String = "compiler/test/dotc/pos-test-pickling.excludelist"
+  def posTestPicklingQualifiedTypesExcludelistFile: String = "compiler/test/dotc/pos-test-pickling-qualified-types.excludelist"
   def posTestRecheckExcludesFile: String = "compiler/test/dotc/pos-test-recheck.excludes"
   def posLazyValsAllowlistFile: String = "compiler/test/dotc/pos-lazy-vals-tests.allowlist"
   def posLintingAllowlistFile: String = "compiler/test/dotc/pos-linting.allowlist"
@@ -36,6 +37,7 @@ object TestSources {
 
   def posFromTastyExcludelisted: List[String] = loadList(posFromTastyExcludelistFile)
   def posTestPicklingExcludelisted: List[String] = loadList(posTestPicklingExcludelistFile)
+  def posTestPicklingQualifiedTypesExcludelisted: List[String] = loadList(posTestPicklingQualifiedTypesExcludelistFile)
   def posTestRecheckExcluded: List[String] = loadList(posTestRecheckExcludesFile)
   def posLazyValsAllowlist: List[String] = loadList(posLazyValsAllowlistFile)
   def posLintingAllowlist: List[String] = loadList(posLintingAllowlistFile)
