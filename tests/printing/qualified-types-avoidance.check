@@ -10,16 +10,16 @@ package example {
     def impure(): Int = 42
     def test(): Int =
       {
-        val c: Int with boundArg(0) == skolem(0,test) =
-          example.id(example.impure():Int @QualifierSkolemIndex(0))
-        val d: Int with boundArg(0) == skolem(1,test) =
+        val c: Int with boundArg(0) == skolem(1,test) =
+          example.id(example.impure():Int @QualifierSkolemIndex(1))
+        val d: Int with boundArg(0) == skolem(4,test) =
           {
-            @QualifierSkolemIndex(1) val u: Int = example.impure()
-            example.id(u):Int with (boundArg(0) == skolem(1,test))
+            @QualifierSkolemIndex(4) val u: Int = example.impure()
+            example.id(u):Int with (boundArg(0) == skolem(4,test))
           }
         def inferred(): Int =
-          example.id(example.impure():Int @QualifierSkolemIndex(0))
-        c + d + inferred():Int @QualifierSkolemIndex(2)
+          example.id(example.impure():Int @QualifierSkolemIndex(1))
+        c + d + inferred():Int @QualifierSkolemIndex(6)
       }
   }
 }

@@ -405,22 +405,17 @@ enum ENode extends Showable:
   // Conversion from E-Nodes to Trees
   // -----------------------------------
 
-  /** Like `tpd.singleton`, but produces a placeholder tree for types that
-   *  contain `SkolemType`s or free `ENodeVar`s (which cannot be represented
-   *  as real trees).
+  /** Like `tpd.singleton`, but emits a tree-level representation for
+   *  `ENodeVar.Skolem` (via the `internal.skolem[T, Owner](idx)`
+   *  encoding) so it can survive TASTy round-trips.
    *
-   *  This is fine because these trees only appear inside `@qualified`
-   *  annotations where only the type matters.
+   *  Bare `SkolemType` and free `ENodeVar`s should never reach this
+   *  function: `SkolemType`s are demoted to `ENodeVar.Skolem` at the
+   *  boundary in `ENode.singleton` (see `ENode.freshSkolem`), and
+   *  `BoundParam`/`OpenedParam` shouldn't outlive their binders.
    */
   private def singletonOrPlaceholder(tp: Type)(using Context): tpd.Tree =
-    def hasSkolemOrFreeVar(tp: Type): Boolean = tp match
-      case tp: SkolemType => true
-      case tp: ENodeVar => tp.isFree
-      case tp: TermRef => hasSkolemOrFreeVar(tp.prefix)
-      case _ => false
     tp.dealias match
-      case tp: SkolemType =>
-        tpd.ref(defn.Predef_undefined).withType(tp)
       case tp: ENodeVar.Skolem =>
         // Encode the owner as a type-level singleton (the owner's TermRef)
         // so that TASTy round-trip preserves owner identity stably.
@@ -446,8 +441,13 @@ enum ENode extends Showable:
           s"Cannot encode OpenedParam in qualifier tree: ${tp.show}. " +
             "OpenedParams should only exist within the QualifierSolver."
         )
-      case tp: TermRef if hasSkolemOrFreeVar(tp) =>
-        tpd.ref(defn.Predef_undefined).withType(tp.underlying)
+      case tp: SkolemType =>
+        // SkolemTypes should have been demoted to ENodeVar.Skolem inside
+        // `ENode.singleton` before reaching tree encoding.
+        throw AssertionError(
+          s"Unexpected SkolemType in qualifier tree: ${tp.show}. " +
+            "SkolemTypes should have been demoted via `ENode.freshSkolem`."
+        )
       case tp => tpd.singleton(tp)
 
   def toTree(paramRefs: List[Type] = Nil)(using Context): tpd.Tree =
@@ -529,33 +529,54 @@ object ENode:
   /** The types allowed in `Atom` nodes. */
   type AtomType = TermRef | ThisType | ConstantType | TermParamRef | ENodeVar | SkolemType
 
-  /** Smart constructor that builds an ENode from a `SingletonType`.
+  /** Smart constructor that builds an ENode from a `Type`.
    *
    *  - `TermRef`s with non-trivial prefixes are decomposed into
    *    `Select(singleton(prefix), member)`, so that the prefix is shared
    *    structurally rather than wrapped in a fresh skolem each time.
-   *  - Leaf types (`ConstantType`, `ThisType`, `TermParamRef`, `ENodeVar`,
-   *    `SkolemType`, static `TermRef`s) become `Atom` nodes directly.
+   *  - Leaf singletons (`ConstantType`, `ThisType`, `TermParamRef`,
+   *    `ENodeVar`, static `TermRef`s) become `Atom` nodes directly.
+   *  - `SkolemType`s and non-singleton types are wrapped in a fresh
+   *    `ENodeVar.Skolem` — raw `SkolemType` can't round-trip through
+   *    TASTy (its `Predef.undefined.withType(sk)` encoding loses the
+   *    type override on `Ident` unpickling).
    */
-  def singleton(tp: SingletonType)(using Context): ENode = tp match
+  def singleton(tp: Type)(using Context): ENode = tp match
     case tp: TermRef =>
       val pre = tp.prefix
       pre match
         case _: NoPrefix.type => Atom(tp)
         case _ if tp.symbol.isStatic => Atom(tp.symbol.termRef)
-        case pre: SingletonType => Select(singleton(pre), tp.symbol)
-        case _ =>
-          // Non-singleton prefix: wrap in a fresh skolem and decompose
-          Select(Atom(SkolemType(pre)), tp.symbol)
-    case tp: (ThisType | ConstantType | TermParamRef | ENodeVar | SkolemType) => Atom(tp)
+        case _ => Select(singleton(pre), tp.symbol)
+    case tp: SkolemType => Atom(skolemFor(tp))
+    case tp: (ThisType | ConstantType | TermParamRef | ENodeVar) => Atom(tp)
+    case _ => Atom(freshSkolem(tp))
 
-  /** Like `singleton`, but for types that may not be `SingletonType`s.
-   *  Non-singleton types are wrapped in a fresh `SkolemType`.
+  /** The `ENodeVar.Skolem` for `sk`, allocating one on first encounter
+   *  and caching it so every later reference to the same `SkolemType`
+   *  instance resolves to the same `ENodeVar.Skolem`. Important for
+   *  positions where one `asSeenFrom` call places the same skolem in
+   *  multiple atoms of a qualifier body (e.g., `sk.from` and `sk.until`
+   *  must unify in the EGraph as the same receiver). See
+   *  `ContextBase.qualifierSkolemForSkolemType`.
    */
-  def singleton(tp: Type)(using Context): ENode = tp match
-    case tp: SingletonType => singleton(tp)
-    case _ =>
-      Atom(SkolemType(tp))
+  private def skolemFor(sk: SkolemType)(using Context): ENodeVar.Skolem =
+    val (owner, idx) = ctx.base.qualifierSkolemForSkolemType.getOrElseUpdate(
+      sk, {
+        val owner = QualifiedTypes.skolemOwner
+        (owner, ctx.base.freshSkolemIndex(owner))
+      }
+    )
+    ENodeVar.Skolem(owner, idx)(sk.info)
+
+  /** A fresh `ENodeVar.Skolem` standing for an unknown of type
+   *  `underlying`. Used by `singleton` for non-singleton types — those
+   *  don't have a stable identity to cache against, so each call
+   *  allocates anew.
+   */
+  private def freshSkolem(underlying: Type)(using Context): ENodeVar.Skolem =
+    val owner = QualifiedTypes.skolemOwner
+    ENodeVar.Skolem(owner, ctx.base.freshSkolemIndex(owner))(underlying)
 
   private def isEmptyPrefix(tp: Type): Boolean =
     tp match
