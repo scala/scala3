@@ -251,7 +251,10 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("pickling")
     aggregateTests(
       compileFilesInDir("tests/pos", picklingOptions, FileFilter.exclude(TestSources.posTestPicklingExcludelisted)),
-      compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingExcludelisted))
+      compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingExcludelisted)),
+      compileFilesInDir("tests/pos-custom-args/qualified-types",
+        picklingOptions.and("-language:experimental.qualifiedTypes"),
+        FileFilter.exclude(TestSources.posTestPicklingQualifiedTypesExcludelisted))
     ).checkCompile()
   }
 
