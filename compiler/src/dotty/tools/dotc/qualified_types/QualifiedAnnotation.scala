@@ -1,12 +1,13 @@
 package dotty.tools.dotc.qualified_types
 
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.Tree
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Decorators.i
 import dotty.tools.dotc.core.Symbols.defn
-import dotty.tools.dotc.core.Types.{ConstantType, TermLambda, TermParamRef, Type, TypeMap}
+import dotty.tools.dotc.core.Types.{AppliedType, ConstantType, TermLambda, TermParamRef, Type, TypeMap}
 import dotty.tools.dotc.printing.Printer
 import dotty.tools.dotc.printing.Texts.{Text, given}
 import dotty.tools.dotc.report
@@ -23,7 +24,19 @@ case class QualifiedAnnotation(qualifier: ENode.Lambda) extends Annotation:
     case that: QualifiedAnnotation => qualifier == that.qualifier
     case _ => false
 
-  override def tree(using Context): Tree = qualifier.toTree()
+  /** The annotation tree, in the standard `New(QualifiedAnnot)(lambda)` shape
+   *  so that `annotClass` recovers `defn.QualifiedAnnot` and TASTy round-trip
+   *  preserves the annotation class (otherwise an unpickled qualifier would
+   *  look like a `ConcreteAnnotation` whose tree is just a `Function1` and
+   *  `QualifiedType.unapply` would no longer match it).
+   */
+  override def tree(using Context): Tree =
+    val lambdaTree = qualifier.toTree()
+    // Type of `lambdaTree` is `Function1[?, Boolean]`.
+    // The parameter type is the qualified type's parent type.
+    val AppliedType(_, List(paramTp, _)) = lambdaTree.tpe.widen.runtimeChecked
+    val annotTp = defn.QualifiedAnnot.typeRef.appliedTo(List(paramTp))
+    tpd.New(annotTp, List(lambdaTree))
 
   override def symbol(using Context) = defn.QualifiedAnnot
 
