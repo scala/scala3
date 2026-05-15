@@ -12,14 +12,14 @@ package example {
       {
         val c: Int with boundArg(0) == skolem(0,test) =
           example.id(example.impure():Int @QualifierSkolemIndex(0))
-        val d: Int with boundArg(0) == skolem(0,d) =
+        val d: Int with boundArg(0) == skolem(1,test) =
           {
-            @QualifierSkolemIndex(0) val u: Int = example.impure()
-            example.id(u):Int with (boundArg(0) == skolem(0,d))
+            @QualifierSkolemIndex(1) val u: Int = example.impure()
+            example.id(u):Int with (boundArg(0) == skolem(1,test))
           }
         def inferred(): Int =
           example.id(example.impure():Int @QualifierSkolemIndex(0))
-        c + d + inferred():Int @QualifierSkolemIndex(1)
+        c + d + inferred():Int @QualifierSkolemIndex(2)
       }
   }
 }
