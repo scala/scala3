@@ -27,19 +27,19 @@ package example {
             (if ev$2.isInstanceOf[Int with boundArg(0) > skolem(0,test)] then
               ev$2.asInstanceOf[Int with boundArg(0) > skolem(0,test)] else
               throw new IllegalArgumentException())
-          }:Int with (boundArg(0) > skolem(0,test)) @QualifierSkolemIndex(1)
+          }:Int with (boundArg(0) > skolem(0,test)) @QualifierSkolemIndex(2)
         )
-        example.qualifiedResult(example.impure():Int @QualifierSkolemIndex(2), 3
+        example.qualifiedResult(example.impure():Int @QualifierSkolemIndex(4), 3
           )
-        example.noQualifier(example.impure():Int @QualifierSkolemIndex(3), 3)
+        example.noQualifier(example.impure():Int @QualifierSkolemIndex(6), 3)
         example.qualifiedSelf(
           {
-            val ev$3: Int @QualifierSkolemIndex(4) =
-              runtimeChecked[Int](example.impure():Int @QualifierSkolemIndex(4))
+            val ev$3: Int @QualifierSkolemIndex(7) =
+              runtimeChecked[Int](example.impure():Int @QualifierSkolemIndex(7))
             (if ev$3.isInstanceOf[Int with boundArg(0) > 0] then
               ev$3.asInstanceOf[Int with boundArg(0) > 0] else
               throw new IllegalArgumentException())
-          }:Int with (boundArg(0) > 0) @QualifierSkolemIndex(5)
+          }:Int with (boundArg(0) > 0) @QualifierSkolemIndex(9)
         )
       }
   }
