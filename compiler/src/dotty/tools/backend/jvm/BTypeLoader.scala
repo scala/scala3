@@ -199,7 +199,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       //     def f = { class E }
       //   }
       // The class D is added as a member of class C. The reason is that the InnerClass attribute
-      // for D will containt class "C" and NOT the module class "C$" as the outer class of D.
+      // for D will contain class "C" and NOT the module class "C$" as the outer class of D.
       // This is done by buildNestedInfo, the reason is Java compatibility, see comment in BTypes.
       // For consistency, the InnerClass entry for D needs to be present in C - to Java it looks
       // like D is a member of C, not C$.
@@ -294,7 +294,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
         else {
           val original = innerClassSym.initial
-          Some(atPhase(original.validFor.lastPhaseId)(innerClassSym.name).mangledString) // moduleSuffix for module classes
+          Some(atPhase(original.validFor.lastPhaseId)(innerClassSym.targetName).mangledString) // moduleSuffix for module classes
         }
       }
 

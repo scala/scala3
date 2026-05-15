@@ -1,0 +1,17 @@
+fooClass
+Foo$A<java.lang.Object>
+Foo$A<java.lang.String>
+---
+fooComplex
+Foo$A<Foo$B<Foo$C$>>
+Foo$B<Foo$A<java.lang.String>>
+---
+fooObj
+class Foo$C$
+Foo$A<java.lang.String>
+class Foo$C$
+---
+fooTrait
+Foo$B<java.lang.Object>
+Foo$B<java.lang.String>
+---

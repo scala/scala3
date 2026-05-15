@@ -185,16 +185,6 @@ object GenericSignatures {
         jsig(finalType)
     }
 
-    // Anything which could conceivably be a module (i.e. isn't known to be
-    // a type parameter or similar) must go through here or the signature is
-    // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
-    def fullNameInSig(sym: Symbol): Unit = {
-      assert(sym.isClass)
-      // Time travel necessary so we get the full name after inner classes have been lifted to package scope
-      val name = atPhase(flattenPhase.next) { sanitizeName(sym.fullName).replace('.', '/') }
-      builder.append('L').append(name)
-    }
-
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
       def argSig(tp: Type): Unit =
         tp.dealias match {
@@ -234,33 +224,10 @@ object GenericSignatures {
               // Hence the widenNullaryMethod.
         }
 
-      if (pre.exists) {
-        val preRebound = pre.baseType(sym.owner) // #2585
-        if (preRebound.exists) {
-          val i = builder.length()
-          jsig(preRebound)
-          if (i < builder.length() && builder.charAt(i) == 'L') {
-            builder.delete(builder.length() - 1, builder.length()) // delete ';'
-            // If the prefix is a module, drop the '$'. Classes (or modules) nested in modules
-            // are separated by a single '$' in the filename: `object o { object i }` is o$i$.
-            val isModule = builder.charAt(builder.length() - 1) == '$'
-            if isModule then
-              builder.delete(builder.length() - 1, builder.length())
-
-            // Ensure every '.' in the generated signature immediately follows
-            // a close angle bracket '>'.  Any which do not are replaced with '$'.
-            // This arises due to multiply nested classes in the face of the
-            // rewriting explained at rebindInnerClass.
-
-            // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
-            val delimiter = if isModule then '$'
-                            else if (preRebound.typeSymbol.isClass && !preRebound.typeSymbol.is(ModuleClass)) || preRebound.typeSymbol.is(Trait) then '.'
-                            else '/'
-            builder.append(delimiter).append(sanitizeName(sym.targetName))
-          } else fullNameInSig(sym)
-        } else fullNameInSig(sym)
-      } else fullNameInSig(sym)
-
+      assert(sym.isClass)
+      // Time travel necessary so we get the full name after inner classes have been lifted to package scope
+      val name = atPhase(flattenPhase.next) { sanitizeName(sym.fullName).replace('.', '/') }
+      builder.append('L').append(name)
       if (args.nonEmpty) {
         builder.append('<')
         args foreach argSig
@@ -332,7 +299,7 @@ object GenericSignatures {
             jsig1(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType || sym.info.isLambdaSub, "Unexpected alias type: " + sym)
-            typeParamSig(sym.name.lastPart)
+            typeParamSig(sym.targetName.lastPart)
           }
           else if (defn.specialErasure.contains(sym))
             jsig1(defn.specialErasure(sym).typeRef)
@@ -392,7 +359,7 @@ object GenericSignatures {
               // 2. Shadowed by a method type parameter with the same name
               // This will trigger renaming of the method type parameter
               usedClassTypeParams.foreach { classTypeParam =>
-                val classTypeParamName = sanitizeName(classTypeParam.name)
+                val classTypeParamName = sanitizeName(classTypeParam.targetName)
                 if methodTypeParamNames.contains(classTypeParamName) then
                   shadowedClassTypeParamNames += classTypeParamName
               }
