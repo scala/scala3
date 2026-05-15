@@ -30,7 +30,6 @@ import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, 
 
 import scala.annotation.internal.sharable
 import config.Printers.typr
-import config.Feature
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
 import scala.compiletime.uninitialized
@@ -968,13 +967,6 @@ object Symbols extends SymUtils {
             denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
 
         end completer
-
-        if Feature.qualifiedTypesEnabled then
-          ctx.base.qualifierSkolemIndexBySymbol.get(original) match
-            case Some(idx) =>
-              ctx.base.qualifierSkolemIndexBySymbol(copy) = idx
-            case None =>
-              ()
 
         copy.info = completer
         copy.denot match
