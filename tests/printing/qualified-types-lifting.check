@@ -10,9 +10,10 @@ package example {
     def qualifiedResult(x: Int, y: Int): Int @qualified[Int]((z: Int) => z > x)
        =
       {
-        val ev$1: Int = runtimeChecked[Int](x + y)
-        if ev$1.isInstanceOf[Int with arg(0) > x] then
-          ev$1.asInstanceOf[Int with arg(0) > x] else
+        val ev$1: Int @QualifierSkolemIndex(0) =
+          runtimeChecked[Int]((x + y):Int @QualifierSkolemIndex(0))
+        if ev$1.isInstanceOf[Int with boundArg(0) > x] then
+          ev$1.asInstanceOf[Int with boundArg(0) > x] else
           throw new IllegalArgumentException()
       }
     def noQualifier(x: Int, y: Int): Unit = ()
@@ -20,23 +21,25 @@ package example {
     def impure(): Int = 42
     def test(): Unit =
       {
-        example.greaterThan(example.impure(),
+        example.greaterThan(example.impure():Int @QualifierSkolemIndex(0),
           {
             val ev$2: Int = runtimeChecked[Int](3)
-            if ev$2.isInstanceOf[Int with arg(0) > skolem(0)] then
-              ev$2.asInstanceOf[Int with arg(0) > skolem(0)] else
-              throw new IllegalArgumentException()
-          }
+            (if ev$2.isInstanceOf[Int with boundArg(0) > skolem(0,test)] then
+              ev$2.asInstanceOf[Int with boundArg(0) > skolem(0,test)] else
+              throw new IllegalArgumentException())
+          }:Int with (boundArg(0) > skolem(0,test)) @QualifierSkolemIndex(1)
         )
-        example.qualifiedResult(example.impure(), 3)
-        example.noQualifier(example.impure(), 3)
+        example.qualifiedResult(example.impure():Int @QualifierSkolemIndex(2), 3
+          )
+        example.noQualifier(example.impure():Int @QualifierSkolemIndex(3), 3)
         example.qualifiedSelf(
           {
-            val ev$3: Int = runtimeChecked[Int](example.impure())
-            if ev$3.isInstanceOf[Int with arg(0) > 0] then
-              ev$3.asInstanceOf[Int with arg(0) > 0] else
-              throw new IllegalArgumentException()
-          }
+            val ev$3: Int @QualifierSkolemIndex(4) =
+              runtimeChecked[Int](example.impure():Int @QualifierSkolemIndex(4))
+            (if ev$3.isInstanceOf[Int with boundArg(0) > 0] then
+              ev$3.asInstanceOf[Int with boundArg(0) > 0] else
+              throw new IllegalArgumentException())
+          }:Int with (boundArg(0) > 0) @QualifierSkolemIndex(5)
         )
       }
   }

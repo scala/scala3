@@ -1,0 +1,22 @@
+# Qualified-types tests excluded from -Ytest-pickler.
+#
+# The following four tests have qualifiers that reference the enclosing
+# method (a self-recursive call inside the qualifier annotation), e.g.
+# `def fib(n: Int): {res: Int with res == fib(n - 1) + fib(n - 2)} = ...`.
+# Unpickling the method's signature reads the annotation tree, which
+# contains an `Apply(Ident(fib), ...)` whose type is computed via
+# `tpd.Apply` -> `assignType` -> `fn.tpe.widen`, forcing `fib`'s info
+# while it is still being read -> cyclic-reference assertion.
+self_reference.scala
+fib_selfify.scala
+fib_memoized.scala
+fib_memoized2.scala
+
+# checked_array2 has a qualifier whose ENode body contains an `Atom(SkolemType)`
+# (typically introduced by `asSeenFrom` on an unstable prefix). `toTree`
+# encodes such a `SkolemType` as `Predef.undefined` with the SkolemType
+# carried on `tree.tpe` via `withType`. TASTy does not preserve that
+# override on Idents, so on unpickle the `Ident(Predef.undefined)` has
+# `.tpe = Nothing` and `ENode.fromTree` cannot reconstruct the original
+# atom -- the annotation decode fails with "invalid tree for QualifiedAnnotation".
+checked_array2.scala

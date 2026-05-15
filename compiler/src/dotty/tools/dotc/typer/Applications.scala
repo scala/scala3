@@ -1128,6 +1128,30 @@ trait Applications extends Compatibility {
 
     def typeOfArg(arg: tpd.Tree): Type = arg.tpe
 
+    /** With qualified types enabled, wrap unstable args as
+     *  `Typed(arg, TypeTree(arg.tpe @QualifierSkolemIndex(n)))` so the
+     *  per-arg skolem identity is stable across TASTy round-trips. The
+     *  annotation has no runtime cost (erasure strips it) and is
+     *  informational only.
+     *
+     *  Don't wrap when typing inside an annotation: the typer evaluates
+     *  qualifier bodies during type checking, and qualifier ENodes
+     *  shouldn't carry `@QualifierSkolemIndex` annotations in their
+     *  embedded types.
+     */
+    override protected def maybeLiftQualifiedArg(arg: Tree, n: Int): Tree =
+      if Feature.qualifiedTypesEnabled && !arg.tpe.isStable && !isInAnnotationDeep
+      then qualified_types.QualifiedTypes.wrapWithSkolemIndex(arg)
+      else arg
+
+    /** Check if any enclosing context has `Mode.InAnnotation` set. This is
+     *  needed because `FunProto.typedArg` retracts `InAnnotation`, so the
+     *  current context may not have it even when we are inside an annotation.
+     */
+    private def isInAnnotationDeep(using ctx: Context): Boolean =
+      ctx != null && (ctx.mode.is(Mode.InAnnotation)
+      || (ctx.outer ne ctx) && isInAnnotationDeep(using ctx.outer))
+
     def addArg(arg: Tree, formal: Type): Unit =
       val typedArg = adapt(arg, formal.widenExpr)
       typedArgBuf += typedArg
