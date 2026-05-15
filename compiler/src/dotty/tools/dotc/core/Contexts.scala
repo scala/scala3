@@ -927,10 +927,11 @@ object Contexts {
 
     /** Per-owner counters for allocating skolem indices used inside
      *  qualifiers. Each owner symbol has its own counter, so indices are
-     *  local to the owner (a function symbol or class symbol). Indices are
-     *  stored in a sticky attachment on the argument tree (see
-     *  `QualifiedTypes.QualifierSkolemIndex`) so they stay stable across
-     *  re-type-checks. Cleared per run in `initialize()`.
+     *  local to the owner (a function symbol or class symbol). The
+     *  allocated index is stamped onto the bearer (the argument tree's
+     *  type via `@QualifierSkolemIndex(n)`, or the symbol's annotations
+     *  for lifted/local vals) so it stays stable across re-type-checks
+     *  and TASTy round-trips. Cleared per run in `initialize()`.
      */
     val qualifierSkolemIndexCounterByOwner: collection.mutable.HashMap[Symbols.Symbol, qualified_types.QualifierSkolemIndexCounter] =
       collection.mutable.HashMap()
@@ -940,14 +941,6 @@ object Contexts {
       qualifierSkolemIndexCounterByOwner
         .getOrElseUpdate(owner, qualified_types.QualifierSkolemIndexCounter())
         .fresh()
-
-    /** Maps local val symbols to a stable `(owner, index)` pair used inside
-     *  qualifiers. Keyed by symbol to avoid relying on `sym.defTree` (which
-     *  may be empty for coverage-lifted vals). Cleared per run in
-     *  `initialize()`.
-     */
-    val qualifierSkolemIndexBySymbol: collection.mutable.HashMap[Symbols.Symbol, (Symbols.Symbol, Int)] =
-      collection.mutable.HashMap()
 
     /** The standard definitions */
     val definitions: Definitions = new Definitions
@@ -968,7 +961,6 @@ object Contexts {
       platform.init()
       qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
       qualifierSkolemIndexCounterByOwner.clear()
-      qualifierSkolemIndexBySymbol.clear()
       definitions.init()
     }
 
