@@ -61,31 +61,23 @@ object QualifiedTypes:
    */
   val QualifierSkolemIndex: Property.StickyKey[(Symbol, Int)] = Property.StickyKey()
 
-  /** Read the skolem-index annotation from `tree` (if it has been wrapped
-   *  in `Annotated(_, @QualifierSkolemIndex(n))` by `wrapQualifiedArg`),
-   *  otherwise fall back to the per-tree sticky attachment.
-   *
-   *  The annotation-based path is pickle-stable: TASTy preserves the
-   *  `Annotated` wrapper, so re-typing an unpickled tree recovers the
-   *  same `(owner, index)`. The sticky attachment is only used as a
-   *  cache for trees not yet wrapped (e.g. constructor calls that don't
-   *  go through `ApplyToUntyped`'s `maybeLiftQualifiedArg`).
-   */
-  /** The symbol that scopes a skolem index. Walks up the owner chain to
-   *  the closest enclosing method or class, *without* forcing each
-   *  symbol's info — we may be called from a typer flow that is
-   *  currently computing the very info we'd be forcing.
+  /** The symbol that scopes a skolem index: the closest enclosing method
+   *  or class on the owner chain starting from `s`. Walks via
+   *  `flagsUNSAFE` / `lastKnownDenotation` so it never forces a symbol's
+   *  info — we may be called from a typer flow that is currently
+   *  computing the very info we'd be forcing.
    *
    *  Falls back to `NoSymbol` only at the very root; in practice every
    *  caller is inside at least the root package class.
    */
-  def skolemOwner(using Context): Symbol =
-    def walk(s: Symbol): Symbol =
-      if !s.exists then NoSymbol
-      else if s.flagsUNSAFE.is(dotty.tools.dotc.core.Flags.Method) then s
-      else if s.isClass then s
-      else walk(s.lastKnownDenotation.maybeOwner)
-    walk(ctx.owner)
+  def skolemOwner(s: Symbol)(using Context): Symbol =
+    if !s.exists then NoSymbol
+    else if s.flagsUNSAFE.is(dotty.tools.dotc.core.Flags.Method) then s
+    else if s.isClass then s
+    else skolemOwner(s.lastKnownDenotation.maybeOwner)
+
+  /** Skolem owner walked from `ctx.owner`. */
+  def skolemOwner(using Context): Symbol = skolemOwner(ctx.owner)
 
   def treeSkolemIndex(tree: Tree, owner: Symbol)(using Context): (Symbol, Int) =
     require(!tree.isEmpty, "Tree must be non-empty to have a skolem index attached")
@@ -140,24 +132,36 @@ object QualifiedTypes:
           val annotated = AnnotatedType(arg.tpe.widen, annot)
           tpd.Typed(arg, tpd.TypeTree(annotated, inferred = true))
 
+  /** Read or allocate the skolem index for `sym`. The annotation on the
+   *  symbol is the source of truth; if absent we allocate a fresh index
+   *  against the walked `skolemOwner(sym.owner)` and stamp the annotation
+   *  so subsequent lookups (including post-TASTy) return the same `idx`.
+   */
   def symbolSkolemIndex(sym: Symbol)(using Context): (Symbol, Int) =
     trace(i"symbolSkolemIndex(${sym.show})", Printers.qualifiedTypes):
-      ctx.base.qualifierSkolemIndexBySymbol.get(sym) match
-        case Some(pair) => pair
+      val owner = skolemOwner(sym.owner)
+      val idx = sym.getAnnotation(defn.QualifierSkolemIndexAnnot) match
+        case Some(annot) =>
+          val tpd.Literal(Constant(i: Int)) :: Nil = annot.arguments: @unchecked
+          i
         case None =>
-          val idx = sym.getAnnotation(defn.QualifierSkolemIndexAnnot) match
-            case Some(annot) =>
-              val tpd.Literal(Constant(i: Int)) :: Nil = annot.arguments: @unchecked
-              i
-            case None =>
-              val fresh = ctx.base.freshSkolemIndex(sym.owner)
-              sym.addAnnotation(
-                Annotation(defn.QualifierSkolemIndexAnnot, tpd.Literal(Constant(fresh)), sym.span)
-              )
-              fresh
-          val pair = (sym.owner, idx)
-          ctx.base.qualifierSkolemIndexBySymbol(sym) = pair
-          pair
+          val fresh = ctx.base.freshSkolemIndex(owner)
+          sym.addAnnotation(
+            Annotation(defn.QualifierSkolemIndexAnnot, tpd.Literal(Constant(fresh)), sym.span)
+          )
+          fresh
+      (owner, idx)
+
+  /** Like `symbolSkolemIndex` but read-only: returns `None` if `sym`
+   *  doesn't already have a `@QualifierSkolemIndex` annotation. Used by
+   *  `termAssumptions` to decide whether to add an equality assumption
+   *  binding a `TermRef` to its skolem — we don't want to allocate one
+   *  here.
+   */
+  def symbolSkolemIndexOpt(sym: Symbol)(using Context): Option[(Symbol, Int)] =
+    sym.getAnnotation(defn.QualifierSkolemIndexAnnot).map: annot =>
+      val tpd.Literal(Constant(i: Int)) :: Nil = annot.arguments: @unchecked
+      (skolemOwner(sym.owner), i)
 
   /** Inside any `@qualified` annotation occurring in `tp`, substitute
    *  the parameter reference `pref` with an `ENodeVar` (of kind `Skolem`)
