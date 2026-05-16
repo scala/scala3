@@ -33,7 +33,7 @@ private[scala] object language:
 
     /** Experimental support for named type arguments.
       *
-      * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/named-typeargs]]
+      * @see [[https://docs.scala-lang.org/scala3/reference/experimental/named-typeargs.html]]
       */
     @compileTimeOnly("`namedTypeArguments` can only be used at compile time in import statements")
     object namedTypeArguments
