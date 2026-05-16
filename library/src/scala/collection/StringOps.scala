@@ -900,10 +900,10 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    */
   def split(separator: Char): Array[String] = {
     var end = s.length
-    if (end == 0) return Array("")
-
-    while (end != 0 && s(end - 1) == separator) end -= 1
-    if (end == 0) return Array.empty
+    while (end > 0 && s(end - 1) == separator)
+      end -= 1
+    if (end == 0)
+      return if (s.isEmpty) Array("") else Array.empty
 
     val builder = Array.newBuilder[String]
 
