@@ -168,21 +168,33 @@ method on A or B. Furthermore if we allowed this, specialization would be lost. 
 e.g. `A$$foo$`, `B$$foo` and the `override def foo` in `C` will delegate to one of these methods. Super calls to non-overridden methods are also supported.
 These are transformed to point directly to the corresponding inlined methods with no need for name mangling.
 
-- inline traits may define inline members (e.g. `inline def`, `inline val`). References to these are inlined as the body of the trait is inlined into the inline receiver, but the members themselves are not inlined and are deleted from the parent trait. E.g.:
-```scala
-inline trait A:
-    inline val x = 1
+- **Interaction with other types of inline**:
 
-class B extends A:
-    def f = x
-``` 
-becomes:
-```scala
-inline trait A
-class B extends A:
-    def f = 1
-```
-<!-- TOOD: Is this really the behaviour that we want? -->
+    - Inline traits may define inline members (e.g. `inline def`, `inline val`). References to these are inlined as the body of the trait is inlined into the inline receiver, but the members themselves are not inlined and are deleted from the parent trait. E.g.:
+
+      ```scala
+      inline trait A:
+          inline val x = 1
+
+      class B extends A:
+          def f = x
+      ```
+
+      becomes:
+
+      ```scala
+      inline trait A
+      class B extends A:
+          def f = 1
+      ```
+    - As is usual, `inline val`s must have constant value types. In particular this means that they may not take the value of a parameter to the inline trait:
+ 
+      ```scala
+      inline trait A[T](x: T):
+          inline val y = 1
+          inline val a = y // ok
+          inline val z = x // Not ok
+      ```
 
 - There is the potential for name clashes between members / parameters of inline traits and parameters / members of inline receivers. These are handled in the following way:
 
@@ -393,7 +405,7 @@ This behaviour is the same as that in Timothée's thesis except for the followin
  - We now do replacement of member accesses to point to the inlined versions throughout the whole code, not just in the bodies of inner classes
  - He allows inline traits to contain inner classes in principle, however in practice they don't work which is why we ban them.
  - We specialize types of member accesses on e.g. Numeric
- - He in principle allows traits to extend inline traits although it doesn't work that well; we impose concrete rules on this:
+ - He in practice allows traits to extend inline traits although it doesn't work that well and there was some suggestion it should have been banned; we tighten/specify the rules on this:
      - Trait extends inline trait is only allowed if the inline trait is parameterless
      - Inline trait extends trait is always allowed
  - We modify some of the rules around overrides and conflicting members in order to make the behaviour more consistent with ordinary traits.
@@ -403,3 +415,20 @@ This behaviour is the same as that in Timothée's thesis except for the followin
  - We enforce a number of rules that were previously implicit, with proper errors.
  - We do the RHS type narrowing for vals (not vars) described above as an optimisation
  - We change the handling of private members in pruning of inline traits (we now delete them completely)
+ - We change the phase ordering since we conclude that inline trait inlining must happen before pickling to get the benefit of specialization
+   across compilation units. Otherwise with the following under separate compilation we will induce boxing:
+
+```scala
+// File A.scala
+inline trait IT[T]:
+    def foo(x: T): T = x
+
+class A extends IT[Int]
+
+// File B.scala
+def main = 
+    val a = new A()
+    val x: Int = a.foo(10) // leads to Int.unbox(a.foo(Int.box(10))) 
+```
+
+ This happens because when B.scala is compiled separately against the interface of A (derived from the pickled A.tasty) it will appear that A only supports the generic T interface (erasing to Object and so boxed), whereas it actually also has a specialized Int interface from inline trait inlining. If instead we inline before pickling we solve this problem as the generated interface is present in the pickle. There is precedent for some inlining before pickling in e.g. transparent inlines, and if one uses inline traits one expects code duplication (that's why it is opt-in) and therefore we argue this is not a problem in terms of the increased tasty file size that it leads to.

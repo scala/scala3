@@ -7,4 +7,5 @@ inline trait A(x: Int):
   var k: Int = 4
 
   inline val a = 5
+  inline val b = a
   inline def b(a: Int): Int = 6
