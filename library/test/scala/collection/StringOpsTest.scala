@@ -1,7 +1,7 @@
 package scala.collection
 
 import org.junit.Test
-import org.junit.Assert.assertEquals
+import org.junit.Assert.{assertEquals, assertArrayEquals}
 import tools.AssertUtil.assertThrows
 
 class StringOpsTest {
@@ -111,5 +111,29 @@ class StringOpsTest {
     assertEquals("b", "ab".tail)
     assertEquals("", "a".tail)
     assertThrows[UnsupportedOperationException]("".tail)
+  }
+
+  @Test def splitByChar(): Unit = {
+    val separators = {
+      val lowSurrogate = 0xDF62.toChar
+      val highSurrogate = 0xD852.toChar
+      Array('D', lowSurrogate, highSurrogate)
+    }
+
+    val alphabet =
+      separators.flatMap(ch => Seq(ch, (ch + 1).toChar))
+
+    def allStringsOfLength(n: Int): Iterator[String] =
+      if (n == 0) Iterator("")
+      else for {
+        before <- allStringsOfLength(n - 1)
+        ch <- alphabet
+      } yield before + ch
+
+    for {
+      len <- 0 to 5
+      s <- allStringsOfLength(len)
+      ch <- separators
+    } assertArrayEquals(s.split(ch), s.split(s"$ch"))
   }
 }
