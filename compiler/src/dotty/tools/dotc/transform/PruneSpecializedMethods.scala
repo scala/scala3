@@ -20,7 +20,7 @@ class PruneSpecializedMethods extends MiniPhase with SymTransformer { thisTransf
   override def description: String = PruneSpecializedMethods.description
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if sym.isClass && !sym.is(Package) then
+    if sym.isClass && !sym.is(Package) && sym.info.exists then
       val clsInfo = sym.asClass.classInfo
       val clsInfo2 = clsInfo.derivedClassInfo(decls = 
           clsInfo.decls.filteredScope(!isDeletable(_))
