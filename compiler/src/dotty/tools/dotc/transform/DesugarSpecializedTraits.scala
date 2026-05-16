@@ -207,6 +207,11 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       ).withSpan(specialization.span)
   }
 
+  /* We can replace implementation class already because they implement both Foo[Int] and Foo$sp$Int so they are
+     a drop in replacement for the anonymous classes that implement Foo[Int], and so we can swap them in without 
+     modifying signatures / interfaces, which we have to do later at erasure. We don't really want to wait with 
+     this replacement because it's easier to detect the anonymous classes earlier before they undergo too many transforms, 
+     and doing it at erasure would be strange given it's a tree transform and not a type transform. */  
   private def replaceImplementationClassesMap(specializations: SpecializedTraitCache)(using Context) =
     val specializeTypeTree: Tree => Tree = tree => 
       tree match {
