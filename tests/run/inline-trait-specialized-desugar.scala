@@ -11,15 +11,15 @@ inline trait ArrayIterator[T](elems: Array[T]) extends Iterator[T]:
 
 
 // Specialized traits generates these signatures:
-inline trait Iterator$sp$Int extends Iterator[Int]
-inline trait ArrayIterator$sp$Int extends ArrayIterator[Int], Iterator$sp$Int
-class ArrayIterator$impl$Int(elems: Array[Int]) extends ArrayIterator$sp$Int, ArrayIterator[Int](elems)
+inline trait Iterator_sp_Int extends Iterator[Int]
+inline trait ArrayIterator_sp_Int extends ArrayIterator[Int], Iterator_sp_Int
+class ArrayIterator_impl_Int(elems: Array[Int]) extends ArrayIterator_sp_Int, ArrayIterator[Int](elems)
 
 // User code does this:
 def foo(x: ArrayIterator[Int]): Int = x.next()
 
 // Specialized traits converts this to
-def foo(x: ArrayIterator$sp$Int): Int = x.next()
+def foo(x: ArrayIterator_sp_Int): Int = x.next()
 
 // User code does this:
 /* class MyClassA
@@ -27,7 +27,7 @@ def foo(x: ArrayIterator$sp$Int): Int = x.next()
 
 // We convert this to:
 class MyClassA
-class MyClassB extends MyClassA, ArrayIterator$sp$Int, ArrayIterator[Int](Array.from(Seq(1, 5)))
+class MyClassB extends MyClassA, ArrayIterator_sp_Int, ArrayIterator[Int](Array.from(Seq(1, 5)))
 
 @main def Test = 
     val xs: Array[Int] = Array(1, 2, 3)
@@ -36,7 +36,7 @@ class MyClassB extends MyClassA, ArrayIterator$sp$Int, ArrayIterator[Int](Array.
     /* val ai = new ArrayIterator[Int](xs) {} */
 
     // We convert this to:
-    val ai = ArrayIterator$impl$Int(xs)
+    val ai = ArrayIterator_impl_Int(xs)
     
     val mcb = MyClassB()
     assert(mcb.hasNext)
