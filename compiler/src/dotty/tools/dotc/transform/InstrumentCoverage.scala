@@ -93,10 +93,23 @@ object LiftCoverage extends LiftImpure:
       case _ if valueType.existsPart(_.typeSymbol == defn.TypeBox_CAP) => valueType
       case _ => super.liftedExprType(expr)
 
-  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
-    val liftedFun = liftApp(defs, tree.fun)
-    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
-    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+  def liftForCoverage(
+    defs: mutable.ListBuffer[tpd.Tree],
+    tree: tpd.Apply,
+    coverageCallFor: tpd.Apply => Option[tpd.Apply] = _ => None
+  )(using Context): tpd.Tree =
+    def recur(tree: tpd.Apply, instrumentCurrent: Boolean): tpd.Tree =
+      val liftedFun = tree.fun match
+        case sel @ tpd.Select(app: tpd.Apply, name) =>
+          liftApp(defs, tpd.cpy.Select(sel)(recur(app, instrumentCurrent = true), name))
+        case _ =>
+          liftApp(defs, tree.fun)
+      val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
+      val liftedApp = tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+      if instrumentCurrent then coverageCallFor(tree).foreach(defs += _)
+      liftedApp
+
+    recur(tree, instrumentCurrent = false)
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -350,7 +363,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           // Also, tree.fun can be lifted too.
           // See LiftCoverage for the internal working of this lifting.
           val liftedDefs = mutable.ListBuffer[Tree]()
-          val liftedApp = LiftCoverage.liftForCoverage(liftedDefs, app)
+          val liftedApp = LiftCoverage.liftForCoverage(liftedDefs, app, coverageCallForSelectedApply)
 
           InstrumentedParts(liftedDefs.toList, coverageCall, liftedApp)
         else
@@ -749,13 +762,24 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         )
       end isUnliftableFun
 
+      def hasSelectedApply(fun: Tree): Boolean = fun match
+        case Select(app: Apply, _) => canInstrumentApply(app) || hasSelectedApply(app.fun)
+        case TypeApply(fn, _) => hasSelectedApply(fn)
+        case _ => false
+
       val fun = tree.fun
       val nestedApplyNeedsLift = fun match
         case a: Apply => needsLift(a)
         case _ => false
 
       nestedApplyNeedsLift ||
-      !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      !isUnliftableFun(fun)
+      && (hasSelectedApply(fun) || !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift))
+
+    private def coverageCallForSelectedApply(tree: Apply)(using Context): Option[Apply] =
+      Option.when(!LiftCoverage.isUnsafeAssumeSeparate(tree) && canInstrumentApply(tree))(
+        createInvokeCall(tree, tree.sourcePos)
+      )
 
     private def isContextFunctionApply(fun: Tree)(using Context): Boolean =
       fun match
