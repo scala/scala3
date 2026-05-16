@@ -123,7 +123,7 @@ object Inlines:
   private def inlineTraitAncestors(cls: TypeDef, allowSpecialized: Boolean, allowNonSpecialized: Boolean)(using Context): List[Tree] = cls match {
     case tpd.TypeDef(_, tmpl: Template) =>
       val parentTrees: Map[Symbol, Tree] = tmpl.parents.map(par => symbolFromParent(par) -> par).toMap.filter(_._1.isInlineTrait)
-      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym != cls.symbol &&
+      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym != cls.symbol && // TODO: Do we not need to stop if there is a non-inline trait somewhere in the hierarchy? It should block the inlining right?
           ((sym.isInlineTrait && !sym.isSpecializedTrait && allowNonSpecialized) || 
            (sym.isInlineTrait && sym.isSpecializedTrait && allowSpecialized))
         )
@@ -934,7 +934,7 @@ object Inlines:
 
     private def inlinedSym(sym: Symbol, overriddenDecls: Set[Symbol], withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
       val newSym = if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, overriddenDecls, withoutFlags)
-      ctx.inlineTraitState.registerInlinedSymbol(sym, newSym, ctx.owner.thisType.widenDealias)
+      ctx.inlineTraitState.registerInlinedSymbol(sym, newSym, ctx.owner.thisType.classSymbol)
       newSym
 
     private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
@@ -958,7 +958,7 @@ object Inlines:
             spanCoord(parent.span)
           )
           // ctx.inlineTraitState.registerInlinedInnerClassSymbol(sym, inlinedSym, childThisType)
-          ctx.inlineTraitState.registerInlinedSymbol(sym, inlinedSym, childThisType.widenDealias)
+          ctx.inlineTraitState.registerInlinedSymbol(sym, inlinedSym, childThisType.classSymbol)
           inlinedSym.entered
         case _ =>
           report.error(s"Class symbol ${sym.show} does not have class info")
@@ -1133,23 +1133,23 @@ object Inlines:
 
   class InlineTraitState:
     // Map representing all symbols we have inlined from inline traits,
-    // from the symbol in the parent trait, and the type of the child class-like
+    // from the symbol in the parent trait, and the symbol of the child class-like
     // to the inlined symbol in that child class-like.
     // E.g. inline trait A {def foo#1000}; trait B extends A {def foo#2000 // created by inlining}
     // The map has (foo#1000, trait B) => foo#2000
-    private val inlinedTraitSymbols = mutable.HashMap[(Symbol, Type), Symbol]()
+    val inlinedTraitSymbols = mutable.HashMap[(Symbol, Symbol), Symbol]()
 
     // Record that we just inlined oldSym into childClasslike which created
     // childClassLike.newSym
-    def registerInlinedSymbol(oldSym: Symbol, newSym: Symbol, childClasslike: Type) =
+    def registerInlinedSymbol(oldSym: Symbol, newSym: Symbol, childClasslike: Symbol) =
       inlinedTraitSymbols((oldSym, childClasslike)) = newSym
     
     // Map (e.g.) B.foo#1000 into foo#2000 
-    def lookupInlinedSymbol(oldSym: Symbol, childClasslike: Type) =
+    def lookupInlinedSymbol(oldSym: Symbol, childClasslike: Symbol) =
       inlinedTraitSymbols((oldSym, childClasslike))
     
     // Check if oldSym has been inlined into childClasslike
-    def inlinedSymbolIsRegistered(oldSym: Symbol, childClasslike: Type) =
+    def inlinedSymbolIsRegistered(oldSym: Symbol, childClasslike: Symbol) =
       inlinedTraitSymbols.contains((oldSym, childClasslike))
   end InlineTraitState
 

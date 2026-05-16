@@ -7,6 +7,7 @@ import Flags.JavaDefined
 import Uniques.unique
 import backend.sjs.JSDefinitions
 import transform.ExplicitOuter.*
+import transform.Specialization
 import transform.ValueClasses.*
 import transform.ContextFunctionResults.*
 import unpickleScala2.Scala2Erasure
@@ -77,7 +78,7 @@ end SourceLanguage
 object TypeErasure:
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass
+    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass || sym.isSpecializedTrait
 
   /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs.
    *
@@ -770,6 +771,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
         else eraseNormalClassRef(tp)
+      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) && spec.isSpecialized) =>
+        val interfaceSymbol = ctx.specializedTraitState.specializedTraitCache.get.getInterfaceSymbol(spec)
+        assert(interfaceSymbol.nonEmpty) // This is a specialized trait; we should have a specialization we can swap in for it
+        this(interfaceSymbol.get.typeRef.appliedTo(spec.unspecializedTypeArgs.map(_.tpe)))
       case tp: AppliedType =>
         val tycon = tp.tycon
         if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)
@@ -866,13 +871,19 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           }
           val erasedParents: List[Type] =
             if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
-            else parents.mapConserve(eraseParent) match {
-              case tr :: trs1 =>
-                assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
-                val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
-                tr1 :: trs1.filterNot(_.isAnyRef)
-              case nil => nil
-            }
+            else 
+              val parents1 = parents.mapConserve(eraseParent)
+              // drop duplicate Foo$sp$Int arising from erasure of Foo[Int]
+              val parents2 = parents1.filterNot(   
+                p => Specialization.unapply(p).exists(s => ctx.specializedTraitState.specializedTraitCache.get.getInterfaceSymbol(s).nonEmpty)
+              )
+              parents2 match {
+                case tr :: trs1 =>
+                  assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
+                  val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
+                  tr1 :: trs1.filterNot(_.isAnyRef)
+                case nil => nil
+              }
           val erasedDecls = decls.filteredScope(
               keep = sym => !sym.isType || sym.isClass,
               rename = sym =>

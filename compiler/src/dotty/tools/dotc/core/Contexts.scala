@@ -44,6 +44,7 @@ import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
 import scala.annotation.tailrec
 import dotty.tools.dotc.inlines.Inlines.InlineTraitState
+import dotty.tools.dotc.transform.SpecializedTraitState
 
 object Contexts {
 
@@ -149,6 +150,7 @@ object Contexts {
     def gadt: GadtConstraint = gadtState.gadt
     def gadtState: GadtState
     def inlineTraitState: InlineTraitState
+    def specializedTraitState: SpecializedTraitState
     def searchHistory: SearchHistory
     def source: SourceFile
 
@@ -440,6 +442,7 @@ object Contexts {
         .setTyperState(typerState)
         .setGadtState(gadtState)
         .setInlineTraitState(inlineTraitState)
+        .setSpecializedTraitState(specializedTraitState)
         .fresh
         .setScope(this.scope)
     }
@@ -611,6 +614,9 @@ object Contexts {
     private var _inlineTraitState: InlineTraitState = uninitialized
     final def inlineTraitState: InlineTraitState = _inlineTraitState
 
+    private var _specializedTraitState: SpecializedTraitState = uninitialized
+    final def specializedTraitState: SpecializedTraitState = _specializedTraitState
+
     private var _searchHistory: SearchHistory = uninitialized
     final def searchHistory: SearchHistory = _searchHistory
 
@@ -636,6 +642,7 @@ object Contexts {
       _scope = origin.scope
       _gadtState = origin.gadtState
       _inlineTraitState = origin.inlineTraitState
+      _specializedTraitState = origin.specializedTraitState
       _searchHistory = origin.searchHistory
       _source = origin.source
       _moreProperties = origin.moreProperties
@@ -702,6 +709,11 @@ object Contexts {
     def setInlineTraitState(inlineTraitState: InlineTraitState): this.type =
       util.Stats.record("Context.setInlineTraitState")
       this._inlineTraitState = inlineTraitState
+      this
+
+    def setSpecializedTraitState(specializedTraitState: SpecializedTraitState): this.type =
+      util.Stats.record("Context.setSpecializedTraitState")
+      this._specializedTraitState = specializedTraitState
       this
 
     def setSearchHistory(searchHistory: SearchHistory): this.type =
@@ -799,6 +811,7 @@ object Contexts {
       c._searchHistory = new SearchRoot
       c._gadtState = GadtState(GadtConstraint.empty)
       c._inlineTraitState = InlineTraitState()
+      c._specializedTraitState = SpecializedTraitState()
       c
   end FreshContext
 

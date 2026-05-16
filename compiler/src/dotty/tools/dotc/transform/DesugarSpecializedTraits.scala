@@ -26,7 +26,6 @@ import tpd._
 import scala.collection.mutable
 import scala.annotation.unspecialized
 import dotty.tools.dotc.typer.Synthesizer
-import dotty.tools.dotc.typer.Typer
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Flags.GivenOrImplicit
 import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
@@ -55,8 +54,6 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
   override def changesParents: Boolean = true 
   override def allowsImplicitSearch: Boolean = true
 
-  private var specializedTraitCache = SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass)
-
   private def newInterfaceTrait(specialization: Specialization, specializations: SpecializedTraitCache)(using Context): (ClassSymbol, SpecializedTraitCache) = {
     val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
       def apply(t: Type) = specialization.specializedTypeParamsToTypeArgumentsMap.view.mapValues(_.tpe).applyOrElse(t, mapOver) // TODO: If we can do just types we can get rid of this 
@@ -74,7 +71,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     // Create new trait
     val parents = defn.ObjectType
                   :: AppliedTypeTree(Ident(specialization.traitSymbol.typeRef), specialization.specialization).tpe // original trait, specialized to Foo[Int]
-                  :: inheritedParents.map(replaceSpecializedSymbolsMap(specializations1).typeMap(_))               // parents of the original trait, specialized to Foo$sp$Int
+                  :: inheritedParents                                                                              // parents of the original trait in the form Foo[Int] (later specialized to Foo$sp$Int)
 
     val traitSymbol = newNormalizedClassSymbol(
       specialization.traitSymbol.owner,
@@ -210,117 +207,66 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       ).withSpan(specialization.span)
   }
 
-  private def replaceSpecializedSymbolsMap(specializations: SpecializedTraitCache)(using Context) =
-    val typeMap = new TypeMap:
-      def apply(t: Type) = t match {
-        case Specialization(spec) => 
-          {
-            for (specializedSymbol <- specializations.getInterfaceSymbol(spec))
-            yield specializedSymbol.typeRef.appliedTo(spec.unspecializedTypeArgs.map(_.tpe))
-          }.getOrElse(mapOver(t))
-        case _ => mapOver(t)
-      }
+  private def replaceImplementationClassesMap(specializations: SpecializedTraitCache)(using Context) =
+    val specializeTypeTree: Tree => Tree = tree => 
+      tree match {
+          case Specialization(spec) =>
+            ctx.specializedTraitState.specializedTraitCache.get.getInterfaceSymbol(spec).map:
+              specializedSymbol => 
+              if spec.unspecializedTypeArgs.nonEmpty then
+                AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs)  // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
+              else
+                TypeTree(specializedSymbol.typeRef)
+            .getOrElse(tree)
+          case tree => tree
+        }
 
     def treeMap(tree: Tree): Tree = tree match {
       /* Replace new Foo[Int] {} with new Foo$impl$Int.asInstanceOf[Foo$sp$Int]
           This has already been desugared to an anonymous class instance with parents:
           Objects, Parents of Foo, Foo. */
-      case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
-                Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass =>
-          
+
+      case AnonymousSpecializationInstance(anon) =>
         def deandify(tp: Type): Iterator[Type] = tp match
           case AndType(l, r) => deandify(l) ++ deandify(r)
           case _ => Iterator.single(tp)
-
-        t.tpe match {
+        anon.typeTree.tpe match {
           case a: AndType => /* Multiple mixed in traits will be typed as an AndType */ 
             deandify(a).foreach(trt =>
-              Specialization.unapply(trt, t.span).foreach {spec => 
+              Specialization.unapply(trt, anon.typeTree.span).foreach {spec => 
                 if spec.hasSpecializedParams then
-                  report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", an.srcPos)
+                  report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", anon.srcPos)
               }
             )
             tree
           case tpe =>
-            Specialization.unapply(tpe, t.span).map(spec => 
+            Specialization.unapply(tpe, anon.typeTree.span).map(spec => 
                 {
                 if spec.hasSpecializedParams then
-                  if tmpl.body.filterNot(x => x.symbol.name.is(ContextBoundParamName)).nonEmpty then // Only allowed to contain evidence parameters
-                    report.error("Anonymous classes acting as instances of Specialized traits may not have additional members; you can make a named object instead if you like.", an.srcPos)
+                  if anon.body.filterNot(x => x.symbol.name.is(ContextBoundParamName)).nonEmpty then // Only allowed to contain evidence parameters
+                    report.error("Anonymous classes acting as instances of Specialized traits may not have additional members; you can make a named object instead if you like.", anon.srcPos)
 
-                  parentCalls match { 
+                  anon.parentCalls match { 
                     case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) if (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) =>
+
                       specializations.getImplementationSymbol(spec).map( specializedSymbol => 
                         Typed(
-                          Select(New(ref(specializedSymbol)),ctor).appliedToTypeTrees(spec.unspecializedTypeArgs)
-                                                                  .appliedToArgss(tpd.allArgss(app).tail.nestedMap(_.changeNonLocalOwners(an.symbol.owner))) // Remove the type params which are not needed
-                          , t)
+                          Select(New(ref(specializedSymbol)),anon.ctor).appliedToTypeTrees(spec.unspecializedTypeArgs)
+                                                                       .appliedToArgss(tpd.allArgss(app).tail.nestedMap(_.changeNonLocalOwners(anon.symbol.owner))) // Remove the type params which are not needed
+                          , specializeTypeTree(anon.typeTree))
                       ).getOrElse(tree) // We don't replace non-specialized anonymous class instantiations e.g. new Foo[T] where T is defined in the enclosing scope.
                     case _ => 
-                      report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", an.srcPos)
+                      report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", anon.srcPos)
                       tree
                   }
                 else
                   tree
               }).getOrElse(tree)
-        } 
-
-      // Replace class/object Bar extends Foo[Int](params) with class/object Bar extends Foo$sp$Int(params)
-      case app @ Apply(_, _) => tpd.methPart(app) match {
-        case fun @ Select(New(tpt), init) if fun.symbol.isConstructor =>
-          val argss = tpd.allArgss(tree)
-          argss match {
-            case typeArgs :: valueArgss => 
-              val spec = Specialization(fun.symbol.owner, typeArgs, app.span)
-              {
-                for (specializedSymbol <- specializations.getInterfaceSymbol(spec))
-                yield New(ref(specializedSymbol)).select(init).appliedToTypeTrees(spec.unspecializedTypeArgs).appliedToNone
-              }.getOrElse(tree)
-            case _ => tree
-          }
-        case _ => tree
-      }
-
-      // Replace AppliedTypeTree instances in code
-      case Specialization(spec) => {
-        for (specializedSymbol <- specializations.getInterfaceSymbol(spec))
-        yield
-          if spec.unspecializedTypeArgs.nonEmpty then
-            AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs)  // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
-          else
-            TypeTree(specializedSymbol.typeRef)
-      }.getOrElse(tree)
-
+        }
       case tree => tree
     }
-    
-    new TreeTypeMap(typeMap, treeMap) {
-      override def transform(tree: Tree)(using Context): Tree = tree match { // HACK: This seems to do what we want but I don't understand why we don't do this by default? Surely we should apply transformDefs over template body?
-        case dd@DefDef(name, paramss, tpt, preRhs) => 
-          val transformedDef = super.transform(dd)
-          transformedDef.symbol.info = mapType(transformedDef.symbol.info)
-          transformedDef
-
-        case vd@ValDef(name, tpt, preRhs) => 
-          val transformedDef = super.transform(vd)
-          transformedDef.symbol.info = mapType(transformedDef.symbol.info)
-          transformedDef
-
-        case impl@Template(constr, preParentsOrDerived, self, _) =>
-          val mappedbody = impl.body.map(transform(_))
-          val mappedconstr = transform(impl.constr).asInstanceOf[DefDef]
-          
-          /* We need to map parents of non-specialized inline traits (see tests/pos/specialized-trait-partial-complete-specialization-with-return-type.scala, we need 
-          to map the A[Int] reference to A$sp$Int in B's parents). For our implementation classes and interface traits we don't want to map as we will delete parents after.  */
-          val mappedparents = if impl.symbol.owner.isSpecializedTraitImplementationClass || impl.symbol.owner.isSpecializedTraitInterface then impl.parents else impl.parents.map(transform(_))
-          val oldInfo = impl.symbol.owner.info.asInstanceOf[ClassInfo]
-          impl.symbol.owner.info = oldInfo.derivedClassInfo(declaredParents = if impl.symbol.owner.isSpecializedTraitImplementationClass || impl.symbol.owner.isSpecializedTraitInterface then oldInfo.declaredParents else oldInfo.declaredParents.map(mapType(_)))
-
-          cpy.Template(impl)(body = mappedbody, parents = mappedparents, constr = mappedconstr)
-        case tree => super.transform(tree)
-      }
-    }
-  end replaceSpecializedSymbolsMap
+    new TreeTypeMap(treeMap = treeMap)
+  end replaceImplementationClassesMap
 
   /* Override flags can be generated by inline trait inlining, but after removing the Foo[Int] parent the corresponding members no longer override members in their parents.
       Therefore we need to remove them. */
@@ -405,11 +351,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         assert(Inlines.needsInlining(tree, allowSpecializedTraits=true))
         val inlined = Inlines.inlineParentInlineTraits(tree, allowSpecialized=true).asInstanceOf[TypeDef]
         cpy.TypeDef(inlined)(name = inlined.name, rhs = inlineInlineTraits(inlined.rhs)).withSpan(inlined.span)
-    }.tapEach:  // We can do parent removal earlier for $impl$ classes as we don't depend on the parents later.
-        _.updateParents { parents => (parents: @unchecked) match
-          case obj :: traitSp :: originalSpec :: Nil => obj :: traitSp :: Nil 
-        }
-      .map(refreshClassDef)
+    }
 
     val (generatedTraitStatsFinal, generatedClassStatsFinal, specializationsFinal) = 
       if (generatedTraitStats1.isEmpty && generatedClassStats1.isEmpty)
@@ -429,13 +371,12 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
                   obj :: parents
                 case obj :: parents => obj :: parents // We already removed the relevant parent.
             }
-          .map(refreshClassDef)
+          .map(stat => if stat.symbol.isSpecializedTraitInterface then refreshClassDef(stat) else stat)
         (generatedTraitStats3, generatedClassStats2, specializations4)
 
-    val statsFinal = generatedTraitStatsFinal ++ 
+    val statsFinal = generatedTraitStatsFinal ++
                      generatedClassStatsFinal ++ 
-                     stats.map(stat => 
-                       replaceSpecializedSymbolsMap(specializationsFinal)( // Foo[Int] -> Foo$sp$Int in user code. 
+                     stats.map(stat =>  replaceImplementationClassesMap(specializationsFinal)(
                        if (!stat.symbol.isSpecializedTraitImplementationClass && !stat.symbol.isSpecializedTraitInterface) then // We already processed these in an earlier recursive call
                          Inlines.inlineParentInlineTraits(stat, allowSpecialized = true, allowNonSpecialized = false) // Perform inlining into class Bar extends Foo[Int] from user code. // TODO: I don't really like this gating. 
                        else
@@ -462,8 +403,11 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
             case _ =>
           }
           
-          val (stats1, specializedTraitCache2) = transformStatements(stats, specializedTraitCache) // TODO: Fix span
-          specializedTraitCache = specializedTraitCache2 // TODO: Maybe avoid mutation here
+          if ctx.specializedTraitState.specializedTraitCache.isEmpty then
+             ctx.specializedTraitState.specializedTraitCache = Some(SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass))
+
+          val (stats1, specializedTraitCache2) = transformStatements(stats, ctx.specializedTraitState.specializedTraitCache.get)
+          ctx.specializedTraitState.specializedTraitCache = Some(specializedTraitCache2) // TODO: Avoid mutation here - we will make the cache mutable instead I think. Makes more sense
           cpy.PackageDef(pkg)(pid, stats1)
       }
 
@@ -475,15 +419,16 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
             case Specialization(spec) if spec.isSpecialized => specializations.addInterfaceAndImplementation(spec)
             case _ => specializations
           }
-        case Specialization(spec) => 
-          if (spec.isSpecialized) {
+        case Specialization(spec) =>
+          if (spec.hasSpecializedParams) {
             // Block Vec[?] and similar
             spec.specializedTypeArgs.filter {
               case t: TypeBoundsTree => true
               case _ => false
             }.foreach: tr => 
                 report.error("Wildcard types may not be substituted for Specialized type parameters.", tr.srcPos)
-            
+          }
+          if (spec.isSpecialized) {            
             specializations.addInterface(spec)
           } else {
             // Check foo[S: Specialized] <= Vec[S: Specialized]
@@ -635,7 +580,10 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val
   /* If inline trait Foo[T] has a method taking another Foo[T] there's no point specializing the reference
      since the resulting sp$T$ would be the same as the starting trait. */
   def isSpecialized: Boolean = 
-    hasSpecializedParams && typeArguments.exists(!_.tpe.existsPart(_.typeSymbol.isTypeParam))
+    hasSpecializedParams && typeArguments.exists(!_.tpe.existsPart(part => (part.typeSymbol.isTypeParam) ||
+                                                                           (part.typeSymbol eq defn.AnyClass) || 
+                                                                           (part.typeSymbol eq defn.ObjectClass) ||
+                                                                           (part.typeSymbol eq defn.AnyValClass)))
 
   // Note: We only care about the specialized arguments for equality; a specialization of Vec[A: Specialized, B] with B = Int and one
   // with B = String can be considered to be the same as they use the same specialized trait
@@ -692,9 +640,32 @@ object Specialization:
       case _ => false
     } 
 
-  def isSpecializedTrait(sym: Symbol)(using Context) = classSpecializedTypeParams(sym).nonEmpty
+  def isSpecializedTrait(sym: Symbol)(using Context) = sym.isClass && sym.isAllOf(InlineTrait) && classSpecializedTypeParams(sym).nonEmpty
   def isSpecializedMethod(sym: Symbol)(using Context) = sym.isAllOf(InlineMethod) && methodSpecializedTypeParams(sym).nonEmpty 
 end Specialization
+
+class AnonymousSpecializationInstance(
+  val srcPos: SrcPos,
+  val symbol: Symbol,
+  val body: List[Tree],
+  val parentCalls: List[Tree],
+  val ctor: Name,
+  val typeTree: TypeTree
+)
+
+object AnonymousSpecializationInstance:
+  def unapply(tree: Tree)(using Context) = tree match {
+    case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
+              Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass => 
+      Some(AnonymousSpecializationInstance(an.srcPos, an.symbol, tmpl.body, parentCalls, ctor, t)) 
+    case _ => None
+  }
+end AnonymousSpecializationInstance 
+
+class SpecializedTraitState:
+  var specializedTraitCache: Option[SpecializedTraitCache] = None
+end SpecializedTraitState
+
 
 // Need to somehow make my naming a lot more consistent as well.
 // figure out why we generate the T version.

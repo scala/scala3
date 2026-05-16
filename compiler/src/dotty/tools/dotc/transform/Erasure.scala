@@ -743,6 +743,9 @@ object Erasure {
           adaptIfSuper(qual) match
             case qual1: Super =>
               select(qual1, sym)
+            case qual1 if ctx.inlineTraitState.inlinedSymbolIsRegistered(sym, qual1.tpe.widenDealias.classSymbol) =>
+              val newSym = ctx.inlineTraitState.lookupInlinedSymbol(sym, qual1.tpe.widenDealias.classSymbol)
+              untpd.cpy.Select(tree)(qual, sym.name).withType(qual1.tpe.select(newSym)) // TODO: Maybe we could just do this earlier also; maybe we don't need this cache
             case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
                 || !qual1.tpe.derivesFrom(sym.owner) =>
               val castTarget = // Avoid inaccessible cast targets, see i8661
@@ -1017,7 +1020,13 @@ object Erasure {
       EmptyTree
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
+      // drop Foo[Int] leading to duplicate Foo$sp$Int
+      val TypeDef(_, implInit: Template) = cdef: @unchecked
+      val cdef1 = cpy.TypeDef(cdef.asInstanceOf[TypeDef])(rhs = cpy.Template(implInit.asInstanceOf[Template])(parents = implInit.asInstanceOf[Template].parents.filterNot(
+        p => Specialization.unapply(p.tpe).exists(s => ctx.specializedTraitState.specializedTraitCache.get.getInterfaceSymbol(s).nonEmpty)
+      )))
+
+      val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef1, cls): @unchecked
       // In the case where a trait extends a class, we need to strip any non trait class from the signature
       // and accept the first one (see tests/run/mixins.scala)
       val newTraits = impl.parents.tail.filterConserve: tree =>
