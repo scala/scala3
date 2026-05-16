@@ -66,3 +66,55 @@ Documentation lives in `docs/_docs/`:
 - `docs/_docs/internals/` - Compiler internals documentation
 
 For available AI-assisted documentation workflows or skills start refer to [./docs/.ai/INDEX.md](./docs/.ai/INDEX.md)
+
+## Commit and PR Format
+
+`CONTRIBUTING.md`, `LLM_POLICY.md`, and `.github/pull_request_template.md` are authoritative. If this section conflicts with them, follow them and update this file.
+
+### Scope
+
+- One change per PR. Do not mix behavior changes, formatting churn, dependency bumps, and unrelated cleanup.
+- An issue should generally exist before opening a PR (see `CONTRIBUTING.md`); short, self-contained changes (e.g. typo fixes) may skip this.
+- Do not revert unrelated local changes (e.g. `community-build/` submodule pointers); stage only the files your change touches.
+
+### Commit message
+
+Use a short imperative subject (≤72 chars). For non-trivial commits, use this body:
+
+```text
+<short imperative subject>
+
+Motivation:
+Why this change is needed. Link the issue when applicable.
+
+Modification:
+What was changed.
+
+Result:
+Observable outcome or behavior change.
+
+Tests:
+- <command / result>, e.g. `sbt --client testCompilation i12345`
+- or `Not run - docs only`
+
+References:
+Fixes #1234, Refs #1234, or `None - <short context>`
+```
+
+- Never omit `Tests`. Use `Not run - docs only` for documentation-only commits. Record any required tool that was missing (e.g. `scalafmt: not installed - skipped`).
+- Never omit `References`. Use `None - <short context>` when there is no related issue.
+- Trivial commits (typo fix, doc rewording) may use a single-line subject plus a short `References` footer.
+- Do not add `Co-authored-by` or AI-assistant trailers; declare LLM usage in the PR body per `LLM_POLICY.md`.
+
+### Pull request
+
+Follow `.github/pull_request_template.md` verbatim. In particular:
+
+- Start the PR description with `Fixes #XYZ`, or explain why no issue exists.
+- Pick exactly one LLM-usage line (`Extensively`, `Moderately`, `Minimally`, `Not at all`) per `LLM_POLICY.md`.
+- Pick exactly one testing line (new tests, covered by existing tests, non-code, or manual with detail).
+- Bug-fix PRs should add a regression test that fails before the fix.
+- Behavior, public API, language, or operator-visible changes must update the matching docs under `docs/_docs/`.
+- Scala and Java DSL changes must keep API, docs, and tests in parity.
+- Run `git diff --check` and `sbt --client testCompilation` (or the smallest relevant test) before marking the PR ready.
+- Do not weaken assertions or raise timeouts to silence a flake; encode the intended ordering or contract instead.
