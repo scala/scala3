@@ -73,14 +73,17 @@ object LiftCoverage extends LiftImpure:
     if liftingArgs then noLiftArg(expr)
     else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
 
-  /** Preserve singleton precision for lifted coverage temps when the underlying value is a
-   *  compile-time constant (same notion ConstFold uses), so constant re-folding after lifting
-   *  still matches the original inferred singleton type. Everything else uses the base widen.
+  /** Preserve precision for lifted coverage temps when widening would break later checks:
+   *  compile-time constants and stable singleton types need their singleton precision,
+   *  and capture-converted types need their local TypeBox#CAP references.
    */
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
-    val dealiased = expr.tpe.dealias.deskolemized
-    dealiased.widenTermRefExpr.normalized.simplified match
-      case _: ConstantType => dealiased
+    val dealiased = expr.tpe.dealias
+    val deskolemized = dealiased.deskolemized
+    deskolemized.widenTermRefExpr.normalized.simplified match
+      case _: ConstantType => deskolemized
+      case _ if dealiased.isInstanceOf[SingletonType] && dealiased.isStable => dealiased
+      case _ if dealiased.existsPart(_.typeSymbol == defn.TypeBox_CAP) => dealiased
       case _ => super.liftedExprType(expr)
 
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
@@ -750,14 +753,16 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =
-      def isSecondaryCtorDelegateCall: Boolean = tree.fun match
+      def isSecondaryCtorDelegateCall(fun: Tree): Boolean = fun match
         case Select(This(_), nme.CONSTRUCTOR) => true
+        case Apply(fn, _)                     => isSecondaryCtorDelegateCall(fn)
+        case TypeApply(fn, _)                 => isSecondaryCtorDelegateCall(fn)
         case _                                => false
 
       val sym = tree.symbol
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
-      && !(sym.isClassConstructor && isSecondaryCtorDelegateCall)
+      && !(sym.isClassConstructor && isSecondaryCtorDelegateCall(tree.fun))
       && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>

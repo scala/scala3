@@ -12,8 +12,6 @@ help.scala
 i10889.scala
 i11247.scala
 i11556.scala
-i12739.scala
-i14164.scala
 i14947.scala
 i15165.scala
 i15864.scala
@@ -23,7 +21,6 @@ i19955a.scala
 i19955b.scala
 i20053b.scala
 i2146.scala
-i23179.scala
 i23489.scala
 i25460.scala
 i5039.scala
@@ -34,7 +31,6 @@ lazyVals_c3.0.0.scala
 lazyVals_c3.1.0.scala
 mt-scrutinee-widen3.scala
 null.scala
-pos_valueclasses
 spurious-overload.scala
 tailrec.scala
 traitParams.scala

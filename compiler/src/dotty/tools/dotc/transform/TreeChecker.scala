@@ -195,10 +195,10 @@ object TreeChecker {
     }
   }.apply(tp0)
 
-  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree])(using Context): Unit =
+  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree], assertionFunc: (Boolean, String) => Unit)(using Context): Unit =
     val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
     val treeParents = parents.map(_.tpe.dealias.typeSymbol)
-    assert(symbolParents == treeParents,
+    assertionFunc(symbolParents == treeParents,
       i"""Parents of class symbol differs from the parents in the tree for $sym
           |
           |Parents in symbol: $symbolParents
@@ -576,7 +576,7 @@ object TreeChecker {
       assert(ctx.owner.isClass)
       val sym = ctx.owner.asClass
       if !sym.isPrimitiveValueClass then
-        TreeChecker.checkParents(sym, impl.parents)
+        TreeChecker.checkParents(sym, impl.parents, assert)
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
@@ -834,8 +834,8 @@ object TreeChecker {
 
   def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
     if ctx.settings.XcheckMacros.value then
-      // We want make sure that transparent inline macros are checked in the same way that
-      // non transparent macros are, so we try to prepare a context which would make
+      // We want to make sure that transparent inline macros are checked in the same way that
+      // non-transparent macros are, so we try to prepare a context which would make
       // the checks behave the same way for both types of macros.
       //
       // E.g. Different instances of skolem types are by definition not able to be a subtype of

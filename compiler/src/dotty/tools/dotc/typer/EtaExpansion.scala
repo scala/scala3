@@ -49,7 +49,8 @@ abstract class Lifter {
 
   /** Type assigned to a lifted temporary symbol. */
   protected def liftedExprType(expr: Tree)(using Context): Type =
-    expr.tpe.widen.deskolemized
+    val tp = expr.tpe.deskolemized
+    if tp.isStable then tp else tp.widen
 
   /** Hook for lifters that need to record or mark freshly created lifted defs. */
   protected def onLiftedDef(tree: Tree)(using Context): Unit = ()

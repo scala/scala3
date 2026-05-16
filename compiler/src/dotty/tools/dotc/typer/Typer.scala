@@ -3262,6 +3262,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           report.error(em"`$name` cannot have type parameters, because it ranges over capture sets", rhs.srcPos)
         case _ =>
     val res = assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    res.ensureHasSym(sym)
     if Feature.ccEnabled && attachCap then
       res.putAttachment(CaptureVar, ())
     res

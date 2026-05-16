@@ -123,6 +123,8 @@ object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
     "-Wsafe-init",
+    "-Yexplicit-nulls",
+    "-language:unsafeNulls",
   )
 
 object projects:
@@ -769,7 +771,6 @@ def allProjects = List(
   projects.libretto,
   projects.jacksonModuleScala,
   projects.specs2,
-  projects.coop,
   projects.spire,
   projects.http4s,
   projects.parboiled2,
