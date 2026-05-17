@@ -28,7 +28,10 @@ import scala.meta.pc.PcSymbolInformation as IPcSymbolInformation
 import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.pc.reports.ReportContext
 
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.interactive.LogicalPackage
+import dotty.tools.dotc.interactive.LogicalPackagesProvider
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.SymbolInformationProvider
@@ -133,7 +136,13 @@ case class ScalaPresentationCompiler(
     Scala3CompilerAccess(
       config,
       sh,
-      () => new Scala3CompilerWrapper(CachingDriver(driverSettings))
+      () =>
+        new Scala3CompilerWrapper(CachingDriver(
+          driverSettings,
+          sourcePath,
+          semanticdbFileManager,
+          config.sourcePathMode()
+        ))
     )(using ec)
 
   val driverSettings: List[String] =
@@ -141,9 +150,8 @@ case class ScalaPresentationCompiler(
     val defaultFlags = List("-color:never")
     val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
     val classpathFlags = List("-classpath", classpath.mkString(File.pathSeparator))
-    val sourcePathFiles = sourcePath.get().asScala
-    val sourcePathFlags = if sourcePathFiles.size > 0 && config.sourcePathMode() != SourcePathMode.DISABLED then
-      List("-Ylogical-package-loading", "-sourcepath", sourcePathFiles.mkString(File.pathSeparator))
+    val sourcePathFlags = if config.sourcePathMode() != SourcePathMode.DISABLED then
+      List("-Ylogical-package-loading")
     else Nil
     filteredOptions ++
       defaultFlags ++
@@ -199,7 +207,7 @@ case class ScalaPresentationCompiler(
       new CompletionProvider(
         search,
         driver,
-        () => InteractiveDriver(driverSettings),
+        () => InteractiveDriver(driverSettings, driver.logicalRootPackage),
         params,
         config,
         buildTargetIdentifier,
