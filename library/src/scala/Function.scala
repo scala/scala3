@@ -16,6 +16,21 @@ import scala.language.`2.13`
 
 /** A module defining utility methods for higher-order functional programming. */
 object Function {
+  private final val constIdentityFunction: Any => Any = x => x
+
+  /** Returns a function that always returns its input argument as result.
+   *  Which could be used as a function argument passed to `map` or `flatMap` methods.
+   *  Learn more from [[https://en.wikipedia.org/wiki/Identity_function Identity_function]]
+   *
+   *  Unlike [[scala.Predef.identity]], this method returns a shared singleton
+   *  function value, avoiding the per-call allocation that eta-expansion of
+   *  `Predef.identity` would otherwise incur when used as a function value.
+   *
+   *  @tparam T the type of the input and output value of the function
+   *  @return a function that always returns its input argument as result.
+   */
+  def identity[T]: T => T = constIdentityFunction.asInstanceOf[T => T]
+
   /** Given a sequence of functions `f,,1,,`, ..., `f,,n,,`, return the
    *  function `f,,1,, andThen ... andThen f,,n,,`.
    *
