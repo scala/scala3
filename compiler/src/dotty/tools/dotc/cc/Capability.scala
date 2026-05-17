@@ -845,13 +845,15 @@ object Capabilities:
             case y: ResultCap => vs.unify(x, y)
             case _ => y.derivesFromCapTrait(defn.Caps_SharedCapability)
         case _: GlobalCap =>
+          def globalCapSubsumes =
+            canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
           y match
             case _: GlobalCap => this eq y
             case _: ResultCap => false
-            case _: LocalCap if CCState.collapseLocalCaps => true
-            case _ =>
-              y.derivesFromCapTrait(defn.Caps_SharedCapability)
-              || canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
+            case _: LocalCap if CCState.collapseLocalCaps || globalCapSubsumes => true
+            case _ => globalCapSubsumes
+              // also had: || y.derivesFromCapTrait(defn.Caps_SharedCapability)
+              // but this fails i25863a.scala, i.e compilers without errors where there should be
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>

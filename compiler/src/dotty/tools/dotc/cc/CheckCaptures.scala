@@ -1568,7 +1568,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       try
         // (2) Capture set of self type includes capture set of class
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
-        checkSubset(localSet, thisSet, tree.srcPos)
+        withGlobalCapAsRoot: // OK? We need this here since self types use GlobalAny instead of a LocalCap
+          checkSubset(localSet, thisSet, tree.srcPos)
 
         // (3) Capture set of self type includes capture sets of tracked parameters
         for param <- cls.paramGetters do
