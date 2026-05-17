@@ -757,18 +757,22 @@ object RefChecks {
           membersStrings(missingMethods)
         }
 
-        if (missingMethods.size >= 1) {
-          concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(clazz, missingMethods, createAddMissingMethodsAction(clazz, stubImplementations))
+        if missingMethods.isEmpty then return
+
+        lazy val actions = createAddMissingMethodsAction(clazz, stubImplementations)
+
+        if missingMethods.size > 1 then
+          concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(
+            clazz, missingMethods, addendum = "", actions)
           return
-        }
 
         for (member <- missingMethods) {
           def showDclAndLocation(sym: Symbol) =
             s"${sym.mapInfo(replaceSyntheticParamNames).showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
-            val notdefined = s"${showDclAndLocation(member)} is not defined"
-            val text = if !msg.isEmpty then s"$notdefined $msg" else notdefined
-            abstractClassError(text)
+            val addendum = if msg.isEmpty then "" else s" $msg"
+            concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(
+              clazz, missingMethods, addendum, actions)
           val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -931,27 +935,32 @@ object RefChecks {
               |This is a limitation that enables better GADT constraints in case class patterns""".stripMargin
         do report.errorOrMigrationWarning(withExplain, clazz.srcPos, MigrationVersion.Scala2to3)
       checkNoAbstractMembers()
-      if (abstractErrors.isEmpty)
+      if (abstractErrors.isEmpty && concreteClassUnimplementedMethodError.isEmpty)
         checkNoAbstractDecls(clazz)
 
-      if abstractErrors.nonEmpty then
-        val isEnumAnonCls = // courtesy of Checking.checkEnum
-          clazz.isAnonymousClass
-          && clazz.owner.isTerm
-          && {
-               clazz.owner.isAllOf(EnumCase)
-            || (clazz.owner.name eq nme.DOLLAR_NEW) && clazz.owner.isAllOf(Private | Synthetic)
-          }
-        if !isEnumAnonCls then
-          report.error(abstractErrorMessage, clazzNamePos)
-        else if clazz.owner.isAllOf(EnumCase) then
-          report.error(abstractErrorMessage, clazz.owner.srcPos)
+      val isEnumAnonCls = // courtesy of Checking.checkEnum
+        clazz.isAnonymousClass
+        && clazz.owner.isTerm
+        && {
+             clazz.owner.isAllOf(EnumCase)
+          || (clazz.owner.name eq nme.DOLLAR_NEW) && clazz.owner.isAllOf(Private | Synthetic)
+        }
+
+      val classErrorPositions: List[util.SrcPos] =
+        if !isEnumAnonCls then clazzNamePos :: Nil
+        else if clazz.owner.isAllOf(EnumCase) then clazz.owner.srcPos :: Nil
         else
           val e = clazz.parentSyms.head
-          for child <- e.children if child.info.typeSymbol == e do // report all simple cases
-            report.error(abstractErrorMessage, child.srcPos)
+          e.children.filter(_.info.typeSymbol == e).map(_.srcPos)
 
-      concreteClassUnimplementedMethodError.foreach(report.error(_, clazz.srcPos))
+      if abstractErrors.nonEmpty then
+        val msg = abstractErrorMessage
+        classErrorPositions.foreach(report.error(msg, _))
+      for 
+        message <- concreteClassUnimplementedMethodError
+        pos <- classErrorPositions 
+      do
+        report.error(message, pos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()

@@ -3900,33 +3900,49 @@ final class IllegalIdentifier(name: Name)(using Context) extends SyntaxMsg(Illeg
          |The prohibition against explicit `$$` may be ignored by enclosing the identifier in backquotes
          |at the definition site."""
 
-class ConcreteClassHasUnimplementedMethods(clazz: ClassSymbol, missingMethods: List[dotty.tools.dotc.core.Symbols.Symbol], val actions: List[CodeAction])(using Context)
-extends Message(ConcreteClassHasUnimplementedMethodsID): 
+class ConcreteClassHasUnimplementedMethods(
+    clazz: ClassSymbol,
+    missingMethods: List[Symbol],
+    addendum: String,
+    methodActions: List[CodeAction])(using Context)
+extends Message(ConcreteClassHasUnimplementedMethodsID), NoDisambiguation:
 
   def kind = MessageKind.Declaration
 
-  def renderMissingMethods: List[String] = {
-    // Grouping missing methods by the declaring class
-    val regrouped = missingMethods.groupBy(_.owner).toList
-    def membersStrings(members: List[Symbol]) =
-      members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl).map(m => s"- $m")
+  private def replaceSyntheticParamNames(tp: Type): Type = tp match
+    case mt: MethodType if mt.allParamNamesSynthetic =>
+      val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
+      mt.derivedLambdaType(newNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
+    case mt: MethodType =>
+      mt.derivedLambdaType(mt.paramNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
+    case pt: PolyType =>
+      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, replaceSyntheticParamNames(pt.resType))
+    case _ => tp
 
-    (regrouped.sortBy(_._1.name.toString()) map {
-      case (owner, members) =>
-        s"""Members declared in ${owner.fullName}:
-        |${membersStrings(members).mkString("\n")}"""
-    })
-  }
+  private def showDecl(sym: Symbol)(using Context): String =
+    sym.asSeenFrom(clazz.thisType).mapInfo(replaceSyntheticParamNames).showDcl
 
-  def msg(using Context) = missingMethods match 
-    case single :: Nil => 
-      def showDclAndLocation(sym: Symbol) = s"${sym.showDcl} in ${sym.owner.showLocated}"
-      s"$clazz needs to be abstract, since ${showDclAndLocation(single)} is not defined"
-    case _ => 
-      s"""$clazz needs to be abstract, since it has ${missingMethods.size} unimplemented members.
-      |
-      |${renderMissingMethods.mkString("\n")}
-      |""".stripMargin
-  
+  private def prelude(using Context): String =
+    if clazz.isAnonymousClass || clazz.is(Module) then "object creation impossible"
+    else if clazz.is(Synthetic) then "instance cannot be created"
+    else s"$clazz needs to be abstract"
+
+  private def renderMissingMethods(using Context): List[String] =
+    val grouped = missingMethods.groupBy(_.owner).toList
+    grouped.sortBy(_._1.name).map { case (owner, members) =>
+      val sigs = members.sortBy(_.name).map(s => s"- ${showDecl(s)}")
+      s"""Members declared in ${owner.fullName}:
+         |${sigs.mkString("\n")}""".stripMargin
+    }
+
+  def msg(using Context) = missingMethods match
+    case single :: Nil =>
+      val notDefined = s"${showDecl(single)} in ${single.owner.showLocated} is not defined"
+      s"$prelude, since $notDefined$addendum"
+    case _ =>
+      s"""$prelude, since it has ${missingMethods.size} unimplemented members.
+         |
+         |${renderMissingMethods.mkString("\n\n")}""".stripMargin
+
   def explain(using Context) = ""
-  override def actions(using Context) = this.actions
+  override def actions(using Context) = methodActions
