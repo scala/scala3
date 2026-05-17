@@ -902,25 +902,30 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    */
   def split(separator: Char): Array[String] = {
     var end = s.length
-    while (end > 0 && s(end - 1) == separator)
+    while end > 0 && s(end - 1) == separator do
       end -= 1
-    if (end == 0)
-      return if (s.isEmpty) Array("") else Array.empty
+    if end == 0 then
+      return if s.isEmpty then Array("") else Array.empty
 
-    val builder = Array.newBuilder[String]
-
-    if (!separator.isSurrogate) {
-      @annotation.tailrec
-      def collect(start: Int): Unit =
-        s.indexOf(separator, start) match {
-          case -1 =>
-            builder += s.substring(start)
-          case idx =>
-            builder += s.substring(start, idx)
-            if (idx != end) collect(idx + 1)
-        }
-      collect(0)
-    } else {
+    if !separator.isSurrogate then
+      var i = s.indexOf(separator)
+      if i < 0 then
+        Array(s)
+      else if i >= end then
+        Array(s.substring(0, i))
+      else
+        val builder = Array.newBuilder[String]
+        var start = 0
+        while
+          builder += s.substring(start, i)
+          start = i + 1
+          i = s.indexOf(separator, start)
+          i >= 0 && i < end
+        do ()
+        builder += s.substring(start, end)
+        builder.result()
+    else {
+      val builder = Array.newBuilder[String]
       // If we over-trimmed the rightmost low surrogate, put it back
       val isLowSurrogate = separator.isLowSurrogate
       if (isLowSurrogate && end != s.length && s(end - 1).isHighSurrogate) end += 1
@@ -943,9 +948,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
             }
         }
       collect(0, 0)
+      builder.result()
     }
-
-    builder.result
   }
 
   @throws(classOf[java.util.regex.PatternSyntaxException])

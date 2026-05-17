@@ -1,8 +1,8 @@
 package scala.collection
 
 import org.junit.Test
-import org.junit.Assert.{assertEquals, assertArrayEquals}
-import tools.AssertUtil.assertThrows
+import org.junit.Assert.assertEquals
+import tools.AssertUtil.{assertSameElements, assertThrows}
 
 class StringOpsTest {
   // Test for scala/bug#10951
@@ -113,27 +113,36 @@ class StringOpsTest {
     assertThrows[UnsupportedOperationException]("".tail)
   }
 
-  @Test def splitByChar(): Unit = {
-    val separators = {
+  @Test def splitByChar: Unit = {
+    val separators =
       val lowSurrogate = 0xDF62.toChar
       val highSurrogate = 0xD852.toChar
       Array('D', lowSurrogate, highSurrogate)
-    }
 
     val alphabet =
       separators.flatMap(ch => Seq(ch, (ch + 1).toChar))
 
     def allStringsOfLength(n: Int): Iterator[String] =
-      if (n == 0) Iterator("")
-      else for {
-        before <- allStringsOfLength(n - 1)
-        ch <- alphabet
-      } yield before + ch
+      if n == 0 then Iterator("")
+      else
+        for
+          before <- allStringsOfLength(n - 1)
+          ch <- alphabet
+        yield before + ch
 
-    for {
+    for
       len <- 0 to 5
       s <- allStringsOfLength(len)
       ch <- separators
-    } assertArrayEquals(s.split(ch), s.split(s"$ch"))
+    do
+      assertSameElements(s.split(s"$ch"), s.split(ch))
+  }
+
+  @Test def `split assertions`: Unit = {
+    def check(s: String, c: Char) = assertSameElements(s.split(c.toString), s.split(c))
+    check(":::", ':') // Array()
+    check(":::xy", ':') // Array("", "", "", xy)
+    check(":::x:y:::", ':') // Array("", "", "", x, y)
+    check("xy:::", ':') // Array(xy)
   }
 }
