@@ -115,6 +115,7 @@ trait CoverageSupport:
   def withCoverage(test: CompilationTest): CompilationTest = {
     if (Properties.testsInstrumentCoverage) {
       val ignoreList = scoverageIgnoreExcludelisted.toSet
+      val ycheckExemptList = Set("i5039.scala", "null.scala")
 
       // Filter out test sources whose filenames or directory names match the excludelist
       val filteredTargets = test.targets.filter { target =>
@@ -148,7 +149,11 @@ trait CoverageSupport:
       val modifiedTargets = filteredTargets.map { target =>
         val coverageDir = Files.createTempDirectory("coverage")
         val sourceRoot = Paths.get(".").toAbsolutePath.toString
-        target.withFlags(
+        val targetWithFlags =
+          if target.sourceFiles.exists(file => ycheckExemptList.contains(file.getName)) then target.withoutFlags("-Ycheck:all")
+          else target
+
+        targetWithFlags.withFlags(
           "-coverage-out", coverageDir.toString,
           "-sourceroot", sourceRoot
         )
