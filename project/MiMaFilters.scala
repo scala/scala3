@@ -15,7 +15,30 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.safe"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$")
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$"),
+        // Add `andThen` to FunctionN traits, mirroring `java.util.function.BiFunction.andThen`.
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function2.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function3.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function4.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function5.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function6.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function7.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function8.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function9.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function10.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function11.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function12.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function13.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function14.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function15.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function16.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function17.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function18.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function19.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function20.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function21.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.Function22.andThen"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.runtime.FunctionXXL.andThen"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
