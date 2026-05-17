@@ -763,7 +763,9 @@ object RefChecks {
 
         if missingMethods.isEmpty then return
 
-        lazy val actions = createAddMissingMethodsAction(clazz, stubImplementations)
+        lazy val actions =
+          createAddMissingMethodsAction(clazz, stubImplementations)
+            ++ createMakeClassAbstractAction(clazz)
 
         if missingMethods.size > 1 then
           concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(
@@ -1344,6 +1346,32 @@ object RefChecks {
     NavigateAST.untypedPath(clazz.span) match
       case (untypedTree: untpd.Tree) :: _ =>
         addMissingMethodsActionPatch(clazz, methods, untypedTree)
+      case _ => Nil
+
+  /** Code action that prepends the `abstract` modifier to the class declaration.
+   *
+   *  Only offered for regular classes that can legally become abstract. We skip:
+   *    - modules (`object`s are implicitly final),
+   *    - anonymous classes (no source-level keyword to modify),
+   *    - case classes (cannot be abstract),
+   *    - already-final classes (mutually exclusive with abstract),
+   *    - synthetic classes (enum case singletons, given bodies, etc.).
+   *
+   *  As with [[createAddMissingMethodsAction]], if the class has no node in
+   *  the untyped AST (e.g. macro-generated) we skip silently.
+   */
+  private def createMakeClassAbstractAction(clazz: ClassSymbol)(using Context): List[CodeAction] =
+    import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+
+    val ineligible =
+      clazz.is(Module) || clazz.isAnonymousClass || clazz.is(Case) ||
+        clazz.is(Final) || clazz.is(Synthetic)
+    if ineligible then Nil
+    else NavigateAST.untypedPath(clazz.span) match
+      case (untypedTree: untpd.Tree) :: _ =>
+        val insertPos = untypedTree.sourcePos.withSpan(Span(untypedTree.span.start))
+        val patch = ActionPatch(insertPos, "abstract ")
+        List(CodeAction(s"Make `${clazz.name.show}` abstract", None, List(patch)))
       case _ => Nil
 
   private def addMissingMethodsActionPatch(
