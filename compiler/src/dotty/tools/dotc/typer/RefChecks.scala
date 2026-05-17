@@ -339,6 +339,29 @@ object RefChecks {
         val clazzNameEnd = clazz.srcPos.span.start + clazz.name.stripModuleClassSuffix.lastPart.length
         clazz.srcPos.sourcePos.copy(span = clazz.srcPos.span.withEnd(clazzNameEnd))
 
+    /** True when `clazz` is the synthetic anonymous class generated for an
+     *  enum case (either a simple case via `$new` or a parameterized one
+     *  marked with `EnumCase`). */
+    def isEnumAnonCls = // courtesy of Checking.checkEnum
+      clazz.isAnonymousClass
+      && clazz.owner.isTerm
+      && {
+           clazz.owner.isAllOf(EnumCase)
+        || (clazz.owner.name eq nme.DOLLAR_NEW) && clazz.owner.isAllOf(Private | Synthetic)
+      }
+
+    /** Positions at which to report a "needs to be abstract" / "object creation
+     *  impossible" error for `clazz`. Normally a single position pointing at
+     *  the class name; for enum-case anonymous classes the error is moved to
+     *  the case definition(s) so the user sees it on `case Foo` rather than on
+     *  the synthetic `$anon`. */
+    def classErrorPositions: List[util.SrcPos] =
+      if !isEnumAnonCls then clazzNamePos :: Nil
+      else if clazz.owner.isAllOf(EnumCase) then clazz.owner.srcPos :: Nil
+      else
+        val e = clazz.parentSyms.head
+        e.children.filter(_.info.typeSymbol == e).map(_.srcPos)
+
     def printMixinOverrideErrors(): Unit =
       mixinOverrideErrors.toList match {
         case Nil =>
@@ -938,27 +961,12 @@ object RefChecks {
       if (abstractErrors.isEmpty && concreteClassUnimplementedMethodError.isEmpty)
         checkNoAbstractDecls(clazz)
 
-      val isEnumAnonCls = // courtesy of Checking.checkEnum
-        clazz.isAnonymousClass
-        && clazz.owner.isTerm
-        && {
-             clazz.owner.isAllOf(EnumCase)
-          || (clazz.owner.name eq nme.DOLLAR_NEW) && clazz.owner.isAllOf(Private | Synthetic)
-        }
-
-      val classErrorPositions: List[util.SrcPos] =
-        if !isEnumAnonCls then clazzNamePos :: Nil
-        else if clazz.owner.isAllOf(EnumCase) then clazz.owner.srcPos :: Nil
-        else
-          val e = clazz.parentSyms.head
-          e.children.filter(_.info.typeSymbol == e).map(_.srcPos)
-
       if abstractErrors.nonEmpty then
         val msg = abstractErrorMessage
         classErrorPositions.foreach(report.error(msg, _))
-      for 
+      for
         message <- concreteClassUnimplementedMethodError
-        pos <- classErrorPositions 
+        pos <- classErrorPositions
       do
         report.error(message, pos)
 
