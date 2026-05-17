@@ -757,28 +757,9 @@ object RefChecks {
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
-        /** Replace synthetic parameter names (x$0, x$1, ...) with
-         *  dollar-free versions (x0, x1, ...) so that stub implementations
-         *  are directly usable as valid Scala identifiers.
-         */
-        def replaceSyntheticParamNames(tp: Type): Type = tp match
-          case mt: MethodType if mt.allParamNamesSynthetic =>
-            val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
-            mt.derivedLambdaType(newNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
-          case mt: MethodType =>
-            mt.derivedLambdaType(mt.paramNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
-          case pt: PolyType =>
-            pt.derivedLambdaType(pt.paramNames, pt.paramInfos, replaceSyntheticParamNames(pt.resType))
-          case _ => tp
-
-        def stubImplementations: List[String] = {
-          def membersStrings(members: List[Symbol]) =
-            members.sortBy(_.name.toString).map: sym =>
-              val denot = sym.asSeenFrom(clazz.thisType)
-              denot.mapInfo(replaceSyntheticParamNames).showDcl + " = ???"
-
-          membersStrings(missingMethods)
-        }
+        def stubImplementations: List[String] =
+          missingMethods.sortBy(_.name.toString).map: sym =>
+            sym.asSeenFrom(clazz.thisType).mapInfo(_.withCleanParamNames).showDcl + " = ???"
 
         if missingMethods.isEmpty then return
 
@@ -791,7 +772,7 @@ object RefChecks {
 
         for (member <- missingMethods) {
           def showDclAndLocation(sym: Symbol) =
-            s"${sym.mapInfo(replaceSyntheticParamNames).showDcl} in ${sym.owner.showLocated}"
+            s"${sym.mapInfo(_.withCleanParamNames).showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
             val addendum = if msg.isEmpty then "" else s" $msg"
             concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(

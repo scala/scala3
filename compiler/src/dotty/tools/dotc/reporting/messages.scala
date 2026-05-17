@@ -3909,18 +3909,8 @@ extends Message(ConcreteClassHasUnimplementedMethodsID), NoDisambiguation:
 
   def kind = MessageKind.Declaration
 
-  private def replaceSyntheticParamNames(tp: Type): Type = tp match
-    case mt: MethodType if mt.allParamNamesSynthetic =>
-      val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
-      mt.derivedLambdaType(newNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
-    case mt: MethodType =>
-      mt.derivedLambdaType(mt.paramNames, mt.paramInfos, replaceSyntheticParamNames(mt.resType))
-    case pt: PolyType =>
-      pt.derivedLambdaType(pt.paramNames, pt.paramInfos, replaceSyntheticParamNames(pt.resType))
-    case _ => tp
-
   private def showDecl(sym: Symbol)(using Context): String =
-    sym.asSeenFrom(clazz.thisType).mapInfo(replaceSyntheticParamNames).showDcl
+    sym.asSeenFrom(clazz.thisType).mapInfo(_.withCleanParamNames).showDcl
 
   private def prelude(using Context): String =
     if clazz.isAnonymousClass || clazz.is(Module) then "object creation impossible"
