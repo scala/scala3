@@ -183,9 +183,17 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
+
       - uses: sbt/setup-sbt@v1
+
       - name: Test `scala3-compiler-bootstrapped`
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
+
+      - name: Cmd Tests
+        run: |
+          ./project/scripts/sbt 'scala3-bootstrapped/publishLocal'
+          ./project/scripts/cmdTests
+          ./project/scripts/bootstrappedOnlyCmdTests
 
   test-scala3-bootstrapped-compilation-coverage:
     runs-on: ubuntu-latest
