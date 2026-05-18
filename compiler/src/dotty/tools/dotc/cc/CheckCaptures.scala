@@ -1481,47 +1481,32 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  the classifier of `cls`.
      */
     def checkFieldOfClassifiedClass(fld: Symbol, cs: CaptureSet, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
-      for ref <- cs.elems do
-        //println(i"checking $fld: $ref, ${ref.transClassifiers}, ${cs.transClassifiers} / ${cs.isConst}")
-        def fail(classified: String) =
-          val captures =
-            if ref.isTerminalCapability then ""
-            else i" captures ${ref.showAsCapability} which"
-          report.error(
-            em"""$fld's type ${fld.info}$captures is $classified,
-                |but it is a field of $cls which is classied as ${cls.classifier.typeRef}.
-                |Field classifiers have to conform to the classifier of the containing class.""",
-            pos)
-        ref.transClassifiers match
-          case Classifiers.Unclassified =>
-            fail("unclassified")
-          case Classifiers.ClassifiedAs(cs) =>
-            for c <- cs do
-              if !c.derivesFrom(cls.classifier) then
-                fail(i"classified as ${c.typeRef}")
-          case _ =>
-
-    /** Check that capture sets of fields are compatible with declared extensions of
-     *  the class. This means:
-     *   1. If `cls` extends a Classifier class, check that all any-classifiers in fields
-     *      conform to the classifier of the class.
-     *   2. If `cls` is externally visible and has fields with `any` types, it must
-     *      extend Capability.
-     */
-    def checkFieldCaptures(cls: ClassSymbol)(using Context): Unit = {
-      lazy val capFields = cls.capturesImpliedByFields(cls.appliedRef).fields
-      // (1)
-      if cls.derivesFrom(defn.Caps_Classifier) then
-        for fld <- capFields; cl <- fld.classifiersOfLocalCapsInType do
-          if !fld.name.is(WildcardParamName) && !cl.derivesFrom(cls.classifier) then
-            def fldClassifier =
-              if cl == defn.AnyClass then i"of unclassified type ${fld.info}"
-              else i"classified as ${cl.typeRef}"
+      if !fld.name.is(WildcardParamName) then
+        for ref <- cs.elems do
+          //println(i"checking $fld: $ref, ${ref.transClassifiers}, ${cs.transClassifiers} / ${cs.isConst}")
+          def fail(classified: String) =
+            val captures =
+              if ref.isTerminalCapability then ""
+              else i" captures ${ref.showAsCapability} which"
             report.error(
-              em"""$cls is classied as ${cls.classifier.typeRef} but has a field ${fld.name} $fldClassifier.
+              em"""$fld's type ${fld.info}$captures is $classified,
+                  |but it is a field of $cls which is classied as ${cls.classifier.typeRef}.
                   |Field classifiers have to conform to the classifier of the containing class.""",
-              cls.srcPos)
-      // (2)
+              pos)
+          ref.transClassifiers match
+            case Classifiers.Unclassified =>
+              fail("unclassified")
+            case Classifiers.ClassifiedAs(cs) =>
+              for c <- cs do
+                if !c.derivesFrom(cls.classifier) then
+                  fail(i"classified as ${c.typeRef}")
+            case _ =>
+
+    /** Check: If `cls` is externally visible and has fields with `any` types, it must
+     *  extend Capability.
+     */
+    def checkFieldCaptures(cls: ClassSymbol)(using Context): Unit =
+      val capFields = cls.capturesImpliedByFields(cls.appliedRef).fields
       if !cls.isExemptFromExplicitChecks
           && !cls.derivesFromCapability
           && capFields.nonEmpty
@@ -1534,7 +1519,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           report.error(em"$fields need to be put in an object that extends Capability", capFields.head.srcPos)
         else
           report.error(em"$cls needs to extend Capability since it has $fields.", cls.srcPos)
-    }
 
     /** The normal rechecking if `sym` was already completed before */
     override def skipRecheck(sym: Symbol)(using Context): Boolean =

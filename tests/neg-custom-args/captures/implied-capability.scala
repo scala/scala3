@@ -5,5 +5,5 @@ class C1 extends SharedCapability:
 
 class Ref extends Mutable
 
-class C2 extends SharedCapability: // error
+class C2 extends SharedCapability:
   val r: Ref = Ref() // error
