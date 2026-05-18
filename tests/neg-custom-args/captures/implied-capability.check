@@ -8,3 +8,11 @@
   |      ^
   |      class C2 is classied as scala.caps.SharedCapability but has a field r classified as scala.caps.Unscoped.
   |      Field classifiers have to conform to the classifier of the containing class.
+-- Error: tests/neg-custom-args/captures/implied-capability.scala:9:6 --------------------------------------------------
+9 |  val r: Ref = Ref() // error
+  |      ^
+  |      value r's type Ref^{any.rd} is classified as scala.caps.Unscoped,
+  |      but it is a field of class C2 which is classied as scala.caps.SharedCapability.
+  |      Field classifiers have to conform to the classifier of the containing class.
+  |
+  |      where:    any is a root capability classified as Unscoped in the type of value r

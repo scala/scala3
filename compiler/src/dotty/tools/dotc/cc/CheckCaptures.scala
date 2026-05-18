@@ -1273,7 +1273,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Interpolate contravariant capture set variables in result type.
      *   - for lazy vals: create a nested environment to track captures (similar to methods)
      */
-    override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
+    override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type = {
       val savedEnv = curEnv
       val runInConstructor = !sym.isOneOf(Param | ParamAccessor | Lazy | NonMember)
       try
@@ -1329,7 +1329,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           // This is different from captureSetImpliedByFields since the latter produces
           // LocalCaps from inside the class.
           markFree(declaredCaptures, tree, addUseInfo = false)
-    end recheckValDef
+
+        if sym.owner.derivesFrom(defn.Caps_Classifier) then
+          todoAtPostCheck += { () =>
+            checkFieldOfClassifiedClass(sym, declaredCaptures, sym.owner.asClass, tree.namePos)
+          }
+    }
 
     /** Recheck method definitions:
      *   - check body in a nested environment that tracks uses, in  a nested level,
@@ -1471,6 +1476,30 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       tp
     }
+
+    /** Check that field `fld` with type `cs` only captures capabilities that conform to
+     *  the classifier of `cls`.
+     */
+    def checkFieldOfClassifiedClass(fld: Symbol, cs: CaptureSet, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
+      for ref <- cs.elems do
+        //println(i"checking $fld: $ref, ${ref.transClassifiers}, ${cs.transClassifiers} / ${cs.isConst}")
+        def fail(classified: String) =
+          val captures =
+            if ref.isTerminalCapability then ""
+            else i" captures ${ref.showAsCapability} which"
+          report.error(
+            em"""$fld's type ${fld.info}$captures is $classified,
+                |but it is a field of $cls which is classied as ${cls.classifier.typeRef}.
+                |Field classifiers have to conform to the classifier of the containing class.""",
+            pos)
+        ref.transClassifiers match
+          case Classifiers.Unclassified =>
+            fail("unclassified")
+          case Classifiers.ClassifiedAs(cs) =>
+            for c <- cs do
+              if !c.derivesFrom(cls.classifier) then
+                fail(i"classified as ${c.typeRef}")
+          case _ =>
 
     /** Check that capture sets of fields are compatible with declared extensions of
      *  the class. This means:

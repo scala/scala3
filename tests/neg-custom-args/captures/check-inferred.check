@@ -49,6 +49,14 @@
    |           subsumed by the computed capability of the enclosing class.
    |
    |           where:    ^ refers to a root capability in the type of value count
+-- Error: tests/neg-custom-args/captures/check-inferred.scala:40:6 -----------------------------------------------------
+40 |  val x: A^ = ??? // error
+   |      ^
+   |      value x's type test.A^ is unclassified,
+   |      but it is a field of class B which is classied as scala.caps.Control.
+   |      Field classifiers have to conform to the classifier of the containing class.
+   |
+   |      where:    ^ refers to a root capability in the type of value x
 -- Error: tests/neg-custom-args/captures/check-inferred.scala:45:15 ----------------------------------------------------
 45 |  private val y = ??? : A^ // error
    |               ^
