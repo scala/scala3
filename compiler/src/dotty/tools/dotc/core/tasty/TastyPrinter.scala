@@ -12,7 +12,7 @@ import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, AttributesSection, CommentsSection, PositionsSection}
 
 import java.nio.file.{Files, Paths}
-import dotty.tools.io.{JarArchive, Path, PlainFile}
+import dotty.tools.io.{AbstractFile, JarArchive, Path}
 import dotty.tools.tasty.TastyFormat.header
 
 import scala.collection.immutable.BitSet
@@ -60,8 +60,11 @@ object TastyPrinter:
           System.exit(1)
       else if arg.endsWith(".jar") then
         val jar = JarArchive.open(Path(arg), create = false)
+        def tastyFiles(file: AbstractFile): Iterator[AbstractFile] =
+          if file.isDirectory then file.iterator.flatMap(tastyFiles)
+          else Iterator.single(file).filter(_.name.endsWith(".tasty"))
         try
-          for file <- jar.allFileNames().map(f => new PlainFile(Path(f))) if file.hasTastyExtension do
+          for file <- tastyFiles(jar) do
             printTasty(s"$arg ${file.path}", file.toByteArray, isBestEffortTasty = false)
         finally jar.close()
       else
