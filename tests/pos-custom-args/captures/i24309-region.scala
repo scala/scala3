@@ -13,13 +13,13 @@ object Regions:
     region: Region[R]^ =>
       def alloc(value: Int): Ref^{R} = Ref(value)
 
-      def subregion[T](f: [R2^ >: R] => (Region[R2]) => T): T =
+      def subregion[T](f: [R2^ >: R] => (Region[R2]) -> T): T =
         val r = new Region[R] {}
         f(r)
 
 
   object Region:
-    def apply[T](f: [R^] => Region[R] => T): T =
+    def apply[T](f: [R^] => Region[R] -> T): T =
       val r = new Region[{}] {}
       f(r)
 

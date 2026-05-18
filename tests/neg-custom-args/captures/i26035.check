@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/i26035.scala:8:22 -------------------------------------------------------------
+8 |case class Foo(f: [A] => () => Unit) // error
+  |                      ^
+  |Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled
