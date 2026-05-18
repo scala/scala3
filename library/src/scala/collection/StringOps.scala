@@ -901,20 +901,20 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @return an array of strings computed by splitting this string around occurrences of the separator character
    */
   def split(separator: Char): Array[String] = {
+    val first = s.indexOf(separator)
+    if first == -1 then return Array(s)
+
     var end = s.length
     while end > 0 && s(end - 1) == separator do
       end -= 1
-    if end == 0 then
-      return if s.isEmpty then Array("") else Array.empty
+    if end == 0 then return Array.empty
 
     if !separator.isSurrogate then
-      var i = s.indexOf(separator)
-      if i < 0 then
-        Array(s)
-      else if i >= end then
-        Array(s.substring(0, i))
+      if first == end then
+        Array(s.substring(0, end))
       else
         val builder = Array.newBuilder[String]
+        var i = first
         var start = 0
         while
           builder += s.substring(start, i)
