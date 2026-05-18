@@ -80,10 +80,15 @@ object LiftCoverage extends LiftImpure:
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
     val dealiased = expr.tpe.dealias
     val deskolemized = dealiased.deskolemized
-    deskolemized.widenTermRefExpr.normalized.simplified match
+    val valueType = dealiased match
+      case ref: TermRef if ref.prefix.exists && ref.underlying.isInstanceOf[ExprType] =>
+        ref.prefix.memberInfo(ref.symbol).widenExpr
+      case _ =>
+        dealiased
+    valueType.widenTermRefExpr.normalized.simplified match
       case _: ConstantType => deskolemized
       case _ if dealiased.isInstanceOf[SingletonType] && dealiased.isStable => dealiased
-      case _ if dealiased.existsPart(_.typeSymbol == defn.TypeBox_CAP) => dealiased
+      case _ if valueType.existsPart(_.typeSymbol == defn.TypeBox_CAP) => valueType
       case _ => super.liftedExprType(expr)
 
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
