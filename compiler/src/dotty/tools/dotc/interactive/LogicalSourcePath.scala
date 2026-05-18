@@ -23,9 +23,10 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
   override def findClassFile(className: String): Option[AbstractFile] = None
   override def classes(inPackage: PackageName): Seq[BinaryFileEntry] = Seq.empty
 
-  override def hasPackage(inPackage: PackageName): Boolean = findPackage(
-    inPackage.dottedString
-  ).isDefined
+  override def hasPackage(inPackage: PackageName): Boolean =
+    findPackage(
+      inPackage.dottedString
+    ).isDefined
 
   /** Return all packages contained inside `inPackage`. Package entries contain the *full name* of the package. */
   override def packages(inPackage: PackageName): Seq[PackageEntry] =

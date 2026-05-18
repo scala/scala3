@@ -13,12 +13,16 @@ import dotty.tools.io.Path
 
 import java.io.File
 import scala.collection.mutable
+import dotty.tools.dotc.core.Contexts
 
 /**
  * A compiler component that adds support for parsing Scala and Java source files and finding out
  * the logical package structure of the whole source path.
  */
-class LogicalPackagesProvider(sourcePath: String)(using Context){
+class LogicalPackagesProvider(sourcePath: String){
+
+  // We only use it for parser
+  private given Context = new ContextBase().initialCtx
 
   private lazy val sourceRoots: Seq[SourceFile] =
     allSources(sourcePath).map(f => SourceFile(f, f.toCharArray))
@@ -146,7 +150,9 @@ class LogicalPackagesProvider(sourcePath: String)(using Context){
       if isRelevantFile(e)
       f <- Option(AbstractFile.getFile(e))
     } yield f
-    rootFiles ++ rootDirs.flatMap(dir => sourcesIn(AbstractFile.getDirectory(dir).nn, "scala", "java"))
+    rootFiles ++ rootDirs.flatMap{ dir =>
+      Option(AbstractFile.getDirectory(dir)).toSeq.flatMap(sourcesIn(_, "scala", "java"))
+    }
   }
 
   /**
