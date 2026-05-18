@@ -30,8 +30,6 @@ import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.interactive.LogicalPackage
-import dotty.tools.dotc.interactive.LogicalPackagesProvider
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.SymbolInformationProvider

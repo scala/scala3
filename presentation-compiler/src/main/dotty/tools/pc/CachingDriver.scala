@@ -14,11 +14,9 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.interactive.LogicalPackage
 import dotty.tools.dotc.interactive.LogicalPackagesProvider
-import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.ParsedLogicalPackage
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.pc as sourcePathFiles
 
 /** CachingDriver is a wrapper class that provides a compilation cache for
  *  InteractiveDriver. CachingDriver skips running compilation if
@@ -69,8 +67,8 @@ object CachingDriver:
       sourcePathMode: SourcePathMode
   ): CachingDriver =
     val precomputedSourcePackages = sourcePathMode match
-      case SourcePathMode.DISABLED | SourcePathMode.FULL => None
-      case SourcePathMode.PRUNED =>
+      case SourcePathMode.DISABLED => None
+      case SourcePathMode.PRUNED | SourcePathMode.FULL =>
         val sourcePathFiles = sourcePath.get().asScala.toSeq
         val logicalSourcePath = sourcePathFiles.mkString(File.pathSeparator)
         if sourcePathFiles.nonEmpty then Some(new LogicalPackagesProvider(logicalSourcePath).root) else None
