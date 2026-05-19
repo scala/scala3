@@ -487,7 +487,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
               val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
             } else if (backendUtils.isScalaUnbox(methodInsn)) {
-              val tp = backendUtils.primitiveAsmTypeToBType(Type.getReturnType(methodInsn.desc))
+              val tp = backendUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
               val boxTp = ts.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
