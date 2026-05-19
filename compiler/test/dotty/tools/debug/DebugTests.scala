@@ -18,6 +18,8 @@ class DebugTests:
     given TestGroup = TestGroup("debug")
     CompilationTest.aggregateTests(
       compileFile("tests/debug-custom-args/eval-explicit-nulls.scala", TestConfiguration.explicitNullsOptions),
+      compileFile("tests/debug-custom-args/eval-syntax.scala", TestConfiguration.oldSyntax),
+      compileFile("tests/debug-custom-args/eval-syntax.scala", TestConfiguration.newSyntax),
       compileFilesInDir("tests/debug", TestConfiguration.defaultOptions),
     ).checkDebug()
 
