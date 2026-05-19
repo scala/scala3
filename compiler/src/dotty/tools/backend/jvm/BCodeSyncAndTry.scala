@@ -5,7 +5,6 @@ package jvm
 import scala.language.unsafeNulls
 import scala.collection.immutable
 import scala.tools.asm
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd
@@ -18,15 +17,15 @@ import tpd.*
  *  @version 1.0
  *
  */
-trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
+trait BCodeSyncAndTry extends BCodeBodyBuilder {
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */
-  class SyncAndTryBuilder(cunit: CompilationUnit) extends PlainBodyBuilder(cunit) {
+  class SyncAndTryBuilder extends PlainBodyBuilder {
 
-    def genSynchronized(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
+    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType = (tree: @unchecked) match {
       case Apply(TypeApply(fun, _), args) =>
-      val monitor = locals.makeLocal(ts.ObjectRef, "monitor", defn.ObjectType, tree.span)
+      val monitor = locals.makeLocal(bTypes.ObjectRef, "monitor", defn.ObjectType, tree.span)
       val monCleanup = new asm.Label
 
       // if the synchronized block returns a result, store it in a local variable.
@@ -36,7 +35,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
       genLoadQualifier(fun)
-      bc.dup(ts.ObjectRef)
+      bc.dup(bTypes.ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)
 
@@ -178,7 +177,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
      *    - "exception-handler-version-of-finally-block" respectively.
      *
      */
-    def genLoadTry(tree: Try): BType = tree match {
+    def genLoadTry(tree: Try)(using Context): BType = tree match {
       case Try(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
@@ -186,7 +185,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
         for (CaseDef(pat, _, caseBody) <- catches) yield {
           pat match {
             case Typed(Ident(nme.WILDCARD), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
-            case Ident(nme.WILDCARD)              => NamelessEH(ts.jlThrowableRef,  caseBody)
+            case Ident(nme.WILDCARD)              => NamelessEH(bTypes.jlThrowableRef,  caseBody)
             case Bind(_, _)                       => BoundEH   (pat.symbol, caseBody)
           }
         }
@@ -343,7 +342,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
         nopIfNeeded(startTryBody)
         val finalHandler = currProgramPoint() // version of the finally-clause reached via unhandled exception.
         protect(startTryBody, finalHandler, finalHandler, null)
-        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(ts.jlThrowableRef, "exc", defn.ThrowableType, finalizer.span))
+        val Local(eTK, _, eIdx, _) = locals(locals.makeLocal(bTypes.jlThrowableRef, "exc", defn.ThrowableType, finalizer.span))
         bc.store(eIdx, eTK)
         emitFinalizer(finalizer, null, isDuplicate = true)
         bc.load(eIdx, eTK)
@@ -448,7 +447,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
     }
 
     /* `tmp` (if non-null) is the symbol of the local-var used to preserve the result of the try-body, see `guardResult` */
-    private def emitFinalizer(finalizer: Tree, tmp: Symbol, isDuplicate: Boolean): Unit = {
+    private def emitFinalizer(finalizer: Tree, tmp: Symbol, isDuplicate: Boolean)(using Context): Unit = {
       var saved: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] = null
       if (isDuplicate) {
         saved = jumpDest
@@ -463,7 +462,7 @@ trait BCodeSyncAndTry(using ctx: Context) extends BCodeBodyBuilder {
     }
 
     /* Does this tree have a try-catch block? */
-    private def mayCleanStack(tree: Tree): Boolean = tree.find { // TODO: use existsSubTree
+    private def mayCleanStack(tree: Tree)(using Context): Boolean = tree.find { // TODO: use existsSubTree
       case Try(_, _, _) => true
       case _ => false
     }.isDefined

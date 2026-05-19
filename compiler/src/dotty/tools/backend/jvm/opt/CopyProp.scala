@@ -27,7 +27,10 @@ import dotty.tools.backend.jvm.BackendUtils.*
 
 import scala.tools.asm
 
-class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: CoreBTypes, optAllowSkipClassLoading: Boolean) {
+class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: WellKnownBTypes, settings: OptimizerSettings) {
+
+  private val modulesAllowSkipInitialization =
+    if settings.optAllowSkipCoreModuleInit then backendUtils.modulesAllowSkipInitialization else Set.empty
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an
@@ -473,7 +476,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (backendUtils.isBoxedUnit(prod) || BackendUtils.isJavaLangStaticLoad(prod) || BackendUtils.isModuleLoad(prod, backendUtils.modulesAllowSkipInitialization)) toRemove += prod
+            if (backendUtils.isBoxedUnit(prod) || BackendUtils.isJavaLangStaticLoad(prod) || BackendUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
@@ -521,7 +524,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
               toRemove += prod
 
             case _ =>
-              if (optAllowSkipClassLoading) toRemove += prod
+              if (settings.optAllowSkipClassLoading) toRemove += prod
               else popAfterProd()
           }
 

@@ -24,7 +24,7 @@ sealed trait ThreadPoolFactory {
 
 
 object ThreadPoolFactory {
-  def apply(phase: Phase)(using Context): ThreadPoolFactory = ctx.profiler match {
+  def apply(phase: Phase, profiler: Profiler): ThreadPoolFactory = profiler match {
     case NoOpProfiler => new BasicThreadPoolFactory(phase)
     case r: RealProfiler => new ProfilingThreadPoolFactory(phase, r)
   }

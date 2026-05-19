@@ -1,9 +1,9 @@
 package dotty.tools.backend.jvm
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
+import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.AbstractFile
+import dotty.tools.io.FileWriters
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
 
@@ -11,30 +11,43 @@ import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.dotc.report
+import dotty.tools.io.PlainFile.toPlainFile
 
+import java.nio.file.{Files, Paths}
 import scala.tools.asm
+import scala.util.chaining.scalaUtilChainingOps
 
 /**
  * Implements late stages of the backend, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
-                    private val byteCodeRepository: BCodeRepository, private val bTypesFromClassfile: BTypesFromClassfile,
-                    private val backendUtils: BackendUtils, private val ts: CoreBTypes)(using Context) {
+class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
+                    byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
+                    callGraph: CallGraph, backendUtils: BackendUtils,
+                    bTypeLoader: BTypeLoader, bTypes: WellKnownBTypes)(using Context) {
 
-  val callGraph                   = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile, ts)
-  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts, bTypesFromClassfile)
-  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, ts)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, ts, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer)
-  private val localOpt            = new LocalOpt(backendUtils, frontendAccess, callGraph, inliner, ts, bTypesFromClassfile)
-  val classfileWriters            = new ClassfileWriters(frontendAccess)
-  val classfileWriter             = classfileWriters.ClassfileWriter(frontendAccess.compilerSettings.mainClass)
+  private val optSettings         = new OptimizerSettings()
+  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, optSettings)
+  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
+  given FileWriters.ReadOnlyContext = FileWriters.ReadOnlyContext.eager
+  private val classfileWriter: FileWriters.ClassfileWriter = {
+    val dumpClassesPath =
+      ctx.settings.Xdumpclasses.valueSetByUser
+        .map(p => Paths.get(p))
+        .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
+        .map(_.toPlainFile)
+
+    FileWriters.ClassfileWriter(ctx.settings.outputDir.value, ctx.settings.XmainClass.valueSetByUser, dumpClassesPath)
+  }
 
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !frontendAccess.compilerSettings.outputOnlyTasty then {
+  @annotation.nowarn("cat=deprecation")
+  def sendToDisk(clazz: GeneratedClass): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =
@@ -50,20 +63,20 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
           report.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
           null
         case ex: Exception =>
-          if frontendAccess.compilerSettings.debug then ex.printStackTrace()
+          if ctx.debug then ex.printStackTrace()
           report.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
     if bytes != null then
       TraceUtils.traceSerializedClassIfRequested(internalName, bytes)
-      val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
+      val clsFile = classfileWriter.writeClass(internalName, bytes)
       clazz.onFileCreated(clsFile)
   }
 
-  def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
+  def sendToDisk(tasty: GeneratedTasty): Unit = {
     val GeneratedTasty(classNode, tastyGenerator) = tasty
     val internalName = classNode.name.nn
-    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator(), sourceFile)
+    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator())
   }
 
   def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
@@ -78,11 +91,14 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
-    if frontendAccess.compilerSettings.optInlinerEnabled then
+    if ctx.settings.optInlineEnabled then
       inliner.runInlinerAndClosureOptimizer()
-    else if frontendAccess.compilerSettings.optClosureInvocations then
+    else if ctx.settings.optClosureInvocations then
       closureOptimizer.rewriteClosureApplyInvocations(None, scala.collection.mutable.Map.empty)
   }
+
+  def close(): Unit =
+    classfileWriter.close()
 
   private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
     val name = clazz.classNode.name
@@ -117,10 +133,9 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
   }
 
   private def setInnerClasses(classNode: ClassNode): Unit = {
-    import backendUtils.{collectNestedClasses, addInnerClasses}
     classNode.innerClasses.nn.clear()
-    val (declared, referred) = collectNestedClasses(classNode)
-    addInnerClasses(classNode, declared, referred)
+    val (declared, referred) = bTypeLoader.collectNestedClasses(classNode)
+    backendUtils.addInnerClasses(classNode, declared, referred)
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
@@ -147,10 +162,11 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess,
      * This method is used by asm when computing stack map frames.
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
-      // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
-      val a = ts.classBTypeFromInternalName(inameA).get
-      val b = ts.classBTypeFromInternalName(inameB).get
-      val lub = a.jvmWiseLUB(b)
+      // All types that appear in a class node need to have their ClassBType cached,
+      // i.e., have been loaded either from symbols or from class files.
+      val a = bTypeLoader.previouslyConstructedClassBType(inameA).get
+      val b = bTypeLoader.previouslyConstructedClassBType(inameB).get
+      val lub = a.jvmWiseLUB(b, bTypes)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
@@ -168,5 +184,5 @@ case class GeneratedClass(
   isArtifact: Boolean,
   onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])(using val ctx: Context)
+case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
 

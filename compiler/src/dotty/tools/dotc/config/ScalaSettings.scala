@@ -383,6 +383,7 @@ private sealed trait OptimizerSettings:
       |such as `*`, `<`, `>`, and `$`: `'-opt-inline:p.*,!p.C$D' '-opt-inline:<sources>'`.
       |Quoting may not be needed in a build file.""".stripMargin
   val optInline: Setting[List[String]] = MultiStringSetting(RootSetting, "opt-inline", "filter", inlineHelp)
+  def optInlineEnabled(using Context): Boolean = optInline.value.nonEmpty
 
   val YoptInlineHeuristics = ChoiceSetting(
     ForkSetting,
