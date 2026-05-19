@@ -1,49 +1,49 @@
--- Error: tests/neg-custom-args/captures/sep-use2.scala:5:10 -----------------------------------------------------------
-5 |  def cc: Object^ = c  // error
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:4:10 -----------------------------------------------------------
+4 |  def cc: Object^ = c  // error
   |          ^^^^^^^
   |          Separation failure: method cc's result type Object^ hides non-local parameter c
--- Error: tests/neg-custom-args/captures/sep-use2.scala:13:8 -----------------------------------------------------------
-13 |    { f(c) } // error
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:12:8 -----------------------------------------------------------
+12 |    { f(c) } // error
    |        ^
    |        Separation failure: Illegal access to {c} which is hidden by the previous definition
    |        of method cc with result type Object^.
    |        This type hides capabilities  {c}
    |
-   |        where:    ^ refers to a fresh root capability in the result type of method cc
--- Error: tests/neg-custom-args/captures/sep-use2.scala:16:10 ----------------------------------------------------------
-16 |  def cc: Object^ = c // error
+   |        where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:15:10 ----------------------------------------------------------
+15 |  def cc: Object^ = c // error
    |          ^^^^^^^
    |          Separation failure: method cc's result type Object^ hides non-local parameter c
--- Error: tests/neg-custom-args/captures/sep-use2.scala:18:6 -----------------------------------------------------------
-18 |    { f(cc) } // error
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:17:6 -----------------------------------------------------------
+17 |    { f(cc) } // error
    |      ^
    |      Separation failure: Illegal access to {c} which is hidden by the previous definition
    |      of method cc with result type Object^.
    |      This type hides capabilities  {c}
    |
-   |      where:    ^ refers to a fresh root capability in the result type of method cc
--- Error: tests/neg-custom-args/captures/sep-use2.scala:20:6 -----------------------------------------------------------
-20 |    { f(c) } // error // error
+   |      where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:19:6 -----------------------------------------------------------
+19 |    { f(c) } // error // error
    |      ^
    |      Separation failure: Illegal access to {c} which is hidden by the previous definition
    |      of method cc with result type Object^.
    |      This type hides capabilities  {c}
    |
-   |      where:    ^ refers to a fresh root capability in the result type of method cc
--- Error: tests/neg-custom-args/captures/sep-use2.scala:20:8 -----------------------------------------------------------
-20 |    { f(c) } // error // error
+   |      where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:19:8 -----------------------------------------------------------
+19 |    { f(c) } // error // error
    |        ^
    |        Separation failure: Illegal access to {c} which is hidden by the previous definition
    |        of method cc with result type Object^.
    |        This type hides capabilities  {c}
    |
-   |        where:    ^ refers to a fresh root capability in the result type of method cc
--- Error: tests/neg-custom-args/captures/sep-use2.scala:24:8 -----------------------------------------------------------
-24 |    { f(c) } // error
+   |        where:    ^ refers to a root capability in the result type of method cc
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:23:8 -----------------------------------------------------------
+23 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{f} Object^{f*}
-   |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
+   |to a function of type Object^ ->{c} Object^{fresh}
+   |corresponds to capture-polymorphic formal parameter x$0 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
    |
@@ -53,19 +53,14 @@
    |  Footprint set of function prefix      : {f*, c}
    |  The two sets overlap at               : {c}
    |
-   |where:    ^  refers to a fresh root capability in the type of parameter c
-   |          ^² refers to a fresh root capability created in value x4 when checking argument to parameter v1 of method apply
--- Error: tests/neg-custom-args/captures/sep-use2.scala:23:10 ----------------------------------------------------------
-23 |  val x4: Object^ = // error: ^ hides f*, needs consume
-   |          ^^^^^^^
-   |          Separation failure: value x4's type Object^ hides parameter f.
-   |          The parameter needs to be annotated with consume to allow this.
--- Error: tests/neg-custom-args/captures/sep-use2.scala:28:8 -----------------------------------------------------------
-28 |    { f(c) } // error
+   |where:    ^  refers to a root capability in the type of parameter c
+   |          ^² refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply
+-- Error: tests/neg-custom-args/captures/sep-use2.scala:27:8 -----------------------------------------------------------
+27 |    { f(c) } // error
    |        ^
    |Separation failure: argument of type  (c : Object^)
-   |to a function of type Object^ ->{f} Object^{f*}
-   |corresponds to capture-polymorphic formal parameter v1 of type  Object^²
+   |to a function of type Object^ ->{c} Object^{fresh}
+   |corresponds to capture-polymorphic formal parameter x$0 of type  Object^²
    |and hides capabilities  {c}.
    |Some of these overlap with the captures of the function prefix.
    |
@@ -75,10 +70,5 @@
    |  Footprint set of function prefix      : {f*, c}
    |  The two sets overlap at               : {c}
    |
-   |where:    ^  refers to a fresh root capability in the type of parameter c
-   |          ^² refers to a fresh root capability created in value x4 when checking argument to parameter v1 of method apply
--- Error: tests/neg-custom-args/captures/sep-use2.scala:27:10 ----------------------------------------------------------
-27 |  val x4: Object^ = // error: ^ hides f* which refers to c, so c needs consume
-   |          ^^^^^^^
-   |          Separation failure: value x4's type Object^ hides parameter c.
-   |          The parameter needs to be annotated with consume to allow this.
+   |where:    ^  refers to a root capability in the type of parameter c
+   |          ^² refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply

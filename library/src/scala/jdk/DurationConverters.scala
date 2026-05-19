@@ -24,12 +24,12 @@ import scala.concurrent.duration.FiniteDuration
   */
 object DurationConverters {
   implicit class JavaDurationOps(private val duration: JDuration) extends AnyVal {
-    /** Convert a Java duration to a Scala duration, see [[javaapi.DurationConverters.toScala]]. */
+    /** Converts a Java duration to a Scala duration, see [[javaapi.DurationConverters.toScala]]. */
     def toScala: FiniteDuration = javaapi.DurationConverters.toScala(duration)
   }
 
   implicit final class ScalaDurationOps(private val duration: FiniteDuration) extends AnyVal {
-    /** Convert a Scala duration to a Java duration, see [[javaapi.DurationConverters.toJava]]. */
+    /** Converts a Scala duration to a Java duration, see [[javaapi.DurationConverters.toJava]]. */
     def toJava: JDuration = javaapi.DurationConverters.toJava(duration)
   }
 }

@@ -25,14 +25,15 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.Objects.requireNonNull
 import java.io.{IOException, NotSerializableException, ObjectInputStream, ObjectOutputStream}
 
-/**
-  * Latch used to implement waiting on a DefaultPromise's result.
-  *
-  * Inspired by: http://gee.cs.oswego.edu/cgi-bin/viewcvs.cgi/jsr166/src/main/java/util/concurrent/locks/AbstractQueuedSynchronizer.java
-  * Written by Doug Lea with assistance from members of JCP JSR-166
-  * Expert Group and released to the public domain, as explained at
-  * https://creativecommons.org/publicdomain/zero/1.0/
-  */
+/** Latch used to implement waiting on a DefaultPromise's result.
+ *
+ *  Inspired by: http://gee.cs.oswego.edu/cgi-bin/viewcvs.cgi/jsr166/src/main/java/util/concurrent/locks/AbstractQueuedSynchronizer.java
+ *  Written by Doug Lea with assistance from members of JCP JSR-166
+ *  Expert Group and released to the public domain, as explained at
+ *  https://creativecommons.org/publicdomain/zero/1.0/
+ *
+ *  @tparam T the type of the result value held by this latch
+ */
 private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer with (Try[T] => Unit) {
   //@volatie not needed since we use acquire/release
   /*@volatile*/ @annotation.stableNull private var _result: Try[T] | Null = null
@@ -49,30 +50,36 @@ private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer 
 }
 
 private[concurrent] object Promise {
-  /**
-   * Link represents a completion dependency between 2 DefaultPromises.
-   * As the DefaultPromise referred to by a Link can itself be linked to another promise
-   * `relink` traverses such chains and compresses them so that the link always points
-   * to the root of the dependency chain.
+  /** Link represents a completion dependency between 2 DefaultPromises.
+   *  As the DefaultPromise referred to by a Link can itself be linked to another promise
+   *  `relink` traverses such chains and compresses them so that the link always points
+   *  to the root of the dependency chain.
    *
-   * In order to conserve memory, the owner of a Link (a DefaultPromise) is not stored
-   * on the Link, but is instead passed in as a parameter to the operation(s).
+   *  In order to conserve memory, the owner of a Link (a DefaultPromise) is not stored
+   *  on the Link, but is instead passed in as a parameter to the operation(s).
    *
-   * If when compressing a chain of Links it is discovered that the root has been completed,
-   * the `owner`'s value is completed with that value, and the Link chain is discarded.
-   **/
+   *  If when compressing a chain of Links it is discovered that the root has been completed,
+   *  the `owner`'s value is completed with that value, and the Link chain is discarded.
+   *
+   *  @tparam T the type of the promised value
+   *  @param to the target `DefaultPromise` that this link initially points to
+   */
   private[concurrent] final class Link[T](to: DefaultPromise[T]) extends AtomicReference[DefaultPromise[T]](to) {
-    /**
-     * Compresses this chain and returns the currently known root of this chain of Links.
-     **/
+    /** Compresses this chain and returns the currently known root of this chain of Links.
+     *
+     *  @param owner the `DefaultPromise` that owns this link, used to complete it if the root is already resolved
+     */
     final def promise(owner: DefaultPromise[T]): DefaultPromise[T] = {
       val c = get()
       compressed(current = c, target = c, owner = owner)
     }
 
-    /**
-     * The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
-     **/
+    /** The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
+     *
+     *  @param current the `DefaultPromise` most recently read from this link's atomic reference
+     *  @param target the `DefaultPromise` currently being inspected while traversing the chain
+     *  @param owner the `DefaultPromise` that owns this link, used to complete it if the root is already resolved
+     */
     @inline @tailrec private final def compressed(current: DefaultPromise[T], target: DefaultPromise[T], owner: DefaultPromise[T]): DefaultPromise[T] = {
       val value = target.get()
       if (value.isInstanceOf[Callbacks[?]]) {
@@ -86,10 +93,12 @@ private[concurrent] object Promise {
     }
   }
 
-  /**
-   * The process of "resolving" a Try is to validate that it only contains
-   * those values which makes sense in the context of Futures.
-   **/
+  /** The process of "resolving" a Try is to validate that it only contains
+   *  those values which makes sense in the context of Futures.
+   *
+   *  @tparam T the type of the value contained in the `Try`
+   *  @param value the `Try` to resolve, must not be null
+   */
   // requireNonNull is paramount to guard against null completions
   private final def resolve[T](value: Try[T]): Try[T] =
     if (requireNonNull(value).isInstanceOf[Success[T]]) value
@@ -105,26 +114,24 @@ private[concurrent] object Promise {
 
   // Left non-final to enable addition of extra fields by Java/Scala converters in scala-java8-compat.
   class DefaultPromise[T] private (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] => Unit) {
-    /**
-     * Constructs a new, completed, Promise.
+    /** Constructs a new, completed, Promise.
+     *
+     *  @param result the completed result value to initialize this promise with
      */
     final def this(result: Try[T]) = this(resolve(result): AnyRef)
 
-    /**
-     * Constructs a new, un-completed, Promise.
-     */
+    /** Constructs a new, un-completed, Promise. */
     final def this() = this(Noop: AnyRef)
 
-    /**
-     * WARNING: the `resolved` value needs to have been pre-resolved using `resolve()`
-     * INTERNAL API
+    /** WARNING: the `resolved` value needs to have been pre-resolved using `resolve()`
+     *  INTERNAL API
+     *
+     *  @param resolved the pre-resolved `Try` value to complete this promise with
      */
     override final def apply(resolved: Try[T]): Unit =
       tryComplete0(get(), resolved)
 
-    /**
-     * Returns the associated `Future` with this `Promise`
-     */
+    /** Returns the associated `Future` with this `Promise` */
     override final def future: Future[T] = this
 
     override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S] =
@@ -146,7 +153,7 @@ private[concurrent] object Promise {
         val zipped = new DefaultPromise[R]()
 
         val thisF: Try[T] => Unit = {
-          case left: Success[_] =>
+          case left: Success[?] =>
             val right = buffer.getAndSet(left).asInstanceOf[Success[U]]
             if (right ne null)
               zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })
@@ -155,7 +162,7 @@ private[concurrent] object Promise {
         }
 
         val thatF: Try[U] => Unit = {
-          case right: Success[_] =>
+          case right: Success[?] =>
             val left = buffer.getAndSet(right).asInstanceOf[Success[T]]
             if (left ne null)
               zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })
@@ -221,6 +228,10 @@ private[concurrent] object Promise {
     /** The same as [[onComplete]], but additionally returns a function which can be
      *  invoked to unregister the callback function. Removing a callback from a long-lived
      *  future can enable garbage collection of objects referenced by the closure.
+     *
+     *  @tparam U the result type of the callback function
+     *  @param func the callback function to invoke when the future completes
+     *  @param executor the `ExecutionContext` used to run the callback
      */
     private[concurrent] final def onCompleteWithUnregister[U](func: Try[T] => U)(implicit executor: ExecutionContext): () => Unit = {
       val t = new Transformation[T, Unit](Xform_onComplete, func, executor)
@@ -319,6 +330,8 @@ private[concurrent] object Promise {
     /** Tries to add the callback, if already completed, it dispatches the callback to be executed.
      *  Used by `onComplete()` to add callbacks to a promise and by `link()` to transfer callbacks
      *  to the root promise when linking two promises together.
+     *
+     *  @tparam C the specific subtype of `Callbacks[T]` being dispatched or added
      */
     @tailrec private final def dispatchOrAddCallbacks[C <: Callbacks[T]](state: AnyRef, callbacks: C): C =
       if (state.isInstanceOf[Try[?]]) {
@@ -375,6 +388,9 @@ private[concurrent] object Promise {
       }
 
     /** Link this promise to the root of another promise.
+     *
+     *  @param target the `DefaultPromise` to link this promise's root to
+     *  @param link a reusable `Link` instance for the connection, or null to create a new one
      */
     @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T], link: Link[T] | Null): Unit =
       if (this ne target) {
@@ -392,10 +408,11 @@ private[concurrent] object Promise {
           state.asInstanceOf[Link[T]].promise(this).linkRootOf(target, link)
       }
 
-    /**
-     * Unlinks (removes) the link chain if the root is discovered to be already completed,
-     * and completes the `owner` with that result.
-     **/
+    /** Unlinks (removes) the link chain if the root is discovered to be already completed,
+     *  and completes the `owner` with that result.
+     *
+     *  @param resolved the already-resolved result to complete all promises in the link chain with
+     */
     @tailrec private[concurrent] final def unlink(resolved: Try[T]): Unit = {
       val state = get()
       if (state.isInstanceOf[Link[?]]) {
@@ -438,12 +455,14 @@ private[concurrent] object Promise {
 
   private final val Noop = new Transformation[Nothing, Nothing](Xform_noop, null: (Any => Any) | Null, ExecutionContext.parasitic)
 
-  /**
-   * A Transformation[F, T] receives an F (it is a Callback[F]) and applies a transformation function to that F,
-   * Producing a value of type T (it is a Promise[T]).
-   * In order to conserve allocations, indirections, and avoid introducing bi/mega-morphicity the transformation
-   * function's type parameters are erased, and the _xform tag will be used to reify them.
-   **/
+  /** A Transformation[F, T] receives an F (it is a Callback[F]) and applies a transformation function to that F,
+   *  Producing a value of type T (it is a Promise[T]).
+   *  In order to conserve allocations, indirections, and avoid introducing bi/mega-morphicity the transformation
+   *  function's type parameters are erased, and the _xform tag will be used to reify them.
+   *
+   *  @tparam F the input type (the value type of the future being transformed)
+   *  @tparam T the output type (the value type produced by the transformation)
+   */
   final class Transformation[-F, T] private (
     @annotation.stableNull private final var _fun: (Any => Any) | Null,
     @annotation.stableNull private final var _ec: ExecutionContext | Null,

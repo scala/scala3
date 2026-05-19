@@ -1,0 +1,4 @@
+-- Error: tests/neg/i25260.scala:3:28 ----------------------------------------------------------------------------------
+3 |  expr match { case '{ type t : List; $x: t } => ??? } // error
+  |                       ^^^^^^^^^^^^^
+  |                       Quote type variable definition cannot have context bounds

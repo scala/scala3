@@ -20,6 +20,7 @@ import core.Decorators.*
 import core.Constants.*
 import core.Definitions.*
 import core.Annotations.BodyAnnotation
+import core.MissingType
 import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes.*
@@ -49,7 +50,7 @@ class Erasure extends Phase with DenotTransformer {
   override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
 
-  def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = try ref match {
     case ref: SymDenotation =>
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
@@ -130,11 +131,14 @@ class Erasure extends Phase with DenotTransformer {
         ref.symbol, transformInfo(ref.symbol, ref.symbol.info), currentStablePeriod, ref.prefix)
     case _ =>
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
-  }
+  } catch case ex: MissingType =>
+    // Handle missing types from dependencies (e.g., JDK version mismatch)
+    report.error(ex.toMessage, ref.symbol.srcPos)
+    ref  // Keep old denotation on error
 
   private val eraser = new Erasure.Typer(this)
 
-  def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     unit.tpdTree = eraser.typedExpr(unit.tpdTree)(using ctx.fresh.setTyper(eraser).setPhase(this.next))
   }
@@ -453,41 +457,9 @@ object Erasure {
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
-      /** Can the implementation parameter type `tp` be auto-adapted to a different
-       *  parameter type in the SAM?
-       *
-       *  For derived value classes, we always need to do the bridging manually.
-       *  For primitives, we cannot rely on auto-adaptation on the JVM because
-       *  the Scala spec requires null to be "unboxed" to the default value of
-       *  the value class, but the adaptation performed by LambdaMetaFactory
-       *  will throw a `NullPointerException` instead. See `lambda-null.scala`
-       *  for test cases.
-       *
-       *  @see [LambdaMetaFactory](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/invoke/LambdaMetafactory.html)
-       */
-      def autoAdaptedParam(tp: Type) =
-        !tp.isErasedValueType && !tp.isPrimitiveValueType
-
-      /** Can the implementation result type be auto-adapted to a different result
-       *  type in the SAM?
-       *
-       *  For derived value classes, it's the same story as for parameters.
-       *  For non-Unit primitives, we can actually rely on the `LambdaMetaFactory`
-       *  adaptation, because it only needs to box, not unbox, so no special
-       *  handling of null is required.
-       */
-      def autoAdaptedResult =
-        !implResultType.isErasedValueType && !implReturnsUnit
-
-      def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
-
-      val paramAdaptationNeeded =
-        implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && (!autoAdaptedParam(implType)
-            // LambdaMetaFactory cannot auto-adapt between Object and Array types
-            || samType.isInstanceOf[JavaArrayType]))
-      val resultAdaptationNeeded =
-        !sameClass(implResultType, samResultType) && !autoAdaptedResult
+      // Check if bridging is needed using the common function from TypeErasure
+      val (paramAdaptationNeeded, resultAdaptationNeeded) =
+        additionalAdaptationNeeded(implParamTypes, implResultType, samParamTypes, samResultType)
 
       if paramAdaptationNeeded || resultAdaptationNeeded then
         // Instead of instantiating `scala.FunctionN`, see if we can instantiate
@@ -748,13 +720,8 @@ object Erasure {
         // Scala classes are always emitted as public, unless the
         // `private` modifier is used, but a non-private class can never
         // extend a private class, so such a class will never be a cast target.
-        !cls.is(Flags.JavaDefined) || {
-          // We can't rely on `isContainedWith` here because packages are
-          // not nested from the JVM point of view.
-          val boundary = cls.accessBoundary(cls.owner)(using preErasureCtx)
-          (boundary eq defn.RootClass) ||
-          (ctx.owner.enclosingPackageClass eq boundary)
-        }
+        !cls.is(Flags.JavaDefined) ||
+          cls.isAccessibleFrom(cls.owner.thisType)(using preErasureCtx)
 
       @tailrec
       def recur(qual: Tree): Tree =
@@ -837,8 +804,9 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams =>
+        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
           args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
             if isErased then
               checkPureErased(arg, isArgument = true,

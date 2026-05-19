@@ -117,7 +117,7 @@ object Util:
       }
 
     // A concrete class may not be instantiated if the self type is not satisfied
-    instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
+    instantiable
 
   /** Whether the class or its super class/trait contains any mutable fields? */
   def isMutable(cls: ClassSymbol)(using Context): Boolean =

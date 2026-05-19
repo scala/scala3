@@ -62,14 +62,15 @@ trait Migrations:
       case blockEndingInClosure(_, _, _) =>
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
-        val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
-        report.errorOrMigrationWarning(msg, tree.srcPos, mv.Scala2to3)
-        if mv.Scala2to3.needsPatch then
-          // Under -rewrite, patch `x _` to `(() => x)`
-          msg.actions
-            .headOption
-            .foreach(Rewrites.applyAction)
-          return typed(untpd.Function(Nil, qual), pt)
+        if !defn.isFunctionType(recovered.tpe.widen) then
+          val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
+          report.errorOrMigrationWarning(msg, tree.srcPos, mv.Scala2to3)
+          if mv.Scala2to3.needsPatch then
+            // Under -rewrite, patch `x _` to `(() => x)`
+            msg.actions
+              .headOption
+              .foreach(Rewrites.applyAction)
+            return typed(untpd.Function(Nil, qual), pt)
     }
     nestedCtx.typerState.commit()
 
@@ -80,6 +81,8 @@ trait Migrations:
         functionPrefixSuffix(vparams.length)
       case Block(ValDef(_, _, _) :: Nil, Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure)) =>
         functionPrefixSuffix(vparams.length)
+      case _ if defn.isFunctionType(res.tpe.widen) =>
+        ("", "")
       case _ =>
         ("(() => ", ")")
     }
@@ -89,8 +92,8 @@ trait Migrations:
       else s"use `$prefix<function>$suffix` instead"
     def rewrite = Message.rewriteNotice("This construct", mversion.patchFrom)
     report.errorOrMigrationWarning(
-      em"""The syntax `<function> _` is no longer supported;
-          |you can $remedy$rewrite""",
+      em"""The trailing ` _` for eta-expansion is unnecessary;
+        |the compiler performs eta-expansion automatically, so you can write the function value directly instead.$rewrite""",
       tree.srcPos, mversion)
     if mversion.needsPatch then
       patch(Span(tree.span.start), prefix)

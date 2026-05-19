@@ -21,9 +21,4 @@ package object printing {
    */
   val XprintMode: Key[Unit] = new Key
 
-  /** @pre `nel` is non-empty list */
-  extension [A](nel: List[A])
-    private[printing] def intersperse(a: A): List[A] =
-      nel.flatMap(a :: _ :: Nil).tail
-
 }

@@ -17,7 +17,11 @@ import scala.language.`2.13`
 import java.lang.Integer.{ rotateLeft => rotl }
 
 private[hashing] class MurmurHash3 {
-  /** Mix in a block of data into an intermediate hash value. */
+  /** Mix in a block of data into an intermediate hash value.
+   *
+   *  @param hash the intermediate hash value
+   *  @param data the new block of data to mix in
+   */
   final def mix(hash: Int, data: Int): Int = {
     var h = mixLast(hash, data)
     h = rotl(h, 13)
@@ -26,7 +30,11 @@ private[hashing] class MurmurHash3 {
 
   /** May optionally be used as the last mixing step. Is a little bit faster than mix,
    *  as it does no further mixing of the resulting hash. For the last element this is not
-   *  necessary as the hash is thoroughly mixed during finalization anyway. */
+   *  necessary as the hash is thoroughly mixed during finalization anyway. 
+   *
+   *  @param hash the intermediate hash value
+   *  @param data the last block of data to mix in
+   */
   final def mixLast(hash: Int, data: Int): Int = {
     var k = data
 
@@ -37,10 +45,17 @@ private[hashing] class MurmurHash3 {
     hash ^ k
   }
 
-  /** Finalize a hash to incorporate the length and make sure all bits avalanche. */
+  /** Finalize a hash to incorporate the length and make sure all bits avalanche.
+   *
+   *  @param hash the intermediate hash value after all mix steps
+   *  @param length the number of elements hashed
+   */
   final def finalizeHash(hash: Int, length: Int): Int = avalanche(hash ^ length)
 
-  /** Force all bits of the hash to avalanche. Used for finalizing the hash. */
+  /** Force all bits of the hash to avalanche. Used for finalizing the hash.
+   *
+   *  @param hash the intermediate hash value whose bits should be thoroughly mixed
+   */
   private final def avalanche(hash: Int): Int = {
     var h = hash
 
@@ -82,7 +97,12 @@ private[hashing] class MurmurHash3 {
     }
   }
 
-  /** See the [[MurmurHash3.caseClassHash(x:Product,caseClassName:String)]] overload */
+  /** See the [[MurmurHash3.caseClassHash(x:Product,caseClassName:String)]] overload.
+   *
+   *  @param x the case class instance to hash
+   *  @param seed the initial seed for the hash computation
+   *  @param caseClassName the case class name used for hashing, or `null` to fall back to `x.productPrefix`
+   */
   final def caseClassHash(x: Product, seed: Int, caseClassName: String | Null): Int = {
     val arr = x.productArity
     val aye = (if (caseClassName != null) caseClassName else x.productPrefix).hashCode
@@ -100,7 +120,11 @@ private[hashing] class MurmurHash3 {
   }
 
 
-  /** Compute the hash of a string */
+  /** Computes the hash of a string.
+   *
+   *  @param str the string to hash
+   *  @param seed the initial seed for the hash computation
+   */
   final def stringHash(str: String, seed: Int): Int = {
     var h = seed
     var i = 0
@@ -113,9 +137,12 @@ private[hashing] class MurmurHash3 {
     finalizeHash(h, str.length)
   }
 
-  /** Compute a hash that is symmetric in its arguments - that is a hash
+  /** Computes a hash that is symmetric in its arguments - that is a hash
    *  where the order of appearance of elements does not matter.
    *  This is useful for hashing sets, for example.
+   *
+   *  @param xs the elements to hash (order-independent)
+   *  @param seed the initial seed for the hash computation
    */
   final def unorderedHash(xs: IterableOnce[Any], seed: Int): Int = {
     var a, b, n = 0
@@ -136,9 +163,12 @@ private[hashing] class MurmurHash3 {
     finalizeHash(h, n)
   }
 
-  /** Compute a hash that depends on the order of its arguments. Potential range
-    * hashes are recognized to produce a hash that is compatible with rangeHash.
-    */
+  /** Computes a hash that depends on the order of its arguments. Potential range
+   *  hashes are recognized to produce a hash that is compatible with rangeHash.
+   *
+   *  @param xs the elements to hash in traversal order
+   *  @param seed the initial seed for the hash computation
+   */
   final def orderedHash(xs: IterableOnce[Any], seed: Int): Int = {
     val it = xs.iterator
     var h = seed
@@ -172,9 +202,12 @@ private[hashing] class MurmurHash3 {
 
   }
 
-  /** Compute the hash of an array. Potential range hashes are recognized to produce a
-    * hash that is compatible with rangeHash.
-    */
+  /** Computes the hash of an array. Potential range hashes are recognized to produce a
+   *  hash that is compatible with rangeHash.
+   *
+   *  @param a the array to hash
+   *  @param seed the initial seed for the hash computation
+   */
   final def arrayHash[@specialized T](a: Array[T], seed: Int): Int = {
     var h = seed
     val l = a.length
@@ -209,16 +242,24 @@ private[hashing] class MurmurHash3 {
     }
   }
 
-  /** Compute the hash of a Range with at least 2 elements. Ranges with fewer
-    * elements need to use seqHash instead. The `last` parameter must be the
-    * actual last element produced by a Range, not the nominal `end`.
-    */
+  /** Computes the hash of a Range with at least 2 elements. Ranges with fewer
+   *  elements need to use seqHash instead. The `last` parameter must be the
+   *  actual last element produced by a Range, not the nominal `end`.
+   *
+   *  @param start the first element of the range
+   *  @param step the increment between successive elements
+   *  @param last the actual last element produced by the range
+   *  @param seed the initial seed for the hash computation
+   */
   final def rangeHash(start: Int, step: Int, last: Int, seed: Int): Int =
     avalanche(mix(mix(mix(seed, start), step), last))
 
-  /** Compute the hash of a byte array. Faster than arrayHash, because
+  /** Computes the hash of a byte array. Faster than arrayHash, because
    *  it hashes 4 bytes at once. Note that the result is not compatible with
    *  arrayHash!
+   *
+   *  @param data the byte array to hash
+   *  @param seed the initial seed for the hash computation
    */
   final def bytesHash(data: Array[Byte], seed: Int): Int = {
     var len = data.length
@@ -251,9 +292,12 @@ private[hashing] class MurmurHash3 {
     finalizeHash(h, data.length)
   }
 
-  /** Compute the hash of an IndexedSeq. Potential range hashes are recognized to produce a
-    * hash that is compatible with rangeHash.
-    */
+  /** Computes the hash of an IndexedSeq. Potential range hashes are recognized to produce a
+   *  hash that is compatible with rangeHash.
+   *
+   *  @param a the indexed sequence to hash
+   *  @param seed the initial seed for the hash computation
+   */
   final def indexedSeqHash(a: scala.collection.IndexedSeq[Any], seed: Int): Int = {
     var h = seed
     val l = a.length
@@ -288,9 +332,12 @@ private[hashing] class MurmurHash3 {
     }
   }
 
-  /** Compute the hash of a List. Potential range hashes are recognized to produce a
-    * hash that is compatible with rangeHash.
-    */
+  /** Computes the hash of a List. Potential range hashes are recognized to produce a
+   *  hash that is compatible with rangeHash.
+   *
+   *  @param xs the list to hash
+   *  @param seed the initial seed for the hash computation
+   */
   final def listHash(xs: scala.collection.immutable.List[?], seed: Int): Int = {
     var n = 0
     var h = seed
@@ -324,28 +371,27 @@ private[hashing] class MurmurHash3 {
   }
 }
 
-/**
- * An implementation of Austin Appleby's MurmurHash 3 algorithm
- * (MurmurHash3_x86_32). This object contains methods that hash
- * values of various types as well as means to construct `Hashing`
- * objects.
+/** An implementation of Austin Appleby's MurmurHash 3 algorithm
+ *  (MurmurHash3_x86_32). This object contains methods that hash
+ *  values of various types as well as means to construct `Hashing`
+ *  objects.
  *
- * This algorithm is designed to generate well-distributed non-cryptographic
- * hashes. It is designed to hash data in 32 bit chunks (ints).
+ *  This algorithm is designed to generate well-distributed non-cryptographic
+ *  hashes. It is designed to hash data in 32 bit chunks (ints).
  *
- * The mix method needs to be called at each step to update the intermediate
- * hash value. For the last chunk to incorporate into the hash mixLast may
- * be used instead, which is slightly faster. Finally finalizeHash needs to
- * be called to compute the final hash value.
+ *  The mix method needs to be called at each step to update the intermediate
+ *  hash value. For the last chunk to incorporate into the hash mixLast may
+ *  be used instead, which is slightly faster. Finally finalizeHash needs to
+ *  be called to compute the final hash value.
  *
- * This is based on the earlier MurmurHash3 code by Rex Kerr, but the
- * MurmurHash3 algorithm was since changed by its creator Austin Appleby
- * to remedy some weaknesses and improve performance. This represents the
- * latest and supposedly final version of the algorithm (revision 136). Even
- * so, test the generated hashes in between Scala versions, even for point
- * releases, as fast, non-cryptographic hashing algorithms evolve rapidly.
+ *  This is based on the earlier MurmurHash3 code by Rex Kerr, but the
+ *  MurmurHash3 algorithm was since changed by its creator Austin Appleby
+ *  to remedy some weaknesses and improve performance. This represents the
+ *  latest and supposedly final version of the algorithm (revision 136). Even
+ *  so, test the generated hashes in between Scala versions, even for point
+ *  releases, as fast, non-cryptographic hashing algorithms evolve rapidly.
  *
- * @see [[https://github.com/aappleby/smhasher]]
+ *  @see [[https://github.com/aappleby/smhasher]]
  */
 object MurmurHash3 extends MurmurHash3 {
   final val arraySeed       = 0x3c074a61
@@ -367,33 +413,36 @@ object MurmurHash3 extends MurmurHash3 {
   @deprecated("use `caseClassHash` instead", "2.13.17")
   def productHash(x: Product): Int = caseClassHash(x, productSeed, null)
 
-  /**
-   * Compute the `hashCode` of a case class instance. This method returns the same value as `x.hashCode`
-   * if `x` is an instance of a case class with the default, synthetic `hashCode`.
+  /** Computes the `hashCode` of a case class instance. This method returns the same value as `x.hashCode`
+   *  if `x` is an instance of a case class with the default, synthetic `hashCode`.
    *
-   * This method can be used to implement case classes with a cached `hashCode`:
-   * {{{
-   * case class C(data: Data) {
+   *  This method can be used to implement case classes with a cached `hashCode`:
+   *  ```
+   *  case class C(data: Data) {
    *   override lazy val hashCode: Int = MurmurHash3.caseClassHash(this)
-   * }
-   * }}}
+   *  }
+   *  ```
    *
-   * '''NOTE''': For case classes (or subclasses) that override `productPrefix`, the `caseClassName` parameter
-   * needs to be specified in order to obtain the same result as the synthetic `hashCode`. Otherwise, the value
-   * is not in sync with the case class `equals` method (scala/bug#13033).
+   *  **NOTE**: For case classes (or subclasses) that override `productPrefix`, the `caseClassName` parameter
+   *  needs to be specified in order to obtain the same result as the synthetic `hashCode`. Otherwise, the value
+   *  is not in sync with the case class `equals` method (scala/bug#13033).
    *
-   * {{{
-   * scala> case class C(x: Int) { override def productPrefix = "Y" }
+   *  ```
+   *  scala> case class C(x: Int) { override def productPrefix = "Y" }
    *
-   * scala> C(1).hashCode
-   * val res0: Int = -668012062
+   *  scala> C(1).hashCode
+   *  val res0: Int = -668012062
    *
-   * scala> MurmurHash3.caseClassHash(C(1))
-   * val res1: Int = 1015658380
+   *  scala> MurmurHash3.caseClassHash(C(1))
+   *  val res1: Int = 1015658380
    *
-   * scala> MurmurHash3.caseClassHash(C(1), "C")
-   * val res2: Int = -668012062
-   * }}}
+   *  scala> MurmurHash3.caseClassHash(C(1), "C")
+   *  val res2: Int = -668012062
+   *  ```
+   *
+   *  @param x the case class instance to hash
+   *  @param caseClassName the case class name to use for hashing, or `null` to use `x.productPrefix`
+   *  @return the hash code, equivalent to the synthetic `hashCode` when `caseClassName` matches the declared class name
    */
   def caseClassHash(x: Product, caseClassName: String | Null = null): Int = caseClassHash(x, productSeed, caseClassName)
 
@@ -401,10 +450,12 @@ object MurmurHash3 extends MurmurHash3 {
   private[scala] def tuple2Hash(x: Any, y: Any): Int = tuple2Hash(x.##, y.##, productSeed)
 
   /** To offer some potential for optimization.
+   *
+   *  @param xs the sequence to hash (dispatches to specialized implementations for `IndexedSeq` and `List`)
    */
   def seqHash(xs: scala.collection.Seq[?]): Int    = xs match {
-    case xs: scala.collection.IndexedSeq[_] => indexedSeqHash(xs, seqSeed)
-    case xs: List[_] => listHash(xs, seqSeed)
+    case xs: scala.collection.IndexedSeq[?] => indexedSeqHash(xs, seqSeed)
+    case xs: List[?] => listHash(xs, seqSeed)
     case xs => orderedHash(xs, seqSeed)
   }
 

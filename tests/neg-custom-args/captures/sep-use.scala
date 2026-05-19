@@ -1,4 +1,4 @@
-import caps.cap
+import caps.any
 
 
 def test1(consume io: Object^): Unit =

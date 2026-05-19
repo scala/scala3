@@ -100,13 +100,13 @@ private[collection] abstract class Node[T <: Node[T]] {
   }
 }
 
-/**
-  * Base class for fixed-stack iterators that traverse a hash-trie. The iterator performs a
-  * depth-first pre-order traversal, which yields first all payload elements of the current
-  * node before traversing sub-nodes (left to right).
-  *
-  * @tparam T the trie node type we are iterating over
-  */
+/** Base class for fixed-stack iterators that traverse a hash-trie. The iterator performs a
+ *  depth-first pre-order traversal, which yields first all payload elements of the current
+ *  node before traversing sub-nodes (left to right).
+ *
+ *  @tparam T the trie node type we are iterating over
+ *  @tparam A the element type produced by the iterator
+ */
 private[immutable] abstract class ChampBaseIterator[A, T <: Node[T]] extends AbstractIterator[A] {
 
   import Node.MaxDepth
@@ -158,10 +158,9 @@ private[immutable] abstract class ChampBaseIterator[A, T <: Node[T]] extends Abs
     currentStackLevel = currentStackLevel - 1
   }
 
-  /**
-    * Searches for next node that contains payload values,
-    * and pushes encountered sub-nodes on a stack for depth-first traversal.
-    */
+  /** Searches for next node that contains payload values,
+   *  and pushes encountered sub-nodes on a stack for depth-first traversal.
+   */
   private final def searchNextValueNode(): Boolean = {
     while (currentStackLevel >= 0) {
       val cursorIndex = currentStackLevel * 2
@@ -189,12 +188,12 @@ private[immutable] abstract class ChampBaseIterator[A, T <: Node[T]] extends Abs
 
 }
 
-/**
-  * Base class for fixed-stack iterators that traverse a hash-trie in reverse order. The base
-  * iterator performs a depth-first post-order traversal, traversing sub-nodes (right to left).
-  *
-  * @tparam T the trie node type we are iterating over
-  */
+/** Base class for fixed-stack iterators that traverse a hash-trie in reverse order. The base
+ *  iterator performs a depth-first post-order traversal, traversing sub-nodes (right to left).
+ *
+ *  @tparam T the trie node type we are iterating over
+ *  @tparam A the element type produced by the iterator
+ */
 private[immutable] abstract class ChampBaseReverseIterator[A, T <: Node[T]] extends AbstractIterator[A] {
 
   import Node.MaxDepth
@@ -228,10 +227,9 @@ private[immutable] abstract class ChampBaseReverseIterator[A, T <: Node[T]] exte
     currentStackLevel = currentStackLevel - 1
   }
 
-  /**
-    * Searches for rightmost node that contains payload values,
-    * and pushes encountered sub-nodes on a stack for depth-first traversal.
-    */
+  /** Searches for rightmost node that contains payload values,
+   *  and pushes encountered sub-nodes on a stack for depth-first traversal.
+   */
   private final def searchNextValueNode(): Boolean = {
     while (currentStackLevel >= 0) {
       val nodeCursor = nodeIndex(currentStackLevel) ; nodeIndex(currentStackLevel) = nodeCursor - 1

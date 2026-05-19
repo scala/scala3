@@ -18,28 +18,29 @@ import language.experimental.captureChecking
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 import scala.collection.generic.CommonErrors
+import scala.annotation.compileTimeOnly
 
 /** `NumericRange` is a more generic version of the
-  *  `Range` class which works with arbitrary types.
-  *  It must be supplied with an `Integral` implementation of the
-  *  range type.
-  *
-  *  Factories for likely types include `Range.BigInt`, `Range.Long`,
-  *  and `Range.BigDecimal`.  `Range.Int` exists for completeness, but
-  *  the `Int`-based `scala.Range` should be more performant.
-  *
-  *  {{{
-  *     val r1 = Range(0, 100, 1)
-  *     val veryBig = Int.MaxValue.toLong + 1
-  *     val r2 = Range.Long(veryBig, veryBig + 100, 1)
-  *     assert(r1 sameElements r2.map(_ - veryBig))
-  *  }}}
-  *
-  *  @define Coll `NumericRange`
-  *  @define coll numeric range
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *  `Range` class which works with arbitrary types.
+ *  It must be supplied with an `Integral` implementation of the
+ *  range type.
+ *
+ *  Factories for likely types include `Range.BigInt`, `Range.Long`,
+ *  and `Range.BigDecimal`.  `Range.Int` exists for completeness, but
+ *  the `Int`-based `scala.Range` should be more performant.
+ *
+ *  ```scala sc:compile
+ *     val r1 = Range(0, 100, 1)
+ *     val veryBig = Int.MaxValue.toLong + 1
+ *     val r2 = Range.Long(veryBig, veryBig + 100, 1)
+ *     assert(r1 sameElements r2.map(_ - veryBig))
+ *  ```
+ *
+ *  @define Coll `NumericRange`
+ *  @define coll numeric range
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 @SerialVersionUID(3L)
 sealed class NumericRange[T](
   val start: T,
@@ -71,8 +72,8 @@ sealed class NumericRange[T](
 
 
   /** Note that NumericRange must be invariant so that constructs
-    *  such as "1L to 10 by 5" do not infer the range type as AnyVal.
-    */
+   *  such as "1L to 10 by 5" do not infer the range type as AnyVal.
+   */
   import num._
 
   // See comment in Range for why this must be lazy.
@@ -95,14 +96,20 @@ sealed class NumericRange[T](
     else if(isInclusive) new NumericRange.Inclusive(start + step, end, step)
     else new NumericRange.Exclusive(start + step, end, step)
 
-  /** Create a new range with the start and end values of this range and
-    *  a new `step`.
-    */
+  /** Creates a new range with the start and end values of this range and
+   *  a new `step`.
+   *
+   *  @param newStep the new step value for the range
+   */
   def by(newStep: T): NumericRange[T] = copy(start, end, newStep)
 
 
-  /** Create a copy of this range.
-    */
+  /** Creates a copy of this range.
+   *
+   *  @param start the start value of the new range
+   *  @param end the end value of the new range
+   *  @param step the step value of the new range
+   */
   def copy(start: T, end: T, step: T): NumericRange[T] =
     new NumericRange(start, end, step, isInclusive)
 
@@ -122,6 +129,19 @@ sealed class NumericRange[T](
       count += 1
     }
   }
+
+  // NOTE: THIS METHOD SHOULD NOT BE USED ANYWHERE. IT EXISTS AS A LEGACY
+  //  AND TO KEEP BINARY COMPATIBILITY WITH SCALA 2. IT IS MARKED AS
+  //  `private[NumericRange]` BUT IT IS PUBLIC IN THE BINARY. THIS METHOD
+  //  SHOULD NOT BE REFERED TO DIRECTLY. CALLING `foreach` HERE DIRECTLY
+  //  DOESN'T INTRODUCE ANY PERFORMANCE REGRESSIONS SINCE THE BYTECODE OF
+  //  BOTH METHODS ARE THE SAME. IT IS ALSO MARKED AS `@compileTimeOnly`
+  //  TO CHECK THAT INDEED IT WILL NOT APPEAR IN ANY NEWLY COMPILED CODE
+  //  AT RUNTIME.
+  @compileTimeOnly(message = "Use `foreach` directly instead")
+  @deprecated(message = "Use `foreach` directly instead", since = "3.8.0")
+  private[NumericRange] def foreach$mVc$sp(f: T => Unit): Unit =
+    foreach(f)
 
   private def indexOfTyped(elem: T, from: Int): Int =
     posOf(elem) match {
@@ -353,7 +373,7 @@ sealed class NumericRange[T](
   override protected final def applyPreferredMaxLength: Int = Int.MaxValue
 
   override def equals(other: Any): Boolean = other match {
-    case x: NumericRange[_] =>
+    case x: NumericRange[?] =>
       (x canEqual this) && (length == x.length) && (
         (isEmpty) ||                            // all empty sequences are equal
           (start == x.start && last == x.last)  // same length and same endpoints implies equality
@@ -373,9 +393,9 @@ sealed class NumericRange[T](
 }
 
 /** A companion object for numeric ranges.
-  *  @define Coll `NumericRange`
-  *  @define coll numeric range
-  */
+ *  @define Coll `NumericRange`
+ *  @define coll numeric range
+ */
 object NumericRange {
   private def bigDecimalCheckUnderflow[T](start: T, end: T, step: T)(implicit num: Integral[T]): Unit = {
     def FAIL(boundary: T, step: T): Unit = {
@@ -392,9 +412,16 @@ object NumericRange {
   }
 
   /** Calculates the number of elements in a range given start, end, step, and
-    *  whether or not it is inclusive.  Throws an exception if step == 0 or
-    *  the number of elements exceeds the maximum Int.
-    */
+   *  whether or not it is inclusive.  Throws an exception if step == 0 or
+   *  the number of elements exceeds the maximum Int.
+   *
+   *  @tparam T the numeric type of the range elements, which must have an `Integral` instance
+   *  @param start the first element of the range
+   *  @param end the exclusive or inclusive upper bound, depending on `isInclusive`
+   *  @param step the increment between successive elements, must not be zero
+   *  @param isInclusive whether `end` is included in the range
+   *  @param num the `Integral` instance used for arithmetic on `T`
+   */
   def count[T](start: T, end: T, step: T, isInclusive: Boolean)(implicit num: Integral[T]): Int = {
     val zero    = num.zero
     val upward  = num.lt(start, end)

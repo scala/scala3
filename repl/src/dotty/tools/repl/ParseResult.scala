@@ -155,7 +155,9 @@ case object Help extends Command {
 
 object ParseResult {
 
-  @sharable private val CommandExtract = """(:[\S]+)\s*(.*)""".r
+  // Commands must start with ":" followed by a letter (e.g. :help, :load)
+  // This ensures operators like :: or :+ are treated as Scala code, not commands
+  @sharable private val CommandExtract = """(:[a-zA-Z]\S*)\s*(.*)""".r
 
   private def parseStats(using Context): List[untpd.Tree] = {
     val parser = new Parser(ctx.source)

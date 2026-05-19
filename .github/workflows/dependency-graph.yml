@@ -11,5 +11,3 @@ jobs:
       - uses: actions/checkout@v6
       - uses: sbt/setup-sbt@v1
       - uses: scalacenter/sbt-dependency-submission@v3
-        env:
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}

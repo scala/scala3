@@ -7,15 +7,16 @@ import classpath.AggregateClassPath
 import core.*
 import Symbols.*, Types.*, Contexts.*, StdNames.*
 import Flags.*
+import interactive.LogicalPackage
 import transform.ExplicitOuter
 
-class JavaPlatform extends Platform {
+class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) extends Platform {
 
   private var currentClassPath: Option[ClassPath] = None
 
   def classPath(using Context): ClassPath = {
     if (currentClassPath.isEmpty)
-      currentClassPath = Some(new PathResolver().result)
+      currentClassPath = Some(new PathResolver(precomputedSourcePackages).result)
     val cp = currentClassPath.get
     cp
   }
@@ -50,7 +51,10 @@ class JavaPlatform extends Platform {
     cls.superClass == defn.ObjectClass &&
     cls.directlyInheritedTraits.forall(_.is(NoInits)) &&
     !ExplicitOuter.needsOuterIfReferenced(cls) &&
-    cls.typeRef.fields.isEmpty // Superaccessors already show up as abstract methods here, so no test necessary
+    // Superaccessors already show up as abstract methods here, so no test necessary
+    cls.typeRef.fields.isEmpty &&
+    // Check if the SAM can be implemented via LambdaMetaFactory
+    TypeErasure.samExpansionNotNeeded(cls)
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal
@@ -76,4 +80,8 @@ class JavaPlatform extends Platform {
 
   def newTastyLoader(bin: AbstractFile)(using Context): SymbolLoader =
     new TastyLoader(bin)
+
+  def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean =
+    // On the JVM, we add an implementation of Serializable to everything
+    potentialSuperClass == defn.JavaSerializableClass
 }

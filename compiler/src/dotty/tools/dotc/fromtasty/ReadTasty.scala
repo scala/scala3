@@ -95,5 +95,5 @@ class ReadTasty extends Phase {
       Some(unit)
   }
 
-  def run(using Context): Unit = unsupported("run")
+  protected def run(using Context): Unit = unsupported("run")
 }

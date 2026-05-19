@@ -96,10 +96,9 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |
         |def main = "foo".iden@@
         |""".stripMargin,
-     """|identity: String (implicit)
+      """|identity: String (implicit)
         |""".stripMargin, // identity2 won't be available
       filter = _.contains("(implicit)")
-
     )
 
   @Test def `filter-by-type-subtype` =
@@ -208,7 +207,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
 
   @Test def `simple-edit-suffix-old` =
     checkEdit(
-     """|package example
+      """|package example
         |
         |object enrichments:
         |  implicit class A (val num: Int):
@@ -216,7 +215,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |
         |def main = 100.pl@@
         |""".stripMargin,
-     """|package example
+      """|package example
         |
         |import example.enrichments.A
         |
@@ -228,9 +227,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |""".stripMargin
     )
 
-  /**
-   * For optimization, we don't show any completions here as it would bring
-   * every extension method into the completion list.
+  /** For optimization, we don't show any completions here as it would bring
+   *  every extension method into the completion list.
    */
   @Test def `simple-empty` =
     check(
@@ -246,8 +244,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
       filter = _.contains("(extension)")
     )
 
-  /**
-   * Some as above, but for implicit completions.
+  /** Some as above, but for implicit completions.
    */
   @Test def `simple-empty-old` =
     check(
@@ -280,7 +277,7 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
     )
 
   @Test def `directly-in-pkg1-old` =
-  check(
+    check(
       """|
          |package examples:
          |  implicit class A(num: Int):

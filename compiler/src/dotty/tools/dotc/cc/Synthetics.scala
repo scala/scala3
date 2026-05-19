@@ -17,10 +17,10 @@ import Capabilities.*
  *  compilation.
  */
 object Synthetics:
-  private def isSyntheticCopyMethod(sym: SymDenotation)(using Context) =
+  def isSyntheticCopyMethod(sym: SymDenotation)(using Context) =
     sym.name == nme.copy && sym.is(Synthetic) && sym.owner.isClass && sym.owner.is(Case)
 
-  private def isSyntheticCompanionMethod(sym: SymDenotation, names: Name*)(using Context): Boolean =
+  def isSyntheticCompanionMethod(sym: SymDenotation, names: Name*)(using Context): Boolean =
      names.contains(sym.name) && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
 
   private def isSyntheticCopyDefaultGetterMethod(sym: SymDenotation)(using Context) = sym.name match
@@ -35,8 +35,7 @@ object Synthetics:
    *  looking at the definitions's RHS
    */
   def needsTransform(symd: SymDenotation)(using Context): Boolean =
-    isSyntheticCopyMethod(symd)
-    || isSyntheticCompanionMethod(symd, nme.apply, nme.unapply)
+       isSyntheticCompanionMethod(symd, nme.unapply)
     || isSyntheticCopyDefaultGetterMethod(symd)
     || (symd.symbol eq defn.Object_eq)
     || (symd.symbol eq defn.Object_ne)
@@ -63,34 +62,6 @@ object Synthetics:
    */
   def transform(symd: SymDenotation, info: Type)(using Context): SymDenotation =
 
-    /** Add capture dependencies to the type of the `apply` or `copy` method of a case class.
-     *  An apply method in a case class like this:
-     *    case class CC(a: A^{d}, b: B, c: C^{cap})
-     *  would get type
-     *    def apply(a': A^{d}, b: B, c': C^{cap}): CC^{a', c'} { val a = A^{a'}, val c = C^{c'} }
-     *  where `'` is used to indicate the difference between parameter symbol and refinement name.
-     *  Analogous for the copy method.
-     */
-    def addCaptureDeps(info: Type): Type = info match
-      case info: MethodType =>
-        val trackedParams = info.paramRefs.filter(atPhase(Phases.checkCapturesPhase)(_.isTracked))
-        def augmentResult(tp: Type): Type = tp match
-          case tp: MethodOrPoly =>
-            tp.derivedLambdaType(resType = augmentResult(tp.resType))
-          case _ =>
-            val refined = trackedParams.foldLeft(tp): (parent, pref) =>
-              parent.refinedOverride(pref.paramName,
-                CapturingType(
-                  atPhase(ctx.phase.next)(pref.underlying.stripCapturing),
-                  CaptureSet(pref)))
-            CapturingType(refined, CaptureSet(trackedParams*))
-        if trackedParams.isEmpty then info
-        else augmentResult(info).showing(i"augment apply/copy type $info to $result", capt)
-      case info: PolyType =>
-        info.derivedLambdaType(resType = addCaptureDeps(info.resType))
-      case _ =>
-        info
-
     /** Add capture information to the type of the default getter of a case class copy method
      */
     def transformDefaultGetterCaptures(info: Type, owner: Symbol, idx: Int)(using Context): Type = info match
@@ -112,7 +83,7 @@ object Synthetics:
       case _ =>
         info
 
-    /** Augment an unapply of type `(x: C): D` to `(x: C^{cap}): D^{x}` */
+    /** Augment an unapply of type `(x: C): D` to `(x: C^{any}): D^{x}` */
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
@@ -132,7 +103,7 @@ object Synthetics:
       val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      val paramCaptures = CaptureSet(enclThis, GlobalCap)
+      val paramCaptures = CaptureSet(enclThis, GlobalAny)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
         mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
@@ -150,7 +121,7 @@ object Synthetics:
     def transformCompareCaptures =
       val (enclThis: ThisType) = symd.owner.thisType: @unchecked
       MethodType(
-        defn.ObjectType.capturing(CaptureSet(GlobalCap, enclThis)) :: Nil,
+        defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis)) :: Nil,
         defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match
@@ -158,8 +129,6 @@ object Synthetics:
         transformDefaultGetterCaptures(info, symd.owner, n)
       case nme.unapply =>
         transformUnapplyCaptures(info)
-      case nme.apply | nme.copy =>
-        addCaptureDeps(info)
       case nme.andThen | nme.compose =>
         transformComposeCaptures(info, symd.owner)
       case nme.curried | nme.tupled =>

@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 import scala.compiletime.uninitialized
 import java.io.*
 import language.experimental.saferExceptions
-
+import caps.unsafe.untrackedCaptures
 
 def usingLogFile[T](op: FileOutputStream^ => T): T =
   val logFile = FileOutputStream("log")
@@ -24,8 +24,8 @@ object LzyNil extends LzyList[Nothing]:
   def tail = ???
 
 final class LzyCons[+A](hd: A, tl: () => LzyList[A]^) extends LzyList[A]:
-  private var forced = false
-  private var cache: LzyList[A]^{this} = uninitialized
+  @untrackedCaptures private var forced = false
+  @untrackedCaptures private var cache: LzyList[A]^{this} = uninitialized
   private def force =
     if !forced then { cache = tl(); forced = true }
     cache
@@ -39,7 +39,7 @@ class Cap extends caps.SharedCapability
 def test(c: Cap) =
   class A:
     val x: A = this
-    def f = println(c)
+    def f = println(c) // error
 
   val later = usingLogFile { file => () => file.write(0) } // error
   later() // crash

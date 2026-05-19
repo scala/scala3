@@ -1,0 +1,6 @@
+-- [E225] Type Warning: tests/warn/infer-union-warning-id.scala:3:8
+3 |val _ = Pair(1, "")
+  |        ^^^^
+  |        A type argument was inferred to be union type Int | String
+  |        This may indicate a programming error.
+1 warning found

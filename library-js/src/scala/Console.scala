@@ -22,20 +22,20 @@ import scala.util.DynamicVariable
  *  use [[scala.io.StdIn$ StdIn]].
  *  Also defines constants for marking up text on ANSI terminals.
  *
- *  == Console Output ==
+ *  ## Console Output
  *
  *  Use the print methods to output text.
- *  {{{
+ *  ```
  *   scala> Console.printf(
  *     "Today the outside temperature is a balmy %.1f°C. %<.1f°C beats the previous record of %.1f°C.\n",
  *     -137.0,
  *     -135.05)
  *   Today the outside temperature is a balmy -137.0°C. -137.0°C beats the previous record of -135.1°C.
- *  }}}
+ *  ```
  *
- *  == ANSI escape codes ==
+ *  ## ANSI escape codes
  *  Use the ANSI escape codes for colorizing console output either to STDOUT or STDERR.
- *  {{{
+ *  ```
  *    import Console.{GREEN, RED, RESET, YELLOW_B, UNDERLINED}
  *
  *    object PrimeTest {
@@ -55,7 +55,7 @@ import scala.util.DynamicVariable
  *      def main(args: Array[String]): Unit = isPrime()
  *
  *    }
- *  }}}
+ *  ```
  *
  *  <table style="border: 10px solid #000;width:100%">
  *    <tr><td style="background-color:#000;color:#fff">$ scala PrimeTest</td></tr>
@@ -66,12 +66,12 @@ import scala.util.DynamicVariable
  *    <tr><td style="background-color:#000;color:#fff"><span style="background-color:#ff0;color:#f00;text-decoration:underline">NO!</span></td></tr>
  *  </table>
  *
- *  == IO redefinition ==
+ *  ## IO redefinition
  *
  *  Use IO redefinition to temporarily swap in a different set of input and/or output streams. In this example the stream based
  *  method above is wrapped into a function.
  *
- *  {{{
+ *  ```
  *    import java.io.{ByteArrayOutputStream, StringReader}
  *
  *    object FunctionalPrimeTest {
@@ -103,7 +103,7 @@ import scala.util.DynamicVariable
  *      }
  *
  *    }
- *  }}}
+ *  ```
  *
  *
  *  <table style="border: 10px solid #000;width:100%">
@@ -126,7 +126,6 @@ import scala.util.DynamicVariable
  *  @groupprio io-redefinition 60
  *  @groupdesc io-redefinition These methods allow substituting alternative streams for the duration of
  *             a body of code. Threadsafe by virtue of [[scala.util.DynamicVariable]].
- *
  */
 object Console extends AnsiColor {
   private[this] val outVar = new DynamicVariable[PrintStream](java.lang.System.out)
@@ -138,15 +137,15 @@ object Console extends AnsiColor {
   protected def setErrDirect(err: PrintStream): Unit  = errVar.value = err
   protected def setInDirect(in: BufferedReader): Unit = inVar.value = in
 
-  /** The default output, can be overridden by `withOut`
+  /** The default output, can be overridden by `withOut`.
    *  @group io-default
    */
   def out = outVar.value
-  /** The default error, can be overridden by `withErr`
+  /** The default error, can be overridden by `withErr`.
    *  @group io-default
    */
   def err = errVar.value
-  /** The default input, can be overridden by `withIn`
+  /** The default input, can be overridden by `withIn`.
    *  @group io-default
    */
   def in = inVar.value
@@ -154,9 +153,9 @@ object Console extends AnsiColor {
   /** Sets the default output stream for the duration
    *  of execution of one thunk.
    *
-   *  @example {{{
+   *  @example ```
    *  withOut(Console.err) { println("This goes to default _error_") }
-   *  }}}
+   *  ```
    *
    *  @param out the new output stream.
    *  @param thunk the code to execute with
@@ -181,11 +180,11 @@ object Console extends AnsiColor {
   def withOut[T](out: OutputStream)(thunk: =>T): T =
     withOut(new PrintStream(out))(thunk)
 
-  /** Set the default error stream for the duration
+  /** Sets the default error stream for the duration
    *  of execution of one thunk.
-   *  @example {{{
+   *  @example ```
    *  withErr(Console.out) { err.println("This goes to default _out_") }
-   *  }}}
+   *  ```
    *
    *  @param err the new error stream.
    *  @param thunk the code to execute with
@@ -213,13 +212,13 @@ object Console extends AnsiColor {
   /** Sets the default input stream for the duration
    *  of execution of one thunk.
    *
-   *  @example {{{
+   *  @example ```
    *  val someFile:Reader = openFile("file.txt")
    *  withIn(someFile) {
    *    // Reads a line from file.txt instead of default input
    *    println(readLine)
    *  }
-   *  }}}
+   *  ```
    *
    *  @param thunk the code to execute with
    *               the new input stream active
@@ -256,12 +255,12 @@ object Console extends AnsiColor {
   /** Flushes the output stream. This function is required when partial
    *  output (i.e. output not terminated by a newline character) has
    *  to be made visible on the terminal.
-    * @group console-output
+   *  @group console-output
    */
   def flush(): Unit = { out.flush() }
 
   /** Prints a newline character on the default output.
-    * @group console-output
+   *  @group console-output
    */
   def println(): Unit = { out.println() }
 

@@ -4,7 +4,7 @@
   |  Found:    () ->{f} Unit
   |  Required: () -> Unit
   |
-  |  Note that capability f is not included in capture set {}.
+  |  Note that capability `f` cannot flow into capture set {}.
   |
   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i21347.scala:11:15 ------------------------------------------------------------
@@ -12,4 +12,5 @@
    |               ^
    |               Local reach capability ops* leaks into capture scope of method runOpsAlt.
    |               You could try to abstract the capabilities referred to by ops* in a capset variable.
+   |
 12 |    op()

@@ -1,16 +1,16 @@
 import language.experimental.captureChecking
-import caps.{cap, Shared, SharedCapability}
+import caps.{any, Shared, SharedCapability}
 
 class IO extends SharedCapability
 class C
 
 def test(io: IO^): Unit =
-  val f = (x: () ->{cap.only[Shared]} IO^) => x()
-  val g = (x: () ->{cap.only[Shared]} IO^{cap.only[Shared]}) => x()
-  val h = (x: () ->{cap.only[Shared]} C^{cap.only[Shared]}) => x()
+  val f = (x: () ->{any.only[Shared]} IO^) => x()
+  val g = (x: () ->{any.only[Shared]} IO^{any.only[Shared]}) => x()
+  val h = (x: () ->{any.only[Shared]} C^{any.only[Shared]}) => x()
 /*
-  val _: (x: () ->{cap.only[Shared]} IO^) => IO^{x} = (x: () ->{cap.only[Shared]} IO^) => f(x)
-  val _: (x: () ->{cap.only[Shared]} IO^) => IO^{x} = f//(x: () => IO^) => f(x)
+  val _: (x: () ->{any.only[Shared]} IO^) => IO^{x} = (x: () ->{any.only[Shared]} IO^) => f(x)
+  val _: (x: () ->{any.only[Shared]} IO^) => IO^{x} = f//(x: () => IO^) => f(x)
   def g(x: IO^ => IO^) = x(io)
   def h(x: (y: IO^) => IO^) = x(io)
 

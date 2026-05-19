@@ -3,10 +3,10 @@ package dotty.tools.pc.tests.edit
 import java.net.URI
 import java.util.Optional
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.CodeActionId
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
@@ -108,7 +108,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
 
   @Test def `custom-type` =
     checkEdit(
-    """|
+      """|
        |trait Main {
        |  def method1(b: Double, s : String) = 123
        |
@@ -118,7 +118,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
        |  method1(0.0, <<otherMethod>>(user, 1))
        |}
        |""".stripMargin,
-    """|
+      """|
        |trait Main {
        |  def method1(b: Double, s : String) = 123
        |
@@ -133,7 +133,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
 
   @Test def `custom-type-2` =
     checkEdit(
-    """|
+      """|
        |trait Main {
        |  def method1(b: Double, s : String) = 123
        |
@@ -142,7 +142,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
        |  <<otherMethod>>(user, 1)
        |}
        |""".stripMargin,
-    """|
+      """|
        |trait Main {
        |  def method1(b: Double, s : String) = 123
        |
@@ -156,7 +156,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
 
   @Test def `custom-type-advanced` =
     checkEdit(
-    """|
+      """|
        |trait Main {
        |    def method1(b: Double, s : String) = 123
        |
@@ -166,7 +166,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
        |}
        |
        |""".stripMargin,
-    """|trait Main {
+      """|trait Main {
        |    def method1(b: Double, s : String) = 123
        |
        |    case class User(i : Int)
@@ -179,7 +179,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
 
   @Test def `custom-type-advanced-2` =
     checkEdit(
-    """|
+      """|
        |trait Main {
        |    def method1(b: Double, s : String) = 123
        |
@@ -189,7 +189,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
        |}
        |
        |""".stripMargin,
-    """|trait Main {
+      """|trait Main {
        |    def method1(b: Double, s : String) = 123
        |
        |    case class User(i : Int)
@@ -202,7 +202,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
 
   @Test def `with-imports` =
     checkEdit(
-    """|import java.nio.file.Files
+      """|import java.nio.file.Files
        |
        |trait Main {
        |  def main() = {
@@ -213,7 +213,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
        |}
        |
        |""".stripMargin,
-    """|import java.nio.file.Files
+      """|import java.nio.file.Files
        |import java.nio.file.Path
        |
        |trait Main {
@@ -410,7 +410,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |object Main:
          |  val user = User()
          |  user.otherMethod
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `simple-class-definition-2` =
@@ -432,7 +432,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |object Main:
          |  val user = User()
          |  user.otherMethod(10)
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `simple-object-definition` =
@@ -452,7 +452,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |
          |object Main:
          |  User.otherMethod
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `simple-object-definition-2` =
@@ -472,7 +472,7 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |
          |object Main:
          |  User.otherMethod(10)
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `class-definition-without-body` =
@@ -492,7 +492,68 @@ class InsertInferredMethodSuite extends BaseCodeActionSuite:
          |object Main:
          |  val user = User()
          |  user.otherMethod
+         |""".stripMargin
+    )
+
+  @Test def `extension-method` =
+    checkEdit(
+      """|object Main:
+         |  val x = 1
+         |  x.<<incr>>
          |""".stripMargin,
+      """|object Main:
+         |  val x = 1
+         |  extension (x: Int)
+         |    def incr = ???
+         |  x.incr
+         |""".stripMargin
+    )
+
+  @Test def `extension-method-1` =
+    checkEdit(
+      """|object Main:
+         |  val x = 1
+         |  x.<<add>>(2)
+         |""".stripMargin,
+      """|object Main:
+         |  val x = 1
+         |  extension (x: Int)
+         |    def add(arg0: Int) = ???
+         |  x.add(2)
+         |""".stripMargin
+    )
+
+  @Test def `extension-method-2` =
+    checkEdit(
+      """|object Main:
+         |  val s = "hello"
+         |  s.<<shout>>
+         |""".stripMargin,
+      """|object Main:
+         |  val s = "hello"
+         |  extension (x: String)
+         |    def shout = ???
+         |  s.shout
+         |""".stripMargin
+    )
+
+  @Test def `extension-method-3` =
+    checkEdit(
+      """|import java.nio.file.Paths
+         |
+         |object Main:
+         |  val p = Paths.get("test")
+         |  p.<<newMethod>>
+         |""".stripMargin,
+      """|import java.nio.file.Paths
+         |import java.nio.file.Path
+         |
+         |object Main:
+         |  val p = Paths.get("test")
+         |  extension (x: Path)
+         |    def newMethod = ???
+         |  p.newMethod
+         |""".stripMargin
     )
 
   def checkEdit(

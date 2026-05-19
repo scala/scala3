@@ -69,8 +69,15 @@ private[collection] object RedBlackTree {
         res
       } else tree.black
     }
-    /** Create a new balanced tree where `newLeft` replaces `tree.left`.
-     * tree and newLeft are never null */
+    /** Creates a new balanced tree where `newLeft` replaces `tree.left`.
+     *  tree and newLeft are never null 
+     *
+     *  @tparam A1 the key type of the tree
+     *  @tparam B the original value type of the tree
+     *  @tparam B1 the value type of the result, a supertype of `B`
+     *  @param tree the original tree whose left child is being replaced
+     *  @param newLeft the new left subtree to substitute in
+     */
     protected final def mutableBalanceLeft[A1, B, B1 >: B](tree: Tree[A1, B], newLeft: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
       //            tree              |                   newLeft
@@ -112,8 +119,15 @@ private[collection] object RedBlackTree {
         tree.mutableWithLeft(newLeft)
       }
     }
-    /** Create a new balanced tree where `newRight` replaces `tree.right`.
-     * tree and newRight are never null */
+    /** Creates a new balanced tree where `newRight` replaces `tree.right`.
+     *  tree and newRight are never null 
+     *
+     *  @tparam A1 the key type of the tree
+     *  @tparam B the original value type of the tree
+     *  @tparam B1 the value type of the result, a supertype of `B`
+     *  @param tree the original tree whose right child is being replaced
+     *  @param newRight the new right subtree to substitute in
+     */
     protected final def mutableBalanceRight[A1, B, B1 >: B](tree: Tree[A1, B], newRight: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
       //            tree                |                             newRight
@@ -244,9 +258,14 @@ private[collection] object RedBlackTree {
     blacken(_init(tree))
   }
 
-  /**
-    * Returns the smallest node with a key larger than or equal to `x`. Returns `null` if there is no such node.
-    */
+  /** Returns the smallest node with a key larger than or equal to `x`. Returns `null` if there is no such node.
+   *
+   *  @tparam A the key type
+   *  @tparam B the value type
+   *  @param tree the red-black tree to search
+   *  @param x the inclusive lower bound key to search for
+   *  @param ordering the ordering used to compare keys
+   */
   def minAfter[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
     if (cmp == 0) tree
@@ -256,9 +275,14 @@ private[collection] object RedBlackTree {
     } else minAfter(tree.right, x)
   }
 
-  /**
-    * Returns the largest node with a key smaller than `x`. Returns `null` if there is no such node.
-    */
+  /** Returns the largest node with a key smaller than `x`. Returns `null` if there is no such node.
+   *
+   *  @tparam A the key type
+   *  @tparam B the value type
+   *  @param tree the red-black tree to search
+   *  @param x the exclusive upper bound key
+   *  @param ordering the ordering used to compare keys
+   */
   def maxBefore[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
     if (cmp <= 0) maxBefore(tree.left, x)
@@ -340,7 +364,13 @@ private[collection] object RedBlackTree {
     new Tree(key, value.asInstanceOf[AnyRef], left, right, sizeAndColour)
   }
 
-  /** Create a new balanced tree where `newLeft` replaces `tree.left`. */
+  /** Creates a new balanced tree where `newLeft` replaces `tree.left`.
+   *
+   *  @tparam A the key type
+   *  @tparam B1 the value type
+   *  @param tree the original tree whose left child is being replaced
+   *  @param newLeft the new left subtree to substitute in
+   */
   private def balanceLeft[A, B1](tree: Tree[A, B1], newLeft: Tree[A, B1]): Tree[A, B1] = {
     // Parameter trees
     //            tree              |                   newLeft
@@ -381,7 +411,13 @@ private[collection] object RedBlackTree {
       }
     }
   }
-  /** Create a new balanced tree where `newRight` replaces `tree.right`. */
+  /** Creates a new balanced tree where `newRight` replaces `tree.right`.
+   *
+   *  @tparam A the key type
+   *  @tparam B1 the value type
+   *  @param tree the original tree whose right child is being replaced
+   *  @param newRight the new right subtree to substitute in
+   */
   private def balanceRight[A, B1](tree: Tree[A, B1], newRight: Tree[A, B1]): Tree[A, B1] = {
     // Parameter trees
     //            tree                |                             newRight
@@ -785,8 +821,15 @@ private[collection] object RedBlackTree {
   @`inline` private[RedBlackTree] def mutableRedTree[A, B](key: A, value: B, left: Tree[A, B] | Null, right: Tree[A, B] | Null) = new Tree[A,B](key, value.asInstanceOf[AnyRef], left, right, initialRedCount)
   @`inline` private[RedBlackTree] def mutableBlackTree[A, B](key: A, value: B, left: Tree[A, B] | Null, right: Tree[A, B] | Null) = new Tree[A,B](key, value.asInstanceOf[AnyRef], left, right, initialBlackCount)
 
-  /** create a new immutable red tree.
-   * left and right may be null
+  /** Creates a new immutable red tree.
+   *  left and right may be null.
+   *
+   *  @tparam A the key type
+   *  @tparam B the value type
+   *  @param key the key stored in this node
+   *  @param value the value associated with the key
+   *  @param left the left subtree, or `null` if absent
+   *  @param right the right subtree, or `null` if absent
    */
   private[immutable] def RedTree[A, B](key: A, value: B, left: Tree[A, B] | Null, right: Tree[A, B] | Null): Tree[A, B] = {
     //assertNotMutable(left)
@@ -855,12 +898,13 @@ private[collection] object RedBlackTree {
     private var index = 0
     protected var lookahead: Tree[A, B] | Null = if (start.isDefined) startFrom(start.get) else findLeftMostOrPopOnEmpty(root)
 
-    /**
-      * Find the leftmost subtree whose key is equal to the given key, or if no such thing,
-      * the leftmost subtree with the key that would be "next" after it according
-      * to the ordering. Along the way build up the iterator's path stack so that "next"
-      * functionality works.
-      */
+    /** Finds the leftmost subtree whose key is equal to the given key, or if no such thing,
+     *  the leftmost subtree with the key that would be "next" after it according
+     *  to the ordering. Along the way build up the iterator's path stack so that "next"
+     *  functionality works.
+     *
+     *  @param key the key from which to start iteration
+     */
     private def startFrom(key: A) : Tree[A,B] | Null = if (root eq null) null else {
       @tailrec def find(tree: Tree[A, B] | Null): Tree[A, B] | Null =
         if (tree eq null) popNext()
@@ -939,7 +983,12 @@ private[collection] object RedBlackTree {
     override def nextResult(tree: Tree[A, B]) = tree.value
   }
 
-  /** Build a Tree suitable for a TreeSet from an ordered sequence of keys */
+  /** Builds a Tree suitable for a TreeSet from an ordered sequence of keys.
+   *
+   *  @tparam A the key type
+   *  @param xs an iterator yielding keys in ascending order
+   *  @param size the number of keys to consume from the iterator
+   */
   def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, Null] | Null = size match {
@@ -955,7 +1004,13 @@ private[collection] object RedBlackTree {
     f(1, size)
   }
 
-  /** Build a Tree suitable for a TreeMap from an ordered sequence of key/value pairs */
+  /** Builds a Tree suitable for a TreeMap from an ordered sequence of key/value pairs.
+   *
+   *  @tparam A the key type
+   *  @tparam B the value type
+   *  @param xs an iterator yielding key-value pairs in ascending key order
+   *  @param size the number of entries to consume from the iterator
+   */
   def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Tree[A, B] | Null = size match {
@@ -1092,7 +1147,13 @@ private[collection] object RedBlackTree {
          tl.nn.right.nn.redWithLeftRight(balance(tl.nn, tl.nn.left.nn.red, tl.nn.right.nn.left), tree.blackWithLeftRight(tl.nn.right.nn.right, tr))
     else sys.error("Defect: invariance violation")
 
-  /** `append` is similar to `join2` but requires that both subtrees have the same black height */
+  /** `append` is similar to `join2` but requires that both subtrees have the same black height.
+   *
+   *  @tparam A the key type
+   *  @tparam B the value type
+   *  @param tl the left subtree to append, or `null` if empty
+   *  @param tr the right subtree to append, or `null` if empty
+   */
   private def append[A, B](tl: Tree[A, B] | Null, tr: Tree[A, B] | Null): Tree[A, B] | Null = {
     if (tl eq null) tr
     else if (tr eq null) tl
@@ -1132,7 +1193,11 @@ private[collection] object RedBlackTree {
   def difference[A, B](t1: Tree[A, B] | Null, t2: Tree[A, ?] | Null)(implicit ordering: Ordering[A]): Tree[A, B] | Null =
     blacken(_difference(t1, t2.asInstanceOf[Tree[A, B]]))
 
-  /** Compute the rank from a tree and its black height */
+  /** Computes the rank from a tree and its black height.
+   *
+   *  @param t the tree node, or `null` for an empty subtree
+   *  @param bh the black height of `t`
+   */
   @`inline` private def rank(t: Tree[?, ?] | Null, bh: Int): Int = {
     if(t eq null) 0
     else if(t.isBlack) 2*(bh-1)

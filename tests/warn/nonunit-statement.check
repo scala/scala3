@@ -56,12 +56,9 @@
  96 |    if (b) {          // warn, at least one branch looks interesting
     |    ^
     |    unused value of type Int
+    |
  97 |      println("true")
- 98 |      i
- 99 |    }
-100 |    else {
-101 |      println("false")
-102 |      j
+ 98 |...
 103 |    }
 -- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:116:4 --------------------------------------------
 116 |    set += a     // warn because cannot know whether the `set` was supposed to be consumed or assigned

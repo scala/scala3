@@ -23,26 +23,25 @@ import scala.collection.generic.DefaultSerializable
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
 
-/**
-  * This class implements immutable maps using a list-based data structure. List map iterators and
-  * traversal methods visit key-value pairs in the order they were first inserted.
-  *
-  * Entries are stored internally in reversed insertion order, which means the newest key is at the
-  * head of the list. As such, methods such as `head` and `tail` are O(n), while `last` and `init`
-  * are O(1). Other operations, such as inserting or removing entries, are also O(n), which makes
-  * this collection suitable only for a small number of elements.
-  *
-  * Instances of `ListMap` represent empty maps; they can be either created by calling the
-  * constructor directly, or by applying the function `ListMap.empty`.
-  *
-  * @tparam K the type of the keys contained in this list map
-  * @tparam V the type of the values associated with the keys
-  *
-  * @define Coll ListMap
-  * @define coll list map
-  * @define mayNotTerminateInf
-  * @define willNotTerminateInf
-  */
+/** This class implements immutable maps using a list-based data structure. List map iterators and
+ *  traversal methods visit key-value pairs in the order they were first inserted.
+ *
+ *  Entries are stored internally in reversed insertion order, which means the newest key is at the
+ *  head of the list. As such, methods such as `head` and `tail` are O(n), while `last` and `init`
+ *  are O(1). Other operations, such as inserting or removing entries, are also O(n), which makes
+ *  this collection suitable only for a small number of elements.
+ *
+ *  Instances of `ListMap` represent empty maps; they can be either created by calling the
+ *  constructor directly, or by applying the function `ListMap.empty`.
+ *
+ *  @tparam K the type of the keys contained in this list map
+ *  @tparam V the type of the values associated with the keys
+ *
+ *  @define Coll ListMap
+ *  @define coll list map
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 sealed class ListMap[K, +V]
   extends AbstractMap[K, V]
     with SeqMap[K, V]
@@ -116,23 +115,27 @@ sealed class ListMap[K, +V]
 
 }
 
-/**
-  * $factoryInfo
-  *
-  * Note that each element insertion takes O(n) time, which means that creating a list map with
-  * n elements will take O(n^2^) time. This makes the builder suitable only for a small number of
-  * elements.
-  *
-  * @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#list-maps "Scala's Collection Library overview"]]
-  * section on `List Maps` for more information.
-  * @define Coll ListMap
-  * @define coll list map
-  */
+/** $factoryInfo
+ *
+ *  Note that each element insertion takes O(n) time, which means that creating a list map with
+ *  n elements will take O(n^2^) time. This makes the builder suitable only for a small number of
+ *  elements.
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#list-maps)
+ *  section on `List Maps` for more information.
+ *  @define Coll ListMap
+ *  @define coll list map
+ */
 @SerialVersionUID(3L)
 object ListMap extends MapFactory[ListMap] {
-  /**
-    * Represents an entry in the `ListMap`.
-    */
+  /** Represents an entry in the `ListMap`.
+   *
+   *  @tparam K the type of the keys in this map entry
+   *  @tparam V the type of the values in this map entry
+   *  @param private[immutable] val key the key for this map entry
+   *  @param private[immutable] var _value the value associated with the key
+   *  @param private[immutable] var _init the rest of the list map (tail), or `null` during construction
+   */
   private[immutable] final class Node[K, V](
     override private[immutable] val key: K,
     private[immutable] var _value: V,
@@ -270,12 +273,13 @@ object ListMap extends MapFactory[ListMap] {
     }
 
   /** Returns a new ListMap builder
-    *
-    * The implementation safely handles additions after `result()` without calling `clear()`
-    *
-    * @tparam K the map key type
-    * @tparam V the map value type
-    */
+   *
+   *  The implementation safely handles additions after `result()` without calling `clear()`
+   *
+   *  @tparam K the map key type
+   *  @tparam V the map value type
+   *  @return a new `ReusableBuilder` for creating `ListMap` instances
+   */
   def newBuilder[K, V]: ReusableBuilder[(K, V), ListMap[K, V]] = new ListMapBuilder[K, V]
 
   @tailrec private def foldRightInternal[K, V, Z](map: ListMap[K, V], prevValue: Z, op: ((K, V), Z) => Z): Z = {
@@ -285,8 +289,11 @@ object ListMap extends MapFactory[ListMap] {
 }
 
 /** Builder for ListMap.
-  * $multipleResults
-  */
+ *  $multipleResults
+ *
+ *  @tparam K the type of the keys in the list map being built
+ *  @tparam V the type of the values in the list map being built
+ */
 private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuilder[(K, V), ListMap[K, V]] {
   private var isAliased: Boolean = false
   private var underlying: ListMap[K, V] = ListMap.empty

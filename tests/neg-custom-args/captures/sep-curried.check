@@ -1,12 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/sep-curried.scala:48:43 ----------------------------------
 48 |  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // error
    |                                        ^^^^^^
-   |                                        Found:    (y: Ref[Int]^) ->{a} Unit
+   |                                        Found:    (y: Ref[Int]^{any}) ->{a} Unit
    |                                        Required: (y: Ref[Int]^{a}) ->{a} Unit
    |
-   |                                        Note that capability a is not included in capture set {cap}.
+   |                                        Note that capability `a` cannot flow into capture set {any}.
    |
-   |                                        where:    ^ and cap refer to the universal root capability
+   |                                        where:    any is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/sep-curried.scala:16:6 --------------------------------------------------------
@@ -24,8 +24,8 @@
    |  Footprint set of second argument      : {a}
    |  The two sets overlap at               : {a}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value a
-   |          ^² refers to a fresh root capability classified as Unscoped created in method test0 when checking argument to parameter x of method foo
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value a
+   |          ^² refers to a root capability classified as Unscoped created in method test0 when checking argument to parameter x of method foo
 -- Error: tests/neg-custom-args/captures/sep-curried.scala:22:44 -------------------------------------------------------
 22 |  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // error
    |                                            ^
@@ -41,8 +41,8 @@
    |  Footprint set of function result      : {a}
    |  The two sets overlap at               : {a}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value a
-   |          ^² refers to a fresh root capability classified as Unscoped created in value f when checking argument to parameter x of method apply
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value a
+   |          ^² refers to a root capability classified as Unscoped created in value f when checking argument to parameter x of method apply
 -- Error: tests/neg-custom-args/captures/sep-curried.scala:29:6 --------------------------------------------------------
 29 |  foo(a)(a)  // error
    |      ^
@@ -58,8 +58,8 @@
    |  Footprint set of function result      : {a}
    |  The two sets overlap at               : {a}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value a
-   |          ^² refers to a fresh root capability classified as Unscoped created in method test2 when checking argument to parameter x of method apply
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value a
+   |          ^² refers to a root capability classified as Unscoped created in method test2 when checking argument to parameter x of method apply
 -- Error: tests/neg-custom-args/captures/sep-curried.scala:35:9 --------------------------------------------------------
 35 |  foo(a)(a)  // error
    |         ^
@@ -75,8 +75,8 @@
    |  Footprint set of function prefix      : {a}
    |  The two sets overlap at               : {a}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value a
-   |          ^² refers to a fresh root capability classified as Unscoped created in method test3 when checking argument to parameter y of method apply
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value a
+   |          ^² refers to a root capability classified as Unscoped created in method test3 when checking argument to parameter y of method apply
 -- Error: tests/neg-custom-args/captures/sep-curried.scala:42:4 --------------------------------------------------------
 42 |  f(a) // error
    |    ^
@@ -92,5 +92,5 @@
    |  Footprint set of function prefix      : {f, a}
    |  The two sets overlap at               : {a}
    |
-   |where:    ^  refers to a fresh root capability classified as Unscoped in the type of value a
-   |          ^² refers to a fresh root capability classified as Unscoped created in method test4 when checking argument to parameter y of method apply
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value a
+   |          ^² refers to a root capability classified as Unscoped created in method test4 when checking argument to parameter y of method apply

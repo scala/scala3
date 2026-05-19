@@ -3,10 +3,15 @@ package tools
 package vulpix
 
 import scala.language.unsafeNulls
+import scala.util.Properties.javaSpecVersion
 
 import java.io.File
 
+import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
+
 object TestConfiguration {
+
+  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse("17"))
 
   val pageWidth = 120
 
@@ -57,6 +62,10 @@ object TestConfiguration {
       Properties.dottyRepl,
       Properties.jlineTerminal,
       Properties.jlineReader,
+      Properties.fansi,
+      Properties.pprint,
+      Properties.sourcecode,
+      Properties.scalaXml
   ))
 
   lazy val replWithStagingClasspath = 
@@ -73,7 +82,7 @@ object TestConfiguration {
 
   val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions ++ silenceOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
-  val defaultOptions = TestFlags(basicClasspath, commonOptions) `and` "-Yno-stdlib-patches"
+  val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
@@ -101,9 +110,5 @@ object TestConfiguration {
   val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
 
   /** Default target of the generated class files */
-  private def defaultTarget: String = {
-    import scala.util.Properties.isJavaAtLeast
-
-    if isJavaAtLeast("9") then "9" else "8"
-  }
+  private def defaultTarget: String = "17"
 }

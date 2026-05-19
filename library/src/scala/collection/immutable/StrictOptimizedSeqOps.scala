@@ -20,6 +20,10 @@ import language.experimental.captureChecking
 import scala.collection.generic.CommonErrors
 
 /** Trait that overrides operations to take advantage of strict builders.
+ *
+ *  @tparam A the element type of the collection
+ *  @tparam CC the type constructor of the collection (higher-kinded)
+ *  @tparam C the type of the collection itself
  */
 transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends Any

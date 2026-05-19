@@ -8,7 +8,9 @@ import collection.mutable
 import reporting.Message
 import Contexts.Context
 import Types.MethodType
-import Symbols.Symbol
+import Symbols.{Symbol, ClassSymbol}
+import util.{SimpleIdentitySet, EqHashMap}
+import Capabilities.Capability
 
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
@@ -23,22 +25,27 @@ class CCState:
 
   // ------ BiTypeMap adjustment -----------------------
 
-  private var myMapFutureElems = true
+  private var myMapVars = true
 
-  /** When mapping a capture set with a BiTypeMap, should we create a BiMapped set
+  /** When mapping a capture set variable with a BiTypeMap, should we create a BiMapped set
    *  so that future elements can also be mapped, and elements added to the BiMapped
-   *  are back-propagated? Turned off when creating capture set variables for the
-   *  first time, since we then do not want to change the binder to the original type
-   *  without capture sets when back propagating. Error case where this shows:
-   *  pos-customargs/captures/lists.scala, method m2c.
+   *  are back-propagated? Or should we return the capture set as is? Turned off when
+   *  creating capture set variables for the first time, since we then do not want to
+   *  change the binder to the original type without capture sets when back propagating.
+   *  Error cases where this shows: pos-customargs/captures/lists.scala, method m2c, and
+   *  pos-customargs/captures/infer-exists.scala,
    */
-  def mapFutureElems(using Context) = myMapFutureElems
+  def mapVars(using Context) = myMapVars
 
-  /** Don't map future elements in this `op` */
-  inline def withoutMappedFutureElems[T](op: => T)(using Context): T =
-    val saved = mapFutureElems
-    myMapFutureElems = false
-    try op finally myMapFutureElems = saved
+  /** Don't map capset variables with BiTypeMaps during this `op` */
+  inline def withNoVarsMapped[T](op: => T)(using Context): T =
+    val saved = mapVars
+    myMapVars = false
+    try op finally myMapVars = saved
+
+  // Recursion brake for tryInclude and accountsFor
+
+  private var triedCapabilities: SimpleIdentitySet[Capability] = SimpleIdentitySet.empty
 
   // ------ Iteration count of capture checking run
 
@@ -52,6 +59,7 @@ class CCState:
 
   def start(): Unit =
     iterCount = 1
+    fieldsWithExplicitTypes.clear()
 
   private var mySepCheck = false
 
@@ -79,15 +87,38 @@ class CCState:
   object Unrecorded extends VarState.Unrecorded
   object ClosedUnrecorded extends VarState.ClosedUnrecorded
 
+  // ----- Mirrors for local vars -------------------------
+
+  /** A cache for mirrors of local mutable vars */
+  val varMirrors = util.EqHashMap[Symbol, Symbol]()
+
   // ------ Context info accessed from companion object when isCaptureCheckingOrSetup is true
 
   private var openExistentialScopes: List[MethodType] = Nil
 
-  private var capIsRoot: Boolean = false
+  private var globalCapIsRoot: Boolean = false
 
-  private var collapseFresh: Boolean = false
+  private var collapseLocalCaps: Boolean = false
 
   private var discardUses: Boolean = false
+
+  // ------- Caches for symbols --------------------------------------------------
+
+  /* A cache for CaptureOps.useSet */
+  private[cc] val useSetCache: EqHashMap[Symbol, CaptureSet] = EqHashMap()
+
+  /** A cache that stores for each class the classifiers of all LocalCap instances
+   *  in the types of its fields and the fields that contribute such LocalCap instances.
+   */
+  val localCapClassifiersAndFieldsCache: EqHashMap[Symbol, (List[ClassSymbol], List[Symbol])] = EqHashMap()
+
+  /** A map from class symbols in the current compilation unit to those of their fields
+   *  that have an explicit type given. Used in `captureSetImpliedByFields`
+   *  to avoid forcing fields with inferred types prematurely. The test file
+   *  where this matters is i24335.scala. The precise failure scenario which
+   *  this avoids is described in #24335.
+   */
+  val fieldsWithExplicitTypes: EqHashMap[ClassSymbol, List[Symbol]] = EqHashMap()
 
 object CCState:
 
@@ -107,37 +138,37 @@ object CCState:
   /** The currently opened existential scopes */
   def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
 
-  /** Run `op` under the assumption that `cap` can subsume all other capabilties
+  /** Run `op` under the assumption that `caps.any` can subsume all other capabilties
    *  except Result capabilities. Every use of this method should be scrutinized
    *  for whether it introduces an unsoundness hole.
    */
-  inline def withCapAsRoot[T](op: => T)(using Context): T =
+  inline def withGlobalCapAsRoot[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.capIsRoot
-      ccs.capIsRoot = true
-      try op finally ccs.capIsRoot = saved
+      val saved = ccs.globalCapIsRoot
+      ccs.globalCapIsRoot = true
+      try op finally ccs.globalCapIsRoot = saved
     else op
 
-  /** Is `caps.cap` a root capability that is allowed to subsume other capabilities? */
-  def capIsRoot(using Context): Boolean = ccState.capIsRoot
+  /** Is `caps.any` a root capability that is allowed to subsume other capabilities? */
+  def globalCapIsRoot(using Context): Boolean = ccState.globalCapIsRoot
 
-  /** Run `op` under the assumption that all FreshCap instances are equal
-   *  to each other and to GlobalCap.
-   *  Needed to make override checking of types containing fresh work.
+  /** Run `op` under the assumption that all LocalCap instances are equal
+   *  to each other and to GlobalAny.
+   *  Needed to make override checking work for types containing LocalCaps.
    *  Asserted in override checking, tested in maxSubsumes.
    *  Is this sound? Test case is neg-custom-args/captures/leaked-curried.scala.
    */
-  inline def withCollapsedFresh[T](op: => T)(using Context): T =
+  inline def withCollapsedLocalCaps[T](op: => T)(using Context): T =
     if isCaptureCheckingOrSetup then
       val ccs = ccState
-      val saved = ccs.collapseFresh
-      ccs.collapseFresh = true
-      try op finally ccs.collapseFresh = saved
+      val saved = ccs.collapseLocalCaps
+      ccs.collapseLocalCaps = true
+      try op finally ccs.collapseLocalCaps = saved
     else op
 
-  /** Should all FreshCap instances be treated as equal to GlobalCap? */
-  def collapseFresh(using Context): Boolean = ccState.collapseFresh
+  /** Should all LocalCap instances be treated as equal to GlobalAny? */
+  def collapseLocalCaps(using Context): Boolean = ccState.collapseLocalCaps
 
   /** Run `op` but suppress all recording of uses in `markFree` */
    inline def withDiscardedUses[T](op: => T)(using Context): T =
@@ -150,5 +181,19 @@ object CCState:
 
   /** Should uses not be recorded in markFree? */
   def discardUses(using Context): Boolean = ccState.discardUses
+
+  /** Perform `op` unless operation has been tried on `c` before.
+   *  This is needed to prevent infinite recursions in methods like
+   *  tryInclude and accountsFor. The relation from capability to capability
+   *  in its underling set can have cycles, for instance when capability objects
+   *  are mutually dependent. We need to avoid going through such cycles more than once.
+   */
+  inline def ifNotTried(c: Capability)(inline op: Boolean)(using Context): Boolean =
+    val ccs = ccState
+    val tried = ccs.triedCapabilities
+    !tried.contains(c) && {
+      ccs.triedCapabilities = tried + c
+      try op finally ccs.triedCapabilities = tried
+    }
 
 end CCState

@@ -1,0 +1,9 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/safemode-emptypkg.scala:9:27 ---------------------------
+9 |  def println(s: String) = Console.println(s) // error
+  |                           ^^^^^^^
+  |                           Reference `Console` is not included in the allowed capture set {}
+  |                           of the enclosing object A.
+  |
+  |                           External uses should be declared explicitly with a uses clause in object A:
+  |
+  |                               uses Console

@@ -1,0 +1,17 @@
+-- Error: tests/neg-custom-args/captures/classified-tp.scala:11:17 -----------------------------------------------------
+11 |  val c: AnyRef^{any.only[C]} = new AnyRef // error
+   |                 ^^^^^^^^^^^
+   |                 scala.caps.any.type @onlyCapability[C] is not a legal element of a capture set
+   |
+   |                 where:    C is a type in method test with bounds <: B
+-- Error: tests/neg-custom-args/captures/classified-tp.scala:12:17 -----------------------------------------------------
+12 |  val d: AnyRef^{any.only[D]} = new AnyRef // error
+   |                 ^^^^^^^^^^^
+   |                 scala.caps.any.type @onlyCapability[D] is not a legal element of a capture set
+   |
+   |                 where:    D is a type in method test with bounds <: scala.caps.Classifier
+-- Error: tests/neg-custom-args/captures/classified-tp.scala:13:17 -----------------------------------------------------
+13 |  val e: AnyRef^{any.only[E]} = new AnyRef // error
+   |                 ^^^^^^^^^^^
+   |             scala.caps.any.only[E] is not well-formed since trait E is not a classifier class.
+   |             A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.

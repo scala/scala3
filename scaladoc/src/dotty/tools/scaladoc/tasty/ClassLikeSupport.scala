@@ -73,6 +73,25 @@ trait ClassLikeSupport:
     else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum(typeArgs, args)
     else Kind.Class(typeArgs, args)
 
+  private def usesClauseFor(classDef: ClassDef): Option[UsesClause] =
+    def refsFrom(symbol: Symbol, initially: Boolean): List[(qctx.reflect.TypeRepr, Boolean)] =
+      val pairs =
+        for
+          annot <- symbol.annotations.find(_.tpe.typeSymbol.isRetains)
+          refs <- retainedCaptureRefs(annot)
+          if refs.nonEmpty
+        yield refs.map(_ -> initially)
+      pairs.getOrElse(Nil)
+
+    if !ccEnabled then None
+    else
+      val constrUses = refsFrom(classDef.constructor.symbol, initially = true)
+      val classUses = refsFrom(classDef.symbol, initially = false)
+      val allRefs = constrUses ++ classUses
+      Option.unless(allRefs.isEmpty)(
+        UsesClause(emitUseRefsSignature(using qctx)(allRefs)(using classDef, classDef.symbol))
+      )
+
   def mkClass(classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,
     name: String = classDef.symbol.normalizedName,
@@ -127,7 +146,7 @@ trait ClassLikeSupport:
       getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
     )
 
-    val kind = if intrinsicClassDefs.contains(classDef.symbol) then Kind.Class(Nil, Nil) else kindForClasslike(classDef)
+    val kind = if intrinsicClassDefs.contains(classDef.symbol) then bareClasslikeKind(classDef.symbol) else kindForClasslike(classDef)
 
     val baseMember = mkMember(classDef.symbol, kind, selfSignature)(
       modifiers = modifiers,
@@ -137,6 +156,7 @@ trait ClassLikeSupport:
     ).copy(
       directParents = classDef.getParentsAsLinkToTypes,
       parents = supertypes,
+      usesClause = usesClauseFor(classDef)
     )
 
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
@@ -297,7 +317,7 @@ trait ClassLikeSupport:
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner
           case tree => tree.symbol
-        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass && !parentSymbol.isHiddenByVisibility
+        if parentSymbol != defn.ObjectClass && !parentSymbol.isHiddenByVisibility
       yield (parentTree, parentSymbol)
 
     def getConstructors: List[Symbol] = c.membersToDocument.collect {
@@ -483,6 +503,8 @@ trait ClassLikeSupport:
       case _ => false
     }
 
+    // Detect capture-set type members (type Cap^), which are represented as
+    // type Cap >: CapSet <: CapSet^{...} in the compiler.
     val isCaptureVar = ccEnabled && typeDef.derivesFromCapSet
 
     val (generics, tpeTree) = typeDef.rhs match
@@ -493,6 +515,11 @@ trait ClassLikeSupport:
     val kind = if symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
 
+    // For capset members, prepend ^ to the signature (the bounds rendering
+    // already elides the CapSet lower/upper defaults, so we just need the caret).
+    val sig = tpeTree.asSignature(classDef, symbol.owner)
+    val sigWithCaret = if isCaptureVar then Plain("^") :: sig else sig
+
     if symbol.flags.is(Flags.Exported)
     then {
       val origin = Some(tpeTree).flatMap {
@@ -500,13 +527,13 @@ trait ClassLikeSupport:
           Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
         case _ => None
       }
-      mkMember(symbol, Kind.Exported(kind), tpeTree.asSignature(classDef, symbol.owner))(
+      mkMember(symbol, Kind.Exported(kind), sigWithCaret)(
         deprecated = symbol.isDeprecated(),
         origin = Origin.ExportedFrom(origin),
         experimental = symbol.isExperimental()
       )
     }
-    else mkMember(symbol, kind, tpeTree.asSignature(classDef, symbol.owner))(deprecated = symbol.isDeprecated())
+    else mkMember(symbol, kind, sigWithCaret)(deprecated = symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     val symbol = valDef.symbol
@@ -547,6 +574,7 @@ trait ClassLikeSupport:
     visibility = symbol.getVisibility(),
     modifiers = modifiers,
     annotations = symbol.getAnnotations(),
+    usesClause = None,
     signature = signature,
     sources = symbol.source,
     origin = origin,

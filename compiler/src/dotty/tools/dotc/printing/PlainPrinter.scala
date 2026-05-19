@@ -12,7 +12,6 @@ import typer.Implicits.*
 import typer.ImportInfo
 import Variances.varianceSign
 import util.{Chars, SourcePosition}
-import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
 import ast.{tpd, untpd}
@@ -30,10 +29,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
-  /** Print Fresh instances as <cap hiding ...> */
+  /** Print local roots as <any hiding ...> */
   protected def ccVerbose = ctx.settings.YccVerbose.value
 
-  /** Elide redundant ^ and ^{cap.rd} when printing instances of Capability
+  /** Elide redundant ^ and ^{any.rd} when printing instances of Capability
    *  classes. Gets set when singletons are printed as `(x: T)` to reduce verbosity.
    */
   private var elideCapabilityCaps = false
@@ -49,9 +48,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def controlled(op: => Text): Text = limiter.controlled(op)
 
-  def Str(str: String, lineRange: LineRange = EmptyLineRange): Str =
+  def Str(str: String): Str =
     limiter.register(str)
-    Texts.Str(str, lineRange)
+    Texts.Str(str)
 
   given stringToText: Conversion[String, Text] = Str(_)
 
@@ -90,7 +89,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
-    try lo frozen_=:= hi catch { case NonFatal(ex) => false }
+    try lo frozen_=:= hi catch { case ex: Exception => false }
 
   private def homogenizeArg(tp: Type) = tp match {
     case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)
@@ -195,24 +194,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   type GeneralCaptureSet = CaptureSet | List[Type]
 
-  protected def isUniversalCaptureSet(refs: GeneralCaptureSet): Boolean = refs match
+  protected def isElidableUniversal(refs: GeneralCaptureSet): Boolean = refs match
     case refs: CaptureSet =>
-      // The set if universal if it consists only of caps.cap or
-      // only of an existential Fresh that is bound to the immediately enclosing method.
-      val isUniversal =
-        refs.elems.size == 1
-        && (refs.isUniversal
-            || !printDebug && !ccVerbose && !showUniqueIds && refs.elems.nth(0).match
-                  case ResultCap(binder) =>
-                    CCState.openExistentialScopes match
-                      case b :: _ => binder eq b
-                      case _ => false
-                  case _ =>
-                    false
-        )
-      isUniversal
-      || !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !ccVerbose
-    case ref :: Nil => ref.isCapRef
+      !refs.elems.isEmpty
+        && refs.elems.forall:
+          case _: LocalCap => true
+          case GlobalAny => true
+          case _ => false
+        && !ccVerbose
+    case ref :: Nil => ref.isCapsAnyRef
     case _ => false
 
   protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
@@ -227,7 +217,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       boxText
       ~ toTextLocal(parent)
       ~ "^"
-      ~ toTextGeneralCaptureSet(refs).provided(!isUniversalCaptureSet(refs) || ccVerbose)
+      ~ toTextGeneralCaptureSet(refs).provided(!isElidableUniversal(refs) || ccVerbose)
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -291,10 +281,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
             && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
-      case tp @ RetainingType(parent, refSet) =>
-        if Feature.ccEnabledSomewhere then
-          toTextCapturing(parent, refSet.retainedElementsRaw, "") ~ Str("R").provided(printDebug)
-        else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recursively
       case tp: ErrorType =>
@@ -317,9 +303,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
-          case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            ann.tree.retainedSet.retainedElementsRaw match
-              case ref :: Nil if ref.isCapRef => Str("=>")
+          case AnnotatedType(parent, ann: RetainingAnnotation) if !ann.isStrict =>
+            ann.retainedType.retainedElementsRaw match
+              case ref :: Nil if ref.isCapsAnyRef => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
@@ -335,12 +321,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        if defn.SilentAnnots.contains(annot.symbol) && !printDebug then
-          toText(tpe)
-        else if annot.isInstanceOf[CaptureAnnotation] then
-          toTextLocal(tpe) ~ "^" ~ toText(annot)
-        else
-          toTextLocal(tpe) ~ " " ~ toText(annot)
+        annot match
+          case annot: RetainingAnnotation =>
+            if Feature.ccEnabledSomewhere then
+              toTextCapturing(tpe, annot.retainedType.retainedElementsRaw, "")
+              ~ Str("R").provided(printDebug)
+            else toText(tpe)
+          case annot: CaptureAnnotation =>
+            val boxText: Text = Str("box ") `provided` annot.boxed && ccVerbose
+            toTextCapturing(tpe, annot.refs, boxText)
+          case _ if defn.SilentAnnots.contains(annot.symbol) && !printDebug =>
+            toText(tpe)
+          case _ =>
+            toTextLocal(tpe) ~ " " ~ toText(annot)
       case FlexibleType(_, tpe) =>
         "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
@@ -361,9 +354,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch {
-            case ex: Throwable => Str("...")
-          }
+          catch case _: Exception => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)
@@ -406,8 +397,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If -uniqid is set, the hashcode of the type, after a # */
   protected def hashStr(tp: Type): String =
     if showUniqueIds then
-      try "#" + tp.hashCode
-      catch case ex: NullPointerException => ""
+      "#" + tp.hashCode
     else ""
 
   /** A string to append to a symbol composed of:
@@ -477,16 +467,20 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
-    case GlobalCap => "cap"
+    case GlobalAny => "any"
+    case GlobalFresh => "fresh"
     case c: ResultCap =>
       def idStr = s"##${c.rootId}"
-      // TODO: Better printing? USe a mode where we print more detailed
-      val vbleText: Text = CCState.openExistentialScopes.indexOf(c.binder) match
-        case -1 =>
-          "<cap of " ~ toText(c.binder) ~ ">"
-        case n => "outer_" * n ++ (if ccVerbose then "localcap" else "cap")
-      vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
-    case c: FreshCap =>
+      // TODO: Better printing? USe a mode where we print more
+      val openExistentials = CCState.openExistentialScopes
+      val vbleText: Text = openExistentials.indexOf(c.binder) match
+        case -1 if openExistentials.nonEmpty =>
+          // Use long output if we are printing a result of a function type, but the
+          // ResultCap does not prefer to a prefix in that type
+          "<fresh of " ~ toText(c.binder) ~ ">"
+        case n => "outer_" * n ++ "fresh"
+      vbleText ~ Str(idStr).provided(showUniqueIds) ~ Str(hashStr(c.binder)).provided(showUniqueIds | printDebug)
+    case c: LocalCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
       def classified =
         if c.hiddenSet.classifier == defn.AnyClass then ""
@@ -498,8 +492,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case pre: SingletonType => toTextRef(pre) ~ "."
         case pre => toText(pre) ~ "."
       def core: Text =
-        if ccVerbose then s"<fresh$idStr in ${c.ccOwnerStr} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
-        else "cap"
+        if ccVerbose then
+          s"<any$idStr created in ${c.ccOwnerStr}"
+          ~ c.origin.explanation
+          ~ " hiding " ~ toTextCaptureSet(c.hiddenSet)
+          ~ classified
+          ~ ">"
+        else "any"
       prefixTxt ~ core
     case tp: TypeProxy =>
       homogenize(tp) match
@@ -513,13 +512,28 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextPrefixOf(tp: NamedType): Text = controlled {
       homogenize(tp.prefix) match {
         case NoPrefix => ""
-        case tp: SingletonType => toTextRef(tp) ~ "."
-        case tp => trimPrefix(toTextLocal(tp)) ~ "#"
+        case prefix: SingletonType => toTextRef(prefix) ~ "."
+        case prefix =>
+          // Use "." for Java nested classes (e.g., java.util.Map.Entry)
+          // Use "#" for Scala type projections (e.g., Outer#Inner)
+          val separator = if (isJavaNestedClass(tp)) "." else "#"
+          trimPrefix(toTextLocal(prefix)) ~ separator
       }
   }
 
   protected def isEmptyPrefix(sym: Symbol): Boolean =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
+
+  /** Check if tp represents a Java nested class that should use "." separator. */
+  protected def isJavaNestedClass(tp: NamedType)(using Context): Boolean = {
+    val sym = tp.symbol
+    sym.exists &&
+    sym.is(JavaDefined) &&
+    sym.isClass &&
+    sym.owner.exists &&
+    sym.owner.is(JavaDefined) &&
+    sym.owner.isClass
+  }
 
   /** String representation of a definition's type following its name,
    *  if symbol is completed, ": ?" otherwise.
@@ -552,6 +566,26 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (tparamStr, bounds.derivedTypeBounds(loRhs, hiRhs))
   end decomposeLambdas
 
+  /** Is this a capture variable's bounds? i.e. lo and hi are both CapSet-based. */
+  private def isCaptureVarBounds(lo: Type, hi: Type): Boolean =
+    lo.derivesFromCapSet && (hi match
+      case CapturingType(parent, _) => parent.derivesFromCapSet
+      case hi => hi.derivesFromCapSet)
+
+  /** Print capture variable bounds using `^` syntax.
+   *  Plain CapSet lower bound, empty lower bound, and universal upper bound are elided.
+   */
+  private def toTextCaptureVarBounds(lo: Type, hi: Type): Text =
+    val loText = lo match
+      case CapturingType(_, refs: CaptureSet) if refs.elems.isEmpty && !ccVerbose => Text() // empty lower bound
+      case CapturingType(_, refs) => " >: " ~ toTextCaptureSet(refs)
+      case _ => Text() // plain CapSet = trivial lower bound
+    val hiText = hi match
+      case CapturingType(_, refs) if isElidableUniversal(refs) => Text() // trivial upper bound
+      case CapturingType(_, refs) => " <: " ~ toTextCaptureSet(refs)
+      case _ => Text()
+    Str("^") ~ loText ~ hiText
+
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled {
     homogenize(tp) match {
@@ -560,6 +594,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val binder = rhs match
           case tp: AliasingBounds =>
             " = " ~ toText(tp.alias)
+          case TypeBounds(lo, hi) if !printDebug && Feature.ccEnabledSomewhere && isCaptureVarBounds(lo, hi) =>
+            toTextCaptureVarBounds(lo, hi)
           case TypeBounds(lo, hi) =>
             (if lo.isExactlyNothing then Text() else " >: " ~ toText(lo))
             ~ (if hi.isExactlyAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
@@ -671,11 +707,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }).close
 
   def locationText(sym: Symbol): Text =
-    if (!sym.exists) ""
-    else {
+    if !sym.exists then ""
+    else
       val ownr = sym.effectiveOwner
-      if (ownr.isClass && !isEmptyPrefix(ownr)) " in " ~ toText(ownr) else Text()
-    }
+      if ownr.isClass && !isEmptyPrefix(ownr) then " in " ~ toText(ownr) else Text()
 
   def locatedText(sym: Symbol): Text =
     (toText(sym) ~ locationText(sym)).close

@@ -48,12 +48,10 @@ final class PcRenameProvider(
       pos.toLsp,
       if stripBackticks then newName.stripBackticks else newName
     )
-  end collect
 
   def rename(): List[l.TextEdit] =
     val (symbols, _) = soughtSymbols.getOrElse(Set.empty, pos)
     if symbols.nonEmpty && symbols.forall(canRenameSymbol(_))
     then result()
     else Nil
-  end rename
 end PcRenameProvider

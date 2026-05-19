@@ -55,11 +55,8 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
           .map(relativizeIfNeeded)
           .map(_.toFile)
           .filter(_.exists)
-          .map(loadTemplateFile(_))
-        val title = (
-          optionTitle.map(TemplateName.SidebarDefined(_)) ++
-          indexPageOpt.map(_.title)
-        ).headOption.getOrElse {
+          .map(loadTemplateFile(_, optionTitle.map(TemplateName.SidebarDefined(_))))
+        val title = indexPageOpt.map(_.title).getOrElse {
           report.error(s"Title for subsection needs to be set in YAML config or in index file")
           TemplateName.FilenameDefined("unnamed_section")
         }
@@ -88,7 +85,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         val file = path.toFile
         val title = optionTitle.map(TemplateName.SidebarDefined(_))
         val templateFile = loadTemplateFile(file, title)
-        LoadedTemplate(templateFile, List.empty, pathFromRoot.resolve(file.getName).toFile, hidden)
+        LoadedTemplate(templateFile, List.empty, pathFromRoot.resolve(file.getName).toHtml.toFile, hidden)
     }
     val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.nested.map(c => loadChild(ctx.docsPath)(c)) ++ loadBlog(), rootDest)
     val mappings = createMapping(rootTemplate)
@@ -156,7 +153,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
           val ((year, month, day), name) = splitDateName(templateFile)
           val destPath = ctx.docsPath.resolve(defaultDirectory).resolve(year).resolve(month).resolve(day).resolve(name)
           val date = dateFrom(templateFile, s"$year-$month-$day")
-          date -> LoadedTemplate(templateFile, List.empty, destPath.toFile)
+          date -> LoadedTemplate(templateFile, List.empty, destPath.toHtml.toFile)
         }.sortBy(_._1).reverse.map(_._2)
 
       Some(LoadedTemplate(indexPage, posts, indexDest.toFile))
@@ -189,7 +186,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
     }
     else if (currRoot.exists && ctx.siteExtensions.exists(ext => currRoot.getName.endsWith(ext))) {
       val templateFile = loadTemplateFile(currRoot)
-      Some(LoadedTemplate(templateFile, List.empty, destMappingFunc(templateFile.file)))
+      Some(LoadedTemplate(templateFile, List.empty, destMappingFunc(templateFile.file).toPath.toHtml.toFile))
     }
     else None
   }

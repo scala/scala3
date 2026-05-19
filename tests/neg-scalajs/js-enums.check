@@ -2,6 +2,7 @@
 4 |enum MyEnum extends js.Object: // error
   |^
   |MyEnum extends scala.reflect.Enum which does not extend js.Any.
+  |
 5 |  case Foo
 -- Error: tests/neg-scalajs/js-enums.scala:9:5 -------------------------------------------------------------------------
  7 |@js.native
@@ -9,11 +10,13 @@
  9 |enum MyEnumNative extends js.Object: // error
    |^
    |MyEnumNative extends scala.reflect.Enum which does not extend js.Any.
+   |
 10 |  case Bar
 -- Error: tests/neg-scalajs/js-enums.scala:12:5 ------------------------------------------------------------------------
 12 |enum MyEnumAny extends js.Any: // error
    |^
    |Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
+   |
 13 |  case Foo
 -- Error: tests/neg-scalajs/js-enums.scala:17:5 ------------------------------------------------------------------------
 15 |@js.native
@@ -21,4 +24,5 @@
 17 |enum MyEnumNativeAny extends js.Any: // error
    |^
    |MyEnumNativeAny extends scala.reflect.Enum which does not extend js.Any.
+   |
 18 |  case Bar

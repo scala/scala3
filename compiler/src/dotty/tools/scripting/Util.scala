@@ -1,8 +1,8 @@
 package dotty.tools.scripting
 
-import java.nio.file.{ Path }
+import java.nio.file.Path
 import java.io.File
-import java.net.{ URLClassLoader }
+import java.net.URLClassLoader
 import java.lang.reflect.{ Modifier, Method }
 
 object Util:

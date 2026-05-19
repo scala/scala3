@@ -280,12 +280,11 @@ object StdNames {
     final val SignatureATTR: N                    = "Signature"
     final val SourceFileATTR: N                   = "SourceFile"
     final val SyntheticATTR: N                    = "Synthetic"
-
+    final val PermittedSubclassesATTR: N          = "PermittedSubclasses"
 
 // ----- Term names -----------------------------------------
 
     // Compiler-internal
-    val CAPTURE_ROOT: N             = "cap"
     val CBCompanion: N              = "<context-bound-companion>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
@@ -389,7 +388,7 @@ object StdNames {
     val RootClass: N            = "RootClass"
     val Select: N               = "Select"
     val Self: N                 = "Self"
-    val Shape: N                = "Shape"
+    val Snippet: N              = "Snippet"
     val StringContext: N        = "StringContext"
     val This: N                 = "This"
     val ThisType: N             = "ThisType"
@@ -404,6 +403,7 @@ object StdNames {
     val adhocExtensions: N      = "adhocExtensions"
     val andThen: N              = "andThen"
     val annotation: N           = "annotation"
+    val any: N                  = "any"
     val any2stringadd: N        = "any2stringadd"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
@@ -500,6 +500,7 @@ object StdNames {
     val floatHash: N            = "floatHash"
     val foreach: N              = "foreach"
     val format: N               = "format"
+    val fresh: N                = "fresh"
     val fromDigits: N           = "fromDigits"
     val fromProduct: N          = "fromProduct"
     val genericArrayOps: N      = "genericArrayOps"
@@ -519,6 +520,7 @@ object StdNames {
     val implicitConversions: N  = "implicitConversions"
     val implicitly: N           = "implicitly"
     val in: N                   = "in"
+    val initially: N            = "initially"
     val inline: N               = "inline"
     val infix: N                = "infix"
     val info: N                 = "info"
@@ -659,6 +661,7 @@ object StdNames {
     val unsafeNulls: N          = "unsafeNulls"
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
+    val uses: N                 = "uses"
     val using: N                = "using"
     val value: N                = "value"
     val valueOf : N             = "valueOf"
@@ -711,7 +714,7 @@ object StdNames {
       final val MINUS_USCORE: N = "-_"
       final val PLUS_USCORE : N = "+_"
 
-      final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
+      final val isUnary: Set[Name | Null] = Set(MINUS, PLUS, TILDE, BANG)
     }
 
     object specializedTypeNames {

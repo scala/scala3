@@ -23,14 +23,14 @@ import java.text.MessageFormat
 private[scala] trait StdIn {
   import scala.Console._
 
-  /** Read a full line from the default input.  Returns `null` if the end of the
+  /** Reads a full line from the default input.  Returns `null` if the end of the
    * input stream has been reached.
    *
    * @return the string read from the terminal or null if the end of stream was reached.
    */
   def readLine(): String = in.readLine()
 
-  /** Print and flush formatted text to the default output, and read a full line from the default input.
+  /** Prints and flushes formatted text to the default output, and reads a full line from the default input.
    *  Returns `null` if the end of the input stream has been reached.
    *
    *  @param text the format of the text to print out, as in `printf`.

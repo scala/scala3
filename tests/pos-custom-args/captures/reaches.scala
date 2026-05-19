@@ -5,10 +5,10 @@ def f(xs: List[C^]) =
 
 type Proc = () => Unit
 
-class Ref[T](init: T):
+class Ref[T](init: T) extends caps.Mutable:
   private var x: T = init
   def get: T = x
-  def set(y: T) = { x = y }
+  update def set(y: T) = { x = y }
 
 class List[+A]:
   def head: A = ???
@@ -37,7 +37,7 @@ def cons(x: Proc, xs: List[Proc]): List[() ->{x, xs*} Unit] =
 def addOneProc(consume xs: List[Proc]): List[Proc] =
   val x: Proc = () => println("hello")
   val result: List[() ->{x, xs*} Unit] = x :: xs
-  result // OK, we can widen () ->{x, xs*} Unit to cap here.
+  result // OK, we can widen () ->{x, xs*} Unit to any here.
 
 def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))

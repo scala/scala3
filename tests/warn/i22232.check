@@ -8,21 +8,21 @@
 -- [E194] Potential Issue Warning: tests/warn/i22232.scala:9:25 --------------------------------------------------------
 9 |    extension (d: D) def equals(that: Any): Boolean = false // warn
   |                         ^
-  |                         Extension method equals will never be selected from type C
-  |                         because C already has a member with the same name and compatible parameter types.
+  |                         Extension method equals will never be selected from type D
+  |                         because D already has a member with the same name and compatible parameter types.
   |
   | longer explanation available when compiling with `-explain`
 -- [E194] Potential Issue Warning: tests/warn/i22232.scala:13:38 -------------------------------------------------------
 13 |  extension (arr: MyString[Byte]) def length: Int = 0 // warn
    |                                      ^
-   |                          Extension method length will never be selected from type String
-   |                          because String already has a member with the same name and compatible parameter types.
+   |                        Extension method length will never be selected from type MyString
+   |                        because MyString already has a member with the same name and compatible parameter types.
    |
    | longer explanation available when compiling with `-explain`
 -- [E194] Potential Issue Warning: tests/warn/i22232.scala:17:46 -------------------------------------------------------
 17 |  extension [T <: MyString[Byte]](arr: T) def length: Int = 0 // warn
    |                                              ^
-   |                          Extension method length will never be selected from type String
-   |                          because String already has a member with the same name and compatible parameter types.
+   |                        Extension method length will never be selected from type MyString
+   |                        because MyString already has a member with the same name and compatible parameter types.
    |
    | longer explanation available when compiling with `-explain`

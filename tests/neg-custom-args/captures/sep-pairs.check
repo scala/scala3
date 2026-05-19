@@ -6,27 +6,27 @@
    |          Another part,  Ref^²,  captures capabilities  {r0}.
    |          The two sets overlap at  {r0}.
    |
-   |          where:    ^  refers to a fresh root capability classified as Unscoped in the type of value r1
-   |                    ^² refers to a fresh root capability classified as Unscoped in the type of value r1
+   |          where:    ^  refers to a root capability classified as Unscoped in the type of value r1
+   |                    ^² refers to a root capability classified as Unscoped in the type of value r1
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:13:9 ----------------------------------------------------------
 13 |def bad: Pair[Ref^, Ref^] =  // error: overlap at r1*, r0
    |         ^^^^^^^^^^^^^^^^
-   |        Separation failure in method bad's result type Pair[Ref^, Ref^²].
-   |        One part,  Ref^, hides capabilities  {r1*, cap, cap², r0}.
-   |        Another part,  Ref^²,  captures capabilities  {r1*, r0}.
-   |        The two sets overlap at  {r1*, r0}.
+   |         Separation failure in method bad's result type Pair[Ref^, Ref^²].
+   |         One part,  Ref^, hides capabilities  {r1*, any, any², r0}.
+   |         Another part,  Ref^²,  captures capabilities  {r1*, r0}.
+   |         The two sets overlap at  {r1*, r0}.
    |
-   |        where:    ^    refers to a fresh root capability classified as Unscoped in the result type of method bad
-   |                  ^²   refers to a fresh root capability classified as Unscoped in the result type of method bad
-   |                  cap  is a fresh root capability classified as Unscoped in the type of value r1
-   |                  cap² is a fresh root capability classified as Unscoped in the type of value r1
+   |         where:    ^    refers to a root capability classified as Unscoped in the result type of method bad
+   |                   ^²   refers to a root capability classified as Unscoped in the result type of method bad
+   |                   any  is a root capability classified as Unscoped in the type of value r1
+   |                   any² is a root capability classified as Unscoped in the type of value r1
 -- Error: tests/neg-custom-args/captures/sep-pairs.scala:43:18 ---------------------------------------------------------
 43 |  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
    |                  ^^^^^^^^^^^^^^^^
-   |           Separation failure in value sameToPair's type Pair[Ref^, Ref^²].
-   |           One part,  Ref^, hides capabilities  {fstSame}.
-   |           Another part,  Ref^²,  captures capabilities  {sndSame, same.snd*}.
-   |           The two sets overlap at  {cap of value same}.
+   |                 Separation failure in value sameToPair's type Pair[Ref^, Ref^²].
+   |                 One part,  Ref^, hides capabilities  {fstSame}.
+   |                 Another part,  Ref^²,  captures capabilities  {sndSame, same.snd*}.
+   |                 The two sets overlap at  {`any` of value same}.
    |
-   |           where:    ^  refers to a fresh root capability classified as Unscoped in the type of value sameToPair
-   |                     ^² refers to a fresh root capability classified as Unscoped in the type of value sameToPair
+   |                 where:    ^  refers to a root capability classified as Unscoped in the type of value sameToPair
+   |                           ^² refers to a root capability classified as Unscoped in the type of value sameToPair

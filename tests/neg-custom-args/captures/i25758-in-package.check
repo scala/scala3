@@ -1,0 +1,16 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25758-in-package/B_2.scala:4:31 -------------------------
+4 |    val leak: String -> Unit = (secret: String) => // error
+  |                               ^
+  |                   Found:    (secret: String) ->{ttt.A} Unit
+  |                   Required: String -> Unit
+  |
+  |                   Note that capability `any` cannot flow into capture set {}.
+  |
+  |                   Note that capability `ttt.A` cannot flow into capture set {}.
+  |                   Note that object A is a capability because it uses capabilities {ttt.Console}
+  |
+  |                   where:    any is a root capability classified as SharedCapability in the type of object Console
+  |
+5 |      A.println(secret)
+  |
+  | longer explanation available when compiling with `-explain`

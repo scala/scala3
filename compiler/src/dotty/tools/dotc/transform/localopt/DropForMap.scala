@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform.localopt
 
-import dotty.tools.dotc.ast.desugar.TrailingForMap
+import dotty.tools.dotc.ast.desugar.{TrailingForMap, TuplingMigrationForMap}
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
@@ -30,7 +30,23 @@ class DropForMap extends MiniPhase:
   /** r.map(x => x)(using y) --> r
    *       ^ TrailingForMap
    */
-  override def transformApply(tree: Apply)(using Context): Tree = tree match
+  override def transformApply(tree: Apply)(using Context): Tree =
+    tree.removeAttachment(TuplingMigrationForMap).foreach: _ =>
+      def stripApplies(tree: Tree): Tree = tree match
+        case Apply(fun, _)     => stripApplies(fun)
+        case TypeApply(fun, _) => stripApplies(fun)
+        case tree => tree
+      stripApplies(tree) match
+      case Select(coll, _) =>
+        val m = coll.tpe.nonPrivateMember(nme.map)
+        if m.isOverloaded then
+          val alts = m.alternatives
+          val head = alts.head.info.finalResultType
+          if !alts.tail.forall(_.info.finalResultType =:= head) then
+            val msg = em"For comprehension with multiple val assignments may change result type in 3.8"
+            report.warning(msg, tree.srcPos)
+      case _ =>
+    tree match
     case Unmapped(f0, sym, args) =>
       val f =
         if sym.is(Extension) then args.head

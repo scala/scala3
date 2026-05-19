@@ -18,8 +18,7 @@ import scala.language.`2.13`
  *  Since symbols are interned, they can be compared using reference equality.
  */
 final class Symbol private (val name: String) extends Serializable {
-  /** A string representation of this symbol.
-   */
+  /** A string representation of this symbol. */
   override def toString(): String = s"Symbol($name)"
 
   @throws(classOf[java.io.ObjectStreamException])
@@ -35,7 +34,8 @@ object Symbol extends UniquenessCache[String, Symbol] {
 }
 
 /** This is private so it won't appear in the library API, but
-  * abstracted to offer some hope of reusability.  */
+ *  abstracted to offer some hope of reusability.  
+ */
 private[scala] abstract class UniquenessCache[K, V] {
   import java.lang.ref.WeakReference
   import java.util.WeakHashMap

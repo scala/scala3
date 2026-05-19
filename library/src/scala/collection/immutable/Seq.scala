@@ -28,25 +28,30 @@ trait Seq[+A] extends Iterable[A]
 }
 
 /**
-  * @define coll immutable sequence
-  * @define Coll `immutable.Seq`
-  */
+ *  @define coll immutable sequence
+ *  @define Coll `immutable.Seq`
+ *
+ *  @tparam A the element type of the sequence
+ *  @tparam CC the type constructor for the collection type, constrained to be pure
+ */
 transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collection.SeqOps[A, CC, C] with caps.Pure
 
-/**
-  * $factoryInfo
-  * @define coll immutable sequence
-  * @define Coll `immutable.Seq`
-  */
+/** $factoryInfo
+ *  @define coll immutable sequence
+ *  @define Coll `immutable.Seq`
+ */
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](List) {
   override def from[E](it: IterableOnce[E]^): Seq[E] = it match {
-    case s: Seq[E] => s
+    case s: Seq[E @unchecked] => s
     case _ => super.from(it)
   }
 }
 
-/** Base trait for immutable indexed sequences that have efficient `apply` and `length` */
+/** Base trait for immutable indexed sequences that have efficient `apply` and `length`.
+ *
+ *  @tparam A the element type of the indexed sequence
+ */
 trait IndexedSeq[+A] extends Seq[A]
                         with collection.IndexedSeq[A]
                         with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
@@ -55,13 +60,13 @@ trait IndexedSeq[+A] extends Seq[A]
   final override def toIndexedSeq: IndexedSeq[A] = this
 
   override def canEqual(that: Any): Boolean = that match {
-    case otherIndexedSeq: IndexedSeq[_] => length == otherIndexedSeq.length && super.canEqual(that)
+    case otherIndexedSeq: IndexedSeq[?] => length == otherIndexedSeq.length && super.canEqual(that)
     case _ => super.canEqual(that)
   }
 
 
   override def sameElements[B >: A](o: IterableOnce[B]^): Boolean = o match {
-    case that: IndexedSeq[_] =>
+    case that: IndexedSeq[?] =>
       (this eq that) || {
         val length = this.length
         var equal = length == that.length
@@ -93,10 +98,10 @@ trait IndexedSeq[+A] extends Seq[A]
   }
 
   /** a hint to the runtime when scanning values
-    * [[apply]] is preferred for scan with a max index less than this value
-    * [[iterator]] is preferred for scans above this range
-    * @return a hint about when to use [[apply]] or [[iterator]]
-    */
+   *  [[apply]] is preferred for scan with a max index less than this value
+   *  [[iterator]] is preferred for scans above this range
+   *  @return the maximum length below which [[apply]] is preferred over [[iterator]] for element access
+   */
   protected def applyPreferredMaxLength: Int = IndexedSeqDefaults.defaultApplyPreferredMaxLength
 
   override def iterableFactory: SeqFactory[IndexedSeq] = IndexedSeq
@@ -114,12 +119,16 @@ object IndexedSeqDefaults {
 @SerialVersionUID(3L)
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](Vector) {
   override def from[E](it: IterableOnce[E]^): IndexedSeq[E] = it match {
-    case is: IndexedSeq[E] => is
+    case is: IndexedSeq[E @unchecked] => is
     case _ => super.from(it)
   }
 }
 
-/** Base trait for immutable indexed Seq operations */
+/** Base trait for immutable indexed `Seq` operations.
+ *
+ *  @tparam A the element type of the indexed sequence
+ *  @tparam CC the type constructor for the collection type, constrained to be pure
+ */
 transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
   extends SeqOps[A, CC, C]
     with collection.IndexedSeqOps[A, CC, C] {
@@ -132,7 +141,10 @@ transparent trait IndexedSeqOps[+A, +CC[B] <: caps.Pure, +C]
 
 }
 
-/** Base trait for immutable linear sequences that have efficient `head` and `tail` */
+/** Base trait for immutable linear sequences that have efficient `head` and `tail`.
+ *
+ *  @tparam A the element type of the linear sequence
+ */
 trait LinearSeq[+A]
   extends Seq[A]
     with collection.LinearSeq[A]
@@ -145,7 +157,7 @@ trait LinearSeq[+A]
 @SerialVersionUID(3L)
 object LinearSeq extends SeqFactory.Delegate[LinearSeq](List) {
   override def from[E](it: IterableOnce[E]^): LinearSeq[E] = it match {
-    case ls: LinearSeq[E] => ls
+    case ls: LinearSeq[E @unchecked] => ls
     case _ => super.from(it)
   }
 }
@@ -154,5 +166,8 @@ transparent trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] & 
   extends Any with SeqOps[A, CC, C]
     with collection.LinearSeqOps[A, CC, C]
 
-/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Seq` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the sequence
+ */
 abstract class AbstractSeq[+A] extends scala.collection.AbstractSeq[A] with Seq[A]

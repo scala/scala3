@@ -10,8 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT. See scala.Function0 for timestamp.
-
 package scala
 
 import scala.language.`2.13`
@@ -22,6 +20,10 @@ object Product3 {
 }
 
 /** Product3 is a Cartesian product of 3 components.
+ *
+ *  @tparam T1 the type of the 1st element
+ *  @tparam T2 the type of the 2nd element
+ *  @tparam T3 the type of the 3rd element
  */
 trait Product3[+T1, +T2, +T3] extends Any with Product {
   /** The arity of this product.

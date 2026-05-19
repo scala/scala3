@@ -195,6 +195,7 @@ class TailRec extends MiniPhase {
          */
         def isInfiniteRecCall(tree: Tree): Boolean = {
           def tailArgOrPureExpr(stat: Tree): Boolean = stat match {
+            case stat if InstrumentCoverage.isCoverageProbe(stat) => true
             case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => tailArgOrPureExpr(stat.rhs)
             case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) =>
               tailArgOrPureExpr(rhs) || varForRewrittenThis.exists(_ == lhs.symbol && rhs.tpe.isStable)
@@ -325,11 +326,31 @@ class TailRec extends MiniPhase {
           method.matches(calledMethod) &&
           enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
+        // Argument shape under coverage: `{ Invoker.invoked(...); f$default$n(...) }`;
+        // strip the probe block and recover `f$default$n`'s parameter index.
+        def defaultGetterIndex(arg: Tree): Option[Int] =
+          def fromSymbol(sym: Symbol): Option[Int] =
+            if sym.exists && sym.name.is(DefaultGetterName) then
+              val DefaultGetterName(_, index) = sym.name: @unchecked
+              Some(index)
+            else
+              None
+
+          val stripped = InstrumentCoverage.stripLeadingCoverage(arg)
+          fromSymbol(stripped.symbol).orElse {
+            stripped match
+              case id: Ident =>
+                id.symbol.defTree match
+                  case vdef: ValDef => defaultGetterIndex(vdef.rhs)
+                  case _ => None
+              case _ =>
+                None
+          }
+
         if isRecursiveCall then
           if ctx.settings.Whas.recurseWithDefault then
-            tree.args.find(_.symbol.name.is(DefaultGetterName)) match
-            case Some(arg) =>
-              val DefaultGetterName(_, index) = arg.symbol.name: @unchecked
+            tree.args.iterator.flatMap(defaultGetterIndex).nextOption() match
+            case Some(index) =>
               report.warning(RecurseWithDefault(calledMethod.info.firstParamNames(index)), tree.srcPos)
             case _ =>
 

@@ -1,0 +1,4 @@
+-- Error: tests/neg/i24249.scala:4:24 ----------------------------------------------------------------------------------
+4 |  def this(s: String) = this(j = s.toInt, i = 27) // error
+  |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                        secondary constructor must call a preceding constructor

@@ -22,7 +22,7 @@ import scala.language.`2.13`
  *  that are executed during initialization.
  *
  *  Example:
- *  {{{
+ *  ```
  *    trait Helper extends DelayedInit {
  *      def delayedInit(body: => Unit) = {
  *        println("dummy text, printed before initialization of C")
@@ -37,13 +37,13 @@ import scala.language.`2.13`
  *    object Test extends App {
  *      val c = new C
  *    }
- *  }}}
+ *  ```
  *
  *  Should result in the following being printed:
- *  {{{
+ *  ```
  *    dummy text, printed before initialization of C
  *    this is the initialization code of C
- *  }}}
+ *  ```
  *
  *  @see "Delayed Initialization" subsection of the Scala Language Specification (section 5.1)
  *

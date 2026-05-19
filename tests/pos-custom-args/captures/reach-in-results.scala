@@ -1,13 +1,13 @@
 import language.experimental.captureChecking
-import caps.{cap, Shared}
+import caps.{any, Shared}
 
 class IO
 
 def test(io: IO^): Unit =
-  val f = (x: () ->{cap.only[Shared]} IO^{cap.only[Shared]}) => x()
+  val f = (x: () ->{any.only[Shared]} IO^{any.only[Shared]}) => x()
 
-  val _: (x: () ->{cap.only[Shared]} IO^{cap.only[Shared]}) => IO^{x} = (x: () ->{cap.only[Shared]} IO^{cap.only[Shared]}) => f(x)
-  val _: (x: () ->{cap.only[Shared]} IO^{cap.only[Shared]}) => IO^{x} = f//(x: () => IO^) => f(x)
+  val _: (x: () ->{any.only[Shared]} IO^{any.only[Shared]}) => IO^{x} = (x: () ->{any.only[Shared]} IO^{any.only[Shared]}) => f(x)
+  val _: (x: () ->{any.only[Shared]} IO^{any.only[Shared]}) => IO^{x} = f//(x: () => IO^) => f(x)
 /*
   val f = (x: () => IO^) => x()
   val _: (x: () => IO^) => IO^{x} = (x: () => IO^) => f(x)

@@ -36,6 +36,8 @@ import java.lang.Integer
  *  overriding the corresponding values in class `HashTable`.
  *
  *  @tparam A     type of the elements contained in this hash table.
+ *  @tparam B     type of the values associated with keys in this hash table.
+ *  @tparam Entry the type of hash table entries, must extend `HashEntry[A, Entry]`
  */
 // Not used in the standard library, but used in scala-parallel-collections
 private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends HashTable.HashUtils[A] {
@@ -46,22 +48,18 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   protected var _loadFactor = defaultLoadFactor
 
-  /** The actual hash table.
-   */
+  /** The actual hash table. */
   protected[collection] var table: Array[HashEntry[A, Entry] | Null] = new Array(initialCapacity)
 
-  /** The number of mappings contained in this hash table.
-   */
+  /** The number of mappings contained in this hash table. */
   protected[collection] var tableSize: Int = 0
 
   final def size: Int = tableSize
 
-  /** The next size value at which to resize (capacity * load factor).
-   */
+  /** The next size value at which to resize (capacity * load factor). */
   protected[collection] var threshold: Int = initialThreshold(_loadFactor)
 
-  /** The array keeping track of the number of elements in 32 element blocks.
-   */
+  /** The array keeping track of the number of elements in 32 element blocks. */
   @annotation.stableNull
   protected var sizemap: Array[Int] | Null = null
 
@@ -69,12 +67,10 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   protected def tableSizeSeed = Integer.bitCount(table.length - 1)
 
-  /** The initial size of the hash table.
-   */
+  /** The initial size of the hash table. */
   protected def initialSize: Int = 16
 
-  /** The initial threshold.
-   */
+  /** The initial threshold. */
   private def initialThreshold(_loadFactor: Int): Int = newThreshold(_loadFactor, initialCapacity)
 
   private def initialCapacity = capacity(initialSize)
@@ -87,9 +83,11 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     idx
   }
 
-  /**
-   * Initializes the collection from the input stream. `readEntry` will be called for each
-   * entry to be read from the input stream.
+  /** Initializes the collection from the input stream. `readEntry` will be called for each
+   *  entry to be read from the input stream.
+   *
+   *  @param in the input stream to read the collection data from
+   *  @param readEntry a by-name expression that reads and returns a single entry from the stream
    */
   private[collection] def init(in: java.io.ObjectInputStream, readEntry: => Entry): Unit = {
     _loadFactor = in.readInt()
@@ -115,12 +113,14 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     }
   }
 
-  /**
-   * Serializes the collection to the output stream by saving the load factor, collection
-   * size and collection entries. `writeEntry` is responsible for writing an entry to the stream.
+  /** Serializes the collection to the output stream by saving the load factor, collection
+   *  size and collection entries. `writeEntry` is responsible for writing an entry to the stream.
    *
-   * `foreachEntry` determines the order in which the key/value pairs are saved to the stream. To
-   * deserialize, `init` should be used.
+   *  `foreachEntry` determines the order in which the key/value pairs are saved to the stream. To
+   *  deserialize, `init` should be used.
+   *
+   *  @param out the output stream to write the collection data to
+   *  @param writeEntry a function that writes a single entry to the output stream
    */
   private[collection] def serializeTo(out: java.io.ObjectOutputStream, writeEntry: Entry => Unit): Unit = {
     out.writeInt(_loadFactor)
@@ -131,7 +131,9 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     foreachEntry(writeEntry)
   }
 
-  /** Find entry with given key in table, null if not found.
+  /** Finds entry with given key in table, null if not found.
+   *
+   *  @param key the key to look up in the hash table
    */
   final def findEntry(key: A): Entry | Null =
     findEntry0(key, index(elemHashCode(key)))
@@ -142,8 +144,10 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     e
   }
 
-  /** Add entry to table
+  /** Adds entry to table
    *  pre: no entry with same key exists
+   *
+   *  @param e the entry to add to the hash table
    */
   protected[collection] final def addEntry(e: Entry): Unit = {
     addEntry0(e, index(elemHashCode(e.key)))
@@ -158,11 +162,14 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
       resize(2 * table.length)
   }
 
-  /** Find entry with given key in table, or add new one if not found.
+  /** Finds entry with given key in table, or adds new one if not found.
    *  May be somewhat faster then `findEntry`/`addEntry` pair as it
    *  computes entry's hash index only once.
    *  Returns entry found in table or null.
    *  New entries are created by calling `createNewEntry` method.
+   *
+   *  @param key the key to find or insert
+   *  @param value the value to associate with the key if a new entry is created
    */
   def findOrAddEntry(key: A, value: B): Entry | Null = {
     val h = index(elemHashCode(key))
@@ -173,15 +180,23 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   /** Creates new entry to be immediately inserted into the hashtable.
    *  This method is guaranteed to be called only once and in case that the entry
    *  will be added. In other words, an implementation may be side-effecting.
+   *
+   *  @param key the key for the new entry
+   *  @param value the value to associate with the key
    */
   def createNewEntry(key: A, value: B): Entry
 
-  /** Remove entry from table if present.
+  /** Removes entry from table if present.
+   *
+   *  @param key the key of the entry to remove
    */
   final def removeEntry(key: A) : Entry | Null = {
     removeEntry0(key, index(elemHashCode(key)))
   }
-  /** Remove entry from table if present.
+  /** Removes entry from table if present.
+   *
+   *  @param key the key of the entry to remove
+   *  @param h the hash index into the table
    */
   private[collection] final def removeEntry0(key: A, h: Int) : Entry | Null = {
     var e = table(h).asInstanceOf[Entry | Null]
@@ -210,8 +225,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     null
   }
 
-  /** An iterator returning all entries.
-   */
+  /** An iterator returning all entries. */
   def entriesIterator: Iterator[Entry]^{this} = new AbstractIterator[Entry] {
     val iterTable = table
     var idx       = lastPopulatedIndex
@@ -229,7 +243,11 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     }
   }
 
-  /** Avoid iterator for a 2x faster traversal. */
+  /** Avoid iterator for a 2x faster traversal.
+   *
+   *  @tparam U the return type of the function `f`
+   *  @param f the function to apply to each entry in the hash table
+   */
   def foreachEntry[U](f: Entry => U): Unit = {
     val iterTable = table
     var idx       = lastPopulatedIndex
@@ -247,8 +265,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     }
   }
 
-  /** Remove all entries from table
-   */
+  /** Removes all entries from table */
   def clearTable(): Unit = {
     var i = table.length - 1
     while (i >= 0) { table(i) = null; i = i - 1 }
@@ -360,10 +377,11 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   protected def elemEquals(key1: A, key2: A): Boolean = (key1 == key2)
 
-  /**
-    * Note: we take the most significant bits of the hashcode, not the lower ones
-    * this is of crucial importance when populating the table in parallel
-    */
+  /** Note: we take the most significant bits of the hashcode, not the lower ones
+   *  this is of crucial importance when populating the table in parallel
+   *
+   *  @param hcode the hash code of the element to index
+   */
   protected[collection] final def index(hcode: Int): Int = {
     val ones = table.length - 1
     val exponent = Integer.numberOfLeadingZeros(ones)
@@ -372,8 +390,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 }
 
 private[collection] object HashTable {
-  /** The load factor for the hash table (in 0.001 step).
-   */
+  /** The load factor for the hash table (in 0.001 step). */
   private[collection] final def defaultLoadFactor: Int = 750 // corresponds to 75%
   private[collection] final def loadFactorDenum = 1000 // should be loadFactorDenom, but changing that isn't binary compatible
 
@@ -390,30 +407,29 @@ private[collection] object HashTable {
 
     protected[collection] def elemHashCode(key: KeyType) = key.##
 
-    /**
-      * Defer to a high-quality hash in [[scala.util.hashing]].
-      * The goal is to distribute across bins as well as possible even if a hash code has low entropy at some bits.
-      * <p/>
-      * OLD VERSION - quick, but bad for sequence 0-10000 - little entropy in higher bits - since 2003
-      * {{{
-      * var h: Int = hcode + ~(hcode << 9)
-      * h = h ^ (h >>> 14)
-      * h = h + (h << 4)
-      * h ^ (h >>> 10)
-      * }}}
-      * the rest of the computation is due to SI-5293
-      */
+    /** Defer to high-quality bit mixing in [[scala.util.hashing]].
+     *  The current implementation byte-swaps the original hash code and rotates it by a
+     *  seed derived from the table size, to help spread entries across bins even when the
+     *  original hash code has low entropy in some bits.
+     *
+     *  @param hcode the original hash code to improve
+     *  @param seed the seed value derived from the table size, used to rotate the hash
+     */
     protected final def improve(hcode: Int, seed: Int): Int = rotateRight(byteswap32(hcode), seed)
   }
 
-  /**
-   * Returns a power of two >= `target`.
+  /** Returns a power of two >= `target`.
+   *
+   *  @param target the minimum value for the returned power of two
    */
   private[collection] def nextPositivePowerOfTwo(target: Int): Int = 1 << -numberOfLeadingZeros(target - 1)
 }
 
 /** Class used internally.
-  */
+ *
+ *  @tparam A the type of the keys stored in this hash entry
+ *  @tparam E the concrete entry type, forming a linked list via `next`
+ */
 private[collection] trait HashEntry[A, E <: HashEntry[A, E]] {
   val key: A
   var next: E | Null = compiletime.uninitialized

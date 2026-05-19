@@ -21,46 +21,46 @@ import scala.collection.mutable.ListBuffer
 
 /** The `App` trait can be used to quickly turn objects
  *  into executable programs. Here is an example:
- *  {{{
+ *  ```
  *  object Main extends App {
  *    Console.println("Hello World: " + (args mkString ", "))
  *  }
- *  }}}
+ *  ```
  *
  *  No explicit `main` method is needed.  Instead,
  *  the whole class body becomes the “main method”.
  *
  *  `args` returns the current command line arguments as an array.
  *
- *  ==Caveats==
+ *  ## Caveats
  *
- *  '''''It should be noted that this trait is implemented using the [[DelayedInit]]
+ *  ***It should be noted that this trait is implemented using the [[DelayedInit]]
  *  functionality, which means that fields of the object will not have been initialized
- *  before the main method has been executed.'''''
+ *  before the main method has been executed.***
  *
  *  Future versions of this trait will no longer extend `DelayedInit`.
  *
  *  In Scala 3, the `DelayedInit` feature was dropped. `App` exists only in a limited form
  *  that also does not support command line arguments and will be deprecated in the future.
  *
- *  [[https://docs.scala-lang.org/scala3/book/methods-main-methods.html @main]] methods are the
+ *  [@main](https://docs.scala-lang.org/scala3/book/methods-main-methods.html) methods are the
  *  recommended scheme to generate programs that can be invoked from the command line in Scala 3.
  *
- *  {{{
+ *  ```
  *  @main def runMyProgram(args: String*): Unit = {
  *    // your program here
  *  }
- *  }}}
+ *  ```
  *
  *  If programs need to cross-build between Scala 2 and Scala 3, it is recommended to use an
  *  explicit `main` method:
- *  {{{
+ *  ```
  *  object Main {
  *    def main(args: Array[String]): Unit = {
  *      // your program here
  *    }
  *  }
- *  }}}
+ *  ```
  */
 @deprecated(message = "Support for trait App is deprecated in Scala 3. Please refer to https://docs.scala-lang.org/scala3/book/methods-main-methods.html.", since = "3.8.0")
 trait App extends DelayedInit {

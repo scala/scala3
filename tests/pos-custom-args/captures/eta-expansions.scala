@@ -1,6 +1,10 @@
+import caps.*
+
 class Cap extends caps.SharedCapability
 
 def test(d: Cap) =
+  def m(x: Cap^): Cap^ = x
+  val f: (x: Cap^) -> Cap^{fresh} = m       // simple eta expansion
   def map2(xs: List[Int])(f: Int => Int): List[Int] = xs.map(f)
   val f1 = map2                      // capture polymorphic implicit eta expansion
   val f2c: List[Int] => (Int => Int) => List[Int] = f1

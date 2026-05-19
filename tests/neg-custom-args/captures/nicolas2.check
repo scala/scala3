@@ -1,0 +1,11 @@
+-- Warning: tests/neg-custom-args/captures/nicolas2.scala:9:53 ---------------------------------------------------------
+9 |def oneOf[A](head: Rand ?=> A, tail: (Rand ?=> A)*): Rand ?->{head, tail*} A =
+  |                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+  |                           Reach capability `tail*` in function result refers to parameter tail.
+  |                           To avoid errors of the form "Local reach capability tail* leaks into capture scope ..."
+  |                           you should replace the reach capability with a new capset variable in method oneOf.
+-- Error: tests/neg-custom-args/captures/nicolas2.scala:11:5 -----------------------------------------------------------
+11 |  all(nextInt(all.length))  // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Local reach capability tail* leaks into capture scope of method oneOf.
+   |  You could try to abstract the capabilities referred to by tail* in a capset variable.

@@ -26,6 +26,7 @@ import cc.*
 import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import ast.TreeInfo
+import dotty.tools.dotc.cc.derivedFunctionOrMethod
 
 object PostTyper {
   val name: String = "posttyper"
@@ -106,6 +107,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   override def initContext(ctx: FreshContext): Unit =
     initContextCalled = true
     compilingScala2StdLib = Feature.shouldBehaveAsScala2(using ctx)
+
+  /** The anonymous function symbols that need an explicified result type
+   *  if their right hand side is also a closure. This is the case if
+   *  the closure's type forms part of the type of a valdef or defdef
+   *  that has a polymorphic closure type.
+   */
+  private val closuresNeedingExplicify = mutable.Set[Symbol]()
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -201,8 +209,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try
-        val annotCtx = if annot.hasAttachment(untpd.RetainsAnnot)
-          then ctx.addMode(Mode.InCaptureSet) else ctx
+        val annotCtx =
+          if annot.hasAttachment(untpd.RetainsAnnot)
+          then ctx.addMode(Mode.InCaptureSet)
+          else ctx
         transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
@@ -336,6 +346,19 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         }
     }
 
+    /** Under cc, mark the type of InferredTypeTree arguments of inline method
+     *  with a @caps.inferred annotation. This tells Setup to prepare the marked
+     *  types in the body of the inline expansion as inferred types.
+     */
+    private def markInferred(tpt: Tree)(using Context): Tree = tpt match
+      case NamedArg(id, arg) =>
+        cpy.NamedArg(tpt)(id, markInferred(arg))
+      case tpt: InferredTypeTree =>
+        TypeTree(AnnotatedType(tpt.tpe, Annotation(defn.InferredAnnot, tpt.span)))
+          .withSpan(tpt.span)
+      case _ =>
+        tpt
+
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
@@ -378,6 +401,67 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           TypeTree(tpt.tpe, inferred = false).withSpan(tpt.span).withAttachmentsFrom(tpt)
         case _ =>
           tpt
+
+    /** Under ccEnabled, If the (return-) type of the ValDef or DefDef is an InferredType,
+     *  make (some parts of) it non-inferred types so that embedded retains annotations
+     *  are kept. Specifically:
+     *   (1) If definition overrides some other declaration, make its type non-inferred.
+     *       For an overriding symbol the retains annotations come from the explicitly
+     *       declared parent types, so should be kept.
+     *   (2) If the definition is not a closure, but its right hand side is a
+     *       closure, make all parameter types corresponding to nested closures
+     *       non-inferred by adding `@caps.declared` annotations.
+     *       In this case we need to keep references to bound capset variables in retains
+     *       clauses of subsequent parameters.
+     *   (3) If the definition is a closure that is a curried result of the
+     *       right hand side of a defininition meeting condition (2), also make
+     *       its parameter types non-inferred as specified by (2).
+     */
+    private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
+      case tpt: InferredTypeTree if Feature.ccEnabled =>
+        if tree.symbol.allOverriddenSymbols.hasNext then // (1)
+          tpd.cpy.TypeTree(tpt)(inferred = false)
+        else tree.rhs match
+          case closureDef(mdef)
+          if !tree.symbol.isAnonymousFunction // (2)
+            || closuresNeedingExplicify.remove(tree.symbol) // (3)
+          =>
+            val tpe1 = makeFormalsDeclared(tpt.tpe, tree.rhs)
+            if tpe1 `ne` tpt.tpe
+            then TypeTree(tpe1, inferred = true).withSpan(tree.span).withAttachmentsFrom(tpt)
+            else tpt
+          case _ => tpt
+      case tpt =>
+        tpt
+
+    /** Insert a `@caps.declared` annotation on all parameter infos
+     *  of a function type `tp` corresponding to a closure `rhs` that contain
+     *  a "retains" annotation. TypeBound infos of type parameters get
+     *  a `@caps.declared` on each bound that contains a "retains" annotation.
+     */
+    private def makeFormalsDeclared(tp: Type, rhs: Tree)(using Context): Type = rhs match
+      case closureDef(mdef) =>
+        closuresNeedingExplicify += mdef.symbol
+
+        def makeFormalDeclared(formal: Type)(using Context): Type = formal match
+          case formal @ TypeBounds(lo, hi) =>
+            formal.derivedTypeBounds(makeFormalDeclared(lo), makeFormalDeclared(hi))
+          case _ =>
+            val cleanup = CleanupRetains()
+            cleanup(formal) // only used for setting cleanup.retainsFound as a side effect
+            if cleanup.retainsFound && !formal.hasAnnotation(defn.DeclaredAnnot)
+            then AnnotatedType(formal, Annotation(defn.DeclaredAnnot, rhs.span))
+            else formal
+
+        tp match
+          case FunctionOrMethod(formals, res) =>
+            val rhs1 = formals match
+              case (_: TypeBounds) :: _ => rhs
+              case _ => mdef.rhs
+            val formals1 = formals.mapConserve(makeFormalDeclared)
+            tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))
+          case _ => tp
+      case _ => tp
 
     /** If one of `trees` is a spread of an expression that is not idempotent, lift out all
      *  non-idempotent expressions (not just the spreads) and apply `within` to the resulting
@@ -508,11 +592,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 ctx.typer.checkClassType(tpe, tree.srcPos,
                     traitReq = false, stablePrefixReq = stablePrefixReq,
                     refinementOK = Feature.enabled(Feature.modularity))
-              checkClassType(tree.tpe, true)
+              checkClassType(tree.tpe, stablePrefixReq = true)
               if !nu.tpe.isLambdaSub then
                 // Check the constructor type as well; it could be an illegal singleton type
                 // which would not be reflected as `tree.tpe`
-                checkClassType(nu.tpe, false)
+                checkClassType(nu.tpe, stablePrefixReq = false)
               Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
@@ -534,14 +618,16 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          fn match {
+          val args1 =
+            if Feature.ccEnabled && fn.symbol.isInlineMethod
+            then transform(args).mapConserve(markInferred)
+            else transform(args)
+          val fn1 = fn match
             case sel: Select =>
-              val args1 = transform(args)
-              val sel1 = transformSelect(sel, args1)
-              cpy.TypeApply(tree1)(sel1, args1)
+              transformSelect(sel, args1) // skip the checkUsableAsValue of normal transform
             case _ =>
-              super.transform(tree1)
-          }
+              transform(fn)
+          cpy.TypeApply(tree1)(fn1, args1)
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkRef(call.symbol, pos)
@@ -562,7 +648,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           Checking.checkPolyFunctionType(tree.tpt)
-          val tree1 = cpy.ValDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
+          val tree1 = cpy.ValDef(tree)(tpt = explicifyTpt(tree))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
@@ -570,7 +656,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           registerIfHasMacroAnnotations(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(tpt = makeOverrideTypeDeclared(tree.symbol, tree.tpt))
+          val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           registerIfHasMacroAnnotations(tree)
@@ -646,7 +732,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>
-          Checking.checkRealizable(ref.tpe, ref.srcPos)
+          if !ctx.mode.is(Mode.InCaptureSet) then
+            Checking.checkRealizable(ref.tpe, ref.srcPos)
           super.transform(tree)
         case tree: TypeBoundsTree =>
           val TypeBoundsTree(lo, hi, alias) = tree

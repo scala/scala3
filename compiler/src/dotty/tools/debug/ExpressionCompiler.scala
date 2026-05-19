@@ -1,7 +1,6 @@
 package dotty.tools.debug
 
 import dotty.tools.dotc.Compiler
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.ElimByName
 
@@ -14,7 +13,7 @@ import dotty.tools.dotc.transform.ElimByName
   * To do so, it extends the Compiler with 3 phases:
   *  - InsertExpression: parses and inserts the expression in the original source tree
   *  - ExtractExpression: extract the typed expression and places it in the new expression class
-  *  - ResolveReflectEval: resolves local variables or inacessible members using reflection calls
+  *  - ResolveReflectEval: resolves local variables or inaccessible members using reflection calls
   */
 class ExpressionCompiler(config: ExpressionCompilerConfig) extends Compiler:
 

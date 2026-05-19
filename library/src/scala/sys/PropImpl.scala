@@ -17,6 +17,10 @@ import scala.language.`2.13`
 import scala.collection.mutable
 
 /** The internal implementation of scala.sys.Prop.
+ *
+ *  @tparam T the type of the property value after conversion from `String`
+ *  @param key the system property key used to look up the value
+ *  @param valueFn the function that converts the raw `String` property value to type `T`
  */
 private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends Prop[T] {
   def value: T = if (isSet) valueFn(get) else zero
@@ -40,7 +44,7 @@ private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends P
   def option: Option[T] = if (isSet) Some(value) else None
   def or[T1 >: T](alt: => T1): T1 = if (isSet) value else alt
 
-  /** The underlying property map, in our case always sys.props */
+  /** The underlying property map, in our case always `sys.props`. */
   protected def underlying: mutable.Map[String, String | Null] = scala.sys.props
   protected def zero: T = null.asInstanceOf[T]
   private def getString = if (isSet) "currently: " + get else "unset"

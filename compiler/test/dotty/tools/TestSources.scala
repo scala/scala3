@@ -3,12 +3,27 @@ package dotty.tools
 import scala.language.unsafeNulls
 
 import java.io.File
-import java.nio.file._
+import java.nio.file.*
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import dotty.Properties
 
 object TestSources {
+
+  private val isWorkingDirectoryInsideCompiler = Paths.get(".").toAbsolutePath.normalize.endsWith("compiler")
+
+  def rootPath(): Path =
+    if isWorkingDirectoryInsideCompiler
+    then Paths.get("..")
+    else Paths.get(".")
+
+  def getPath(relative: String): Path =
+    if isWorkingDirectoryInsideCompiler
+    then Paths.get("..", relative)
+    // important to not do `get(".", relative)` (or equivalently `rootPath().resolve(relative)`),
+    // the rest of the testing framework depends on exact paths,
+    // so "error in ./x.scala" and "error in x.scala" aren't considered equivalent.
+    else Paths.get(relative)
 
   // pos tests lists
 
@@ -76,10 +91,16 @@ object TestSources {
   def negBestEffortPicklingExcludelisted: List[String] = loadList(negBestEffortPicklingExcludelistFile)
   def negBestEffortUnpicklingExcludelisted: List[String] = loadList(negBestEffortUnpicklingExcludelistFile)
 
+  // scoverage tests lists
+
+  def scoverageIgnoreExcludelistFile: String = "compiler/test/dotc/scoverage-ignore.excludelist"
+
+  def scoverageIgnoreExcludelisted: List[String] = loadList(scoverageIgnoreExcludelistFile)
+
   // load lists
 
   private def loadList(path: String): List[String] = {
-    val list = Files.readAllLines(Paths.get(path))
+    val list = Files.readAllLines(getPath(path))
       .iterator()
       .asScala
       .map(_.trim)                     // allow indentation

@@ -18,26 +18,26 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 
 /** `NumericRange` is a more generic version of the
-  *  `Range` class which works with arbitrary types.
-  *  It must be supplied with an `Integral` implementation of the
-  *  range type.
-  *
-  *  Factories for likely types include `Range.BigInt`, `Range.Long`,
-  *  and `Range.BigDecimal`.  `Range.Int` exists for completeness, but
-  *  the `Int`-based `scala.Range` should be more performant.
-  *
-  *  {{{
-  *     val r1 = Range(0, 100, 1)
-  *     val veryBig = Int.MaxValue.toLong + 1
-  *     val r2 = Range.Long(veryBig, veryBig + 100, 1)
-  *     assert(r1 sameElements r2.map(_ - veryBig))
-  *  }}}
-  *
-  *  @define Coll `NumericRange`
-  *  @define coll numeric range
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *  `Range` class which works with arbitrary types.
+ *  It must be supplied with an `Integral` implementation of the
+ *  range type.
+ *
+ *  Factories for likely types include `Range.BigInt`, `Range.Long`,
+ *  and `Range.BigDecimal`.  `Range.Int` exists for completeness, but
+ *  the `Int`-based `scala.Range` should be more performant.
+ *
+ *  ```
+ *     val r1 = Range(0, 100, 1)
+ *     val veryBig = Int.MaxValue.toLong + 1
+ *     val r2 = Range.Long(veryBig, veryBig + 100, 1)
+ *     assert(r1 sameElements r2.map(_ - veryBig))
+ *  ```
+ *
+ *  @define Coll `NumericRange`
+ *  @define coll numeric range
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 @SerialVersionUID(3L)
 sealed class NumericRange[T](
   val start: T,
@@ -69,8 +69,8 @@ sealed class NumericRange[T](
 
 
   /** Note that NumericRange must be invariant so that constructs
-    *  such as "1L to 10 by 5" do not infer the range type as AnyVal.
-    */
+   *  such as "1L to 10 by 5" do not infer the range type as AnyVal.
+   */
   import num._
 
   // See comment in Range for why this must be lazy.
@@ -93,14 +93,20 @@ sealed class NumericRange[T](
     else if(isInclusive) new NumericRange.Inclusive(start + step, end, step)
     else new NumericRange.Exclusive(start + step, end, step)
 
-  /** Create a new range with the start and end values of this range and
-    *  a new `step`.
-    */
+  /** Creates a new range with the start and end values of this range and
+   *  a new `step`.
+   *
+   *  @param newStep the new step value for the resulting range
+   */
   def by(newStep: T): NumericRange[T] = copy(start, end, newStep)
 
 
-  /** Create a copy of this range.
-    */
+  /** Creates a copy of this range.
+   *
+   *  @param start the first value of the new range
+   *  @param end the upper bound of the new range (inclusive or exclusive, matching the original range)
+   *  @param step the step value between successive elements of the new range
+   */
   def copy(start: T, end: T, step: T): NumericRange[T] =
     new NumericRange(start, end, step, isInclusive)
 
@@ -330,9 +336,9 @@ sealed class NumericRange[T](
 }
 
 /** A companion object for numeric ranges.
-  *  @define Coll `NumericRange`
-  *  @define coll numeric range
-  */
+ *  @define Coll `NumericRange`
+ *  @define coll numeric range
+ */
 object NumericRange {
   private def bigDecimalCheckUnderflow[T](start: T, end: T, step: T)(implicit num: Integral[T]): Unit = {
     def FAIL(boundary: T, step: T): Unit = {
@@ -349,9 +355,16 @@ object NumericRange {
   }
 
   /** Calculates the number of elements in a range given start, end, step, and
-    *  whether or not it is inclusive.  Throws an exception if step == 0 or
-    *  the number of elements exceeds the maximum Int.
-    */
+   *  whether or not it is inclusive.  Throws an exception if step == 0 or
+   *  the number of elements exceeds the maximum Int.
+   *
+   *  @tparam T the numeric type of the range elements, which must have an `Integral` instance
+   *  @param start the first value in the range
+   *  @param end the end boundary of the range (exclusive or inclusive depending on `isInclusive`)
+   *  @param step the increment between successive elements
+   *  @param isInclusive whether `end` is included in the range
+   *  @param num the `Integral` instance used for arithmetic on `T`
+   */
   def count[T](start: T, end: T, step: T, isInclusive: Boolean)(implicit num: Integral[T]): Int = {
     val zero    = num.zero
     val upward  = num.lt(start, end)

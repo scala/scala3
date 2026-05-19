@@ -11,7 +11,6 @@ import NameOps.*
 import collection.mutable
 import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
-import cc.CaptureSet
 import util.Property
 import transform.Splicer
 
@@ -191,7 +190,7 @@ trait TypeAssigner {
     if tpe.isError then tpe
     else errorType(CannotBeAccessed(tpe, superAccess), pos)
 
-  def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
+  def processAppliedType(tp: Type)(using Context): Type = tp match
     case AppliedType(tycon, args) =>
       val constr = tycon.typeSymbol
       if constr == defn.andType then AndType(args(0), args(1))
@@ -507,7 +506,7 @@ trait TypeAssigner {
     val tparams = tycon.tpe.typeParams
     val ownType =
       if tparams.hasSameLengthAs(args) then
-        processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
+        processAppliedType(tycon.tpe.appliedTo(args.tpes))
       else
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
@@ -570,10 +569,14 @@ trait TypeAssigner {
   def assignType(tree: untpd.Export)(using Context): Export =
     tree.withType(defn.UnitType)
 
-  def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(using Context): Annotated = {
+  def assignType(tree: untpd.Annotated, arg: Tree, annotTree: Tree)(using Context): Annotated =
     assert(tree.isType) // annotating a term is done via a Typed node, can't use Annotate directly
-    tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
-  }
+    if annotClass(annotTree).exists then
+      tree.withType(AnnotatedType(arg.tpe, Annotation(annotTree)))
+    else
+      // this can happen if cyclic reference errors occurred when typing the annotation
+      tree.withType(
+        errorType(em"Malformed annotation $tree, will be ignored", annotTree.srcPos))
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(using Context): PackageDef =
     tree.withType(pid.symbol.termRef)

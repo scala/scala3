@@ -1,6 +1,6 @@
-import caps.{cap, Stateful, SharedCapability}
+import caps.*
 
-trait Iterator[T] extends Stateful:
+trait Iterator[T] extends Stateful, ExclusiveCapability:
   def hasNext: Boolean
   update def next(): T
 
@@ -27,6 +27,6 @@ class IO extends SharedCapability:
 def test(io: IO) =
   def proc: Int => Int = i => { io.write(i); i * i }
   listIterator(List(1, 2, 3)).map(proc)
-  val roit: Iterator[Int]^{cap.rd} = listIterator(List(1, 2, 3))
+  val roit: Iterator[Int]^{any.rd} = listIterator(List(1, 2, 3))
   val mapped = roit.map(proc) // error
   mapped.next() // error

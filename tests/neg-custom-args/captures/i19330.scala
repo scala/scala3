@@ -19,5 +19,5 @@ def foo(x: Foo): x.T =
 
 def test(): Unit =
   val bar = new Bar
-  val bad: bar.T = foo(bar)
+  val bad: bar.T = foo(bar) // error
   val leaked: Logger^ = bad()  // leaked scoped capability!

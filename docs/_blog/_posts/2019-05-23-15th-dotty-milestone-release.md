@@ -25,12 +25,12 @@ realising the full potential of these ideas. Its main objectives are to
 - consolidate language constructs to improve the language’s consistency, safety, ergonomics, and
   performance.
 
-You can learn more about Dotty on our [website](https://dotty.epfl.ch).
+You can learn more about Dotty on our [website](https://nightly.scala-lang.org).
 
 <!--more-->
 
 This is our 15th scheduled release according to our
-[6-week release schedule](https://dotty.epfl.ch/docs/contributing/procedures/release.html).
+[6-week release schedule](https://nightly.scala-lang.org/docs/contributing/procedures/release.html).
 
 # What’s new in the 0.15.0-RC1 technology preview?
 ## Full Bootstrap
@@ -83,7 +83,7 @@ val res3: Int = 3
 
 To smoothen the migration, the deprecation warnings will only be emitted if you compile with the `-strict` flag under Scala 3. Alphanumeric methods that are defined without the `@infix` annotation used in an infix position will be deprecated by default starting with Scala 3.1.
 
-For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
+For more information, see the [documentation](https://nightly.scala-lang.org/docs/reference/changed-features/operators.html#the-infix-annotation). Note that the `@alpha` annotation also described in the documentation is planned for the future and is not available in this release.
 
 ## `given` clause comes last
 In the previous release, you could write something like this:
@@ -147,7 +147,7 @@ The same is implemented for pattern bindings in `for` expressions:
 
 For the migration purposes, the above change will only take effect in Scala 3.1. You can use it in Scala 3 with the `-strict` flag.
 
-For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html).
+For more information, see the [documentation](https://nightly.scala-lang.org/docs/reference/changed-features/pattern-bindings.html).
 
 ## Further improvements to Generalised Algebraic Data Types (GADTs) support
 In this release, we've further improved our support for GADTs. Most notably, we now support variant GADTs, thus fixing [#2985](https://github.com/scala/scala3/issues/2985):
@@ -204,7 +204,7 @@ According to `git shortlog -sn --no-merges 0.14.0-RC1..0.15.0-RC1` these are:
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
-Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
+Head to our [Getting Started page for new contributors](https://nightly.scala-lang.org/docs/contributing/getting-started.html),
 and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 

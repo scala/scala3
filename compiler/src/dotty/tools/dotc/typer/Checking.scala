@@ -37,7 +37,7 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike}
+import cc.{isCaptureChecking, RetainingAnnotation, isRetainsLike, isDisallowedInCapset}
 import cc.Mutability.isUpdateMethod
 
 import collection.mutable
@@ -645,6 +645,8 @@ object Checking {
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
       val illegal = sym.flags & ClassOnlyFlags
       fail(em"only classes can be ${illegal.flagsString}")
+    if sym.isClass && sym.is(Override) then
+      report.deprecationWarning(OverrideClass(), sym.srcPos)
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -815,7 +817,7 @@ object Checking {
             declaredParents =
               tp.declaredParents.map(p => transformedParent(apply(p)))
             )
-        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike =>
+        case tp @ AnnotatedType(underlying, annot: RetainingAnnotation) =>
           val underlying1 = this(underlying)
           val saved = inCaptureSet
           inCaptureSet = true
@@ -936,9 +938,7 @@ object Checking {
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros
-        || name == Feature.captureChecking
-        || name == Feature.separationChecking
+        name == Feature.scala2macros || Feature.nonViralExperimentalFeatures.contains(name)
       trees.filter {
         case Import(qual, selectors) =>
           languageImport(qual) match
@@ -1044,7 +1044,14 @@ trait Checking {
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit =
-    if !tp.isStable && !tp.isErroneous then report.error(NotAPath(tp, kind), pos)
+    def captureSetException = tp match
+      case tp: TermRef if ctx.mode.is(Mode.InCaptureSet) =>
+        tp.symbol.exists
+        && !tp.symbol.isDisallowedInCapset
+        && !tp.symbol.isAllOf(InlineParam)
+      case _ => false
+    if !tp.isStable && !tp.isErroneous && !captureSetException then
+      report.error(NotAPath(tp, kind), pos)
 
   /** Check that all type members of `tp` have realizable bounds */
   def checkRealizableBounds(cls: Symbol, pos: SrcPos)(using Context): Unit = {
@@ -1054,8 +1061,9 @@ trait Checking {
   }
 
   /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
-   *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
-   *  pattern's type. If pattern is an UnApply, also check that the extractor is
+   *  This means `sel` is either marked `: @RuntimeChecked`, `: @unchecked` (old style),
+   *  or `sel.tpe` conforms to the pattern's type. If pattern is an Unapply,
+   *  also check that the extractor is
    *  irrefutable, and do the check recursively.
    */
   def checkIrrefutable(sel: Tree, pat: Tree, isPatDef: Boolean)(using Context): Boolean = {
@@ -1068,7 +1076,7 @@ trait Checking {
       import Reason.*
       val message = reason match
         case NonConforming =>
-          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
+          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot).dropAnnot(defn.RuntimeCheckedAnnot)
           if !pat.tpe.isSingleton then reportedPt = reportedPt.widen
           val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
           em"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
@@ -1084,7 +1092,10 @@ trait Checking {
           else em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
-        if isPatDef then "adding `: @unchecked` after the expression"
+        if isPatDef then
+          val patchText =
+            if sourceVersion.isAtLeast(`3.8`) then ".runtimeChecked" else ": @unchecked"
+          s"adding `$patchText` after the expression"
         else "adding the `case` keyword before the full pattern"
       val addendum =
         if isPatDef then "may result in a MatchError at runtime"
@@ -1097,7 +1108,9 @@ trait Checking {
           case NonConforming => sel.srcPos
           case RefutableExtractor => pat.source.atSpan(pat.span `union` sel.span)
         else pat.srcPos
-      def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
+      def rewriteMsg = Message.rewriteNotice("This patch",
+        if isPatDef && sourceVersion.isAtLeast(`3.8`) then `3.8-migration` else `3.2-migration`
+      )
       report.errorOrMigrationWarning(
         message.append(
           i"""|
@@ -1106,7 +1119,7 @@ trait Checking {
               |which $addendum.$rewriteMsg"""),
         pos,
         // we tighten for-comprehension without `case` to error in 3.4,
-        // but we keep pat-defs as warnings for now ("@unchecked"),
+        // but we keep pat-defs as warnings for now (".runtimeChecked"),
         // until we propose an alternative way to assert exhaustivity to the typechecker.
         if isPatDef then MigrationVersion.ForComprehensionUncheckedPathDefs
         else MigrationVersion.ForComprehensionPatternWithoutCase
@@ -1129,6 +1142,8 @@ trait Checking {
       !sourceVersion.isAtLeast(`3.2`)
       || pt.hasAnnotation(defn.UncheckedAnnot)
       || pt.hasAnnotation(defn.RuntimeCheckedAnnot)
+      || pat.tpe.isErroneous // avoid spurious warning
+      || pt.isErroneous
       || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match
@@ -1137,7 +1152,13 @@ trait Checking {
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
             (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
-              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos).argTypes
+              // Strip NamedArg wrappers since patterns have already been reordered
+              // by adaptPatternArgs during typing. This prevents checkWellFormedTupleElems
+              // from incorrectly flagging the mix of NamedArg and wildcard patterns.
+              val normalizedPats = pats.map:
+                case NamedArg(_, pat) => pat
+                case pat => pat
+              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, normalizedPats, pat.srcPos).argTypes
               pats.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
@@ -1516,6 +1537,8 @@ trait Checking {
       else tree
     else if !cls.derivesFrom(defn.AnnotationClass) then
       errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
+    else if cls == defn.AssumeSafeAnnot && Feature.safeEnabled then
+      errorTree(tree, em"@assumeSafe cannot be used in safe mode")
     else tree
 
   /** Check arguments of compiler-defined annotations */
@@ -1540,6 +1563,8 @@ trait Checking {
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
    *  4. Check that user does not implement an `ordinal` method in the body of an enum class.
+   *  5. Check that an enum extending java.lang.Enum has no type parameters and
+   *     uses itself as the type argument to java.lang.Enum.
    */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
     def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = // adapted from SyntheticMembers
@@ -1552,6 +1577,18 @@ trait Checking {
           report.error(em"the ordinal method of enum $cls can not be defined by the user", decl.srcPos)
         else
           report.error(em"enum $cls can not inherit the concrete ordinal method of ${decl.owner}", cdef.srcPos)
+    def checkJavaEnumTypeArg(using Context) =
+      val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
+      if javaEnumBase.exists then
+        javaEnumBase.argInfos match
+          case typeArg :: Nil =>
+            if cls.typeParams.nonEmpty then
+              report.error(em"An enum extending java.lang.Enum cannot have type parameters", cdef.srcPos)
+            if typeArg.classSymbol ne cls then
+              report.error(
+                em"enum $cls extends java.lang.Enum[$typeArg], but the type argument must be the enum class itself",
+                cdef.srcPos)
+          case _ =>
     def isEnumAnonCls =
       cls.isAnonymousClass
       && cls.owner.isTerm
@@ -1560,10 +1597,12 @@ trait Checking {
     val isJavaEnum = cls.derivesFrom(defn.JavaEnumClass)
     if isJavaEnum && cdef.mods.isEnumClass && !cls.isStatic then
       report.error(em"An enum extending java.lang.Enum must be declared in a static scope", cdef.srcPos)
+    if isJavaEnum && cdef.mods.isEnumClass then
+      checkJavaEnumTypeArg
     if !isEnumAnonCls then
       if cdef.mods.isEnumCase then
         if isJavaEnum then
-          report.error(em"paramerized case is not allowed in an enum that extends java.lang.Enum", cdef.srcPos)
+          report.error(em"parameterized case is not allowed in an enum that extends java.lang.Enum", cdef.srcPos)
       else if cls.is(Case) || firstParent.is(Enum) then
         // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
         // parent.

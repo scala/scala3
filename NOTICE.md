@@ -1,6 +1,6 @@
 Scala 3 (https://www.scala-lang.org)
-Copyright 2012-2025 EPFL
-Copyright 2012-2025 Lightbend, Inc. dba Akka
+Copyright 2012-2026 EPFL
+Copyright 2012-2026 Lightbend, Inc. dba Akka
 
 Licensed under the Apache License, Version 2.0 (the "License"):
 http://www.apache.org/licenses/LICENSE-2.0
@@ -105,4 +105,4 @@ major authors were omitted by oversight.
 [3] https://github.com/sbt/sbt/tree/0.13/compile/interface/src/main/scala/xsbt
 [4] https://github.com/scoverage/scalac-scoverage-plugin
 [5] https://github.com/scalameta/metals
-[6] https://github.com/scala/scala3/pull/5783/files
+[6] https://github.com/scalapb/protobuf-scala-runtime

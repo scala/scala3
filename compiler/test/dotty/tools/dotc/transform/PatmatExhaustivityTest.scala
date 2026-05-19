@@ -11,7 +11,7 @@ import reporting.TestReporter
 
 import dotty.tools.io.Directory
 
-import java.io._
+import java.io.*
 import java.nio.file.{Path => JPath}
 
 import org.junit.Test

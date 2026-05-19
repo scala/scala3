@@ -23,18 +23,23 @@ import scala.collection.generic.DefaultSerializationProxy
 import scala.runtime.Statics
 
 /** This class implements mutable maps using a hashtable with red-black trees in the buckets for good
-  * worst-case performance on hash collisions. An `Ordering` is required for the element type. Equality
-  * as determined by the `Ordering` has to be consistent with `equals` and `hashCode`. Universal equality
-  * of numeric types is not supported (similar to `AnyRefMap`).
-  *
-  * @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables "Scala's Collection Library overview"]]
-  * section on `Hash Tables` for more information.
-  *
-  * @define Coll `mutable.CollisionProofHashMap`
-  * @define coll mutable collision-proof hash map
-  * @define mayNotTerminateInf
-  * @define willNotTerminateInf
-  */
+ *  worst-case performance on hash collisions. An `Ordering` is required for the element type. Equality
+ *  as determined by the `Ordering` has to be consistent with `equals` and `hashCode`. Universal equality
+ *  of numeric types is not supported (similar to `AnyRefMap`).
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#hash-tables)
+ *  section on `Hash Tables` for more information.
+ *
+ *  @define Coll `mutable.CollisionProofHashMap`
+ *  @define coll mutable collision-proof hash map
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ *
+ *  @tparam K the type of the keys contained in this hash map
+ *  @tparam V the type of the values associated with the keys
+ *  @param initialCapacity the initial capacity of the internal hash table
+ *  @param loadFactor the load factor for the hash table, used to determine when to resize
+ */
 final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double)(implicit ordering: Ordering[K])
   extends AbstractMap[K, V]
     with MapOps[K, V, Map, CollisionProofHashMap[K, V]] //--
@@ -413,44 +418,54 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   ///////////////////// Overrides code from SortedMapOps
 
   /** Builds a new `CollisionProofHashMap` by applying a function to all elements of this $coll.
-    *
-    *  @param f      the function to apply to each element.
-    *  @return       a new $coll resulting from applying the given function
-    *                `f` to each element of this $coll and collecting the results.
-    */
+   *
+   *  @tparam K2 the key type of the returned collection
+   *  @tparam V2 the value type of the returned collection
+   *  @param f      the function to apply to each element.
+   *  @return       a new $coll resulting from applying the given function
+   *                `f` to each element of this $coll and collecting the results.
+   */
   def map[K2, V2](f: ((K, V)) => (K2, V2))
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Map[(K, V), (K2, V2)](this, f))
 
   /** Builds a new `CollisionProofHashMap` by applying a function to all elements of this $coll
-    *  and using the elements of the resulting collections.
-    *
-    *  @param f      the function to apply to each element.
-    *  @return       a new $coll resulting from applying the given collection-valued function
-    *                `f` to each element of this $coll and concatenating the results.
-    */
+   *  and using the elements of the resulting collections.
+   *
+   *  @tparam K2 the key type of the returned collection
+   *  @tparam V2 the value type of the returned collection
+   *  @param f      the function to apply to each element.
+   *  @return       a new $coll resulting from applying the given collection-valued function
+   *                `f` to each element of this $coll and concatenating the results.
+   */
   def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.FlatMap(this, f))
 
   /** Builds a new sorted map by applying a partial function to all elements of this $coll
-    *  on which the function is defined.
-    *
-    *  @param pf     the partial function which filters and maps the $coll.
-    *  @return       a new $coll resulting from applying the given partial function
-    *                `pf` to each element on which it is defined and collecting the results.
-    *                The order of the elements is preserved.
-    */
+   *  on which the function is defined.
+   *
+   *  @tparam K2 the key type of the returned collection
+   *  @tparam V2 the value type of the returned collection
+   *  @param pf     the partial function which filters and maps the $coll.
+   *  @return       a new $coll resulting from applying the given partial function
+   *                `pf` to each element on which it is defined and collecting the results.
+   *                The order of the elements is preserved.
+   */
   def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)])
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
   override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
-    case it: Iterable[(K, V2)] => new View.Concat(this, it)
+    case it: Iterable[(K, V2) @unchecked] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })
 
-  /** Alias for `concat` */
+  /** Alias for `concat`.
+   *
+   *  @tparam V2 the value type of the returned collection
+   *  @param xs the key-value pairs to append to this collection
+   */
   @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
@@ -693,10 +708,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     root
   }
 
-  /**
-    * Transplant the node `from` to the place of node `to`. This is done by setting `from` as a child of `to`'s previous
-    * parent and setting `from`'s parent to the `to`'s previous parent. The children of `from` are left unchanged.
-    */
+  /** Transplant the node `from` to the place of node `to`. This is done by setting `from` as a child of `to`'s previous
+   *  parent and setting `from`'s parent to the `to`'s previous parent. The children of `from` are left unchanged.
+   *
+   *  @param _root the root of the red-black tree
+   *  @param to the node to be replaced in the tree
+   *  @param from the node that replaces `to`
+   */
   private def transplant(_root: RBNode, to: RBNode, from: RBNode): RBNode = {
     var root = _root
     if (to.parent eq null) root = from
@@ -737,11 +755,10 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   }
 }
 
-/**
-  * $factoryInfo
-  * @define Coll `mutable.CollisionProofHashMap`
-  * @define coll mutable collision-proof hash map
-  */
+/** $factoryInfo
+ *  @define Coll `mutable.CollisionProofHashMap`
+ *  @define coll mutable collision-proof hash map
+ */
 @SerialVersionUID(3L)
 object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   private[collection] final val ordMsg = "No implicit Ordering[${K2}] found to build a CollisionProofHashMap[${K2}, ${V2}]. You may want to upcast to a Map[${K}, ${V}] first by calling `unsorted`."
@@ -761,10 +778,10 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
 
-  /** The default load factor for the hash table */
+  /** The default load factor for the hash table. */
   final def defaultLoadFactor: Double = 0.75
 
-  /** The default initial capacity for the hash table */
+  /** The default initial capacity for the hash table. */
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)
@@ -836,10 +853,13 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   @tailrec private def minNodeNonNull[A, B](node: RBNode[A, B]): RBNode[A, B] =
     if (node.left eq null) node else minNodeNonNull(node.left)
 
-  /**
-    * Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
-    * therefore, the last node), this method returns `null`.
-    */
+  /** Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
+   *  therefore, the last node), this method returns `null`.
+   *
+   *  @tparam A the key type of the tree nodes
+   *  @tparam B the value type of the tree nodes
+   *  @param node the node whose successor is to be found
+   */
   private def successor[A, B](node: RBNode[A, B]): RBNode[A, B] | Null = {
     if (node.right ne null) minNodeNonNull(node.right)
     else {
@@ -897,4 +917,3 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 }
-

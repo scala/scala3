@@ -475,7 +475,7 @@ object TypeOps:
       try
         tp match
           case tp: TermRef if toAvoid(tp) =>
-            tp.info.widenExpr.dealias match {
+            tp.info.widenExpr.dealiasKeepRefiningAnnots match {
               case info: SingletonType => apply(info)
               case info => range(defn.NothingType, apply(info))
             }
@@ -504,8 +504,7 @@ object TypeOps:
             mapOver(tl)
           case _ =>
             super.apply(tp)
-      catch case ex: Throwable =>
-        handleRecursive("traversing for avoiding local references", s"${tp.show}" , ex)
+      catch case ex: Throwable => handleRecursive("traversing for avoiding local references", s"${tp.show}", ex)
     end apply
 
     /** Three deviations from standard derivedSelect:
@@ -566,9 +565,7 @@ object TypeOps:
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
-      def toAvoid(tp: NamedType) =
-        val sym = tp.symbol
-        forbidden.contains(sym)
+      def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
 
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>

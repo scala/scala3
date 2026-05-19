@@ -36,7 +36,7 @@ import scala.annotation.tailrec
   * use).
   *
   * Internally, an ordinal counter is increased for each insertion/modification
-  * and then the current ordinal is used as key in the tree map. After 2^32^
+  * and then the current ordinal is used as key in the tree map. After 2<sup>32</sup>
   * insertions/modifications the entire map is copied (thus resetting the ordinal
   * counter).
   *
@@ -427,7 +427,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       // careful handling.
       override def equals(that : Any): Boolean = that match {
         case _: this.type => true
-        case _: Ordering[_] => false // The only empty Orderings are eq Nil
+        case _: Ordering[?] => false // The only empty Orderings are eq Nil
         case _ => super.equals(that)
       }
       protected def format(sb: StringBuilder, prefix: String, subPrefix: String): Unit = sb ++= s"${prefix}Ø"

@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -46,7 +46,7 @@ import scala.annotation.tailrec
 
 object Contexts {
 
-  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback]()
+  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback | Null]()
   private val (incCallbackLoc,       store2) = store1.newLocation[IncrementalCallback | Null]()
   private val (printerFnLoc,         store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,     store4) = store3.newLocation[SettingsState]()
@@ -166,7 +166,7 @@ object Contexts {
     def store: Store
 
     /** The compiler callback implementation, or null if no callback will be called. */
-    def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
+    def compilerCallback: CompilerCallback | Null = store(compilerCallbackLoc)
 
     /** The Zinc callback implementation if we are run from Zinc, null otherwise */
     def incCallback: IncrementalCallback | Null = store(incCallbackLoc)
@@ -355,7 +355,7 @@ object Contexts {
 
     final def phase: Phase = base.phases(period.firstPhaseId)
     final def runId = period.runId
-    final def phaseId = period.phaseId
+    final def phaseId = period.firstPhaseId
 
     final def lastPhaseId = base.phases.length - 1
 
@@ -367,6 +367,7 @@ object Contexts {
 
     /** Is current phase after TyperPhase? */
     final def isAfterTyper = base.isAfterTyper(phase)
+    final def isAfterInlining = base.isAfterInlining(phase)
     final def isTyper = base.isTyper(phase)
 
     /** Is this a context for the members of a class definition? */
@@ -439,6 +440,14 @@ object Contexts {
         .fresh
         .setScope(this.scope)
     }
+
+    /** Is this a super call context?
+     *  This is the case if we are in a primary constructor and
+     *  the outer context has as owner the owner of the enclosing class.
+     *  The enclosing class is `owner.owner`, hence `outer.owner == owner.owner.owner`.
+     */
+    def isSuperCallContext: Boolean =
+      owner.isPrimaryConstructor && outer.owner == owner.owner.owner
 
     /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
@@ -893,7 +902,7 @@ object Contexts {
   }
 
   /** A context base defines state and associated methods that exist once per
-   *  compiler run.
+   *  logical compiler instance.
    */
   class ContextBase extends ContextState
                        with Phases.PhasesBase
@@ -933,7 +942,13 @@ object Contexts {
      *  This initializes the `platform` and the `definitions`.
      */
     def initialize()(using Context): Unit = {
-      _platform = newPlatform
+      // In interactive mode (REPL/IDE), preserve the existing platform if already initialized.
+      // This is important because :dep/:jar commands add JARs to the platform's classpath,
+      // and we must not lose those when a new Run is created for each input.
+      // In non-interactive mode, always create a fresh platform to preserve original behavior.
+      if _platform == null || !ctx.mode.is(Mode.Interactive) then
+        _platform = newPlatform
+      platform.init()
       definitions.init()
     }
 
@@ -994,6 +1009,10 @@ object Contexts {
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
     val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
 
+    /** Cache for magic offset header lookups, scoped to this compiler instance
+     *  so that concurrent compilers in the same classloader don't share stale entries. */
+    private[dotc] val magicHeaderCache: util.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = util.HashMap()
+
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
 
@@ -1049,7 +1068,7 @@ object Contexts {
     private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
-    private[core] var nextDenotTransformerId: Array[Int] = uninitialized
+    private[core] var nextDenotTransformerId: Array[Periods.PhaseId] = uninitialized
 
     private[core] var denotTransformers: Array[DenotTransformer] = uninitialized
 

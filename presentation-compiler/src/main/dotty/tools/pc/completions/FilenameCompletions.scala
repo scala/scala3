@@ -27,6 +27,3 @@ object FilenameCompletions:
         )
       )
     else Nil
-
-  end contribute
-end FilenameCompletions

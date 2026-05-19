@@ -1,4 +1,4 @@
--- Error: tests/neg-custom-args/captures/wf-reach-1.scala:2:17 ---------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/wf-reach-1.scala:2:9 ----------------------------------------------------------
 2 |  val y: Object^{x*} = ??? // error
-  |                 ^^
-  |                 x* cannot be tracked since its deep capture set is empty
+  |         ^^^^^^^^^^^
+  |         x* cannot be tracked since its deep capture set is empty
