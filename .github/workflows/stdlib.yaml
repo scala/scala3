@@ -174,7 +174,9 @@ jobs:
         run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
 
       - name: Cmd Tests
-        run: ./project/scripts/cmdTests
+        run: |
+          ./project/scripts/sbt scala3-nonbootstrapped/publishLocal
+          ./project/scripts/cmdTests
 
   test-scala3-compiler-bootstrapped:
     runs-on: ubuntu-latest
@@ -195,7 +197,9 @@ jobs:
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
 
       - name: Cmd Tests
-        run: ./project/scripts/bootstrappedOnlyCmdTests
+        run: |
+          ./project/scripts/sbt scala3-bootstrapped/publishLocal
+          ./project/scripts/bootstrappedOnlyCmdTests
 
   test-scala3-bootstrapped-compilation-coverage:
     runs-on: ubuntu-latest

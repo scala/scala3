@@ -854,14 +854,14 @@ object Build {
         val stdlib = (`scala-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath
         val dottyCompiler = (`scala3-compiler-bootstrapped` / Compile / packageBin).value.getAbsolutePath
         val args: List[String] = spaceDelimited("<arg>").parsed.toList
-        val main = "dotty.tools.MainGenericCompiler.Main"
+        val main = "dotty.tools.MainGenericCompiler"
 
         var extraClasspath = Seq(stdlib)
 
         if (args.contains("-decompile") && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
 
-        if (args.contains("-with-compiler")) {
+        val args1 = if (args.contains("-with-compiler")) {
           val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
           val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
           val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
@@ -869,9 +869,10 @@ object Build {
           val asm = findArtifactPath(externalDeps, "scala-asm")
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
-        }
+          args.filter(_ != "-with-compiler")
+        } else args
 
-        val wrappedArgs = if (args.contains("-print-tasty")) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val wrappedArgs = if (args1.contains("-print-tasty")) args1 else insertClasspathInArgs(args1, extraClasspath.mkString(File.pathSeparator))
         val fullArgs = main :: wrappedArgs.map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
 
         (`scala3-compiler-bootstrapped` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))

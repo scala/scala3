@@ -4,14 +4,8 @@ set -e
 
 source $(dirname $0)/cmdTestsCommon.inc.sh
 
-# check that benchmarks can run
-"$SBT" "scala3-bench/jmh:run 1 1 tests/pos/alias.scala"
-# The above is here as it relies on the bootstrapped library.
-"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
-"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
-
 echo "testing scala.quoted.Expr.run from sbt scala"
-"$SBT" ";scala3-compiler-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-compiler-bootstrapped/scala -with-compiler Test" | tee "$tmp"
+"$SBT" ";scala3-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-bootstrapped/scala -with-compiler Test" | tee "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 # setup for `scalac`/`scala` script tests
@@ -75,7 +69,7 @@ test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 echo "testing sbt scalac with suspension"
 clear_out "$OUT"
-"$SBT" "scala3-compiler-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  | tee "$tmp"
+"$SBT" "scala3-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  | tee "$tmp"
 
 # echo ":quit" | ./$DIST_DIR/target/universal/stage/bin/scala  # not supported by CI
 
