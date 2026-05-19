@@ -2536,7 +2536,7 @@ object Build {
       scalaVersion := (`scala3-compiler-bootstrapped` / scalaVersion).value,
       libraryDependencies ++= Seq(
         "org.scala-js" %% "scalajs-linker" % scalaJSVersion % Test cross CrossVersion.for3Use2_13,
-        "org.scala-js" %% "scalajs-env-nodejs" % "1.5.0" % Test cross CrossVersion.for3Use2_13,
+        "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0" % Test cross CrossVersion.for3Use2_13,
       ),
 
       // Change the baseDirectory when running the tests
