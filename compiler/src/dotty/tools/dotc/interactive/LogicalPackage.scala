@@ -21,7 +21,7 @@ trait LogicalPackage {
   def getPackage(name: String): Option[LogicalPackage]
 
   def prettyPrint(): String = {
-    prettyPrintWith().toString().stripTrailing().nn.stripIndent().nn
+    prettyPrintWith().toString().trim().nn
   }
 
   private def prettyPrintWith(
