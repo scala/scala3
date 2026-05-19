@@ -151,6 +151,9 @@ object Build {
   // Used to compile files similar to ./bin/scalac script
   val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
+  // Used to run binaries similar to ./bin/scala script
+  val scala = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
+
   val buildQuick = taskKey[Unit]("compile the compiler and REPL, write classpath to bin/.cp for use by bin/scalacQ and bin/replQ")
 
   // Settings used to configure the test language server
@@ -698,8 +701,8 @@ object Build {
       scalac := Def.inputTaskDyn {
         val log = streams.value.log
         val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
-        val stdlib = (`scala-library-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath.toString()
-        val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath.toString()
+        val stdlib = (`scala-library-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
+        val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
         val args0: List[String] = spaceDelimited("<arg>").parsed.toList
         val decompile = args0.contains("-decompile")
         val printTasty = args0.contains("-print-tasty")
@@ -729,6 +732,31 @@ object Build {
 
         (`scala3-compiler-nonbootstrapped` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
+      scala := {
+        val args: List[String] = spaceDelimited("<arg>").parsed.toList
+        val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
+        val scalaLib = (`scala-library-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
+        def run(args: List[String]): Unit = {
+          val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
+          Process.runProcess("java" :: fullArgs, wait = true)
+        }
+
+        if (args.isEmpty) {
+          println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
+        } else if (scalaLib == "") {
+          println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
+        } else if (args.contains("-with-compiler")) {
+          val args1 = args.filter(_ != "-with-compiler")
+          val asm = findArtifactPath(externalDeps, "scala-asm")
+          val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
+          val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
+          val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
+          val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
+          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
+        } else run(args)
+      },
       // TODO: scala3-repl depends on the bootstrapped compiler, making this slower
       // than it needs to be. A non-bootstrapped REPL project would speed this up.
       buildQuick := {
@@ -2947,7 +2975,7 @@ object Build {
   private def validateJarIsEmpty(jar: File): File = {
     val jarFile = new java.util.jar.JarFile(jar)
     try {
-      import scala.jdk.CollectionConverters._
+      import _root_.scala.jdk.CollectionConverters._
       val nonMetaInfEntries = jarFile.entries().asScala
         .map(_.getName)
         .filterNot(name => name.startsWith("META-INF/") || name == "META-INF")
