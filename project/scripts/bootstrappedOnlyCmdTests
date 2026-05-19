@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# TEMP -- CI DEBUGGING
-set -euxo pipefail
+set -e
 
 source $(dirname $0)/cmdTestsCommon.inc.sh
 

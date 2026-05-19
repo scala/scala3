@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-source $(dirname $0)/cmdTestsCommon.inc.sh
+set -e
 
-# TEMP -- CI DEBUGGING
-set -euxo pipefail
+source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that `sbt scalac` compiles and `sbt scala` runs it
 echo "testing sbt scalac and scala"
