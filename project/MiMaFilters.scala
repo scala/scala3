@@ -21,6 +21,12 @@ object MiMaFilters {
 
       // Breaking changes since last reference version
       Versions.mimaPreviousDottyVersion -> Seq(
+
+        // scala/scala3#26100
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList$MidEvaluation$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.LazyList.<clinit>"),
+
       )
     )
   }
