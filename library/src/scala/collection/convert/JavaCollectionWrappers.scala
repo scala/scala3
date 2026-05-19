@@ -252,7 +252,8 @@ private[collection] object JavaCollectionWrappers extends Serializable {
   }
 
   @SerialVersionUID(3L)
-  class MapWrapper[K, V](underlying: Map[K, V]) extends ju.AbstractMap[K, V] with Serializable { self =>
+  class MapWrapper[K, V](underlying: Map[K, V]) extends ju.AbstractMap[K, V] with Serializable {
+    self: MapWrapper[K, V] =>
     override def size = underlying.size
 
     override def get(key: AnyRef): V = try {

@@ -730,7 +730,7 @@ private class RangeIterator(
   step: Int,
   lastElement: Int,
   initiallyEmpty: Boolean
-) extends AbstractIterator[Int] with Serializable { self =>
+) extends AbstractIterator[Int] with Serializable { self: RangeIterator =>
   private var _hasNext: Boolean = !initiallyEmpty
   private var _next: Int = start
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0
