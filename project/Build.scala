@@ -703,32 +703,18 @@ object Build {
         val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
         val stdlib = (`scala-library-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
         val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
-        val args0: List[String] = spaceDelimited("<arg>").parsed.toList
-        val decompile = args0.contains("-decompile")
-        val printTasty = args0.contains("-print-tasty")
-        val debugFromTasty = args0.contains("-Ythrough-tasty")
-        val defaultOutputDirectory =
-          if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil
-          else List("-d", ((ThisBuild / baseDirectory).value / "out" / "default-last-scalac-out.jar").getPath)
-        val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
-        val main =
-          if (decompile) "dotty.tools.dotc.decompiler.Main"
-          else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
-          else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
-          else "dotty.tools.dotc.Main"
-
+        val args: List[String] = spaceDelimited("<arg>").parsed.toList
+        val main = "dotty.tools.MainGenericCompiler"
         var extraClasspath = Seq(stdlib)
 
-        if (decompile && !args.contains("-classpath"))
+        if (args.contains("-decompile") && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
 
-        if (args0.contains("-with-compiler")) {
+        if (args.contains("-with-compiler"))
           log.error("-with-compiler should only be used with a bootstrapped compiler")
-        }
 
-        val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
-        val fullArgs = main :: (defaultOutputDirectory ::: wrappedArgs).map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
+        val wrappedArgs = if (args.contains("-print-tasty")) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val fullArgs = main :: wrappedArgs.map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
 
         (`scala3-compiler-nonbootstrapped` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
@@ -740,7 +726,6 @@ object Build {
           val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
           Process.runProcess("java" :: fullArgs, wait = true)
         }
-
         if (args.isEmpty) {
           println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
         } else if (scalaLib == "") {
@@ -866,29 +851,17 @@ object Build {
       scalac := Def.inputTaskDyn {
         val log = streams.value.log
         val externalDeps = (`scala3-compiler-bootstrapped` / Runtime / externalDependencyClasspath).value
-        val stdlib = (`scala-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath.toString
-        val dottyCompiler = (`scala3-compiler-bootstrapped` / Compile / packageBin).value.getAbsolutePath.toString
-        val args0: List[String] = spaceDelimited("<arg>").parsed.toList
-        val decompile = args0.contains("-decompile")
-        val printTasty = args0.contains("-print-tasty")
-        val debugFromTasty = args0.contains("-Ythrough-tasty")
-        val defaultOutputDirectory =
-          if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil
-          else List("-d", ((ThisBuild / baseDirectory).value / "out" / "default-last-scalac-out.jar").getPath)
-        val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
-        val main =
-          if (decompile) "dotty.tools.dotc.decompiler.Main"
-          else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
-          else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
-          else "dotty.tools.dotc.Main"
+        val stdlib = (`scala-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath
+        val dottyCompiler = (`scala3-compiler-bootstrapped` / Compile / packageBin).value.getAbsolutePath
+        val args: List[String] = spaceDelimited("<arg>").parsed.toList
+        val main = "dotty.tools.MainGenericCompiler.Main"
 
         var extraClasspath = Seq(stdlib)
 
-        if (decompile && !args.contains("-classpath"))
+        if (args.contains("-decompile") && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
 
-        if (args0.contains("-with-compiler")) {
+        if (args.contains("-with-compiler")) {
           val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
           val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
           val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
@@ -898,11 +871,35 @@ object Build {
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
         }
 
-        val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
-        val fullArgs = main :: (defaultOutputDirectory ::: wrappedArgs).map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
+        val wrappedArgs = if (args.contains("-print-tasty")) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val fullArgs = main :: wrappedArgs.map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
 
         (`scala3-compiler-bootstrapped` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
+      scala := {
+        val args: List[String] = spaceDelimited("<arg>").parsed.toList
+        val externalDeps = (`scala3-compiler-bootstrapped` / Runtime / externalDependencyClasspath).value
+        val scalaLib = (`scala-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath
+        def run(args: List[String]): Unit = {
+          val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
+          Process.runProcess("java" :: fullArgs, wait = true)
+        }
+        if (args.isEmpty) {
+          println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
+        } else if (scalaLib == "") {
+          println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
+        } else if (args.contains("-with-compiler")) {
+          val args1 = args.filter(_ != "-with-compiler")
+          val asm = findArtifactPath(externalDeps, "scala-asm")
+          val dottyCompiler = (`scala3-compiler-bootstrapped` / Compile / packageBin).value.getAbsolutePath
+          val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
+          val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
+          val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
+          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
+        } else run(args)
+      },
       testCompilation := Def.inputTaskDyn {
         val args = spaceDelimited("<arg>").parsed
         if (args.contains("--help")) {
@@ -1909,7 +1906,7 @@ object Build {
     .settings(
       Test / test := (Test / test).dependsOn(`scaladoc-testcases` / Compile / compile).value,
       Test / testcasesOutputDir := (`scaladoc-testcases` / Compile / products).value.map(_.getAbsolutePath),
-      Test / testcasesSourceRoot := ((`scaladoc-testcases` / baseDirectory).value / "src").getAbsolutePath.toString,
+      Test / testcasesSourceRoot := ((`scaladoc-testcases` / baseDirectory).value / "src").getAbsolutePath,
       testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
     )
     // Test configuration for source links integration test
