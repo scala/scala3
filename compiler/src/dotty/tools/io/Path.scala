@@ -13,7 +13,6 @@ import java.net.{URI, URL}
 import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 import java.io.IOException
 import scala.jdk.CollectionConverters.*
-import scala.util.Random.alphanumeric
 
 /** An abstraction for filesystem paths.  The differences between
  *  Path, File, and Directory are primarily to communicate intent.
@@ -46,8 +45,6 @@ object Path {
     else name.substring(i + 1).toLowerCase
   }
 
-  def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
-  def onlyDirs(xs: List[Path]): List[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
   def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs.filter(_.isFile).map(_.toFile)
 
   def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
@@ -59,8 +56,6 @@ object Path {
     else new Path(jpath)
   } catch { case ex: SecurityException => new Path(jpath) }
 
-  /** Avoiding any shell/path issues by only using alphanumerics. */
-  private[io] def randomPrefix: String = alphanumeric take 6 mkString ""
   private[io] def fail(msg: String): Nothing = throw FileOperationException(msg)
 }
 import Path.*
@@ -81,11 +76,6 @@ class Path private[io] (val jpath: JPath) {
   def toCanonical: Path = normalize.toAbsolute
   def toURI: URI = jpath.toUri()
   def toURL: URL = toURI.toURL()
-
-  /** If this path is absolute, returns it: otherwise, returns an absolute
-   *  path made up of root / this.
-   */
-  def toAbsoluteWithRoot(root: Path): Path = if (isAbsolute) this else root.toAbsolute / this
 
   /** Creates a new Path with the specified path appended.  Assumes
    *  the type of the new component implies the type of the result.
