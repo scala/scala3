@@ -702,13 +702,10 @@ object Erasure {
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
-        case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe: @unchecked
-          if (sym.owner.is(Flags.Trait))
-            cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
-              .withType(SuperType(thisType, sym.owner.typeRef))
-          else
-            qual.withType(SuperType(thisType, thisType.firstParent.typeConstructor))
+        case Super(thisQual, untpd.EmptyTypeIdent) if sym.owner.is(Flags.Trait) =>
+          val SuperType(thisType, _) = qual.tpe: @unchecked
+          cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
+            .withType(SuperType(thisType, sym.owner.typeRef))
         case _ =>
           qual
       }
