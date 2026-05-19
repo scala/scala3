@@ -129,10 +129,8 @@ trait RunnerOrchestration:
           def launch(): Unit = mainFuture = startMain(classPath)
           def exit(): Status = awaitStatus(mainFuture.nn)
 
-        try
-          f(debuggee)
-          debuggee.exit()
-        catch case e: Throwable => Failure("Bad debug")
+        f(debuggee)
+        debuggee.exit()
       end debugMain
 
       private def startMain(classPath: String): Future[Status] = {
