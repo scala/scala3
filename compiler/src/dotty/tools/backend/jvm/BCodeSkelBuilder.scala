@@ -127,7 +127,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
   abstract class PlainSkelBuilder
     extends BCClassGen
     with    BCAnnotGen
-    with    JAndroidBuilder
     with    BCForwardersGen
     with    BCPickles
     with    BCJGenSigGen {
@@ -140,7 +139,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var thisName: String           = null // the internal name of the class being emitted
 
     var claszSymbol: Symbol        = null
-    var isCZParcelable             = false
     var isCZStaticModule           = false
 
     // keep track of interfaces that are used in super calls, as they need to be directly inherited even if they are also indirectly inherited
@@ -167,7 +165,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(cnode == null, "GenBCode detected nested methods.")
 
       claszSymbol       = cd0.symbol
-      isCZParcelable    = isAndroidParcelableClass(claszSymbol)
       isCZStaticModule  = claszSymbol.isStaticModuleClass
       thisName          = bTypeLoader.classBTypeFromSymbol(claszSymbol).internalName
 
@@ -267,7 +264,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       } else cd0
 
       val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.name.isStaticConstructorName)
-      if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
 
       val optSerial: Option[Long] =
         claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
@@ -360,7 +356,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
-      if (!isCZStaticModule && !isCZParcelable) {
+      if (!isCZStaticModule) {
         val skipStaticForwarders = (claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
@@ -380,27 +376,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // the invoker is responsible for adding a class-static constructor.
 
     } // end of method initJClass
-
-    /*
-     * must-single-thread
-     */
-    private def fabricateStaticInitAndroid()(using Context): Unit = {
-
-      val clinit: asm.MethodVisitor = cnode.visitMethod(
-        asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
-        CLASS_CONSTRUCTOR_NAME,
-        "()V",
-        null, // no java-generic-signature
-        null  // no throwable exceptions
-      )
-      clinit.visitCode()
-
-      legacyAddCreatorCode(clinit, cnode, thisName)
-
-      clinit.visitInsn(asm.Opcodes.RETURN)
-      clinit.visitMaxs(0, 0) // just to follow protocol, dummy arguments
-      clinit.visitEnd()
-    }
 
     private def javaFieldFlags(sym: Symbol)(using Context) = {
       import asm.Opcodes.*
@@ -937,8 +912,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             }
             for (p <- params) { emitLocalVarScope(p.symbol, veryFirstProgramPoint, onePastLastProgramPoint, force = true) }
           }
-
-          if (isMethSymStaticCtor) { appendToStaticCtor() }
         } // end of emitNormalMethodBody()
 
         lineNumber(rhs)
@@ -952,58 +925,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       mnode = null
     } // end of method genDefDef()
-
-    /*
-     *  must-single-thread
-     *
-     *  TODO document, explain interplay with `fabricateStaticInitAndroid()`
-     */
-    private def appendToStaticCtor()(using Context): Unit = {
-
-      def insertBefore(
-            location: asm.tree.AbstractInsnNode,
-            i0: asm.tree.AbstractInsnNode,
-            i1: asm.tree.AbstractInsnNode): Unit = {
-        if (i0 != null) {
-          mnode.instructions.insertBefore(location, i0.clone(null))
-          mnode.instructions.insertBefore(location, i1.clone(null))
-        }
-      }
-
-      // collect all return instructions
-      var rets: List[asm.tree.AbstractInsnNode] = Nil
-      mnode foreachInsn { i => if (i.getOpcode() == asm.Opcodes.RETURN) { rets ::= i  } }
-      if (rets.isEmpty) { return }
-
-      var insnParcA: asm.tree.AbstractInsnNode = null
-      var insnParcB: asm.tree.AbstractInsnNode = null
-      // android creator code
-      if (isCZParcelable) {
-        // add a static field ("CREATOR") to this class to cache android.os.Parcelable$Creator
-        val andrFieldDescr = bTypeLoader.classBTypeFromSymbol(AndroidCreatorClass).descriptor
-        cnode.visitField(
-          asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
-          "CREATOR",
-          andrFieldDescr,
-          null,
-          null
-        )
-        // INVOKESTATIC CREATOR(): android.os.Parcelable$Creator; -- TODO where does this Android method come from?
-        val callee = claszSymbol.companionModule.info.member(androidFieldName).symbol
-        val jowner = bTypeLoader.classBTypeFromSymbol(callee.owner).internalName
-        val jname  = callee.javaSimpleName
-        val jtype  = bTypeLoader.methodBTypeFromSymbol(callee).descriptor
-        insnParcA  = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESTATIC, jowner, jname, jtype, false)
-        // PUTSTATIC `thisName`.CREATOR;
-        insnParcB  = new asm.tree.FieldInsnNode(asm.Opcodes.PUTSTATIC, thisName, "CREATOR", andrFieldDescr)
-      }
-
-      // insert a few instructions for initialization before each return instruction
-      for(r <- rets) {
-        insertBefore(r, insnParcA, insnParcB)
-      }
-
-    }
 
     def emitLocalVarScope(sym: Symbol, start: asm.Label, end: asm.Label, force: Boolean = false): Unit = {
       val Local(tk, name, idx, isSynth) = locals(sym)
