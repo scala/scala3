@@ -4,8 +4,8 @@ package tasty
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
-
-import Contexts.*, Decorators.*
+import Contexts.*
+import Decorators.*
 import Names.Name
 import TastyUnpickler.*
 import util.Spans.offsetToInt
@@ -14,6 +14,11 @@ import java.nio.file.{Files, Paths}
 import dotty.tools.io.{JarArchive, Path}
 import dotty.tools.tasty.TastyFormat.header
 
+import java.nio.file.{Files, Paths}
+import dotty.tools.io.{JarArchive, Path, PlainFile}
+import dotty.tools.tasty.TastyFormat.header
+
+import scala.collection.immutable.BitSet
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyBuffer.Addr
 
@@ -51,7 +56,7 @@ object TastyPrinter:
       else if arg.endsWith(".jar") then
         val jar = JarArchive.open(Path(arg), create = false)
         try
-          for file <- jar.iterator() if file.name.endsWith(".tasty") do
+          for file <- jar.allFileNames().map(f => new PlainFile(Path(f))) if file.name.endsWith(".tasty") do
             printTasty(s"$arg ${file.path}", file.toByteArray)
         finally jar.close()
       else
