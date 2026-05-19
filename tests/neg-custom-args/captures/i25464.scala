@@ -18,31 +18,3 @@ def test(c: C): Unit =
   val d: AnyRef^{c.cf2} = c.cf2.a.cf1
   f(d) // wrong, passing CF1 to CF2 only
 
-/*
-  use http4s as DataBase, bar as Output, baz as HTTP
-
-  foo.{A as B}
-
-  [x: Ord as m]
-
-  object Foo^{foo, http4s as HTTPClient, some DataBase}
-
-  (using foo: Context)
-  def goo(use Cpntext)
-
-  uses DataBase
-  uses {foo}
-
-initialization:
-  - start with main object
-  - inside an object: initilize sequentially
-  - along uses from main, with cycle detection
-  - uses_init edges may not be part of cycles
-  - keep bindings from capability class types to objects
-  - uses x as X establishes and overwrites a binding
-
-
-
-
-*/
-
