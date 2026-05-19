@@ -885,6 +885,14 @@ object Erasure {
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
 
+    /** Type check assignments, erasing those to erased variables. */
+    override def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
+      val untpd.Assign(lhs, rhs) = tree
+      if lhs.symbol.is(Flags.Erased) then
+        checkPureErased(rhs, isArgument = false)
+        EmptyTree
+      else super.typedAssign(tree, pt)
+
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to use a single
      *  parameter of type `[]Object`.

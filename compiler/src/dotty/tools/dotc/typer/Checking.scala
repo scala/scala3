@@ -593,8 +593,8 @@ object Checking {
   end checkScala2Implicit
 
   def checkErasedOK(sym: Symbol)(using Context): Unit =
-    if sym.is(Method, butNot = Macro)
-        || sym.isOneOf(Mutable | Lazy)
+    if sym.is(Method, butNot = Macro | Accessor)
+        || sym.isOneOf(Lazy)
         || sym.isType
     then report.error(IllegalErasedDef(sym), sym.srcPos)
 
