@@ -14,7 +14,6 @@ import core.TypeApplications.TypeParamInfo
 import core.TypeErasure.*
 import core.Types.*
 import core.classfile.ClassfileConstants
-import dotty.tools.dotc.core.Decorators.i
 
 import java.lang.StringBuilder
 import scala.annotation.tailrec
@@ -37,9 +36,15 @@ object GenericSignatures {
     else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
+    def mayNeedSignature(t: Type): Boolean = t match
+      case ExprType(e) => mayNeedSignature(e)
+      case MethodTpe(_, ps, res) => (!sym0.isConstructor && mayNeedSignature(res)) || ps.exists(mayNeedSignature)
+      case _: TypeRef => !t.isAny && !t.isAnyRef && !t.isRef(defn.StringClass, skipRefined = false) && !t.isPrimitiveValueType
+      case _ => true
+
     // Non-class local symbols definitely don't need one, they're not observable
     if sym0.isLocal && !sym0.isClass then false
-    else true
+    else mayNeedSignature(info)
   }
 
   private def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder = {
@@ -408,9 +413,7 @@ object GenericSignatures {
           else jsig(tycon, toplevel, vcBoxing)
 
         case _ =>
-          val etp = erasure(tp)
-          assert(etp != tp, i"recursive! $etp == $tp")
-          jsig(etp, toplevel, vcBoxing)
+          jsig(erasure(tp), toplevel, vcBoxing)
       }
     }
     jsig(info, toplevel = true)
@@ -544,7 +547,6 @@ object GenericSignatures {
 
   /** Collect type parameters that are actually used in the given types. */
   private def collectUsedTypeParams(types: Iterable[Type], resType: Type, initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
-    assert(initialSymbol.is(Method))
     def isTypeParameterInMethSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
       !sym.maybeOwner.isTypeParam && // check if it's not higher order type param
         sym.isTypeParam && sym.owner == initialSymbol
