@@ -5,7 +5,7 @@ import language.experimental.captureChecking
 import scala.reflect.ClassTag
 
 /** A type class for types that can convert a value of `T` into `quoted.Expr[T]`
- *  an expression that will create a copy of the value.
+ *  an expression that, when evaluated, produces a value equal to the original.
  *
  *  @tparam T the type of the value to be lifted into an `Expr[T]`
  */
@@ -14,6 +14,7 @@ trait ToExpr[T] {
   /** Lift a value into an expression containing the construction of that value.
    *
    *  @param x the value to lift into a quoted expression
+   *  @return an `Expr[T]` that, when evaluated, produces a value equal to `x`
    */
   def apply(x: T)(using Quotes): Expr[T]
 

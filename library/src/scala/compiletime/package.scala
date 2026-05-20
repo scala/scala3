@@ -27,6 +27,8 @@ import annotation.{compileTimeOnly, experimental}
  *  @syntax markdown
  *
  *  @tparam T the type to match against in an inline match expression
+ *
+ *  @return a value of type `T` usable only as the scrutinee of an inline match; it is never evaluated at runtime
  */
 def erasedValue[T]: T = erasedValue[T]
 
@@ -139,6 +141,7 @@ inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | 
  *  that value wrapped in `Some`.
  *
  *  @tparam T the constant singleton type to attempt to convert to a value
+ *  @return `Some` wrapping the constant value if one can be constructed from `T`, or `None` otherwise
  */
 transparent inline def constValueOpt[T]: Option[T] =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -148,6 +151,7 @@ transparent inline def constValueOpt[T]: Option[T] =
  *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
  *
  *  @tparam T the constant singleton type to convert to a value
+ *  @return the value corresponding to the constant singleton type `T`
  */
 transparent inline def constValue[T]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -157,6 +161,7 @@ transparent inline def constValue[T]: T =
  *  `(constValue[X1], ..., constValue[Xn])`.
  *
  *  @tparam T the tuple type whose element types are constant singleton types
+ *  @return a tuple containing the values corresponding to each constant singleton element type of `T`
  */
 inline def constValueTuple[T <: Tuple]: T =
   // implemented in dotty.tools.dotc.typer.Inliner
@@ -218,6 +223,7 @@ inline def summonAll[T <: Tuple]: T =
  *
  *  @tparam T the result type of the by-name argument
  *  @param x the by-name argument to evaluate
+ *  @return the result of evaluating the by-name argument `x`
  */
 def byName[T](x: => T): T = x
 
