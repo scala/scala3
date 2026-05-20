@@ -244,9 +244,9 @@ class ReleaseBisect(validationScript: File, shouldFail: Boolean, allReleases: Ve
       isGood
     })
 
-class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, fistBadHash: String):
+class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, firstBadHash: String):
   def bisect(): Unit =
-    println(s"Starting bisecting commits $lastGoodHash..$fistBadHash\n")
+    println(s"Starting bisecting commits $lastGoodHash..$firstBadHash\n")
     val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
     val scala3Project = if bootstrapped then "scala3-bootstrapped" else "scala3"
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
@@ -274,7 +274,7 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
       |fi
     """.stripMargin
     "git bisect start".!
-    s"git bisect bad $fistBadHash".!
+    s"git bisect bad $firstBadHash".!
     s"git bisect good $lastGoodHash".!
     Seq("git", "bisect", "run", "sh", "-c", bisectRunScript).!
     s"git bisect reset".!
