@@ -925,6 +925,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
         val builder = Array.newBuilder[String]
         builder += s.substring(0, first)
         collect(first + 1)
+        builder.result()
     else {
       val builder = Array.newBuilder[String]
       // If we over-trimmed the rightmost low surrogate, put it back
