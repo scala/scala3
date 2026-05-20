@@ -491,7 +491,6 @@ object Checking {
 
   /** Check type members inherited from different `parents` of `joint` type for cycles,
    *  unless a type with the same name already appears in `decls`.
-   *  @return    true iff no cycles were detected
    */
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = {
     // If we don't have more than one parent, then there's nothing to check
@@ -509,12 +508,10 @@ object Checking {
           val mbr = joint.member(name)
           mbr.info match
             case bounds: TypeBounds =>
-              !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
+              checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
             case _ =>
-              true
         catch case _: RecursionOverflow | _: CyclicReference =>
           report.error(em"cyclic reference involving type $name", pos)
-          false
     }
   }
 

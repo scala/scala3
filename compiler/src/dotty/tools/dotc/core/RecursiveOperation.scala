@@ -16,9 +16,13 @@ type RecursiveOperationDetails = Showable | (() => String)
  * @param weight the operation weight, used to prioritize some operations when displaying error messages
  */
 final class RecursiveOperation(var title: String, var details: RecursiveOperationDetails, var weight: Int):
-  def explanation(using Context): String = details match
-    case f: (() => ?) => s"$title ${f()}"
-    case s: Showable => i"$title $s"
+  def explanation(using Context): String =
+    try
+      details match
+        case f: (() => ?) => s"$title ${f()}"
+        case s: Showable => i"$title $s"
+    catch
+      case _: RecursionOverflow => "<not enough fuel to show details>"
 
   def copy(): RecursiveOperation = RecursiveOperation(title, details, weight)
 
