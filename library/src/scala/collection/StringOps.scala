@@ -920,7 +920,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
         def collect(start: Int): Unit =
           s.indexOf(separator, start) match {
             case -1 =>
-              builder += s.substring(start)
+              builder += s.substring(start, end)
             case idx =>
               builder += s.substring(start, idx)
               if (idx != end) collect(idx + 1)
@@ -937,7 +937,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       def collect(start: Int, searchFrom: Int): Unit =
         s.indexOf(separator, searchFrom) match {
           case -1 =>
-            builder += s.substring(start)
+            builder += s.substring(start, end)
           case idx =>
             if (idx == end) {
               builder += s.substring(start, idx)
