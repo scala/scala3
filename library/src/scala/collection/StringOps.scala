@@ -901,7 +901,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @return an array of strings computed by splitting this string around occurrences of the separator character
    */
   def split(separator: Char): Array[String] = {
-     val first = s.indexOf(separator)
+    val first = s.indexOf(separator)
     if (first == -1)
       return Array(s)
 
