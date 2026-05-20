@@ -156,7 +156,7 @@ case class ReleasesRange(first: Option[String], last: Option[String]):
   def filter(releases: Seq[Release]) =
     def releaseIndex(version: String): Int =
       val index = releases.indexWhere(_.version == version)
-      assert(index > 0, s"${version} matches no nightly compiler release")
+      assert(index >= 0, s"${version} matches no nightly compiler release")
       index
     val startIdx = first.map(releaseIndex(_)).getOrElse(0)
     val endIdx = last.map(releaseIndex(_) + 1).getOrElse(releases.length)
