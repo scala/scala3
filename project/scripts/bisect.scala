@@ -45,7 +45,7 @@ val usageMessage = """
   |    The ranges are treated as inclusive.
   |
   |* --bootstrapped
-  |    Publish locally and test a bootstrapped compiler rather than a nonboostrapped one.
+  |    Publish locally and test a bootstrapped compiler rather than a nonbootstrapped one.
   |
   |* --should-fail
   |    Expect the validation command to fail rather that succeed. This can be used e.g. to find out when some illegal code started to compile.
