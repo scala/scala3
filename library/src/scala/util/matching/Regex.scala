@@ -667,6 +667,7 @@ object Regex {
      *  or -1 if nothing was matched for that group.
      *
      *  @param i the index of the capturing group
+     *  @return the index of the first matched character in group `i`, or -1 if the group did not match
      */
     def start(i: Int): Int
 
@@ -677,6 +678,7 @@ object Regex {
      *  or -1 if nothing was matched for that group.
      *
      *  @param i the index of the capturing group
+     *  @return the index following the last matched character for group `i`, or -1 if the group did not match
      */
     def end(i: Int): Int
 
@@ -689,6 +691,7 @@ object Regex {
      *  or `null` if nothing was matched.
      *
      *  @param i the index of the capturing group
+     *  @return the substring matched by group `i`, or `null` if the group did not match
      */
     def group(i: Int): String | Null =
       if (start(i) >= 0) source.subSequence(start(i), end(i)).toString
@@ -708,6 +711,7 @@ object Regex {
      *  or `null` if nothing was matched for that group.
      *
      *  @param i the index of the capturing group
+     *  @return the portion of the source preceding the match of group `i`, or `null` if the group did not match
      */
     def before(i: Int): CharSequence | Null =
       if (start(i) >= 0) source.subSequence(0, start(i))
@@ -724,6 +728,7 @@ object Regex {
      *  or `null` if nothing was matched for that group.
      *
      *  @param i the index of the capturing group
+     *  @return the portion of the source following the match of group `i`, or `null` if the group did not match
      */
     def after(i: Int): CharSequence | Null =
       if (end(i) >= 0) source.subSequence(end(i), source.length)
@@ -763,6 +768,7 @@ object Regex {
    *
    *  @param source the source character sequence that was matched against
    *  @param matcher the underlying `Matcher` that performed the match
+   *  @param _groupNames the names of the capturing groups, if any, used to look up groups by name
    */
   class Match(val source: CharSequence,
               protected[matching] val matcher: Matcher,
@@ -788,12 +794,14 @@ object Regex {
     /** The index of the first matched character in group `i`.
      *
      *  @param i the index of the capturing group
+     *  @return the index of the first matched character in group `i`, or -1 if the group did not match
      */
     def start(i: Int): Int = starts(i)
 
     /** The index following the last matched character in group `i`.
      *
      *  @param i the index of the capturing group
+     *  @return the index following the last matched character for group `i`, or -1 if the group did not match
      */
     def end(i: Int): Int = ends(i)
 
@@ -908,6 +916,7 @@ object Regex {
     /** The index of the first matched character in group `i`.
      *
      *  @param i the index of the capturing group
+     *  @return the start index of the matched substring for group `i` in the current match, or -1 if the group did not match
      */
     def start(i: Int): Int = { ensure() ; matcher.start(i) }
 
@@ -917,6 +926,7 @@ object Regex {
     /** The index following the last matched character in group `i`.
      *
      *  @param i the index of the capturing group
+     *  @return the index following the last matched character for group `i` in the current match, or -1 if the group did not match
      */
     def end(i: Int): Int = { ensure() ; matcher.end(i) }
 

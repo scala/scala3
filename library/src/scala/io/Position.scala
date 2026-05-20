@@ -68,6 +68,7 @@ private[scala] abstract class Position {
    *
    *  @param line the 1-based line number, or 0 for undefined; values at or above `LINE_MASK` are clamped and the column is set to 0
    *  @param column the 1-based column number, or 0 for undefined; clamped to `COLUMN_MASK`, ignored when `line` >= `LINE_MASK`
+   *  @return the encoded position as a non-negative integer that packs the line number in the high bits and the column number in the low bits, suitable for decoding with `line`, `column`, and `toString`
    */
   final def encode(line: Int, column: Int): Int = {
     checkInput(line, column)
@@ -81,18 +82,21 @@ private[scala] abstract class Position {
   /** Returns the line number of the encoded position.
    *
    *  @param pos the encoded position as returned by `encode`
+   *  @return the 1-based line number decoded from `pos`, or 0 if the line is undefined
    */
   final def line(pos: Int): Int = (pos >> COLUMN_BITS) & LINE_MASK
 
   /** Returns the column number of the encoded position.
    *
    *  @param pos the encoded position as returned by `encode`
+   *  @return the 1-based column number decoded from `pos`, or 0 if the column is undefined
    */
   final def column(pos: Int): Int = pos & COLUMN_MASK
 
   /** Returns a string representation of the encoded position.
    *
    *  @param pos the encoded position as returned by `encode`
+   *  @return a string in the form `"line:column"` using the decoded line and column numbers
    */
   def toString(pos: Int): String = line(pos) + ":" + column(pos)
 }
