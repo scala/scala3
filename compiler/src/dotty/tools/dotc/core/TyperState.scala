@@ -27,6 +27,8 @@ object TyperState {
 
   opaque type Snapshot = (Constraint, TypeVars, LevelMap)
 
+  class BadTyperStateAssertion(msg: String) extends AssertionError(msg)
+
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
       (ts.constraint, ts.ownedVars, ts.upLevels)
@@ -42,7 +44,7 @@ object TyperState {
 }
 
 class TyperState() {
-  import TyperState.LevelMap
+  import TyperState.{BadTyperStateAssertion, LevelMap}
 
   private var myId: Int = _
   def id: Int = myId
@@ -268,8 +270,9 @@ class TyperState() {
    */
   private def includeVar(tvar: TypeVar)(using Context): Unit =
     val oldState = tvar.owningState.nn.get
-    assert(oldState == null || !oldState.isCommittable,
-      i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
+    if oldState != null && oldState.isCommittable then
+      throw BadTyperStateAssertion(
+        i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
     tvar.owningState = new WeakReference(this)
     ownedVars += tvar
 

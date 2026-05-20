@@ -6,6 +6,7 @@ object Test {
     System.setErr(null) // setOut(null) confuses the testing framework...
     val a = () => foo(oldErr)
     a()
+    System.setErr(oldErr)
   }
 
   def foo(err: OutputStream): Unit = {
