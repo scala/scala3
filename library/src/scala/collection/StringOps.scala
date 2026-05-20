@@ -913,7 +913,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       if first == end then
         Array(s.substring(0, end))
       else
-        @tannotation.tailrec
+        @annotation.tailrec
         def collect(start: Int): Unit =
           s.indexOf(separator, start) match {
             case -1 =>
