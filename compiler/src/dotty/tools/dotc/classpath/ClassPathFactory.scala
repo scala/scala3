@@ -16,7 +16,7 @@ import java.nio.file.Files
  * Provides factory methods for classpath. When creating classpath instances for a given path,
  * it uses proper type of classpath depending on a types of particular files containing sources or classes.
  */
-class ClassPathFactory {
+class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None) {
   /**
     * Create a new classpath based on the abstract file.
     */
@@ -26,15 +26,16 @@ class ClassPathFactory {
     * Creators for sub classpaths which preserve this context.
     */
   def sourcesInPath(path: String)(using Context): List[ClassPath] =
-    // We also accept files in case of YlogicalPackageLoading
-    if ctx.settings.sourcepath.value.nonEmpty && ctx.settings.YlogicalPackageLoading.value then
-      val rootPackage: LogicalPackage = new LogicalPackagesProvider(path).root
-      List(new LogicalSourcePath(path, rootPackage))
-    else
-      for
-        file <- expandPath(path, expandStar = false)
-        dir <- Option(AbstractFile.getDirectory(file))
-      yield createSourcePath(dir)
+    precomputedSourcePackages match {
+      // We also accept files in case of YlogicalPackageLoading
+      case Some(rootPackage) if ctx.settings.YlogicalPackageLoading.value  =>
+        List(new LogicalSourcePath(path, rootPackage))
+      case _ =>
+        for
+          file <- expandPath(path, expandStar = false)
+          dir <- Option(AbstractFile.getDirectory(file))
+        yield createSourcePath(dir)
+    }
 
   def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
 
