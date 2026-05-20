@@ -177,7 +177,17 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      //"-Werror",
+      "-Werror",
+      // temporary duplicate 'caps' while CC is developed?
+      "-Wconf:msg=package scala contains object and package with same name:i",
+      // Scaladoc testcases contain deliberately weird code
+      "-Wconf:src=scaladoc-testcases/.*:s",
+      // FPs of the init checker
+      "-Wconf:msg=The RHS of reassignment must be transitively initialized:i",
+      "-Wconf:msg=Could not verify that the method argument is transitively initialized:i",
+      "-Wconf:msg=may cause initialization errors:i",
+      // Workaround for #25897
+      "-Wconf:cat=deprecation&origin=scala\\.collection\\.Iterable\\.stringPrefix:s",
       //"-Wunused:all",
       "-encoding", "UTF8",
       "-language:implicitConversions",
@@ -1216,8 +1226,6 @@ object Build {
       // Generate library.properties, used by scala.util.Properties
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       Compile / mainClass := None,
-      // Workaround for #25897
-      Compile / compile / scalacOptions += "-Wconf:cat=deprecation&origin=scala\\.collection\\.Iterable\\.stringPrefix:s",
 
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
@@ -1290,8 +1298,6 @@ object Build {
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
-      // Workaround for #25897
-      Compile / compile / scalacOptions += "-Wconf:cat=deprecation&origin=scala\\.collection\\.Iterable\\.stringPrefix:s",
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
