@@ -781,9 +781,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         checkClassifiedInheritance(cls)
         val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
+        // Is self info inferred, i.e. only the name is given but not the type?
+        def selfInfoIsInferred =
+          impl.body.exists:
+            case TypeDef(tpnme.SELF, tpt: TypeTree) => tpt.isInferred
+            case _ => false
+
         // Compute new self type
         val selfInfo1 =
-          if (selfInfo ne NoType) && !cls.is(ModuleClass) then
+          if (selfInfo ne NoType) && !cls.is(ModuleClass) && !selfInfoIsInferred then
             // if selfInfo is explicitly given then use that one, except if
             // self info applies to a module class, these still need to be inferred
             selfInfo

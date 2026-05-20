@@ -511,6 +511,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   def bodyKind(body: List[Tree])(using Context): FlagSet =
     body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
 
+  /** Is `tree` a DerivedTypeTree, possibly followed by type arguments? */
+  def hasDerivedTree(tree: Tree)(using Context): Boolean = tree match
+    case tree: DerivedTypeTree => true
+    case AppliedTypeTree(tpt, _) => hasDerivedTree(tpt)
+    case _ => false
+
   /** Info of a variable in a pattern: The named tree and its type */
   type VarInfo = (NameTree, Tree)
 

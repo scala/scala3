@@ -19,6 +19,7 @@ import scala.annotation.implicitNotFound
 import scala.collection.mutable.Builder
 import scala.collection.immutable.WrappedString
 import scala.reflect.ClassTag
+import caps.unsafe.unsafeAssumePure
 
 /** Builds a collection of type `C` from elements of type `A` when a source collection of type `From` is available.
  *  Implicit instances of `BuildFrom` are available for all collection types.
@@ -28,11 +29,11 @@ import scala.reflect.ClassTag
  *  @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
  */
 @implicitNotFound(msg = "Cannot construct a collection of type ${C} with elements of type ${A} based on a collection of type ${From}.")
-trait BuildFrom[-From, -A, +C] extends Any { self =>
+trait BuildFrom[-From, -A, +C] extends Any { self: BuildFrom[From, A, C] =>
   def fromSpecific(from: From)(it: IterableOnce[A]^): C^{it}
 
   /** Gets a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
-   *  Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections. 
+   *  Building collections with `fromSpecific` is preferred because it can be lazy for lazy collections.
    *
    *  @param from the source collection providing the factory for creating the builder
    */
@@ -92,7 +93,9 @@ object BuildFrom extends BuildFromLowPriority1 {
 
   implicit def buildFromArray[A : ClassTag]: BuildFrom[Array[?], A, Array[A]] =
     new BuildFrom[Array[?], A, Array[A]] {
-      def fromSpecific(from: Array[?])(it: IterableOnce[A]^): Array[A] = Factory.arrayFactory[A].fromSpecific(it)
+      def fromSpecific(from: Array[?])(it: IterableOnce[A]^): Array[A] =
+        Factory.arrayFactory[A].fromSpecific(it).unsafeAssumePure
+          // .unsafeAssumePure needed since Array is technically pure, but foes not extend from Pure.
       def newBuilder(from: Array[?]): Builder[A, Array[A]] = Factory.arrayFactory[A].newBuilder
     }
 
