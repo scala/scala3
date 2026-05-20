@@ -134,6 +134,7 @@ private[collection] object RedBlackTree {
    *  @param tree the red-black tree to search
    *  @param key the lower bound (inclusive) for the key lookup
    *  @param ord the ordering used to compare keys
+   *  @return a `Some` containing the key-value pair whose key is the smallest value greater than or equal to `key`, or `None` if no such entry exists
    */
   def minAfter[A, B](tree: Tree[A, B], key: A)(implicit ord: Ordering[A]): Option[(A, B)] =
     minNodeAfter(tree.root, key) match {
@@ -170,6 +171,7 @@ private[collection] object RedBlackTree {
    *  @param tree the red-black tree to search
    *  @param key the upper bound (exclusive) for the key lookup
    *  @param ord the ordering used to compare keys
+   *  @return a `Some` containing the key-value pair whose key is the largest value strictly less than `key`, or `None` if no such entry exists
    */
   def maxBefore[A, B](tree: Tree[A, B], key: A)(implicit ord: Ordering[A]): Option[(A, B)] =
     maxNodeBefore(tree.root, key) match {
@@ -377,6 +379,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the tree entries
    *  @tparam B the value type of the tree entries
    *  @param node the node whose in-order successor is to be found
+   *  @return the next node in the in-order traversal, or `null` if `node` is the last node
    */
   private def successor[A, B](node: Node[A, B]): Node[A, B] | Null = {
     if (node.right ne null) minNodeNonNull(node.right)
@@ -397,6 +400,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the tree entries
    *  @tparam B the value type of the tree entries
    *  @param node the node whose in-order predecessor is to be found
+   *  @return the previous node in the in-order traversal, or `null` if `node` is the first node
    */
   private def predecessor[A, B](node: Node[A, B]): Node[A, B] | Null = {
     if (node.left ne null) maxNodeNonNull(node.left)
@@ -573,6 +577,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the tree entries
    *  @tparam B the value type of the tree entries
    *  @param tree the red-black tree to validate
+   *  @return `true` if `tree` satisfies all of the above invariants, `false` otherwise
    */
   def isValid[A: Ordering, B](tree: Tree[A, B]): Boolean =
     isValidBST(tree.root) && hasProperParentRefs(tree) && isValidRedBlackTree(tree) && size(tree.root) == tree.size
@@ -582,6 +587,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the tree entries
    *  @tparam B the value type of the tree entries
    *  @param tree the red-black tree to check
+   *  @return `true` if every non-null node's children point back to it via their `parent` field and the root has a `null` parent, `false` otherwise
    */
   private def hasProperParentRefs[A, B](tree: Tree[A, B]): Boolean = {
 
@@ -604,6 +610,7 @@ private[collection] object RedBlackTree {
    *  @tparam B the value type of the tree entries
    *  @param node the root node of the subtree to validate
    *  @param ord the ordering used to compare keys
+   *  @return `true` if the subtree rooted at `node` is a valid binary search tree under `ord`, `false` otherwise
    */
   private def isValidBST[A, B](node: Node[A, B] | Null)(implicit ord: Ordering[A]): Boolean = {
     if (node eq null) true
@@ -620,6 +627,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the tree entries
    *  @tparam B the value type of the tree entries
    *  @param tree the red-black tree to validate
+   *  @return `true` if `tree` satisfies the red-black tree invariants, `false` otherwise
    */
   private def isValidRedBlackTree[A, B](tree: Tree[A, B]): Boolean = {
 
@@ -651,6 +659,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the set entries
    *  @param xs an iterator over keys in ascending order
    *  @param size the number of keys in the iterator
+   *  @return a balanced red-black tree containing the given keys, each paired with a `null` value (suitable for use as the backing store of a `TreeSet`)
    */
   def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
@@ -676,6 +685,7 @@ private[collection] object RedBlackTree {
    *  @tparam B the value type of the map entries
    *  @param xs an iterator over key-value pairs in ascending key order
    *  @param size the number of key-value pairs in the iterator
+   *  @return a balanced red-black tree containing the given key-value pairs
    */
   def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes

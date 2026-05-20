@@ -97,9 +97,11 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   @inline final def retain(p: A => Boolean): Unit = filterInPlace(p)
 
   /** Removes all elements from the set for which do not satisfy a predicate.
+   *
    *  @param  p  the predicate used to test elements. Only elements for
    *             which `p` returns `true` are retained in the set; all others
    *             are removed.
+   *  @return this set after removing elements that do not satisfy `p`
    */
   def filterInPlace(p: A => Boolean): this.type = {
     if (nonEmpty) {
