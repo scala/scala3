@@ -39,6 +39,7 @@ trait Equiv[T] extends Any with Serializable {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
+   *  @return `true` if `x` is equivalent to `y` under this relation, `false` otherwise
    */
   def equiv(x: T, y: T): Boolean
 }
@@ -104,12 +105,17 @@ object Equiv extends LowPriorityEquiv {
      *
      *  @tparam CC the collection type constructor, a subtype of `Seq` (e.g., `List`, `Vector`)
      *  @tparam T the element type of the collection
+     *  @param eqv the `Equiv` instance used to compare individual elements of type `T`
+     *  @return an `Equiv` for sequences of type `CC[T]` that compares them element-by-element using `eqv`
      */
     implicit def seqEquiv[CC[X] <: scala.collection.Seq[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
 
-    /** @tparam CC the collection type constructor, a subtype of `SortedSet`
+    /**
+     *  @tparam CC the collection type constructor, a subtype of `SortedSet`
      *  @tparam T the element type of the collection
+     *  @param eqv the `Equiv` instance used to compare individual elements of type `T`
+     *  @return an `Equiv` for sorted sets of type `CC[T]` that compares them element-by-element in iteration order using `eqv`
      */
     implicit def sortedSetEquiv[CC[X] <: scala.collection.SortedSet[X], T](implicit eqv: Equiv[T]): Equiv[CC[T]] =
       new IterableEquiv[CC, T](eqv)
