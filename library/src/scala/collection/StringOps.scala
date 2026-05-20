@@ -913,6 +913,9 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       if first == end then
         Array(s.substring(0, end))
       else
+        val builder = Array.newBuilder[String]
+        builder += s.substring(0, first)
+
         @annotation.tailrec
         def collect(start: Int): Unit =
           s.indexOf(separator, start) match {
@@ -922,8 +925,6 @@ final class StringOps(private val s: String) extends AnyVal { self =>
               builder += s.substring(start, idx)
               if (idx != end) collect(idx + 1)
           }
-        val builder = Array.newBuilder[String]
-        builder += s.substring(0, first)
         collect(first + 1)
         builder.result()
     else {
