@@ -915,7 +915,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       else
         @tannotation.ailrec
         def collect(start: Int): Unit =
-          s.indexOf(ch, start) match {
+          s.indexOf(separator, start) match {
             case -1 =>
               builder += s.substring(start)
             case idx =>
