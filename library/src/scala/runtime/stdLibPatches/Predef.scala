@@ -68,6 +68,7 @@ private[scala] object Predef:
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. 
      *
      *  @param y the reference to compare against for referential equality
+     *  @return `true` if `x` and `y` are the same reference (including both being `null`), `false` otherwise
      */
     inline infix def eq(inline y: AnyRef | Null): Boolean =
       x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
@@ -76,6 +77,7 @@ private[scala] object Predef:
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. 
      *
      *  @param y the reference to compare against for referential inequality
+     *  @return `true` if `x` and `y` are not the same reference, `false` otherwise
      */
     inline infix def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)

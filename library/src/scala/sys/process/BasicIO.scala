@@ -231,6 +231,7 @@ object BasicIO {
    *  [[scala.sys.process.ProcessIO]].
    *
    *  @param connect if true, stdin is connected to the process input; if false, the process input stream is not connected
+   *  @return a sentinel function `OutputStream => Unit` for use with `ProcessIO`: when `connect` is true, the returned `connectToStdIn` value signals `ProcessBuilderImpl` to redirect stdin to the process input; otherwise `connectNoOp` signals it to leave the process input alone
    */
   def input(connect: Boolean): OutputStream => Unit = if (connect) connectToStdIn else connectNoOp
 
@@ -243,12 +244,14 @@ object BasicIO {
   /** Returns a `ProcessIO` connected to stdout and stderr, and, optionally, stdin.
    *
    *  @param connectInput if true, stdin is connected to the process input
+   *  @return a `ProcessIO` that writes the process's stdout to stdout and its stderr to stderr, and, when `connectInput` is true, also forwards stdin to the process input
    */
   def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
 
   /** Returns a `ProcessIO` connected to stdout, stderr and the provided `in`.
    *
    *  @param in a function to handle the process input stream
+   *  @return a `ProcessIO` that delegates the process input to `in` and writes the process's stdout to stdout and its stderr to stderr
    */
   def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, toStdOut, toStdErr)
 
