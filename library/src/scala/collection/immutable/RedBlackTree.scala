@@ -77,6 +77,7 @@ private[collection] object RedBlackTree {
      *  @tparam B1 the value type of the result, a supertype of `B`
      *  @param tree the original tree whose left child is being replaced
      *  @param newLeft the new left subtree to substitute in
+     *  @return a rebalanced tree containing all entries of `tree` with `newLeft` replacing the original left subtree, possibly mutating `tree` or `newLeft` in place
      */
     protected final def mutableBalanceLeft[A1, B, B1 >: B](tree: Tree[A1, B], newLeft: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
@@ -127,6 +128,7 @@ private[collection] object RedBlackTree {
      *  @tparam B1 the value type of the result, a supertype of `B`
      *  @param tree the original tree whose right child is being replaced
      *  @param newRight the new right subtree to substitute in
+     *  @return a rebalanced tree containing all entries of `tree` with `newRight` replacing the original right subtree, possibly mutating `tree` or `newRight` in place
      */
     protected final def mutableBalanceRight[A1, B, B1 >: B](tree: Tree[A1, B], newRight: Tree[A1, B1]): Tree[A1, B1] = {
       // Parameter trees
@@ -265,6 +267,7 @@ private[collection] object RedBlackTree {
    *  @param tree the red-black tree to search
    *  @param x the inclusive lower bound key to search for
    *  @param ordering the ordering used to compare keys
+   *  @return the node with the smallest key greater than or equal to `x`, or `null` if no such node exists
    */
   def minAfter[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
@@ -282,6 +285,7 @@ private[collection] object RedBlackTree {
    *  @param tree the red-black tree to search
    *  @param x the exclusive upper bound key
    *  @param ordering the ordering used to compare keys
+   *  @return the node with the largest key strictly less than `x`, or `null` if no such node exists
    */
   def maxBefore[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
@@ -370,6 +374,7 @@ private[collection] object RedBlackTree {
    *  @tparam B1 the value type
    *  @param tree the original tree whose left child is being replaced
    *  @param newLeft the new left subtree to substitute in
+   *  @return a rebalanced immutable tree containing all entries of `tree` with `newLeft` replacing the original left subtree, or `tree` itself when `newLeft` is already its left child
    */
   private def balanceLeft[A, B1](tree: Tree[A, B1], newLeft: Tree[A, B1]): Tree[A, B1] = {
     // Parameter trees
@@ -417,6 +422,7 @@ private[collection] object RedBlackTree {
    *  @tparam B1 the value type
    *  @param tree the original tree whose right child is being replaced
    *  @param newRight the new right subtree to substitute in
+   *  @return a rebalanced immutable tree containing all entries of `tree` with `newRight` replacing the original right subtree, or `tree` itself when `newRight` is already its right child
    */
   private def balanceRight[A, B1](tree: Tree[A, B1], newRight: Tree[A, B1]): Tree[A, B1] = {
     // Parameter trees
@@ -830,6 +836,7 @@ private[collection] object RedBlackTree {
    *  @param value the value associated with the key
    *  @param left the left subtree, or `null` if absent
    *  @param right the right subtree, or `null` if absent
+   *  @return a new immutable red tree node whose size is the combined size of the subtrees plus one
    */
   private[immutable] def RedTree[A, B](key: A, value: B, left: Tree[A, B] | Null, right: Tree[A, B] | Null): Tree[A, B] = {
     //assertNotMutable(left)
@@ -904,6 +911,7 @@ private[collection] object RedBlackTree {
      *  functionality works.
      *
      *  @param key the key from which to start iteration
+     *  @return the leftmost subtree whose key is greater than or equal to `key`, or `null` if no such subtree exists
      */
     private def startFrom(key: A) : Tree[A,B] | Null = if (root eq null) null else {
       @tailrec def find(tree: Tree[A, B] | Null): Tree[A, B] | Null =
@@ -988,6 +996,7 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type
    *  @param xs an iterator yielding keys in ascending order
    *  @param size the number of keys to consume from the iterator
+   *  @return a balanced red-black tree containing the consumed keys, or `null` if `size` is zero
    */
   def fromOrderedKeys[A](xs: Iterator[A]^, size: Int): Tree[A, Null] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
@@ -1010,6 +1019,7 @@ private[collection] object RedBlackTree {
    *  @tparam B the value type
    *  @param xs an iterator yielding key-value pairs in ascending key order
    *  @param size the number of entries to consume from the iterator
+   *  @return a balanced red-black tree containing the consumed entries, or `null` if `size` is zero
    */
   def fromOrderedEntries[A, B](xs: Iterator[(A, B)]^, size: Int): Tree[A, B] | Null = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
@@ -1153,6 +1163,7 @@ private[collection] object RedBlackTree {
    *  @tparam B the value type
    *  @param tl the left subtree to append, or `null` if empty
    *  @param tr the right subtree to append, or `null` if empty
+   *  @return a tree containing all entries of `tl` followed by all entries of `tr`, with the same black height as the inputs (the root may be red, so callers typically blacken it), or `null` if both inputs are `null`
    */
   private def append[A, B](tl: Tree[A, B] | Null, tr: Tree[A, B] | Null): Tree[A, B] | Null = {
     if (tl eq null) tr
@@ -1197,6 +1208,7 @@ private[collection] object RedBlackTree {
    *
    *  @param t the tree node, or `null` for an empty subtree
    *  @param bh the black height of `t`
+   *  @return the rank of `t`: `2*(bh - 1)` for black nodes and `2*bh - 1` for red nodes, or `0` when `t` is `null`
    */
   @`inline` private def rank(t: Tree[?, ?] | Null, bh: Int): Int = {
     if(t eq null) 0
