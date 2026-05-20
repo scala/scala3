@@ -1,11 +1,20 @@
 package dotty.tools.pc
 
+import java.io.File
 import java.net.URI
+import java.nio.file.Path
 import java.util as ju
 
 import scala.compiletime.uninitialized
+import scala.jdk.CollectionConverters.*
+import scala.meta.pc.SemanticdbFileManager
+import scala.meta.pc.SourcePathMode
 
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.interactive.LogicalPackage
+import dotty.tools.dotc.interactive.LogicalPackagesProvider
+import dotty.tools.dotc.interactive.ParsedLogicalPackage
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.SourceFile
 
@@ -27,7 +36,10 @@ import dotty.tools.dotc.util.SourceFile
  *  the complexity related to currentCtx, we decided to cache only when the
  *  target URI only if the same as the previous run.
  */
-class CachingDriver(override val settings: List[String]) extends InteractiveDriver(settings):
+class CachingDriver private (
+    override val settings: List[String],
+    precomputedSourcePackages: Option[LogicalPackage]
+) extends InteractiveDriver(settings, precomputedSourcePackages):
 
   private var lastCompiledURI: URI = uninitialized
   private var previousDiags = List.empty[Diagnostic]
@@ -46,3 +58,20 @@ class CachingDriver(override val settings: List[String]) extends InteractiveDriv
     previousDiags
 
 end CachingDriver
+
+object CachingDriver:
+  def apply(
+      settings: List[String],
+      sourcePath: ju.function.Supplier[ju.List[Path]],
+      semanticdbFileManager: SemanticdbFileManager,
+      sourcePathMode: SourcePathMode
+  ): CachingDriver =
+    val precomputedSourcePackages = sourcePathMode match
+      case SourcePathMode.DISABLED => None
+      case SourcePathMode.PRUNED | SourcePathMode.FULL =>
+        val sourcePathFiles = sourcePath.get().asScala.toSeq
+        val logicalSourcePath = sourcePathFiles.mkString(File.pathSeparator)
+        if sourcePathFiles.nonEmpty then Some(new LogicalPackagesProvider(logicalSourcePath).root) else None
+      case SourcePathMode.MBT =>
+        Some(ParsedLogicalPackage.fromMbtIndex(semanticdbFileManager.listAllPackages()))
+    new CachingDriver(settings, precomputedSourcePackages)
