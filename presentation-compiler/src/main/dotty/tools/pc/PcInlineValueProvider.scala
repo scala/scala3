@@ -1,10 +1,6 @@
 package dotty.tools.pc
 
-import scala.meta.internal.pc.Definition
-import scala.meta.internal.pc.InlineValueProvider
 import scala.meta.internal.pc.InlineValueProvider.Errors
-import scala.meta.internal.pc.RangeOffset
-import scala.meta.internal.pc.Reference
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.NavigateAST
@@ -16,9 +12,7 @@ import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
@@ -140,7 +134,7 @@ final class PcInlineValueProvider(
   ): String =
     val rhsLines = rhs.split("\n").toList
     rhsLines match
-      case h :: Nil => rhs
+      case _ :: Nil => rhs
       case h :: t =>
         val header = if !hasNextLineAfterEqualsSign then h else "\n" ++ refIndent ++ "  " ++ h
         header ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
@@ -239,7 +233,7 @@ final class PcInlineValueProvider(
     then if defIsLocal then inlineAll() else Left(Errors.notLocal)
     else
       allreferences match
-        case ref :: Nil if defIsLocal => inlineAll()
+        case _ :: Nil if defIsLocal => inlineAll()
         case list =>
           for
             ref <- list

@@ -14,9 +14,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.*
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
@@ -51,7 +49,6 @@ object HoverProvider:
       .map(unit => Interactive.pathTo(unit.tpdTree, pos.span))
       .getOrElse(Interactive.pathTo(driver.openedTrees(uri), pos))
     val indexedContext = IndexedContext(pos, path, ctx)
-    import indexedContext.ctx
 
     def typeFromPath(path: List[Tree]) =
       if path.isEmpty then NoType else path.head.typeOpt
@@ -183,7 +180,7 @@ object HoverProvider:
       ) match
         case Nil =>
           fallbackToDynamics(path, printer, contentType)
-        case (symbol, tpe, _) :: _
+        case (symbol, _, _) :: _
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
           fallbackToDynamics(path, printer, contentType)
         case symbolTpes @ ((symbol, tpe, None) :: _) =>

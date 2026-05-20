@@ -2,12 +2,9 @@ package dotty.tools.pc
 
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
@@ -25,7 +22,7 @@ class InferExpectedType(
     search: SymbolSearch,
     driver: InteractiveDriver,
     params: OffsetParams
-)(implicit rc: ReportContext):
+):
   val uri: java.net.URI = params.uri()
   val code: String = params.text()
 
@@ -44,7 +41,6 @@ class InferExpectedType(
         val tpdPath =
           Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
         val indexedContext = IndexedContext(pos, tpdPath, newctx)
-        import indexedContext.ctx
         val printer =
           ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
         InferCompletionType.inferType(path)(using newctx).map {
@@ -71,14 +67,14 @@ object InferCompletionType:
       case CaseDef(_, _, body) :: Try(_, cases, _) :: rest
           if body.span.contains(span) && cases.exists(_.span.contains(span)) => inferType(rest, span)
       case If(cond, _, _) :: rest if !cond.span.contains(span) => inferType(rest, span)
-      case If(cond, _, _) :: rest if cond.span.contains(span) => Some(defn.BooleanType)
+      case If(cond, _, _) :: _ if cond.span.contains(span) => Some(defn.BooleanType)
       case CaseDef(_, _, body) :: Match(_, cases) :: rest
           if body.span.contains(span) && cases.exists(_.span.contains(span)) =>
         inferType(rest, span)
       case NamedArg(_, arg) :: rest if arg.span.contains(span) => inferType(rest, span)
       // x match
       //  case @@
-      case CaseDef(pat, _, _) :: Match(sel, cases) :: rest
+      case CaseDef(pat, _, _) :: Match(sel, cases) :: _
           if pat.span.contains(span) && cases.exists(_.span.contains(span)) && !sel.tpe.isErroneous =>
         sel.tpe match
           case tpe: TermRef => Some(tpe.symbol.info).filterNot(_.isErroneous)
@@ -88,7 +84,7 @@ object InferCompletionType:
         Some(tpe.tpe)
       // val _: T = @@
       // def _: T = @@
-      case (defn: ValOrDefDef) :: rest if !defn.tpt.tpe.isErroneous => Some(defn.tpt.tpe)
+      case (defn: ValOrDefDef) :: _ if !defn.tpt.tpe.isErroneous => Some(defn.tpt.tpe)
       case UnApply(fun, _, pats) :: _ =>
         val ind = pats.indexWhere(_.span.contains(span))
         if ind < 0 then None

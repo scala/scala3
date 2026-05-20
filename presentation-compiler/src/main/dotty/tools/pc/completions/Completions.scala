@@ -24,7 +24,6 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -251,9 +250,9 @@ class Completions(
         }
         .chain { suffix =>
           adjustedPath match
-            case (ident: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
+            case (_: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
               app.symbol.info match
-                case mt @ MethodType(termNames)
+                case _: MethodType
                     if app.symbol.paramSymss.last.exists(_.is(Given)) &&
                       !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
                   suffix.withNewPrefix(Affix(PrefixKind.Using))
@@ -539,7 +538,6 @@ class Completions(
             this,
             config.isCompletionSnippetsEnabled(),
             search,
-            config,
             buildTargetIdentifier
           )
           .filterInteresting(enrich = false)
@@ -624,7 +622,7 @@ class Completions(
 
   private def enrichWithSymbolSearch(
       visit: CompletionValue => Boolean,
-      qualType: Type = ctx.definitions.AnyType
+      qualType: Type
   ): Option[SymbolSearch.Result] =
     val query = completionPos.query
     if completionMode.is(Mode.Scope) && query.nonEmpty then
@@ -944,7 +942,7 @@ class Completions(
           isMember(symbol) && symbol.owner != tpe.typeSymbol
         def postProcess(items: List[CompletionValue]): List[CompletionValue] =
           items.map {
-            case completion @ CompletionValue.Compiler(label, denot, suffix)
+            case completion @ CompletionValue.Compiler(label, _, suffix)
                 if isMember(completion.symbol) =>
               CompletionValue.Compiler(
                 label,
