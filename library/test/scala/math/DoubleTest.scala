@@ -15,7 +15,7 @@ class DoubleTest {
     assertEquals(doubleToLongBits(-1.0), doubleToLongBits(Double.MinValue.sign))
     assertEquals(doubleToLongBits(-1.0), doubleToLongBits(Double.NegativeInfinity.sign))
     assertEquals(doubleToLongBits(0.0), doubleToLongBits(0.0.sign))
-    assertEquals(doubleToLongBits(-0.0), doubleToLongBits(-0.0.sign))
+    assertEquals(doubleToLongBits(-0.0), doubleToLongBits((-0.0).sign))
   }
 
   @deprecated("Tests deprecated API", since="2.13")
@@ -27,6 +27,6 @@ class DoubleTest {
     assertEquals(-1, Double.MinValue.signum)
     assertEquals(-1, Double.NegativeInfinity.signum)
     assertEquals(0, 0.0.signum)
-    assertEquals(0, -0.0.signum)
+    assertEquals(0, (-0.0).signum)
   }
 }
