@@ -1,0 +1,20 @@
+-- [E046] Cyclic Error: tests/neg/invalid-opaque.scala:2:14 ------------------------------------------------------------
+2 |  opaque type TestCases: Int // error // error // error: used to crash the compiler
+  |              ^
+  |              Cyclic reference involving type TestCases
+  |
+  |               Run with -explain-cyclic for more details.
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/invalid-opaque.scala:2:28 --------------------------------------------------------------------------
+2 |  opaque type TestCases: Int // error // error // error: used to crash the compiler
+  |                         ^^^
+  |                         Illegal context bound: Int does not take type parameters.
+-- [E046] Cyclic Error: tests/neg/invalid-opaque.scala:2:2 -------------------------------------------------------------
+2 |  opaque type TestCases: Int // error // error // error: used to crash the compiler
+  |  ^
+  |  Cyclic reference involving type TestCases
+  |
+  |   Run with -explain-cyclic for more details.
+  |
+  | longer explanation available when compiling with `-explain`
