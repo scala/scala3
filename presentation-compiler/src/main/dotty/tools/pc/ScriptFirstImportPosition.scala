@@ -8,24 +8,20 @@ object ScriptFirstImportPosition:
   val ammHeaders: List[String] = List("// scala", "// ammonite")
 
   def ammoniteScStartOffset(
-      text: String,
       comments: List[Comment]
   ): Option[Int] =
-    findStartOffset(text, comments, commentQuery = "/*<start>*/", ammHeaders)
+    findStartOffset(comments, commentQuery = "/*<start>*/", ammHeaders)
 
   def scalaCliScStartOffset(
-      text: String,
       comments: List[Comment]
   ): Option[Int] =
     findStartOffset(
-      text,
       comments,
       commentQuery = "/*<script>*/",
       usingDirectives
     )
 
   def findStartOffset(
-      text: String,
       comments: List[Comment],
       commentQuery: String,
       excludedComments: List[String]
@@ -34,7 +30,7 @@ object ScriptFirstImportPosition:
       Option(comments.indexWhere(_.raw == commentQuery)).filter(_ >= 0)
     startComment.flatMap { startIndex =>
       val commentsInsideScript = comments.drop(startIndex + 1)
-      val (headers, rest) =
+      val (headers, _) =
         commentsInsideScript.span(comment =>
           excludedComments.exists(comment.raw.startsWith)
         )

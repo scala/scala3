@@ -6,22 +6,18 @@ import scala.annotation.tailrec
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
-import scala.meta as m
 
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
-import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
@@ -51,7 +47,7 @@ final class InferredTypeProvider(
     driver: InteractiveDriver,
     config: PresentationCompilerConfig,
     symbolSearch: SymbolSearch
-)(using ReportContext):
+):
 
   case class AdjustTypeOpts(
       text: String,
@@ -61,7 +57,6 @@ final class InferredTypeProvider(
   def inferredTypeEdits(
       adjustOpt: Option[AdjustTypeOpts] = None
   ): List[TextEdit] =
-    val retryType = adjustOpt.isEmpty
     val uri = params.uri().nn
     val filePath = Paths.get(uri).nn
 
@@ -118,7 +113,7 @@ final class InferredTypeProvider(
     def imports: List[TextEdit] =
       printer.imports(autoImportsGen)
 
-    def printTypeAscription(tpe: Type, spaceBefore: Boolean = false): String =
+    def printTypeAscription(tpe: Type, spaceBefore: Boolean): String =
       (if spaceBefore then " : " else ": ") + printer.tpe(tpe)
 
     path.headOption match
@@ -133,7 +128,7 @@ final class InferredTypeProvider(
       case Some(vl @ ValDef(name, tpt, rhs)) =>
         val isParam = path match
           case head :: next :: _ if next.symbol.isAnonymousFunction => true
-          case head :: (b @ Block(stats, expr)) :: next :: _
+          case head :: Block(_, _) :: next :: _
               if next.symbol.isAnonymousFunction =>
             true
           case _ => false
@@ -177,7 +172,7 @@ final class InferredTypeProvider(
             // labda `map{a => ???}` apply
             // Ensures that this becomes {(a: Int) => ???} since parentheses
             // are required around the parameter of a lambda in Scala 3
-            case valDef :: defDef :: (block: untpd.Block) :: (_: untpd.Block) :: (appl: untpd.Apply) :: _
+            case _ :: _ :: (block: untpd.Block) :: (_: untpd.Block) :: (appl: untpd.Apply) :: _
                 if isParam =>
               checkForParensAndEdit(appl.fun.endPos.end, '{', block.startPos)
 
@@ -188,7 +183,7 @@ final class InferredTypeProvider(
           typeNameEdit ::: imports
 
         rhs match
-          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
+          case _: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
@@ -227,7 +222,7 @@ final class InferredTypeProvider(
           while i >= 0 && sourceText(i) != ':' do i -= 1
           i
         rhs match
-          case t: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
+          case _: Tree[?] if !tpt.sourcePos.span.isZeroExtent =>
             inferredTypeEdits(
               Some(
                 AdjustTypeOpts(
@@ -257,7 +252,7 @@ final class InferredTypeProvider(
            * we need to add () for example in:
            * case (head : Int) :: tail =>
            */
-          case _ :: (unappl @ UnApply(_, _, patterns)) :: _
+          case _ :: (UnApply(_, _, patterns)) :: _
               if patterns.size > 1 =>
             val firstEnd = patterns(0).endPos.end
             val secondStart = patterns(1).startPos.start

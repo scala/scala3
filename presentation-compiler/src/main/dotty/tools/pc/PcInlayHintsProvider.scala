@@ -9,7 +9,6 @@ import scala.meta.internal.pc.LabelPart
 import scala.meta.internal.pc.LabelPart.*
 import scala.meta.pc.InlayHintsParams
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
@@ -30,13 +29,12 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.InlayHint
 import org.eclipse.lsp4j.InlayHintKind
-import org.eclipse.lsp4j as l
 
 class PcInlayHintsProvider(
     driver: InteractiveDriver,
     params: InlayHintsParams,
     symbolSearch: SymbolSearch
-)(using ReportContext):
+):
 
   val uri: java.net.URI = params.uri()
   val filePath: java.nio.file.Path = Paths.get(uri)
@@ -135,7 +133,7 @@ class PcInlayHintsProvider(
           InlayHintKind.Type,
           InlayHintOrigin.TypeParameters
         )
-      case InferredType(tpe, pos, defTree)
+      case InferredType(tpe, pos, _)
           if !isErrorTpe(tpe) =>
         val adjustedPos = adjustPos(pos).endPos
         withClosingLabels
@@ -370,7 +368,7 @@ object ValueOf:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context) =
     if params.implicitParameters() then
       tree match
-        case Apply(ta @ TypeApply(fun, _), _)
+        case Apply(TypeApply(fun, _), _)
             if fun.span.isSynthetic && isValueOf(fun) =>
           Some(
             "new " + tpnme.valueOf.decoded.capitalize + "(...)",

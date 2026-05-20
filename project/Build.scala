@@ -2241,6 +2241,7 @@ object Build {
       ).value,
       // Silence warnings in metals shared code, which must be compatible with Scala 2
       Compile / compile / scalacOptions += "-Wconf:src=.*/scala/meta/internal/.*:s",
+      Compile / compile / scalacOptions += "-Wunused:all",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory

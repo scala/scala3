@@ -12,7 +12,6 @@ import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
@@ -41,7 +40,7 @@ trait PcSymbolSearch:
   lazy val path = rawPath match
     // For type it will sometimes go into the wrong tree since TypeTree also contains the same span
     // https://github.com/lampepfl/dotty/issues/15937
-    case TypeApply(sel: Select, _) :: tail if sel.span.contains(pos.span) =>
+    case TypeApply(sel: Select, _) :: _ if sel.span.contains(pos.span) =>
       Interactive.pathTo(sel, pos.span) ::: rawPath
     case _ => rawPath
 
@@ -65,7 +64,7 @@ trait PcSymbolSearch:
        *  val x = new <<A>>(1)
        *  ```
        */
-      case t :: (n: New) :: (sel: Select) :: _
+      case t :: (_: New) :: (sel: Select) :: _
           if t.symbol == NoSymbol && sel.symbol.isConstructor =>
         Some(symbolAlternatives(sel.symbol.owner), namePos(t))
 

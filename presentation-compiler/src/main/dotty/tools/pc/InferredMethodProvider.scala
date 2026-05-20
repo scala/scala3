@@ -6,10 +6,8 @@ import scala.annotation.tailrec
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Symbols.defn
@@ -45,7 +43,7 @@ final class InferredMethodProvider(
     driver: InteractiveDriver,
     config: PresentationCompilerConfig,
     symbolSearch: SymbolSearch
-)(using ReportContext):
+):
 
   case class AdjustTypeOpts(
       text: String,
@@ -95,7 +93,7 @@ final class InferredMethodProvider(
     def printName(name: Name): String =
       printer.nameString(name)
 
-    def printParams(params: List[Type], startIndex: Int = 0): String =
+    def printParams(params: List[Type], startIndex: Int): String =
       params.zipWithIndex
         .map { case (p, index) =>
           s"arg${index + startIndex}: ${printType(p)}"
@@ -187,7 +185,7 @@ final class InferredMethodProvider(
        */
     def extractParameterTypeInfo(methodType: Type, argIndex: Int): (Option[List[Type]], Option[Type]) =
       methodType match
-        case m @ MethodType(param) =>
+        case m @ MethodType(_) =>
           val expectedFunctionType = m.paramInfos(argIndex)
           if defn.isFunctionType(expectedFunctionType) then
             expectedFunctionType match
@@ -337,7 +335,7 @@ final class InferredMethodProvider(
        *  ```
        */
       case (id @ Ident(errorMethod)) ::
-          (apply @ Apply(func, args)) ::
+          (Apply(func, args)) ::
           _ if id.symbol == NoSymbol && func == id =>
 
         val argTypes = args.map(_.typeOpt.widenDealias)
@@ -360,7 +358,7 @@ final class InferredMethodProvider(
        *  ```
        */
       case (select @ Select(container, errorMethod)) ::
-          (apply @ Apply(func, args)) ::
+          (Apply(func, args)) ::
           _ if select.symbol == NoSymbol && func == select =>
 
         val argTypes = args.map(_.typeOpt.widenDealias)
