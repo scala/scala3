@@ -917,14 +917,15 @@ final class StringOps(private val s: String) extends AnyVal { self =>
         builder += s.substring(0, first)
 
         @annotation.tailrec
-        def collect(start: Int): Unit =
-          s.indexOf(separator, start) match {
-            case -1 =>
-              builder += s.substring(start, end)
-            case idx =>
-              builder += s.substring(start, idx)
-              if (idx != end) collect(idx + 1)
+        def collect(start: Int): Unit = {
+          val idx = s.indexOf(separator, start)
+          if (idx == -1 || idx == end) {
+            builder += s.substring(start, end)
+          } else {
+            builder += s.substring(start, idx)
+            collect(idx + 1)
           }
+        }
         collect(first + 1)
         builder.result()
     else {
@@ -934,22 +935,19 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       if (isLowSurrogate && end != s.length && s(end - 1).isHighSurrogate) end += 1
 
       @annotation.tailrec
-      def collect(start: Int, searchFrom: Int): Unit =
-        s.indexOf(separator, searchFrom) match {
-          case -1 =>
-            builder += s.substring(start, end)
-          case idx =>
-            if (idx == end) {
-              builder += s.substring(start, idx)
-            } else if (isLowSurrogate && idx != 0 && s(idx - 1).isHighSurrogate) {
-              collect(start, idx + 1) // skip this match
-            } else if (!isLowSurrogate && s(idx + 1).isLowSurrogate) {
-              collect(start, idx + 2) // skip this match
-            } else {
-              builder += s.substring(start, idx)
-              collect(idx + 1, idx + 1)
-            }
+      def collect(start: Int, searchFrom: Int): Unit = {
+        val idx = s.indexOf(separator, searchFrom)
+        if (idx == -1 || idx == end) {
+          builder += s.substring(start, end)
+        } else if (isLowSurrogate && idx != 0 && s(idx - 1).isHighSurrogate) {
+          collect(start, idx + 1) // skip this match
+        } else if (!isLowSurrogate && s(idx + 1).isLowSurrogate) {
+          collect(start, idx + 2) // skip this match
+        } else {
+          builder += s.substring(start, idx)
+          collect(idx + 1, idx + 1)
         }
+      }
       collect(0, 0)
       builder.result()
     }
