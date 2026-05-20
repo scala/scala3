@@ -173,17 +173,7 @@ class Driver {
       compileCtx.setReporter(reporter)
     if (callback != null)
       compileCtx.setCompilerCallback(callback)
-    try
-      process(args, compileCtx)
-    catch
-      // This should be the ONLY point in the compiler where we catch stack overflows.
-      // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.
-      // This is a pure best-effort attempt at helping the user.
-      case so: StackOverflowError =>
-        report.error("Stack overflow in the compiler.\n"
-                   + "See https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html\n"
-                   + s"Stack trace:\n${so.getStackTrace.mkString("\n  ")}")(using compileCtx)
-        compileCtx.reporter
+    process(args, compileCtx)
   }
 
   /** Entry point to the compiler with no optional arguments.
@@ -213,11 +203,20 @@ class Driver {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
-    setup(args, rootCtx) match
-      case Some((files, compileCtx)) =>
-        doCompile(newCompiler(using compileCtx), files)(using compileCtx)
-      case None =>
-        rootCtx.reporter
+    try
+      setup(args, rootCtx) match
+        case Some((files, compileCtx)) =>
+          doCompile(newCompiler(using compileCtx), files)(using compileCtx)
+        case None =>
+          rootCtx.reporter
+    catch case so: StackOverflowError =>
+      // This should be the ONLY point in the compiler where we catch stack overflows.
+      // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.
+      // This is a pure best-effort attempt at helping the user.
+      report.error("Stack overflow in the compiler.\n"
+        + "See https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html\n"
+        + s"Stack trace:\n${so.getStackTrace.mkString("\n  ")}")(using rootCtx)
+      rootCtx.reporter
   }
 
   def main(args: Array[String]): Unit = {
