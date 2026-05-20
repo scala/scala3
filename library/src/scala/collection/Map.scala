@@ -109,6 +109,8 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   /** Returns a [[Stepper]] for the keys of this map. See method [[stepper]].
    *
    *  @tparam S the type of `Stepper` to use, determined by the implicit `StepperShape`
+   *  @param shape the implicit `StepperShape` that selects the appropriate primitive or boxed `Stepper` for `K`
+   *  @return a `Stepper` over the keys of this map, specialized for primitives when the resolved `StepperShape` corresponds to `Int`, `Long`, or `Double`
    */
   def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S = {
     import convert.impl._
@@ -124,6 +126,8 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   /** Returns a [[Stepper]] for the values of this map. See method [[stepper]].
    *
    *  @tparam S the type of `Stepper` to use, determined by the implicit `StepperShape`
+   *  @param shape the implicit `StepperShape` that selects the appropriate primitive or boxed `Stepper` for `V`
+   *  @return a `Stepper` over the values of this map, specialized for primitives when the resolved `StepperShape` corresponds to `Int`, `Long`, or `Double`
    */
   def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S = {
     import convert.impl._
@@ -142,6 +146,7 @@ transparent trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
    *  @tparam K2 the key type of the returned map
    *  @tparam V2 the value type of the returned map
    *  @param it the iterable of key-value pairs to convert into a map
+   *  @return a map of type `CC[K2, V2]` containing the key-value pairs from `it`
    */
   @`inline` protected final def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]^): CC[K2, V2]^{it} = mapFactory.from(it)
 
@@ -457,6 +462,8 @@ object MapOps {
    *  @tparam K the key type of the underlying map
    *  @tparam V the value type of the underlying map
    *  @tparam CC the type constructor of the underlying map
+   *  @tparam C the concrete type of the underlying map (e.g. `HashMap[Int, String]`)
+   *  @param mp the underlying map whose keys this set exposes; held by reference so the set reflects the map
    */
   private[collection] class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
     def iterator: Iterator[K] = mp.keysIterator
@@ -472,6 +479,8 @@ object MapOps {
    *  @tparam K the key type of the underlying map
    *  @tparam V the value type of the underlying map
    *  @tparam CC the type constructor of the underlying map
+   *  @tparam C the concrete type of the underlying map (e.g. `HashMap[Int, String]`)
+   *  @param mp the underlying map whose keys are eagerly copied into this set at construction time
    */
   private[collection] class StrictKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](@annotation.constructorOnly mp: MapOps[K, V, CC, C]^) extends AbstractSet[K] with DefaultSerializable {
     val allKeys = mp.keysIterator.to(mutable.LinkedHashSet)

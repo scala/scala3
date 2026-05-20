@@ -20,6 +20,7 @@ import language.experimental.captureChecking
  *
  *  @tparam A the element type of the sequence
  *  @tparam CC the type constructor of the collection
+ *  @tparam C the type of the sequence itself
  */
 transparent trait StrictOptimizedSeqOps [+A, +CC[_] <: caps.Pure, +C]
   extends Any with SeqOps[A, CC, C] with StrictOptimizedIterableOps[A, CC, C] with caps.Pure {

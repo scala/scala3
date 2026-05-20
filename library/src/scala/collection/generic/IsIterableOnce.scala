@@ -56,6 +56,7 @@ transparent trait IsIterableOnce[Repr] {
   /** A conversion from the representation type `Repr` to an `IterableOnce[A]`.
    *
    *  @param coll the representation type instance to view as an `IterableOnce[A]`
+   *  @return an `IterableOnce[A]` view of `coll`
    */
   def apply(coll: Repr): IterableOnce[A]
 
