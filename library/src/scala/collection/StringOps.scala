@@ -901,18 +901,19 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  @return an array of strings computed by splitting this string around occurrences of the separator character
    */
   def split(separator: Char): Array[String] = {
-    val first = s.indexOf(separator)
-    if first == -1 then return Array(s)
+     val first = s.indexOf(separator)
+    if (first == -1)
+      return Array(s)
 
     var end = s.length
-    while end > 0 && s(end - 1) == separator do
+    while (end > 0 && s(end - 1) == separator)
       end -= 1
-    if end == 0 then return Array.empty
+    if (end == 0)
+      return Array.empty
 
-    if !separator.isSurrogate then
-      if first == end then
-        Array(s.substring(0, end))
-      else
+    if (!separator.isSurrogate) {
+      if (first == end) Array(s.substring(0, end))
+      else {
         val builder = Array.newBuilder[String]
         builder += s.substring(0, first)
 
@@ -928,7 +929,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
         }
         collect(first + 1)
         builder.result()
-    else {
+      }
+    } else {
       val builder = Array.newBuilder[String]
       // If we over-trimmed the rightmost low surrogate, put it back
       val isLowSurrogate = separator.isLowSurrogate
