@@ -913,17 +913,18 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       if first == end then
         Array(s.substring(0, end))
       else
+        @tannotation.ailrec
+        def collect(start: Int): Unit =
+          s.indexOf(ch, start) match {
+            case -1 =>
+              builder += s.substring(start)
+            case idx =>
+              builder += s.substring(start, idx)
+              if (idx != end) collect(idx + 1)
+          }
         val builder = Array.newBuilder[String]
-        var i = first
-        var start = 0
-        while
-          builder += s.substring(start, i)
-          start = i + 1
-          i = s.indexOf(separator, start)
-          i >= 0 && i < end
-        do ()
-        builder += s.substring(start, end)
-        builder.result()
+        builder += s.substring(0, first)
+        collect(first + 1)
     else {
       val builder = Array.newBuilder[String]
       // If we over-trimmed the rightmost low surrogate, put it back
