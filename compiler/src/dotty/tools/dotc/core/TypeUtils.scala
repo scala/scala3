@@ -131,10 +131,12 @@ class TypeUtils:
       pat.typeSymbol == defn.TupleXXLClass && self.isLargeGenericTuple
 
     /** The `*:` equivalent of an instance of a Tuple class */
-    def toNestedPairs(using Context): Type =
-      tupleElementTypes match
-        case Some(types) => TypeOps.nestedPairs(types)
-        case None => throw new AssertionError("not a tuple")
+    def toNestedPairs(using Context): Type = self match
+      case tp: AppliedType if defn.isTupleNType(tp) => tp.cachedToNestedPairs
+      case _ =>
+        tupleElementTypes match
+          case Some(types) => TypeOps.nestedPairs(types)
+          case None => throw new AssertionError("not a tuple")
 
     def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
       def extractNamesTypes(nmes: Type, vals: Type): List[(TermName, Type)] =
