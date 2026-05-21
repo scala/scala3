@@ -5057,8 +5057,13 @@ object Types extends TypeUtils {
         NoType
     }
 
-    def tyconTypeParams(using Context): List[ParamInfo] = {
-      val tparams = tycon.typeParams
+    final inline def tyconTypeParams(using Context): List[ParamInfo] = {
+      val tparams = tycon match
+        case tycon: TypeRef =>
+          tycon.designator match
+            case cls: ClassSymbol if cls.isValidInCurrentRun => cls.typeParams
+            case _ => tycon.typeParams
+        case _ => tycon.typeParams
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
 

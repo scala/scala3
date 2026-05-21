@@ -373,6 +373,16 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def appliedTo(args: List[Type])(using Context): Type = {
     record("appliedTo")
+    // Fast path: a class TypeRef is not a TypeVar, has no alias, and only the
+    // catch-all `AppliedType(self, args)` (or Nothing) arm of the match below
+    // can ever fire. Skip stripTypeVar + safeDealias and the dead `typParams`
+    // computation in that common case (List[Int], Option[String], ...).
+    self match
+      case self: TypeRef if self.symbol.isInstanceOf[ClassSymbol] =>
+        if args.isEmpty || ctx.erasedTypes then return self
+        if self.symbol eq defn.NothingClass then return self
+        return AppliedType(self, args)
+      case _ =>
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
