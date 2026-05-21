@@ -896,6 +896,8 @@ object Denotations {
         toNewRun
       else if currentPeriod > valid then
         goForward
+      else if valid.contains(currentPeriod) then
+        this
       else
         goBack
     end current
