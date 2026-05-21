@@ -142,14 +142,17 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   def lookup(elem: A): A | Null =
     Stats.record(statsItem("lookup"))
     removeStaleEntries()
-    val bucket = index(hash(elem))
+    val h = hash(elem)
+    val bucket = index(h)
 
     @tailrec
     def linkedListLoop(entry: Entry[A] | Null): A | Null = entry match {
       case null                    => null
       case _                       =>
-        val entryElem = entry.get
-        if entryElem != null && isEqual(elem, entryElem) then entryElem
+        if entry.hash == h then
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then entryElem
+          else linkedListLoop(entry.tail)
         else linkedListLoop(entry.tail)
     }
 
@@ -174,8 +177,10 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     def linkedListLoop(entry: Entry[A] | Null): A = entry match {
       case null                    => addEntryAt(bucket, elem, h, oldHead)
       case _                       =>
-        val entryElem = entry.get
-        if entryElem != null && isEqual(elem, entryElem) then entryElem
+        if entry.hash == h then
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then entryElem
+          else linkedListLoop(entry.tail)
         else linkedListLoop(entry.tail)
     }
 
@@ -186,13 +191,16 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   def -=(elem: A): Unit =
     Stats.record(statsItem("-="))
     removeStaleEntries()
-    val bucket = index(hash(elem))
+    val h = hash(elem)
+    val bucket = index(h)
 
     @tailrec
     def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
       if entry != null then
-        val entryElem = entry.get
-        if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
+        if entry.hash == h then
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
+          else linkedListLoop(entry, entry.tail)
         else linkedListLoop(entry, entry.tail)
 
     linkedListLoop(null, table(bucket))
