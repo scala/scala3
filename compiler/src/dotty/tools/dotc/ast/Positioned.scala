@@ -92,7 +92,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     case _ =>
       def include(span: Span, x: Any): Span = x match {
         case p: Positioned =>
-          if (p.source != src) span
+          if (p.source `ne` src) span
           else if (p.span.exists) span.union(p.span)
           else if (span.exists) {
             if (span.end != MaxOffset)

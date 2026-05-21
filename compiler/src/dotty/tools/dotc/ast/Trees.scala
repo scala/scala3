@@ -1527,7 +1527,7 @@ object Trees {
       */
     def transformCtx(tree: Tree)(using Context): Context =
       val sourced =
-        if tree.source.exists && tree.source != ctx.source
+        if tree.source.exists && (tree.source `ne` ctx.source)
         then ctx.withSource(tree.source)
         else ctx
       tree match
@@ -1684,7 +1684,7 @@ object Trees {
         fold(x, trees)
 
       def foldOver(x: X, tree: Tree)(using Context): X =
-        if (tree.source != ctx.source && tree.source.exists)
+        if ((tree.source `ne` ctx.source) && tree.source.exists)
           foldOver(x, tree)(using ctx.withSource(tree.source))
         else {
           Stats.record(s"TreeAccumulator.foldOver/$getClass")
