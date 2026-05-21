@@ -68,11 +68,18 @@ class TreeTypeMap(
     }
   }
 
+  // Cached so the SubstSymMap's IdentityHashMap lookup (built once) is reused
+  // across all mapType calls on this TreeTypeMap, instead of re-walking substFrom
+  // for every NamedType.
+  private lazy val cachedSubstSymMap: Substituters.SubstSymMap =
+    new Substituters.SubstSymMap(substFrom, substTo)
+
+  private lazy val substMap: TypeMap = new TypeMap():
+    def apply(tp: Type): Type = tp match
+      case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+      case tp => cachedSubstSymMap(tp)
+
   def mapType(tp: Type): Type =
-    val substMap = new TypeMap():
-      def apply(tp: Type): Type = tp match
-        case tp: TermRef if tp.symbol.isImport => mapOver(tp)
-        case tp => tp.substSym(substFrom, substTo)
     mapOwnerThis(substMap(typeMap(tp)))
   end mapType
 
