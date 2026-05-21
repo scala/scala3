@@ -192,13 +192,17 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     linkedListLoop(null, table(bucket))
 
   def clear(resetToInitial: Boolean): Unit = {
-    table = new Array[Entry[A] | Null](table.size)
-    threshold = computeThreshold
-    count = 0
+    @tailrec def drainQueue(): Unit = if (queue.poll() != null) drainQueue()
 
-    // drain the queue - doesn't do anything because we're throwing away all the values anyway
-    @tailrec def queueLoop(): Unit = if (queue.poll() != null) queueLoop()
-    queueLoop()
+    if (count == 0) drainQueue()
+    else {
+      table = new Array[Entry[A] | Null](table.size)
+      threshold = computeThreshold
+      count = 0
+
+      // drain the queue - doesn't do anything because we're throwing away all the values anyway
+      drainQueue()
+    }
   }
 
   def size: Int = {
