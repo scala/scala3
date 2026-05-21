@@ -124,6 +124,9 @@ object Denotations {
     /** Map `f` over all single denotations and aggregate the results with `g`. */
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T
 
+    // Slot 0 (inline, MRU). The extra slots below are allocated lazily only when
+    // a second distinct prefix is queried — keeping per-PreDenotation overhead at
+    // the current 3 fields for denotations that are only asked from one prefix.
     private var cachedPrefix: Type = uninitialized
     private var cachedAsSeenFrom: AsSeenFromResult = uninitialized
     private var validAsSeenFrom: Period = Nowhere
@@ -140,12 +143,9 @@ object Denotations {
     /** The denotation with info(s) as seen from prefix type */
     def asSeenFrom(pre: Type)(using Context): AsSeenFromResult =
       if (Config.cacheAsSeenFrom) {
-        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
-          cachedAsSeenFrom = computeAsSeenFrom(pre)
-          cachedPrefix = pre
-          validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
-        }
-        cachedAsSeenFrom
+        val now = ctx.period
+        if ((cachedPrefix eq pre) && now == validAsSeenFrom) cachedAsSeenFrom
+        else asSeenFromSlow(pre, now)
       }
       else computeAsSeenFrom(pre)
 
@@ -202,7 +202,7 @@ object Denotations {
       end if
       cachedAsSeenFrom = computed
       cachedPrefix = pre
-      validAsSeenFrom = now
+      validAsSeenFrom = if pre.isProvisional then Nowhere else now
       computed
     }
 
