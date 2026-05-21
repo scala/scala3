@@ -3872,16 +3872,39 @@ object Types extends TypeUtils {
     final def isTypeLambda: Boolean = isInstanceOf[TypeLambda]
     final def isHigherKinded: Boolean = isInstanceOf[TypeProxy]
 
+    private var myParamRefsArr: Array[ParamRef] | Null = null
     private var myParamRefs: List[ParamRefType] | Null = null
 
+    private def ensureParamRefsArr(): Array[ParamRef] = {
+      val arr = myParamRefsArr
+      if arr != null then arr
+      else {
+        var n = 0
+        var names = paramNames
+        while names.nonEmpty do { n += 1; names = names.tail }
+        val a = new Array[ParamRef](n)
+        var i = 0
+        while i < n do { a(i) = newParamRef(i); i += 1 }
+        myParamRefsArr = a
+        a
+      }
+    }
+
+    /** Direct O(1) access to the i-th parameter ref. */
+    final def paramRef(i: Int): ParamRefType =
+      ensureParamRefsArr()(i).asInstanceOf[ParamRefType]
+
     def paramRefs: List[ParamRefType] = {
-      if myParamRefs == null then
-        def recur(paramNames: List[ThisName], i: Int): List[ParamRefType] =
-          paramNames match
-            case _ :: rest => newParamRef(i) :: recur(rest, i + 1)
-            case _ => Nil
-        myParamRefs = recur(paramNames, 0)
-      myParamRefs.nn
+      val cached = myParamRefs
+      if cached != null then cached
+      else {
+        val arr = ensureParamRefsArr()
+        var lst: List[ParamRefType] = Nil
+        var i = arr.length - 1
+        while i >= 0 do { lst = arr(i).asInstanceOf[ParamRefType] :: lst; i -= 1 }
+        myParamRefs = lst
+        lst
+      }
     }
 
     /** Like `paramInfos` but substitute parameter references with the given arguments */
@@ -4919,7 +4942,7 @@ object Types extends TypeUtils {
   extends ParamRef, SingletonType, ObjectCapability {
     type BT = TermLambda
     def kindString: String = "Term"
-    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
+    def copyBoundType(bt: BT): Type = bt.paramRef(paramNum)
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -4931,7 +4954,7 @@ object Types extends TypeUtils {
   extends ParamRef, SetCapability {
     type BT = TypeLambda
     def kindString: String = "Type"
-    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
+    def copyBoundType(bt: BT): Type = bt.paramRef(paramNum)
 
     /** Optimized version of occursIn, avoid quadratic blowup when solving
      *  constraints over large ground types.
