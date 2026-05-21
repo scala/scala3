@@ -1,4 +1,3 @@
-// scalajs: --skip
 package p {
   object Module {
     override def toString = "Module"
