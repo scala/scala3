@@ -102,7 +102,12 @@ object TypeOps:
             else
               val sym = tp.symbol
               if sym.isStatic && !sym.maybeOwner.seesOpaques then tp
-              else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
+              else
+                val saved = variance
+                variance = saved max 0
+                val prefix = this(tp.prefix)
+                variance = saved
+                derivedSelect(tp, prefix)
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case
           case tp: ThisType =>
