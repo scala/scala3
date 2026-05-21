@@ -112,6 +112,13 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
      */
     private val newTopClasses = MutableSymbolMap[mutable.ListBuffer[Tree]]()
 
+    /** Depth of the recursive `transform` invocation. The post-walk that records
+     *  inline dependencies only needs to run on the outermost call: inner calls
+     *  produce subtrees that are already contained in the outer result, and
+     *  walking them per-level makes the traversal O(n*d) instead of O(n).
+     */
+    private var transformDepth: Int = 0
+
     val inlineFinder = new tpd.TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
         try
@@ -133,35 +140,39 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
             throw ex
 
     override def transform(tree: Tree)(using Context): Tree = {
-      val result = tree match
-        case tree: MemberDef =>
-          // Fetch the latest tracked tree (It might have already been transformed by its companion)
-          transformMemberDef(getTracked(tree.symbol).getOrElse(tree))
-        case _: Typed | _: Block =>
-          super.transform(tree)
-        case _: PackageDef =>
-          super.transform(tree) match
-            case tree1: PackageDef  =>
-              newTopClasses.get(tree.symbol.moduleClass) match
-                case Some(topClasses) =>
-                  newTopClasses.remove(tree.symbol.moduleClass)
-                  val newStats = tree1.stats ::: topClasses.result()
-                  cpy.PackageDef(tree1)(tree1.pid, newStats)
-                case _ => tree1
-            case tree1 => tree1
-        case _ =>
-          if tree.isType then tree
-          else if Inlines.needsInlining(tree) then
-            tree match
-              case tree: UnApply =>
-                val fun1 = Inlines.inlinedUnapplyFun(tree.fun)
-                super.transform(cpy.UnApply(tree)(fun = fun1))
-              case _ =>
-                val tree1 = super.transform(tree)
-                if tree1.tpe.isError then tree1
-                else Inlines.inlineCall(tree1)
-          else super.transform(tree)
-      inlineFinder.traverse(result)
+      transformDepth += 1
+      val result =
+        try
+          tree match
+            case tree: MemberDef =>
+              // Fetch the latest tracked tree (It might have already been transformed by its companion)
+              transformMemberDef(getTracked(tree.symbol).getOrElse(tree))
+            case _: Typed | _: Block =>
+              super.transform(tree)
+            case _: PackageDef =>
+              super.transform(tree) match
+                case tree1: PackageDef  =>
+                  newTopClasses.get(tree.symbol.moduleClass) match
+                    case Some(topClasses) =>
+                      newTopClasses.remove(tree.symbol.moduleClass)
+                      val newStats = tree1.stats ::: topClasses.result()
+                      cpy.PackageDef(tree1)(tree1.pid, newStats)
+                    case _ => tree1
+                case tree1 => tree1
+            case _ =>
+              if tree.isType then tree
+              else if Inlines.needsInlining(tree) then
+                tree match
+                  case tree: UnApply =>
+                    val fun1 = Inlines.inlinedUnapplyFun(tree.fun)
+                    super.transform(cpy.UnApply(tree)(fun = fun1))
+                  case _ =>
+                    val tree1 = super.transform(tree)
+                    if tree1.tpe.isError then tree1
+                    else Inlines.inlineCall(tree1)
+              else super.transform(tree)
+        finally transformDepth -= 1
+      if transformDepth == 0 then inlineFinder.traverse(result)
       result
     }
 
