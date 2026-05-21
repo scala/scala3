@@ -2398,18 +2398,28 @@ object SymDenotations {
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(using Context): Type = {
       val btrCache = baseTypeCache
-      def inCache(tp: Type) = tp match
-        case tp: CachedType => btrCache.contains(tp)
-        case _ => false
+      // Side-channel: set by `recur` on every exit to indicate whether the
+      // value just returned is/was stored in `btrCache` for its input.
+      // Post-`recur` sites use this to decide whether to record the outer
+      // `tp`, replacing redundant `inCache(superTp)` EqHashMap re-probes.
+      // Capture into a local immediately after each recur call before any
+      // other recur invocation overwrites it.
+      var lastRecurCacheable: Boolean = false
+      // Updates `lastRecurCacheable` to reflect whether `tp` ended up
+      // present in `btrCache` (i.e. the cacheable branch was taken).
       def record(tp: CachedType, baseTp: Type) = {
         if (Stats.monitored) {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
-        if !(tp.isProvisional || CapturingType.isUncachable(tp) || ctx.gadt.isNarrowing) then
+        if !(tp.isProvisional || CapturingType.isUncachable(tp) || ctx.gadt.isNarrowing) then {
           btrCache(tp) = baseTp
-        else
+          lastRecurCacheable = true
+        }
+        else {
           btrCache.remove(tp) // Remove any potential sentinel value
+          lastRecurCacheable = false
+        }
       }
 
       def ensureAcyclic(baseTp: Type) = {
@@ -2421,16 +2431,26 @@ object SymDenotations {
         tp match {
           case tp: CachedType =>
             val baseTp: Type | Null = btrCache.lookup(tp)
-            if (baseTp != null)
+            if (baseTp != null) {
+              lastRecurCacheable = true
               return ensureAcyclic(baseTp)
+            }
           case _ =>
         }
+        // Default for the compute paths below; specific arms override.
+        lastRecurCacheable = false
         if (Stats.monitored) {
           Stats.record("computeBaseType, total")
           Stats.record(s"computeBaseType, ${tp.getClass}")
         }
         val normed = tp.tryNormalize
-        if (normed.exists) return recur(normed)
+        if (normed.exists) {
+          val baseTp = recur(normed)
+          // `tp` itself was never recorded here -- only `normed` was visited.
+          // Reflect that for callers checking the cacheability bit.
+          lastRecurCacheable = false
+          return baseTp
+        }
 
         tp match {
           case tp @ TypeRef(prefix, _) =>
@@ -2464,10 +2484,11 @@ object SymDenotations {
                 case _ =>
                   val superTp = tp.superType
                   val baseTp = recur(superTp)
-                  if (inCache(superTp))
-                    record(tp, baseTp)
-                  else
+                  if (lastRecurCacheable) record(tp, baseTp)
+                  else {
                     btrCache.remove(tp)
+                    lastRecurCacheable = false
+                  }
                   baseTp
               }
             }
@@ -2489,19 +2510,25 @@ object SymDenotations {
             computeApplied
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
-            recur(TypeComparer.bounds(tp).hi)
+            val baseTp = recur(TypeComparer.bounds(tp).hi)
+            lastRecurCacheable = false
+            baseTp
 
           case CapturingType(parent, refs) =>
-            tp.derivedCapturingType(recur(parent), refs)
+            val baseTp = tp.derivedCapturingType(recur(parent), refs)
+            lastRecurCacheable = false
+            baseTp
 
           case tp: TypeProxy =>
             def computeTypeProxy = {
               val superTp = tp.superType
               val baseTp = recur(superTp)
+              val superCacheable = lastRecurCacheable
               tp match {
-                case tp: CachedType if baseTp.exists && inCache(superTp) =>
+                case tp: CachedType if baseTp.exists && superCacheable =>
                   record(tp, baseTp)
                 case _ =>
+                  lastRecurCacheable = false
               }
               baseTp
             }
@@ -2512,29 +2539,46 @@ object SymDenotations {
               val tp1 = tp.tp1
               val tp2 = tp.tp2
               if !tp.isAnd then
-                if tp1.isBottomType && (tp1 frozen_<:< tp2) then return recur(tp2)
-                if tp2.isBottomType && (tp2 frozen_<:< tp1) then return recur(tp1)
+                // `tp` itself is not recorded along these short-circuit paths;
+                // ensure the flag reflects that for our caller.
+                if tp1.isBottomType && (tp1 frozen_<:< tp2) then {
+                  val baseTp = recur(tp2)
+                  lastRecurCacheable = false
+                  return baseTp
+                }
+                if tp2.isBottomType && (tp2 frozen_<:< tp1) then {
+                  val baseTp = recur(tp1)
+                  lastRecurCacheable = false
+                  return baseTp
+                }
+              var cacheable1 = false
+              var cacheable2 = false
               val baseTp =
                 if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty then
                   symbol.typeRef
                 else
                   val baseTp1 = recur(tp1)
+                  cacheable1 = lastRecurCacheable
                   val baseTp2 = recur(tp2)
+                  cacheable2 = lastRecurCacheable
                   val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
                   combined match
                     case combined: AndOrType
                     if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
                     case _ => combined
 
-              if (baseTp.exists && inCache(tp1) && inCache(tp2)) record(tp, baseTp)
+              if (baseTp.exists && cacheable1 && cacheable2) record(tp, baseTp)
+              else lastRecurCacheable = false
               baseTp
 
             computeAndOrType
 
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
+            lastRecurCacheable = false
             this.typeRef
 
           case _ =>
+            lastRecurCacheable = false
             NoType
         }
       }
@@ -2543,6 +2587,7 @@ object SymDenotations {
           tp match
             case tp: CachedType => btrCache.remove(tp)
             case _ =>
+          lastRecurCacheable = false
           throw ex
       }
 
