@@ -59,6 +59,8 @@ object Contexts {
 
   private val initialStore = store11
 
+  private val emptyMoreProps: Array[AnyRef] = new Array[AnyRef](0)
+
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
 
@@ -151,11 +153,32 @@ object Contexts {
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
+     *  Backed by a flat `Array[AnyRef]` of interleaved `[key0, value0, key1, value1, ...]`
+     *  to avoid `HashMap.updated` allocations on the hot `setProperty` path; keys use
+     *  identity equality (`Property.Key` has no overridden `equals`).
      */
-    def moreProperties: Map[Key[Any], Any]
+    def moreProperties: Map[Key[Any], Any] =
+      val arr = morePropertiesArr
+      if arr.length == 0 then Map.empty
+      else
+        val b = Map.newBuilder[Key[Any], Any]
+        var i = 0
+        while i < arr.length do
+          b += ((arr(i).asInstanceOf[Key[Any]], arr(i + 1)))
+          i += 2
+        b.result()
+
+    /** Raw interleaved `[key, value, ...]` array backing storage for properties. */
+    private[Contexts] def morePropertiesArr: Array[AnyRef]
 
     def property[T](key: Key[T]): Option[T] =
-      moreProperties.get(key).asInstanceOf[Option[T]]
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return Some(arr(i + 1).asInstanceOf[T])
+        i += 2
+      None
 
     /** A store that can be used by sub-components.
      *  Typically used for attributes that are defined only once per compilation unit.
@@ -610,8 +633,8 @@ object Contexts {
     private var _source: SourceFile = uninitialized
     final def source: SourceFile = _source
 
-    private var _moreProperties: Map[Key[Any], Any] = uninitialized
-    final def moreProperties: Map[Key[Any], Any] = _moreProperties
+    private var _morePropertiesArr: Array[AnyRef] = emptyMoreProps
+    final def morePropertiesArr: Array[AnyRef] = _morePropertiesArr
 
     private var _store: Store = uninitialized
     final def store: Store = _store
@@ -630,7 +653,7 @@ object Contexts {
       _gadtState = origin.gadtState
       _searchHistory = origin.searchHistory
       _source = origin.source
-      _moreProperties = origin.moreProperties
+      _morePropertiesArr = origin.morePropertiesArr
       _store = origin.store
       this
     }
@@ -701,9 +724,9 @@ object Contexts {
       this._source = source
       this
 
-    private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type =
+    private def setMorePropertiesArr(arr: Array[AnyRef]): this.type =
       util.Stats.record("Context.setMoreProperties")
-      this._moreProperties = moreProperties
+      this._morePropertiesArr = arr
       this
 
     private def setStore(store: Store): this.type =
@@ -736,10 +759,35 @@ object Contexts {
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = updateStore(typeAssignerLoc, typeAssigner)
 
     def setProperty[T](key: Key[T], value: T): this.type =
-      setMoreProperties(moreProperties.updated(key, value))
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      var i = 0
+      while i < oldLen do
+        if arr(i) eq key then
+          val copy = new Array[AnyRef](oldLen)
+          System.arraycopy(arr, 0, copy, 0, oldLen)
+          copy(i + 1) = value.asInstanceOf[AnyRef]
+          return setMorePropertiesArr(copy)
+        i += 2
+      val copy = new Array[AnyRef](oldLen + 2)
+      if oldLen > 0 then System.arraycopy(arr, 0, copy, 0, oldLen)
+      copy(oldLen) = key.asInstanceOf[AnyRef]
+      copy(oldLen + 1) = value.asInstanceOf[AnyRef]
+      setMorePropertiesArr(copy)
 
     def dropProperty(key: Key[?]): this.type =
-      setMoreProperties(moreProperties - key)
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      var i = 0
+      while i < oldLen do
+        if arr(i) eq key then
+          if oldLen == 2 then return setMorePropertiesArr(emptyMoreProps)
+          val copy = new Array[AnyRef](oldLen - 2)
+          if i > 0 then System.arraycopy(arr, 0, copy, 0, i)
+          if i + 2 < oldLen then System.arraycopy(arr, i + 2, copy, i, oldLen - i - 2)
+          return setMorePropertiesArr(copy)
+        i += 2
+      this
 
     def addLocation[T](initial: T): Store.Location[T] = {
       val (loc, store1) = store.newLocation(initial)
@@ -775,7 +823,7 @@ object Contexts {
       c._typerState = TyperState.initialState()
       c._owner = NoSymbol
       c._tree = untpd.EmptyTree
-      c._moreProperties = Map(MessageLimiter -> DefaultMessageLimiter())
+      c._morePropertiesArr = Array[AnyRef](MessageLimiter, DefaultMessageLimiter())
       c._scope = EmptyScope
       c._source = NoSource
       c._store = initialStore
