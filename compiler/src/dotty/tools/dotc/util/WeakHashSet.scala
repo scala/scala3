@@ -106,12 +106,18 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   }
 
   /**
-   * Double the size of the internal table
+   * Compute the next capacity for the underlying table when the load factor is exceeded.
+   * Subclasses may override to grow faster than the default 2× when resize churn is hot.
+   */
+  protected def nextCapacity(currentCapacity: Int): Int = currentCapacity * 2
+
+  /**
+   * Grow the size of the internal table per `nextCapacity`.
    */
   protected def resize(): Unit = {
     Stats.record(statsItem("resize"))
     val oldTable = table
-    table = new Array[Entry[A] | Null](oldTable.size * 2)
+    table = new Array[Entry[A] | Null](nextCapacity(oldTable.size))
     threshold = computeThreshold
 
     @tailrec

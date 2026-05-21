@@ -76,6 +76,7 @@ object Uniques:
 
   final class AppliedUniques extends WeakHashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:
     override def hash(x: AppliedType): Int = x.hash
+    override protected def nextCapacity(currentCapacity: Int): Int = currentCapacity * 4
 
     def enterIfNew(tycon: Type, args: List[Type]): AppliedType =
       val h = doHash(null, tycon, args)
