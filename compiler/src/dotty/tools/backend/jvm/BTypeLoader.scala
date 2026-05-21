@@ -259,7 +259,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     if (!isNested) None
     else {
       // See comment in BTypes, when is a class marked static in the InnerClass table.
-      val isStaticNestedClass = isOriginallyStaticOwner(innerClassSym.originalOwner.originalLexicallyEnclosingClass)
+      val isStaticNestedClass = innerClassSym.is(ModuleClass) || isOriginallyStaticOwner(innerClassSym.originalOwner.originalLexicallyEnclosingClass)
 
       // After lambdalift (which is where we are), the raw owner field contains the enclosing class.
       val enclosingClassSym = {
