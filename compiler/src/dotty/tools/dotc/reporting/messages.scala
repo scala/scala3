@@ -37,7 +37,6 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 import Message.{Disambiguation, Note}
-import dotty.tools.dotc.util.SimpleIdentitySet
 
 /**  Messages
   *  ========
