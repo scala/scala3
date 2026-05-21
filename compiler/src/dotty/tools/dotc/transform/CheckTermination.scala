@@ -27,11 +27,10 @@ class CheckTermination extends MiniPhase {
     val method = tree.symbol
     val mandatory = method.hasAnnotation(defn.TerminationAnnot)
 
-    if mandatory && !method.is(Deferred) && !checked.contains(method) then {
+    if mandatory && !method.is(Deferred) && !checked.contains(method) then
       val checker = new TerminationChecker(method)
       checker.traverse(tree.rhs)
       if !checker.hasFailed then checked ++= checker.traversedMethods
-    }
 
     tree
   }
@@ -42,7 +41,7 @@ class CheckTermination extends MiniPhase {
     enum Size:
       case Smaller, Same, Unknown
 
-    var shouldReport = true
+    var shouldCheckCalls = true
 
     var hasFailed = false
     var traversedMethods = Set[Symbol](startMethod)
@@ -60,11 +59,11 @@ class CheckTermination extends MiniPhase {
         case tree: WhileDo =>
           val savedMap = varMap
           varMap = Map.empty
-          val savedShouldReport = shouldReport
-          shouldReport = false
+          val savedshouldCheckCalls = shouldCheckCalls
+          shouldCheckCalls = false
           // First traversal to update `varMap` and identify a decreasing var.
           traverseChildren(tree)
-          shouldReport = savedShouldReport
+          shouldCheckCalls = savedshouldCheckCalls
           if !varMap.exists((_, size) => size == Size.Smaller) then
             report.error(
               s"${startMethod.name} may not terminate due to infinite while loop.",
@@ -79,7 +78,7 @@ class CheckTermination extends MiniPhase {
         case tree @ Apply(fn, _) if fn.symbol == defn.uncheckedTerminationMethod =>
           () // Don't traverse, as we assume they terminate.
 
-        case tree: Apply =>
+        case tree: Apply if shouldCheckCalls =>
           val (fn, args) = peelApplies(tree)
           traverse(fn)
           args.foreach {
@@ -94,7 +93,7 @@ class CheckTermination extends MiniPhase {
           else
             methodsSymbol.foreach(checkMethodCall(_, args, tree.srcPos, None))
 
-        case tree @ Select(qualifier, _) =>
+        case tree @ Select(qualifier, _) if shouldCheckCalls =>
           val tpeSym = getTypeSymbol(tree)
           val pm = methodOverrides(tpeSym, tree.symbol)
           val methodsSymbol = if pm.isEmpty then List(tree.symbol) else pm
@@ -120,7 +119,8 @@ class CheckTermination extends MiniPhase {
           val savedVarMap = varMap
           var foldedMap = Map.empty[Symbol, Size]
           cases.foreach(cse =>
-            if syntheticUnapply then { mapMatchedSymbols(selector.symbol, cse.pat) }
+            if syntheticUnapply then
+              mapMatchedSymbols(selector.symbol, cse.pat)
             traverse(cse.guard)
             traverse(cse.body)
             valMap = savedMap
@@ -170,10 +170,9 @@ class CheckTermination extends MiniPhase {
             valMap = savedMap
             callStack = callStack.tail
           case _ =>
-            if shouldReport &&
-               methodSymbol.isRealMethod &&
-               !methodSymbol.owner.is(JavaDefined) &&
-               methodSymbol != defn.throwMethod
+            if methodSymbol.isRealMethod &&
+              !methodSymbol.owner.is(JavaDefined) &&
+              methodSymbol != defn.throwMethod
             then
               report.warning(s"Method ${methodSymbol.name} has an empty tree.", pos)
       }
@@ -182,7 +181,7 @@ class CheckTermination extends MiniPhase {
         callStack.find(_ == methodSymbol) match
           case Some(_) => // Recursive call.
             val params = getMethodParams(methodSymbol)
-            if shouldReport && !areSmaller(args, params, methodSymbol) then
+            if !areSmaller(args, params, methodSymbol) then
               report.error(s"${startMethod.name} may not terminate due to (mutually) recursive call.", pos)
               hasFailed = true
           case None => traverseCalled(fallBackSymbol.getOrElse(methodSymbol))
@@ -256,7 +255,8 @@ class CheckTermination extends MiniPhase {
       }
 
       val (fn, args) = loop(tree)
-      (fn,
+      (
+        fn,
         (fn match
           case Select(qualifier, _) => qualifier.symbol
           case TypeApply(Select(qualifier, _), _) => qualifier.symbol
@@ -360,7 +360,7 @@ class CheckTermination extends MiniPhase {
           val unapplyMethod = tpeSym.asClass.companionClass.info.member(nme.unapply).symbol
           unapplyMethod.exists && unapplyMethod.is(Synthetic)
         }
-        if shouldReport && !res then
+        if !res then
           report.warning(
             s"${selector.symbol.name} may not structurally decrease because ${tpeSym.name} unapply method is overridden or undefined.",
             selector.srcPos
@@ -386,7 +386,7 @@ class CheckTermination extends MiniPhase {
         else tpeSym.is(CaseVal) || (tpeSym.is(Case) && tpeSym.isClass && caseClassCheck(tpeSym.asClass))
       }
 
-      if shouldReport && !res then
+      if !res then
         report.warning(
           s"Argument of type ${tpeSym.name} decreases but the type is not well-founded.",
           pos
