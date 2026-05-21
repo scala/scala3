@@ -6316,7 +6316,12 @@ object Types extends TypeUtils {
 
     protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
       case arg: TypeBounds => this(arg)
-      case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+      case arg =>
+        val saved = variance
+        variance = saved * tparam.paramVarianceSign
+        val res = this(arg)
+        variance = saved
+        res
 
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
@@ -6431,7 +6436,11 @@ object Types extends TypeUtils {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
+            // see comment of TypeAccumulator's applyToPrefix
+            val saved = variance
+            variance = saved max 0
+            val prefix1 = this(tp.prefix)
+            variance = saved
             derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
@@ -6441,7 +6450,11 @@ object Types extends TypeUtils {
           mapOverLambda(tp)
 
         case tp: AliasingBounds =>
-          derivedAlias(tp, atVariance(0)(this(tp.alias)))
+          val saved = variance
+          variance = 0
+          val alias1 = this(tp.alias)
+          variance = saved
+          derivedAlias(tp, alias1)
 
         case tp: TypeBounds =>
           variance = -variance
@@ -6512,7 +6525,10 @@ object Types extends TypeUtils {
 
         case tp: MatchType =>
           val bound1 = this(tp.bound)
-          val scrut1 = atVariance(0)(this(tp.scrutinee))
+          val saved = variance
+          variance = 0
+          val scrut1 = this(tp.scrutinee)
+          variance = saved
           derivedMatchType(tp, bound1, scrut1, tp.cases.mapConserve(this))
 
         case tp: SkolemType =>
