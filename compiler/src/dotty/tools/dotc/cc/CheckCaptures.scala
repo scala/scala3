@@ -1015,7 +1015,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             var aliasMap = Map.empty[Name, Type]
             for (param, argType) <- sym.paramSymss.flatten.filter(_.isTerm).lazyZip(argTypes) do
               for
-                ann <- param.getAnnotation(defn.ParamAliasAnnot)
+                ann <- param.annotations.filter(_.matches(defn.ParamAliasAnnot))
                 name <- ann.argumentConstantString(0)
               do
                 aliasMap = aliasMap.updated(name.toTermName, argType)

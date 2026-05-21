@@ -78,7 +78,7 @@ object Setup:
         case _ => false
     case _ => None
 
-  /** Add `caps.internal.paramAlias annotation("x")` to secondoray constructor
+  /** Add `caps.internal.paramAlias annotation("x")` to secondary constructor
    *  parameters that get forwarded in the constructor's super call to a primary
    *  constructor parameter named "x". Example:
    *
@@ -104,7 +104,7 @@ object Setup:
           addParamAlias(arg.symbol, param.name.toString)
         else
           for
-            ann <- param.getAnnotation(defn.ParamAliasAnnot)
+            ann <- param.annotations.filter(_.matches(defn.ParamAliasAnnot))
             name <- ann.argumentConstantString(0)
           do
             addParamAlias(arg.symbol, name)
