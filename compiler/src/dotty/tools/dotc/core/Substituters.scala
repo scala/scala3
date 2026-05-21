@@ -157,7 +157,9 @@ object Substituters:
   final def substParam(tp: Type, from: ParamRef, to: Type, theMap: SubstParamMap | Null)(using Context): Type =
     tp match {
       case tp: BoundType =>
-        if (tp == from) to else tp
+        // `eq` short-circuit avoids the wrapper `Objects.equals` call on the
+        // common reference-equal case.
+        if ((tp eq from) || tp == from) to else tp
       case tp: NamedType =>
         if (tp.prefix `eq` NoPrefix) tp
         else tp.derivedSelect(substParam(tp.prefix, from, to, theMap))
@@ -171,7 +173,10 @@ object Substituters:
   final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap | Null)(using Context): Type =
     tp match {
       case tp: ParamRef =>
-        if (tp.binder == from) to(tp.paramNum) else tp
+        // `eq` short-circuit avoids the wrapper `Objects.equals` call on the
+        // common case where ParamRefs are created via `binder.paramRefs(n)`
+        // with cached results, so the binder is reference-equal.
+        if ((tp.binder eq from) || tp.binder == from) to(tp.paramNum) else tp
       case tp: NamedType =>
         if (tp.prefix `eq` NoPrefix) tp
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))

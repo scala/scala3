@@ -78,6 +78,25 @@ trait Hashable {
     finishHash(h, len)
   }
 
+  /** Specialised version of `finishHash` for the `bs == null` case.
+   *  Skips the megamorphic `typeHash` dispatch (which checks
+   *  `bs == null || tp.hashIsStable` before reading `tp.hash`) and reads
+   *  `tp.hash` directly. Semantically identical when `bs == null`.
+   */
+  protected final def finishHashNoBinders(seed: Int, arity: Int, tps: List[Type]): Int = {
+    var h = seed
+    var xs = tps
+    var len = arity
+    while (!xs.isEmpty) {
+      val elemHash = xs.head.hash
+      if (elemHash == NotCached) return NotCached
+      h = hashing.mix(h, elemHash)
+      xs = xs.tail
+      len += 1
+    }
+    finishHash(h, len)
+  }
+
   protected def finishHash(bs: Binders, seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
     val elemHash = typeHash(bs, tp)
     if (elemHash == NotCached) return NotCached
@@ -108,6 +127,18 @@ trait Hashable {
 
   protected final def doHash(bs: Binders, tp1: Type, tps2: List[Type]): Int =
     finishHash(bs, hashSeed, 0, tp1, tps2)
+
+  /** Specialised version of `doHash(null, tycon, args)` that reads `tp.hash`
+   *  directly instead of dispatching through `typeHash(null, tp)`. Produces
+   *  the same hash value (verified: with `bs == null`, `typeHash` returns
+   *  `tp.hash` unconditionally). Used by `AppliedUniques.enterIfNew` to
+   *  shave the megamorphic `typeHash` call out of the hot path.
+   */
+  protected final def doHashNoBinders(tycon: Type, args: List[Type]): Int = {
+    val elemHash = tycon.hash
+    if (elemHash == NotCached) NotCached
+    else finishHashNoBinders(hashing.mix(hashSeed, elemHash), 1, args)
+  }
 
   protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: List[Type]): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
