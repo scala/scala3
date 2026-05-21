@@ -34,21 +34,23 @@ import util.Spans.*
 import util.chaining.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
-import Applications.{wrapDefs, defaultArgument}
-
+import Applications.{defaultArgument, wrapDefs}
 import collection.mutable
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
-import config.Feature, Feature.{migrateTo3, modularity, sourceVersion, warnOnMigration}
+import config.Feature
+import Feature.{migrateTo3, modularity, sourceVersion, warnOnMigration}
 import config.SourceVersion.*
-import rewrites.Rewrites, Rewrites.patch
+import rewrites.Rewrites
+import Rewrites.patch
 import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
 import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
+import dotty.tools.dotc.core.Mode.Interactive
 import transform.CheckUnused.OriginalName
 
 import scala.annotation.{unchecked as _, *}
@@ -70,10 +72,10 @@ object Typer {
       this == Definition || this == NamedImport && prevPrec == WildImport
   }
 
-  /** Assert tree has a position, unless it is empty or a typed splice */
+  /** Assert tree has a position, unless it is empty or a typed splice, or we are in interactive mode where some positions are missing */
   def assertPositioned(tree: untpd.Tree)(using Context): Unit =
-    if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
-      assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of ${tree.getClass} in ${tree.source}")
+    if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable && !ctx.mode.is(Interactive) )
+      assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of ${tree.getClass} in ${tree.source}; ctx.mode=${ctx.mode.bits}")
 
   /** An attachment for GADT constraints that were inferred for a pattern. */
   val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
