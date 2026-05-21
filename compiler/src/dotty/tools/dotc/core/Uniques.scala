@@ -8,6 +8,7 @@ import Decorators.*
 import util.{WeakHashSet, Stats}
 import WeakHashSet.Entry
 import scala.annotation.tailrec
+import scala.util.hashing.{MurmurHash3 => hashing}
 
 class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
   override def hash(x: Type): Int = x.hash
@@ -77,28 +78,50 @@ object Uniques:
   end NamedTypeUniques
 
   final class AppliedUniques extends WeakHashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:
+    private val appliedHashSeed = hashSeed
+
     override def hash(x: AppliedType): Int = x.hash
     override protected def nextCapacity(currentCapacity: Int): Int = currentCapacity * 4
 
     def enterIfNew(tycon: Type, args: List[Type]): AppliedType =
-      val h = doHash(null, tycon, args)
-      def newType = new CachedAppliedType(tycon, args, h)
+      var argsEqHash = 1
+      val tyconHash = tycon.hash
+      var hashValid = tyconHash != NotCached
+      var hash = if hashValid then hashing.mix(appliedHashSeed, tyconHash) else NotCached
+      var len = 1
+      var xs = args
+      while !xs.isEmpty do
+        val arg = xs.head
+        argsEqHash = argsEqHash * 31 + System.identityHashCode(arg)
+        if hashValid then
+          val argHash = arg.hash
+          if argHash == NotCached then hashValid = false
+          else
+            hash = hashing.mix(hash, argHash)
+            len += 1
+        xs = xs.tail
+      val h = if hashValid then finishHash(hash, len) else NotCached
+      def newType(argsEqHash: Int) = new CachedAppliedType(tycon, args, h, argsEqHash)
       if monitored then recordCaching(h, classOf[CachedAppliedType])
-      if h == NotCached then newType
+      if h == NotCached then newType(argsEqHash)
       else
         // Inlined from WeakHashSet#put
         Stats.record(statsItem("put"))
         removeStaleEntries()
         val bucket = index(h)
         val oldHead = table(bucket)
+        // Pre-filter probe: compare a cheap identity-hash of args
+        // before falling into the eqElements list walk.
+        val candidateArgsEqHash = argsEqHash
 
         @tailrec
         def linkedListLoop(entry: Entry[AppliedType] | Null): AppliedType = entry match
-          case null                    => addEntryAt(bucket, newType, h, oldHead)
+          case null                    => addEntryAt(bucket, newType(candidateArgsEqHash), h, oldHead)
           case _                       =>
             if entry.hash == h then
               val e = entry.get
-              if e != null && (e.tycon eq tycon) && ((e.args eq args) || e.args.eqElements(args)) then e
+              if e != null && (e.tycon eq tycon) && e.argsEqHash == candidateArgsEqHash
+                 && ((e.args eq args) || e.args.eqElements(args)) then e
               else linkedListLoop(entry.tail)
             else linkedListLoop(entry.tail)
 
