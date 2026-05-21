@@ -3198,9 +3198,19 @@ object Types extends TypeUtils {
    */
   abstract case class ThisType(tref: TypeRef)
   extends CachedProxyType, SingletonType, ObjectCapability {
-    def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
-      case cls: ClassSymbol => cls
-      case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
+    private var myCls: ClassSymbol | Null = null
+    private var myClsRunId: Int = NoRunId
+
+    def cls(using Context): ClassSymbol = {
+      if myClsRunId == ctx.runId then myCls.nn
+      else tref.stableInRunSymbol match {
+        case cls: ClassSymbol =>
+          myCls = cls
+          myClsRunId = ctx.runId
+          cls
+        // Skip caching the Mode.Interactive fallback since the answer can shift mid-run.
+        case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
+      }
     }
 
     override def underlying(using Context): Type =
