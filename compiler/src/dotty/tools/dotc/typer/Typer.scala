@@ -74,7 +74,7 @@ object Typer {
 
   /** Assert tree has a position, unless it is empty or a typed splice, or we are in interactive mode where some positions are missing */
   def assertPositioned(tree: untpd.Tree)(using Context): Unit =
-    if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable && !ctx.mode.is(Interactive) )
+    if !tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable && !ctx.mode.is(Interactive) then
       assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of ${tree.getClass} in ${tree.source}; ctx.mode=${ctx.mode.bits}")
 
   /** An attachment for GADT constraints that were inferred for a pattern. */
