@@ -378,14 +378,15 @@ object Scopes {
      */
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = {
       var e: ScopeEntry | Null = null
-      if (hashTable != null) {
-        e = hashTable.nn(name.hashCode & (hashTable.nn.length - 1))
-        while ((e != null) && e.name != name)
+      val ht = hashTable
+      if (ht != null) {
+        e = ht(name.hashCode & (ht.length - 1))
+        while ((e != null) && (e.name ne name))
           e = e.tail
       }
       else {
         e = lastEntry
-        while ((e != null) && e.name != name)
+        while ((e != null) && (e.name ne name))
           e = e.prev
       }
       if e != null then e
@@ -398,13 +399,14 @@ object Scopes {
 
     /** lookup next entry with same name as this one */
     override final def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null = {
+      val target = entry.name
       if hashTable != null then
         var e: ScopeEntry | Null = entry.tail
-        while e != null && e.name != entry.name do e = e.tail
+        while e != null && (e.name ne target) do e = e.tail
         e
       else
         var e: ScopeEntry | Null = entry.prev
-        while e != null && e.name != entry.name do e = e.prev
+        while e != null && (e.name ne target) do e = e.prev
         e
     }
 
