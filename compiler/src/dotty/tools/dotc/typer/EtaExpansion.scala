@@ -73,14 +73,22 @@ abstract class Lifter {
         .changeNonLocalOwners(lifted)
         .setDefTree
       if Feature.qualifiedTypesEnabled then
-        val (_, idx) = QualifiedTypes.treeSkolemIndex(expr, QualifiedTypes.skolemOwner)
-        lifted.addAnnotation(
-          Annotations.Annotation(
-            defn.QualifierSkolemIndexAnnot,
-            tpd.Literal(Constants.Constant(idx)),
-            expr.span
-          )
-        )
+        // Only transfer an existing skolem index from `expr` to the lifted
+        // symbol. If `expr` doesn't already carry one (no qualified-type
+        // machinery touched it), no caller will consult the lifted symbol,
+        // so we skip stamping — keeps the annotation out of unrelated
+        // output (e.g. quoted `Expr.show` in staging tests).
+        QualifiedTypes.treeSkolemIndexOpt(expr, QualifiedTypes.skolemOwner) match
+          case Some((_, idx)) =>
+            lifted.addAnnotation(
+              Annotations.Annotation(
+                defn.QualifierSkolemIndexAnnot,
+                tpd.Literal(Constants.Constant(idx)),
+                expr.span
+              )
+            )
+          case None =>
+            ()
       onLiftedDef(liftedTree)
       defs += liftedTree
       ref(lifted.termRef).withSpan(expr.span.focus)
