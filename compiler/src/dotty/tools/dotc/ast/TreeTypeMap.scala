@@ -160,12 +160,13 @@ class TreeTypeMap(
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
+      val bodyCtx = ctx.withOwner(mapOwner(impl.symbol.owner))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
           parents = impl.parents.mapconserve(transform),
           self = tmap.transformSub(self),
           body = impl.body.mapconserve:
-            tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner)))
+            tmap.transform(_)(using bodyCtx)
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       withMappedType(tree1) match {
