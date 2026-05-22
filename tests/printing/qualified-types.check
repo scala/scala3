@@ -36,7 +36,7 @@ package example {
         val x5: Int @qualified[Int]((x5: Int) => x > 0) = 1
         val x6: Int =
           example.id[Int @qualified[Int]((x: Int) => x < 0)](-1) +
-            example.id[example.Neg](-1):example.Neg @QualifierSkolemIndex(0)
+            example.id[example.Neg](-1)
         ()
       }
     def implicitArgumentName(): Unit =
@@ -80,7 +80,7 @@ package example {
             case y @ _:Int @qualified[Int]((y: Int) => y > 0) =>
               println(
                 _root_.scala.StringContext.apply([""," is positive" : String]*).
-                  s([y : Any]*):String @QualifierSkolemIndex(0)
+                  s([y : Any]*)
               )
             case _ =>
               ()
@@ -94,8 +94,7 @@ package example {
              =>
               println(
                 _root_.scala.StringContext.apply(
-                  [""," and "," are both positive" : String]*).s([y,z : Any]*):
-                  String @QualifierSkolemIndex(1)
+                  [""," and "," are both positive" : String]*).s([y,z : Any]*)
               )
             case _ =>
               ()
