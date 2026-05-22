@@ -681,41 +681,47 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     protected val untpdCpy = untpd.cpy
 
-    override def Select(tree: Tree)(qualifier: Tree, name: Name)(using Context): Select = {
-      val tree1 = untpdCpy.Select(tree)(qualifier, name)
-      tree match {
-        case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
-          tree1.withTypeUnchecked(tree.tpe)
-        case _ =>
-          val tree2: Select = tree.tpe match {
-            case tpe: NamedType =>
-              val qualType = qualifier.tpe.widenIfUnstable
-              if qualType.isExactlyNothing then tree1.withTypeUnchecked(tree.tpe)
-              else tree1.withType(tpe.derivedSelect(qualType))
-            case _ => tree1.withTypeUnchecked(tree.tpe)
-          }
-          ConstFold.Select(tree2)
-      }
+    override def Select(tree: Tree)(qualifier: Tree, name: Name)(using Context): Select = tree match {
+      case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
+      case _ =>
+        val tree1 = untpdCpy.Select(tree)(qualifier, name)
+        tree match {
+          case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
+            tree1.withTypeUnchecked(tree.tpe)
+          case _ =>
+            val tree2: Select = tree.tpe match {
+              case tpe: NamedType =>
+                val qualType = qualifier.tpe.widenIfUnstable
+                if qualType.isExactlyNothing then tree1.withTypeUnchecked(tree.tpe)
+                else tree1.withType(tpe.derivedSelect(qualType))
+              case _ => tree1.withTypeUnchecked(tree.tpe)
+            }
+            ConstFold.Select(tree2)
+        }
     }
 
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = {
-      val tree1 = untpdCpy.Apply(tree)(fun, args)
-      tree match {
-        case tree: Apply
-        if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
-          tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, fun, args)
-      }
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = tree match {
+      case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
+      case _ =>
+        val tree1 = untpdCpy.Apply(tree)(fun, args)
+        tree match {
+          case tree: Apply
+          if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
+            tree1.withTypeUnchecked(tree.tpe)
+          case _ => ta.assignType(tree1, fun, args)
+        }
     }
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = {
-      val tree1 = untpdCpy.TypeApply(tree)(fun, args)
-      tree match {
-        case tree: TypeApply
-        if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
-          tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, fun, args)
-      }
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = tree match {
+      case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
+      case _ =>
+        val tree1 = untpdCpy.TypeApply(tree)(fun, args)
+        tree match {
+          case tree: TypeApply
+          if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
+            tree1.withTypeUnchecked(tree.tpe)
+          case _ => ta.assignType(tree1, fun, args)
+        }
     }
 
     override def Literal(tree: Tree)(const: Constant)(using Context): Literal =
