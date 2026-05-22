@@ -1301,7 +1301,32 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               if mapped == null then unchanged
               else mapped.prependToList(unchanged))
 
-      loop(null, trees, trees)
+      @tailrec
+      def sameOwnerPrefixLoop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): T =
+        pending match
+          case (stat: ImportOrExport) :: _ =>
+            loop(mapped, unchanged, pending)
+          case stat :: rest =>
+            val stat1 = op(stat)
+            if stat1 eq stat then
+              sameOwnerPrefixLoop(mapped, unchanged, rest)
+            else
+              val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
+              var xc = unchanged
+              while xc ne pending do
+                buf += xc.head
+                xc = xc.tail
+              stat1 match
+                case Thicket(stats1) => buf ++= stats1
+                case _ => buf += stat1
+              sameOwnerPrefixLoop(buf, rest, rest)
+          case nil =>
+            wrapResult(
+              if mapped == null then unchanged
+              else mapped.prependToList(unchanged))
+
+      if exprOwner == ctx.owner then sameOwnerPrefixLoop(null, trees, trees)
+      else loop(null, trees, trees)
     end mapStatements
   end extension
 
