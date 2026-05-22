@@ -27,7 +27,7 @@ import config.{Feature, MigrationVersion, SourceVersion}
 import util.Property
 import util.chaining.tap
 
-import collection.{mutable, immutable}
+import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import inlines.Inlines
 import TypeApplications.*
@@ -567,10 +567,10 @@ trait Applications extends Compatibility {
      */
     protected def makeVarArg(n: Int, elemFormal: Type): Unit
 
-    /** Lift `arg` to a val def if it is unstable and referred to from a
-     *  qualified type in another parameter or the result type. No-op by default.
+    /** Hook for adjusting `arg` (the `n`-th argument) for qualified-type
+     *  support. No-op by default; overridden by `TypedApply`.
      */
-    protected def maybeLiftQualifiedArg(arg: TypedArg, n: Int): TypedArg = arg
+    protected def maybeWrapQualifiedArg(arg: TypedArg, n: Int): TypedArg = arg
 
     /** If all `args` have primitive numeric types, make sure it's the same one */
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
@@ -844,7 +844,7 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            val argTyped = maybeLiftQualifiedArg(typedArg(arg, formal), n)
+            val argTyped = maybeWrapQualifiedArg(typedArg(arg, formal), n)
             addArg(argTyped, formal)
             if methodType.looksParamDependent
                   // need to handle also false dependencies since we generate TypeTrees from
@@ -1128,21 +1128,39 @@ trait Applications extends Compatibility {
 
     def typeOfArg(arg: tpd.Tree): Type = arg.tpe
 
-    /** With qualified types enabled, wrap unstable args as
-     *  `Typed(arg, TypeTree(arg.tpe @QualifierSkolemIndex(n)))` so the
-     *  per-arg skolem identity is stable across TASTy round-trips. The
-     *  annotation has no runtime cost (erasure strips it) and is
-     *  informational only.
-     *
-     *  Don't wrap when typing inside an annotation: the typer evaluates
-     *  qualifier bodies during type checking, and qualifier ENodes
-     *  shouldn't carry `@QualifierSkolemIndex` annotations in their
-     *  embedded types.
+    /** Wrap unstable args with `@QualifierSkolemIndex(n)` so each arg's
+     *  skolem identity is stable across TASTy round-trips. Skipped when
+     *  the signature has no qualified type depending on an argument ([[methodHasQualifier]]).
      */
-    override protected def maybeLiftQualifiedArg(arg: Tree, n: Int): Tree =
-      if Feature.qualifiedTypesEnabled && !arg.tpe.isStable && !isInAnnotationDeep
+    override protected def maybeWrapQualifiedArg(arg: Tree, n: Int): Tree =
+      if Feature.qualifiedTypesEnabled
+         && !arg.tpe.isStable
+         && !isInAnnotationDeep
+         && methodHasQualifier
       then qualified_types.QualifiedTypes.wrapWithSkolemIndex(arg)
       else arg
+
+    /** True iff the method's signature contains a qualified type dependent on
+     *  an argument. */
+    private lazy val methodHasQualifier: Boolean = methType match
+      case mt: MethodType =>
+        if mt.paramInfos.exists(qualified_types.QualifiedTypes.containsQualifier) then
+          true
+        else
+          var found = false
+          def scan(tp: Type): Unit =
+            if !found then
+              tp.foreachPart:
+                case qualified_types.QualifiedType(_, qualifier) =>
+                  qualifier.foreachType: qtp =>
+                    if !found then qtp.foreachPart:
+                      case TermParamRef(`mt`, _) => found = true
+                      case _ =>
+                case _ => ()
+          mt.paramInfos.foreach(scan)
+          if !found then scan(mt.resultType)
+          found
+      case _ => false
 
     /** Check if any enclosing context has `Mode.InAnnotation` set. This is
      *  needed because `FunProto.typedArg` retracts `InAnnotation`, so the
