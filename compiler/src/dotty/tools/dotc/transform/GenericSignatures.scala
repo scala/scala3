@@ -14,6 +14,7 @@ import core.TypeApplications.TypeParamInfo
 import core.TypeErasure.*
 import core.Types.*
 import core.classfile.ClassfileConstants
+import dotty.tools.dotc.core.Decorators.i
 
 import java.lang.StringBuilder
 import scala.annotation.tailrec
@@ -413,7 +414,9 @@ object GenericSignatures {
           else jsig(tycon, toplevel, vcBoxing)
 
         case _ =>
-          jsig(erasure(tp), toplevel, vcBoxing)
+          val etp = erasure(tp)
+          assert(etp ne tp, i"$tp erases to itself")
+          jsig(etp, toplevel, vcBoxing)
       }
     }
     jsig(info, toplevel = true)
