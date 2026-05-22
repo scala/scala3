@@ -7,7 +7,6 @@ import scala.collection.mutable
 
 import core.*
 import Contexts.*, Phases.*, Symbols.*, Decorators.*
-import Flags.PackageVal
 import staging.StagingLevel.*
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
@@ -232,8 +231,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformTree(tree: Tree, start: Int)(using Context): Tree = {
 
     inline def inLocalContext[T](inline op: Context ?=> T)(using Context): T =
-      val sym = tree.symbol
-      runWithOwner(if (sym.is(PackageVal)) sym.moduleClass else sym)(op)
+      runWithOwner(tree.localCtxOwner)(op)
 
     inline def noHooks(
         prepPhases: Array[MiniPhase | Null],
