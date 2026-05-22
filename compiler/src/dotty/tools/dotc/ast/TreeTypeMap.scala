@@ -7,6 +7,7 @@ import Types.*, Contexts.*, Flags.*
 import Symbols.*, Annotations.*, Trees.*, Symbols.*, Constants.Constant
 import Decorators.*
 import config.Config
+import scala.collection.mutable
 
 
 /** A map that applies three functions and a substitution together to a tree and
@@ -295,8 +296,21 @@ class TreeTypeMap(
     transformDefs(trees)._2
 
   def transformDefs[TT <: Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
-    val tmap = withMappedSyms(localSyms(trees))
-    (tmap, tmap.transformSub(trees))
+    var pending = trees
+    var localBuf: mutable.ListBuffer[Symbol] | Null = null
+    while pending.nonEmpty do
+      val stat = pending.head
+      if stat.isDef then
+        val sym = stat.symbol
+        if sym.exists then
+          if localBuf == null then localBuf = new mutable.ListBuffer[Symbol]
+          localBuf += sym
+      pending = pending.tail
+
+    if localBuf == null then (this, transformSub(trees))
+    else
+      val tmap = withMappedSyms(localBuf.toList)
+      (tmap, tmap.transformSub(trees))
   }
 
   private def transformAllParamss(paramss: List[ParamClause]): (TreeTypeMap, List[ParamClause]) = paramss match
