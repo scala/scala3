@@ -4907,6 +4907,7 @@ object Types extends TypeUtils {
     // Boolean caches: 0 = uninitialized, -1 = false, 1 = true
     private var myStableHash: Byte = 0
     private var myGround: Byte = 0
+    private var myArgShapes: Byte = 0
 
     private var myisStableRunId: RunId = NoRunId
     private var myIsStable: Boolean = uninitialized
@@ -5058,7 +5059,24 @@ object Types extends TypeUtils {
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
 
-    def hasWildcardArg(using Context): Boolean = args.exists(isBounds)
+    private def argShapeFlags: Int =
+      if myArgShapes == 0 then
+        var flags = AppliedType.HasArgShapes
+        var xs = args
+        while xs.nonEmpty do
+          val arg = xs.head
+          if arg.isInstanceOf[TypeBounds] then flags |= AppliedType.HasBoundsArg
+          if arg.isInstanceOf[Range] then flags |= AppliedType.HasRangeArg
+          xs = xs.tail
+        myArgShapes = flags.toByte
+        flags
+      else myArgShapes
+
+    private[core] def hasRangeArg: Boolean =
+      (argShapeFlags & AppliedType.HasRangeArg) != 0
+
+    def hasWildcardArg(using Context): Boolean =
+      (argShapeFlags & AppliedType.HasBoundsArg) != 0
 
     def derivedAppliedType(tycon: Type, args: List[Type])(using Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
@@ -5091,6 +5109,10 @@ object Types extends TypeUtils {
   }
 
   object AppliedType {
+    private[core] inline val HasBoundsArg = 1
+    private[core] inline val HasRangeArg = 2
+    private[core] inline val HasArgShapes = 4
+
     def apply(tycon: Type, args: List[Type])(using Context): AppliedType = {
       assertUnerased()
       ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
@@ -7051,7 +7073,10 @@ object Types extends TypeUtils {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if args.exists(isRange) then
+          val argsHaveRange =
+            if args eq tp.args then tp.hasRangeArg
+            else args.exists(isRange)
+          if argsHaveRange then
             if variance > 0 then
               tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
                 case tp1: AppliedType if tp1.isUnreducibleWild && ctx.phase != checkCapturesPhase =>
