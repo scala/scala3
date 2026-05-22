@@ -1878,14 +1878,16 @@ object SymDenotations {
     private var myMemberCache: EqHashMap[Name, PreDenotation] | Null = null
     private var myMemberCachePeriod: Period = Nowhere
 
-    // 1-slot, period-keyed Name->PreDenotation cache used as the first backing
-    // store for membersNamed. Classes that only query one distinct name in a
-    // period never allocate myMemberCache; the EqHashMap is promoted lazily when
-    // a second distinct name is queried. After promotion, the same slot remains
-    // the MRU fast path in front of the map.
+    // 2-slot, period-keyed Name->PreDenotation cache used as the first backing
+    // store for membersNamed. Classes that only query one or two distinct names
+    // in a period never allocate myMemberCache; the EqHashMap is promoted lazily
+    // when a third distinct name is queried. After promotion, these slots remain
+    // the fast path in front of the map.
     private var myMembersNamedPeriod: Period = Nowhere
-    private var myMembersNamedName: Name | Null = null
-    private var myMembersNamedDenots: PreDenotation | Null = null
+    private var myMembersNamedName0: Name | Null = null
+    private var myMembersNamedDenots0: PreDenotation | Null = null
+    private var myMembersNamedName1: Name | Null = null
+    private var myMembersNamedDenots1: PreDenotation | Null = null
     private var myMemberCacheMutationId: Int = 0
 
     /** A cache from types T to baseType(T, C) */
@@ -1920,6 +1922,53 @@ object SymDenotations {
     private def invalidateMembersNamedCache(): Unit =
       myMembersNamedPeriod = Nowhere
       myMemberCacheMutationId += 1
+
+    private def reserveMembersNamedSlot(period: Period, name: Name): Boolean =
+      if myMembersNamedPeriod != period then
+        myMembersNamedPeriod = period
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = null
+        myMembersNamedName1 = null
+        myMembersNamedDenots1 = null
+        true
+      else if (myMembersNamedName0 eq name) || (myMembersNamedName1 eq name) then
+        true
+      else if myMembersNamedName0 == null then
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = null
+        true
+      else if myMembersNamedName1 == null then
+        myMembersNamedName1 = name
+        myMembersNamedDenots1 = null
+        true
+      else false
+
+    private def promoteMemberCacheFromMembersNamed()(using Context): EqHashMap[Name, PreDenotation] =
+      val cache = promotedMemberCache
+      val name0 = myMembersNamedName0
+      val denots0 = myMembersNamedDenots0
+      if name0 != null && denots0 != null then cache(name0) = denots0
+      val name1 = myMembersNamedName1
+      val denots1 = myMembersNamedDenots1
+      if name1 != null && denots1 != null && (name1 ne name0) then cache(name1) = denots1
+      cache
+
+    private def rememberMembersNamed(period: Period, name: Name, denots: PreDenotation): Unit =
+      if myMembersNamedPeriod != period then
+        myMembersNamedPeriod = period
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = denots
+        myMembersNamedName1 = null
+        myMembersNamedDenots1 = null
+      else if myMembersNamedName0 eq name then
+        myMembersNamedDenots0 = denots
+      else if myMembersNamedName1 eq name then
+        myMembersNamedDenots1 = denots
+      else
+        myMembersNamedName1 = myMembersNamedName0
+        myMembersNamedDenots1 = myMembersNamedDenots0
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = denots
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
@@ -2246,9 +2295,12 @@ object SymDenotations {
       Stats.record("membersNamed")
       if Config.cacheMembersNamed then
         val period = ctx.period
-        // 1-slot fast path: bypass EqHashMap.lookup on repeated same-name calls.
-        if myMembersNamedPeriod == period && (myMembersNamedName eq name) then
-          val cached = myMembersNamedDenots
+        // Fast path: bypass EqHashMap.lookup for either scalar slot.
+        if myMembersNamedPeriod == period then
+          val cached =
+            if myMembersNamedName0 eq name then myMembersNamedDenots0
+            else if myMembersNamedName1 eq name then myMembersNamedDenots1
+            else null
           if cached != null then
             if Config.checkCacheMembersNamed then
               val denots1 = computeMembersNamed(name)
@@ -2261,32 +2313,17 @@ object SymDenotations {
             if Config.checkCacheMembersNamed then
               val denots1 = computeMembersNamed(name)
               assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
-            myMembersNamedPeriod = period
-            myMembersNamedName = name
-            myMembersNamedDenots = cached
+            rememberMembersNamed(period, name, cached)
             return cached
-        else if myMembersNamedPeriod == period then
-          cache = promotedMemberCache
-          val firstName = myMembersNamedName
-          val firstDenots = myMembersNamedDenots
-          if firstName != null && firstDenots != null then cache(firstName) = firstDenots
+        else if !reserveMembersNamedSlot(period, name) then
+          cache = promoteMemberCacheFromMembersNamed()
 
         val mutationId = myMemberCacheMutationId
-        if cache == null && myMembersNamedPeriod != period then
-          // Mark the first-name slot as in-progress. A reentrant distinct-name
-          // lookup will promote to the map and the outer computation will add
-          // this name when it completes.
-          myMembersNamedPeriod = period
-          myMembersNamedName = name
-          myMembersNamedDenots = null
-
         val denots = computeMembersNamed(name)
         if myMemberCacheMutationId == mutationId then
           cache = currentMemberCache
           if cache != null then cache(name) = denots
-          myMembersNamedPeriod = period
-          myMembersNamedName = name
-          myMembersNamedDenots = denots
+          rememberMembersNamed(period, name, denots)
         denots
       else computeMembersNamed(name)
 
