@@ -18,6 +18,7 @@ import java.util
 import scala.annotation.varargs
 import scala.collection.immutable
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 final class LambdaDeserialize private (lookup: MethodHandles.Lookup, targetMethods: Array[MethodHandle]) {
