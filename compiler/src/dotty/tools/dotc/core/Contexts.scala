@@ -554,7 +554,9 @@ object Contexts {
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
     def freshOver(outer: Context): FreshContext =
-      FreshContext(base).init(outer, this).setTyperState(this.typerState)
+      val fresh = FreshContext(base)
+      if outer eq this then fresh.fastInit(this)
+      else fresh.init(outer, this).setTyperState(this.typerState)
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
@@ -670,6 +672,24 @@ object Contexts {
       _owner = origin.owner
       _tree = origin.tree
       _scope = origin.scope
+      _gadtState = origin.gadtState
+      _searchHistory = origin.searchHistory
+      _source = origin.source
+      _morePropertiesArr = origin.morePropertiesArr
+      _store = origin.store
+      this
+    }
+
+    /** Fast path for `freshOver(this)`: outer and origin are the same context,
+     *  and the typerState is the origin's typerState (fused setTyperState). */
+    private[Contexts] def fastInit(origin: Context): this.type = {
+      _outer = origin
+      _period = origin.period
+      _mode = origin.mode
+      _owner = origin.owner
+      _tree = origin.tree
+      _scope = origin.scope
+      _typerState = origin.typerState
       _gadtState = origin.gadtState
       _searchHistory = origin.searchHistory
       _source = origin.source
