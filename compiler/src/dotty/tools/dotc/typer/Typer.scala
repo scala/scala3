@@ -557,7 +557,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val curImport = ctx.importInfo
             def updateUnimported() =
               if (curImport.nn.unimported ne NoSymbol) unimported += curImport.nn.unimported
-            if (curOwner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
+            if (curOwner.is(Package) && curImport != null && curImport.isRootImport
+                && (curImport ne outer.importInfo) && previous.exists)
               previous // no more conflicts possible in this case
             else if (isPossibleImport(NamedImport) && curImport != null && (curImport ne outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
