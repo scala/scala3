@@ -6800,7 +6800,8 @@ object Types extends TypeUtils {
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
-      tycon match {
+      if (tycon eq tp.tycon) && (args eq tp.args) then tp
+      else tycon match {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
