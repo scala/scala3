@@ -2,6 +2,7 @@ package scala.util
 
 import language.experimental.captureChecking
 import scala.annotation.implicitNotFound
+import scala.annotation.publicInBinary
 
 /** A boundary that can be exited by `break` calls.
  *  `boundary` and `break` represent a unified and superior alternative for the
@@ -47,6 +48,14 @@ object boundary:
      */
     def isSameLabelAs(other: Label[T]) = label eq other
 
+    /** Return the inner value if the given [[Label]] matches this [[Break]]'s label.
+     *  @param other the `Label` to compare against this `Break`'s label
+     */
+    @publicInBinary
+    private[boundary] def getAsLabelOrThrow[A](other: Label[A]): A =
+      if label eq other then value.asInstanceOf[A]
+      else throw this
+
   object Break:
     import caps.unsafe.unsafeAssumePure
     def apply[T](label: Label[T], value: T) =
@@ -85,8 +94,7 @@ object boundary:
   inline def apply[T](inline body: Label[T] ?=> T): T =
     val local = Label[T]()
     try body(using local)
-    catch case ex: Break[T] @unchecked =>
-      if ex.isSameLabelAs(local) then ex.value
-      else throw ex
+    catch case ex: Break[?] =>
+      ex.getAsLabelOrThrow[T](local)
 
 end boundary

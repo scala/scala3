@@ -506,6 +506,7 @@ object StdNames {
     val genericArrayOps: N      = "genericArrayOps"
     val genericClass: N         = "genericClass"
     val get: N                  = "get"
+    val getAsLabelOrThrow: N    = "getAsLabelOrThrow"
     val getClass_ : N           = "getClass"
     val getOrElse: N            = "getOrElse"
     val hasNext: N              = "hasNext"

@@ -16,13 +16,28 @@ import Opcodes.*
 class LabelBytecodeTests extends DottyBytecodeTest {
   import dotty.AsmConverters.*
 
-   @Test def localLabelBreak = {
+  @Test def localLabelBreakOLD = {
+    // regression test for the old shape that will fail if that optimisation is removed.
+    // TODO: Is it worth keeping the optimisation for this shape? in case users previously
+    // "rolled their own" boundary implementation based on that old style?
     testLabelBytecodeEquals(
       """val local = boundary.Label[Long]()
         |try break(5L)(using local)
-        |catch case ex: boundary.Break[Long] @unchecked =>
+        |catch case ex: boundary.Break[Long] =>
         |  if ex.isSameLabelAs(local) then ex.value
         |  else throw ex
+      """.stripMargin,
+      "Long",
+      Ldc(LDC, 5),
+      Op(LRETURN)
+    )
+  }
+
+  @Test def localLabelBreakOLD_syntax = {
+    // syntax level equivalent of `localLabelBreakOLD`.
+    // i.e. uses the latest inlining shape.
+    testLabelBytecodeEquals(
+      """boundary(break(5L))
       """.stripMargin,
       "Long",
       Ldc(LDC, 5),
@@ -143,15 +158,15 @@ class LabelBytecodeTests extends DottyBytecodeTest {
         "`test` was not properly generated\n" + instructions)
     }
 
-   private def checkLabelBytecodeInstructions(code: String, tpe: String)(checkOutput: List[Instruction] => Unit): Unit = {
+  private def checkLabelBytecodeInstructions(code: String, tpe: String)(checkOutput: List[Instruction] => Unit): Unit = {
     val source =
       s"""import scala.util.boundary, boundary.break
-         |class Test:
-         |  def test: $tpe = {
-         |    ${code.linesIterator.toList.mkString("", "\n    ", "")}
-         |  }
-         |  def nonLocalBreak[T](value: T)(using boundary.Label[T]): Nothing = break(value)
-         |  def nonLocalBreak()(using boundary.Label[Unit]): Nothing = break(())
+        |class Test:
+        |  def test: $tpe = {
+        |    ${code.linesIterator.toList.mkString("", "\n    ", "")}
+        |  }
+        |  def nonLocalBreak[T](value: T)(using boundary.Label[T]): Nothing = break(value)
+        |  def nonLocalBreak()(using boundary.Label[Unit]): Nothing = break(())
       """.stripMargin
 
     checkBCode(source) { dir =>

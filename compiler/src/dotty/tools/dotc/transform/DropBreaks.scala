@@ -59,11 +59,26 @@ class DropBreaks extends MiniPhase:
 
     object GuardedThrow:
 
+      def sameArgAsLabel(lbl: Tree, tpe_T: Tree)(using Context): Boolean = lbl.tpe.widen match
+        case AppliedType(_, arg :: Nil) if tpe_T.tpe eq arg => true
+        case _ => false
+
       /** `(ex, local)` provided `expr` matches
        *
        *      if ex.label.eq(local) then ex.value else throw ex
+       *
+       *   OR
+       *
+       *      ex.getAsLabelOrThrow[T](local)
        */
       def unapply(expr: Tree)(using Context): Option[(Symbol, Symbol)] = stripTyped(expr) match
+        case Apply(
+          TypeApply(Select(ex: Ident, getAsLabelOrThrow), tpe_T :: Nil),
+          (lbl @ Ident(local)) :: Nil)
+        if getAsLabelOrThrow == nme.getAsLabelOrThrow
+            && local == nme.local
+            && sameArgAsLabel(lbl, tpe_T) =>
+          Some((ex.symbol, lbl.symbol))
         case If(
           Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
           Select(ex2: Ident, value),
