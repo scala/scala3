@@ -13,7 +13,7 @@ import Flags.*
 import Phases.*
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import NameKinds.{ContextFunctionParamName, WildcardParamName}
+import NameKinds.{ContextFunctionParamName, WildcardParamName, SimpleNameKind}
 import parsing.Scanners.Token
 import parsing.Tokens
 import Tokens.showToken
@@ -3254,6 +3254,23 @@ class MissingImplicitArgument(
             i"The following implicits in scope can be implicitly converted to ${pt.show}:" +
             ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
           )
+        def noteTrailingContextOfExtension: Option[String] =
+          paramSymWithMethodCallTree.flatMap: (sym, applTree) =>
+            def hasLeadingImplicit(tpe: Type): Boolean =
+              val resTypes = Iterator.iterate(tpe.resultType)(_.resultType)
+              val (prefix, suffix) = resTypes.span(_.isContextualMethod)
+              val tps = prefix ++ suffix.drop(1).takeWhile(_.isContextualMethod)
+              tps.exists:
+                case mt: MethodType => mt.paramNames.contains(sym.name)
+                case pt: PolyType => false
+            if applTree.symbol.is(Extension)
+               && sym.info.typeSymbol != defn.SameTypeClass
+               && sym.info.typeSymbol != defn.SubTypeClass
+               && !hasLeadingImplicit(applTree.symbol.info) then
+              val name = if sym.name.is(SimpleNameKind) then i"`${sym.name}`" else "the missing arg"
+              Some(i"\n\nNote: ${name} is not a leading implicit of `${applTree.symbol.name}`; "
+                + "it is not used to construct the extension.")
+            else None
         def importSuggestionAddendum: String =
           arg.tpe match
             // If the failure was caused by an underlying NoMatchingImplicits, compute the addendum for its expected type
@@ -3262,6 +3279,7 @@ class MissingImplicitArgument(
             case _ =>
               ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
+        + noteTrailingContextOfExtension.getOrElse("")
         + ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(importSuggestionAddendum)
