@@ -1105,52 +1105,63 @@ object Denotations {
 
     protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = {
       val symbol = this.symbol
-      val owner = this match {
-        case thisd: SymDenotation => thisd.owner
-        case _ => if (symbol.exists) symbol.owner else NoSymbol
-      }
-
-      /** The derived denotation with the given `info` transformed with `asSeenFrom`.
-       *
-       *  As a performance hack, we might reuse an existing SymDenotation,
-       *  instead of creating a new denotation with a given `prefix`,
-       *  see `Config.reuseSymDenotations`.
-       */
-      def derived(info: Type) =
-        /** Do we need to return a denotation with a prefix set? */
-        def needsPrefix =
-          // For opaque types, the prefix is used in `ElimOpaques#transform`,
-          // without this i7159.scala would fail when compiled from tasty.
-          symbol.is(Opaque)
-
-        val derivedInfo = info.asSeenFrom(pre, owner)
-        if Config.reuseSymDenotations && this.isInstanceOf[SymDenotation]
-           && (derivedInfo eq info) && !needsPrefix then
-          this
-        else
-          derivedSingleDenotation(symbol, derivedInfo, pre)
-      end derived
-
-      // Tt could happen that we see the symbol with prefix `this` as a member a different class
-      // through a self type and that it then has a different info. In this case we have to go
-      // through the asSeenFrom to switch the type back. Test case is pos/i9352.scala.
-      def hasOriginalInfo: Boolean = this match
-        case sd: SymDenotation => true
-        case _ => info eq symbol.info
-
-      def ownerIsPrefix = pre match
-        case pre: ThisType => pre.sameThis(owner.thisType)
+      val isNonMember = this match
+        case thisd: SymDenotation => thisd.is(NonMember)
         case _ => false
 
-      if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
-         || symbol.is(NonMember)
-      then this
-      else if symbol.isAllOf(ClassTypeParam) then
-        val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
-        if arg.exists
-        then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
+      if isNonMember then this
+      else {
+        val owner = this match {
+          case thisd: SymDenotation => thisd.owner
+          case _ => if (symbol.exists) symbol.owner else NoSymbol
+        }
+
+        /** The derived denotation with the given `info` transformed with `asSeenFrom`.
+         *
+         *  As a performance hack, we might reuse an existing SymDenotation,
+         *  instead of creating a new denotation with a given `prefix`,
+         *  see `Config.reuseSymDenotations`.
+         */
+        def derived(info: Type) =
+          /** Do we need to return a denotation with a prefix set? */
+          def needsPrefix =
+            // For opaque types, the prefix is used in `ElimOpaques#transform`,
+            // without this i7159.scala would fail when compiled from tasty.
+            symbol.is(Opaque)
+
+          val derivedInfo = info.asSeenFrom(pre, owner)
+          if Config.reuseSymDenotations && this.isInstanceOf[SymDenotation]
+             && (derivedInfo eq info) && !needsPrefix then
+            this
+          else
+            derivedSingleDenotation(symbol, derivedInfo, pre)
+        end derived
+
+        // Tt could happen that we see the symbol with prefix `this` as a member a different class
+        // through a self type and that it then has a different info. In this case we have to go
+        // through the asSeenFrom to switch the type back. Test case is pos/i9352.scala.
+        def hasOriginalInfo: Boolean = this match
+          case sd: SymDenotation => true
+          case _ => info eq symbol.info
+
+        def ownerIsPrefix = pre match
+          case pre: ThisType => pre.sameThis(owner.thisType)
+          case _ => false
+
+        def nonSymDenotIsNonMember: Boolean = this match
+          case _: SymDenotation => false
+          case _ => symbol.is(NonMember)
+
+        if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
+           || nonSymDenotIsNonMember
+        then this
+        else if symbol.isAllOf(ClassTypeParam) then
+          val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
+          if arg.exists
+          then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
+          else derived(symbol.info)
         else derived(symbol.info)
-      else derived(symbol.info)
+      }
     }
 
     /** The argument bounds, possibly intersected with the parameter's info TypeBounds,
