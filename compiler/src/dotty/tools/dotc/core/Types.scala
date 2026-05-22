@@ -3909,7 +3909,34 @@ object Types extends TypeUtils {
 
     /** Like `paramInfos` but substitute parameter references with the given arguments */
     final def instantiateParamInfos(argTypes: => List[Type])(using Context): List[Type] =
-      if (isParamDependent) paramInfos.mapConserve(_.substParams(this, argTypes))
+      if (isParamDependent) {
+        val args = argTypes
+        var sharedMap: Substituters.SubstParamsMap | Null = null
+        def getMap(): Substituters.SubstParamsMap =
+          val map = sharedMap
+          if map != null then map
+          else
+            val map = new Substituters.SubstParamsMap(self, args)
+            sharedMap = map
+            map
+        def substParamInfo(tp: Type): Type = tp match
+          case tp: ParamRef =>
+            if ((tp.binder eq self) || tp.binder == self) args(tp.paramNum) else tp
+          case tp: NamedType =>
+            if (tp.prefix `eq` NoPrefix) tp
+            else tp.derivedSelect(substParamInfo(tp.prefix))
+          case _: ThisType =>
+            tp
+          case tp: AppliedType =>
+            tp.map(substParamInfo)
+          case _ =>
+            getMap().mapOver(tp)
+        def substParamInfoRoot(tp: Type): Type =
+          val map = sharedMap
+          if map != null then map.applyFromRoot(tp)
+          else substParamInfo(tp)
+        paramInfos.mapConserve(substParamInfoRoot)
+      }
       else paramInfos
 
     /** Like `resultType` but substitute parameter references with the given arguments */

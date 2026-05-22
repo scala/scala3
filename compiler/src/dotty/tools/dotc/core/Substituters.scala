@@ -357,6 +357,10 @@ object Substituters:
 
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
+
+    inline def applyFromRoot(tp: Type): Type =
+      variance = 1
+      substParams(tp, from, to, this)(using mapCtx)
   }
 
   /** An approximating substitution that can handle wildcards in the `to` list */
