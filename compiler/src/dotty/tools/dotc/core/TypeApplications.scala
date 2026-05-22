@@ -383,7 +383,6 @@ class TypeApplications(val self: Type) extends AnyVal {
         if self.symbol eq defn.NothingClass then return self
         return AppliedType(self, args)
       case _ =>
-    val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
