@@ -543,34 +543,146 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
-  private def stripParams(
-      tp: Type,
-      todos: mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint],
-      isUpper: Boolean)(using Context): Type = tp match {
-    case param: TypeParamRef if contains(param) =>
-      todos += (if isUpper then order(_, _, param) else order(_, param, _))
-      NoType
-    case tp: TypeBounds =>
-      val lo1 = stripParams(tp.lo, todos, !isUpper).orElse(defn.NothingType)
-      val hi1 = stripParams(tp.hi, todos, isUpper).orElse(tp.topType)
-      tp.derivedTypeBounds(lo1, hi1)
-    case tp: AndType if isUpper =>
-      val tp1 = stripParams(tp.tp1, todos, isUpper)
-      val tp2 = stripParams(tp.tp2, todos, isUpper)
-      if (tp1.exists)
-        if (tp2.exists) tp.derivedAndType(tp1, tp2)
-        else tp1
-      else tp2
-    case tp: OrType if !isUpper =>
-      val tp1 = stripParams(tp.tp1, todos, isUpper)
-      val tp2 = stripParams(tp.tp2, todos, isUpper)
-      if (tp1.exists)
-        if (tp2.exists) tp.derivedOrType(tp1, tp2)
-        else tp1
-      else tp2
-    case _ =>
-      tp
-  }
+  private final class StripParamTodos:
+    private var params = new Array[TypeParamRef | Null](4)
+    private var isUppers = new Array[Boolean](4)
+    private var mySize = 0
+
+    def mark: Int = mySize
+
+    def add(isUpper: Boolean, param: TypeParamRef): Unit =
+      if mySize == params.length then
+        val params1 = new Array[TypeParamRef | Null](mySize * 2)
+        val isUppers1 = new Array[Boolean](mySize * 2)
+        Array.copy(params, 0, params1, 0, mySize)
+        Array.copy(isUppers, 0, isUppers1, 0, mySize)
+        params = params1
+        isUppers = isUppers1
+      params(mySize) = param
+      isUppers(mySize) = isUpper
+      mySize += 1
+
+    def rollback(mark: Int): Unit =
+      var i = mark
+      while i < mySize do
+        params(i) = null
+        i += 1
+      mySize = mark
+
+    def applyTo(current: OrderingConstraint, param: TypeParamRef)(using Context): OrderingConstraint =
+      var current1 = current
+      var i = 0
+      while i < mySize do
+        val depParam = params(i).nn
+        current1 =
+          if isUppers(i) then order(current1, param, depParam)
+          else order(current1, depParam, param)
+        params(i) = null
+        i += 1
+      mySize = 0
+      current1
+  end StripParamTodos
+
+  private final class StripParamsMap(todos: StripParamTodos)(using Context) extends AvoidWildcardsMap:
+    private var myMapped: Type = NoType
+
+    private def stripMapped(tp: Type, isUpper: Boolean)(using Context): Type = tp match
+      case param: TypeParamRef if contains(param) =>
+        todos.add(isUpper, param)
+        NoType
+      case tp: TypeBounds =>
+        val lo1 = stripMapped(tp.lo, !isUpper).orElse(defn.NothingType)
+        val hi1 = stripMapped(tp.hi, isUpper).orElse(tp.topType)
+        tp.derivedTypeBounds(lo1, hi1)
+      case tp: AndType if isUpper =>
+        val tp1 = stripMapped(tp.tp1, isUpper)
+        val tp2 = stripMapped(tp.tp2, isUpper)
+        if tp1.exists then
+          if tp2.exists then tp.derivedAndType(tp1, tp2)
+          else tp1
+        else tp2
+      case tp: OrType if !isUpper =>
+        val tp1 = stripMapped(tp.tp1, isUpper)
+        val tp2 = stripMapped(tp.tp2, isUpper)
+        if tp1.exists then
+          if tp2.exists then tp.derivedOrType(tp1, tp2)
+          else tp1
+        else tp2
+      case _ =>
+        tp
+
+    private def stripFallback(tp: Type, isUpper: Boolean, mark: Int): Type =
+      todos.rollback(mark)
+      stripMapped(tp, isUpper)
+
+    /** The result of `stripMapped(apply(tp), isUpper)`.
+     *
+     *  `myMapped` is set to `apply(tp)` for callers that need to rebuild the
+     *  wildcard-approximated parent before deciding whether its stripped
+     *  children are semantically reachable.
+     */
+    def strip(tp: Type, isUpper: Boolean)(using Context): Type = tp match
+      case param: TypeParamRef if contains(param) =>
+        myMapped = param
+        todos.add(isUpper, param)
+        NoType
+
+      case tp: TypeBounds =>
+        val mark = todos.mark
+        val saved = variance
+        variance = -saved
+        val lo1 = strip(tp.lo, !isUpper)
+        val loMapped = myMapped
+        variance = saved
+        val hi1 = strip(tp.hi, isUpper)
+        val hiMapped = myMapped
+        val mapped = derivedTypeBounds(tp, loMapped, hiMapped)
+        myMapped = mapped
+        mapped match
+          case mapped: TypeBounds if (mapped.lo eq loMapped) && (mapped.hi eq hiMapped) =>
+            mapped.derivedTypeBounds(lo1.orElse(defn.NothingType), hi1.orElse(mapped.topType))
+          case _ =>
+            stripFallback(mapped, isUpper, mark)
+
+      case tp: AndType if isUpper =>
+        val mark = todos.mark
+        val tp1 = strip(tp.tp1, isUpper)
+        val tp1Mapped = myMapped
+        val tp2 = strip(tp.tp2, isUpper)
+        val tp2Mapped = myMapped
+        val mapped = derivedAndType(tp, tp1Mapped, tp2Mapped)
+        myMapped = mapped
+        mapped match
+          case mapped: AndType if (mapped.tp1 eq tp1Mapped) && (mapped.tp2 eq tp2Mapped) =>
+            if tp1.exists then
+              if tp2.exists then mapped.derivedAndType(tp1, tp2)
+              else tp1
+            else tp2
+          case _ =>
+            stripFallback(mapped, isUpper, mark)
+
+      case tp: OrType if !isUpper =>
+        val mark = todos.mark
+        val tp1 = strip(tp.tp1, isUpper)
+        val tp1Mapped = myMapped
+        val tp2 = strip(tp.tp2, isUpper)
+        val tp2Mapped = myMapped
+        val mapped = derivedOrType(tp, tp1Mapped, tp2Mapped)
+        myMapped = mapped
+        mapped match
+          case mapped: OrType if (mapped.tp1 eq tp1Mapped) && (mapped.tp2 eq tp2Mapped) =>
+            if tp1.exists then
+              if tp2.exists then mapped.derivedOrType(tp1, tp2)
+              else tp1
+            else tp2
+          case _ =>
+            stripFallback(mapped, isUpper, mark)
+
+      case _ =>
+        val mapped = apply(tp)
+        myMapped = mapped
+        stripMapped(mapped, isUpper)
+  end StripParamsMap
 
   def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
     assert(!contains(poly))
@@ -588,19 +700,18 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   private def init(poly: TypeLambda)(using Context): This = {
     var current = this
-    val todos = new mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint]
-    var i = 0
-    val dropWildcards = AvoidWildcardsMap()
-    while (i < poly.paramNames.length) {
-      val param = poly.paramRefs(i)
-      val bounds = dropWildcards(nonParamBounds(param))
-      val stripped = stripParams(bounds, todos, isUpper = true)
+    val todos = StripParamTodos()
+    val stripParams = StripParamsMap(todos)
+    // Iterate `paramRefs` directly: the previous `while (i < paramNames.length)`
+    // form recomputed `paramNames.length` (O(n) on a List) and `paramRefs(i)`
+    // (O(i)) every iteration, making the loop O(n^2).
+    var refs = poly.paramRefs
+    while refs ne Nil do
+      val param = refs.head
+      val stripped = stripParams.strip(nonParamBounds(param), isUpper = true)
       current = boundsLens.update(this, current, param, stripped)
-      while todos.nonEmpty do
-        current = todos.head(current, param)
-        todos.dropInPlace(1)
-      i += 1
-    }
+      current = todos.applyTo(current, param)
+      refs = refs.tail
     current.adjustDeps(poly, current.boundsMap(poly).nn, add = true)
       .checkWellFormed()
   }
