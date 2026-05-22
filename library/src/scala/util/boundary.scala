@@ -2,6 +2,7 @@ package scala.util
 
 import language.experimental.captureChecking
 import scala.annotation.implicitNotFound
+import scala.annotation.nowarn
 
 /** A boundary that can be exited by `break` calls.
  *  `boundary` and `break` represent a unified and superior alternative for the
@@ -84,9 +85,9 @@ object boundary:
    */
   inline def apply[T](inline body: Label[T] ?=> T): T =
     val local = Label[T]()
-    try body(using local)
-    catch case ex: Break[T] @unchecked =>
+    (try body(using local)
+    catch case ex: Break[T] =>
       if ex.isSameLabelAs(local) then ex.value
-      else throw ex
+      else throw ex): @nowarn("id=E92") // nowarn for the unchecked type test
 
 end boundary
