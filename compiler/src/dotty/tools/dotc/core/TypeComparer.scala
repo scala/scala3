@@ -1189,6 +1189,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     |*  does not conform to  dotty.tools.dotc.util.Property.Key[Typer.this.Deriver & Namer.this.Deriver]
      */
     def isSubPrefix(pre1: Type, pre2: Type): Boolean =
+      if pre1 eq pre2 then return true
       def samePkg(sym1: Symbol, sym2: Symbol) =
            sym2.is(Package) && sym1.isPackageObject && sym1.owner == sym2.moduleClass
         || sym1.is(Package) && sym2.isPackageObject && sym2.owner == sym1.moduleClass
@@ -1196,9 +1197,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case pre1: ThisType =>
           pre2 match
             case pre2: ThisType =>
-              if samePkg(pre1.cls, pre2.cls) then return true
-              if pre1.cls.classInfo.selfType.derivesFrom(pre2.cls)
-                 && pre2.cls.classInfo.selfType.derivesFrom(pre1.cls)
+              val cls1 = pre1.cls
+              val cls2 = pre2.cls
+              if cls1 eq cls2 then return true
+              if samePkg(cls1, cls2) then return true
+              if cls1.classInfo.selfType.derivesFrom(cls2)
+                 && cls2.classInfo.selfType.derivesFrom(cls1)
               then
                 subtyping.println(i"assume equal prefixes $pre1 $pre2")
                 return true
