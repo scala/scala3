@@ -482,15 +482,17 @@ trait ConstraintHandling {
       isSub(tp1, tp2)
 
   inline final def inFrozenConstraint[T](op: => T): T = {
-    val savedFrozen = frozenConstraint
-    val savedLambda = caseLambda
-    frozenConstraint = true
-    caseLambda = NoType
-    try op
-    finally {
-      frozenConstraint = savedFrozen
-      caseLambda = savedLambda
-    }
+    if frozenConstraint && (caseLambda eq NoType) then op
+    else
+      val savedFrozen = frozenConstraint
+      val savedLambda = caseLambda
+      frozenConstraint = true
+      caseLambda = NoType
+      try op
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = savedLambda
+      }
   }
 
   final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSub(tp1, tp2))
