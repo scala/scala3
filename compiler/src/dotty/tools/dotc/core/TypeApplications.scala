@@ -403,8 +403,17 @@ class TypeApplications(val self: Type) extends AnyVal {
               }
             }
             if (dealiased eq stripped) || followAlias then
-              val paramsWithoutArg = dealiased.typeParams.drop(args.length).map(_.paramRef)
-              val hasParamsWithoutArg = paramsWithoutArg.nonEmpty && dealiased.resType.existsPart(paramsWithoutArg.contains, forceLazy = false)
+              val argCount = args.length
+              val paramCount = dealiased.paramNames.length
+              val hasParamsWithoutArg =
+                if argCount >= paramCount then false
+                else
+                  def isRemainingParam(tp: Type): Boolean = tp match
+                    case TypeParamRef(binder, paramNum) =>
+                      (binder eq dealiased) && paramNum >= argCount && paramNum < paramCount
+                    case _ =>
+                      false
+                  dealiased.resType.existsPart(isRemainingParam, forceLazy = false)
               if hasParamsWithoutArg then
                 AppliedType(self, args)
               else
