@@ -88,20 +88,35 @@ object QualifiedTypes:
    *     on the lifted symbol).
    */
   def treeSkolemIndex(tree: Tree, owner: Symbol)(using Context): (Symbol, Int) =
+    treeSkolemIndexOpt(tree, owner).getOrElse:
+      // Allocate a fresh index without stamping. Consistency across
+      // multiple calls only matters when the caller's qualifier
+      // actually substitutes the result (a `QualifiedType` present in
+      // its type), and in that case the arg was already wrapped by
+      // `maybeWrapQualifiedArg` so `treeSkolemIndexOpt` returned `Some`
+      // and we never reached this branch.
+      (owner, ctx.base.freshSkolemIndex(owner))
+
+  /** Like `treeSkolemIndex` but read-only: returns `None` if neither
+   *  `tree.tpe` nor `tree.symbol` already carries a `@QualifierSkolemIndex`
+   *  annotation. Used by callers that want to *transfer* an existing index
+   *  (e.g. `EtaExpansion.lift`) without allocating a fresh one.
+   */
+  def treeSkolemIndexOpt(tree: Tree, owner: Symbol)(using Context): Option[(Symbol, Int)] =
     require(!tree.isEmpty, "Tree must be non-empty to have a skolem index attached")
     require(owner.exists, "Owner symbol must be valid to have a skolem index attached")
-    trace(i"treeSkolemIndex($tree, ${owner.show})", Printers.qualifiedTypes):
+    trace(i"treeSkolemIndexOpt($tree, ${owner.show})", Printers.qualifiedTypes):
       readSkolemIndexAnnot(tree) match
-        case Some(idx) => (owner, idx)
+        case Some(idx) => Some((owner, idx))
         case None =>
           val refSym = tpd.stripBlock(tree).symbol
           if refSym.exists then
             refSym.getAnnotation(defn.QualifierSkolemIndexAnnot) match
               case Some(annot) =>
                 val tpd.Literal(Constant(i: Int)) :: Nil = annot.arguments: @unchecked
-                return (owner, i)
+                return Some((owner, i))
               case None => ()
-          (owner, ctx.base.freshSkolemIndex(owner))
+          None
 
   /** Extract the skolem index `n` from a tree whose type has been
    *  annotated `T @QualifierSkolemIndex(n)`, peeling through any leading
