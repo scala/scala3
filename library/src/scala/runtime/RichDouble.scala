@@ -13,6 +13,7 @@
 package scala
 package runtime
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
