@@ -79,7 +79,7 @@ object QualifiedTypes:
    *     `AnnotatedType`.
    *  2. The same annotation on `tree.symbol` (e.g. a reference to an
    *     EtaExpansion-lifted val). A stable `ref(lifted)` is not wrapped
-   *     by `maybeLiftQualifiedArg` because it's already `isStable`, so
+   *     by `maybeWrapQualifiedArg` because it's already `isStable`, so
    *     its annotation lives on the symbol, not the tree.
    *  3. Otherwise: allocate a fresh index. This branch should only fire
    *     once per logical arg — callers must ensure the index gets stamped

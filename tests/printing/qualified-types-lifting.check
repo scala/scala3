@@ -10,8 +10,7 @@ package example {
     def qualifiedResult(x: Int, y: Int): Int @qualified[Int]((z: Int) => z > x)
        =
       {
-        val ev$1: Int @QualifierSkolemIndex(0) =
-          runtimeChecked[Int]((x + y):Int @QualifierSkolemIndex(0))
+        val ev$1: Int = runtimeChecked[Int](x + y)
         if ev$1.isInstanceOf[Int with boundArg(0) > x] then
           ev$1.asInstanceOf[Int with boundArg(0) > x] else
           throw new IllegalArgumentException()
@@ -31,15 +30,14 @@ package example {
         )
         example.qualifiedResult(example.impure():Int @QualifierSkolemIndex(4), 3
           )
-        example.noQualifier(example.impure():Int @QualifierSkolemIndex(6), 3)
+        example.noQualifier(example.impure(), 3)
         example.qualifiedSelf(
           {
-            val ev$3: Int @QualifierSkolemIndex(7) =
-              runtimeChecked[Int](example.impure():Int @QualifierSkolemIndex(7))
+            val ev$3: Int = runtimeChecked[Int](example.impure())
             (if ev$3.isInstanceOf[Int with boundArg(0) > 0] then
               ev$3.asInstanceOf[Int with boundArg(0) > 0] else
               throw new IllegalArgumentException())
-          }:Int with (boundArg(0) > 0) @QualifierSkolemIndex(9)
+          }:Int with (boundArg(0) > 0) @QualifierSkolemIndex(8)
         )
       }
   }
