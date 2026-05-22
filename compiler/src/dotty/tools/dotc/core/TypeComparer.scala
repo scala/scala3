@@ -1833,49 +1833,54 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case tycon2: TypeRef =>
                   val tycon1sym = tycon1.symbol
                   val tycon2sym = tycon2.symbol
-
-                  var touchedGADTs = false
-                  var gadtIsInstantiated = false
-
-                  extension (sym: Symbol)
-                    inline def byGadtBounds(inline op: TypeBounds => Boolean): Boolean =
-                      touchedGADTs = true
-                      sym.onGadtBounds(
-                        b => op(b) && { gadtIsInstantiated = b.isInstanceOf[TypeAlias]; true })
-
-                  def byGadtOrdering: Boolean =
-                    gadtContains(tycon1sym)
-                    && gadtContains(tycon2sym)
-                    && gadtIsLess(tycon1sym, tycon2sym)
-
-                  val res = (
+                  val sameTyconWithSubPrefix =
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
-                    || tycon1sym.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
-                    || tycon2sym.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
-                    || byGadtOrdering
-                  ) && {
-                    // There are two cases in which we can assume injectivity.
-                    // First we check if either sym is a class.
-                    // Then:
-                    // 1) if we didn't touch GADTs, then both symbols are the same
-                    //    (b/c of an earlier condition) and both are the same class
-                    // 2) if we touched GADTs, then the _other_ symbol (class syms
-                    //    cannot have GADT constraints), the one w/ GADT cstrs,
-                    //    must be instantiated, making the two tycons equal
-                    val tyconIsInjective =
-                      (tycon1sym.isClass || tycon2sym.isClass)
-                      && (!touchedGADTs || gadtIsInstantiated)
 
-                    inFrozenGadtIf(!tyconIsInjective) {
-                      if tycon1sym == tycon2sym && tycon1sym.isAliasType then
-                        val preConstraint = constraint
-                        isSubArgs(args1, args2, tp1, tparams)
-                        && tryAlso(preConstraint, recur(tp1.superTypeNormalized, tp2.superTypeNormalized))
-                      else
-                        isSubArgs(args1, args2, tp1, tparams)
+                  if sameTyconWithSubPrefix && tycon1sym.isClass then
+                    isSubArgs(args1, args2, tp1, tparams)
+                  else
+                    var touchedGADTs = false
+                    var gadtIsInstantiated = false
+
+                    extension (sym: Symbol)
+                      inline def byGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+                        touchedGADTs = true
+                        sym.onGadtBounds(
+                          b => op(b) && { gadtIsInstantiated = b.isInstanceOf[TypeAlias]; true })
+
+                    def byGadtOrdering: Boolean =
+                      gadtContains(tycon1sym)
+                      && gadtContains(tycon2sym)
+                      && gadtIsLess(tycon1sym, tycon2sym)
+
+                    val res = (
+                      sameTyconWithSubPrefix
+                      || tycon1sym.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
+                      || tycon2sym.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
+                      || byGadtOrdering
+                    ) && {
+                      // There are two cases in which we can assume injectivity.
+                      // First we check if either sym is a class.
+                      // Then:
+                      // 1) if we didn't touch GADTs, then both symbols are the same
+                      //    (b/c of an earlier condition) and both are the same class
+                      // 2) if we touched GADTs, then the _other_ symbol (class syms
+                      //    cannot have GADT constraints), the one w/ GADT cstrs,
+                      //    must be instantiated, making the two tycons equal
+                      val tyconIsInjective =
+                        (tycon1sym.isClass || tycon2sym.isClass)
+                        && (!touchedGADTs || gadtIsInstantiated)
+
+                      inFrozenGadtIf(!tyconIsInjective) {
+                        if tycon1sym == tycon2sym && tycon1sym.isAliasType then
+                          val preConstraint = constraint
+                          isSubArgs(args1, args2, tp1, tparams)
+                          && tryAlso(preConstraint, recur(tp1.superTypeNormalized, tp2.superTypeNormalized))
+                        else
+                          isSubArgs(args1, args2, tp1, tparams)
+                      }
                     }
-                  }
-                  res && recordGadtUsageIf(touchedGADTs)
+                    res && recordGadtUsageIf(touchedGADTs)
                 case _ =>
                   false
               }
