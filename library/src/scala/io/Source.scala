@@ -316,7 +316,7 @@ abstract class Source extends Iterator[Char] with Closeable {
   def next(): Char = positioner.next()
 
   @nowarn("cat=deprecation")
-  class Positioner(encoder: Position) uses Source.this.iter uses_init Source.this {
+  class Positioner(encoder: Position) uses Source.this.iter, Source.this initially {
     def this() = this(RelaxedPosition)
     /** the last character returned by next. */
     var ch: Char = compiletime.uninitialized
