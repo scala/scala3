@@ -161,7 +161,7 @@ object SeqView {
       override def sorted[B1 >: A](implicit ord1: Ordering[B1]): SeqView[A]^{this} =
         if (ord1 == Sorted.this.ord) outer
         else if (ord1.isReverseOf(Sorted.this.ord)) this
-        else new Sorted(elems, len, ord1)
+        else new Sorted(outer.elems, len, ord1)
     }
 
     @volatile private var evaluated = false
