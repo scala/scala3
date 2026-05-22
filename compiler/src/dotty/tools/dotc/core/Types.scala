@@ -6432,11 +6432,14 @@ object Types extends TypeUtils {
     protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
       case arg: TypeBounds => this(arg)
       case arg =>
-        val saved = variance
-        variance = saved * tparam.paramVarianceSign
-        val res = this(arg)
-        variance = saved
-        res
+        val sign = tparam.paramVarianceSign
+        if sign == 1 then this(arg)
+        else
+          val saved = variance
+          variance = saved * sign
+          val res = this(arg)
+          variance = saved
+          res
 
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
