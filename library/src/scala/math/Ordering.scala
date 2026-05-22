@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import java.util.Comparator
 
@@ -81,7 +82,7 @@ import scala.annotation.unchecked.uncheckedOverride
  *  @tparam T the type of objects that this ordering can compare
  */
 trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializable {
-  outer =>
+  outer: Ordering[T] =>
 
   /** Returns whether a comparison between `x` and `y` is defined, and if so
    *  the result of `compare(x, y)`.
@@ -194,7 +195,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  @param f the function to extract a `T` value from a `U` value
    *  @return an `Ordering[U]` that orders values by applying `f` and comparing the results using this ordering
    */
-  def on[U](f: U => T): Ordering[U] = new Ordering[U] {
+  def on[U](f: U -> T): Ordering[U] = new Ordering[U] {
     def compare(x: U, y: U) = outer.compare(f(x), f(y))
   }
 
@@ -242,7 +243,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  @param ord the implicit ordering for the extracted key type `S`
    *  @return an `Ordering[T]` that uses this ordering first, falling back to comparing by `f` when values are equal
    */
-  def orElseBy[S](f: T => S)(implicit ord: Ordering[S]): Ordering[T] = (x, y) => {
+  def orElseBy[S](f: T -> S)(implicit ord: Ordering[S]): Ordering[T] = (x, y) => {
     val res1 = outer.compare(x, y)
     if (res1 != 0) res1 else ord.compare(f(x), f(y))
   }
@@ -254,7 +255,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param lhs the left-hand side value for infix comparison operations
    */
-  class OrderingOps(lhs: T) {
+  class OrderingOps(lhs: T) uses Ordering.this {
     def <(rhs: T): Boolean = lt(lhs, rhs)
     def <=(rhs: T): Boolean = lteq(lhs, rhs)
     def >(rhs: T): Boolean = gt(lhs, rhs)
@@ -275,7 +276,7 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
 
 trait LowPriorityOrderingImplicits {
 
-  type AsComparable[A] = A => Comparable[? >: A]
+  type AsComparable[A] = A -> Comparable[? >: A]
 
   /** This would conflict with all the nice implicit Orderings
    *  available, but thanks to the magic of prioritized implicits
@@ -323,8 +324,9 @@ object Ordering extends LowPriorityOrderingImplicits {
    *  @tparam T the type of objects that this ordering can compare
    *  @param outer the original ordering to be reversed
    */
+  /** A reverse ordering. */
   private final class Reverse[T](private[Ordering] val outer: Ordering[T]) extends Ordering[T] {
-    override def reverse: Ordering[T]                   = outer
+    override def reverse: Ordering[T]                     = outer
     override def isReverseOf(other: Ordering[?]): Boolean = other == outer
 
     def compare(x: T, y: T): Int            = outer.compare(y, x)
@@ -407,7 +409,7 @@ object Ordering extends LowPriorityOrderingImplicits {
    *  @param cmp a function that returns `true` if the first argument is less than the second
    *  @return an `Ordering[T]` whose comparison is derived from `cmp`
    */
-  def fromLessThan[T](cmp: (T, T) => Boolean): Ordering[T] = new Ordering[T] {
+  def fromLessThan[T](cmp: (T, T) -> Boolean): Ordering[T] = new Ordering[T] {
     def compare(x: T, y: T) = if (cmp(x, y)) -1 else if (cmp(y, x)) 1 else 0
     // overrides to avoid multiple comparisons
     override def lt(x: T, y: T): Boolean = cmp(x, y)
@@ -432,7 +434,7 @@ object Ordering extends LowPriorityOrderingImplicits {
    *  @param ord the implicit ordering for the extracted key type `S`
    *  @return an `Ordering[T]` that orders values by applying `f` and comparing the results
    */
-  def by[T, S](f: T => S)(implicit ord: Ordering[S]): Ordering[T] = new Ordering[T] {
+  def by[T, S](f: T -> S)(implicit ord: Ordering[S]): Ordering[T] = new Ordering[T] {
     def compare(x: T, y: T) = ord.compare(f(x), f(y))
     override def lt(x: T, y: T): Boolean = ord.lt(f(x), f(y))
     override def gt(x: T, y: T): Boolean = ord.gt(f(x), f(y))
