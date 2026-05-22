@@ -19,7 +19,7 @@ package example {
           }
         def inferred(): Int =
           example.id(example.impure():Int @QualifierSkolemIndex(1))
-        c + d + inferred():Int @QualifierSkolemIndex(6)
+        c + d + inferred()
       }
   }
 }
