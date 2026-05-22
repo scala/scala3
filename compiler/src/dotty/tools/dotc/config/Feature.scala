@@ -234,8 +234,7 @@ object Feature:
     else ccEnabled
 
   /** Is qualifiedTypes enabled for this compilation unit? */
-  def qualifiedTypesEnabled(using Context) =
-    enabledBySetting(qualifiedTypes)
+  def qualifiedTypesEnabled(using Context) = true
 
   enum QualifiedTypesMode:
     case Error, Warn, Silent, RuntimeChecks
