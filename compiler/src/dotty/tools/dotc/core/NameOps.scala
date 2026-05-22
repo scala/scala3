@@ -14,6 +14,11 @@ import nme.*
 
 object NameOps {
 
+  private def hasModuleClassSeparator(name: SimpleName): Boolean =
+    var idx = name.length - 1
+    while idx >= 0 && name(idx) != '$' do idx -= 1
+    idx >= 0
+
   object compactify {
     lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
 
@@ -152,12 +157,23 @@ object NameOps {
      *  method needs to work on mangled as well as unmangled names because
      *  it is also called from the backend.
      */
-    def stripModuleClassSuffix: N = likeSpacedN {
-      val semName = name.toTermName match
-        case name: SimpleName if name.endsWith(str.MODULE_SUFFIX) && name.lastPart != MODULE_SUFFIX => name.unmangleClassName
-        case _ => name
-      semName.exclude(ModuleClassName)
-    }
+    def stripModuleClassSuffix: N =
+      def stripSlow: N = likeSpacedN {
+        val semName = name.toTermName match
+          case name: SimpleName if name.endsWith(str.MODULE_SUFFIX) && name.lastPart != MODULE_SUFFIX => name.unmangleClassName
+          case _ => name
+        semName.exclude(ModuleClassName)
+      }
+
+      name match
+        case simple: SimpleName if !hasModuleClassSeparator(simple) =>
+          name
+        case tname: TypeName =>
+          tname.toTermName match
+            case simple: SimpleName if !hasModuleClassSeparator(simple) => name
+            case _ => stripSlow
+        case _ =>
+          stripSlow
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
     def adjustIfModuleClass(flags: FlagSet): N = likeSpacedN {
