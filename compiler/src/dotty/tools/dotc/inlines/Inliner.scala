@@ -1569,7 +1569,8 @@ class Inliner(val call: tpd.Tree)(using Context):
             val TypeAlias(r) = ident.symbol.info: @unchecked
             TypeTree(r).withSpan(ident.span)
           case tree => tree
-        }
+        },
+        cacheTypeMap = true
       )
       val Block(termBindings1, tree1) = inlineTypeBindings(Block(termBindings, tree))
       dropUnusedDefs(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)

@@ -39,7 +39,8 @@ class TreeTypeMap(
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
   val substTo: List[Symbol] = Nil,
-  cpy: tpd.TreeCopier = tpd.cpy)(using Context) extends tpd.TreeMap(cpy) {
+  cpy: tpd.TreeCopier = tpd.cpy,
+  cacheTypeMap: Boolean = false)(using Context) extends tpd.TreeMap(cpy) {
   import tpd.*
 
   def copy(
@@ -49,7 +50,7 @@ class TreeTypeMap(
       newOwners: List[Symbol],
       substFrom: List[Symbol],
       substTo: List[Symbol])(using Context): TreeTypeMap =
-    new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
+    new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, cacheTypeMap = cacheTypeMap)
 
   // `mapOwnerThis` only substitutes ThisType prefixes whose `cls` matches a
   // ClassSymbol in `oldOwners`; entries that aren't ClassSymbols are stepped
@@ -99,13 +100,14 @@ class TreeTypeMap(
   // walks a tree. Lazily allocated on first non-trivial mapType call so
   // trivial maps (no substFrom + no owner remap) pay no overhead.
   private var myMapTypeCache: util.EqHashMap[Type, Type] | Null = null
+  private val shouldCacheMapType = cacheTypeMap || substFrom.nonEmpty || oldOwners.nonEmpty
 
   def mapType(tp: Type): Type =
     // Cache only when we actually do non-trivial work (substSym walk and/or
-    // ownerThis walk). Pure `typeMap(tp)` calls are usually identity and the
-    // user-supplied typeMap may have its own caching.
-    val cacheable = substFrom.nonEmpty || oldOwners.nonEmpty
-    if cacheable then
+    // ownerThis walk), or when a deterministic custom typeMap explicitly opts in.
+    // Pure `typeMap(tp)` calls stay uncached by default because they may depend on
+    // mutable state or have their own caching.
+    if shouldCacheMapType then
       var cache = myMapTypeCache
       if cache == null then
         cache = util.EqHashMap[Type, Type]()
