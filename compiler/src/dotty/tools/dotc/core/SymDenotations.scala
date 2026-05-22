@@ -2362,7 +2362,8 @@ object SymDenotations {
           p.classSymbol.denot match
             case parentd: ClassDenotation =>
               val inherited = parentd.membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private)
-              denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
+              if inherited.exists then denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
+              else denots1
             case _ =>
               denots1
         case nil => denots
