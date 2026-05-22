@@ -102,6 +102,16 @@ class TreeTypeMap(
   // trivial maps (no substFrom + no owner remap) pay no overhead.
   private var myMapTypeCache: util.EqHashMap[Type, Type] | Null = null
   private val shouldCacheMapType = cacheTypeMap || substFrom.nonEmpty || oldOwners.nonEmpty
+  // Exact identity-type maps with no symbol or owner state only need the
+  // caller-provided treeMap; derived maps with local symbols recompute this.
+  private val treeMapOnly =
+    !cacheTypeMap
+      && (typeMap eq IdentityTypeMap)
+      && oldOwners.isEmpty
+      && newOwners.isEmpty
+      && substFrom.isEmpty
+      && substTo.isEmpty
+      && !Config.checkTreesConsistent
 
   def mapType(tp: Type): Type =
     // Cache only when we actually do non-trivial work (substSym walk and/or
@@ -172,7 +182,8 @@ class TreeTypeMap(
             tmap.transform(_)(using bodyCtx)
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
-      withMappedType(tree1) match {
+      val tree2 = if treeMapOnly then tree1 else withMappedType(tree1)
+      tree2 match {
         case id: Ident =>
           if needsSelect(id.tpe) then
             try ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
