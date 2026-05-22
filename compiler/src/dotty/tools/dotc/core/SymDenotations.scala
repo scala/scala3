@@ -2337,7 +2337,22 @@ object SymDenotations {
       val pre1 = pre match
         case pre: OrType => pre.widenUnion
         case _ => pre
-      raw.filterWithFlags(required, excluded).asSeenFrom(pre1).toDenot(pre1)
+      // `nonPrivateMembersNamed` already applied this exact flag filter,
+      // including the pre-typer Invisible lift in filterWithFlags.
+      // Identity-preserving bypass: SingleDenotation.filterWithFlags is
+      // a strict identity when `required.isEmpty && excluded.isEmpty` AND
+      // the realExcluded lift to `excluded | Invisible` does not apply
+      // (i.e. ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy)).
+      // The same identity propagates through MultiPreDenotation via
+      // derivedUnion, so the entire `filterWithFlags` call is a no-op
+      // on the no-op-flags shape in those modes.
+      val filtered =
+        if required.isEmpty && excluded == Private then raw
+        else if required.isEmpty && excluded.isEmpty
+           && (ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy))
+        then raw
+        else raw.filterWithFlags(required, excluded)
+      filtered.asSeenFrom(pre1).toDenot(pre1)
 
     final def findMemberNoShadowingBasedOnFlags(name: Name, pre: Type,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation =
