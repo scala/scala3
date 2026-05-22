@@ -198,9 +198,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   val startSameTypeTrackingLevel = 3
 
   private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
-    val savedFrozenGadt = frozenGadt
-    frozenGadt ||= cond
-    try op finally frozenGadt = savedFrozenGadt
+    if cond && !frozenGadt then
+      frozenGadt = true
+      try op finally frozenGadt = false
+    else op
   }
 
   private inline def inFrozenGadtAndConstraint[T](inline op: T): T =
