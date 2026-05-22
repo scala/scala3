@@ -1052,9 +1052,9 @@ object SymDenotations {
         case pre: ThisType => pre.sameThis(thisType)
         case _ => false
       !(  this.isTerm
-       || this.isStaticOwner && !this.seesOpaques
        || ctx.erasedTypes
        || (pre eq NoPrefix)
+       || this.isStaticOwner && !this.seesOpaques
        || preIsThis
        )
 
