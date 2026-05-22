@@ -10,8 +10,8 @@ class C {
   @terminates
   def f(logger: List[Nat], n: Nat): (Nat, List[Nat]) @decreases(n) =
     n match
-      case Zero => (Zero, logger :+ Zero)
-      case Succ(m) => f(logger :+ n, m)
+      case Zero => (Zero, Zero :: logger)
+      case Succ(m) => f(n :: logger, m)
 
 }
 

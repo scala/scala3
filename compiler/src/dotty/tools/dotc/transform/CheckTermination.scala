@@ -12,6 +12,24 @@ import core.Symbols.*
 import core.Types.*
 import MegaPhase.MiniPhase
 
+/** A Termination Checker for methods annotated with `@terminates`.
+ *
+ *  What it does:
+ *
+ *  Traverses every method annotated with `@terminates` and verifies that the method will always terminate.
+ *
+ *  Termination is defined as "the method either returns a value or throws an exception".
+ *
+ *  The checker assigns every value a `Size` relative to the enclosing method's
+ *  parameters:
+ *    - `Smaller`: the value is a strict structural sub-value of a parameter.
+ *    - `Same`:    the value is the same size as a parameter.
+ *    - `Unknown`: the size relationship cannot be determined syntactically.
+ *
+ *  At each call site the argument tuple is compared to the method's parameter tuple using `areSmaller`,
+ *  which checks lexicographically if arguments are smaller than the parameters.
+ *  The order of comparison can be overridden with `@decreases`.
+ */
 class CheckTermination extends MiniPhase {
   import tpd.*
 
@@ -31,6 +49,13 @@ class CheckTermination extends MiniPhase {
       val checker = new TerminationChecker(method)
       checker.traverse(tree.rhs)
       if !checker.hasFailed then checked ++= checker.traversedMethods
+    // if the method overrides a method that has `@terminates`,
+    // the overriding method is required to have `@terminates` as well.
+    else if method.allOverriddenSymbols.exists(_.hasAnnotation(defn.TerminationAnnot)) then
+      report.error(
+        s"${method.name} must be annotated with @terminates.",
+        tree.srcPos
+      )
 
     tree
   }
@@ -46,10 +71,14 @@ class CheckTermination extends MiniPhase {
     var hasFailed = false
     var traversedMethods = Set[Symbol](startMethod)
 
+    // Maps `val` symbol to a (source, size) pair.
+    // The source may be a tree as it is also used to keep track of closures.
     private var valMap = Map.empty[Symbol, (Symbol | Tree, Size)]
 
+    // Analogous map for mutable `var` symbols.
     private var varMap = Map.empty[Symbol, Size]
 
+    // The chain of methods currently being inlined. Used to detect (mutually) recursive calls.
     private var callStack = List[Symbol](startMethod)
 
     override def traverse(tree: Tree)(using Context): Unit = {
@@ -85,17 +114,15 @@ class CheckTermination extends MiniPhase {
             case tree: Tree => traverse(tree)
             case _ => ()
           }
-          val tpeSym = getTypeSymbol(fn)
-          val methodsSymbol = methodOverrides(tpeSym, fn.symbol)
           // Check all possible overrides if any or the specific method.
+          val methodsSymbol = methodOverrides(fn)
           if methodsSymbol.isEmpty then
             checkMethodCall(fn.symbol, args, tree.srcPos, Some(getMethodSymbol(fn)))
           else
             methodsSymbol.foreach(checkMethodCall(_, args, tree.srcPos, None))
 
         case tree @ Select(qualifier, _) if shouldCheckCalls =>
-          val tpeSym = getTypeSymbol(tree)
-          val pm = methodOverrides(tpeSym, tree.symbol)
+          val pm = methodOverrides(tree)
           val methodsSymbol = if pm.isEmpty then List(tree.symbol) else pm
           methodsSymbol.foreach(methodSymbol =>
             // Only check methods with no parameters (getMethodParams also returns `this` as a param).
@@ -149,6 +176,21 @@ class CheckTermination extends MiniPhase {
         case _ => traverseChildren(tree)
     }
 
+    /** Verify that the call to `methodSymbol` with `args` is terminating.
+     *
+     *  If `methodSymbol` is already present in `callStack`, the call is (mutually) recursive and `areSmaller` is called
+     *  to assert that `args` is lexicographically smaller than `methodSymbol`'s parameters.
+     *  If the check fails, an error is reported and `hasFailed` is set.
+     *
+     *  If `methodSymbol` is not yet on the stack, `traverseCalled` inlines its body.
+     *
+     *  @param methodSymbol   the method being called.
+     *  @param args           the arguments (including `this` as the first element).
+     *  @param pos            source position for error/warning reporting.
+     *  @param fallBackSymbol when non-empty, the body of this symbol is inlined instead of `methodSymbol`'s body.
+     *                        Used when `methodOverrides` resolves a polymorphic call but the concrete implementation
+     *                        is a closure.
+     */
     private def checkMethodCall(
         methodSymbol: Symbol,
         args: List[Symbol | Tree],
@@ -159,6 +201,7 @@ class CheckTermination extends MiniPhase {
         methodSymbol.defTree match
           case defTree: DefDef if !defTree.rhs.isEmpty || methodSymbol.isConstructor =>
             traversedMethods += methodSymbol
+            // Push callee to the stack
             callStack = methodSymbol :: callStack
             val savedMap = valMap
 
@@ -168,6 +211,7 @@ class CheckTermination extends MiniPhase {
             traverse(defTree.rhs)
 
             valMap = savedMap
+            // Pop callee from the stack
             callStack = callStack.tail
           case _ =>
             if methodSymbol.isRealMethod &&
@@ -187,10 +231,28 @@ class CheckTermination extends MiniPhase {
           case None => traverseCalled(fallBackSymbol.getOrElse(methodSymbol))
     }
 
-    private def methodOverrides(tpeSym: Symbol, methodSymbol: Symbol): List[Symbol] = {
-      if tpeSym.isOneOf(Trait | Abstract) then
-        tpeSym.sealedStrictDescendants.map(_.info.typeSymbol.info.member(methodSymbol.name).symbol)
-      else Nil
+    /** Enumerate all concrete overrides of the method referred to by `tree`.
+     *
+     *  If the type is `sealed`, collects every strict sealed descendant that declares an override of the method.
+     *
+     *  If the static type is effectively open (and not a `FunctionN` trait), an error is reported because the checker
+     *  cannot guarantee termination of any override.
+     *
+     *  Returns an empty list when the type has no sealed descendants or
+     *  when the call is on a `FunctionN` type (handled separately via `getMethodSymbol`).
+     */
+    private def methodOverrides(tree: Tree)(using Context): List[Symbol] = {
+      val tpeSym = getTypeSymbol(tree)
+      if tpeSym.isEffectivelySealed then
+        tpeSym.sealedStrictDescendants.map(_.info.typeSymbol.info.member(tree.symbol.name).symbol)
+      else
+        // Throw an error if the hierarchy is not sealed exept for trait Function<N> which is handled separately.
+        if tpeSym.isOneOf(EffectivelyOpenFlags) && !defn.isFunctionSymbol(tpeSym) then
+          report.error(
+            s"${tpeSym.name} is not sealed, termination of any overrides of ${tree.symbol} is not guaranteed.",
+            tpeSym.srcPos
+          )
+        Nil
     }
 
     // Merge var size info: worst case is kept.
@@ -246,6 +308,9 @@ class CheckTermination extends MiniPhase {
         case None => fn.symbol
     }
 
+    /** Decompose a curried `Apply` node into the function tree and the flat argument list.
+     *  For example, `f(a)(b)` is decomposed into `(f, [this, a, b])`.
+     */
     private def peelApplies(tree: Apply)(using Context): (Tree, List[Symbol | Tree]) = {
       def loop(tree: Tree, acc: List[Tree] = Nil): (Tree, List[Tree]) = {
         tree match
@@ -265,7 +330,13 @@ class CheckTermination extends MiniPhase {
       )
     }
 
-    // Resolves trees to find original symbol and whether it decreased.
+    /** Resolve a chain of field-selection back to an original symbol,
+     *  and determine whether a structural decrease occurred along the way.
+     *
+     *  Returns `Some((originalSymbol, isSmaller))` when the tree can be traced back to a symbol.
+     *
+     *  Used in `ValDef` handling and in `areSmaller` to derive size information.
+     */
     private def peelSelects(tree: Tree)(using Context): Option[(Symbol, Boolean)] = {
       def isSelectedMethodAnnotated(tpeSym: Symbol, name: Name, cls: Symbol) = {
         tpeSym.info.member(name).symbol.hasAnnotation(cls)
@@ -373,8 +444,18 @@ class CheckTermination extends MiniPhase {
       else check(tpeSym)
     }
 
+    /** Verify that `tpeSym` cannot have an infinite chain of smaller values.
+     *
+     *  - A type annotated with `@assumeWellFounded` is accepted unconditionally.
+     *  - A `sealed` type is well-founded if every child is well-founded.
+     *  - A `case object` is trivially well-founded.
+     *  - A `case class` is well-founded if all of its field symbols are stable
+     *    members and whose names match constructor parameters.
+     *
+     *  A warning is emitted when a type fails the check, and `false` is returned
+     *  so that `areSmaller` treats the argument as `Unknown`.
+     */
     private def typeWellFounded(tpeSym: Symbol, pos: SrcPos)(using Context): Boolean = {
-      // Verifies that the type cannot have infinite chains of smaller values.
       def caseClassCheck(classSym: ClassSymbol): Boolean = {
         val fields = classSym.paramAccessors
         val constructorParams = classSym.primaryConstructor.paramSymss.filter(!_.exists(_.isTypeParam)).head

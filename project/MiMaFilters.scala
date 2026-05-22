@@ -12,7 +12,6 @@ object MiMaFilters {
         // new feature: CanEqual support for NamedTuple
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.BuildFrom.buildFromIArray"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.terminates")
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.terminates"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.decreases"),
         ProblemFilters.exclude[MissingClassProblem]("scala.util.uncheckedTermination"),
