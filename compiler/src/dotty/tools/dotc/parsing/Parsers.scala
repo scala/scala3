@@ -3516,8 +3516,7 @@ object Parsers {
       case IDENTIFIER =>
         name match {
           case nme.inline => Mod.Inline()
-          case nme.opaque =>
-            Mod.Opaque()
+          case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
