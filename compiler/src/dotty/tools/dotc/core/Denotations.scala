@@ -1115,6 +1115,7 @@ object Denotations {
           case thisd: SymDenotation => thisd.owner
           case _ => if (symbol.exists) symbol.owner else NoSymbol
         }
+        val needsAsSeenFrom = owner.membersNeedAsSeenFrom(pre)
 
         /** The derived denotation with the given `info` transformed with `asSeenFrom`.
          *
@@ -1129,7 +1130,9 @@ object Denotations {
             // without this i7159.scala would fail when compiled from tasty.
             symbol.is(Opaque)
 
-          val derivedInfo = info.asSeenFrom(pre, owner)
+          val derivedInfo =
+            if needsAsSeenFrom then info.asSeenFromKnownNeeded(pre, owner)
+            else info.asSeenFrom(pre, owner)
           if Config.reuseSymDenotations && this.isInstanceOf[SymDenotation]
              && (derivedInfo eq info) && !needsPrefix then
             this
@@ -1152,7 +1155,7 @@ object Denotations {
           case _: SymDenotation => false
           case _ => symbol.is(NonMember)
 
-        if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
+        if !needsAsSeenFrom && (!ownerIsPrefix || hasOriginalInfo)
            || nonSymDenotIsNonMember
         then this
         else if symbol.isAllOf(ClassTypeParam) then

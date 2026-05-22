@@ -1203,8 +1203,14 @@ object Types extends TypeUtils {
     final def asSeenFrom(pre: Type, cls: Symbol)(using Context): Type = {
       record("asSeenFrom")
       if (!cls.membersNeedAsSeenFrom(pre)) this
-      else TypeOps.asSeenFrom(this, pre, cls)
+      else asSeenFromKnownNeeded(pre, cls)
     }
+
+    /** Like `asSeenFrom`, but assumes `cls.membersNeedAsSeenFrom(pre)` is known
+     *  to be true.
+     */
+    private[core] final inline def asSeenFromKnownNeeded(pre: Type, cls: Symbol)(using Context): Type =
+      TypeOps.asSeenFrom(this, pre, cls)
 
 // ----- Subtype-related --------------------------------------------
 
