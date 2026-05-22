@@ -1323,6 +1323,26 @@ object Denotations {
 
   // --- Overloaded denotations and predenotations -------------------------------------------------
 
+  private def filterWithCurrentFlags(denot: PreDenotation, required: FlagSet, realExcluded: FlagSet)(using Context): PreDenotation | Null =
+    denot match
+      case denot: MultiPreDenotation =>
+        val denot1 = filterWithCurrentFlags(denot.denot1, required, realExcluded)
+        if denot1 == null then null
+        else
+          val denot2 = filterWithCurrentFlags(denot.denot2, required, realExcluded)
+          if denot2 == null then null
+          else if (denot1 eq denot.denot1) && (denot2 eq denot.denot2) then denot
+          else denot1.union(denot2)
+      case denot: SymDenotation =>
+        if denot.isCurrent(required) && denot.isCurrent(realExcluded) then
+          val flags = denot.flagsUNSAFE
+          if !required.isEmpty && !flags.isAllOf(required)
+             || flags.isOneOf(realExcluded) then NoDenotation
+          else denot
+        else null
+      case _ =>
+        null
+
   trait MultiPreDenotation extends PreDenotation {
     def denot1: PreDenotation
     def denot2: PreDenotation
@@ -1339,7 +1359,12 @@ object Denotations {
     def filterDisjoint(denot: PreDenotation)(using Context): PreDenotation =
       derivedUnion(denot1.filterDisjoint(denot), denot2.filterDisjoint(denot))
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): PreDenotation =
-      derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+      val realExcluded =
+        if ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy) then excluded
+        else excluded | Invisible
+      filterWithCurrentFlags(this, required, realExcluded) match
+        case null => derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+        case denot => denot
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T =
       g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
