@@ -42,10 +42,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected var state: TyperState = compiletime.uninitialized
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
+  private var gadtConstraintInferenceMode = false
 
   def init(c: Context): Unit =
     myContext = c
     state = c.typerState
+    gadtConstraintInferenceMode = c.mode.is(Mode.GadtConstraintInference)
     monitored = false
     GADTused = false
     opaquesUsed = false
@@ -177,6 +179,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false
+  private inline def canNarrowGadtBounds: Boolean =
+    gadtConstraintInferenceMode && !frozenGadt && !frozenConstraint
+  private inline def snapshotGadtIfCanNarrow(using Context): GadtConstraint | Null =
+    if canNarrowGadtBounds then ctx.gadt else null
+  private inline def restoreGadtSnapshot(saved: GadtConstraint | Null)(using Context): Unit =
+    if saved != null then ctx.gadtState.restore(saved)
   private inline def inFrozenGadt[T](inline op: T): T =
     inFrozenGadtIf(true)(op)
 
@@ -191,6 +199,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  comparisons for deeply nested invariant applied types.
    */
   private var sames: util.EqHashMap[Type, Type] | Null = null
+
+  private var pairClassCompatRunId: Int = 0
+  private val pairClassCompat = new EqHashMap[Symbol, Boolean](initialCapacity = 64)
+
+  private def mayDeriveFromPairCached(cls: Symbol)(using Context): Boolean =
+    val rid = ctx.runId
+    if pairClassCompatRunId != rid then
+      pairClassCompat.clear(resetToInitial = false)
+      pairClassCompatRunId = rid
+    pairClassCompat.getOrElseUpdate(cls, cls.denot.mayDeriveFrom(defn.PairClass))
 
   /** The `sameLevel` nesting depth from which on we want to keep track
    *  of isSameTypes suucesses using `sames`
@@ -948,6 +966,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       canWidenAbstract && acc(true, tp)
 
+    def isPlainStaticClassPrefix(pre: Type, cls: Symbol): Boolean = pre match
+      case NoPrefix => true
+      case pre: ThisType => pre.cls `eq` cls.owner
+      case _ => false
+
+    def isPlainStaticClassRef(tp: TypeRef, cls: Symbol) =
+      cls.isStatic && isPlainStaticClassPrefix(tp.prefix, cls)
+
     def tryBaseType(cls2: Symbol) =
       val base = nonExprBaseType(tp1, cls2)
       if base.exists && (base ne tp1)
@@ -1287,6 +1313,268 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val tparams = tycon2.typeParams
       if (tparams.isEmpty) return false // can happen for ill-typed programs, e.g. neg/tcpoly_overloaded.scala
 
+      val nestedPairsUnknown = -1
+      val nestedPairsNo = 0
+      val nestedPairsYes = 1
+
+      inline def nestedPairsResult(b: Boolean): Int =
+        if b then nestedPairsYes else nestedPairsNo
+
+      def isSimpleArg(arg: Type): Boolean =
+        !arg.isInstanceOf[TypeBounds] && !arg.isInstanceOf[ExprType]
+
+      def isIncompleteArg(arg1: Type, arg2: Type, variance: Int): Boolean =
+        val arg1d = arg1.stripped
+        val arg2d = arg2.stripped
+        (variance >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
+        ||
+        (variance <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
+
+      def compareSimpleArg(arg1: Type, arg2: Type, variance: Int): Boolean =
+        if variance < 0 then isSubType(arg2, arg1)
+        else if variance > 0 then isSubType(arg1, arg2)
+        else isSameType(arg2, arg1)
+
+      def pairParamBounds(tparam: ParamInfo): TypeBounds =
+        tparam.paramInfo.bounds
+
+      def comparePairCaptured(arg1: TypeBounds, arg2: Type, tparam: ParamInfo, variance: Int): Boolean = tparam match
+        case tparam: Symbol =>
+          val leftr = leftRoot.nn
+          if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+              && leftr.isValueType
+              && leftr.member(tparam.name).exists
+          then
+            val captured = TypeRef(leftr, tparam)
+            try comparePairArg(captured, arg2, tparam, variance)
+            catch case ex: TypeError =>
+              false
+          else if variance > 0 then isSubType(pairParamBounds(tparam).hi, arg2)
+          else if variance < 0 then isSubType(arg2, pairParamBounds(tparam).lo)
+          else false
+        case _ =>
+          false
+
+      def comparePairArg(arg1: Type, arg2: Type, tparam: ParamInfo, variance: Int): Boolean = arg2 match
+        case arg2: TypeBounds =>
+          val arg1norm = arg1 match
+            case arg1: TypeBounds => arg1 & pairParamBounds(tparam)
+            case _ => arg1
+          arg2.contains(arg1norm)
+        case ExprType(arg2res)
+        if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+             && defn.isByNameFunction(arg1.dealias) =>
+          comparePairArg(arg1.dealias.argInfos.head, arg2res, tparam, variance)
+        case _ =>
+          arg1 match
+            case arg1: TypeBounds =>
+              CaptureSet.subCapturesRange(arg1, arg2)
+                && comparePairArg(arg1.hi.stripCapturing, arg2.stripCapturing, tparam, variance)
+              || comparePairCaptured(arg1, arg2, tparam, variance)
+            case ExprType(arg1res)
+            if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+                 && defn.isByNameFunction(arg2.dealias) =>
+              comparePairArg(arg1res, arg2.argInfos.head, tparam, variance)
+            case _ =>
+              compareSimpleArg(arg1, arg2, variance)
+
+      def subCapturesRangeNestedPairs(arg1: TypeBounds): Boolean = arg1 match
+        case TypeBounds(CapturingType(lo, loRefs), CapturingType(hi, hiRefs)) if lo =:= hi =>
+          given CaptureSet.VarState()
+          val cs2 = CaptureSet.empty
+          hiRefs.subCaptures(cs2) && cs2.subCaptures(loRefs)
+        case _ =>
+          false
+
+      def comparePairCapturedNestedPairs(arg1: TypeBounds, elems: List[Type], tparam: ParamInfo): Boolean = tparam match
+        case tparam: Symbol =>
+          val leftr = leftRoot.nn
+          if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+              && leftr.isValueType
+              && leftr.member(tparam.name).exists
+          then
+            val captured = TypeRef(leftr, tparam)
+            try compareNestedPairTail(captured, elems, tparam)
+            catch case ex: TypeError =>
+              false
+          else isSubTypeNestedPairs(pairParamBounds(tparam).hi, elems)
+        case _ =>
+          false
+
+      def compareNestedPairTail(arg1: Type, elems: List[Type], tparam: ParamInfo): Boolean =
+        arg1 match
+          case arg1: TypeBounds =>
+            subCapturesRangeNestedPairs(arg1)
+              && compareNestedPairTail(arg1.hi.stripCapturing, elems, tparam)
+            || comparePairCapturedNestedPairs(arg1, elems, tparam)
+          case ExprType(arg1res)
+          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes =>
+            // A nested-pair tuple RHS cannot be an eliminated by-name function,
+            // so the generic isSubArgs special case falls through to covariance.
+            isSubTypeNestedPairs(arg1, elems)
+          case _ =>
+            isSubTypeNestedPairs(arg1, elems)
+
+      def compareNestedPairArgs(arg1: Type, tail1: Type, head2: Type, tail2Elems: List[Type],
+                                headTparam: ParamInfo, tailTparam: ParamInfo): Boolean =
+        val headVariance = headTparam.paramVarianceSign
+        def compareHead() =
+          comparePairArg(arg1, head2, headTparam, headVariance)
+        def compareTail() =
+          compareNestedPairTail(tail1, tail2Elems, tailTparam)
+        val headIncomplete = isIncompleteArg(arg1, head2, headVariance)
+        if !headIncomplete then
+          compareHead() && compareTail()
+        else
+          val tailIncomplete = tail1.stripped.isInstanceOf[AndType]
+          if tailIncomplete then
+            compareHead() && compareTail()
+          else
+            compareTail() && compareHead()
+
+      def virtualNestedPairsRecur(lhs: Type, elems: List[Type])(op: => Boolean): Boolean =
+        val savedCstr = constraint
+        val savedGadt = snapshotGadtIfCanNarrow
+        val savedLogSize = undoLog.size
+        inline def restore() =
+          state.constraint = savedCstr
+          restoreGadtSnapshot(savedGadt)
+          if undoLog.size != savedLogSize then rollBack(savedLogSize)
+        val savedSuccessCount = successCount
+        try
+          val result = inNestedLevel(op)
+          if !result then restore()
+          else if recCount == 0 && needsGc then
+            state.gc()
+            needsGc = false
+          if Stats.monitored then recordStatistics(result, savedSuccessCount)
+          result
+        catch
+          case ex: AssertionError =>
+            showGoal(lhs, TypeOps.nestedPairs(elems))
+            recCount -= 1
+            restore()
+            successCount = savedSuccessCount
+            throw ex
+          case ex: Exception =>
+            recCount -= 1
+            restore()
+            successCount = savedSuccessCount
+            throw ex
+
+      def compareTupleNArgsAsNestedPairs(lhs: Type, args1: List[Type], elems: List[Type],
+                                         headTparam: ParamInfo, tailTparam: ParamInfo): Int =
+        val tailVariance = tailTparam.paramVarianceSign
+        if tailVariance > 0 then
+          val headVariance = headTparam.paramVarianceSign
+          def compareArgs(args1: List[Type], elems: List[Type]): Boolean = args1 match
+            case arg1 :: args1Tail =>
+              elems match
+                case head2 :: elemsTail =>
+                  def compareHead() =
+                    comparePairArg(arg1, head2, headTparam, headVariance)
+                  def compareTail() =
+                    compareArgs(args1Tail, elemsTail)
+                  if !isIncompleteArg(arg1, head2, headVariance) then
+                    compareHead() && compareTail()
+                  else
+                    compareTail() && compareHead()
+                case Nil =>
+                  false
+            case Nil =>
+              elems.isEmpty
+          nestedPairsResult:
+            virtualNestedPairsRecur(lhs, elems):
+              compareArgs(args1, elems)
+        else
+          nestedPairsUnknown
+
+      def directStaticClassSymbol(tp: Type): Symbol = tp match
+        case tp: TypeRef if tp.symbol.isClass && isPlainStaticClassRef(tp, tp.symbol) =>
+          tp.symbol
+        case AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass && isPlainStaticClassRef(tycon, tycon.symbol) =>
+          tycon.symbol
+        case _ =>
+          NoSymbol
+
+      def isStaticallyNotNestedPair(tp: Type): Boolean =
+        val cls = directStaticClassSymbol(tp)
+        cls.exists && !mayDeriveFromPairCached(cls)
+
+      /** Try `recur(lhs, TypeOps.nestedPairs(elems))` without allocating the
+       *  intermediate `*:` AppliedTypes. `nestedPairsUnknown` means the helper
+       *  could not exactly mirror `recur` for this shape, so callers must use
+       *  the materialized fallback.
+       */
+      def compareNestedPairsRecur(lhs: Type, elems: List[Type]): Int =
+        if elems.isEmpty then nestedPairsResult(recur(lhs, defn.EmptyTupleModule.termRef))
+        else if monitored || recCount >= Config.LogPendingSubTypesThreshold then nestedPairsUnknown
+        else
+          lhs.widen match
+            case AppliedType(tycon1: TypeRef, arg1 :: tail1 :: Nil)
+            if tycon1.symbol == defn.PairClass =>
+              val pairTycon = defn.PairClass.typeRef
+              val pairTparams = pairTycon.typeParams
+              pairTparams match
+                case headTparam :: tailTparam :: Nil
+                if (tycon1.prefix eq pairTycon.prefix) =>
+                  val head2 = elems.head
+                  val headVariance = headTparam.paramVarianceSign
+                  val tailVariance = tailTparam.paramVarianceSign
+                  if isSimpleArg(arg1)
+                      && isSimpleArg(head2)
+                      && !isIncompleteArg(arg1, head2, headVariance)
+                      && tailVariance > 0
+                      && isSimpleArg(tail1)
+                  then
+                    nestedPairsResult:
+                      virtualNestedPairsRecur(lhs, elems):
+                        compareSimpleArg(arg1, head2, headVariance)
+                        && isSubTypeNestedPairs(tail1, elems.tail)
+                  else if tailVariance > 0 then
+                    // For complex pair arguments, use the exact argument comparer
+                    // but still avoid building the outer RHS `*:` node.
+                    nestedPairsResult:
+                      virtualNestedPairsRecur(lhs, elems):
+                        compareNestedPairArgs(arg1, tail1, head2, elems.tail, headTparam, tailTparam)
+                  else
+                    nestedPairsUnknown
+                case _ =>
+                  nestedPairsUnknown
+            case lhs1 @ AppliedType(_, args1) if defn.isDirectTupleNType(lhs1) =>
+              val pairTparams = defn.PairClass.typeRef.typeParams
+              pairTparams match
+                case headTparam :: tailTparam :: Nil =>
+                  compareTupleNArgsAsNestedPairs(lhs, args1, elems, headTparam, tailTparam)
+                case _ =>
+                  nestedPairsUnknown
+            case lhs1 if isStaticallyNotNestedPair(lhs1) =>
+              nestedPairsNo
+            case _ =>
+              nestedPairsUnknown
+
+      def isSubTypeNestedPairs(lhs: Type, elems: List[Type]): Boolean =
+        if elems.isEmpty then isSubType(lhs, defn.EmptyTupleModule.termRef)
+        else
+          val savedApprox = approx
+          val savedLeftRoot = leftRoot
+          this.approx = ApproxState.None
+          this.leftRoot = lhs
+          try
+            val streamed = compareNestedPairsRecur(lhs, elems)
+            if streamed != nestedPairsUnknown then streamed == nestedPairsYes
+            else recur(lhs, TypeOps.nestedPairs(elems))
+          catch
+            case ex: Throwable => handleRecursive("subtype", i"$lhs <:< ${TypeOps.nestedPairs(elems)}", ex, weight = 2)
+          finally
+            this.approx = savedApprox
+            this.leftRoot = savedLeftRoot
+
+      def compareTupleNAsNestedPairs(lhs: Type): Boolean =
+        val streamed = compareNestedPairsRecur(lhs, args2)
+        if streamed != nestedPairsUnknown then streamed == nestedPairsYes
+        else recur(lhs, tp2.toNestedPairs)
+
       /** True if `tp1` and `tp2` have compatible type constructors and their
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
@@ -1620,11 +1908,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if tp1 eq tp2 then true
     else
       val savedCstr = constraint
-      val savedGadt = ctx.gadt
+      val savedGadt = snapshotGadtIfCanNarrow
       val savedLogSize = undoLog.size
       inline def restore() =
         state.constraint = savedCstr
-        ctx.gadtState.restore(savedGadt)
+        restoreGadtSnapshot(savedGadt)
         if undoLog.size != savedLogSize then
           //println(i"ROLLBACK $tp1 <:< $tp2")
           rollBack(savedLogSize)
@@ -2367,7 +2655,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
     val boundImprecise = approx.high || approx.low
-    ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
+    canNarrowGadtBounds && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
