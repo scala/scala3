@@ -3516,7 +3516,8 @@ object Parsers {
       case IDENTIFIER =>
         name match {
           case nme.inline => Mod.Inline()
-          case nme.opaque => Mod.Opaque()
+          case nme.opaque =>
+            Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
@@ -4373,7 +4374,7 @@ object Parsers {
           case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ if (staged & StageKind.QuotedPattern) != 0
-              || sourceVersion.enablesNewGivens && in.isColon =>
+              || (sourceVersion.enablesNewGivens && in.isColon && !mods.is(Opaque)) =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))

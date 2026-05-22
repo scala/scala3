@@ -5646,9 +5646,6 @@ object Types extends TypeUtils {
           def force(using Context) =
             if sym.isOpaqueAlias then // could have been reset because of a syntax error
               sym.infoOrCompleter match
-                case NoCompleter =>
-                  report.error("Invalid opaque member", sym.srcPos)
-                  defn.AnyType
                 case completer: LazyType =>
                   completer.complete(sym) // will update the LazyRef
                   null                    // tells the LazyRef to use the updated value
