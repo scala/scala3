@@ -586,7 +586,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def functionArgInfos(using Context): List[Type] = self.dealias match
     case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
-    case _ => self.dropDependentRefinement.dealias.argInfos
+    case RefinedType(parent, nme.apply, _) if defn.isNonRefinedFunction(parent) => parent.dealias.argInfos
+    case tp => tp.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(using Context): List[Type] = argInfos mapConserve noBounds
