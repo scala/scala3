@@ -6,6 +6,7 @@ import core.*
 import Types.*, Contexts.*, Flags.*
 import Symbols.*, Annotations.*, Trees.*, Symbols.*, Constants.Constant
 import Decorators.*
+import config.Config
 
 
 /** A map that applies three functions and a substitution together to a tree and
@@ -146,6 +147,12 @@ class TreeTypeMap(
     val expanded1 = tmap1.transform(expanded)
     cpy.Inlined(tree)(call, bindings1, expanded1)
 
+  private def withMappedType(tree: Tree)(using Context): Tree =
+    val tpe = tree.tpe
+    val tpe1 = mapType(tpe)
+    if (tpe1 eq tpe) && !tpe1.isInstanceOf[ErrorType] && !Config.checkTreesConsistent then tree
+    else tree.withType(tpe1)
+
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
@@ -157,7 +164,7 @@ class TreeTypeMap(
             tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner)))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
-      tree1.withType(mapType(tree1.tpe)) match {
+      withMappedType(tree1) match {
         case id: Ident =>
           if needsSelect(id.tpe) then
             try ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
