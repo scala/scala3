@@ -25,6 +25,12 @@ class GadtConstraint private (
 ) extends Showable:
   def constraint: Constraint        = myConstraint
   def symbols: List[Symbol]         = mapping.keys
+  /** True iff no symbols are registered in this GADT. A `mapping eq myEmpty`
+   *  test against the empty SimpleIdentityMap sentinel; cheaper than a full
+   *  `bounds(sym)` probe and used by TypeComparer to short-circuit the
+   *  common non-`match` path.
+   */
+  def isEmpty: Boolean              = mapping.isEmpty
   def withConstraint(c: Constraint) = copy(myConstraint = c)
   def withWasConstrained            = copy(wasConstrained = true)
 
