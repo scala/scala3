@@ -356,7 +356,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 ctx.erasedTypes
                 || sym1.isStaticOwner
                 || isSubPrefix(tp1.prefix, tp2.prefix)
-                || thirdTryNamed(tp2)
+                || thirdTryNamed(tp2, info2)
               else
                 (tp1.name eq tp2.name)
                 && !sym1.is(Private)
@@ -364,7 +364,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubPrefix(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
-                || thirdTryNamed(tp2)
+                || thirdTryNamed(tp2, info2)
             case _ =>
               secondTry
         end compareNamed
@@ -596,7 +596,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         thirdTry
     }
 
-    def thirdTryNamed(tp2: NamedType): Boolean = tp2.info match {
+    def thirdTryNamed(tp2: NamedType, info2: Type): Boolean = info2 match {
       case info2: TypeBounds =>
         def compareGADT: Boolean =
           tp2.symbol.onGadtBounds(gbounds2 =>
@@ -672,7 +672,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2 @ AppliedType(tycon2, args2) =>
         compareAppliedType2(tp2, tycon2, args2)
       case tp2: NamedType =>
-        thirdTryNamed(tp2)
+        thirdTryNamed(tp2, tp2.info)
       case tp2: TypeParamRef =>
         compareTypeParamRef(tp2)
       case tp2: RefinedType =>
