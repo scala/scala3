@@ -3946,6 +3946,9 @@ object Types extends TypeUtils {
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
+    protected def needsParamRebind(paramInfos: List[PInfo])(using Context): Boolean = true
+    protected def needsResultRebind(resType: Type)(using Context): Boolean = true
+
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
      *
@@ -4021,9 +4024,11 @@ object Types extends TypeUtils {
           val m1 = new Substituters.SubstBindingMap[This](this, x)
           sharedMap = m1
           m1
+      val rebindParams = needsParamRebind(paramInfos)
+      val rebindResult = needsResultRebind(resType)
       companion(paramNames)(
-          x => substParams(paramInfos, getMap(x)),
-          x => getMap(x).applyFromRoot(resType))
+          x => if rebindParams then substParams(paramInfos, getMap(x)) else paramInfos,
+          x => if rebindResult then getMap(x).applyFromRoot(resType) else resType)
 
     protected def prefixString: String
     override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
@@ -4249,6 +4254,24 @@ object Types extends TypeUtils {
     /** Like isParamDependent, but without attempt to eliminate dependencies with de-aliasing */
     def looksParamDependent(using Context): Boolean =
       (paramDependencyStatus & StatusMask) != NoDeps
+
+    private def hasDependencies(status: DependencyStatus): Boolean =
+      (status & StatusMask) != NoDeps
+
+    private def rawDependencyStatus(tp: Type, forParams: Boolean)(using Context): DependencyStatus =
+      (depStatus(NoDeps, tp, forParams) & StatusMask).toByte
+
+    private def rawParamDependencyStatus(pinfos: List[Type])(using Context): DependencyStatus =
+      if pinfos.isEmpty then NoDeps
+      else (pinfos.tail.foldLeft(NoDeps)(depStatus(_, _, forParams = true)) & StatusMask).toByte
+
+    override protected def needsParamRebind(pinfos: List[Type])(using Context): Boolean =
+      isCaptureCheckingOrSetup
+      || hasDependencies(if pinfos eq paramInfos then paramDependencyStatus else rawParamDependencyStatus(pinfos))
+
+    override protected def needsResultRebind(res: Type)(using Context): Boolean =
+      isCaptureCheckingOrSetup
+      || hasDependencies(if res eq resType then dependencyStatus else rawDependencyStatus(res, forParams = false))
 
     def newParamRef(n: Int): TermParamRef = new TermParamRefImpl(this, n)
 
