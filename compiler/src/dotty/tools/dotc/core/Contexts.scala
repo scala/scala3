@@ -180,6 +180,15 @@ object Contexts {
         i += 2
       None
 
+    def propertyOrElse[T](key: Key[T], default: => T): T =
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return arr(i + 1).asInstanceOf[T]
+        i += 2
+      default
+
     /** A store that can be used by sub-components.
      *  Typically used for attributes that are defined only once per compilation unit.
      *  Access to store entries is much faster than access to properties, and only
@@ -784,6 +793,34 @@ object Contexts {
       if oldLen > 0 then System.arraycopy(arr, 0, copy, 0, oldLen)
       copy(oldLen) = key.asInstanceOf[AnyRef]
       copy(oldLen + 1) = value.asInstanceOf[AnyRef]
+      setMorePropertiesArr(copy)
+
+    def setProperties[T, U](key1: Key[T], value1: T, key2: Key[U], value2: U): this.type =
+      if key1 eq key2 then return setProperty(key2, value2)
+
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      var idx1 = -1
+      var idx2 = -1
+      var i = 0
+      while i < oldLen do
+        val key = arr(i)
+        if key eq key1 then idx1 = i
+        else if key eq key2 then idx2 = i
+        i += 2
+
+      val newLen = oldLen + (if idx1 < 0 then 2 else 0) + (if idx2 < 0 then 2 else 0)
+      val copy = new Array[AnyRef](newLen)
+      if oldLen > 0 then System.arraycopy(arr, 0, copy, 0, oldLen)
+      if idx1 >= 0 then copy(idx1 + 1) = value1.asInstanceOf[AnyRef]
+      else
+        copy(oldLen) = key1.asInstanceOf[AnyRef]
+        copy(oldLen + 1) = value1.asInstanceOf[AnyRef]
+      if idx2 >= 0 then copy(idx2 + 1) = value2.asInstanceOf[AnyRef]
+      else
+        val idx = if idx1 < 0 then oldLen + 2 else oldLen
+        copy(idx) = key2.asInstanceOf[AnyRef]
+        copy(idx + 1) = value2.asInstanceOf[AnyRef]
       setMorePropertiesArr(copy)
 
     def dropProperty(key: Key[?]): this.type =
