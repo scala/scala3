@@ -52,7 +52,7 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
    *  @param  ord the ordering to be used to compare elements.
    *  @return modified input $coll sorted according to the ordering `ord`.
    */
-  def sortInPlace[B >: A]()(implicit ord: Ordering[B]): this.type = {
+  def sortInPlace[B >: A]()(implicit ord: Ordering[B]^): this.type = {
     val len = this.length
     if (len > 1) {
       val arr = new Array[AnyRef](len)
@@ -88,6 +88,6 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
    *  @param f the transformation function that extracts a sort key of type `B` from each element
    *  @param ord the implicit ordering on type `B` used to compare transformed elements
    */
-  def sortInPlaceBy[B](f: A => B)(implicit ord: Ordering[B]): this.type = sortInPlace()(using ord.on(f))
+  def sortInPlaceBy[B](f: A => B)(implicit ord: Ordering[B]^): this.type = sortInPlace()(using ord.on(f))
 
 }

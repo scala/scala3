@@ -13,6 +13,7 @@
 package scala
 package math
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.language.implicitConversions
 
@@ -110,6 +111,6 @@ object Ordered {
    *  @param x the value to be converted to an `Ordered` instance
    *  @param ord the implicit `Ordering` instance used to perform comparisons
    */
-  implicit def orderingToOrdered[T](x: T)(implicit ord: Ordering[T]): Ordered[T] =
+  implicit def orderingToOrdered[T](x: T)(implicit ord: Ordering[T]^): Ordered[T]^{ord} =
     new Ordered[T] { def compare(that: T): Int = ord.compare(x, that) }
 }
