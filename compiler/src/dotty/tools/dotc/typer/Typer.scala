@@ -4663,14 +4663,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val args = implicitArgs(wtp.paramInfos, 0, pt)
         val failureType = propagatedFailure(args)
         if failureType.exists then
-          // If there are several arguments, some arguments might already
-          // have influenced the context, binding variables, but later ones
-          // might fail. In that case the constraint and instantiated variables
-          // need to be reset.
-          ctx.typerState.resetTo(saved)
-
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
+          // In this case we do NOT reset the typer state because successfully
+          // found implicits (passed as TypedSplice) rely on constraints
+          // established during their search (e.g. type variable instantiations).
           if hasDefaultParams && !failureType.isInstanceOf[AmbiguousImplicits] then
             // Only keep the arguments that don't have an error type, or that
             // have an `AmbiguousImplicits` error type. The latter ensures that a
@@ -4702,7 +4699,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   case sft: SearchFailureType => issueErrors(tree, args, sft)
                   case _ => issueErrors(tree, args, retyped.tpe)
                 case retyped => retyped
-          else issueErrors(tree, args, failureType)
+          else
+            // If there are several arguments, some arguments might already
+            // have influenced the context, binding variables, but later ones
+            // might fail. In that case the constraint and instantiated variables
+            // need to be reset.
+            ctx.typerState.resetTo(saved)
+            issueErrors(tree, args, failureType)
         else
           inContext(origCtx):
             // Reset context in case it was set to a supercall context before.
