@@ -68,6 +68,11 @@ object TypeOps:
      */
     private[TypeOps] var approxCount: Int = 0
 
+    private val outerPre: Type = pre
+    private val outerCls: Symbol = cls
+    private val outerPreIsTrivial: Boolean = (pre eq NoType) || (pre eq NoPrefix)
+    private val outerClsIsPackage: Boolean = cls.is(PackageClass)
+
     private var myToPrefixBasePre: Type | Null = null
     private var myToPrefixBaseCls: Symbol = NoSymbol
     private var myToPrefixBasePeriod: Period = Nowhere
@@ -98,7 +103,9 @@ object TypeOps:
        *  @param  thiscls The prefix `C` of the `C.this` type.
        */
       def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
-        if ((pre eq NoType) || (pre eq NoPrefix) || cls.is(PackageClass))
+        val isOuterCall = (pre eq outerPre) && (cls eq outerCls)
+        if isOuterCall && (outerPreIsTrivial || outerClsIsPackage) then tp
+        else if !isOuterCall && ((pre eq NoType) || (pre eq NoPrefix) || cls.is(PackageClass)) then
           tp
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
