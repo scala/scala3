@@ -218,7 +218,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       throw new Exception("Match error in @varargs checks. This should not happen, please open an issue " + tp)
 
   /** Add the symbol of a Java varargs forwarder to the scope.
-   *  It retains all the flags of the original method.
+   *  It retains the flags of the original method except `Deferred`,
+   *  since the forwarder's body is synthesized in `transformDefDef`.
    *
    *  @param original the original method symbol
    *  @param isBridge true if we are generating a "bridge" (synthetic override forwarder)
