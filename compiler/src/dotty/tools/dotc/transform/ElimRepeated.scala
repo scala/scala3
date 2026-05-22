@@ -241,7 +241,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
     // For simplicity we always set the varargs flag,
     // although it's not strictly necessary for overrides.
-    val flags = original.flags | JavaVarargs
+    val flags = (original.flags &~ Deferred) | JavaVarargs
 
     // The java-compatible forwarder symbol
     val forwarder =
