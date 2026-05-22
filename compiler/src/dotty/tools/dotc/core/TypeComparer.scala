@@ -58,7 +58,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     undoLog.clear()
     frozenConstraint = false
     lastGadt = null
-    atomCacheActive = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -138,9 +137,34 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
+  // 1-slot empty-GADT cache: keyed on GadtConstraint *identity*. The common
+  // non-`match` path keeps an empty GADT, in which case `bounds(sym)` walks
+  // a virtual call into `SimpleIdentityMap.apply` only to return null. The
+  // cache collapses that to a single `eq` test. Any mutation of the GADT
+  // (including `narrowGADTBounds` mid-recur) replaces `ctx.gadt` with a fresh
+  // `GadtConstraint` instance, invalidating the cache automatically.
   private var lastGadt: GadtConstraint | Null = null
+  private var lastGadtIsEmpty: Boolean = false
 
-  protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
+  private def cachedGadtIsEmpty(g: GadtConstraint): Boolean =
+    if g eq lastGadt then lastGadtIsEmpty
+    else
+      lastGadt = g
+      val empty = g.isEmpty
+      lastGadtIsEmpty = empty
+      empty
+
+  protected def gadtBounds(sym: Symbol)(using Context): TypeBounds | Null =
+    val g = ctx.gadt
+    if cachedGadtIsEmpty(g) then null else g.bounds(sym)
+
+  protected def gadtContains(sym: Symbol)(using Context): Boolean =
+    val g = ctx.gadt
+    !cachedGadtIsEmpty(g) && g.contains(sym)
+
+  protected def gadtIsLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
+    val g = ctx.gadt
+    !cachedGadtIsEmpty(g) && g.isLess(sym1, sym2)
   protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadtState.addBound(sym, b, isUpper)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
@@ -612,13 +636,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           tp2.symbol.onGadtBounds(gbounds2 =>
             isSubTypeWhenFrozen(tp1, gbounds2.lo)
             || tp1.match
-                case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
+                case tp1: NamedType if gadtContains(tp1.symbol) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
                   // we need to manually handle the case when we're comparing two constrained types,
                   // one of which is constrained to be a subtype of another.
                   // We do not need similar code in fourthTry, since we only need to care about
                   // comparing two constrained types, and that case will be handled here first.
-                  ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                  gadtIsLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
                 case _ => false
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
@@ -1715,9 +1739,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                         b => op(b) && { gadtIsInstantiated = b.isInstanceOf[TypeAlias]; true })
 
                   def byGadtOrdering: Boolean =
-                    ctx.gadt.contains(tycon1sym)
-                    && ctx.gadt.contains(tycon2sym)
-                    && ctx.gadt.isLess(tycon1sym, tycon2sym)
+                    gadtContains(tycon1sym)
+                    && gadtContains(tycon2sym)
+                    && gadtIsLess(tycon1sym, tycon2sym)
 
                   val res = (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
