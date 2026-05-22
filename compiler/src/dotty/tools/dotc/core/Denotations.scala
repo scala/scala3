@@ -127,6 +127,13 @@ object Denotations {
     private var cachedPrefix: Type = uninitialized
     private var cachedAsSeenFrom: AsSeenFromResult = uninitialized
     private var validAsSeenFrom: Period = Nowhere
+    // Lazy extra slots: 3 (prefix, result) pairs (size 6). Direct-mapped via
+    // System.identityHashCode(pre) mod 3. All extra slots share one period
+    // (`extraValidPeriod`); we invalidate the whole array when the active
+    // period changes. This avoids per-slot Int storage and the boxing it
+    // would incur for `Period` (an `AnyVal` Int wrapper).
+    private var extraAsfKeys: Array[AnyRef] | Null = null
+    private var extraValidPeriod: Period = Nowhere
 
     type AsSeenFromResult <: PreDenotation
 
@@ -141,6 +148,63 @@ object Denotations {
         cachedAsSeenFrom
       }
       else computeAsSeenFrom(pre)
+
+    private def asSeenFromSlow(pre: Type, now: Period)(using Context): AsSeenFromResult = {
+      // Probe the extra direct-mapped slots first (if allocated and not stale).
+      val keys = extraAsfKeys
+      if keys != null && extraValidPeriod == now then
+        val s = (System.identityHashCode(pre) & 0x7fffffff) % 3
+        val k = s << 1
+        if keys(k) eq pre then
+          // Hit: promote to slot 0 by swapping with the inline slot.
+          val hitResult = keys(k + 1).asInstanceOf[AsSeenFromResult]
+          val prevPrefix = cachedPrefix
+          val prevResult = cachedAsSeenFrom
+          val prevValid = validAsSeenFrom
+          cachedPrefix = pre
+          cachedAsSeenFrom = hitResult
+          validAsSeenFrom = now
+          // Evict our slot 0 contents into the extra slot we just consumed,
+          // but only if slot 0 was fresh (same period, non-null prefix). Else
+          // clear the slot to avoid retaining a stale entry that won't ever hit.
+          if prevPrefix != null && prevValid == now then
+            keys(k) = prevPrefix
+            keys(k + 1) = prevResult.asInstanceOf[AnyRef]
+          else
+            keys(k) = null.asInstanceOf[AnyRef]
+            keys(k + 1) = null.asInstanceOf[AnyRef]
+          return hitResult
+      end if
+      // Miss. Before clobbering slot 0, evict the existing slot 0 into the extras
+      // (so the existing value is not lost). Allocate the extras lazily on the
+      // second distinct prefix.
+      val prevPrefix = cachedPrefix
+      val prevResult = cachedAsSeenFrom
+      val prevValid = validAsSeenFrom
+      val computed = computeAsSeenFrom(pre)
+      if prevPrefix != null && prevValid == now then
+        if keys == null then
+          val newKeys = new Array[AnyRef](6)
+          val s = (System.identityHashCode(prevPrefix) & 0x7fffffff) % 3
+          newKeys(s << 1) = prevPrefix
+          newKeys((s << 1) + 1) = prevResult.asInstanceOf[AnyRef]
+          extraAsfKeys = newKeys
+          extraValidPeriod = now
+        else
+          if extraValidPeriod != now then
+            // Period changed; clear stale entries before reusing.
+            var i = 0
+            while i < 6 do { keys(i) = null.asInstanceOf[AnyRef]; i += 1 }
+            extraValidPeriod = now
+          val s = (System.identityHashCode(prevPrefix) & 0x7fffffff) % 3
+          keys(s << 1) = prevPrefix
+          keys((s << 1) + 1) = prevResult.asInstanceOf[AnyRef]
+      end if
+      cachedAsSeenFrom = computed
+      cachedPrefix = pre
+      validAsSeenFrom = now
+      computed
+    }
 
     protected def computeAsSeenFrom(pre: Type)(using Context): AsSeenFromResult
 
