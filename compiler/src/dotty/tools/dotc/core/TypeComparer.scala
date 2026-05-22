@@ -186,7 +186,31 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     !cachedGadtIsEmpty(g) && g.isLess(sym1, sym2)
   protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadtState.addBound(sym, b, isUpper)
 
-  protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
+  // 1-slot typeVarInstance cache: keyed on (TypeVar, Constraint) *identity*.
+  // The hot firstTry/secondTry TypeVar cases call `typeVarInstance` (i.e.
+  // `tvar.underlying`) which dispatches into OrderingConstraint.instType when
+  // the variable is uninstantiated; each call walks the constraint's bounds
+  // map and re-wraps the entry. The cache short-circuits to the previously
+  // computed type when the same tvar is probed against the same constraint
+  // instance. Any constraint mutation (add/replace/remove/swapKey/withHard)
+  // returns a fresh OrderingConstraint, so the `eq` test on `constraint`
+  // automatically invalidates the slot. A permanent instantiation of the
+  // tvar happens through `instantiateWith`, which also calls
+  // `constraint.replace`, so the constraint-identity check covers that path.
+  private var lastTypeVar: TypeVar | Null = null
+  private var lastTypeVarConstraint: Constraint | Null = null
+  private var lastTypeVarInstance: Type = NoType
+
+  protected def typeVarInstance(tvar: TypeVar)(using Context): Type =
+    val c = constraint
+    if (tvar eq lastTypeVar) && (c eq lastTypeVarConstraint) then
+      lastTypeVarInstance
+    else
+      val res = tvar.underlying
+      lastTypeVar = tvar
+      lastTypeVarConstraint = c
+      lastTypeVarInstance = res
+      res
 
   // Subtype testing `<:<`
 
