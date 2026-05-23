@@ -121,9 +121,10 @@ object Trees {
           }
 
     def withTypeUnchecked(tpe: Type): ThisTree[Type] = {
+      if myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef] then
+        return this.asInstanceOf[ThisTree[Type]]
       val tree =
-        (if (myTpe == null ||
-          (myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
+        (if (myTpe == null) this
          else cloneIn(source)).asInstanceOf[Tree[Type]]
       tree.overwriteType(tpe)
       tree.asInstanceOf[ThisTree[Type]]
