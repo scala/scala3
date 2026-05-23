@@ -6330,7 +6330,11 @@ object Types extends TypeUtils {
     protected def mapOverLambda(tp: LambdaType) =
       val restpe = tp.resultType
       val saved = variance
-      variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance
+      // TermLambda (MethodType) result types are never MatchCase, so skip the check.
+      variance =
+        if tp.isInstanceOf[TermLambda] then -variance
+        else if defn.MatchCase.isInstance(restpe) then 0
+        else -variance
       val ptypes1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[tp.PInfo]]
       variance = saved
       derivedLambdaType(tp)(ptypes1, this(restpe))
