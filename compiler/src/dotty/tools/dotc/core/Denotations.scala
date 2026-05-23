@@ -786,6 +786,18 @@ object Denotations {
     def skipRemoved(using Context): SingleDenotation =
       if (validFor == Nowhere) nextDefined else this
 
+    /** A 1-step probe along the `nextInRun` ring: if the immediate `nextInRun`
+     *  denotation is valid for `currentPeriod` and denotes the same symbol as
+     *  this denotation, return it. Otherwise return `null`. Used by
+     *  `NamedType.computeDenot` to skip the dispatch through `current` /
+     *  `goForward` in the common case where the next flock member already
+     *  covers the current period.
+     */
+    final def nextInRunIfFast(currentPeriod: Period): SingleDenotation | Null =
+      val next = nextInRun
+      if (next ne this) && next.validFor.contains(currentPeriod) && (next.symbol eq symbol) then next
+      else null
+
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
