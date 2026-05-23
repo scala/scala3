@@ -4527,7 +4527,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               else
                 val union = tree.sourcePos.withSpan:
                   tree.srcPos.span.union(pt.args.last.srcPos.span)
-                if union.startLine != union.endLine then union // if multiline, show more context
+                if union.exists && union.startLine != union.endLine then union // if multiline, show more context
                 else tree.srcPos
             errorTree(tree, MethodDoesNotTakeParameters(tree), pos)
     }
