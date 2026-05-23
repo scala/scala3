@@ -47,7 +47,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.{CheckCaptures, isRetainsLike, derivesFromCapSet}
+import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 
@@ -3172,7 +3172,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
-    if sym.isConstructor then
+    if sym.isConstructor then {
       if sym.is(Inline) then
         report.error("constructors cannot be `inline`", ddef)
 
@@ -3187,7 +3187,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           do
             if defn.isContextFunctionType(param.tpt.tpe) then
               report.error("case class element cannot be a context function", param.srcPos)
-      else
+      else {
         for params <- paramss1; param <- params do
           checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
@@ -3200,14 +3200,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && tree.span.exists && !tree.span.isSynthetic
             then
               report.error("secondary constructor must call a preceding constructor", app.srcPos)
+            if Feature.ccEnabled then
+              Setup.recordParamAliases(sym, app)
+
           case Block(call :: _, expr) =>
             checkThisConstrCall(call)
             checkThisConstrCall(expr)
           case _ =>
 
         checkThisConstrCall(rhs1)
-      end if
-    end if
+      }
+    }
 
     if sym.is(Method) && sym.owner.denot.isRefinementClass then
       for annot <- sym.paramSymss.flatten.filter(_.isTerm).flatMap(_.getAnnotation(defn.ImplicitNotFoundAnnot)) do

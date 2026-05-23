@@ -1135,6 +1135,7 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
+  @tu lazy val ParamAliasAnnot: ClassSymbol = requiredClass("scala.caps.internal.paramAlias")
   @tu lazy val InferredAnnot = requiredClass("scala.caps.internal.inferred")
   @tu lazy val DeclaredAnnot = requiredClass("scala.caps.internal.declared")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
