@@ -198,6 +198,7 @@ class SymUtils:
         "it is not an abstract class"
       else {
         val children = self.children
+        children.foreach(_.ensureCompleted())
         val companionMirror = self.useCompanionAsSumMirror
         val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbols else Nil
         def problem(child: Symbol) = {
