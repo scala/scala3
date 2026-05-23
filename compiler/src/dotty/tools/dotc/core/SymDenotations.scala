@@ -1984,7 +1984,7 @@ object SymDenotations {
     private var myTypeParams: List[TypeSymbol] | Null = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
-    private var myMemberCache: EqHashMap[Name, PreDenotation] | Null = null
+    private var myMemberCache: EqHashMap.HashedOnly[Name, PreDenotation] | Null = null
     private var myMemberCachePeriod: Period = Nowhere
 
     // 2-slot, period-keyed Name->PreDenotation cache used as the first backing
@@ -2004,7 +2004,7 @@ object SymDenotations {
     private var myMemberCacheMutationId: Int = 0
 
     /** A cache from types T to baseType(T, C) */
-    type BaseTypeMap = EqHashMap[CachedType, Type]
+    type BaseTypeMap = EqHashMap.HashedOnly[CachedType, Type]
     private var myBaseTypeCache: BaseTypeMap | Null = null
     private var myBaseTypeCachePeriod: Period = Nowhere
     private var myBaseTypeCacheKey: CachedType | Null = null
@@ -2047,12 +2047,12 @@ object SymDenotations {
       myDerivesFromRunId1 = NoRunId
       myIsValueClassRunId = NoRunId
 
-    private def currentMemberCache(using Context): EqHashMap[Name, PreDenotation] | Null =
+    private def currentMemberCache(using Context): EqHashMap.HashedOnly[Name, PreDenotation] | Null =
       if myMemberCachePeriod == ctx.period then myMemberCache else null
 
-    private def promotedMemberCache(using Context): EqHashMap[Name, PreDenotation] =
+    private def promotedMemberCache(using Context): EqHashMap.HashedOnly[Name, PreDenotation] =
       if myMemberCachePeriod != ctx.period || myMemberCache == null then
-        myMemberCache = EqHashMap()
+        myMemberCache = EqHashMap.HashedOnly()
         myMemberCachePeriod = ctx.period
       myMemberCache.nn
 
@@ -2087,7 +2087,7 @@ object SymDenotations {
         true
       else false
 
-    private def promoteMemberCacheFromMembersNamed()(using Context): EqHashMap[Name, PreDenotation] =
+    private def promoteMemberCacheFromMembersNamed()(using Context): EqHashMap.HashedOnly[Name, PreDenotation] =
       val cache = promotedMemberCache
       val name0 = myMembersNamedName0
       val denots0 = myMembersNamedDenots0
