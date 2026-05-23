@@ -2480,7 +2480,23 @@ object Types extends TypeUtils {
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
       // because SymDenotation#installAfter never changes the symbol
       if (checkedPeriod == ctx.period) lastSymbol.asInstanceOf[Symbol]
-      else computeSymbol
+      else designator match
+        // Per-runId fast-path narrowed to symbolic designators only: when the
+        // designator is itself a Symbol and its last-known denotation is from
+        // the current run AND still maps back to this symbol (the same gate
+        // `isValidInCurrentRun` applies), `computeSymbol` would just return
+        // `sym` via its `isValidInCurrentRun` first disjunct without invoking
+        // `stillValid`. Narrowing to symbolic designators distinguishes this
+        // from the rejected widened cache: there's no validFor probe on the
+        // type's own lastDenotation and no extra stamp field. The check piggy-
+        // backs on `sym.lastKnownDenotation` (no Context-keyed work).
+        case sym: Symbol =>
+          val symd = sym.lastKnownDenotation
+          if symd.validFor.runId == ctx.runId && (symd.symbol eq sym) then
+            if checkedPeriod != Nowhere then checkedPeriod = ctx.period
+            sym
+          else computeSymbol
+        case _ => computeSymbol
 
     private def computeSymbol(using Context): Symbol =
       val result = designator match
