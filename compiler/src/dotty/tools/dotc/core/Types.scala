@@ -3151,6 +3151,15 @@ object Types extends TypeUtils {
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
     assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
     myHash = hc
+
+    private var atomsRunId: RunId = NoRunId
+    private var myAtoms: Atoms = uninitialized
+
+    override def atoms(using Context): Atoms =
+      if atomsRunId != ctx.runId then
+        myAtoms = super.atoms
+        if !isProvisional then atomsRunId = ctx.runId
+      myAtoms
   }
 
   final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
