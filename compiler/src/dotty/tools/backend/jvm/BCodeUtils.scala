@@ -22,12 +22,12 @@ import dotty.tools.dotc.report
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.commons.CodeSizeEvaluator
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.{Label, Type}
+import org.objectweb.asm
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.commons.CodeSizeEvaluator
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
+import org.objectweb.asm.{Label, Type}
 
 object BCodeUtils {
   // The JVM enforces a max length of 65535 bytes per UTF-8 constant.

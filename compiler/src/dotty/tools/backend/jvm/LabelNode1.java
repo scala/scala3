@@ -12,9 +12,9 @@
 
 package dotty.tools.backend.jvm;
 
-import scala.tools.asm.Label;
-import scala.tools.asm.tree.ClassNode;
-import scala.tools.asm.tree.LabelNode;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.LabelNode;
 
 /**
  * A subclass of {@link LabelNode} to add user-definable flags.

@@ -2,9 +2,9 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.tools.asm.util.{Textifier, TraceClassVisitor, TraceMethodVisitor}
-import scala.tools.asm.ClassReader
-import scala.tools.asm.tree.*
+import org.objectweb.asm.util.{Textifier, TraceClassVisitor, TraceMethodVisitor}
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.tree.*
 import java.io.PrintWriter
 
 object TraceUtils {

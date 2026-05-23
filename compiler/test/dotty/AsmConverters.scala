@@ -2,9 +2,9 @@ package dotty
 
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
 
 /** Makes using ASM from tests more convenient.
  *
@@ -12,7 +12,7 @@ import scala.tools.asm.tree.*
  * for the purpose of bytecode diffing and pretty printing.
  */
 object AsmConverters {
-  import scala.tools.asm.tree as t
+  import org.objectweb.asm.tree as t
 
   /**
    * Transform the instructions of an ASM Method into a list of [[Instruction]]s.
@@ -61,7 +61,7 @@ object AsmConverters {
   }
 
   def opcodeToString(op: Int, default: Any = "?"): String = {
-    import scala.tools.asm.util.Printer.OPCODES
+    import org.objectweb.asm.util.Printer.OPCODES
     if (OPCODES.isDefinedAt(op)) OPCODES(op) else default.toString
   }
 

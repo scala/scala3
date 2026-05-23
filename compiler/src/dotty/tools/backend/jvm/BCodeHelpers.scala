@@ -3,8 +3,8 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-import scala.tools.asm
-import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
+import org.objectweb.asm
+import org.objectweb.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
@@ -612,7 +612,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
   }
 
   private def verifySignature(sym: Symbol, sig: String)(using Context): Unit = {
-    import scala.tools.asm.util.CheckClassAdapter
+    import org.objectweb.asm.util.CheckClassAdapter
     def wrap(body: => Unit): Unit = {
       try body
       catch case ex: Exception =>

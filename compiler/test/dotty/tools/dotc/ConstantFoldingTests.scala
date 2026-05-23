@@ -8,7 +8,7 @@ import org.junit.Test
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.dotc.core.Contexts.FreshContext
 
-import scala.tools.asm.tree.MethodNode
+import org.objectweb.asm.tree.MethodNode
 import scala.jdk.CollectionConverters.*
 
 class ConstantFoldingTests extends DottyBytecodeTest {

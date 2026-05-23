@@ -15,13 +15,13 @@ package backend.jvm
 package analysis
 
 import scala.annotation.tailrec
-import scala.tools.asm.{Opcodes, Type}
-import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
-import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
+import org.objectweb.asm.{Opcodes, Type}
+import org.objectweb.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
+import org.objectweb.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 
-abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
+abstract class TypeFlowInterpreter extends BasicInterpreter(org.objectweb.asm.Opcodes.ASM7) {
   import TypeFlowInterpreter.*
 
   override def newParameterValue(isInstanceMethod: Boolean, local: Int, tpe: Type): BasicValue =

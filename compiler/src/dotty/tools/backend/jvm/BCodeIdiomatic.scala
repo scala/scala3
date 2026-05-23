@@ -3,9 +3,9 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-import scala.tools.asm
+import org.objectweb.asm
+import org.objectweb.asm.tree.MethodInsnNode
 import scala.annotation.switch
-import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
 
