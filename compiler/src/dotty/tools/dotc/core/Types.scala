@@ -206,9 +206,13 @@ object Types extends TypeUtils {
       case this1: RefinedOrRecType if skipRefined =>
         this1.parent.isRef(sym, skipRefined)
       case this1: AppliedType =>
-        val this2 = this1.dealias
-        if (this2 ne this1) this2.isRef(sym, skipRefined)
-        else this1.underlying.isRef(sym, skipRefined)
+        this1.tycon match {
+          case tref: TypeRef if tref.symbol.isClass => tref.symbol eq sym
+          case _ =>
+            val this2 = this1.dealias
+            if (this2 ne this1) this2.isRef(sym, skipRefined)
+            else this1.underlying.isRef(sym, skipRefined)
+        }
       case this1: TypeVar =>
         this1.instanceOpt.isRef(sym, skipRefined)
       case this1: AnnotatedType =>
