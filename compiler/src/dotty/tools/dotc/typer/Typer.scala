@@ -3025,7 +3025,27 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // these type parameters. See i12953.scala for a test case.
         local.setScope(newScopeWith(completer.completerTypeParams(sym)*))
       case _ =>
-        if outer.owner.isClass then local else outer
+        if sym.is(Method) then
+          // When annotating a method, make its own leading type parameters
+          // available in scope so that annotations like `@throws[T]` can
+          // refer to method type parameters. We look them up via the
+          // Completer (pre-indexed by `indexMethodTypeParams` while
+          // `addAnnotations` runs) and, once the method is completed, via
+          // `paramSymss` (used when `completeAnnotations` re-types
+          // annotations during `typedDefDef`). See i23922.scala for a test.
+          val methodTypeParams: List[TypeSymbol] = sym.infoOrCompleter match
+            case completer: Namer#Completer =>
+              completer.completerTypeParams(sym)
+            case _ =>
+              sym.paramSymss match
+                case (tps @ (head :: _)) :: _ if head.isType =>
+                  tps.asInstanceOf[List[TypeSymbol]]
+                case _ => Nil
+          if methodTypeParams.nonEmpty then
+            local.setScope(newScopeWith(methodTypeParams*))
+          else if outer.owner.isClass then local
+          else outer
+        else if outer.owner.isClass then local else outer
     ctx0.addMode(Mode.InAnnotation)
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = {

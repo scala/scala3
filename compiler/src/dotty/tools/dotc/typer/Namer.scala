@@ -935,6 +935,12 @@ class Namer { typer: Typer =>
     def setCompletedTypeParams(tparams: List[TypeSymbol]) =
       completedTypeParamSyms = tparams
 
+    /** True if `setCompletedTypeParams` has been called. Used by `defDefSig`
+     *  to avoid re-indexing leading type parameters that have already been
+     *  indexed by `indexMethodTypeParams`.
+     */
+    def hasCompletedTypeParams: Boolean = completedTypeParamSyms != null
+
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
       if completedTypeParamSyms != null then completedTypeParamSyms.uncheckedNN
       else Nil
@@ -1056,6 +1062,12 @@ class Namer { typer: Typer =>
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
       val sym = denot.symbol
+      // For a non-primary-constructor DefDef with leading type parameters, index
+      // and complete them before annotations are processed, so that annotations
+      // like `@throws[T]` can refer to the method's own type parameters.
+      // Without this, `addAnnotations` runs first and the type params have no
+      // symbols yet. See i23922.scala for a test case.
+      indexMethodTypeParams(sym)
       addAnnotations(sym)
       addInlineInfo(sym)
       denot.info = knownTypeSig `orElse` typeSig(sym)
@@ -1064,6 +1076,18 @@ class Namer { typer: Typer =>
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
+
+    /** Pre-index the leading type parameters of a method (DefDef), so that they
+     *  are available in the Completer's `completerTypeParams` when the method's
+     *  annotations are processed. The subsequent `defDefSig` will detect this
+     *  via `hasCompletedTypeParams` and skip re-indexing.
+     *  Has no effect for primary constructors or non-methods.
+     */
+    private def indexMethodTypeParams(sym: Symbol): Unit = original match
+      case ddef: DefDef if !sym.isPrimaryConstructor && ddef.leadingTypeParams.nonEmpty =>
+        val typer1 = nestedTyper.getOrElseUpdate(sym, ctx.typer.newLikeThis(ctx.nestingLevel + 1))
+        typer1.indexLeadingTypeParams(ddef, this)(using localContext(sym).setTyper(typer1))
+      case _ =>
 
     /** Just the type signature without forcing any of the other parts of
      *  this denotation. The denotation will still be completed later.
@@ -1878,6 +1902,20 @@ class Namer { typer: Typer =>
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typedExpr(_, pt))
 
+  /** Index, complete, and store the leading type parameters of a DefDef into
+   *  the given Completer (via `setCompletedTypeParams`). Idempotent: subsequent
+   *  calls skip indexing when the Completer already has them. Used both by
+   *  `defDefSig` (normal completion) and `Completer.indexMethodTypeParams`
+   *  (pre-completion before `addAnnotations`, so that annotations like
+   *  `@throws[T]` can refer to the method's own type parameters).
+   */
+  def indexLeadingTypeParams(ddef: DefDef, completer: Namer#Completer)(using Context): Unit =
+    if !completer.hasCompletedTypeParams then
+      index(ddef.leadingTypeParams)
+      val tparamSyms = ddef.leadingTypeParams.map(typedAheadExpr(_).symbol)
+      if tparamSyms.forall(_.isType) then
+        completer.setCompletedTypeParams(tparamSyms.asInstanceOf[List[TypeSymbol]])
+
   def typedAheadAnnotationClass(tree: Tree)(using Context): Symbol = tree match
     case Apply(fn, _) => typedAheadAnnotationClass(fn)
     case TypeApply(fn, _) => typedAheadAnnotationClass(fn)
@@ -2030,7 +2068,7 @@ class Namer { typer: Typer =>
     //   4. CP is completed.
     //   5. Info of CP is copied to DP and DP is completed.
     if !sym.isPrimaryConstructor then
-      index(ddef.leadingTypeParams)
+      indexLeadingTypeParams(ddef, completer)
     val completedTypeParams =
       for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol
     if completedTypeParams.forall(_.isType) then
