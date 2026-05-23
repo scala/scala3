@@ -1965,16 +1965,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || byGadtBounds
           || defn.isCompiletimeAppliedType(tycon2.symbol)
               && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
-          || tycon2.info.match
-                case info2: TypeBounds =>
-                  compareLower(info2, tyconIsTypeRef = true)
-                case info2: ClassInfo =>
+          || {
+                val sym2 = tycon2.symbol
+                if sym2.isClass then
                   tycon2.name.startsWith("Tuple")
                   && defn.isTupleNType(tp2)
                   && compareTupleNAsNestedPairs(tp1)
-                  || tryBaseTypeOrSkipStaticMiss(info2.cls)
-                case _ =>
-                  fourthTry
+                  || tryBaseTypeOrSkipStaticMiss(sym2)
+                else tycon2.info match
+                  case info2: TypeBounds =>
+                    compareLower(info2, tyconIsTypeRef = true)
+                  case _ =>
+                    fourthTry
+              }
           || tryLiftedToThis2
 
         case tv: TypeVar =>
