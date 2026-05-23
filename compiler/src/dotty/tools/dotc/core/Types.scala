@@ -2586,7 +2586,12 @@ object Types extends TypeUtils {
                     }
                   )
           then
-            finish(lastd.current)
+            // 1-step nextInRun fast-path: if the immediate next flock member
+            // already covers ctx.period and denotes the same symbol, skip the
+            // dispatch through `lastd.current` / `goForward`.
+            val fast = lastd.nextInRunIfFast(ctx.period)
+            if fast != null then finish(fast)
+            else finish(lastd.current)
           else
             val newd = lastd match
               case lastd: SymDenotation =>
