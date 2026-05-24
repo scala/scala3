@@ -1582,7 +1582,55 @@ object Types extends TypeUtils {
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
-    final def dealias(using Context): Type = dealias(KeepNothing)
+    final def dealias(using Context): Type =
+      var tp: Type = this
+      var result: Type = NoType
+      var done = false
+
+      while !done do tp match
+        case t: TypeRef =>
+          if t.symbol.isClass then
+            result = t
+            done = true
+          else t.info match
+            case TypeAlias(alias) =>
+              tp = alias
+            case _ =>
+              result = t
+              done = true
+
+        case app @ AppliedType(tycon, _) =>
+          val tycon1 = tycon.dealias
+          if tycon1 ne tycon then tp = app.superType
+          else
+            result = app
+            done = true
+
+        case t: TypeVar =>
+          val t1 = t.instanceOpt
+          if t1.exists then tp = t1
+          else
+            result = t
+            done = true
+
+        case t: AnnotatedType =>
+          val parent1 = t.parent.dealias
+          t match
+            case cap @ CapturingType(parent, refs) =>
+              result = cap.derivedCapturingType(parent1, refs)
+              done = true
+            case _ =>
+              result = parent1
+              done = true
+
+        case t: LazyRef =>
+          tp = t.ref
+
+        case _ =>
+          result = tp
+          done = true
+
+      result
 
     /** Follow aliases and dereference LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
