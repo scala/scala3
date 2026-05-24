@@ -280,7 +280,7 @@ object Expr {
 
   private def ofTupleFromSeqXXL(seq: Seq[Expr[Any]])(using Quotes): Expr[Tuple] =
     val tupleTpe = tupleTypeFromSeq(seq)
-    tupleTpe.asType match
+    tupleTpe.asType: @unchecked match
       case '[tpe] =>
         '{ Tuple.fromIArray(IArray(${Varargs(seq)}*)).asInstanceOf[tpe & Tuple] }
 
