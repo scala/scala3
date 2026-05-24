@@ -441,9 +441,20 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context =
-      val locals = owner.typeParams
+      def filteredLocals =
+        owner.typeParams
           ++ owner.asClass.unforcedDecls.filter: sym =>
-              sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
+            sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
+      val locals =
+        if isAfterTyper then
+          val cache = base.superCallLocalsAfterTyper
+          val cached = cache.lookup(owner)
+          if cached != null then cached
+          else
+            val locals = filteredLocals
+            cache.update(owner, locals)
+            locals
+        else filteredLocals
       superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))
 
     /** The context for the arguments of a this(...) constructor call.
@@ -1104,6 +1115,12 @@ object Contexts {
      */
     private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map()
 
+    /** The filtered locals used by super-call contexts after typer.
+     *  These class declaration subsets are stable after typer, but the returned
+     *  context still receives a fresh mutable scope on every call.
+     */
+    private[core] val superCallLocalsAfterTyper: MutableSymbolMap[List[Symbol]] = MutableSymbolMap()
+
     // Phases state
 
     private[core] var phasesPlan: List[List[Phase]] = uninitialized
@@ -1169,6 +1186,7 @@ object Contexts {
       emptyWildcardBounds = null
       errorsToBeReported = false
       errorTypeMsg.clear()
+      superCallLocalsAfterTyper.clear()
       sources.clear()
       files.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
