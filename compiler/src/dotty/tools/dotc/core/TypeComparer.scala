@@ -2163,39 +2163,56 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // `canConstrain`, which is false here; `logUndoAction` is only called by
       // CaptureSet code. So we can skip the corresponding save/restore writes.
       val inert = frozenConstraint && (caseLambda eq NoType) && !isCCOrSetup
-      val savedCstr = constraint
-      val savedGadt = snapshotGadtIfCanNarrow
-      val savedLogSize = if inert then 0 else undoLog.size
-      inline def restore() =
-        if !inert then
+      val savedSuccessCount = successCount
+      inline def compareCore() =
+        val result = inNestedLevel:
+          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+          if monitored then monitoredIsSubType else firstTry
+        if result && recCount == 0 && needsGc then
+          state.gc()
+          needsGc = false
+        result
+      inline def finish(result: Boolean) =
+        if (Stats.monitored) recordStatistics(result, savedSuccessCount)
+        result
+      if inert then
+        try finish(compareCore())
+        catch
+          case ex: AssertionError =>
+            showGoal(tp1, tp2)
+            recCount -= 1
+            successCount = savedSuccessCount
+            throw ex
+          case ex: Exception =>
+            recCount -= 1
+            successCount = savedSuccessCount
+            throw ex
+      else
+        val savedCstr = constraint
+        val savedGadt = snapshotGadtIfCanNarrow
+        val savedLogSize = undoLog.size
+        inline def restore() =
           state.constraint = savedCstr
           if undoLog.size != savedLogSize then
             //println(i"ROLLBACK $tp1 <:< $tp2")
             rollBack(savedLogSize)
-        restoreGadtSnapshot(savedGadt)
-      val savedSuccessCount = successCount
-      try
-        val result = inNestedLevel:
-          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
-          if monitored then monitoredIsSubType else firstTry
-        if !result then restore()
-        else if recCount == 0 && needsGc then
-          state.gc()
-          needsGc = false
-        if (Stats.monitored) recordStatistics(result, savedSuccessCount)
-        result
-      catch
-        case ex: AssertionError =>
-          showGoal(tp1, tp2)
-          recCount -= 1
-          restore()
-          successCount = savedSuccessCount
-          throw ex
-        case ex: Exception =>
-          recCount -= 1
-          restore()
-          successCount = savedSuccessCount
-          throw ex
+          restoreGadtSnapshot(savedGadt)
+        try
+          val result = compareCore()
+          if !result then restore()
+          finish(result)
+        catch
+          case ex: AssertionError =>
+            showGoal(tp1, tp2)
+            recCount -= 1
+            restore()
+            successCount = savedSuccessCount
+            throw ex
+          case ex: Exception =>
+            recCount -= 1
+            restore()
+            successCount = savedSuccessCount
+            throw ex
   }
 
   /** Undo all actions in undoLog following prevSize */
