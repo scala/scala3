@@ -6068,25 +6068,30 @@ object Types extends TypeUtils {
       val lo2 = that.lo.stripLazyRef
       val hi1 = this.hi.stripLazyRef
       val hi2 = that.hi.stripLazyRef
+      inline def frozenSub(tp1: Type, tp2: Type): Boolean =
+        (tp1 eq tp2) || (tp1 frozen_<:< tp2)
 
       // This will try to preserve the FromJavaObjects type in upper bounds.
       // For example, (? <: FromJavaObjects | Null) & (? <: Any),
       // we want to get (? <: FromJavaObjects | Null) intead of (? <: Any),
       // because we may check the result <:< (? <: Object | Null) later.
-      if hi1.containsFromJavaObject && (hi1 frozen_<:< hi2) && (lo2 frozen_<:< lo1) then
+      if hi1.containsFromJavaObject && frozenSub(hi1, hi2) && frozenSub(lo2, lo1) then
         // FromJavaObject in tp1.hi guarantees tp2.hi <:< tp1.hi
         // prefer tp1 if FromJavaObject is in its hi
         this
-      else if hi2.containsFromJavaObject && (hi2 frozen_<:< hi1) && (lo1 frozen_<:< lo2) then
+      else if hi2.containsFromJavaObject && frozenSub(hi2, hi1) && frozenSub(lo1, lo2) then
         // Similarly, prefer tp2 if FromJavaObject is in its hi
         that
-      else if (lo1 frozen_<:< lo2) && (hi2 frozen_<:< hi1) then that
-      else if (lo2 frozen_<:< lo1) && (hi1 frozen_<:< hi2) then this
+      else if frozenSub(lo1, lo2) && frozenSub(hi2, hi1) then that
+      else if frozenSub(lo2, lo1) && frozenSub(hi1, hi2) then this
       else TypeBounds(lo1 | lo2, hi1 & hi2)
 
     def | (that: TypeBounds)(using Context): TypeBounds =
-      if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) this
-      else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) that
+      inline def frozenSub(tp1: Type, tp2: Type): Boolean =
+        (tp1 eq tp2) || (tp1 frozen_<:< tp2)
+
+      if (frozenSub(this.lo, that.lo) && frozenSub(that.hi, this.hi)) this
+      else if (frozenSub(that.lo, this.lo) && frozenSub(this.hi, that.hi)) that
       else TypeBounds(this.lo & that.lo, this.hi | that.hi)
 
     override def & (that: Type)(using Context): Type = that match {
