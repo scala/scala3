@@ -379,10 +379,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param ignoreBinding  if not null, a parameter that is assumed to be still uninstantiated.
    *                        This is necessary to handle replacements.
    */
-  private class Adjuster(srcParam: TypeParamRef, ignoreBinding: TypeParamRef | Null)(using Context)
+  private class Adjuster(initialSrcParam: TypeParamRef, initialIgnoreBinding: TypeParamRef | Null)(using Context)
   extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
+    private var srcParam: TypeParamRef = initialSrcParam
+    private var ignoreBinding: TypeParamRef | Null = initialIgnoreBinding
     var add: Boolean = compiletime.uninitialized
+
+    def reset(srcParam: TypeParamRef, ignoreBinding: TypeParamRef | Null): this.type =
+      this.srcParam = srcParam
+      this.ignoreBinding = ignoreBinding
+      this
 
     private class SeenLazyRefs:
       private var used: Int = 0
@@ -485,7 +492,15 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  and the new bound `entry` for the type parameter `srcParam`.
    */
   def adjustDeps(entry: Type | Null, prevEntry: Type | Null, srcParam: TypeParamRef, ignoreBinding: TypeParamRef | Null = null)(using Context): this.type =
-    val adjuster = new Adjuster(srcParam, ignoreBinding)
+    var myAdjuster: Adjuster | Null = null
+
+    def adjuster: Adjuster =
+      val a = myAdjuster
+      if a == null then
+        val fresh = new Adjuster(srcParam, ignoreBinding)
+        myAdjuster = fresh
+        fresh
+      else a
 
     /** Adjust reverse dependencies of all type parameters referenced by `bound`
      *  @param  isLower `bound` is a lower bound
@@ -550,10 +565,41 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param add   if true, entries is added, otherwise it is dropped
    */
   def adjustDeps(poly: TypeLambda, entries: Array[Type], add: Boolean)(using Context): this.type =
-    for n <- 0 until paramCount(entries) do
-      if add
-      then adjustDeps(entries(n), NoType, poly.paramRefs(n))
-      else adjustDeps(NoType, entries(n), poly.paramRefs(n))
+    val limit = paramCount(entries)
+    var myAdjuster: Adjuster | Null = null
+
+    def adjuster(srcParam: TypeParamRef): Adjuster =
+      val a = myAdjuster
+      if a == null then
+        val fresh = new Adjuster(srcParam, null)
+        myAdjuster = fresh
+        fresh
+      else a.reset(srcParam, null)
+
+    def adjustReferenced(adjuster: Adjuster, bound: Type, isLower: Boolean, add: Boolean) =
+      adjuster.variance = if isLower then 1 else -1
+      adjuster.add = add
+      adjuster.seenGeneration += 1
+      if adjuster.seenGeneration == 0 then
+        adjuster.resetSeen()
+        adjuster.seenGeneration = 1
+      adjuster.traverse(bound)
+
+    def adjustBounds(bounds: TypeBounds, add: Boolean, srcParam: TypeParamRef) =
+      val a = adjuster(srcParam)
+      adjustReferenced(a, bounds.lo, isLower = true, add)
+      adjustReferenced(a, bounds.hi, isLower = false, add)
+
+    var n = 0
+    while n < limit do
+      val param = poly.paramRef(n)
+      entries(n) match
+        case bounds: TypeBounds =>
+          adjustBounds(bounds, add, param)
+          if !add then dropDeps(param)
+        case _ =>
+          dropDeps(param)
+      n += 1
     this
 
   /** Remove all reverse dependencies of `param` */
