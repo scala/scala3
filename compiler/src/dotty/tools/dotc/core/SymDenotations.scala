@@ -1555,6 +1555,9 @@ object SymDenotations {
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(using Context): List[TypeSymbol] = Nil
 
+    /** The type parameters of a class symbol as type refs, Nil for all other symbols */
+    def typeParamRefs(using Context): List[Type] = typeParams.map(_.typeRef)
+
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(using Context): Type = NoPrefix
 
@@ -1566,7 +1569,7 @@ object SymDenotations {
 
     /** The typeRef applied to its own type parameters */
     def appliedRef(using Context): Type =
-      typeRef.appliedTo(symbol.typeParams.map(_.typeRef))
+      typeRef.appliedTo(typeParamRefs)
 
     /** The NamedType representing this denotation at its original location.
      *  Same as either `typeRef` or `termRef` depending whether this denotes a type or not.
@@ -1898,6 +1901,10 @@ object SymDenotations {
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
+    private var myParentClassDenotsPeriod: Period = Nowhere
+    private var myParentClassDenotsInfo: ClassInfo | Null = null
+    private var myParentClassDenots: Array[ClassDenotation] | Null = null
+
     // 2-slot direct-mapped RunId-keyed cache for derivesFrom(base).
     // Slot 0 is the most recently inserted entry; on a miss we shift slot 0
     // into slot 1 and write the new entry into slot 0 (FIFO size 2). The
@@ -1982,6 +1989,11 @@ object SymDenotations {
       baseDataCache = BaseData.None
     }
 
+    private def invalidateParentClassDenotsCache(): Unit =
+      myParentClassDenotsPeriod = Nowhere
+      myParentClassDenotsInfo = null
+      myParentClassDenots = null
+
     private def invalidateMemberNamesCache() = {
       memberNamesCache.invalidate()
       memberNamesCache = MemberNames.None
@@ -2059,13 +2071,58 @@ object SymDenotations {
       myTypeParams.nn
     }
 
+    private var myTypeParamRefs: List[Type] | Null = null
+    private var myTypeParamRefsPeriod: Period = Nowhere
+
+    /** The type parameters of this class as type refs */
+    override final def typeParamRefs(using Context): List[Type] = {
+      val tparams = typeParams
+      if tparams.isEmpty then Nil
+      else
+        val cached = myTypeParamRefs
+        if cached != null && myTypeParamRefsPeriod == ctx.period then cached
+        else
+          val refs = tparams.map(_.typeRef)
+          myTypeParamRefs = refs
+          myTypeParamRefsPeriod = ctx.period
+          refs
+    }
+
     override protected[dotc] final def info_=(tp: Type): Unit = {
       if (changedClassParents(infoOrCompleter, tp, completersMatter = true))
         invalidateBaseDataCache()
       invalidateMemberNamesCache()
       myTypeParams = null // changing the info might change decls, and with it typeParams
+      myTypeParamRefs = null
+      myTypeParamRefsPeriod = Nowhere
+      invalidateParentClassDenotsCache()
       super.info_=(tp)
     }
+
+    private def parentClassDenots(cinfo: ClassInfo)(using Context): Array[ClassDenotation] | Null =
+      val period = ctx.period
+      if myParentClassDenotsPeriod == period && (myParentClassDenotsInfo eq cinfo) then
+        myParentClassDenots
+      else
+        val parents = cinfo.declaredParents
+        val denots = new Array[ClassDenotation](parents.length)
+        var ps = parents
+        var i = 0
+        while ps.nonEmpty do
+          ps.head.classSymbol.denot match
+            case parentd: ClassDenotation =>
+              denots(i) = parentd
+              i += 1
+              ps = ps.tail
+            case _ =>
+              myParentClassDenotsPeriod = period
+              myParentClassDenotsInfo = cinfo
+              myParentClassDenots = null
+              return null
+        myParentClassDenotsPeriod = period
+        myParentClassDenotsInfo = cinfo
+        myParentClassDenots = denots
+        denots
 
     /** The types of the parent classes. */
     def parentTypes(using Context): List[Type] = info match
@@ -2142,7 +2199,12 @@ object SymDenotations {
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      val parents = parentTypes
+      val cinfo = info match
+        case cinfo: ClassInfo => cinfo
+        case _ =>
+          if (!emptyParentsExpected) onBehalf.signalProvisional()
+          return (classSymbol :: Nil, BaseClassSet(Nil))
+      val parents = cinfo.declaredParents
       if (parents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
@@ -2173,7 +2235,14 @@ object SymDenotations {
           traverse(parents1)
         case nil =>
       }
-      traverse(parents)
+      val parentDenots = parentClassDenots(cinfo)
+      if parentDenots != null then
+        var i = 0
+        while i < parentDenots.length do
+          builder.addAll(parentDenots(i).baseClasses)
+          i += 1
+      else
+        traverse(parents)
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -2611,16 +2680,27 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
-        for ptype <- parentTypes do
-          ptype.classSymbol match
-            case pcls: ClassSymbol =>
-              for name <- pcls.memberNames(keepOnly) do
-                maybeAdd(name)
-            case _ =>
-              // Parent failed to resolve to a class (the missing
-              // reference has been reported by computeBaseData).
-              // Skip here to avoid a secondary MatchError.
-              // See scala/scala3#20010.
+        info match
+          case cinfo: ClassInfo =>
+            val parentDenots = parentClassDenots(cinfo)
+            if parentDenots != null then
+              var i = 0
+              while i < parentDenots.length do
+                for name <- parentDenots(i).memberNames(keepOnly) do
+                  maybeAdd(name)
+                i += 1
+            else
+              for ptype <- cinfo.declaredParents do
+                ptype.classSymbol match
+                  case pcls: ClassSymbol =>
+                    for name <- pcls.memberNames(keepOnly) do
+                      maybeAdd(name)
+                  case _ =>
+                    // Parent failed to resolve to a class (the missing
+                    // reference has been reported by computeBaseData).
+                    // Skip here to avoid a secondary MatchError.
+                    // See scala/scala3#20010.
+          case _ =>
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
