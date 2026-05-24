@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
+import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*, Periods.*
 import SymDenotations.*
 import util.Spans.*
 import util.Stats
@@ -21,6 +21,7 @@ import reporting.TestingReporter
 import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
 import CaptureSet.{IdentityCaptRefMap, VarState}
+import Periods.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -67,6 +68,27 @@ object TypeOps:
      */
     private[TypeOps] var approxCount: Int = 0
 
+    private var myToPrefixBasePre: Type | Null = null
+    private var myToPrefixBaseCls: Symbol = NoSymbol
+    private var myToPrefixBasePeriod: Period = Nowhere
+    private var myToPrefixBaseType: Type = NoType
+
+    private def toPrefixBaseType(pre: Type, cls: Symbol)(using Context): Type =
+      val now = ctx.period
+      if (myToPrefixBasePre eq pre) && (myToPrefixBaseCls eq cls) && myToPrefixBasePeriod == now
+          && !ctx.gadt.isNarrowing && !CapturingType.isUncachable(pre)
+      then myToPrefixBaseType
+      else
+        val baseTp = pre.baseType(cls)
+        if (baseTp ne NoPrefix)
+            && !(pre.isProvisional || baseTp.isProvisional || CapturingType.isUncachable(pre) || ctx.gadt.isNarrowing)
+        then
+          myToPrefixBasePre = pre
+          myToPrefixBaseCls = cls
+          myToPrefixBasePeriod = now
+          myToPrefixBaseType = baseTp
+        baseTp
+
     def apply(tp: Type): Type = {
 
       /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
@@ -81,7 +103,7 @@ object TypeOps:
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
-            if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
+            if (thiscls.derivesFrom(cls) && toPrefixBaseType(pre, thiscls).exists)
               if (variance <= 0 && !isLegalPrefix(pre))
                 approxCount += 1
                 range(defn.NothingType, pre)
@@ -89,7 +111,7 @@ object TypeOps:
             else if (pre.termSymbol.is(Package) && !thiscls.is(Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
             else
-              toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
+              toPrefix(toPrefixBaseType(pre, cls).normalizedPrefix, cls.owner, thiscls)
         }
       }
 
