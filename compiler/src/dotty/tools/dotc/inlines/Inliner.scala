@@ -1247,11 +1247,32 @@ class Inliner(val call: tpd.Tree)(using Context):
 
       def updateRefCount(sym: Symbol, inc: Int) =
         for (x <- refCount.get(sym)) refCount(sym) = x + inc
-      def updateTermRefCounts(tree: Tree) =
-        tree.typeOpt.foreachPart {
-          case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
+      var termRefContributionCache: java.util.IdentityHashMap[Type, List[Symbol]] | Null = null
+      def termRefContributions(tp: Type): List[Symbol] =
+        val cache = termRefContributionCache
+        if cache ne null then
+          val cached = cache.get(tp)
+          if cached ne null then return cached
+        var refs: List[Symbol] = Nil
+        tp.foreachPart {
+          case ref: TermRef if refCount.contains(ref.symbol) =>
+            refs = ref.symbol :: refs
           case _ =>
         }
+        val cache1 =
+          if cache ne null then cache
+          else
+            val fresh = new java.util.IdentityHashMap[Type, List[Symbol]]
+            termRefContributionCache = fresh
+            fresh
+        cache1.put(tp, refs)
+        refs
+      def updateTermRefCounts(tree: Tree) =
+        if !refCount.isEmpty then
+          var refs = termRefContributions(tree.typeOpt)
+          while refs.nonEmpty do
+            updateRefCount(refs.head, 2) // can't be inlined, so make sure refCount is at least 2
+            refs = refs.tail
       def countRefs(tree: Tree) =
         tree.foreachSubTree {
           case t: RefTree =>
