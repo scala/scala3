@@ -257,10 +257,17 @@ object Trees {
   /** Tree's denotation can be derived from its type */
   abstract class DenotingTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[+T <: Untyped] <: DenotingTree[T]
-    override def denot(using Context): Denotation = typeOpt.stripped match
+    // Fast path: inline the common NamedType / ThisType cases of typeOpt
+    // so JIT keeps the body inlineable, avoiding the megamorphic virtual
+    // `stripped` dispatch on every denot read.
+    override def denot(using Context): Denotation = typeOpt match
       case tpe: NamedType => tpe.denot
       case tpe: ThisType => tpe.cls.denot
-      case _ => NoDenotation
+      case NoType => NoDenotation
+      case tpe => tpe.stripped match
+        case tpe: NamedType => tpe.denot
+        case tpe: ThisType => tpe.cls.denot
+        case _ => NoDenotation
   }
 
   /** Tree's denot/isType/isTerm properties come from a subtree
@@ -452,12 +459,22 @@ object Trees {
     extends RefTree[T] {
     type ThisTree[+T <: Untyped] = Select[T]
 
+    // iter46 D-#1: inline the DenotingTree.denot common path so JIT keeps Select.denot
+    // within its inline budget. ConstantType + stripped fallbacks live in denotSlowPath.
     override def denot(using Context): Denotation = typeOpt match
+      case tpe: NamedType => tpe.denot
+      case tpe: ThisType => tpe.cls.denot
+      case NoType => NoDenotation
+      case _ => denotSlowPath
+
+    private def denotSlowPath(using Context): Denotation = typeOpt match
       case ConstantType(_) if ConstFold.foldedUnops.contains(name) =>
         // Recover the denotation of a constant-folded selection
         qualifier.typeOpt.member(name).atSignature(Signature.NotAMethod, name)
-      case _ =>
-        super.denot
+      case tpe => tpe.stripped match
+        case tpe: NamedType => tpe.denot
+        case tpe: ThisType => tpe.cls.denot
+        case _ => NoDenotation
 
     def nameSpan(using Context): Span =
       if span.exists then
@@ -1538,6 +1555,20 @@ object Trees {
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
       def transform(tree: Tree)(using Context): Tree = {
+        // iter4 opt-03: leaf-tree shortcut. For Ident/Literal/This/TypeTree
+        // the slow-path body is just `tree` (no children to recurse into),
+        // so when transformCtx would have returned ctx unchanged
+        // (i.e. tree.source eq ctx.source, or no source) and skipTransform
+        // is false (its default), we can skip the inContext+transformCtx
+        // wrapper entirely. Mirrors MegaPhase's f02474360f leaf shortcut.
+        if ((tree.isInstanceOf[Ident @unchecked]
+              || tree.isInstanceOf[Literal @unchecked]
+              || tree.isInstanceOf[This @unchecked]
+              || tree.isInstanceOf[TypeTree @unchecked])
+            && ((tree.source `eq` ctx.source) || !tree.source.exists)
+            && !skipTransform(tree))
+          tree
+        else
         inContext(transformCtx(tree)) {
           Stats.record(s"TreeMap.transform/$getClass")
           if (skipTransform(tree)) tree
@@ -1684,7 +1715,19 @@ object Trees {
         fold(x, trees)
 
       def foldOver(x: X, tree: Tree)(using Context): X =
-        if ((tree.source `ne` ctx.source) && tree.source.exists)
+        // iter3 opt-3: leaf-tree shortcut. For Ident/Literal/This/TypeTree
+        // the slow-path body is just `x` (no children to fold), so when the
+        // source-switch branch would not have fired (tree.source eq ctx.source,
+        // or no source) we can return `x` directly and skip the Stats.record
+        // + pattern match. Symmetric analogue of 8f9f1f43d0 (TreeMap leaf
+        // shortcut).
+        if ((tree.isInstanceOf[Ident @unchecked]
+              || tree.isInstanceOf[Literal @unchecked]
+              || tree.isInstanceOf[This @unchecked]
+              || tree.isInstanceOf[TypeTree @unchecked])
+            && ((tree.source `eq` ctx.source) || !tree.source.exists))
+          x
+        else if ((tree.source `ne` ctx.source) && tree.source.exists)
           foldOver(x, tree)(using ctx.withSource(tree.source))
         else {
           Stats.record(s"TreeAccumulator.foldOver/$getClass")

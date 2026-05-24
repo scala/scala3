@@ -448,6 +448,16 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     // try
       if ((tree.source `ne` ctx.source) && tree.source.exists)
         transformTree(tree, start)(using ctx.withSource(tree.source))
+      else if (tree.isInstanceOf[Ident]
+          && (nxIdentPrepPhase(start) eq null)
+          && (nxIdentTransPhase(start) eq null))
+        // iter46 E1: leaf-tree shortcut when no mini-phase registers prep/trans for Ident
+        tree
+      else if (tree.isInstanceOf[TypeTree]
+          && (nxTypeTreePrepPhase(start) eq null)
+          && (nxTypeTreeTransPhase(start) eq null))
+        // iter46 E1: leaf-tree shortcut when no mini-phase registers prep/trans for TypeTree
+        tree
       else if (tree.isInstanceOf[NameTree])
         transformNamed(tree, start, ctx)
       else
