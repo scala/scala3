@@ -132,7 +132,7 @@ class TreeTypeMap(
   end mapType
 
   private def computeMapType(tp: Type): Type =
-    val tp1 = typeMap(tp)
+    val tp1 = if typeMap eq IdentityTypeMap then tp else typeMap(tp)
     val tp2 = if substFrom.isEmpty then tp1 else substMap(tp1)
     // Fast path: when no ClassSymbol appears in `oldOwners`, `mapOwnerThis`
     // is the identity (the recursion in `mapPrefix` only substitutes for
