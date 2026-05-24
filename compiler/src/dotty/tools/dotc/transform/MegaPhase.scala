@@ -685,12 +685,19 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
-    trees.flattenedMapConserve(transformTree(_, start))
+    transformNonSplicingTrees(trees, start)
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
 
   def transformNonSplicingTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
+    if trees.nonEmpty && (trees.tail eq Nil) then
+      val head0 = trees.head
+      val head1 = transformTree(head0, start)
+      if head1 eq head0 then return trees
+      head1 match
+        case Thicket(elems1) => return elems1
+        case _ => return head1 :: Nil
     var mapped: mutable.ListBuffer[Tree] | Null = null
     var unchanged = trees
     var pending = trees
