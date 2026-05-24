@@ -558,8 +558,12 @@ object Contexts {
       if outer eq this then fresh.fastInit(this)
       else fresh.init(outer, this).setTyperState(this.typerState)
 
+    /** A fresh clone of this context with only the owner changed. */
+    private[Contexts] def freshWithOwner(owner: Symbol): FreshContext =
+      FreshContext(base).fastInitWithOwner(this, owner)
+
     final def withOwner(owner: Symbol): Context =
-      if (owner ne this.owner) fresh.setOwner(owner) else this
+      if (owner ne this.owner) freshWithOwner(owner) else this
 
     final def withTyperState(typerState: TyperState): Context =
       if typerState ne this.typerState then fresh.setTyperState(typerState) else this
@@ -698,9 +702,35 @@ object Contexts {
       this
     }
 
+    /** Fast path for owner-only context changes. */
+    private[Contexts] def fastInitWithOwner(origin: Context, owner: Symbol): this.type = {
+      assert(owner != NoSymbol)
+      initWithOwner(origin, origin, owner)
+    }
+
+    private[Contexts] def initWithOwner(outer: Context, origin: Context, owner: Symbol): this.type = {
+      _outer = outer
+      _period = origin.period
+      _mode = origin.mode
+      _owner = owner
+      _tree = origin.tree
+      _scope = origin.scope
+      _typerState = origin.typerState
+      _gadtState = origin.gadtState
+      _searchHistory = origin.searchHistory
+      _source = origin.source
+      _morePropertiesArr = origin.morePropertiesArr
+      _store = origin.store
+      this
+    }
+
     def reuseIn(outer: Context): this.type =
       resetCaches()
       init(outer, outer)
+
+    private[Contexts] def reuseInWithOwner(outer: Context, owner: Symbol): this.type =
+      resetCaches()
+      initWithOwner(outer, outer, owner)
 
     def setPeriod(period: Period): this.type =
       util.Stats.record("Context.setPeriod")
@@ -966,10 +996,10 @@ object Contexts {
   inline def runWithOwner[T](owner: Symbol)(inline op: Context ?=> T)(using Context): T =
     if Config.reuseOwnerContexts then
       val pool = ctx.base.generalContextPool
-      try op(using pool.next().setOwner(owner).setTyperState(ctx.typerState))
+      try op(using pool.nextWithOwner(owner))
       finally pool.free()
     else
-      op(using ctx.fresh.setOwner(owner))
+      op(using ctx.freshWithOwner(owner))
 
   /** The type comparer of the kind created by `maker` to be used.
    *  This is the currently active type comparer CMP if
@@ -1075,6 +1105,9 @@ object Contexts {
     protected def fresh()(using Context): FreshContext =
       FreshContext(ctx.base).init(ctx, ctx)
 
+    protected def freshWithOwner(owner: Symbol)(using Context): FreshContext =
+      FreshContext(ctx.base).fastInitWithOwner(ctx, owner)
+
     private var inUse: Int = 0
     private var pool = new mutable.ArrayBuffer[FreshContext]
 
@@ -1086,6 +1119,19 @@ object Contexts {
           pool(inUse).reuseIn(ctx)
         else
           val c = fresh()
+          pool += c
+          c
+      inUse += 1
+      nestedCtx
+
+    def nextWithOwner(owner: Symbol)(using Context): FreshContext =
+      val base = ctx.base
+      import base.*
+      val nestedCtx =
+        if inUse < pool.size then
+          pool(inUse).reuseInWithOwner(ctx, owner)
+        else
+          val c = freshWithOwner(owner)
           pool += c
           c
       inUse += 1
