@@ -60,6 +60,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     lastBottomTp = null
     lastBottomConstraint = null
     lastGadt = null
+    atomCacheActive = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -398,7 +399,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
           val ctx = comparerContext
           given Context = ctx // optimization for performance
-          val info2 = tp2.info
 
           /** Does `tp2` have a stable prefix?
            *  If that's not the case, following an alias via asSeenFrom could be lossy
@@ -408,6 +408,43 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           def hasStablePrefix(tp: NamedType) =
             tp.prefix.isStable
 
+          def compareKnownClass(sym2: Symbol): Boolean = tp1 match
+            case tp1: NamedType =>
+              tp1.info match {
+                case info1: TypeAlias =>
+                  if recur(info1.alias, tp2) then return true
+                  if tp1.asInstanceOf[TypeRef].canDropAlias && hasStablePrefix(tp2) then
+                    return false
+                case _ =>
+              }
+              var sym1 = tp1.symbol
+              if (sym1.is(ModuleClass) && sym2.is(ModuleVal))
+                // For convenience we want X$ <:< X.type
+                // This is safe because X$ self-type is X.type
+                sym1 = sym1.companionModule
+              if (sym1 ne NoSymbol) && (sym1 eq sym2) then
+                ctx.erasedTypes
+                || sym1.isStaticOwner
+                || isSubPrefix(tp1.prefix, tp2.prefix)
+                || thirdTryKnownClass(tp2, sym2)
+              else
+                (tp1.name eq tp2.name)
+                && !sym1.is(Private)
+                && tp2.isPrefixDependentMemberRef
+                && isSubPrefix(tp1.prefix, tp2.prefix)
+                && tp1.signature == tp2.signature
+                && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
+                || thirdTryKnownClass(tp2, sym2)
+            case _ =>
+              secondTry
+
+          tp2 match
+            case tp2: TypeRef =>
+              val sym2 = tp2.symbol
+              if sym2.isClass then return compareKnownClass(sym2)
+            case _ => ()
+
+          val info2 = tp2.info
           info2 match
             case info2: TypeAlias =>
               if recur(tp1, info2.alias) then return true
@@ -673,6 +710,34 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         thirdTry
     }
 
+    def thirdTryKnownClass(tp2: NamedType, cls2: Symbol): Boolean =
+      if (cls2.typeParams.isEmpty) {
+        if (cls2 eq AnyKindClass) return true
+        if (cachedIsBottomTp1(tp1)) return true
+        if (tp1.isLambdaSub) return false
+          // Note: We would like to replace this by `if (tp1.hasHigherKind)`
+          // but right now we cannot since some parts of the standard library rely on the
+          // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
+        if cls2 eq AnyClass then return true
+        if cls2 == defn.SingletonClass && tp1.isStable then return true
+        tp1 match
+          case tp1: TypeRef if cls2.isStatic =>
+            val cls1 = tp1.symbol
+            if cls1.isClass then
+              if cls1.derivesFrom(cls2) then return true
+              if isPlainStaticClassRef(tp1, cls1) then return fourthTry
+          case _ =>
+        return tryBaseTypeOrSkipStaticMiss(cls2)
+      }
+      else if (cls2.is(JavaDefined)) {
+        // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
+        val base = nonExprBaseType(tp1, cls2)
+        if (base.typeSymbol == cls2) return true
+      }
+      else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
+        return recur(tp1, tp2.etaExpand)
+      fourthTry
+
     def thirdTryNamed(tp2: NamedType, info2: Type): Boolean = info2 match {
       case info2: TypeBounds =>
         def compareGADT: Boolean =
@@ -702,24 +767,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case _ =>
         val cls2 = tp2.symbol
         if (cls2.isClass)
-          if (cls2.typeParams.isEmpty) {
-            if (cls2 eq AnyKindClass) return true
-            if (cachedIsBottomTp1(tp1)) return true
-            if (tp1.isLambdaSub) return false
-              // Note: We would like to replace this by `if (tp1.hasHigherKind)`
-              // but right now we cannot since some parts of the standard library rely on the
-              // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
-            if cls2 eq AnyClass then return true
-            if cls2 == defn.SingletonClass && tp1.isStable then return true
-            return tryBaseType(cls2)
-          }
-          else if (cls2.is(JavaDefined)) {
-            // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
-            val base = nonExprBaseType(tp1, cls2)
-            if (base.typeSymbol == cls2) return true
-          }
-          else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
-            return recur(tp1, tp2.etaExpand)
+          return thirdTryKnownClass(tp2, cls2)
         fourthTry
     }
 
@@ -1051,6 +1099,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def isPlainStaticClassRef(tp: TypeRef, cls: Symbol) =
       cls.isStatic && isPlainStaticClassPrefix(tp.prefix, cls)
 
+    def staticClassBaseTypeMiss(cls2: Symbol): Boolean =
+      cls2.isStatic && {
+        def misses(tp: TypeRef): Boolean =
+          val cls1 = tp.symbol
+          cls1.isClass && isPlainStaticClassRef(tp, cls1) && !cls1.derivesFrom(cls2)
+
+        tp1 match
+          case tp1: TypeRef => misses(tp1)
+          case AppliedType(tycon1: TypeRef, _) => misses(tycon1)
+          case _ => false
+      }
+
+    def tryBaseTypeOrSkipStaticMiss(cls2: Symbol) =
+      if staticClassBaseTypeMiss(cls2) then fourthTry else tryBaseType(cls2)
     def tryBaseType(cls2: Symbol) =
       val base = nonExprBaseType(tp1, cls2)
       if base.exists && (base ne tp1)
@@ -1515,11 +1577,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       def virtualNestedPairsRecur(lhs: Type, elems: List[Type])(op: => Boolean): Boolean =
         val savedCstr = constraint
-        val savedGadt = ctx.gadt
+        val savedGadt = snapshotGadtIfCanNarrow
         val savedLogSize = undoLog.size
         inline def restore() =
           state.constraint = savedCstr
-          ctx.gadtState.restore(savedGadt)
+          restoreGadtSnapshot(savedGadt)
           if undoLog.size != savedLogSize then rollBack(savedLogSize)
         val savedSuccessCount = successCount
         try
@@ -1905,7 +1967,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   tycon2.name.startsWith("Tuple")
                   && defn.isTupleNType(tp2)
                   && compareTupleNAsNestedPairs(tp1)
-                  || tryBaseType(info2.cls)
+                  || tryBaseTypeOrSkipStaticMiss(info2.cls)
                 case _ =>
                   fourthTry
           || tryLiftedToThis2
