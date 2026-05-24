@@ -309,11 +309,95 @@ object SourceFile {
   def isScript(file: AbstractFile, content: Array[Char]): Boolean =
     ScriptSourceFile.hasScriptHeader(content)
 
+  private def isUtf8Continuation(byte: Int): Boolean =
+    (byte & 0xc0) == 0x80
+
+  private def utf8DecodedLength(bytes: Array[Byte]): Int =
+    var length = 0
+    var i = 0
+    while i < bytes.length do
+      val b0 = bytes(i) & 0xff
+      if b0 < 0x80 then
+        length += 1
+        i += 1
+      else if b0 < 0xc2 then
+        return -1
+      else if b0 < 0xe0 then
+        if i + 1 >= bytes.length then return -1
+        val b1 = bytes(i + 1) & 0xff
+        if !isUtf8Continuation(b1) then return -1
+        length += 1
+        i += 2
+      else if b0 < 0xf0 then
+        if i + 2 >= bytes.length then return -1
+        val b1 = bytes(i + 1) & 0xff
+        val b2 = bytes(i + 2) & 0xff
+        val validB1 =
+          if b0 == 0xe0 then 0xa0 <= b1 && b1 <= 0xbf
+          else if b0 == 0xed then 0x80 <= b1 && b1 <= 0x9f
+          else 0x80 <= b1 && b1 <= 0xbf
+        if !validB1 || !isUtf8Continuation(b2) then return -1
+        length += 1
+        i += 3
+      else if b0 < 0xf5 then
+        if i + 3 >= bytes.length then return -1
+        val b1 = bytes(i + 1) & 0xff
+        val b2 = bytes(i + 2) & 0xff
+        val b3 = bytes(i + 3) & 0xff
+        val validB1 =
+          if b0 == 0xf0 then 0x90 <= b1 && b1 <= 0xbf
+          else if b0 == 0xf4 then 0x80 <= b1 && b1 <= 0x8f
+          else 0x80 <= b1 && b1 <= 0xbf
+        if !validB1 || !isUtf8Continuation(b2) || !isUtf8Continuation(b3) then return -1
+        length += 2
+        i += 4
+      else
+        return -1
+    length
+
+  private def decodeValidUtf8(bytes: Array[Byte], length: Int): Array[Char] =
+    val chars = new Array[Char](length)
+    var i = 0
+    var j = 0
+    while i < bytes.length do
+      val b0 = bytes(i) & 0xff
+      if b0 < 0x80 then
+        chars(j) = b0.toChar
+        i += 1
+        j += 1
+      else if b0 < 0xe0 then
+        val ch = ((b0 & 0x1f) << 6) | (bytes(i + 1) & 0x3f)
+        chars(j) = ch.toChar
+        i += 2
+        j += 1
+      else if b0 < 0xf0 then
+        val ch = ((b0 & 0x0f) << 12) | ((bytes(i + 1) & 0x3f) << 6) | (bytes(i + 2) & 0x3f)
+        chars(j) = ch.toChar
+        i += 3
+        j += 1
+      else
+        val codePoint =
+          ((b0 & 0x07) << 18) | ((bytes(i + 1) & 0x3f) << 12) | ((bytes(i + 2) & 0x3f) << 6) | (bytes(i + 3) & 0x3f)
+        val shifted = codePoint - 0x10000
+        chars(j) = (0xd800 + (shifted >>> 10)).toChar
+        chars(j + 1) = (0xdc00 + (shifted & 0x3ff)).toChar
+        i += 4
+        j += 2
+    chars
+
+  private def decodeToChars(bytes: Array[Byte], codec: Codec): Array[Char] =
+    val charset = codec.charSet
+    if charset == StandardCharsets.UTF_8 then
+      val length = utf8DecodedLength(bytes)
+      if length >= 0 then decodeValidUtf8(bytes, length)
+      else new String(bytes, charset).toCharArray
+    else new String(bytes, charset).toCharArray
+
   def apply(file: AbstractFile, codec: Codec): SourceFile =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
     // so cope with failure.
     val chars =
-      try new String(file.toByteArray, codec.charSet).toCharArray
+      try decodeToChars(file.toByteArray, codec)
       catch
         case _: FileSystemException => Array.empty[Char]
 
