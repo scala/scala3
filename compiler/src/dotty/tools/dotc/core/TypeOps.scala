@@ -110,7 +110,7 @@ object TypeOps:
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
-            if (thiscls.derivesFrom(cls) && toPrefixBaseType(pre, thiscls).exists)
+            if (((thiscls eq cls) || thiscls.derivesFrom(cls)) && toPrefixBaseType(pre, thiscls).exists)
               if (variance <= 0 && !isLegalPrefix(pre))
                 approxCount += 1
                 range(defn.NothingType, pre)
