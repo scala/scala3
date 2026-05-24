@@ -3981,14 +3981,22 @@ object Types extends TypeUtils {
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
-      def substParams(pinfos: List[PInfo], to: This): List[PInfo] = pinfos match
+      def substParams(pinfos: List[PInfo], substMap: Substituters.SubstBindingMap[This]): List[PInfo] = pinfos match
         case pinfos @ (pinfo :: rest) =>
-          pinfos.derivedCons(pinfo.subst(this, to).asInstanceOf[PInfo], substParams(rest, to))
+          pinfos.derivedCons(substMap.applyFromRoot(pinfo).asInstanceOf[PInfo], substParams(rest, substMap))
         case nil =>
           nil
+      var sharedMap: Substituters.SubstBindingMap[This] | Null = null
+      def getMap(x: This): Substituters.SubstBindingMap[This] =
+        val m = sharedMap
+        if m != null then m
+        else
+          val m1 = new Substituters.SubstBindingMap[This](this, x)
+          sharedMap = m1
+          m1
       companion(paramNames)(
-          x => substParams(paramInfos, x),
-          x => resType.subst(this, x))
+          x => substParams(paramInfos, getMap(x)),
+          x => getMap(x).applyFromRoot(resType))
 
     protected def prefixString: String
     override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
@@ -4501,9 +4509,19 @@ object Types extends TypeUtils {
       newLikeThis(paramNames, declaredVariances, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], variances: List[Variance], paramInfos: List[PInfo], resType: Type)(using Context): This =
+      var sharedMap: Substituters.SubstBindingMap[This] | Null = null
+      def getMap(x: This): Substituters.SubstBindingMap[This] =
+        val m = sharedMap
+        if m != null then m
+        else
+          val m1 = new Substituters.SubstBindingMap[This](this, x)
+          sharedMap = m1
+          m1
       HKTypeLambda(paramNames, variances)(
-          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
-          x => resType.subst(this, x))
+          x =>
+            val substMap = getMap(x)
+            paramInfos.mapConserve(pinfo => substMap.applyFromRoot(pinfo).asInstanceOf[PInfo]),
+          x => getMap(x).applyFromRoot(resType))
 
     def withVariances(variances: List[Variance])(using Context): This =
       newLikeThis(paramNames, variances, paramInfos, resType)
