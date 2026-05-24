@@ -229,6 +229,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   /** Transform full tree using all phases in this group that have idxInGroup >= start */
   def transformTree(tree: Tree, start: Int)(using Context): Tree = {
+    if noTreeHooks(start) then return tree
 
     inline def inLocalContext[T](inline op: Context ?=> T)(using Context): T =
       runWithOwner(tree.localCtxOwner)(op)
@@ -629,6 +630,9 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private inline def noStatsHooks(start: Int): Boolean =
     (nxStatsPrepPhase(start) eq null) && (nxStatsTransPhase(start) eq null)
 
+  private inline def noTreeHooks(start: Int): Boolean =
+    noTreeHooksFrom(start)
+
   private def transformBlockBody(tree: Block, start: Int)(using Context): Block =
     if noStatsHooks(start) then
       tree.stats.mapStatements(ctx.owner,
@@ -651,7 +655,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     transformTree(tree, start).asInstanceOf[T]
 
   def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] =
-    if noStatsHooks(start) then
+    if noTreeHooks(start) then trees
+    else if noStatsHooks(start) then
       trees.mapStatements(exprOwner, transformTree(_, start), stats1 => stats1)
     else
       val nestedCtx = prepStats(trees, start)
@@ -691,6 +696,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     transformTrees(trees, start).asInstanceOf[List[T]]
 
   def transformNonSplicingTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
+    if noTreeHooks(start) then return trees
     if trees.nonEmpty && (trees.tail eq Nil) then
       val head0 = trees.head
       val head1 = transformTree(head0, start)
@@ -846,6 +852,55 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxUnitTransPhase = init("transformUnit")
   private val nxOtherPrepPhase = init("prepareForOther")
   private val nxOtherTransPhase = init("transformOther")
+
+  private val noTreeHooksFrom: Array[Boolean] = {
+    val hooks = Array[Array[MiniPhase | Null]](
+      nxIdentPrepPhase, nxIdentTransPhase,
+      nxSelectPrepPhase, nxSelectTransPhase,
+      nxThisPrepPhase, nxThisTransPhase,
+      nxSuperPrepPhase, nxSuperTransPhase,
+      nxApplyPrepPhase, nxApplyTransPhase,
+      nxTypeApplyPrepPhase, nxTypeApplyTransPhase,
+      nxLiteralPrepPhase, nxLiteralTransPhase,
+      nxNewPrepPhase, nxNewTransPhase,
+      nxTypedPrepPhase, nxTypedTransPhase,
+      nxAssignPrepPhase, nxAssignTransPhase,
+      nxBlockPrepPhase, nxBlockTransPhase,
+      nxIfPrepPhase, nxIfTransPhase,
+      nxClosurePrepPhase, nxClosureTransPhase,
+      nxMatchPrepPhase, nxMatchTransPhase,
+      nxCaseDefPrepPhase, nxCaseDefTransPhase,
+      nxLabeledPrepPhase, nxLabeledTransPhase,
+      nxReturnPrepPhase, nxReturnTransPhase,
+      nxWhileDoPrepPhase, nxWhileDoTransPhase,
+      nxTryPrepPhase, nxTryTransPhase,
+      nxSeqLiteralPrepPhase, nxSeqLiteralTransPhase,
+      nxInlinedPrepPhase, nxInlinedTransPhase,
+      nxQuotePrepPhase, nxQuoteTransPhase,
+      nxSplicePrepPhase, nxSpliceTransPhase,
+      nxTypeTreePrepPhase, nxTypeTreeTransPhase,
+      nxBindPrepPhase, nxBindTransPhase,
+      nxAlternativePrepPhase, nxAlternativeTransPhase,
+      nxUnApplyPrepPhase, nxUnApplyTransPhase,
+      nxValDefPrepPhase, nxValDefTransPhase,
+      nxDefDefPrepPhase, nxDefDefTransPhase,
+      nxTypeDefPrepPhase, nxTypeDefTransPhase,
+      nxTemplatePrepPhase, nxTemplateTransPhase,
+      nxPackageDefPrepPhase, nxPackageDefTransPhase,
+      nxStatsPrepPhase, nxStatsTransPhase,
+      nxOtherPrepPhase, nxOtherTransPhase)
+    val result = new Array[Boolean](miniPhases.length + 1)
+    var start = 0
+    while start <= miniPhases.length do
+      var idx = 0
+      var hasHooks = false
+      while idx < hooks.length && !hasHooks do
+        hasHooks = hooks(idx)(start) ne null
+        idx += 1
+      result(start) = !hasHooks
+      start += 1
+    result
+  }
 
   for ((phase, idx) <- miniPhases.zipWithIndex) {
     phase.superPhase = this
