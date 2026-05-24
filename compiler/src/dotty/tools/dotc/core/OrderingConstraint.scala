@@ -330,7 +330,77 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
     var add: Boolean = compiletime.uninitialized
-    val seen = util.HashSet[LazyRef]()
+
+    private class SeenLazyRefs:
+      private var used: Int = 0
+      private var keys: Array[LazyRef | Null] = new Array[LazyRef | Null](8)
+      private var stamps: Array[Int] = new Array[Int](8)
+      private var limit: Int = keys.length - (keys.length >> 2)
+
+      def reset(): Unit =
+        var i = 0
+        while i < keys.length do
+          keys(i) = null
+          i += 1
+        used = 0
+
+      private def index(ref: LazyRef): Int =
+        val h = System.identityHashCode(ref)
+        val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+        val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
+        j & (keys.length - 1)
+
+      private def insertKnown(ref: LazyRef, stamp: Int): Unit =
+        var idx = index(ref)
+        while keys(idx) != null do idx = (idx + 1) & (keys.length - 1)
+        keys(idx) = ref
+        stamps(idx) = stamp
+        used += 1
+
+      private def grow(): Unit =
+        val oldKeys = keys
+        val oldStamps = stamps
+        keys = new Array[LazyRef | Null](oldKeys.length << 1)
+        stamps = new Array[Int](keys.length)
+        limit = keys.length - (keys.length >> 2)
+        used = 0
+        var i = 0
+        while i < oldKeys.length do
+          val ref = oldKeys(i)
+          if ref != null then insertKnown(ref, oldStamps(i))
+          i += 1
+
+      def addIfNew(ref: LazyRef, generation: Int): Boolean =
+        var idx = index(ref)
+        while keys(idx) != null do
+          if keys(idx).nn eq ref then
+            if stamps(idx) == generation then return false
+            stamps(idx) = generation
+            return true
+          idx = (idx + 1) & (keys.length - 1)
+        if used >= limit then
+          grow()
+          idx = index(ref)
+          while keys(idx) != null do idx = (idx + 1) & (keys.length - 1)
+        keys(idx) = ref
+        stamps(idx) = generation
+        used += 1
+        true
+
+    private var seen: SeenLazyRefs | Null = null
+    var seenGeneration: Int = 0
+
+    def resetSeen(): Unit =
+      val seenRefs = seen
+      if seenRefs != null then seenRefs.reset()
+
+    private def seenLazyRefs: SeenLazyRefs =
+      val seenRefs = seen
+      if seenRefs == null then
+        val fresh = SeenLazyRefs()
+        seen = fresh
+        fresh
+      else seenRefs
 
     override protected def hasBounds(param: TypeParamRef) =
       (param eq ignoreBinding) || super.hasBounds(param)
@@ -350,8 +420,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         else
           traverse(entry(param))
       case tp: LazyRef =>
-        if !seen.contains(tp) then
-          seen += tp
+        if seenLazyRefs.addIfNew(tp, seenGeneration) then
           traverse(tp.ref)
       case _ => traverseChildren(t)
     catch case ex: Throwable => handleRecursive("adjust", t.show, ex)
@@ -370,7 +439,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
       adjuster.variance = if isLower then 1 else -1
       adjuster.add = add
-      adjuster.seen.clear(resetToInitial = false)
+      adjuster.seenGeneration += 1
+      if adjuster.seenGeneration == 0 then
+        adjuster.resetSeen()
+        adjuster.seenGeneration = 1
       adjuster.traverse(bound)
 
     /** Use an optimized strategy to adjust dependencies to account for the delta
