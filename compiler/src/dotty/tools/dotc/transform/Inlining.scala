@@ -112,35 +112,43 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
      */
     private val newTopClasses = MutableSymbolMap[mutable.ListBuffer[Tree]]()
 
-    /** Depth of the recursive `transform` invocation. The post-walk that records
-     *  inline dependencies only needs to run on the outermost call: inner calls
-     *  produce subtrees that are already contained in the outer result, and
-     *  walking them per-level makes the traversal O(n*d) instead of O(n).
+    /** Depth of the recursive `transform` invocation. Inline dependencies are
+     *  flushed only on the outermost call: inner calls produce subtrees that
+     *  are already contained in the outer result.
      */
     private var transformDepth: Int = 0
 
-    val inlineFinder = new tpd.TreeTraverser:
-      override def traverse(tree: Tree)(using Context): Unit =
-        try
-          tree match
-            case tree: Inlined =>
-              collector.traverse(tree)
-            case vd: ValDef if vd.symbol.is(ModuleVal) =>
-              // Don't visit module val
-            case t: Template if t.symbol.owner.is(ModuleClass) =>
-              // Don't visit self type of module class
-              traverse(t.constr)
-              t.parents.foreach(traverse)
-              t.body.foreach(traverse)
-            case _ =>
-              traverseChildren(tree)
-        catch
-          case ex: AssertionError =>
-            println(i"asserted failed while traversing $tree")
-            throw ex
+    private val pendingInlineDepTrees = new mutable.ArrayBuffer[Inlined]
+    private val pendingInlineDepContexts = new mutable.ArrayBuffer[Context]
+
+    private def discardPendingInlineDeps(from: Int): Unit =
+      val count = pendingInlineDepTrees.length - from
+      if count > 0 then
+        pendingInlineDepTrees.remove(from, count)
+        pendingInlineDepContexts.remove(from, count)
+
+    private def noteInlineDependencies(result: Tree, from: Int)(using Context): Unit =
+      result match
+        case tree: Inlined =>
+          discardPendingInlineDeps(from)
+          pendingInlineDepTrees += tree
+          pendingInlineDepContexts += ctx
+        case vd: ValDef if vd.symbol.is(ModuleVal) =>
+          // Don't visit module val
+          discardPendingInlineDeps(from)
+        case _ =>
+
+    private def flushInlineDependencies(from: Int): Unit =
+      try
+        var idx = from
+        while idx < pendingInlineDepTrees.length do
+          collector.traverse(pendingInlineDepTrees(idx))(using pendingInlineDepContexts(idx))
+          idx += 1
+      finally discardPendingInlineDeps(from)
 
     override def transform(tree: Tree)(using Context): Tree = {
       transformDepth += 1
+      val pendingStart = pendingInlineDepTrees.length
       val result =
         try
           tree match
@@ -149,6 +157,19 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
               transformMemberDef(getTracked(tree.symbol).getOrElse(tree))
             case _: Typed | _: Block =>
               super.transform(tree)
+            case tree @ Template(constr, parents, self, _) if tree.symbol.owner.is(ModuleClass) && tree.derived.isEmpty =>
+              val constr1 = transformSub(constr)
+              // Parents (incl. the super-constructor call) must be transformed in the
+              // super-call context so the primary constructor is the owner, matching
+              // `TreeMapWithImplicits`/`MacroTransform`. Otherwise macros expanded in
+              // super-call args (e.g. `sourcecode.Name.Machine`) capture the module
+              // class as splice owner instead of `<init>`.
+              val parents1 = transform(tree.parents)(using ctx.superCallContext)
+              val selfStart = pendingInlineDepTrees.length
+              val self1 = transformSub(self)
+              // Don't visit self type of module class
+              discardPendingInlineDeps(selfStart)
+              cpy.Template(tree)(constr1, parents1, Nil, self1, transformStats(tree.body, tree.symbol))
             case _: PackageDef =>
               super.transform(tree) match
                 case tree1: PackageDef  =>
@@ -172,7 +193,8 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
                     else Inlines.inlineCall(tree1)
               else super.transform(tree)
         finally transformDepth -= 1
-      if transformDepth == 0 then inlineFinder.traverse(result)
+      noteInlineDependencies(result, pendingStart)
+      if transformDepth == 0 then flushInlineDependencies(pendingStart)
       result
     }
 
