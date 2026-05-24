@@ -810,14 +810,26 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         stripMapped(mapped, isUpper)
   end StripParamsMap
 
+  /** True if `poly`'s parameter bounds need neither stripping nor dependency setup. */
+  private def hasIndependentBounds(poly: TypeLambda)(using Context): Boolean =
+    var infos = poly.paramInfos
+    while infos ne Nil do
+      val bounds = infos.head
+      if (bounds.lo ne defn.NothingType)
+          || (bounds.hi ne defn.AnyType) && (bounds.hi ne defn.AnyKindType)
+      then return false
+      infos = infos.tail
+    true
+
   def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
     assert(!contains(poly))
     val nparams = poly.paramNames.length
     val entries1 = new Array[Type](nparams * 2)
     poly.paramInfos.copyToArray(entries1, 0)
     tvars.copyToArray(entries1, nparams)
-    newConstraint(boundsMap = this.boundsMap.updated(poly, entries1))
-      .init(poly)
+    val current = newConstraint(boundsMap = this.boundsMap.updated(poly, entries1))
+    if hasIndependentBounds(poly) then current.checkWellFormed()
+    else current.init(poly)
   }
 
   /** Split dependent parameters off the bounds for parameters in `poly`.
