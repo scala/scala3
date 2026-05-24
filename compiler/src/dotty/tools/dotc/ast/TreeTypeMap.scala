@@ -50,6 +50,19 @@ class TreeTypeMap(
       substTo: List[Symbol])(using Context): TreeTypeMap =
     new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
+  // `mapOwnerThis` only substitutes ThisType prefixes whose `cls` matches a
+  // ClassSymbol in `oldOwners`; entries that aren't ClassSymbols are stepped
+  // over without effect. When `oldOwners` contains no ClassSymbols at all
+  // (e.g. Inliner's initial `inlinedMethod :: Nil`), the whole TypeMap walk
+  // is a no-op on every NamedType visited — precompute the gate once.
+  private val hasOwnerClass: Boolean =
+    var xs = oldOwners
+    var found = false
+    while !found && (xs ne Nil) do
+      if xs.head.isClass then found = true
+      xs = xs.tail
+    found
+
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
   def mapOwner(sym: Symbol): Symbol = sym.subst(oldOwners, newOwners)
 
@@ -79,9 +92,39 @@ class TreeTypeMap(
       case tp: TermRef if tp.symbol.isImport => mapOver(tp)
       case tp => cachedSubstSymMap(tp)
 
+  // Identity-keyed cache for `mapType`: Types are uniqued, so the same Type
+  // input always produces the same mapped output for a given TreeTypeMap.
+  // The same `tree.tpe` is re-asked many times when an inliner's TreeTypeMap
+  // walks a tree. Lazily allocated on first non-trivial mapType call so
+  // trivial maps (no substFrom + no owner remap) pay no overhead.
+  private var myMapTypeCache: util.EqHashMap[Type, Type] | Null = null
+
   def mapType(tp: Type): Type =
-    mapOwnerThis(substMap(typeMap(tp)))
+    // Cache only when we actually do non-trivial work (substSym walk and/or
+    // ownerThis walk). Pure `typeMap(tp)` calls are usually identity and the
+    // user-supplied typeMap may have its own caching.
+    val cacheable = substFrom.nonEmpty || oldOwners.nonEmpty
+    if cacheable then
+      var cache = myMapTypeCache
+      if cache == null then
+        cache = util.EqHashMap[Type, Type]()
+        myMapTypeCache = cache
+      val hit = cache.lookup(tp)
+      if hit != null then return hit
+      val res = computeMapType(tp)
+      cache.update(tp, res)
+      res
+    else computeMapType(tp)
   end mapType
+
+  private def computeMapType(tp: Type): Type =
+    val tp1 = typeMap(tp)
+    val tp2 = if substFrom.isEmpty then tp1 else substMap(tp1)
+    // Fast path: when no ClassSymbol appears in `oldOwners`, `mapOwnerThis`
+    // is the identity (the recursion in `mapPrefix` only substitutes for
+    // ClassSymbol entries). Skip the TypeMap walk in that case.
+    if !hasOwnerClass then tp2 else mapOwnerThis(tp2)
+  end computeMapType
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
     if (prevStats.isEmpty) assert(newStats.isEmpty)
