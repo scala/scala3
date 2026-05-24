@@ -819,9 +819,10 @@ object Types extends TypeUtils {
     final def findMember(name: Name, pre: Type, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: TermRef =>
-          go (tp.underlying match {
+          val denot = tp.denot
+          go (if denot.isOverloaded then NoType else denot.info match {
             case mt: MethodType
-            if mt.paramInfos.isEmpty && tp.symbol.is(StableRealizable) => mt.resultType
+            if mt.paramInfos.isEmpty && denot.symbol.is(StableRealizable) => mt.resultType
             case tp1 => tp1
           })
         case tp: TypeRef =>
@@ -832,7 +833,11 @@ object Types extends TypeUtils {
         case tp: AppliedType =>
           tp.tycon match {
             case tc: TypeRef =>
-              if (tc.symbol.isClass) go(tc)
+              if (tc.symbol.isClass)
+                tc.denot match {
+                  case d: ClassDenotation => d.findMember(name, pre, required, excluded)
+                  case d => go(d.info)
+                }
               else {
                 val normed = tp.tryNormalize
                 go(if (normed.exists) normed else tp.superType)
