@@ -54,7 +54,7 @@ class PrintingTest {
 
   def testIn(testsDir: String, phase: String) =
     val res = Directory(testsDir).list.toList
-      .filter(_.ext.isScalaOrJava)
+      .filter(_.ext.isSourceExtension)
       .map(f => compileFile(f.jpath, phase))
 
     val failed = res.filter(!_)
