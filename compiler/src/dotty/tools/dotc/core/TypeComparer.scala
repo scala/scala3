@@ -1976,15 +1976,22 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if tp2 eq NoType then false
     else if tp1 eq tp2 then true
     else
+      // Inert frame: when the constraint is already frozen with no caseLambda
+      // and we are not in capture checking, neither `state.constraint` nor
+      // `undoLog` can mutate on the failure path. `addConstraint` is gated by
+      // `canConstrain`, which is false here; `logUndoAction` is only called by
+      // CaptureSet code. So we can skip the corresponding save/restore writes.
+      val inert = frozenConstraint && (caseLambda eq NoType) && !isCaptureCheckingOrSetup
       val savedCstr = constraint
       val savedGadt = snapshotGadtIfCanNarrow
-      val savedLogSize = undoLog.size
+      val savedLogSize = if inert then 0 else undoLog.size
       inline def restore() =
-        state.constraint = savedCstr
+        if !inert then
+          state.constraint = savedCstr
+          if undoLog.size != savedLogSize then
+            //println(i"ROLLBACK $tp1 <:< $tp2")
+            rollBack(savedLogSize)
         restoreGadtSnapshot(savedGadt)
-        if undoLog.size != savedLogSize then
-          //println(i"ROLLBACK $tp1 <:< $tp2")
-          rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
         val result = inNestedLevel:
