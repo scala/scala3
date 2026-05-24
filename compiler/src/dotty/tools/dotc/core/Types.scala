@@ -2611,7 +2611,7 @@ object Types extends TypeUtils {
           else
             val newd = lastd match
               case lastd: SymDenotation =>
-                if stillValid(lastd) && checkedPeriod != Nowhere && !needsRecompute
+                if checkedPeriod != Nowhere && stillValid(lastd) && !needsRecompute
                 then finish(lastd.current)
                 else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
               case _ =>
