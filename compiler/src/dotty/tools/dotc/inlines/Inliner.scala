@@ -31,6 +31,114 @@ object Inliner:
 
   private[inlines] type DefBuffer = mutable.ListBuffer[ValOrDefDef]
 
+  private[inlines] final class SmallFallbackMap[K <: AnyRef, V <: AnyRef](threshold: Int):
+    private var keys: Array[AnyRef] | Null = null
+    private var elems: Array[AnyRef] | Null = null
+    private var used = 0
+    private var fallback: mutable.HashMap[K, V] | Null = null
+
+    private def indexOf(key: K): Int =
+      if used == 0 then return -1
+      val ks = keys.nn
+      var idx = 0
+      while idx < used do
+        if ks(idx) == key then return idx
+        idx += 1
+      -1
+
+    private def ensureArrays(): Unit =
+      if keys == null then
+        keys = new Array[AnyRef](threshold)
+        elems = new Array[AnyRef](threshold)
+
+    private def toFallback(): mutable.HashMap[K, V] =
+      val map = new mutable.HashMap[K, V]
+      val ks = keys.nn
+      val es = elems.nn
+      var idx = 0
+      while idx < used do
+        map(ks(idx).asInstanceOf[K]) = es(idx).asInstanceOf[V]
+        idx += 1
+      keys = null
+      elems = null
+      fallback = map
+      map
+
+    def isEmpty: Boolean =
+      val map = fallback
+      if map ne null then map.isEmpty else used == 0
+
+    def contains(key: K): Boolean =
+      val map = fallback
+      if map ne null then map.contains(key) else indexOf(key) >= 0
+
+    def get(key: K): Option[V] =
+      val map = fallback
+      if map ne null then map.get(key)
+      else
+        val idx = indexOf(key)
+        if idx >= 0 then Some(elems.nn(idx).asInstanceOf[V]) else None
+
+    def getOrElse[V1 >: V](key: K, default: => V1): V1 =
+      val map = fallback
+      if map ne null then map.getOrElse(key, default)
+      else
+        val idx = indexOf(key)
+        if idx >= 0 then elems.nn(idx).asInstanceOf[V] else default
+
+    def update(key: K, value: V): Unit =
+      val map = fallback
+      if map ne null then map(key) = value
+      else
+        val idx = indexOf(key)
+        if idx >= 0 then elems.nn(idx) = value
+        else if used < threshold then
+          ensureArrays()
+          keys.nn(used) = key
+          elems.nn(used) = value
+          used += 1
+        else
+          toFallback()(key) = value
+
+    def existsValue(value: V): Boolean =
+      val map = fallback
+      if map ne null then map.values.exists(_ == value)
+      else if used == 0 then false
+      else
+        val es = elems.nn
+        var idx = 0
+        while idx < used do
+          if es(idx) == value then return true
+          idx += 1
+        false
+
+    def values: Iterable[V] =
+      val map = fallback
+      if map ne null then map.values
+      else
+        new Iterable[V]:
+          def iterator: Iterator[V] = new Iterator[V]:
+            private var idx = 0
+            def hasNext: Boolean = idx < used
+            def next(): V =
+              val value = elems.nn(idx).asInstanceOf[V]
+              idx += 1
+              value
+
+    def toList: List[(K, V)] =
+      val map = fallback
+      if map ne null then map.toList
+      else if used == 0 then Nil
+      else
+        val ks = keys.nn
+        val es = elems.nn
+        var idx = used - 1
+        var result: List[(K, V)] = Nil
+        while idx >= 0 do
+          result = (ks(idx).asInstanceOf[K], es(idx).asInstanceOf[V]) :: result
+          idx -= 1
+        result
+
   /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
    *  - synthetic case class apply methods, when the case class constructor is empty, are
    *    elideable but not pure. Elsewhere, accessing the apply method might cause the initialization
@@ -226,7 +334,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
-  private[inlines] val paramProxy = new mutable.HashMap[Type, Type]
+  private[inlines] val paramProxy = new SmallFallbackMap[Type, Type](threshold = 4)
 
   /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.
@@ -241,7 +349,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *
    *  These are different (wrt ==) types but represent logically the same key
    */
-  private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
+  private val thisProxy = new SmallFallbackMap[ClassSymbol, TermRef](threshold = 4)
 
   /** A buffer for bindings that define proxies for actual arguments */
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
@@ -533,7 +641,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         override def stopAt = StopAt.Package
         def apply(t: Type) = mapOver {
           t match
-            case a: TermRef if thisProxy.values.exists(_ == a) =>
+            case a: TermRef if thisProxy.existsValue(a) =>
               a.termSymbol.defTree match
                 case untpd.ValDef(a, tpt, _) => tpt.tpe
             case _ => t
