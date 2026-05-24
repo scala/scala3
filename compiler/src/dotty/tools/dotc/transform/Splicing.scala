@@ -78,22 +78,32 @@ class Splicing extends MacroTransform:
   override protected def run(using Context): Unit =
     if ctx.compilationUnit.needsStaging then
       super.run
+      ctx.compilationUnit.needsStaging = false
 
   protected def newTransformer(using Context): Transformer = Level0QuoteTransformer
 
   /** Transforms all quotes at level 0 using the `QuoteTransformer` */
-  private object Level0QuoteTransformer extends Transformer:
+  private object Level0QuoteTransformer extends Transformer, PickleQuotes.HoleContentTransformer:
+    def transformHoleContent(tree: tpd.Tree)(using Context): tpd.Tree = transform(tree)
+
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       assert(level == 0)
       tree match
+        case Apply(Select(quote: Quote, nme.apply), quotes :: Nil) =>
+          val quote1 = transformLevel0Quote(quote)
+          val quotes1 = transform(quotes)
+          PickleQuotes.transformQuote(quote1, quotes1, this)
         case tree: Quote =>
-          val body1 = QuoteTransformer().transform(tree.body)(using quoteContext)
-          cpy.Quote(tree)(body1, tree.tags)
+          transformLevel0Quote(tree)
         case tree: DefDef if tree.symbol.is(Inline) =>
           // Quotes in inlined methods are only pickled after they are inlined.
           tree
         case _ =>
           super.transform(tree)
+
+    private def transformLevel0Quote(tree: Quote)(using Context): Quote =
+      val body1 = QuoteTransformer().transform(tree.body)(using quoteContext)
+      cpy.Quote(tree)(body1, tree.tags)
   end Level0QuoteTransformer
 
   /** Transforms all direct splices in the current quote and replace them with holes. */
