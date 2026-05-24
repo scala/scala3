@@ -171,6 +171,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         if ctx.run != null then ctx.run.nn.recordConstraintSize(result, result.boundsMap.size)
         result.coDeps = this.coDeps
         result.contraDeps = this.contraDeps
+        result.dirtyDeps = this.dirtyDeps
         result
 
 // ----------- Basic indices --------------------------------------------------
@@ -314,6 +315,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   private var contraDeps: ReverseDeps = SimpleIdentityMap.empty
 
+  /** Type lambdas whose bounds have not yet been indexed into `coDeps` and
+   *  `contraDeps`. Bounds are added speculatively by `init`, while most
+   *  constraints are solved or discarded without ever querying reverse deps.
+   */
+  private var dirtyDeps: SimpleIdentitySet[TypeLambda] = SimpleIdentitySet.empty
+
   /** Null-safe indexing */
   extension (deps: ReverseDeps) def at(param: TypeParamRef): SimpleIdentitySet[TypeParamRef] =
     val result = deps(param)
@@ -321,7 +328,24 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     then SimpleIdentitySet.empty
     else result
 
+  /** Mark dependencies for `poly` to be indexed on demand. */
+  private def markDepsDirty(poly: TypeLambda): this.type =
+    dirtyDeps += poly
+    this
+
+  /** Complete any reverse dependency indexing deferred by `init`. */
+  private def materializeDeps()(using Context): this.type =
+    if !dirtyDeps.isEmpty then
+      val toIndex = dirtyDeps
+      dirtyDeps = SimpleIdentitySet.empty
+      toIndex.foreach { poly =>
+        val entries = boundsMap(poly)
+        if entries != null then adjustDeps(poly, entries, add = true)
+      }
+    this
+
   override def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean =
+    materializeDeps()
     def origin(tv: TypeVar) =
       assert(!instType(tv).exists)
       tv.origin
@@ -609,6 +633,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   /** A string representing the two dependency maps */
   def depsToString(using Context): String =
+    materializeDeps()
     def depsStr(deps: ReverseDeps): String =
       def depStr(param: TypeParamRef) = i"$param --> ${deps.at(param).toList}%, %"
       if deps.isEmpty then "" else i"\n     ${deps.toList.map((k, v) => depStr(k))}%\n     %"
@@ -813,7 +838,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       current = boundsLens.update(this, current, param, stripped)
       current = todos.applyTo(current, param)
       refs = refs.tail
-    current.adjustDeps(poly, current.boundsMap(poly).nn, add = true)
+    current.markDepsDirty(poly)
       .checkWellFormed()
   }
 
@@ -943,6 +968,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   }
 
   def updateEntry(param: TypeParamRef, tp: Type)(using Context): This =
+    materializeDeps()
     updateEntry(this, param, tp).checkWellFormed()
 
   def addLess(param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection)(using Context): This =
@@ -955,6 +981,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
   def replace(param: TypeParamRef, tp: Type)(using Context): OrderingConstraint =
+    materializeDeps()
     val replacement = tp.dealiasKeepAnnots.stripTypeVar
     if param == replacement then this.checkWellFormed()
     else
@@ -1043,6 +1070,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {
+    materializeDeps()
     def removeFromOrdering(po: ParamOrdering) = {
       def removeFromBoundss(key: TypeLambda, bndss: Array[List[TypeParamRef]]): Array[List[TypeParamRef]] = {
         val bndss1 = bndss.map(_.filterConserve(_.binder ne pt))
@@ -1076,6 +1104,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     (this.typeVarOfParam(tl.paramRefs(0)) ne that.typeVarOfParam(tl.paramRefs(0)))
 
   def subst(from: TypeLambda, to: TypeLambda)(using Context): OrderingConstraint =
+    materializeDeps()
     def swapKey[T](m: ArrayValuedMap[T]) =
       val info = m(from)
       if info == null then m else m.remove(from).updated(to, info)
@@ -1252,6 +1281,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           s"cyclic bound for $param: ${inst.show} in ${this.show}")
       }
     if Config.checkConstraintDeps || ctx.settings.YcheckConstraintDeps.value then
+      materializeDeps()
       checkBackward(coDeps, "co", -1)
       checkBackward(contraDeps, "contra", +1)
       domainParams.foreach(p => if contains(p) then checkForward(p).traverse(entry(p)))
