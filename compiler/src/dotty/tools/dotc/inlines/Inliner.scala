@@ -331,10 +331,15 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** A map from parameter names of the inlineable method to spans of the actual arguments */
   private val paramSpan = new mutable.HashMap[Name, Span]
 
-  /** A map from references to (type and value) parameters of the inlineable method
+  /** A map from (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
-  private[inlines] val paramProxy = new SmallFallbackMap[Type, Type](threshold = 4)
+  private[inlines] val paramProxy = new SmallFallbackMap[Symbol, Type](threshold = 4)
+
+  /** Fallback map for parameter references whose type shape does not expose a symbol
+   *  designator. Symbol-keyed lookups avoid structural `Type` equality in the common path.
+   */
+  private val paramProxyByType = new SmallFallbackMap[Type, Type](threshold = 4)
 
   /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.
@@ -622,6 +627,41 @@ class Inliner(val call: tpd.Tree)(using Context):
 
   def thisTypeProxyExists = !thisProxy.isEmpty
 
+  private inline def hasSymbolDesignator(tpe: NamedType): Boolean =
+    tpe.designator.isInstanceOf[Symbol]
+
+  private def putParamProxy(param: Symbol, tpe: NamedType, value: Type)(using Context): Unit =
+    paramProxy(param) = value
+    if !hasSymbolDesignator(tpe) then paramProxyByType(tpe) = value
+
+  private def containsParamProxy(param: Symbol, tpe: NamedType)(using Context): Boolean =
+    paramProxy.contains(param) || !hasSymbolDesignator(tpe) && paramProxyByType.contains(tpe)
+
+  private inline def getParamProxy(tpe: Type)(using Context): Option[Type] = tpe match
+    case tpe: NamedType =>
+      tpe.designator match
+        case sym: Symbol => paramProxy.get(sym)
+        case _ => paramProxyByType.get(tpe)
+    case _ =>
+      paramProxyByType.get(tpe)
+
+  private inline def getParamProxyOrElse(tpe: Type, default: => Type)(using Context): Type = tpe match
+    case tpe: NamedType =>
+      tpe.designator match
+        case sym: Symbol => paramProxy.getOrElse(sym, default)
+        case _ => paramProxyByType.getOrElse(tpe, default)
+    case _ =>
+      paramProxyByType.getOrElse(tpe, default)
+
+  private inline def getParamProxy(tree: Ident)(using Context): Option[Type] =
+    val sym = tree.symbol
+    if sym.exists then paramProxy.get(sym)
+    else getParamProxy(tree.tpe)
+
+  private def paramProxyValues: Iterable[Type] =
+    if paramProxyByType.isEmpty then paramProxy.values
+    else paramProxy.values ++ paramProxyByType.values
+
   /** Maps a type that includes a thisProxy (e.g. `TermRef(NoPrefix,val Foo$_this)`)
    *  by reading the defTree belonging to that thisProxy (`val Foo$_this: Foo.type = AnotherProxy`)
    *  back into its original reference (`AnotherProxy`, which is directly or indirectly a refinement on `Foo`)
@@ -683,21 +723,23 @@ class Inliner(val call: tpd.Tree)(using Context):
       }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
       for (param <- tpe.cls.typeParams)
-        paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
-    case tpe: NamedType
-    if tpe.symbol.is(Param)
-        && tpe.symbol.owner == inlinedMethod
-        && (tpe.symbol.isTerm || inlinedMethod.paramSymss.exists(_.contains(tpe.symbol)))
+        val paramRef = param.typeRef
+        putParamProxy(param, paramRef, adaptToPrefix(paramRef))
+    case tpe: NamedType =>
+      val param = tpe.symbol
+      if param.is(Param)
+        && param.owner == inlinedMethod
+        && (param.isTerm || inlinedMethod.paramSymss.exists(_.contains(param)))
           // this test is needed to rule out nested LambdaTypeTree parameters
           // with the same name as the method's parameters. Note that the nested
           // LambdaTypeTree parameters also have the inlineMethod as owner. C.f. i13460.scala.
-        && !paramProxy.contains(tpe) =>
-      paramBinding.get(tpe.name) match
-        case Some(bound) => paramProxy(tpe) = bound
-        case _ =>  // can happen for params bound by type-lambda trees.
+        && !containsParamProxy(param, tpe) then
+        paramBinding.get(tpe.name) match
+          case Some(bound) => putParamProxy(param, tpe, bound)
+          case _ =>  // can happen for params bound by type-lambda trees.
 
-      // The widened type may contain param types too (see tests/pos/i12379a.scala)
-      if tpe.isTerm then registerType(tpe.widenTermRefExpr)
+        // The widened type may contain param types too (see tests/pos/i12379a.scala)
+        if tpe.isTerm then registerType(tpe.widenTermRefExpr)
     case _ =>
   }
 
@@ -789,10 +831,10 @@ class Inliner(val call: tpd.Tree)(using Context):
             if opaqueProxies.isEmpty then StopAt.Static else StopAt.Package
           def apply(t: Type) = t match {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
-            case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
+            case t: TypeRef => getParamProxyOrElse(t, mapOver(t))
             case t: SingletonType =>
               if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
-              else paramProxy.getOrElse(t, mapOver(t))
+              else getParamProxyOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
         },
@@ -815,7 +857,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
             else paramSpan(tree.name)
           val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
-          paramProxy.get(tree.tpe) match {
+          getParamProxy(tree) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
               val inlinedSingleton = singleton(t).withSpan(argSpan)
               inlinedFromOutside(inlinedSingleton)(tree.span)
@@ -841,7 +883,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     inlining.println(
       i"""inliner transform with
          |thisProxy = ${thisProxy.toList.map(_._1)}%, % --> ${thisProxy.toList.map(_._2)}%, %
-         |paramProxy = ${paramProxy.toList.map(_._1.typeSymbol.showLocated)}%, % --> ${paramProxy.toList.map(_._2)}%, %""")
+         |paramProxy = ${paramProxy.toList.map(_._1.showLocated)}%, % --> ${paramProxy.toList.map(_._2)}%, %""")
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
@@ -926,7 +968,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     *   - all by-name arguments
     */
   private object InlineableArg {
-    lazy val paramProxies = paramProxy.values.toSet
+    lazy val paramProxies = paramProxyValues.toSet
     def unapply(tree: Trees.Ident[?])(using Context): Option[Tree] = {
       def search(buf: DefBuffer) = buf.find(_.name == tree.name)
       if (paramProxies.contains(tree.typeOpt))
