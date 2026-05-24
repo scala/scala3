@@ -2881,6 +2881,21 @@ object Types extends TypeUtils {
       }
     }
 
+    /** True if `lookupRefined` cannot reduce this prefix shape.
+     *
+     *  Keep this as an allowlist of shapes that the current `lookupRefined`
+     *  implementation does not normalize through. Prefixes that can contain,
+     *  wrap, or reveal refinements must keep using `lookupRefined`.
+     */
+    private inline def prefixSkipsRefinedLookup(prefix: Type): Boolean = prefix match
+      case _: TermRef | _: Types.ThisType | _: SuperType | _: ConstantType
+         | _: AppliedType | _: AndOrType | _: FlexibleType | _: BoundType
+         | _: MatchType | _: JavaArrayType | _: FlexType | _: WildcardType
+         | NoPrefix | NoType =>
+        true
+      case _ =>
+        false
+
     /** A selection of the same kind, but with potentially a different prefix.
      *  The following normalizations are performed for type selections T#A:
      *
@@ -2899,6 +2914,7 @@ object Types extends TypeUtils {
       else
         val reduced =
           if isType && currentValidSymbol.isAllOf(ClassTypeParam) then argForParam(prefix)
+          else if prefixSkipsRefinedLookup(prefix) then NoType
           else prefix.lookupRefined(name)
         if reduced.exists then return reduced
         if Config.splitProjections && isType then
@@ -7291,8 +7307,23 @@ object Types extends TypeUtils {
       case tp: NamedType =>
         if stopBecauseStaticOrLocal(tp) then x
         else
-          val tp1 = tp.prefix.lookupRefined(tp.name)
-          if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
+          val prefix = tp.prefix
+          // Fast-path: skip lookupRefined when the prefix shape cannot carry
+          // refinements.  Mirrors NamedType.prefixSkipsRefinedLookup (which is
+          // private to NamedType).  For these prefix shapes lookupRefined always
+          // returns NoType, so we can go straight to applyToPrefix.
+          inline def prefixSkipsRefined: Boolean = prefix match
+            case _: TermRef | _: ThisType | _: SuperType | _: ConstantType
+               | _: AppliedType | _: AndOrType | _: FlexibleType | _: BoundType
+               | _: MatchType | _: JavaArrayType | _: FlexType | _: WildcardType
+               | NoPrefix | NoType =>
+              true
+            case _ =>
+              false
+          if prefixSkipsRefined then applyToPrefix(x, tp)
+          else
+            val tp1 = prefix.lookupRefined(tp.name)
+            if tp1.exists then this(x, tp1) else applyToPrefix(x, tp)
 
       case tp @ AppliedType(tycon, args) =>
         @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
