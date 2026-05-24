@@ -2425,6 +2425,32 @@ object SymDenotations {
 
     private def addInherited(name: Name, ownDenots: PreDenotation,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
+      def collectLinearizedNoOwn(): PreDenotation | Null =
+        info match
+          case cinfo: ClassInfo if parentClassDenots(cinfo) != null =>
+            val bases = baseClasses
+            if bases.isEmpty || (bases.head ne classSymbol) then null
+            else
+              val excludedInherited = excluded | Private
+              var denots: PreDenotation = NoDenotation
+              var rest = bases.tail
+              var ok = true
+              while ok && rest.nonEmpty do
+                rest.head.denot match
+                  case based: ClassDenotation =>
+                    val ownInherited = based.info.decls.denotsNamed(name)
+                    if ownInherited.exists then
+                      val filtered = ownInherited.filterWithFlags(required, excludedInherited)
+                      if filtered.exists then
+                        if denots.exists then ok = false
+                        else
+                          val inherited = filtered.mapInherited(NoDenotation, NoDenotation, thisType)
+                          if inherited.exists then denots = inherited
+                  case _ =>
+                    ok = false
+                rest = rest.tail
+              if ok then denots else null
+          case _ => null
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
         case p :: ps =>
           val denots1 = collect(denots, ps)
@@ -2444,14 +2470,29 @@ object SymDenotations {
           if inherited.exists then denots = denots.union(inherited.mapInherited(ownDenots, denots, thisType))
           i -= 1
         denots
+      def collectFromInfo(): PreDenotation =
+        info match
+          case cinfo: ClassInfo =>
+            val parentDenots = parentClassDenots(cinfo)
+            if parentDenots != null then collectFromParentDenots(parentDenots)
+            else collect(ownDenots, cinfo.parents)
+          case _ =>
+            collect(ownDenots, info.parents)
       if name.isConstructorName then ownDenots
-      else info match
-        case cinfo: ClassInfo =>
-          val parentDenots = parentClassDenots(cinfo)
-          if parentDenots != null then collectFromParentDenots(parentDenots)
-          else collect(ownDenots, cinfo.parents)
-        case _ =>
-          collect(ownDenots, info.parents)
+      else if ctx.isAfterTyper && !ownDenots.exists && !is(PackageClass) && !is(Package) then
+        // The linearized fast path reads base classes' `info.decls` directly.
+        // During lazy TASTy completion (e.g. doc generation) this can force a
+        // still-completing base and turn a normally-provisional cyclic
+        // dependency into a fatal CyclicReference. The fast path is a pure
+        // optimization, so on a cycle we fall back to the provisional-safe
+        // `collectFromInfo`; a genuine cyclic error is re-thrown by that path.
+        val fast =
+          try collectLinearizedNoOwn()
+          catch case _: CyclicReference => null
+        fast match
+          case denots: PreDenotation => denots
+          case null => collectFromInfo()
+      else collectFromInfo()
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
