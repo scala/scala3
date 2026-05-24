@@ -182,9 +182,52 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def typeVar(entries: Array[Type], n: Int): Type | Null =
     entries(paramCount(entries) + n)
 
+  // 1-slot last-binder caches for map lookups: consecutive queries during
+  // a single isSubType/compareTypeParamRef typically hit the same binder, so
+  // skipping the megamorphic SimpleIdentityMap walk is a measurable win.
+  // This OrderingConstraint instance is replaced (not mutated) on map
+  // structural updates, so the cache is implicitly per-snapshot. The
+  // ConstraintLens.update path may mutate an entries array in place when the
+  // current constraint is the unique live reference; in that case any cached
+  // pointer still references the same (now updated) array, which is what we want.
+  // Cache fields are private to this instance.
+  private var lastEntryBinder: TypeLambda | Null = null
+  private var lastEntryEntries: Array[Type] | Null = null
+  private var lastLowerBinder: TypeLambda | Null = null
+  private var lastLowerEntries: Array[List[TypeParamRef]] | Null = null
+  private var lastUpperBinder: TypeLambda | Null = null
+  private var lastUpperEntries: Array[List[TypeParamRef]] | Null = null
+
+  /** The `boundsMap` entries corresponding to `binder` */
+  private inline def entries(binder: TypeLambda): Array[Type] | Null =
+    if binder eq lastEntryBinder then lastEntryEntries
+    else
+      val es = boundsMap(binder)
+      lastEntryBinder = binder
+      lastEntryEntries = es
+      es
+
+  /** The `lowerMap` entries corresponding to `binder` */
+  private inline def lowerEntries(binder: TypeLambda): Array[List[TypeParamRef]] | Null =
+    if binder eq lastLowerBinder then lastLowerEntries
+    else
+      val es = lowerMap(binder)
+      lastLowerBinder = binder
+      lastLowerEntries = es
+      es
+
+  /** The `upperMap` entries corresponding to `binder` */
+  private inline def upperEntries(binder: TypeLambda): Array[List[TypeParamRef]] | Null =
+    if binder eq lastUpperBinder then lastUpperEntries
+    else
+      val es = upperMap(binder)
+      lastUpperBinder = binder
+      lastUpperEntries = es
+      es
+
   /** The `boundsMap` entry corresponding to `param` */
   def entry(param: TypeParamRef): Type = {
-    val entries = boundsMap(param.binder)
+    val entries = this.entries(param.binder)
     if (entries == null) NoType
     else entries(param.paramNum)
   }
@@ -194,21 +237,26 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def contains(pt: TypeLambda): Boolean = boundsMap(pt) != null
 
   def contains(param: TypeParamRef): Boolean = {
-    val entries = boundsMap(param.binder)
+    val entries = this.entries(param.binder)
     entries != null && isBounds(entries(param.paramNum))
   }
 
   def contains(tvar: TypeVar): Boolean = {
     val origin = tvar.origin
-    val entries = boundsMap(origin.binder)
+    val entries = this.entries(origin.binder)
     val pnum = origin.paramNum
     entries != null && isBounds(entries(pnum)) && (typeVar(entries, pnum) eq tvar)
   }
 
 // ---------- Dependency handling ----------------------------------------------
 
-  def lower(param: TypeParamRef): List[TypeParamRef] = lowerLens(this, param.binder, param.paramNum)
-  def upper(param: TypeParamRef): List[TypeParamRef] = upperLens(this, param.binder, param.paramNum)
+  def lower(param: TypeParamRef): List[TypeParamRef] =
+    val entries = lowerEntries(param.binder)
+    if entries == null then Nil else entries(param.paramNum)
+
+  def upper(param: TypeParamRef): List[TypeParamRef] =
+    val entries = upperEntries(param.binder)
+    if entries == null then Nil else entries(param.paramNum)
 
   def minLower(param: TypeParamRef): List[TypeParamRef] = {
     val all = lower(param)
@@ -241,7 +289,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     entry(param).bounds
 
   def typeVarOfParam(param: TypeParamRef): Type =
-    val entries = boundsMap(param.binder)
+    val entries = this.entries(param.binder)
     if entries == null then NoType
     else
       val tvar = typeVar(entries, param.paramNum)
@@ -280,10 +328,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     val param = origin(tv)
     val excluded = except.map(origin)
     val qualifies: TypeParamRef => Boolean = !excluded.contains(_)
-    def test(deps: ReverseDeps, lens: ConstraintLens[List[TypeParamRef]]) =
-      deps.at(param).exists(qualifies)
-      || lens(this, tv.origin.binder, tv.origin.paramNum).exists(qualifies)
-    if co then test(coDeps, upperLens) else test(contraDeps, lowerLens)
+    if co then
+      coDeps.at(param).exists(qualifies) || upper(param).exists(qualifies)
+    else
+      contraDeps.at(param).exists(qualifies) || lower(param).exists(qualifies)
 
   /** Modify traversals in two respects:
    *   - when encountering an application C[Ts], where C is a type variable or parameter
@@ -306,14 +354,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private trait ConstraintAwareTraversal[T] extends TypeAccumulator[T]:
 
     /** Does `param` have bounds in the current constraint? */
-    protected def hasBounds(param: TypeParamRef): Boolean = entry(param).isInstanceOf[TypeBounds]
+    protected def hasBounds(param: TypeParamRef, paramEntry: Type): Boolean = paramEntry.isInstanceOf[TypeBounds]
+
+    protected def hasBounds(param: TypeParamRef): Boolean = hasBounds(param, entry(param))
 
     override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
       def tparams(tycon: Type): List[ParamInfo] = tycon match
         case tycon: TypeVar if !tycon.isPermanentlyInstantiated => tparams(tycon.origin)
-        case tycon: TypeParamRef if !hasBounds(tycon) =>
-          val entryParams = entry(tycon).typeParams
-          if entryParams.nonEmpty then entryParams
+        case tycon: TypeParamRef =>
+          val tyconEntry = entry(tycon)
+          if !hasBounds(tycon, tyconEntry) then
+            val entryParams = tyconEntry.typeParams
+            if entryParams.nonEmpty then entryParams
+            else tp.tyconTypeParams
           else tp.tyconTypeParams
         case _ => tp.tyconTypeParams
       tparams(tp.tycon)
@@ -404,6 +457,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     override protected def hasBounds(param: TypeParamRef) =
       (param eq ignoreBinding) || super.hasBounds(param)
+    override protected def hasBounds(param: TypeParamRef, paramEntry: Type) =
+      (param eq ignoreBinding) || super.hasBounds(param, paramEntry)
 
     def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
       val prev = deps.at(referenced)
