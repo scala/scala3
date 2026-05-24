@@ -102,6 +102,8 @@ class TreeTypeMap(
   // The same `tree.tpe` is re-asked many times when an inliner's TreeTypeMap
   // walks a tree. Lazily allocated on first non-trivial mapType call so
   // trivial maps (no substFrom + no owner remap) pay no overhead.
+  private var mapTypeMruKey: Type | Null = null
+  private var mapTypeMruValue: Type | Null = null
   private var myMapTypeCache: util.EqHashMap[Type, Type] | Null = null
   private val shouldCacheMapType = cacheTypeMap || substFrom.nonEmpty || oldOwners.nonEmpty
   // Exact identity-type maps with no symbol or owner state only need the
@@ -121,14 +123,20 @@ class TreeTypeMap(
     // Pure `typeMap(tp)` calls stay uncached by default because they may depend on
     // mutable state or have their own caching.
     if shouldCacheMapType then
+      if mapTypeMruKey eq tp then return mapTypeMruValue.nn
       var cache = myMapTypeCache
       if cache == null then
         cache = util.EqHashMap[Type, Type]()
         myMapTypeCache = cache
       val hit = cache.lookup(tp)
-      if hit != null then return hit
+      if hit != null then
+        mapTypeMruKey = tp
+        mapTypeMruValue = hit
+        return hit
       val res = computeMapType(tp)
       cache.update(tp, res)
+      mapTypeMruKey = tp
+      mapTypeMruValue = res
       res
     else computeMapType(tp)
   end mapType
