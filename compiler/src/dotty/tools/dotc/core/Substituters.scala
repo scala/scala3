@@ -90,14 +90,16 @@ object Substituters:
           if lookup != null then
             val replacement = lookup.get(sym)
             if replacement != null then
-              return substSym(tp.prefix, from, to, theMap).select(replacement.nn)
+              if tp.prefix `eq` NoPrefix then return NoPrefix.select(replacement.nn)
+              else return substSym(tp.prefix, from, to, theMap).select(replacement.nn)
             if tp.prefix `eq` NoPrefix then return tp
             else return tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
           if (fs.head eq sym)
-            return substSym(tp.prefix, from, to, theMap).select(ts.head)
+            if tp.prefix `eq` NoPrefix then return NoPrefix.select(ts.head)
+            else return substSym(tp.prefix, from, to, theMap).select(ts.head)
           fs = fs.tail
           ts = ts.tail
         }
