@@ -153,6 +153,10 @@ class TreeTypeMap(
     if (tpe1 eq tpe) && !tpe1.isInstanceOf[ErrorType] && !Config.checkTreesConsistent then tree
     else tree.withType(tpe1)
 
+  private def sourceCtx(tree: Tree)(using Context): Context =
+    val source = tree.source
+    if source.exists && (source ne ctx.source) then ctx.withSource(source) else ctx
+
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
@@ -176,12 +180,82 @@ class TreeTypeMap(
             ref(sel.tpe.asInstanceOf[TermRef]).withSpan(sel.span)
           else
             super.transform(sel)
-        case app: Apply =>
-          super.transform(app)
+        case app @ Apply(fun, args) =>
+          val appCtx = sourceCtx(app)
+          if app.tpe.isError then app
+          else cpy.Apply(app)(transform(fun)(using appCtx), transform(args)(using appCtx))(using appCtx)
+        case app @ TypeApply(fun, args) =>
+          val appCtx = sourceCtx(app)
+          if app.tpe.isError then app
+          else cpy.TypeApply(app)(transform(fun)(using appCtx), transform(args)(using appCtx))(using appCtx)
+        case typed @ Typed(expr, tpt) =>
+          val typedCtx = sourceCtx(typed)
+          if typed.tpe.isError then typed
+          else cpy.Typed(typed)(transform(expr)(using typedCtx), transform(tpt)(using typedCtx))(using typedCtx)
+        case nw @ New(tpt) =>
+          val newCtx = sourceCtx(nw)
+          if nw.tpe.isError then nw
+          else cpy.New(nw)(transform(tpt)(using newCtx))(using newCtx)
+        case named @ NamedArg(name, arg) =>
+          val namedCtx = sourceCtx(named)
+          if named.tpe.isError then named
+          else cpy.NamedArg(named)(name, transform(arg)(using namedCtx))(using namedCtx)
+        case assign @ Assign(lhs, rhs) =>
+          val assignCtx = sourceCtx(assign)
+          if assign.tpe.isError then assign
+          else cpy.Assign(assign)(transform(lhs)(using assignCtx), transform(rhs)(using assignCtx))(using assignCtx)
         case blk @ Block(stats, expr) =>
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
           cpy.Block(blk)(stats1, expr1)
+        case iff @ If(cond, thenp, elsep) =>
+          val ifCtx = sourceCtx(iff)
+          if iff.tpe.isError then iff
+          else cpy.If(iff)(transform(cond)(using ifCtx), transform(thenp)(using ifCtx), transform(elsep)(using ifCtx))(using ifCtx)
+        case closure @ Closure(env, meth, tpt) =>
+          val closureCtx = sourceCtx(closure)
+          if closure.tpe.isError then closure
+          else cpy.Closure(closure)(transform(env)(using closureCtx), transform(meth)(using closureCtx), transform(tpt)(using closureCtx))(using closureCtx)
+        case mtch @ Match(selector, cases) =>
+          val matchCtx = sourceCtx(mtch)
+          if mtch.tpe.isError then mtch
+          else cpy.Match(mtch)(transform(selector)(using matchCtx), transformSub(cases)(using matchCtx))(using matchCtx)
+        case loop @ WhileDo(cond, body) =>
+          val loopCtx = sourceCtx(loop)
+          if loop.tpe.isError then loop
+          else cpy.WhileDo(loop)(transform(cond)(using loopCtx), transform(body)(using loopCtx))(using loopCtx)
+        case tr @ Try(block, cases, finalizer) =>
+          val tryCtx = sourceCtx(tr)
+          if tr.tpe.isError then tr
+          else cpy.Try(tr)(transform(block)(using tryCtx), transformSub(cases)(using tryCtx), transform(finalizer)(using tryCtx))(using tryCtx)
+        case seq @ SeqLiteral(elems, elemtpt) =>
+          val seqCtx = sourceCtx(seq)
+          if seq.tpe.isError then seq
+          else cpy.SeqLiteral(seq)(transform(elems)(using seqCtx), transform(elemtpt)(using seqCtx))(using seqCtx)
+        case stt @ SingletonTypeTree(ref) =>
+          val sttCtx = sourceCtx(stt)
+          if stt.tpe.isError then stt
+          else cpy.SingletonTypeTree(stt)(transform(ref)(using sttCtx))(using sttCtx)
+        case rtt @ RefinedTypeTree(tpt, refinements) =>
+          val rttCtx = sourceCtx(rtt)
+          if rtt.tpe.isError then rtt
+          else cpy.RefinedTypeTree(rtt)(transform(tpt)(using rttCtx), transformSub(refinements)(using rttCtx))(using rttCtx)
+        case att @ AppliedTypeTree(tpt, args) =>
+          val attCtx = sourceCtx(att)
+          if att.tpe.isError then att
+          else cpy.AppliedTypeTree(att)(transform(tpt)(using attCtx), transform(args)(using attCtx))(using attCtx)
+        case bnt @ ByNameTypeTree(result) =>
+          val bntCtx = sourceCtx(bnt)
+          if bnt.tpe.isError then bnt
+          else cpy.ByNameTypeTree(bnt)(transform(result)(using bntCtx))(using bntCtx)
+        case tbt @ TypeBoundsTree(lo, hi, alias) =>
+          val tbtCtx = sourceCtx(tbt)
+          if tbt.tpe.isError then tbt
+          else cpy.TypeBoundsTree(tbt)(transform(lo)(using tbtCtx), transform(hi)(using tbtCtx), transform(alias)(using tbtCtx))(using tbtCtx)
+        case alt @ Alternative(trees) =>
+          val altCtx = sourceCtx(alt)
+          if alt.tpe.isError then alt
+          else cpy.Alternative(alt)(transform(trees)(using altCtx))(using altCtx)
         case lit @ Literal(Constant(tpe: Type)) =>
           cpy.Literal(lit)(Constant(mapType(tpe)))
         case ddef @ DefDef(name, paramss, tpt, _) =>
