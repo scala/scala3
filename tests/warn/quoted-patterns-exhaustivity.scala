@@ -101,3 +101,43 @@ def foo(using Quotes) =
   def f[A: Type](e: Expr[A]): Expr[A] =
     e match // ok
       case '{ $e2 } => e2
+
+  // Intersection types
+  val tdx: Type[Int] & Serializable = ???
+  Type.of[Int] match // ok
+    case '[tdx.Underlying] => ()
+
+  val tdx2: Serializable & Type[Int] = ???
+  Type.of[Int] match // ok
+    case '[tdx2.Underlying] => ()
+
+  val tdx3: Type[Int] & Serializable & Cloneable = ???
+  Type.of[Int] match // ok
+    case '[tdx3.Underlying] => ()
+
+  val tdx4: Type[Int] & Type[String] = ??? // becomes TypeTree(Int & String) and Int & String <: Int
+  Type.of[Int] match // ok
+    case '[tdx4.Underlying] => ()
+
+  type AliasedType = Type[String] & Serializable
+  val tdx5: AliasedType = ???
+  Type.of[Int] match // warn
+    case '[tdx5.Underlying] => ()
+  
+  type AliasedType2 = Type[Int] & Serializable
+  val tdx6: AliasedType2 = ???
+  Type.of[Int] match // ok
+    case '[tdx6.Underlying] => ()
+
+  lazy val tlazy: Type[Int] & Serializable = ???
+  Type.of[Int] match // ok
+    case '[tlazy.Underlying] => ()
+
+  val tdxHkt: Type[List] & Serializable = ???
+  Type.of[List] match // warn
+    case '[tdxHkt.Underlying] => ()
+
+  val typeReprTpe = quotes.reflect.TypeRepr.of[Any] // impossible to know if TypeRepr is a hkt or not
+  typeReprTpe.asType match // warn
+    case '[tpe] => ()
+

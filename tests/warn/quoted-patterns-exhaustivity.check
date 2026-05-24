@@ -150,3 +150,27 @@
    |  It would fail on pattern case: _: scala.quoted.Expr[Any]
    |
    | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:124:10 ---------------------
+124 |  Type.of[Int] match // warn
+    |          ^^^^
+    |          match may not be exhaustive.
+    |
+    |          It would fail on pattern case: _: scala.quoted.Type[Int]
+    |
+    | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:137:10 ---------------------
+137 |  Type.of[List] match // warn
+    |          ^^^^
+    |          match may not be exhaustive.
+    |
+    |          It would fail on pattern case: _: scala.quoted.Type[List]
+    |
+    | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/quoted-patterns-exhaustivity.scala:141:14 ---------------------
+141 |  typeReprTpe.asType match // warn
+    |  ^^^^^^^^^^^^^^^^^^
+    |  match may not be exhaustive.
+    |
+    |  It would fail on pattern case: _: scala.quoted.Type[? <: AnyKind]
+    |
+    | longer explanation available when compiling with `-explain`

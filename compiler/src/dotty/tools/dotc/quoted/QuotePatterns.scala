@@ -300,6 +300,8 @@ object QuotePatterns:
       case Apply(Select(Quote(shape, _), _), _) :: Nil => shape
       case List(Apply(sel @ TypeApply(_, shape :: Nil), _)) =>
         if (sel.symbol == defn.QuoteUnpickler_unpickleExprV2 || sel.symbol == defn.QuoteUnpickler_unpickleTypeV2) then
+          // we can safely access the attachment as we know that the unapply tree
+          // was created in PickleQuotes during the same compilation run (and so was the attachment)
           sel.getAttachment(transform.PickleQuotes.OriginalTree).get
         else shape
       // transforms/optimisations done to the code after quote pickling can change it into one of the below:
@@ -311,8 +313,14 @@ object QuotePatterns:
         shape
       case List(ident: Ident) =>
         // Ident(t), can show up when using '[t.Underlying]
-        ident.tpe.widen match
-          case AppliedType(cons, List(arg)) if cons.typeSymbol == defn.QuotedTypeClass => TypeTree(arg)
+
+        // Returns the Arg from Type[Arg]
+        def getTypeArg(t: Type): Type = t match
+          case AndType(a, b) => getTypeArg(a) & getTypeArg(b)
+          case AppliedType(cons, List(arg)) if cons.typeSymbol == defn.QuotedTypeClass => arg
+          case _ => defn.AnyType
+
+        TypeTree(getTypeArg(ident.tpe.widen))
     fun match
       // <quotes>.asInstanceOf[QuoteMatching].{ExprMatch,TypeMatch}.unapply[<typeBindings>, <resTypes>]
       case TypeApply(Select(Select(TypeApply(Select(quotes, _), _), _), _), typeBindings :: resTypes :: Nil) =>
