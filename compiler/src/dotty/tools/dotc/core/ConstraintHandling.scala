@@ -495,8 +495,31 @@ trait ConstraintHandling {
       }
   }
 
-  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSub(tp1, tp2))
-  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSame(tp1, tp2))
+  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    if frozenConstraint && (caseLambda eq NoType) then isSub(tp1, tp2)
+    else
+      val savedFrozen = frozenConstraint
+      val savedLambda = caseLambda
+      frozenConstraint = true
+      caseLambda = NoType
+      try isSub(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = savedLambda
+      }
+
+  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    if frozenConstraint && (caseLambda eq NoType) then isSame(tp1, tp2)
+    else
+      val savedFrozen = frozenConstraint
+      val savedLambda = caseLambda
+      frozenConstraint = true
+      caseLambda = NoType
+      try isSame(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = savedLambda
+      }
 
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
