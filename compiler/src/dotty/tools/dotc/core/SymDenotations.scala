@@ -2436,8 +2436,22 @@ object SymDenotations {
             case _ =>
               denots1
         case nil => denots
+      def collectFromParentDenots(parentDenots: Array[ClassDenotation]): PreDenotation =
+        var denots = ownDenots
+        var i = parentDenots.length - 1
+        while i >= 0 do
+          val inherited = parentDenots(i).membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private)
+          if inherited.exists then denots = denots.union(inherited.mapInherited(ownDenots, denots, thisType))
+          i -= 1
+        denots
       if name.isConstructorName then ownDenots
-      else collect(ownDenots, info.parents)
+      else info match
+        case cinfo: ClassInfo =>
+          val parentDenots = parentClassDenots(cinfo)
+          if parentDenots != null then collectFromParentDenots(parentDenots)
+          else collect(ownDenots, cinfo.parents)
+        case _ =>
+          collect(ownDenots, info.parents)
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
