@@ -28,6 +28,11 @@ import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
 
 object SymDenotations {
+  private var ownerChainCacheEpoch: Int = 1
+
+  private def bumpOwnerChainCacheEpoch(): Unit =
+    ownerChainCacheEpoch += 1
+    if ownerChainCacheEpoch == 0 then ownerChainCacheEpoch = 1
 
   /** A sym-denotation represents the contents of a definition
    *  during a period.
@@ -58,6 +63,26 @@ object SymDenotations {
     private var myAnnotations: List[Annotation] = Nil
     private var myParamss: List[List[Symbol]] = Nil
 
+    private var myIsStaticRunId: RunId = NoRunId
+    private var myIsStaticEpoch: Int = 0
+    private var myIsStaticCached: Boolean = false
+
+    private var myStaticOwnerRunId: RunId = NoRunId
+    private var myStaticOwnerEpoch: Int = 0
+    private var myStaticOwnerCached: Boolean = false
+
+    private var mySeesOpaquesRunId: RunId = NoRunId
+    private var mySeesOpaquesEpoch: Int = 0
+    private var mySeesOpaquesCached: Boolean = false
+
+    private def invalidateStaticCaches(): Unit =
+      myIsStaticRunId = NoRunId
+      myStaticOwnerRunId = NoRunId
+      mySeesOpaquesRunId = NoRunId
+      bumpOwnerChainCacheEpoch()
+
+    protected def invalidateAbsentSensitiveCaches(): Unit = ()
+
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
 
@@ -75,14 +100,22 @@ object SymDenotations {
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
-    final def flags_=(flags: FlagSet): Unit =
+    final def flags_=(flags: FlagSet): Unit = {
       myFlags = adaptFlags(flags)
+      invalidateStaticCaches()
+    }
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = {
+      myFlags |= flags
+      invalidateStaticCaches()
+    }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = {
+      myFlags &~= flags
+      invalidateStaticCaches()
+    }
 
     /** Set applicable flags in {NoInits, PureInterface}
      *  @param  parentFlags  The flags that match the class or trait's parents
@@ -187,6 +220,7 @@ object SymDenotations {
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
       myInfo = tp
+      invalidateStaticCaches()
     }
 
     /** The name, except
@@ -609,6 +643,8 @@ object SymDenotations {
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+      invalidateStaticCaches()
+      invalidateAbsentSensitiveCaches()
     }
 
     /** Is symbol known to not exist?
@@ -707,8 +743,17 @@ object SymDenotations {
     def containsOpaques(using Context): Boolean = is(Opaque) && isClass
 
     def seesOpaques(using Context): Boolean =
-      containsOpaques ||
-      is(Module, butNot = Package) && owner.seesOpaques
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if mySeesOpaquesRunId == rid && mySeesOpaquesEpoch == epoch then mySeesOpaquesCached
+      else
+        val res =
+          containsOpaques ||
+          is(Module, butNot = Package) && owner.seesOpaques
+        mySeesOpaquesCached = res
+        mySeesOpaquesEpoch = epoch
+        mySeesOpaquesRunId = rid
+        res
 
     def isProvisional(using Context): Boolean =
       flagsUNSAFE.is(Provisional) // do not force the info to check the flag
@@ -751,12 +796,29 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(using Context): Boolean =
-      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
-        myFlags.is(JavaStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myIsStaticRunId == rid && myIsStaticEpoch == epoch then myIsStaticCached
+      else
+        val res =
+          (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
+            myFlags.is(JavaStatic)
+        myIsStaticCached = res
+        myIsStaticEpoch = epoch
+        myIsStaticRunId = rid
+        res
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(using Context): Boolean =
-      myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myStaticOwnerRunId == rid && myStaticOwnerEpoch == epoch then myStaticOwnerCached
+      else
+        val res = myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+        myStaticOwnerCached = res
+        myStaticOwnerEpoch = epoch
+        myStaticOwnerRunId = rid
+        res
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
@@ -1929,6 +1991,18 @@ object SymDenotations {
     private var myDerivesFromBase1: Symbol = NoSymbol
     private var myDerivesFromResult1: Boolean = false
 
+    // 1-slot RunId-keyed cache for isValueClass. Only the fast-path arm
+    // (di.baseDataCache.isValid && !ctx.erasedTypes) writes the slot; the
+    // slow-path arm computes via atPhase(firstPhaseId) and is left
+    // uncached to avoid mixing pre/post-erasure regimes.
+    private var myIsValueClassRunId: RunId = NoRunId
+    private var myIsValueClassResult: Boolean = false
+
+    override protected def invalidateAbsentSensitiveCaches(): Unit =
+      myDerivesFromRunId0 = NoRunId
+      myDerivesFromRunId1 = NoRunId
+      myIsValueClassRunId = NoRunId
+
     private def currentMemberCache(using Context): EqHashMap[Name, PreDenotation] | Null =
       if myMemberCachePeriod == ctx.period then myMemberCache else null
 
@@ -2152,6 +2226,7 @@ object SymDenotations {
       myTypeParams = null // changing the info might change decls, and with it typeParams
       myTypeParamRefs = null
       myTypeParamRefsPeriod = Nowhere
+      invalidateAbsentSensitiveCaches()
       invalidateParentClassDenotsCache()
       invalidateLinearizedBaseScopesCache()
       super.info_=(tp)
@@ -2356,9 +2431,24 @@ object SymDenotations {
     }
 
     final override def derivesFrom(base: Symbol)(using Context): Boolean =
-      !isAbsent()
-      && base.isClass
-      && ((symbol eq base) || baseClassSet.contains(base))
+      val rid = ctx.runId
+      if myDerivesFromRunId0 == rid && (myDerivesFromBase0 eq base) then
+        myDerivesFromResult0
+      else if myDerivesFromRunId1 == rid && (myDerivesFromBase1 eq base) then
+        myDerivesFromResult1
+      else
+        val res =
+          !isAbsent()
+          && base.isClass
+          && ((symbol eq base) || baseClassSet.contains(base))
+        // FIFO size 2: evict slot 0 into slot 1, install new entry into slot 0.
+        myDerivesFromRunId1 = myDerivesFromRunId0
+        myDerivesFromBase1 = myDerivesFromBase0
+        myDerivesFromResult1 = myDerivesFromResult0
+        myDerivesFromRunId0 = rid
+        myDerivesFromBase0 = base
+        myDerivesFromResult0 = res
+        res
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
       derivesFrom(base)
@@ -2389,15 +2479,24 @@ object SymDenotations {
     protected def proceedWithEnter(sym: Symbol, mscope: MutableScope)(using Context): Boolean = true
 
     final override def isValueClass(using Context): Boolean =
-      val di = initial.asClass
-      val anyVal = defn.AnyValClass
-      if di.baseDataCache.isValid && !ctx.erasedTypes then
-        // fast path that does not demand time travel
-        (symbol eq anyVal) || di.baseClassSet.contains(anyVal)
+      val rid = ctx.runId
+      if myIsValueClassRunId == rid then myIsValueClassResult
       else
-        // We call derivesFrom at the initial phase both because AnyVal does not exist
-        // after Erasure and to avoid cyclic references caused by forcing denotations
-        atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
+        val di = initial.asClass
+        val anyVal = defn.AnyValClass
+        if di.baseDataCache.isValid && !ctx.erasedTypes then
+          // fast path that does not demand time travel
+          val res = (symbol eq anyVal) || di.baseClassSet.contains(anyVal)
+          // Only cache the fast-path result: the slow-path arm below computes
+          // via atPhase(firstPhaseId), and caching it under the current runId
+          // would risk returning a pre-erasure result to a post-erasure caller.
+          myIsValueClassResult = res
+          myIsValueClassRunId = rid
+          res
+        else
+          // We call derivesFrom at the initial phase both because AnyVal does not exist
+          // after Erasure and to avoid cyclic references caused by forcing denotations
+          atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
 
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
