@@ -139,6 +139,83 @@ object Inliner:
           idx -= 1
         result
 
+  private[inlines] final class SmallParamDataMap(threshold: Int):
+    private var names: Array[AnyRef] | Null = null
+    private var bindings: Array[AnyRef] | Null = null
+    private var spans: Array[Long] | Null = null
+    private var used = 0
+    private var fallbackBinding: mutable.HashMap[Name, Type] | Null = null
+    private var fallbackSpan: mutable.HashMap[Name, Span] | Null = null
+
+    private def indexOf(name: Name): Int =
+      if used == 0 then return -1
+      val ns = names.nn
+      var idx = 0
+      while idx < used do
+        if ns(idx) == name then return idx
+        idx += 1
+      -1
+
+    private def ensureArrays(): Unit =
+      if names == null then
+        names = new Array[AnyRef](threshold)
+        bindings = new Array[AnyRef](threshold)
+        spans = new Array[Long](threshold)
+
+    private def toFallbackBinding(): mutable.HashMap[Name, Type] =
+      val bmap = new mutable.HashMap[Name, Type]
+      val smap = new mutable.HashMap[Name, Span]
+      val ns = names.nn
+      val bs = bindings.nn
+      val ss = spans.nn
+      var idx = 0
+      while idx < used do
+        val name = ns(idx).asInstanceOf[Name]
+        bmap(name) = bs(idx).asInstanceOf[Type]
+        smap(name) = new Span(ss(idx))
+        idx += 1
+      names = null
+      bindings = null
+      spans = null
+      fallbackBinding = bmap
+      fallbackSpan = smap
+      bmap
+
+    def update(name: Name, binding: Type, span: Span): Unit =
+      val bmap = fallbackBinding
+      if bmap ne null then
+        bmap(name) = binding
+        fallbackSpan.nn(name) = span
+      else
+        val idx = indexOf(name)
+        if idx >= 0 then
+          bindings.nn(idx) = binding
+          spans.nn(idx) = span.coords
+        else if used < threshold then
+          ensureArrays()
+          names.nn(used) = name
+          bindings.nn(used) = binding
+          spans.nn(used) = span.coords
+          used += 1
+        else
+          toFallbackBinding()(name) = binding
+          fallbackSpan.nn(name) = span
+
+    def get(name: Name): Option[Type] =
+      val bmap = fallbackBinding
+      if bmap ne null then bmap.get(name)
+      else
+        val idx = indexOf(name)
+        if idx >= 0 then Some(bindings.nn(idx).asInstanceOf[Type]) else None
+
+    def span(name: Name): Span =
+      val smap = fallbackSpan
+      if smap ne null then smap(name)
+      else
+        val idx = indexOf(name)
+        if idx >= 0 then new Span(spans.nn(idx))
+        else throw new NoSuchElementException(s"key not found: $name")
+
   /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
    *  - synthetic case class apply methods, when the case class constructor is empty, are
    *    elideable but not pure. Elsewhere, accessing the apply method might cause the initialization
@@ -326,13 +403,10 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  (if the argument is a pure expression of singleton type), or to `val` or `def` acting
    *  as a proxy (if the argument is something else).
    */
-  private val paramBinding = new mutable.HashMap[Name, Type]
-
-  /** A map from parameter names of the inlineable method to spans of the actual arguments */
-  private val paramSpan = new mutable.HashMap[Name, Span]
+  private val paramData = new SmallParamDataMap(threshold = 8)
 
   /** A map from (type and value) parameters of the inlineable method
-   *  to their corresponding argument or proxy references, as given by `paramBinding`.
+   *  to their corresponding argument or proxy references, as given by `paramData`.
    */
   private[inlines] val paramProxy = new SmallFallbackMap[Symbol, Type](threshold = 4)
 
@@ -412,7 +486,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     binding
   }
 
-  /** Populate `paramBinding` and `buf` by matching parameters with
+  /** Populate `paramData` and `buf` by matching parameters with
    *  corresponding arguments. `bindingbuf` will be further extended later by
    *  proxies to this-references. Issue an error if some arguments are missing.
    */
@@ -423,8 +497,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     tp match
       case tp: PolyType =>
         tp.paramNames.lazyZip(targs).foreach { (name, arg) =>
-          paramSpan(name) = arg.span
-          paramBinding(name) = arg.tpe.stripTypeVar
+          paramData.update(name, arg.tpe.stripTypeVar, arg.span)
         }
         computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss, formalss, buf)
       case tp: MethodType =>
@@ -433,12 +506,12 @@ class Inliner(val call: tpd.Tree)(using Context):
           false
         else
           tp.paramNames.lazyZip(formalss.head).lazyZip(argss.head).foreach { (name, formal, arg) =>
-            paramSpan(name) = arg.span
-            paramBinding(name) = arg.tpe.dealias match
+            val binding = arg.tpe.dealias match
               case _: SingletonType if isIdempotentPath(arg) =>
                 arg.tpe
               case _ =>
                 paramBindingDef(name, formal, arg, buf).symbol.termRef
+            paramData.update(name, binding, arg.span)
           }
           computeParamBindings(tp.resultType, targs, argss.tail, formalss.tail, buf)
       case _ =>
@@ -709,7 +782,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *      inline method, create a proxy symbol and bind the thistype to refer to the proxy.
    *      The proxy is not yet entered in `bindingsBuf`; that will come later.
    *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
-   *      in `paramNames` under the parameter's name. This roundabout way to bind parameter
+   *      in `paramData` under the parameter's name. This roundabout way to bind parameter
    *      references to proxies is done because  we don't know a priori what the parameter
    *      references of a method are (we only know the method's type, but that contains TypeParamRefs
    *      and MethodParams, not TypeRefs or TermRefs.
@@ -734,7 +807,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           // with the same name as the method's parameters. Note that the nested
           // LambdaTypeTree parameters also have the inlineMethod as owner. C.f. i13460.scala.
         && !containsParamProxy(param, tpe) then
-        paramBinding.get(tpe.name) match
+        paramData.get(tpe.name) match
           case Some(bound) => putParamProxy(param, tpe, bound)
           case _ =>  // can happen for params bound by type-lambda trees.
 
@@ -855,7 +928,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           def argSpan =
             if (tree.name == nme.WILDCARD) tree.span // From type match
             else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
-            else paramSpan(tree.name)
+            else paramData.span(tree.name)
           val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
           getParamProxy(tree) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
