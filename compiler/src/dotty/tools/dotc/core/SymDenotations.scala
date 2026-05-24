@@ -1891,6 +1891,10 @@ object SymDenotations {
     private var myMembersNamedDenots0: PreDenotation | Null = null
     private var myMembersNamedName1: Name | Null = null
     private var myMembersNamedDenots1: PreDenotation | Null = null
+    private var myMembersNamedNoName0: Name | Null = null
+    private var myMembersNamedNoName1: Name | Null = null
+    private var myMembersNamedNoName2: Name | Null = null
+    private var myMembersNamedNoName3: Name | Null = null
     private var myMemberCacheMutationId: Int = 0
 
     /** A cache from types T to baseType(T, C) */
@@ -1930,6 +1934,12 @@ object SymDenotations {
       myMembersNamedPeriod = Nowhere
       myMemberCacheMutationId += 1
 
+    private def clearMembersNamedNegativeSlots(): Unit =
+      myMembersNamedNoName0 = null
+      myMembersNamedNoName1 = null
+      myMembersNamedNoName2 = null
+      myMembersNamedNoName3 = null
+
     private def reserveMembersNamedSlot(period: Period, name: Name): Boolean =
       if myMembersNamedPeriod != period then
         myMembersNamedPeriod = period
@@ -1937,6 +1947,7 @@ object SymDenotations {
         myMembersNamedDenots0 = null
         myMembersNamedName1 = null
         myMembersNamedDenots1 = null
+        clearMembersNamedNegativeSlots()
         true
       else if (myMembersNamedName0 eq name) || (myMembersNamedName1 eq name) then
         true
@@ -1954,11 +1965,35 @@ object SymDenotations {
       val cache = promotedMemberCache
       val name0 = myMembersNamedName0
       val denots0 = myMembersNamedDenots0
-      if name0 != null && denots0 != null then cache(name0) = denots0
+      if name0 != null && denots0 != null then
+        if denots0 eq NoDenotation then rememberMembersNamedNoDenotation(ctx.period, name0)
+        else cache(name0) = denots0
       val name1 = myMembersNamedName1
       val denots1 = myMembersNamedDenots1
-      if name1 != null && denots1 != null && (name1 ne name0) then cache(name1) = denots1
+      if name1 != null && denots1 != null && (name1 ne name0) then
+        if denots1 eq NoDenotation then rememberMembersNamedNoDenotation(ctx.period, name1)
+        else cache(name1) = denots1
       cache
+
+    private def isMembersNamedNoDenotationCached(name: Name): Boolean =
+      (myMembersNamedNoName0 eq name)
+      || (myMembersNamedNoName1 eq name)
+      || (myMembersNamedNoName2 eq name)
+      || (myMembersNamedNoName3 eq name)
+
+    private def rememberMembersNamedNoDenotation(period: Period, name: Name): Unit =
+      if myMembersNamedPeriod != period then
+        myMembersNamedPeriod = period
+        myMembersNamedName0 = null
+        myMembersNamedDenots0 = null
+        myMembersNamedName1 = null
+        myMembersNamedDenots1 = null
+        clearMembersNamedNegativeSlots()
+      if !isMembersNamedNoDenotationCached(name) then
+        myMembersNamedNoName3 = myMembersNamedNoName2
+        myMembersNamedNoName2 = myMembersNamedNoName1
+        myMembersNamedNoName1 = myMembersNamedNoName0
+        myMembersNamedNoName0 = name
 
     private def rememberMembersNamed(period: Period, name: Name, denots: PreDenotation): Unit =
       if myMembersNamedPeriod != period then
@@ -1967,6 +2002,7 @@ object SymDenotations {
         myMembersNamedDenots0 = denots
         myMembersNamedName1 = null
         myMembersNamedDenots1 = null
+        clearMembersNamedNegativeSlots()
       else if myMembersNamedName0 eq name then
         myMembersNamedDenots0 = denots
       else if myMembersNamedName1 eq name then
@@ -2375,7 +2411,13 @@ object SymDenotations {
               val denots1 = computeMembersNamed(name)
               assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
             return cached
+          if isMembersNamedNoDenotationCached(name) then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(!denots1.exists, s"cache inconsistency: cached: $NoDenotation, computed $denots1, name = $name, owner = $this")
+            return NoDenotation
         var cache = currentMemberCache
+        var reservedScalarSlot = false
         if cache != null then
           val cached = cache.lookup(name)
           if cached != null then
@@ -2384,15 +2426,22 @@ object SymDenotations {
               assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
             rememberMembersNamed(period, name, cached)
             return cached
-        else if !reserveMembersNamedSlot(period, name) then
-          cache = promoteMemberCacheFromMembersNamed()
+        else
+          reservedScalarSlot = reserveMembersNamedSlot(period, name)
 
         val mutationId = myMemberCacheMutationId
         val denots = computeMembersNamed(name)
         if myMemberCacheMutationId == mutationId then
-          cache = currentMemberCache
-          if cache != null then cache(name) = denots
-          rememberMembersNamed(period, name, denots)
+          if denots eq NoDenotation then
+            if reservedScalarSlot then rememberMembersNamed(period, name, denots)
+            else rememberMembersNamedNoDenotation(period, name)
+          else
+            cache = currentMemberCache
+            if cache != null then cache(name) = denots
+            else if !reservedScalarSlot then
+              cache = promoteMemberCacheFromMembersNamed()
+              cache(name) = denots
+            rememberMembersNamed(period, name, denots)
         denots
       else computeMembersNamed(name)
 
