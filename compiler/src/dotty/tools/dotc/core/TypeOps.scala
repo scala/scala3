@@ -143,6 +143,23 @@ object TypeOps:
             toPrefix(pre, cls, tp.cls)
           case _: BoundType =>
             tp
+          case tp: AppliedType =>
+            val tycon1 = this(tp.tycon)
+            val args = tp.args
+            val args1 = if args.isEmpty then args else mapArgs(args, tyconTypeParams(tp))
+            if (tycon1 eq tp.tycon) && (args1 eq args) then tp
+            else derivedAppliedType(tp, tycon1, args1)
+          case tp: AliasingBounds =>
+            val saved = variance
+            variance = 0
+            val alias1 = this(tp.alias)
+            variance = saved
+            derivedAlias(tp, alias1)
+          case tp: TypeBounds =>
+            variance = -variance
+            val lo1 = this(tp.lo)
+            variance = -variance
+            derivedTypeBounds(tp, lo1, this(tp.hi))
           case _ =>
             mapOver(tp)
         }
