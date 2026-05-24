@@ -963,11 +963,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _ =>
       Nil
 
-  private def updateEntry(current: This, param: TypeParamRef, newEntry: Type)(using Context): This = {
+  private def updateEntry(current: This, param: TypeParamRef, newEntry: Type, deferDeps: Boolean = false)(using Context): This = {
     if Config.checkNoWildcardsInConstraint then assert(!newEntry.containsWildcardTypes)
     val oldEntry = current.entry(param)
     var current1 = boundsLens.update(this, current, param, newEntry)
-      .adjustDeps(newEntry, oldEntry, param)
+    if !deferDeps then current1 = current1.adjustDeps(newEntry, oldEntry, param)
     newEntry match {
       case TypeBounds(lo, hi) =>
         for p <- dependentParams(lo, isUpper = false) do
@@ -980,8 +980,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   }
 
   def updateEntry(param: TypeParamRef, tp: Type)(using Context): This =
-    materializeDeps()
-    updateEntry(this, param, tp).checkWellFormed()
+    val deferDeps = dirtyDeps.contains(param.binder)
+    if !deferDeps then materializeDeps()
+    updateEntry(this, param, tp, deferDeps).checkWellFormed()
 
   def addLess(param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection)(using Context): This =
     order(this, param1, param2, direction).checkWellFormed()
