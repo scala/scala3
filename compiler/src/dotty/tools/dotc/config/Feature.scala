@@ -212,7 +212,7 @@ object Feature:
       report.error(experimentalUseSite(which) + note, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
-    ccEnabled && (defn.ccExperimental.contains(sym)
+    ccEnabledSomewhere && (defn.ccExperimental.contains(sym)
       || sym.exists && defn.ccExperimental.contains(sym.owner))
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
