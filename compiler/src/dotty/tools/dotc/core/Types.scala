@@ -2568,12 +2568,17 @@ object Types extends TypeUtils {
       util.Stats.record("NamedType.computeDenot")
 
       def finish(d: Denotation) = {
-        if d.exists then
+        if d.exists && (d ne lastDenotation) then
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
           // is undefined after erasure.) We need to be able to do time travel back and
           // forth also in these cases.
+          // Skip setDenot when d eq lastDenotation: lastSymbol is already correct
+          // (set together with lastDenotation), and checkedPeriod is either Nowhere
+          // (provisional prefix) or a value already covering ctx.period via validFor.
+          // Crucially, skipping avoids clearDerivedSelectCache()'s wipe of the hot
+          // 3-field derivedSelect cache on every identity refresh.
           setDenot(d)
         d
       }
