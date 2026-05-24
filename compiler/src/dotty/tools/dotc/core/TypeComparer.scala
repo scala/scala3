@@ -57,6 +57,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     errorNotes = Nil
     undoLog.clear()
     frozenConstraint = false
+    lastBottomTp = null
+    lastBottomConstraint = null
     lastGadt = null
     if Config.checkTypeComparerReset then checkReset()
 
@@ -136,6 +138,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
+
+  // 1-slot cache for `isBottom(tp1)` reuse while the current constraint is
+  // unchanged. `widen` can observe TypeVar instances through the constraint,
+  // so the cache key includes constraint identity as well as type identity.
+  private var lastBottomTp: Type | Null = null
+  private var lastBottomConstraint: Constraint | Null = null
+  private var lastBottomResult: Boolean = false
+
+  private def cachedIsBottomTp1(tp: Type): Boolean =
+    val c = constraint
+    if (tp eq lastBottomTp) && (c eq lastBottomConstraint) then lastBottomResult
+    else
+      val r = isBottom(tp)
+      lastBottomTp = tp
+      lastBottomConstraint = c
+      lastBottomResult = r
+      r
 
   // 1-slot empty-GADT cache: keyed on GadtConstraint *identity*. The common
   // non-`match` path keeps an empty GADT, in which case `bounds(sym)` walks
@@ -421,7 +440,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareWild
       case tp2: LazyRef =>
-        isBottom(tp1)
+        cachedIsBottomTp1(tp1)
         || !tp2.evaluating && recur(tp1, tp2.ref)
       case CapturingType(_, _) =>
         secondTry
@@ -494,7 +513,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if isCaptureVarComparison then
               return CCState.withGlobalCapAsRoot:
                 subCaptures(tp1.captureSet, tp2.captureSet)
-            if (tp1 eq NothingType) || isBottom(tp1) then
+            if (tp1 eq NothingType) || cachedIsBottomTp1(tp1) then
               return true
         }
         thirdTry
@@ -645,7 +664,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   gadtIsLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
                 case _ => false
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
-          && (isBottom(tp1) || GADTusage(tp2.symbol))
+          && (cachedIsBottomTp1(tp1) || GADTusage(tp2.symbol))
 
         if isCaptureVarComparison then
           return CCState.withGlobalCapAsRoot:
@@ -661,7 +680,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if (cls2.isClass)
           if (cls2.typeParams.isEmpty) {
             if (cls2 eq AnyKindClass) return true
-            if (isBottom(tp1)) return true
+            if (cachedIsBottomTp1(tp1)) return true
             if (tp1.isLambdaSub) return false
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
