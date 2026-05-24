@@ -6444,10 +6444,13 @@ object Types extends TypeUtils {
             variance = saved max 0
             val prefix1 = this(tp.prefix)
             variance = saved
-            derivedSelect(tp, prefix1)
+            if (prefix1 eq tp.prefix) then tp else derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
+          val tycon1 = this(tp.tycon)
+          val args1 = mapArgs(tp.args, tyconTypeParams(tp))
+          if (tycon1 eq tp.tycon) && (args1 eq tp.args) then tp
+          else derivedAppliedType(tp, tycon1, args1)
 
         case tp: LambdaType =>
           mapOverLambda(tp)
