@@ -43,11 +43,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
   private var gadtConstraintInferenceMode = false
+  private var isCCOrSetup: Boolean = isCaptureCheckingOrSetup(using initctx)
 
   def init(c: Context): Unit =
     myContext = c
     state = c.typerState
     gadtConstraintInferenceMode = c.mode.is(Mode.GadtConstraintInference)
+    isCCOrSetup = isCaptureCheckingOrSetup(using c)
     monitored = false
     GADTused = false
     opaquesUsed = false
@@ -809,7 +811,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareRefined: Boolean =
           val tp1w = tp1.widen
 
-          if isCaptureCheckingOrSetup then
+          if isCCOrSetup then
 
             // A relaxed version of subtyping for dependent functions where method types
             // are treated as contravariant.
@@ -1119,7 +1121,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
-          && !(isCaptureCheckingOrSetup
+          && !(isCCOrSetup
                && tp1.isSingleton
                && defn.isRefinedFunction(tp1.widen.stripCapturing))
               // If tp1 is a refined function, `base` is the parent function, but that type
@@ -1216,14 +1218,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
           tp1 match
-            case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
+            case tp1: Capability if isCCOrSetup && tp1.isTracked =>
               CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
             case _ =>
               tp1w
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
-        if isCaptureCheckingOrSetup && defn.isRefinedFunction(tp2.stripCapturing) then
+        if isCCOrSetup && defn.isRefinedFunction(tp2.stripCapturing) then
           return false
         isNewSubType(tp1.parent)
       case tp1: RecType =>
@@ -2105,7 +2107,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def isCaptureVarComparison: Boolean =
-      isCaptureCheckingOrSetup
+      isCCOrSetup
       && tp1.derivesFromCapSet
       && tp2.derivesFromCapSet
 
@@ -2118,7 +2120,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // `undoLog` can mutate on the failure path. `addConstraint` is gated by
       // `canConstrain`, which is false here; `logUndoAction` is only called by
       // CaptureSet code. So we can skip the corresponding save/restore writes.
-      val inert = frozenConstraint && (caseLambda eq NoType) && !isCaptureCheckingOrSetup
+      val inert = frozenConstraint && (caseLambda eq NoType) && !isCCOrSetup
       val savedCstr = constraint
       val savedGadt = snapshotGadtIfCanNarrow
       val savedLogSize = if inert then 0 else undoLog.size
@@ -2964,7 +2966,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val paramsMatch =
               if precise then
                 isSameTypeWhenFrozen(formal1, formal2a)
-              else if isCaptureCheckingOrSetup then
+              else if isCCOrSetup then
                 // allow to constrain capture set variables
                 isSubType(formal2a, formal1)
               else
