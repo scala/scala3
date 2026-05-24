@@ -84,16 +84,18 @@ class TreeTypeMap(
     }
   }
 
-  // Cached so the SubstSymMap's IdentityHashMap lookup (built once) is reused
-  // across all mapType calls on this TreeTypeMap, instead of re-walking substFrom
-  // for every NamedType.
-  private lazy val cachedSubstSymMap: Substituters.SubstSymMap =
-    new Substituters.SubstSymMap(substFrom, substTo)
+  // Cached eagerly for non-empty substitutions so mapType's hot substitution
+  // path can reuse the SubstSymMap without paying lazy-val accessor checks.
+  private val cachedSubstSymMap: Substituters.SubstSymMap | Null =
+    if substFrom.nonEmpty then new Substituters.SubstSymMap(substFrom, substTo) else null
 
-  private lazy val substMap: TypeMap = new TypeMap():
-    def apply(tp: Type): Type = tp match
-      case tp: TermRef if tp.symbol.isImport => mapOver(tp)
-      case tp => cachedSubstSymMap(tp)
+  private val substMap: TypeMap | Null =
+    if substFrom.nonEmpty then
+      new TypeMap():
+        def apply(tp: Type): Type = tp match
+          case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+          case tp => cachedSubstSymMap.nn(tp)
+    else null
 
   // Identity-keyed cache for `mapType`: Types are uniqued, so the same Type
   // input always produces the same mapped output for a given TreeTypeMap.
@@ -133,7 +135,7 @@ class TreeTypeMap(
 
   private def computeMapType(tp: Type): Type =
     val tp1 = if typeMap eq IdentityTypeMap then tp else typeMap(tp)
-    val tp2 = if substFrom.isEmpty then tp1 else substMap(tp1)
+    val tp2 = if substFrom.isEmpty then tp1 else substMap.nn(tp1)
     // Fast path: when no ClassSymbol appears in `oldOwners`, `mapOwnerThis`
     // is the identity (the recursion in `mapPrefix` only substitutes for
     // ClassSymbol entries). Skip the TypeMap walk in that case.
