@@ -6337,14 +6337,19 @@ object Types extends TypeUtils {
 
     protected def mapOverLambda(tp: LambdaType) =
       val restpe = tp.resultType
-      val saved = variance
-      // TermLambda (MethodType) result types are never MatchCase, so skip the check.
-      variance =
-        if tp.isInstanceOf[TermLambda] then -variance
-        else if defn.MatchCase.isInstance(restpe) then 0
-        else -variance
-      val ptypes1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[tp.PInfo]]
-      variance = saved
+      val ptypes = tp.paramInfos
+      val ptypes1 =
+        if ptypes.isEmpty then ptypes
+        else
+          val saved = variance
+          // TermLambda (MethodType) result types are never MatchCase, so skip the check.
+          variance =
+            if tp.isInstanceOf[TermLambda] then -variance
+            else if defn.MatchCase.isInstance(restpe) then 0
+            else -variance
+          val res = ptypes.mapConserve(this).asInstanceOf[List[tp.PInfo]]
+          variance = saved
+          res
       derivedLambdaType(tp)(ptypes1, this(restpe))
 
     protected def mapOverTypeVar(tp: TypeVar) =
@@ -6448,8 +6453,9 @@ object Types extends TypeUtils {
 
         case tp: AppliedType =>
           val tycon1 = this(tp.tycon)
-          val args1 = mapArgs(tp.args, tyconTypeParams(tp))
-          if (tycon1 eq tp.tycon) && (args1 eq tp.args) then tp
+          val args = tp.args
+          val args1 = if args.isEmpty then args else mapArgs(args, tyconTypeParams(tp))
+          if (tycon1 eq tp.tycon) && (args1 eq args) then tp
           else derivedAppliedType(tp, tycon1, args1)
 
         case tp: LambdaType =>
