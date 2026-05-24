@@ -6982,7 +6982,15 @@ object Types extends TypeUtils {
      *  more relaxed scheme is used.
      */
     protected def applyToPrefix(x: T, tp: NamedType): T =
-      atVariance(variance max 0)(this(x, tp.prefix))
+      // Inline `atVariance(variance max 0)(this(x, tp.prefix))` to eliminate the
+      // by-name `op$proxy` thunk on this hot foldOver path. Mirrors precedent
+      // 94af7d7d55 for the TypeMap.mapOver NamedType arm. Overridable: subclasses
+      // (e.g. OrderingConstraint.ConstraintAwareTraversal) replace this entirely.
+      val saved = variance
+      variance = saved max 0
+      val res = this(x, tp.prefix)
+      variance = saved
+      res
 
     def foldOver(x: T, tp: Type): T = {
       record(s"foldOver $getClass")
@@ -7001,7 +7009,12 @@ object Types extends TypeUtils {
             val tparam = tparams.head
             val acc = args.head match {
               case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
+              case arg =>
+                val saved = variance
+                variance = saved * tparam.paramVarianceSign
+                val res = this(x, arg)
+                variance = saved
+                res
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
