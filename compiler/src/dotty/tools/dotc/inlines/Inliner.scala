@@ -1360,8 +1360,18 @@ class Inliner(val call: tpd.Tree)(using Context):
         bindingOfSym(binding.symbol) = binding
       }
 
+      var activeRefCounts = refCount.size
+
       def updateRefCount(sym: Symbol, inc: Int) =
-        for (x <- refCount.get(sym)) refCount(sym) = x + inc
+        if activeRefCounts != 0 then
+          refCount.lookup(sym) match
+            case null =>
+            case count =>
+              val x = count.asInstanceOf[Int]
+              if x < 2 then
+                val y = if inc == 1 && x == 0 then 1 else 2
+                refCount(sym) = y
+                if y == 2 then activeRefCounts -= 1
       var termRefContributionCache: java.util.IdentityHashMap[Type, List[Symbol]] | Null = null
       def termRefContributions(tp: Type): List[Symbol] =
         val cache = termRefContributionCache
@@ -1383,22 +1393,23 @@ class Inliner(val call: tpd.Tree)(using Context):
         cache1.put(tp, refs)
         refs
       def updateTermRefCounts(tree: Tree) =
-        if !refCount.isEmpty then
+        if activeRefCounts != 0 then
           var refs = termRefContributions(tree.typeOpt)
           while refs.nonEmpty do
             updateRefCount(refs.head, 2) // can't be inlined, so make sure refCount is at least 2
             refs = refs.tail
       def countRefs(tree: Tree) =
-        tree.foreachSubTree {
-          case t: RefTree =>
-            updateRefCount(t.symbol, 1)
-            updateTermRefCounts(t)
-          case t @ (_: New | _: TypeTree) =>
-            updateTermRefCounts(t)
-          case _ =>
-        }
+        if activeRefCounts != 0 then
+          tree.foreachSubTree {
+            case t: RefTree =>
+              updateRefCount(t.symbol, 1)
+              updateTermRefCounts(t)
+            case t @ (_: New | _: TypeTree) =>
+              updateTermRefCounts(t)
+            case _ =>
+          }
       countRefs(tree)
-      for (binding <- bindings) countRefs(binding)
+      for (binding <- bindings if activeRefCounts != 0) countRefs(binding)
 
       def retain(boundSym: Symbol) = {
         refCount.get(boundSym) match {
