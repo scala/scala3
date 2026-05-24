@@ -341,9 +341,17 @@ class TreeTypeMap(
 
   def apply(annot: Annotation): Annotation = annot.derivedAnnotation(apply(annot.tree))
 
+  private def sameSymbols(xs: List[Symbol], ys: List[Symbol]): Boolean =
+    var xs1 = xs
+    var ys1 = ys
+    while xs1.nonEmpty && ys1.nonEmpty && (xs1.head eq ys1.head) do
+      xs1 = xs1.tail
+      ys1 = ys1.tail
+    xs1.isEmpty && ys1.isEmpty
+
   /** The current tree map composed with a substitution [from -> to] */
   def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =
-    if (from eq to) this
+    if (from eq to) || sameSymbols(from, to) then this
     else {
       // assert that substitution stays idempotent, assuming its parts are
       // TODO: It might be better to cater for the asserted-away conditions, by
@@ -375,7 +383,7 @@ class TreeTypeMap(
    *  and substitutes their declarations.
    */
   def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap =
-    if syms eq mapped then this
+    if (syms eq mapped) || sameSymbols(syms, mapped) then this
     else
       val substMap = withSubstitution(syms, mapped)
       lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
