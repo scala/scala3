@@ -62,6 +62,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     lastBottomTp = null
     lastBottomConstraint = null
     lastGadt = null
+    lastFrozenSubTypeConstraint = null
     atomCacheActive = false
     if Config.checkTypeComparerReset then checkReset()
 
@@ -214,6 +215,47 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       lastTypeVarConstraint = c
       lastTypeVarInstance = res
       res
+
+  // 1-slot cache for the RHS-TypeParamRef frozen retry in `recur`.
+  // The retry runs `tp1 <:< tp2` again with constraints frozen before the
+  // non-frozen path adds `tp2 >: tp1`. It cannot mutate the normal constraint,
+  // and any GADT narrowing is disabled while `frozenConstraint` is true, so
+  // unchanged Constraint/GADT identities make an identical retry redundant.
+  private var lastFrozenSubTypeTp1: Type | Null = null
+  private var lastFrozenSubTypeTp2: Type | Null = null
+  private var lastFrozenSubTypeConstraint: Constraint | Null = null
+  private var lastFrozenSubTypeGadt: GadtConstraint | Null = null
+  private var lastFrozenSubTypeResult: Boolean = false
+  private var lastFrozenSubTypeUsedGadt: Boolean = false
+  private var lastFrozenSubTypeUsedOpaques: Boolean = false
+
+  private def cachedIsSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    val c = constraint
+    val g = ctx.gadt
+    if !isCCOrSetup
+        && !monitored
+        && pendingSubTypes == null
+        && (tp1 eq lastFrozenSubTypeTp1)
+        && (tp2 eq lastFrozenSubTypeTp2)
+        && (c eq lastFrozenSubTypeConstraint)
+        && (g eq lastFrozenSubTypeGadt)
+    then
+      if lastFrozenSubTypeUsedGadt then GADTused = true
+      if lastFrozenSubTypeUsedOpaques then opaquesUsed = true
+      lastFrozenSubTypeResult
+    else
+      val savedGADTused = GADTused
+      val savedOpaquesUsed = opaquesUsed
+      val result = isSubTypeWhenFrozen(tp1, tp2)
+      if !isCCOrSetup && !monitored && pendingSubTypes == null then
+        lastFrozenSubTypeTp1 = tp1
+        lastFrozenSubTypeTp2 = tp2
+        lastFrozenSubTypeConstraint = c
+        lastFrozenSubTypeGadt = g
+        lastFrozenSubTypeResult = result
+        lastFrozenSubTypeUsedGadt = GADTused && !savedGADTused
+        lastFrozenSubTypeUsedOpaques = opaquesUsed && !savedOpaquesUsed
+      result
 
   // Subtype testing `<:<`
 
@@ -785,7 +827,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // with a frozen constraint, which means that we get a chance to do the
           // widening in `fourthTry` before adding to the constraint.
           if (frozenConstraint) recur(tp1, bounds(tp2).lo.boxed)
-          else isSubTypeWhenFrozen(tp1, tp2)
+          else cachedIsSubTypeWhenFrozen(tp1, tp2)
         alwaysTrue
         || tp1.dealias.match
             case tp1a: OrType => recur(tp1a, tp2)
