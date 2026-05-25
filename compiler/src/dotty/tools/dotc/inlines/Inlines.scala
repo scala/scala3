@@ -951,7 +951,6 @@ object Inlines:
 
     private def inlinedSym(sym: Symbol, overriddenDecls: Set[Symbol], withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
       val newSym = if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, overriddenDecls, withoutFlags)
-      ctx.inlineTraitState.registerInlinedSymbol(sym, newSym, ctx.owner.thisType.classSymbol)
       newSym
 
     private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
@@ -974,8 +973,6 @@ object Inlines:
             sym.privateWithin,
             spanCoord(parent.span)
           )
-          // ctx.inlineTraitState.registerInlinedInnerClassSymbol(sym, inlinedSym, childThisType)
-          ctx.inlineTraitState.registerInlinedSymbol(sym, inlinedSym, childThisType.classSymbol)
           inlinedSym.entered
         case _ =>
           report.error(s"Class symbol ${sym.show} does not have class info")
@@ -1151,29 +1148,10 @@ object Inlines:
   end InlineParentTrait
 
   class InlineTraitState:
-    // Map representing all symbols we have inlined from inline traits,
-    // from the symbol in the parent trait, and the symbol of the child class-like
-    // to the inlined symbol in that child class-like.
-    // E.g. inline trait A {def foo#1000}; trait B extends A {def foo#2000 // created by inlining}
-    // The map has (foo#1000, trait B) => foo#2000
-    val inlinedTraitSymbols = mutable.HashMap[(Symbol, Symbol), Symbol]()
-
     // For a class symbol created during inlining of an inline trait,
     // the chain of inlined traits which produced it. We don't actually care about the order. 
+    // Used as a "seen list" for cycle checking. Persists across invocations of InlineParentTrait
     val inlineOrigins = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty)
-
-    // Record that we just inlined oldSym into childClasslike which created
-    // childClassLike.newSym
-    def registerInlinedSymbol(oldSym: Symbol, newSym: Symbol, childClasslike: Symbol) =
-      inlinedTraitSymbols((oldSym, childClasslike)) = newSym
-    
-    // Map (e.g.) B.foo#1000 into foo#2000 
-    def lookupInlinedSymbol(oldSym: Symbol, childClasslike: Symbol) =
-      inlinedTraitSymbols((oldSym, childClasslike))
-    
-    // Check if oldSym has been inlined into childClasslike
-    def inlinedSymbolIsRegistered(oldSym: Symbol, childClasslike: Symbol) =
-      inlinedTraitSymbols.contains((oldSym, childClasslike))
 
     def registerInlineOrigin(newSym: Symbol, owner: Symbol, parentSym: Symbol): Unit =
       inlineOrigins(newSym) = inlineOrigins(owner) + parentSym

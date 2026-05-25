@@ -743,9 +743,26 @@ object Erasure {
           adaptIfSuper(qual) match
             case qual1: Super =>
               select(qual1, sym)
-            case qual1 if ctx.inlineTraitState.inlinedSymbolIsRegistered(sym, qual1.tpe.widenDealias.classSymbol) =>
-              val newSym = ctx.inlineTraitState.lookupInlinedSymbol(sym, qual1.tpe.widenDealias.classSymbol)
-              untpd.cpy.Select(tree)(qual, sym.name).withType(qual1.tpe.select(newSym)) // TODO: Maybe we could just do this earlier also; maybe we don't need this cache
+            case qual1 if owner.isInlineTrait && 
+                        (qual1.tpe.widenDealias.classSymbol ne sym.owner) &&
+                        qual1.tpe.widenDealias.classSymbol.derivesFrom(sym.owner) =>
+              
+              // If A is an inline trait and A.foo was inlined into B, references to b.foo (val b = B()) will still
+              // point to A.foo until now. We want them to point to B.foo so we get the benefit of specialization. 
+              // We fix that here rather than in a separate phase because
+              // it needs to happen coordinated with erasure of Specialized traits, so that:
+              //    a) we see the erased A$sp$Int traits and can point at their members
+              //    b) we make the replacement before boxing in case A.foo is typed with T and B.foo specializes this to e.g. Int
+              //       Otherwise we will end up with Int.unbox(A.foo) instead of directly B.foo  
+              val specializedInterfaceType = qual1.tpe.widenDealias              
+              val newSym = inContext(preErasureCtx) {
+                val desiredType = tree.asInstanceOf[Select].tpe.widen.dealias
+                val name = tree.name
+                specializedInterfaceType.classSymbol.info.findMember(name, specializedInterfaceType)
+                                        .matchingDenotation(specializedInterfaceType, desiredType, name).symbol
+              }
+
+              qual1.select(newSym)
             case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
                 || !qual1.tpe.derivesFrom(sym.owner) =>
               val castTarget = // Avoid inaccessible cast targets, see i8661
