@@ -49,7 +49,10 @@ class SpecializeInlineTraits extends MacroTransform, SymTransformer {
                  && p.classSymbol.primaryConstructor.paramSymss.exists(paramList => paramList.nonEmpty && paramList.head.isTerm)
           )
           problemParents.foreach( p =>
-            report.error(s"Only parameterless inline traits may be extended by ordinary traits. Make ${tree.symbol} inline or remove inline ${p.typeSymbol}'s parameter list.", tree.srcPos)
+            val message = if p.typeSymbol.isSpecializedTrait then "Specialized traits may not be extended by ordinary traits. They may only be extended by classes, objects or inline/specialized traits."
+                                                             else s"Only parameterless inline traits may be extended by ordinary traits. Make ${tree.symbol} inline or remove inline ${p.typeSymbol}'s parameter list."
+              
+            report.error(message, tree.srcPos)
           )
         val tree1 =
           if tree.symbol.isInlineTrait then 
