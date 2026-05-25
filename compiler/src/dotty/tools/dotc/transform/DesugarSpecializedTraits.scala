@@ -69,11 +69,12 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         }
     )
 
-    // Create new trait
+    // Order is depended on in Erasure::typedClassDef and TypeErasure:eraseParent
     val parents = defn.ObjectType
                   :: AppliedTypeTree(Ident(specialization.traitSymbol.typeRef), specialization.specialization).tpe // original trait, specialized to Foo[Int]
                   :: inheritedParents                                                                              // parents of the original trait in the form Foo[Int] (later specialized to Foo$sp$Int)
 
+    // Create new trait
     val traitSymbol = newNormalizedClassSymbol(
       specialization.traitSymbol.owner.enclosingPackageClass, // For specialized traits defined inside objects/classes etc, pre-Flatten the $sp$ and $impl$ def trees (i.e.
                                                               // make them live in the enclosing package with the flattened name). We do this because it's easier than 
@@ -132,7 +133,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
     // TODO: What happens if the creator of the specialized inline trait provides a self type?
     traitOrClassSymbol.info = ClassInfo(traitOrClassSymbol.owner.thisType, traitOrClassSymbol, traitOrClassSymbol.info.parents.map(freshTypeVarMap(_)), traitOrClassSymbol.info.decls) 
-
+  
+  // Order is depended on in Erasure::typedClassDef and TypeErasure:eraseParent
   private def generateImplementationClassParents(specialization: Specialization, interfaceSymbol: ClassSymbol)(using Context) = 
     val objectParent = defn.ObjectType
     val traitSpParent = interfaceSymbol.typeRef.appliedTo(specialization.unspecializedTypeParams) // Set using old unspecializedTypeParams and replace after.
@@ -364,16 +366,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         /* We need to do the parent removal after inlining into the $impl$ classes otherwise we break
             overriding/interface implementation rules during the inlining. The $impl$ inlining
             can also happen in the recursive calls, and so we need to do this right at the end (after the recursive calls): */
-        val generatedTraitStats3 = 
-          generatedTraitStats2.tapEach: stat => 
-            if stat.symbol.isSpecializedTraitInterface then // We could have $impl$ classes from recursive calls as well.
-              stat.updateParents { parents => (parents: @unchecked) match
-                case obj :: Specialization(originalSpec) :: parents if specializations4.getInterfaceSymbol(originalSpec).get == stat.symbol.asClass => 
-                  obj :: parents
-                case obj :: parents => obj :: parents // We already removed the relevant parent.
-            }
-          .map(stat => if stat.symbol.isSpecializedTraitInterface then refreshClassDef(stat) else stat)
-        (generatedTraitStats3, generatedClassStats2, specializations4)
+        (generatedTraitStats2, generatedClassStats2, specializations4)
 
     val statsFinal = generatedTraitStatsFinal ++
                      generatedClassStatsFinal ++ 

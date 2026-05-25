@@ -1039,9 +1039,37 @@ object Erasure {
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
       // drop Foo[Int] leading to duplicate Foo$sp$Int
       val TypeDef(_, implInit: Template) = cdef: @unchecked
-      val cdef1 = cpy.TypeDef(cdef.asInstanceOf[TypeDef])(rhs = cpy.Template(implInit.asInstanceOf[Template])(parents = implInit.asInstanceOf[Template].parents.filterNot(
-        p => Specialization.unapply(p.tpe).exists(s => ctx.specializedTraitState.specializedTraitCache.get.getInterfaceSymbol(s).nonEmpty)
-      )))
+
+      // Match corresponding class info erasure in TypeErasure::apply ClassInfo case
+      val cdef1 = 
+        val oldParents = implInit.asInstanceOf[Template].parents
+        val superCtxNoSpec = disallowSpecializedCtx(using ctx.superCallContext)
+        val newParents = 
+          if cls.isSpecializedTraitInterface then // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
+            val (obj :: originalTrait :: inheritedParents) = oldParents : @unchecked
+            obj :: typedType(originalTrait)(using superCtxNoSpec) :: inheritedParents
+          else if cls.isSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
+            val (objectParent :: traitSpParent :: originalTraitSpecializedParent :: Nil) = oldParents : @unchecked
+            val newParent = originalTraitSpecializedParent match {
+              case _: untpd.Apply => typedExpr(originalTraitSpecializedParent)(using superCtxNoSpec)
+              case _ => typedType(originalTraitSpecializedParent)(using superCtxNoSpec)
+            }
+            objectParent :: traitSpParent :: newParent :: Nil
+          else 
+             inContext(preErasureCtx) {
+                val extraSpTraits = oldParents.filter(p => p.symbol.isPrimaryConstructor && p.symbol.owner.isSpecializedTrait).map(p => p.tpe.resultType)
+  
+                // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
+                // class Bar extends Object, Foo(10), Bar(10), Foo$sp$Int, Bar$sp$Int
+                oldParents.map { tp => 
+                  if tp.symbol.isPrimaryConstructor && tp.symbol.owner.isSpecializedTrait then 
+                    typedExpr(tp)(using superCtxNoSpec)
+                  else
+                    tp
+                } ::: extraSpTraits.map(sym => TypeTree(sym))
+            }
+
+        cpy.TypeDef(cdef.asInstanceOf[TypeDef])(rhs = cpy.Template(implInit.asInstanceOf[Template])(parents = newParents))
 
       val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef1, cls): @unchecked
       // In the case where a trait extends a class, we need to strip any non trait class from the signature
