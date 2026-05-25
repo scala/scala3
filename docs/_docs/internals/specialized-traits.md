@@ -109,7 +109,9 @@ val myBar = Bar()
 
 [0] Note that of course an anonymous class instance such as `new Foo[Int] {}` where `Foo` extends some other trait `Bar` desugars in the compiler to `new Bar[Int] with Foo[Int] {}`, which means we can't distinguish these two cases. Therefore we begrudgingly allow 
 `new Bar[Int] with Foo[Int] {}` although there is really no reason to use this in source code because it's exactly the same as writing `new Foo[Int] {}`. We disallow `new Foo[Int] with Bar[Int] {}` however.
- 
+
+Note: This demonstrates that 'class extends specialized trait' and 'object extends specialized trait' are allowed. However, 'trait extends specialized trait' is not. This is due to the restriction on extending inline traits with parameters by ordinary traits, as discussed in `inline-traits.md`. 'inline trait extends specialized trait' is allowed as not subject to this restriction.
+
 <!-- TODO: The restrictions ensure that each time we create an instance of a specialized trait we know statically the classes of all `Specialized` type arguments Except if T \in Ts is defined in the enclosing scope e.g. as a class type parameter. Notion of material specialisation -->
 <!-- TODO: Do we also allow extensions? -->
 <!-- TODO: Do we definitely need all of these restrictions? -->
@@ -200,7 +202,7 @@ inline trait Vec$sp$Int extends Vec[Int]:
   def scalarProduct(other: Vec$sp$Int): Int
 ```
 
-The unspecialized parent types (`Vec[Int]`) are then removed after inlining. This is necessary to avoid interface conflicts with the specialized
+<!-- The unspecialized parent types (`Vec[Int]`) are then removed after inlining. This is necessary to avoid interface conflicts with the specialized
 members. In particular, in the above example `def scalarProduct(other: Vec$sp$Int)` does not implement `def scalarProduct(other: Vec[T])` as defined
 in `Vec[T]`. This is not a problem because all instances of `Vec[Int]` are replaced by `Vec$sp$Int` in the whole program, and `Vec[?]` is banned. Therefore,
 there are no situations where a `Vec$sp$Int` may be passed as an argument to a parameter of type `Vec[Int]`. This gives the final result:
@@ -225,7 +227,7 @@ class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec$sp$Int:
     for i <- 0 until length do
       result = Vec$$num.plus(result, Vec$$num.times(this(i), other(i)))
     result
-```
+``` -->
 
 ## Specialized Traits in the Compiler
 We introduce a new phase `desugarSpecializedTraits` responsible for detecting specializations, generating the necessary `$sp$` and `$impl$` 
@@ -275,15 +277,16 @@ this problem arises not only with the `$sp$` traits, but also the `$impl$` class
 To resolve this problem without alternating between and looping the `specializeInlineTraits` and `desugarSpecializedTraits` phases in an inconvenient way, we opt to make:
 - `specializeInlineTraits` responsible for inlining inline traits written directly in user code. If a specialized trait creates an inline trait inlining opportunity which is not specialized, this is dealt with by specializeInlineTraits. Further if a user writes `class Bar extends Foo[Int]` where Foo is declared Specialized, `specializeInlineTraits` will do the inlining. 
 - `desugarSpecializedTraits` responsible for finding specializations and generating the required `$sp$` traits and `$impl$` classes, inlining the parent specialized traits into these classes, and repeating until no more inlining can be performed and no more `$sp$` traits and `$impl$` classes are needed. This phase also performs replacement of e.g. `Vec[Int]` with `Vec$sp$Int` and `new Vec[Int]` with `new Vec$impl$Int`.
-- `pruneInlineTraits` and `replaceInlinedTraitSymbols` responsible respectively for converting inline traits to pure interfaces, and for replacing members accessed on inline receivers with the corresponding inlined symbols. This is *whether the inline traits in question come from inline traits in source code or specialized trait expansion, in both cases.* (see the document on inline traits for a more detailed description of these phases). 
+- `pruneInlineTraits` responsible for converting inline traits to pure interfaces
+- We also need to replace members accessed on inline receivers with the corresponding inlined symbols, and this is done in erasure. This is *whether the inline traits in question come from inline traits in source code or specialized trait expansion, in both cases.* (see the document on inline traits for a more detailed description of this operation and `pruneInlineTraits`). 
 
 In particular this decision means that we run `specializeInlineTraits` before `desugarSpecializedTraits`, as otherwise we may duplicate the inlined bodies of the `$sp$` traits and `$impl$` classes, since we have already inlined them in `desugarSpecializedTraits`.
 
-## Caching of Specialized Traits and Classes
+<!-- ## Caching of Specialized Traits and Classes
 
 <!-- TODO: At the moment we just support one file - give more details about where we store these later-->
 To avoid redundant repeated code generation of the same traits and classes, specialized instance traits and classes are cached. The compiler will put their tasty and classfile artifacts in a special directory
-on the class path. Each artifact will contain in an annotation a hash of the  contents of the trait from which the instance was derived. Before creating a new specialized instance, the compiler will consult this directory to see whether an instance with the given name exists and whether its hash matches. In that case, the artifacts can be re-used.
+on the class path. Each artifact will contain in an annotation a hash of the  contents of the trait from which the instance was derived. Before creating a new specialized instance, the compiler will consult this directory to see whether an instance with the given name exists and whether its hash matches. In that case, the artifacts can be re-used. -->
 
 ## The `Specialized` Type Class
 <!-- TODO: At the moment we generate this for everything including type variables; also it is not erased at runtime -->
@@ -316,39 +319,41 @@ inline trait Seq[T: Specialized](elems: Array[T]) extends Iterable[T]:
   def iterator: Iterator[T] = new ArrayIterator[T](elems) {}
 ```
 
-This generates the following instance traits (after inlining, conversion to pure interfaces and parent removal):
+This generates the following instance traits (after inlining, conversion to pure interfaces and erasure): <!--and parent removal -->
 
+// TODO: Check that this matches what is actually generated
 ```scala
-inline trait Iterator$sp$Int:
+inline trait Iterator$sp$Int extends Iterator:
   def hasNext: Boolean
   def next(): Int
 
-inline trait ArrayIterator$sp$Int extends Iterator$sp$Int
+inline trait ArrayIterator$sp$Int extends ArrayIterator, Iterator$sp$Int
 
-inline trait Iterable$sp$Int:
+inline trait Iterable$sp$Int extends Iterable:
   def iterator: Iterator$sp$Int
   def forall(f: Int => Unit): Unit
 
-inline trait Seq$sp$Int extends Iterable$sp$Int:
+inline trait Seq$sp$Int extends Seq, Iterable$sp$Int:
   def length: Int
   def apply(i: Int): Int
 ```
 Note that these traits repeat the parent types of their corresponding inline traits (but with specialization added). For instance, `ArrayIterator$sp$Int` extends the specialized version of its parent `Iterator$sp$Int`, so the specialized trait may be used in contexts expecting:
 
 - The specialized trait `ArrayIterator$sp$Int` itself (i.e. `ArrayIterator[Int]` in source code)
+- A generic `ArrayIterator` (i.e. `ArrayIterator[?]` in source code)
 - Specialized traits higher in the specialized hierarchy for example `Iterator$sp$Int`.
 
 The specialized implementation classes for `ArrayIterator` and `Seq` are as follows (after inlining; iff `new Seq[Int] {}` and `ArrayIterator[Int] {}` are to be found in the program):
 
 ```scala
-class ArrayIterator$impl$Int(elems: Array[Int]) extends ArrayIterator$sp$Int:
+class ArrayIterator$impl$Int(elems: Array[Int]) extends ArrayIterator$sp$Int, ArrayIterator(elems):
   private var current = 0
   override def hasNext: Boolean =
     current < elems.length
   override def next(): Int =
     try elems(current) finally current += 1
 
-class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int:
+class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int, Seq(elems):
   override def iterator: Iterator$sp$Int = new ArrayIterator$impl$Int(elems)
 
   override def forall(f: Int => Unit): Unit =
@@ -358,17 +363,17 @@ class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int:
   override def apply(i: Int): Int = elems(i)
 ```
 
-## Summary of restrictions on specialized traits
+## Summary of implementation restrictions on specialized traits
+These could be lifted with additional work.
 
-| Behaviour                | Is currently supported in... |
-|--------------------------|-----------------------------------------------|
-| Inheriting from specialized traits | In inline traits or anonymous class instances (for instance creation) only |
-| Taking `Specialized` parameters| Only by inline traits |
-| Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits.  |
-
+| Behaviour                | Limitation | Chance of fixing / limited by |
+|--------------------------|-----------------------------------------------|---|
+| Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits.  | Fixable by adding bridge methods. We ban them because with if `class A extends I[Int]` implements method `def foo(x: Foo[Int])` which belongs to interface `I[T]` as `def foo(x: Foo[T])` then specializing A's `foo` means it no longer implements the interface correctly. Note that this can only occur when I is itself a specialized trait (otherwise the type signature `Foo[T]` is not valid in `I`) so in practice this reduces to `inline trait I$sp$Int extends I[Int]`. This means we can solve the problem by having `I$sp$Int` not extend `I[Int]` in the final generated code. This imposes that `I[?]` be banned as `I[Int]` in source (`I$sp$Int` after erasure) does not extend `I[?]` / `I` . Adding bridge methods seemed quite challenging because there are a large number of cases to deal with. |
+| Defining specialized traits inside traits/classes/objects | May define specialized traits inside `object`s. May not define them inside `class`es or `trait`s. | Limited by the way we flatten the owners of generated `$impl$` classes and `$sp$` traits. We really need to build the `Foo$impl$` class directly next to Foo. For a single CU this would be possible if we walked the entire tree and found where these belong; for multiple CUs it is more complicated as the tree may not exist in the current CU. The case of path dependent specialized traits was deemed niche enough to not be high priority. |
+<!-- | Inheriting from specialized traits | In inline traits or anonymous class instances (for instance creation) only | -->
 
 ## Transportation of Specialized through generic code
-It may surprise you to note that the following is valid scala. The `Numeric` constraint on `T` is only checked when
+It may surprise you to note that the following is valid. The `Numeric` constraint on `T` is only checked when
 a concrete type is provided for `S` (and by extension `T`) when instantiating `T2`. 
 ```scala
 inline trait T1[T: Numeric]
@@ -655,3 +660,4 @@ This proposal
 <!-- # the following things are banned... -->
 <!-- # Can S: Not Spec appear as [T: Spec]? How exactly we are going to transport through generic code - need to think about it -->
 <!-- TODO: Add rules about "material specialization" / "partial specializations" -->
+Maybe try rewriting as a spec of what we actually do rather than what we wanted to do and see if we get different results!
