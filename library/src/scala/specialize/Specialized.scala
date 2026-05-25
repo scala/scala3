@@ -1,4 +1,4 @@
-package scala
+package scala.specialize
 import language.experimental.erasedDefinitions
 import scala.annotation.nowarn
 

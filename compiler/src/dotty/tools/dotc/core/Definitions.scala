@@ -236,6 +236,7 @@ class Definitions {
   @tu lazy val ScalaCollectionImmutablePackageClass: ClassSymbol = requiredPackage("scala.collection.immutable").moduleClass.asClass
   @tu lazy val ScalaMathPackageClass: ClassSymbol = requiredPackage("scala.math").moduleClass.asClass
   @tu lazy val ScalaUtilPackageClass: ClassSymbol = requiredPackage("scala.util").moduleClass.asClass
+  @tu lazy val ScalaSpecializePackageVal: TermSymbol = requiredPackage("scala.specialize")
 
   // fundamental modules
   @tu lazy val SysPackage : Symbol = requiredModule("scala.sys.package")
@@ -793,7 +794,7 @@ class Definitions {
   @tu lazy val StringAddClass    : ClassSymbol = requiredClass("scala.runtime.StringAdd")
     @tu lazy val StringAdd_+ : Symbol = StringAddClass.requiredMethod(nme.raw.PLUS)
 
-  @tu lazy val SpecializedClass : ClassSymbol = requiredClass("scala.Specialized")
+  @tu lazy val SpecializedClass : ClassSymbol = requiredClass("scala.specialize.Specialized")
   @tu lazy val SpecializedModule: Symbol = SpecializedClass.companionModule
     @tu lazy val SpecializedModule_apply: Symbol = SpecializedModule.requiredMethod(nme.apply)
 
@@ -1738,6 +1739,9 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef, isPredef=true)
 
+  private val SpecializeImportFns: RootRef = // TODO: Find a solution to importing in scala package without conflict with original specialized.
+    RootRef(() => ScalaSpecializePackageVal.termRef)
+
   @tu private lazy val YimportsImportFns: List[RootRef] = ctx.settings.Yimports.value.map { name =>
     val denot =
       getModuleIfDefined(name).suchThat(_.is(Module)) `orElse`
@@ -1753,8 +1757,8 @@ class Definitions {
   @tu private lazy val ScalaRootImportFns: List[RootRef] =
     if !ctx.settings.Yimports.isDefault then YimportsImportFns
     else if ctx.settings.YnoImports.value then Nil
-    else if ctx.settings.YnoPredef.value then ScalaImportFns
-    else ScalaImportFns :+ PredefImportFns
+    else if ctx.settings.YnoPredef.value then ScalaImportFns :+ SpecializeImportFns
+    else ScalaImportFns :+ SpecializeImportFns :+ PredefImportFns
 
   @tu private lazy val JavaRootImportTypes: List[TermRef] = JavaRootImportFns.map(_.refFn())
   @tu private lazy val ScalaRootImportTypes: List[TermRef] = ScalaRootImportFns.map(_.refFn())
