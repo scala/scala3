@@ -22,8 +22,6 @@ import dotty.tools.sjs.ir.OriginalName
 import dotty.tools.sjs.ir.OriginalName.NoOriginalName
 import dotty.tools.sjs.ir.UTF8String
 
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
-
 import JSDefinitions.jsdefn
 
 /** Encoding of symbol names for JavaScript

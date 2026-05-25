@@ -1269,7 +1269,11 @@ class ClassfileParser(
             // return a new stub symbol for the inner class. This is tested by
             // `surviveMissingInnerClassAnnot` in AnnotationsTests.scala
         case _ =>
-          atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
+          // This code gets called as part of initializing Definitions, when phases haven't been initialized yet
+          if typerPhase.period == Periods.Nowhere then
+            getMember(owner, innerName.toTypeName)
+          else
+            atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},

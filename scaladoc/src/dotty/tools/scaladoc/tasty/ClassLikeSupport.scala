@@ -73,19 +73,24 @@ trait ClassLikeSupport:
     else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum(typeArgs, args)
     else Kind.Class(typeArgs, args)
 
-  private def usesClausesFor(classDef: ClassDef): List[UsesClause] =
-    def clauseFrom(symbol: Symbol, keyword: String): Option[UsesClause] =
-      for
-        annot <- symbol.annotations.find(_.tpe.typeSymbol.isRetains)
-        refs <- retainedCaptureRefs(annot)
-        if refs.nonEmpty
-      yield UsesClause(keyword, emitCaptureRefsSignature(using qctx)(refs)(using classDef, classDef.symbol))
+  private def usesClauseFor(classDef: ClassDef): Option[UsesClause] =
+    def refsFrom(symbol: Symbol, initially: Boolean): List[(qctx.reflect.TypeRepr, Boolean)] =
+      val pairs =
+        for
+          annot <- symbol.annotations.find(_.tpe.typeSymbol.isRetains)
+          refs <- retainedCaptureRefs(annot)
+          if refs.nonEmpty
+        yield refs.map(_ -> initially)
+      pairs.getOrElse(Nil)
 
-    if !ccEnabled then Nil
+    if !ccEnabled then None
     else
-      val uses = clauseFrom(classDef.symbol, "uses")
-      val usesInit = clauseFrom(classDef.constructor.symbol, "uses_init")
-      List(uses, usesInit).flatten
+      val constrUses = refsFrom(classDef.constructor.symbol, initially = true)
+      val classUses = refsFrom(classDef.symbol, initially = false)
+      val allRefs = constrUses ++ classUses
+      Option.unless(allRefs.isEmpty)(
+        UsesClause(emitUseRefsSignature(using qctx)(allRefs)(using classDef, classDef.symbol))
+      )
 
   def mkClass(classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,
@@ -151,7 +156,7 @@ trait ClassLikeSupport:
     ).copy(
       directParents = classDef.getParentsAsLinkToTypes,
       parents = supertypes,
-      usesClauses = usesClausesFor(classDef)
+      usesClause = usesClauseFor(classDef)
     )
 
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
@@ -569,7 +574,7 @@ trait ClassLikeSupport:
     visibility = symbol.getVisibility(),
     modifiers = modifiers,
     annotations = symbol.getAnnotations(),
-    usesClauses = Nil,
+    usesClause = None,
     signature = signature,
     sources = symbol.source,
     origin = origin,

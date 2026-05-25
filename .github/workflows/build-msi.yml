@@ -12,6 +12,10 @@ name: Build the MSI Package
 
 on:
   workflow_call:
+    outputs:
+      version:
+        description: 'The developed Scala version (major.minor.patch) extracted from project/Build.scala'
+        value: ${{ jobs.build.outputs.version }}
 
 env:
   # Release only happends when triggering CI by pushing tag
@@ -20,6 +24,8 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
@@ -27,6 +33,13 @@ jobs:
           distribution: 'adopt'
           java-version: 17
           cache: 'sbt'
+      - name: Extract Scala version
+        id: extract-version
+        shell: bash
+        run: |
+          version=$(sed -n 's/.*val developedVersion = "\(.*\)".*/\1/p' project/Build.scala)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Extracted Scala version: $version"
       - name: Build MSI package
         run: sbt 'dist-win-x86_64/Windows/packageBin'
       - name: Upload MSI Artifact

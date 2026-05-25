@@ -12,8 +12,6 @@ import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.ScalaSettings
 
 class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
-
-// (val classpath: String, val bootclasspath: String, val tastyFiles: Seq[File], isScalajs: Boolean, useJavaCp: Boolean):
   private val sep = System.getProperty("path.separator")
 
   private val fullClasspath = List(
@@ -32,24 +30,22 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
 
   private val compiler: SnippetCompiler = SnippetCompiler(snippetCompilerSettings = snippetCompilerSettings)
 
-  // These constants were found empirically to make snippet compiler
-  // report errors in the same position as main compiler.
-  private val constantLineOffset = 2
-  private val constantColumnOffset = 4
-
   def checkSnippet(
-    snippet: String,
+    snippet: SnippetSource,
     data: Option[SnippetCompilerData],
     arg: SnippetCompilerArg,
-    lineOffset: SnippetChecker.LineOffset,
-    sourceFile: SourceFile
+    sourceFile: SourceFile,
+    sourceColumnOffset: Int
   ): Option[SnippetCompilationResult] = {
     if arg.flag != SCFlags.NoCompile then
+      val baseLineOffset = data.fold(0)(_.position.line)
+      val baseColumnOffset = data.fold(0)(_.position.column) + sourceColumnOffset
       val wrapped = WrappedSnippet(
-        snippet,
+        snippet.snippet,
         data.map(_.packageName),
-        lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
-        data.fold(0)(_.position.column) + constantColumnOffset
+        snippet.outerLineOffset + baseLineOffset,
+        baseColumnOffset,
+        snippet.sourceLines.map(_.map(_ + baseLineOffset))
       )
       Some(compiler.compile(wrapped, arg, sourceFile))
     else
@@ -58,5 +54,9 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
   }
 
 object SnippetChecker:
-  type LineOffset = Int
-  type SnippetCheckingFunc = (String, LineOffset, Option[SnippetCompilerArg]) => Option[SnippetCompilationResult]
+  // The first line of snippet content is two lines below the opening code fence.
+  val codeFenceContentLineOffset = 2
+  // Doc comments add ` * ` before snippet content, which shifts columns by four.
+  val docCommentColumnOffset = 4
+
+  type SnippetCheckingFunc = (SnippetSource, Option[SnippetCompilerArg]) => Option[SnippetCompilationResult]

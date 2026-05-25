@@ -156,6 +156,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   case class CapturesAndResult(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
+  /** A use reference for an object or class or constructor */
+  case class UseRef(ref: Tree, initially: Boolean)(implicit @constructorOnly src: SourceFile) extends Tree
+
   /** A type tree appearing somewhere in the untyped DefDef of a lambda, it will be typed using `tpFun`.
    *
    *  @param isResult  Is this the result type of the lambda? This is handled specially in `Namer#valOrDefDefSig`.
@@ -466,7 +469,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def New(tpt: Tree, argss: List[List[Tree]])(using Context): Tree =
     ensureApplied(argss.foldLeft(makeNew(tpt))(Apply(_, _)))
 
-  /** A new expression with constrictor and possibly type arguments. See
+  /** A new expression with constructor and possibly type arguments. See
    *  `New(tpt, argss)` for details.
    */
   def makeNew(tpt: Tree)(using Context): Tree = {
@@ -536,10 +539,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.any)
 
-  def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
-    var annot: Tree = scalaAnnotationDot(annotName)
+  def makeRetainsAnnot(refs: List[Tree], annotName: TypeName)(using Context): Tree =
+    val annotConstr: Tree = scalaAnnotationDot(annotName)
     if annotName == tpnme.retainsCap then
-      annot = New(annot, Nil)
+      New(annotConstr, Nil)
     else
       val trefs =
         if refs.isEmpty then
@@ -551,9 +554,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
           // and references to them will be replaced with the corresponding
           // type references during typing.
           refs.map(SingletonTypeTree).reduce[Tree]((a, b) => makeOrType(a, b))
-      annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
+      val annot = New(AppliedTypeTree(annotConstr, trefs :: Nil), Nil)
       annot.putAttachment(RetainsAnnot, ())
-    Annotated(parent, annot)
+      annot
+
+  def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
+    Annotated(parent, makeRetainsAnnot(refs, annotName))
 
   def getRetainsAnnot(tree: Tree): Tree = tree match
     case Annotated(parent, annot) if annot.hasAttachment(RetainsAnnot) => annot
@@ -745,6 +751,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: CapturesAndResult if (refs eq tree.refs) && (parent eq tree.parent) => tree
       case _ => finalize(tree, untpd.CapturesAndResult(refs, parent))
 
+    def UseRef(tree: Tree)(ref: Tree, initially: Boolean)(using Context): Tree = tree match
+      case tree: UseRef if (ref eq tree.ref) && (initially == tree.initially) => tree
+      case _ => finalize(tree, untpd.UseRef(ref, initially))
+
     def TypedSplice(tree: Tree)(splice: tpd.Tree)(using Context): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice)(using ctx))
@@ -808,6 +818,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.MacroTree(tree)(transform(expr))
       case CapturesAndResult(refs, parent) =>
         cpy.CapturesAndResult(tree)(transform(refs), transform(parent))
+      case UseRef(ref, initially) =>
+        cpy.UseRef(tree)(transform(ref), initially)
       case _ =>
         super.transformMoreCases(tree)
     }
@@ -867,6 +879,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, expr)
       case CapturesAndResult(refs, parent) =>
         this(this(x, refs), parent)
+      case UseRef(ref, _) =>
+        this(x, ref)
       case _ =>
         super.foldMoreCases(x, tree)
     }

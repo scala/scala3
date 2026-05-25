@@ -264,9 +264,12 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *       x >  0       if this.size >  otherSize
    *  ```
    *
-   *  The method as implemented here does not call `size` directly; its running time
-   *  is `O(size min otherSize)` instead of `O(size)`. The method should be overridden
-   *  if computing `size` is cheap and `knownSize` returns `-1`.
+   *  The default implementation does not call `size`, which may be arbitrarily expensive.
+   *  It will use `knownSize` if nonnegative.
+   *  Otherwise, it will iterate to compute an element count,
+   *  with complexity `O(size min otherSize)`.
+   *  This method should be overridden if computing `size` is cheap and `knownSize` returns `-1`.
+   *  In that case, the custom implementation should just compare `size` and `otherSize` directly.
    *
    *  @see [[sizeIs]]
    */

@@ -55,16 +55,33 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
 
-  /** Does `method` need a forwarder in class `cls`?
-   *  Method needs a forwarder in these cases:
-   *   - there's a class defining a method with same signature
-   *   - there are multiple traits defining method with same signature
+  /**
+   * `meth` needs a forwarder in class `cls` if
+   * - A non-trait base class defines matching method. Example:
+   *   class C {def f: Int}; trait T extends C {def f = 1}; class D extends T
+   *   Even if C.f is abstract, the forwarder in D is needed, otherwise the JVM would
+   *   resolve `D.f` to `C.f`, see jvms-6.5.invokevirtual.
+   *
+   * - There exists another concrete, matching method in any of the base classes, and
+   *   the `mixinClass` does not itself extend that base class. In this case the
+   *   forwarder is needed to disambiguate. Example:
+   *     trait T1 {def f = 1}; trait T2 extends T1 {override def f = 2}; class C extends T2
+   *   In C we don't need a forwarder for f because T2 extends T1, so the JVM resolves
+   *   C.f to T2.f non-ambiguously. See jvms-5.4.3.3, "maximally-specific method".
+   *     trait U1 {def f = 1}; trait U2 {self:U1 => override def f = 2}; class D extends U2
+   *   In D the forwarder is needed, the interfaces U1 and U2 are unrelated at the JVM level.
    */
-  def needsMixinForwarder(meth: Symbol): Boolean =
-    lazy val competingMethods = competingMethodsIterator(meth).toList
-
-    def needsDisambiguation = competingMethods.exists(!_.is(Deferred)) // multiple implementations are available
-    def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
+  def needsMixinForwarder(mixin: ClassSymbol, meth: Symbol): Boolean =
+    lazy val competingMethods =
+      cls.baseClasses.iterator
+        .filter(_ ne meth.owner)
+        .map(base => meth.overriddenSymbol(base, cls))
+        .filter(_.exists)
+    lazy val mixinSuperTraits = mixin.baseClasses.filter(_.is(Trait))
+    lazy val needsForwarder = competingMethods.exists(m => {
+      !m.owner.is(Trait) ||
+        (!m.is(Deferred) && !mixinSuperTraits.contains(m.owner))
+    })
 
     // JUnit 4 won't recognize annotated default methods, so always generate a forwarder for them.
     def generateJUnitForwarder: Boolean =
@@ -81,8 +98,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     && (
          ctx.settings.mixinForwarderChoices.isTruthy
       || meth.owner.is(Scala2x)
-      || needsDisambiguation
-      || hasNonInterfaceDefinition
+      || needsForwarder
       || generateJUnitForwarder
       || generateSerializationForwarder
     )
@@ -90,8 +106,8 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     && !meth.name.is(InlineAccessorName)
   end needsMixinForwarder
 
-  final val PrivateOrAccessor: FlagSet = Private | Accessor
-  final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
+  private val PrivateOrAccessor: FlagSet = Private | Accessor
+  private val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
   def forwarderRhsFn(target: Symbol): List[List[Tree]] => Tree =
     prefss =>
@@ -111,10 +127,4 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         // unsafe-nulls to construct the rhs.
         Block(Nullables.importUnsafeNulls :: Nil, rhs)
       else rhs
-
-  private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] =
-    cls.baseClasses.iterator
-      .filter(_ ne meth.owner)
-      .map(base => meth.overriddenSymbol(base, cls))
-      .filter(_.exists)
 }

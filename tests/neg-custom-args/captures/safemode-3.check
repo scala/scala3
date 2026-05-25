@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/safemode-3.scala:10:21 --------------------------------------------------------
 10 |    case x: List[Int @unchecked] => x.head // error
    |                     ^^^^^^^^^^
-   |                     Cannot refer to class unchecked from safe code since it is tagged @rejectSafe
+   |                  Cannot refer to class unchecked in package scala from safe code since it is tagged @rejectSafe
 -- Error: tests/neg-custom-args/captures/safemode-3.scala:18:32 --------------------------------------------------------
 18 |  def h(x: Any) = x.asInstanceOf[String] // error
    |                  ^^^^^^^^^^^^^^^^^^^^^^

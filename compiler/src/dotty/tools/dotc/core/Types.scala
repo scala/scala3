@@ -2043,7 +2043,10 @@ object Types extends TypeUtils {
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
       case poly @ PolyType(_, mt: MethodType) =>
-        assert(!mt.isParamDependent)
+        // mt can be paramDependent here since we don't need to compute a
+        // non-dependent result approximation.
+        // TODO: Move all dependent functions to PolyFunctionOf and drop the
+        // no parameter dependencies restriction everywhere.
         defn.PolyFunctionOf(poly)
     }
 
@@ -2347,7 +2350,7 @@ object Types extends TypeUtils {
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
     private var mySignature: Signature = uninitialized
-    private var mySignatureRunId: Int = NoRunId
+    private var mySignatureRunId: RunId = NoRunId
 
     // Invariants:
     // (1) checkedPeriod != Nowhere     =>  lastDenotation != null
@@ -2414,7 +2417,7 @@ object Types extends TypeUtils {
     final def symbol(using Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
       // because SymDenotation#installAfter never changes the symbol
-      if (checkedPeriod.code == ctx.period.code) lastSymbol.asInstanceOf[Symbol]
+      if (checkedPeriod == ctx.period) lastSymbol.asInstanceOf[Symbol]
       else computeSymbol
 
     private def computeSymbol(using Context): Symbol =
@@ -2423,7 +2426,7 @@ object Types extends TypeUtils {
           if (sym.isValidInCurrentRun) sym else denot.symbol
         case name =>
           (if (denotationIsCurrent) lastDenotation.asInstanceOf[Denotation] else denot).symbol
-      if checkedPeriod.code != NowhereCode then checkedPeriod = ctx.period
+      if checkedPeriod != Nowhere then checkedPeriod = ctx.period
       result
 
     /** There is a denotation computed which is valid (somewhere in) the
@@ -2472,7 +2475,7 @@ object Types extends TypeUtils {
       val lastd = lastDenotation.asInstanceOf[Denotation]
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
-      if checkedPeriod.code != NowhereCode && lastd.validFor.contains(ctx.period) then lastd
+      if checkedPeriod != Nowhere && lastd.validFor.contains(ctx.period) then lastd
       else computeDenot
 
     private def computeDenot(using Context): Denotation = {
@@ -2511,7 +2514,7 @@ object Types extends TypeUtils {
           val lastd = lastd0.skipRemoved
           var needsRecompute = false
           if lastd.validFor.runId == ctx.runId
-              && checkedPeriod.code != NowhereCode
+              && checkedPeriod != Nowhere
               && !(ctx.isRechecking
                     && {
                       needsRecompute = currentRechecker.needsRecompute(this, lastd)
@@ -2523,7 +2526,7 @@ object Types extends TypeUtils {
           else
             val newd = lastd match
               case lastd: SymDenotation =>
-                if stillValid(lastd) && checkedPeriod.code != NowhereCode && !needsRecompute
+                if stillValid(lastd) && checkedPeriod != Nowhere && !needsRecompute
                 then finish(lastd.current)
                 else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
               case _ =>
@@ -2879,10 +2882,10 @@ object Types extends TypeUtils {
         val lastDenot = adapted.lastDenotation
         denot match
           case denot: SymDenotation
-          if denot.validFor.firstPhaseId < ctx.phase.id
-            && lastDenot != null
-            && lastDenot.validFor.lastPhaseId > denot.validFor.firstPhaseId
-            && !lastDenot.isInstanceOf[SymDenotation] =>
+          if lastDenot != null
+            && !lastDenot.isInstanceOf[SymDenotation]
+            && denot.validFor.firstPhaseId < lastDenot.validFor.lastPhaseId
+            && denot.validFor.containsPhaseIdNotFirst(ctx.phaseId) =>
             // In this case the new SymDenotation might be valid for all phases, which means
             // we would not recompute the denotation when travelling to an earlier phase, maybe
             // in the next run. We fix that problem by creating a UniqueRefDenotation instead.
@@ -3983,11 +3986,11 @@ object Types extends TypeUtils {
     // (2) myJavaSignatureRunId != NoRunId  =>  myJavaSignature != null
 
     private var mySignature: Signature = uninitialized
-    private var mySignatureRunId: Int = NoRunId
+    private var mySignatureRunId: RunId = NoRunId
     private var myJavaSignature: Signature = uninitialized
-    private var myJavaSignatureRunId: Int = NoRunId
+    private var myJavaSignatureRunId: RunId = NoRunId
     private var myScala2Signature: Signature = uninitialized
-    private var myScala2SignatureRunId: Int = NoRunId
+    private var myScala2SignatureRunId: RunId = NoRunId
 
     /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
      *

@@ -13,10 +13,6 @@ trait Mixin extends reflect.Enum:
 enum EM extends Mixin:
   case C
 
-enum ET[T] extends java.lang.Enum[ET[_]]:
-  case D extends ET[Unit]
-  override def toString: String = "overridden"
-
 enum EZ:
   case E(arg: Int)
   override def toString: String = "overridden"
@@ -53,8 +49,6 @@ object Tag:
   assert(EM.C.toString == "overridden",       s"EM.C.toString = ${EM.C.toString}")
   assert(EM.C.productPrefix == "noprefix",    s"EM.C.productPrefix = ${EM.C.productPrefix}")
   assert(EM.valueOf("C") == EM.C,             s"EM.valueOf(C) = ${EM.valueOf("C")}")
-  assert(ET.D.toString == "overridden",       s"ET.D.toString = ${ET.D.toString}")
-  assert(ET.D.productPrefix == "D",           s"ET.D.productPrefix = ${ET.D.productPrefix}")
   assert(EZ.E(0).toString == "overridden",    s"EZ.E(0).toString = ${EZ.E(0).toString}")
   assert(EZ.E(0).productPrefix == "E",        s"EZ.E(0).productPrefix = ${EZ.E(0).productPrefix}")
   assert(EC.F.toString == "F",                s"EC.F.toString = ${EC.F.toString}")

@@ -58,7 +58,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.3-RC3"
+  val referenceVersion = "3.8.4-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -69,7 +69,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.8.4"
+  val developedVersion = "3.8.5"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -638,6 +638,50 @@ object Build {
   }
 
   // ==============================================================================================
+  // ============================================ ROOT ============================================
+  // ==============================================================================================
+
+  // All projects, used to forward tasks like clean.
+  lazy val allProjects: Seq[Project] = Seq(
+    `scala3-interfaces`,
+    `scala3-bootstrapped`,
+    `scala3-compiler-nonbootstrapped`,
+    `scala3-compiler-bootstrapped`,
+    `scala3-sbt-bridge-nonbootstrapped`,
+    `scala3-sbt-bridge-bootstrapped`,
+    `scala-library-nonbootstrapped`,
+    `scala-library-bootstrapped`,
+    `scala3-library-nonbootstrapped`,
+    `scala3-library-bootstrapped`,
+    `scala-library-sjs`,
+    `scala3-library-sjs`,
+    `tasty-core-nonbootstrapped`,
+    `tasty-core-bootstrapped`,
+    `scala3-staging`,
+    `scala3-tasty-inspector`,
+    `scala3-repl`,
+    `scala2-library`,
+    scaladoc,
+    `scaladoc-testcases`,
+    `scaladoc-js-common`,
+    `scaladoc-js-main`,
+    `scaladoc-js-contributors`,
+    `scala3-presentation-compiler`,
+    `scala3-presentation-compiler-testcases`,
+    `scala3-language-server`,
+    sjsSandbox,
+    sjsJUnitTests,
+    sjsCompilerTests,
+    `community-build`,
+    dist,
+    `dist-mac-x86_64`,
+    `dist-mac-aarch64`,
+    `dist-win-x86_64`,
+    `dist-linux-x86_64`,
+    `dist-linux-aarch64`,
+  )
+
+  // ==============================================================================================
   // ================================= NON-BOOTSTRAPPED PROJECTS ==================================
   // ==============================================================================================
 
@@ -655,6 +699,14 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-nonbootstrapped",
+      // Clean all projects, not just the ones aggregated by this project
+      clean / aggregate := false,
+      clean := {
+        streams.value.log.info("cleaning all projects")
+        // Inspired from the Scala.js build:
+        // https://github.com/scala-js/scala-js/blob/c4e7f43932551aabb573c925147e3841ac3ca4be/project/Build.scala#L1006
+        clean.dependsOn(allProjects.map(_ / clean): _*).value
+      },
       scalac := Def.inputTaskDyn {
         val log = streams.value.log
         val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
@@ -1127,6 +1179,7 @@ object Build {
       ),
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
       Test    / publishArtifact := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library-nonbootstrapped",
@@ -1144,6 +1197,7 @@ object Build {
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
       ),
       // We do not want to list any dependency for the stdlib
       pomPostProcess := { (node: XmlNode) =>
@@ -1175,6 +1229,7 @@ object Build {
       emptyPublishedJarSettings,  // Validate JAR is empty (only META-INF)
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
       Test    / publishArtifact := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
@@ -1231,6 +1286,7 @@ object Build {
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
       ),
       // We do not want to list any dependency for the stdlib
       pomPostProcess := { (node: XmlNode) =>
@@ -1558,6 +1614,9 @@ object Build {
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
         ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      // Silence `using` clause warnings in the scalajs-ir sources
+      Compile / compile / scalacOptions +=
+        "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1676,6 +1735,9 @@ object Build {
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
         ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      // Silence `using` clause warnings in the scalajs-ir sources
+      Compile / compile / scalacOptions +=
+        "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1990,7 +2052,6 @@ object Build {
 
         val outputDir = "scaladoc/output/reference"
         val languageReferenceConfig = Def.task {
-          val ccDocs = s"${docs.getAbsolutePath}/_docs/reference/experimental/capture-checking"
           Scala3.value
             .add(OutputDir(outputDir))
             .add(SiteRoot(docs.getAbsolutePath))
@@ -2001,11 +2062,7 @@ object Build {
               s"${docs.getAbsolutePath}=github://scala/scala3/language-reference-stable#docs"
             )))
             .add(GenerateAPI(false))
-            .add(SnippetCompiler(List(
-              s"${docs.getAbsolutePath}/_docs/reference/new-types=compile",
-              s"${docs.getAbsolutePath}/_docs/reference/enums=compile",
-              s"$ccDocs=compile",
-            )))
+            .add(SnippetCompiler(referenceSnippetCompilerTargets(docs.getAbsolutePath)))
         }
 
         val generateDocs = generateDocumentation(languageReferenceConfig)
@@ -2020,6 +2077,79 @@ object Build {
         }
 
         expectedLinksRegeneration.dependsOn(generateDocs)
+      }.evaluated,
+
+      checkReferenceSnippets := Def.inputTaskDyn {
+        val selected = (Space ~> NotSpace).*.parsed
+        val docsRoot = file("docs").getAbsoluteFile
+        val referenceRoot = docsRoot / "_docs" / "reference"
+        val requested =
+          if (selected.nonEmpty) selected
+          else referenceSnippetRelativeRoots
+
+        val tempRoot = IO.createTemporaryDirectory
+        val tempDocsRoot = tempRoot / "_docs" / "reference"
+        val tempLayoutsRoot = tempRoot / "_layouts"
+        val outputDir = IO.createTemporaryDirectory.getAbsolutePath
+
+        // TODO #23743: once Scaladoc supports snippet checking without full page rendering,
+        // replace this lightweight static-site copy workaround with that native path.
+
+        def resolveSelected(pathArg: String): File = {
+          val normalized = pathArg.stripPrefix("/")
+          val candidates = Seq(
+            file(pathArg).getAbsoluteFile,
+            (docsRoot / normalized).getAbsoluteFile,
+            (referenceRoot / normalized).getAbsoluteFile
+          )
+          candidates.find(_.exists).getOrElse {
+            sys.error(
+              s"Unable to find reference docs path '$pathArg'. " +
+              s"Try a path under docs/_docs/reference/, for example experimental/capture-checking/overview.md"
+            )
+          }
+        }
+
+        def copySelected(src: File): Unit =
+          IO.relativize(docsRoot, src).fold {
+            sys.error(s"Selected path $src is not under ${docsRoot.getAbsolutePath}")
+          } { relative =>
+            val dest = tempRoot / relative
+            if (src.isDirectory)
+              IO.copyDirectory(src, dest)
+            else {
+              IO.createDirectory(dest.getParentFile)
+              IO.copyFile(src, dest)
+            }
+          }
+
+        Def.taskDyn {
+          val log = streams.value.log
+          log.info(s"Checking reference snippets for: ${requested.mkString(", ")}")
+
+          IO.copyDirectory(docsRoot / "_layouts", tempLayoutsRoot)
+          requested.map(resolveSelected).foreach(copySelected)
+
+          val config = Def.task {
+            Scala3.value
+              .add(OutputDir(outputDir))
+              .add(SiteRoot(tempRoot.getAbsolutePath))
+              .add(ProjectName("Scala 3 Reference Snippets"))
+              .add(ProjectVersion(baseVersion))
+              .remove[VersionsDictionaryUrl]
+              .add(SourceLinks(List(
+                s"${tempRoot.getAbsolutePath}=github://scala/scala3/main#docs"
+              )))
+              .add(NoLinkWarnings(true))
+              .add(NoLinkAssetWarnings(true))
+              .add(GenerateAPI(false))
+              .add(SnippetCompiler(List(
+                s"${tempDocsRoot.getAbsolutePath}=compile"
+              )))
+          }
+
+          generateDocumentation(config)
+        }
       }.evaluated,
 
     )
@@ -2039,7 +2169,6 @@ object Build {
       },
       ideTestsScalaJSClasspath := {
         val externalJSCommonDeps = (`scaladoc-js-common`  / Compile / externalDependencyClasspath).value
-        println(externalJSCommonDeps)
         val scalaJSCommonDom = findArtifact(externalJSCommonDeps, "scalajs-dom_sjs1_3")
         val externalJSDeps = (`scala-library-sjs` / Compile / externalDependencyClasspath).value
         val scalaJSLibrary = findArtifact(externalJSDeps, "scalajs-library_2.13")
@@ -2464,6 +2593,7 @@ object Build {
   // Published on https://docs.scala-lang.org/scala3/reference/
   // Does not produce API docs, contains additional redirects for improved stablity
   val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
+  val checkReferenceSnippets = inputKey[Unit]("Snippet-check selected reference pages without generating the full reference site")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
@@ -2940,6 +3070,16 @@ object ScaladocConfigs {
     s"$dottyLibSrc/scala/util=compile",
     s"$dottyLibSrc/scala/util/control=compile",
   )
+  // Relative subtrees in `_docs/reference` where snippet compilation is explicitly enabled.
+  // Keep this shared with the full docs tasks and the lightweight snippet-check task.
+  def referenceSnippetRelativeRoots = List(
+    "new-types",
+    "enums",
+    "experimental/capture-checking",
+  )
+  def referenceSnippetCompilerTargets(docsRoot: String) =
+    referenceSnippetRelativeRoots.map(path => s"$docsRoot/_docs/reference/$path=compile")
+
   lazy val Scala3 = Def.task {
     val stdlib = { // relative path to the stdlib directory ('library/')
       val projectRoot = (ThisBuild/baseDirectory).value.toPath
@@ -2960,11 +3100,9 @@ object ScaladocConfigs {
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(
-        snippetCompilerTargets(s"$stdlib/src") ++ List(
-        "docs/_docs/reference/new-types=compile",
-        "docs/_docs/reference/enums=compile",
-        "docs/_docs/reference/experimental/capture-checking=compile",
-      )))
+        snippetCompilerTargets(s"$stdlib/src") ++ referenceSnippetCompilerTargets("docs")
+      ))
+      .add(NoSnippetNamesFor(List("_docs/reference")))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
       .withTargets((`scala-library-bootstrapped` / Compile / products).value.map(_.getAbsolutePath))

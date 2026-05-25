@@ -2,7 +2,7 @@ package dotty
 
 import scala.language.unsafeNulls
 
-import java.nio.file._
+import java.nio.file.*
 
 /** Runtime properties from defines or environmnent */
 object Properties {

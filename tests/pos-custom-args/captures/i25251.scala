@@ -9,5 +9,5 @@ trait Collection[+T] extends Stateful:
     // slice should have its Index type member a subtype of the Collection's Index
     def getSlice(): (Collection[T] { type Index <: self.Index })^{this.rd} = new Slice(this)
 
-class Slice[+T](tracked val coll: Collection[T]) extends Collection[T]:
+class Slice[+T](tracked val coll: Collection[T]^{any.rd}) extends Collection[T]:
   type Index = coll.Index

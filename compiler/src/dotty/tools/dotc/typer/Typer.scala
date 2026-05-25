@@ -47,7 +47,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.{CheckCaptures, isRetainsLike}
+import cc.{CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 
@@ -2657,7 +2657,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val tycon = typedType(tree.tycon)
     def spliced(tree: Tree) = untpd.TypedSplice(tree)
     val tparam = untpd.Ident(tree.paramName).withSpan(tree.span.withEnd(tree.span.point))
-    if Feature.ccEnabled && typed(tparam).tpe.derivesFrom(defn.Caps_CapSet) then
+    if Feature.ccEnabled && typed(tparam).tpe.derivesFromCapSet then
       report.error(em"Capture variable `${tree.paramName}` cannot have a context bound.", tycon.srcPos)
     if tycon.tpe.typeParams.nonEmpty then
       val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
@@ -2894,13 +2894,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val isCap = tree.hasAttachment(CaptureVar)
     val lo2 =
       if lo1.isEmpty then
-        if Feature.ccEnabled && (isCap || hi1.tpe.derivesFrom(defn.Caps_CapSet)) then
+        if Feature.ccEnabled && (isCap || hi1.tpe.derivesFromCapSet) then
           typed(CapSetBot)
         else typed(untpd.TypeTree(defn.NothingType))
       else lo1
     val hi2 =
       if hi1.isEmpty then
-        if Feature.ccEnabled && (isCap || lo1.tpe.derivesFrom(defn.Caps_CapSet)) then
+        if Feature.ccEnabled && (isCap || lo1.tpe.derivesFromCapSet) then
           typed(CapSetTop)
         else typed(untpd.TypeTree(defn.AnyType))
       else hi1
@@ -3250,8 +3250,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val isCap = tdef.hasAttachment(CaptureVar)
       rhs1 match
         case TypeBoundsTree(lo, hi, _) =>
-          val loIsCap = lo.tpe.derivesFrom(defn.Caps_CapSet)
-          val hiIsCap = hi.tpe.derivesFrom(defn.Caps_CapSet)
+          val loIsCap = lo.tpe.derivesFromCapSet
+          val hiIsCap = hi.tpe.derivesFromCapSet
           if !isCap && (loIsCap ^ hiIsCap) then
             report.error(em"Illegal type bounds: >: $lo <: $hi. Capture-set bounds cannot be mixed with type bounds of other kinds", rhs.srcPos)
           if isCap && !(loIsCap && hiIsCap) then
@@ -4521,7 +4521,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if isAcceptedSpuriousApply(tree, pt.args) then tree
         else
           tryInsertApplyOrImplicit(tree, pt, locked):
-            errorTree(tree, MethodDoesNotTakeParameters(tree))
+            val pos =
+              if pt.args.isEmpty then tree.srcPos
+              else
+                val union = tree.sourcePos.withSpan:
+                  tree.srcPos.span.union(pt.args.last.srcPos.span)
+                if union.startLine != union.endLine then union // if multiline, show more context
+                else tree.srcPos
+            errorTree(tree, MethodDoesNotTakeParameters(tree), pos)
     }
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
@@ -5303,11 +5310,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   // Check if the tree was ascribed to `Unit` explicitly to silence the warning.
   private def withDiscardWarnable(tree: tpd.Tree)(op: (tpd.Tree) => Unit)(using Context): Unit =
-    val warnable = tree match
-      case inlined: Inlined => inlined.expansion
-      case tree => tree
-    if !isThisTypeResult(warnable) && !isAscribedToUnit(warnable) then
-      op(warnable)
+    def exempt(tree: tpd.Tree): Boolean = isThisTypeResult(tree) || isAscribedToUnit(tree)
+    def recur(tree: tpd.Tree): Unit = tree match
+      case tree: Inlined =>
+        if !exempt(tree.call) then
+          recur(tree.expansion)
+      case tree =>
+        if !exempt(tree) then
+          op(tree)
+    recur(tree)
 
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =

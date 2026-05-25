@@ -1,45 +1,38 @@
 package dotty.tools
 package backend.jvm
 
-import scala.collection.mutable.{Clearable, HashSet}
-import dotty.tools.dotc.util.*
-import dotty.tools.dotc.reporting.Message
-import dotty.tools.io.{AbstractFile, ClassPath}
+import scala.collection.mutable.HashSet
+import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.classpath.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.config.ScalaSettings
+import dotty.tools.dotc.reporting.Message
+import dotty.tools.dotc.util.SrcPos
 
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 /**
- * Functionality needed in the post-processor whose implementation depends on the compiler
- * frontend. All methods are synchronized.
+ * Abstracts the frontend data structures, specially the Context, that need to be accessed in a single-threaded manner.
  */
 sealed abstract class PostProcessorFrontendAccess(val ctx: FreshContext) {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
 
-  def withThreadLocalReporter[T](reporter: BackendReporting)(fn: => T): T
-
-  def backendReporting: BackendReporting
-
-  def directBackendReporting: BackendReporting
-
   def getEntryPoints: List[String]
 
   def findClassFileAndModuleFile(name: String): Option[(io.AbstractFile, Option[io.AbstractFile])]
+  
+  def optimizerWarning(msg: Context ?=> Message, site: String, pos: SrcPos): Unit =
+    report.optimizerWarning(msg(using ctx), site, pos)(using ctx)
 
   private val frontendLock: AnyRef = new Object()
 
-  inline final def frontendSynch[T](inline x: Context ?=> T)(using Context): T = frontendLock.synchronized(x)
+  inline final def frontendSynch[T](inline x: T): T = frontendLock.synchronized(x)
 
-  inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
-
-  def perRunLazy[T](init: Context ?=> T)(using Context): Lazy[T] = new SynchronizedLazy(this, init)
+  def perRunLazy[T](init: => T): Lazy[T] = new SynchronizedLazy(this, init)
 }
 
 object PostProcessorFrontendAccess {
@@ -51,7 +44,7 @@ object PostProcessorFrontendAccess {
    * Used for sharing variables requiring a Context for initialization, between different threads
    * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
    */
-  private class SynchronizedLazy[T](frontendAccess: PostProcessorFrontendAccess, init: Context ?=> T)(using Context) extends Lazy[T] {
+  private class SynchronizedLazy[T](frontendAccess: PostProcessorFrontendAccess, init: => T) extends Lazy[T] {
     @volatile private var isInit: Boolean = false
     private var v: T = uninitialized
 
@@ -107,7 +100,7 @@ object PostProcessorFrontendAccess {
 
   class Impl(entryPoints: mutable.HashSet[String])(ctx: FreshContext) extends PostProcessorFrontendAccess(ctx) {
     override def compilerSettings: CompilerSettings = _compilerSettings.get
-    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)(using ctx)
+    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings(using ctx))
 
     private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
@@ -160,26 +153,7 @@ object PostProcessorFrontendAccess {
       override def optTrace: Option[String] = s.YoptTrace.valueSetByUser
      }
 
-     private lazy val localReporter = new ThreadLocal[BackendReporting]
-
-     override def withThreadLocalReporter[T](reporter: BackendReporting)(fn: => T): T = {
-       val old = localReporter.get()
-       localReporter.set(reporter)
-       try fn
-       finally
-         if old eq null then localReporter.remove()
-         else localReporter.set(old)
-     }
-
-     override def backendReporting: BackendReporting = {
-       val local = localReporter.get()
-       if local eq null then directBackendReporting
-       else local
-     }
-
-    override def directBackendReporting = DirectBackendReporting(this)(using ctx)
-
-    override def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)(using ctx)
+    override def getEntryPoints: List[String] = entryPoints.toList
 
     /* Create a class path for the backend, based on the given class path.
      * Used to make classes available to the inliner's bytecode repository.

@@ -5,7 +5,7 @@ import org.junit.Test
 import tools.AssertUtil.assertThrows
 
 class ParserTest {
-  import Parser.{tokenize, ParseException}
+  import Parser.tokenize
 
   private def check(tokens: String*)(input: String): Unit = assertEquals(tokens, tokenize(input))
 
@@ -44,8 +44,8 @@ class ParserTest {
     // missing quotes
     checkFails(""""x""", "Unmatched quote [0](\")")  // was assertEquals(List("\"x"), tokenize(""""x"""))
     checkFails("""x'""", "Unmatched quote [1](')")
-    assertThrows[ParseException](tokenize(""""x""")) // was assertEquals(List("\"x"), tokenize(""""x"""))
-    assertThrows[ParseException](tokenize("""x'"""))
+    assertThrows[RuntimeException](tokenize(""""x""")) // was assertEquals(List("\"x"), tokenize(""""x"""))
+    assertThrows[RuntimeException](tokenize("""x'"""))
   }
   @Test def `leading space is skipped`: Unit = check("text")(" text")
   @Test def `leading quote is escaped`: Unit = {

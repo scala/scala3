@@ -33,6 +33,7 @@ import dotty.tools.dotc.interactive.Completion.Mode
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
+import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.utils.InteractiveEnrichments.*
@@ -118,16 +119,21 @@ class Completions(
   end includeSymbol
 
   lazy val fuzzyMatcher: Name => Boolean = name =>
-    if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, name.toString)
-    else CompletionFuzzy.matches(completionPos.query, name.toString)
+    val nameString = name.toString
+    if nameString.isEmpty then false
+    else if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, nameString)
+    else CompletionFuzzy.matches(completionPos.query, nameString)
 
-  def enrichedCompilerCompletions(qualType: Type): (List[CompletionValue], SymbolSearch.Result) =
+  def enrichedCompilerCompletions(
+      qualType: Type,
+      fromPath: List[Tree] = path
+  ): (List[CompletionValue], SymbolSearch.Result) =
     val compilerCompletions = Completion
       .rawCompletions(
         completionPos.originalCursorPosition,
         completionMode,
         completionPos.query,
-        path,
+        fromPath,
         adjustedPath,
         Some(fuzzyMatcher)
       )
@@ -137,6 +143,23 @@ class Completions(
       .flatMap(toCompletionValues)
       .filterInteresting(qualType)
 
+  /** When we have an erroneous apply, but we know the symbol
+   *  of the qualifier symbol, we can still provide sensible completions
+   *  for the apply.
+   */
+  def withGuessApplyType(sel: Select)(using Context): List[CompletionValue] =
+    val qual = sel.qualifier
+    val name = sel.name
+    indexedContext.lookupSym(qual.symbol) match
+      case Result.InScope =>
+        val typedSel = Select(qual.withType(qual.symbol.info.resultType), name)
+        val newPath = typedSel +: path.drop(1)
+        val (compilerCompletions, _) =
+          enrichedCompilerCompletions(qual.symbol.info.resultType, newPath)
+        compilerCompletions
+      case _ =>
+        Nil
+
   def completions(): (List[CompletionValue], SymbolSearch.Result) =
     val (advanced, exclusive) = advancedCompletions(path, completionPos)
     val (all, result) =
@@ -144,13 +167,13 @@ class Completions(
       else
         val keywords = KeywordsCompletions.contribute(path, completionPos, comments)
         val allAdvanced = advanced ++ keywords
-
         path match
           // should not show completions for toplevel
           case Nil | (_: PackageDef) :: _ if !completionPos.originalCursorPosition.source.file.ext.isScalaScript =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
-          case Select(qual, _) :: _ if qual.typeOpt.isErroneous =>
-            (allAdvanced, SymbolSearch.Result.COMPLETE)
+          case (sel @ Select(qual, name)) :: _ if qual.typeOpt.isErroneous =>
+            val fromCompiler = withGuessApplyType(sel)
+            (allAdvanced ++ fromCompiler, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ =>
             val (compiler, result) = enrichedCompilerCompletions(qual.typeOpt.widenDealias)
             (allAdvanced ++ compiler, result)
@@ -163,7 +186,6 @@ class Completions(
     val sorted = all.sorted(using ordering)
     val values = application.postProcess(sorted)
     (values, result)
-  end completions
 
   private def toCompletionValues(
       completion: Name,

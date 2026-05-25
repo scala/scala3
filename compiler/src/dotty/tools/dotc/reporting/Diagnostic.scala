@@ -103,6 +103,12 @@ object Diagnostic:
     pos: SourcePosition
   ) extends Warning(msg, pos)
 
+  class OptimizerWarning(
+    msg: Message,
+    site: String, // TODO: show this
+    pos: SourcePosition
+  ) extends Warning(msg, pos)
+
 class Diagnostic(
   val msg: Message,
   val pos: SourcePosition,

@@ -8,13 +8,13 @@ import java.nio.file.{Files, Paths}
 import scala.util.Try
 import scala.util.control.NonFatal
 import dotty.tools.dotc.coverage.Serializer
-import vulpix._
+import vulpix.*
 import reporting.TestReporter
 import TestSources.scoverageIgnoreExcludelisted
 
 trait CoverageSupport:
   this: ParallelTesting =>
-  import ParallelTesting._
+  import ParallelTesting.*
 
   trait CoverageVerification extends Test:
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
@@ -105,7 +105,7 @@ trait CoverageSupport:
   def runWithCoverageOrFallback[A <: Test](test: CompilationTest, desc: String)(using CoverageTestSupport[A], SummaryReporting): Unit =
     val tc = summon[CoverageTestSupport[A]]
     if Properties.testsInstrumentCoverage then
-      test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput), desc)
+      test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput))
     else
       tc.fallback(test)
 

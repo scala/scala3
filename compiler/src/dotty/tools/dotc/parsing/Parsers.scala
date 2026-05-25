@@ -2333,8 +2333,10 @@ object Parsers {
           in.nextToken()
           ident()
         else EmptyTermName
-      val newSpan = t.span.withPoint(t.span.end).withEnd(in.lastOffset)
-      ContextBoundTypeTree(t, pname, ownName).withSpan(newSpan)
+      val res = ContextBoundTypeTree(t, pname, ownName)
+      if t.span.exists then
+        res.withSpan(Span(t.span.start, end = in.lastOffset, point = t.span.end))
+      else res
 
     /** ContextBounds     ::= ContextBound [`:` ContextBounds]
      *                      | `{` ContextBound {`,` ContextBound} `}`
@@ -4737,11 +4739,19 @@ object Parsers {
         constrApp() :: withConstrApps()
       else Nil
 
+    /** UseRef            ::=  CaptureRef [‘initially’] */
+    def useRef(): UseRef =
+      val ref = captureRef()
+      if isIdent(nme.initially) then
+        atSpan(in.skipToken()):
+          UseRef(ref, initially = true)
+      else
+        UseRef(ref, initially = false)
+
     /** Template          ::=  InheritClauses [TemplateBody]
      *  InheritClauses    ::=  [‘extends’ ConstrApps]
      *                         [‘derives’ QualId {‘,’ QualId}]
-     *                         [‘uses’ CaptureRef {‘,’ CaptureRef}]
-     *                         [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
+     *                         [‘uses’ UseRef {‘,’ UseRef}]
      */
     def template(constr: DefDef, isEnum: Boolean = false): Template = {
       val parents =
@@ -4763,22 +4773,11 @@ object Parsers {
           commaSeparated(() => convertToTypeId(qualId()))
         else Nil
       newLinesOptWhenFollowedBy(nme.uses)
-      var classUses =
+      val derivedAndUses =
         if isIdent(nme.uses) then
           in.nextToken()
-          concreteCapsType(commaSeparated(captureRef)) :: Nil
-        else Nil
-      newLinesOptWhenFollowedBy(nme.uses_init)
-      var constructorUses =
-        if isIdent(nme.uses_init)then
-          in.nextToken()
-          concreteCapsType(commaSeparated(captureRef)) :: Nil
-        else Nil
-      if classUses.isEmpty && constructorUses.nonEmpty then
-        classUses = concreteCapsType(Nil) :: Nil
-      if constructorUses.isEmpty && classUses.nonEmpty then
-        constructorUses = concreteCapsType(Nil) :: Nil
-      val derivedAndUses = derived ++ classUses ++ constructorUses
+          derived ++ commaSeparated(useRef)
+        else derived
       possibleTemplateStart()
       if isEnum then
         val (self, stats) = withinEnum(templateBody(parents))
@@ -4791,7 +4790,7 @@ object Parsers {
      */
     def templateOpt(constr: DefDef): Template =
       newLinesOptWhenFollowedBy(nme.derives)
-      if in.token == EXTENDS || isIdent(nme.derives) || isIdent(nme.uses) || isIdent(nme.uses_init) then
+      if in.token == EXTENDS || isIdent(nme.derives) || isIdent(nme.uses) then
         template(constr)
       else
         possibleTemplateStart()

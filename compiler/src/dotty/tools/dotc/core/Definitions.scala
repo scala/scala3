@@ -214,7 +214,6 @@ class Definitions {
   @tu lazy val OpsPackageClass: ClassSymbol = OpsPackageVal.moduleClass.asClass
 
   @tu lazy val ScalaPackageVal: TermSymbol = requiredPackage(nme.scala)
-  @tu lazy val ScalaMathPackageVal: TermSymbol = requiredPackage("scala.math")
   @tu lazy val ScalaPackageClass: ClassSymbol = {
     val cls = ScalaPackageVal.moduleClass.asClass
     cls.info.decls.openForMutations.useSynthesizer(
@@ -224,14 +223,19 @@ class Definitions {
     cls
   }
   @tu lazy val ScalaPackageObject: Symbol = requiredModule("scala.package")
+
   @tu lazy val ScalaRuntimePackageVal: TermSymbol = requiredPackage("scala.runtime")
   @tu lazy val ScalaRuntimePackageClass: ClassSymbol = ScalaRuntimePackageVal.moduleClass.asClass
   @tu lazy val JavaPackageVal: TermSymbol = requiredPackage(nme.java)
   @tu lazy val JavaPackageClass: ClassSymbol = JavaPackageVal.moduleClass.asClass
   @tu lazy val JavaLangPackageVal: TermSymbol = requiredPackage(jnme.JavaLang)
   @tu lazy val JavaLangPackageClass: ClassSymbol = JavaLangPackageVal.moduleClass.asClass
-  @tu lazy val ScalaCollectionPackageClas: ClassSymbol = requiredPackage("scala.collection").moduleClass.asClass
-  @tu lazy val ScalaCollectionImmutablePackageClas: ClassSymbol = requiredPackage("scala.collection.immutable").moduleClass.asClass
+  @tu lazy val JavaMathPackageClass: ClassSymbol = requiredPackage("java.math").moduleClass.asClass
+  @tu lazy val JavaTimePackageClass: ClassSymbol = requiredPackage("java.time").moduleClass.asClass
+  @tu lazy val ScalaCollectionPackageClass: ClassSymbol = requiredPackage("scala.collection").moduleClass.asClass
+  @tu lazy val ScalaCollectionImmutablePackageClass: ClassSymbol = requiredPackage("scala.collection.immutable").moduleClass.asClass
+  @tu lazy val ScalaMathPackageClass: ClassSymbol = requiredPackage("scala.math").moduleClass.asClass
+  @tu lazy val ScalaUtilPackageClass: ClassSymbol = requiredPackage("scala.util").moduleClass.asClass
 
   // fundamental modules
   @tu lazy val SysPackage : Symbol = requiredModule("scala.sys.package")
@@ -1027,7 +1031,6 @@ class Definitions {
     @tu lazy val Caps_ExclusiveCapability: ClassSymbol = requiredClass("scala.caps.ExclusiveCapability")
     @tu lazy val Caps_Control: ClassSymbol = requiredClass("scala.caps.Control")
     @tu lazy val Caps_Stateful: ClassSymbol = requiredClass("scala.caps.Stateful")
-    @tu lazy val Caps_Separate: ClassSymbol = requiredClass("scala.caps.Separate")
     @tu lazy val Caps_Unscoped: ClassSymbol = requiredClass("scala.caps.Unscoped")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
     @tu lazy val Caps_Read: ClassSymbol = requiredClass("scala.caps.Read")
@@ -1527,6 +1530,10 @@ class Definitions {
    */
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
+
+  @tu lazy val assumedSafePackages: Set[Symbol] =
+    Set(OpsPackageClass, ScalaPackageClass, ScalaCollectionImmutablePackageClass, ScalaRuntimePackageClass,
+        ScalaMathPackageClass, ScalaUtilPackageClass, JavaMathPackageClass, JavaTimePackageClass)
 
   @tu lazy val capsErasedValueMethods =
     Set(Caps_erasedValue, Caps_unsafeErasedValue)
@@ -2045,7 +2052,7 @@ class Definitions {
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
-    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful, Caps_Separate,
+    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful,
     Caps_Shared, RequiresCapabilityAnnot,
     Caps_any, Caps_fresh, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
     ConsumeAnnot, UseAnnot, ReserveAnnot, AssumeSafeAnnot, RejectSafeAnnot,
@@ -2085,8 +2092,11 @@ class Definitions {
   val ScalaValueClasses: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypes.map(_.symbol))
   val ScalaValueClassesNoUnit: PerRun[collection.Set[Symbol]]        = new PerRun(ScalaValueTypesNoUnit.map(_.symbol))
 
+  val ScalaNumericBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
+    Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass)
+  )
   val ScalaBoxedClasses: PerRun[collection.Set[Symbol]] = new PerRun(
-    Set(BoxedByteClass, BoxedShortClass, BoxedCharClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, BoxedUnitClass, BoxedBooleanClass)
+    ScalaNumericBoxedClasses() `union` Set(BoxedUnitClass, BoxedBooleanClass)
   )
 
   private val valueTypeEnc = mutable.Map[TypeName, PrimitiveClassEnc]()

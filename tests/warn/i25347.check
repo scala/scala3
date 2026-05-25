@@ -1,4 +1,8 @@
--- Deprecation Warning: tests/warn/i25347.scala:17:18 ------------------------------------------------------------------
-17 |  def bar = O.foo(new i.C) // warn
-   |                  ^^^^^^^
-   |Usage of implicit given instance c2i defined in object C, which is not accessible here. In Scala 3.10, this implicit will no longer be found.
+-- Deprecation Warning: tests/warn/i25347.scala:30:4 -------------------------------------------------------------------
+30 |    d // warn
+   |    ^
+   |Usage of implicit given instance d2i defined in object D, which is not accessible here. In Scala 3.10, this implicit will no longer be found.
+-- Deprecation Warning: tests/warn/i25347.scala:39:4 -------------------------------------------------------------------
+39 |    e // warn
+   |    ^
+   |Usage of implicit method e2i defined in object E, which is not accessible here. In Scala 3.10, this implicit will no longer be found.

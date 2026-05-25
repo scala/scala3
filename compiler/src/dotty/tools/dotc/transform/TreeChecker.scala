@@ -26,8 +26,6 @@ import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 import cc.RetainingAnnotation
 
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
-
 import scala.util.control.NonFatal
 
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees

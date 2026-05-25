@@ -5175,8 +5175,6 @@ class JSCodeGen()(using genCtx: Context) {
     hasNativeCompanion && hasDefaultParameters
   }
 
-  // Copied from DottyBackendInterface
-
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
   def desugarIdent(i: Ident): Option[tpd.Select] = {

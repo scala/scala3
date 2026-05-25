@@ -266,12 +266,13 @@ private sealed trait WarningSettings:
          |
          |The default configuration is empty.
          |
-         |User-defined configurations are added to the left. The leftmost rule matching
-         |a warning message defines the action.
+         |The last matching configuration for a diagnostic, in definition order,
+         |determines the action for that diagnostic message.
          |
          |Examples:
          |  - change every warning into an error: -Wconf:any:error
          |  - silence deprecations: -Wconf:cat=deprecation:s
+         |  - error but silence deprecations: -Wall -Wconf:any:e,cat=deprecation:s
          |  - silence a deprecation: -Wconf:origin=java\.lang\.Thread\.getId:s
          |  - silence warnings in src_managed directory: -Wconf:src=src_managed/.*:s
          |
@@ -438,6 +439,7 @@ private sealed trait XSettings:
   val XprintSuspension: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprint-suspension", "Show when code is suspended until macros are compiled.")
   val Xprompt: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprompt", "Display a prompt after each error (debugging option).")
   val XreplDisableDisplay: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xrepl-disable-display", "Do not display definitions in REPL.")
+  val XreplPrintHeight: Setting[Int] = IntSetting(AdvancedSetting, "Xrepl-print-height", "Set the row height for pretty-printing in the REPL.", 50)
   val XreplInterruptInstrumentation: Setting[String] = StringSetting(
     AdvancedSetting,
     "Xrepl-interrupt-instrumentation",

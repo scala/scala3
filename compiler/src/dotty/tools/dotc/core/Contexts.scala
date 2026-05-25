@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -359,7 +359,7 @@ object Contexts {
 
     final def phase: Phase = base.phases(period.firstPhaseId)
     final def runId = period.runId
-    final def phaseId = period.phaseId
+    final def phaseId = period.firstPhaseId
 
     final def lastPhaseId = base.phases.length - 1
 
@@ -1035,6 +1035,10 @@ object Contexts {
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
     val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
 
+    /** Cache for magic offset header lookups, scoped to this compiler instance
+     *  so that concurrent compilers in the same classloader don't share stale entries. */
+    private[dotc] val magicHeaderCache: util.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = util.HashMap()
+
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
 
@@ -1090,7 +1094,7 @@ object Contexts {
     private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
-    private[core] var nextDenotTransformerId: Array[Int] = uninitialized
+    private[core] var nextDenotTransformerId: Array[Periods.PhaseId] = uninitialized
 
     private[core] var denotTransformers: Array[DenotTransformer] = uninitialized
 

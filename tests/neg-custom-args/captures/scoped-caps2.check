@@ -35,7 +35,7 @@
   |Note that capability `any` cannot flow into capture set {any²}
   |because any in an enclosing function is not visible from any² in value _$4.
   |
-  |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating method apply's type (x: C^): C^{fresh}
+  |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
   |          any² is a root capability classified as SharedCapability in the type of value _$4
   |
   | longer explanation available when compiling with `-explain`
@@ -62,7 +62,7 @@
    |Note that capability `any` cannot flow into capture set {any²}
    |because any in an enclosing function is not visible from any² in value _$8.
    |
-   |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating method apply's type (x: C^): C^{fresh}
+   |where:    any  is a root capability classified as SharedCapability created in anonymous function of type (x: C): C when instantiating function value a's type (x: C^): C^{fresh}
    |          any² is a root capability classified as SharedCapability in the type of value _$8
    |
    | longer explanation available when compiling with `-explain`

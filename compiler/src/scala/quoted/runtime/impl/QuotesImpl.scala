@@ -579,7 +579,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
-        tpd.cpy.Select(original)(qualifier, name.toTermName)
+        original match
+          case original: tpd.Select if original.name.toString == name =>
+            // Name unchanged: preserve original Name object and use tpd.cpy.Select
+            // which correctly handles qualifier type changes via derivedSelect
+            tpd.cpy.Select(original)(qualifier, original.name)
+          case _ =>
+            // Name changed: resolve the name and create a fresh Select with proper type
+            val simpleName = name.toTermName
+            val resolvedName =
+              val member = qualifier.tpe.member(simpleName)
+              if member.exists then simpleName
+              else
+                val unmangled = simpleName.unmangle(NameKinds.Scala2MethodNameKinds)
+                if (unmangled ne simpleName) && qualifier.tpe.member(unmangled).exists then unmangled
+                else simpleName
+            tpd.Select(qualifier, resolvedName)
       def unapply(x: Select): (Term, String) =
         (x.qualifier, x.name.toString)
     end Select

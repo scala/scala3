@@ -29,19 +29,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Replace the version placeholder
-        uses: richardrigutins/replace-in-files@v2
+        uses: richardrigutins/replace-in-files@v3
         with:
           files: ./pkgs/chocolatey/scala.nuspec
           search-text: '@LAUNCHER_VERSION@'
           replacement-text: ${{ inputs.version }}
       - name: Replace the URL placeholder
-        uses: richardrigutins/replace-in-files@v2
+        uses: richardrigutins/replace-in-files@v3
         with:
           files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
           search-text: '@LAUNCHER_URL@'
           replacement-text: ${{ inputs.url }}
       - name: Replace the CHECKSUM placeholder
-        uses: richardrigutins/replace-in-files@v2
+        uses: richardrigutins/replace-in-files@v3
         with:
           files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
           search-text: '@LAUNCHER_SHA256@'

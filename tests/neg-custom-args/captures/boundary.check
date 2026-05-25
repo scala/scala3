@@ -2,14 +2,15 @@
  4 |  boundary[AnyRef^]:
  5 |    l1 ?=> // error // error
    |  ^
-   |  Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
-   |  The leakage occurred when trying to match the following types:
+   |Capability `any` outlives its scope: it leaks into outer capture set 's1 which is owned by value local.
+   |The leakage occurred when trying to match the following types:
    |
-   |  Found:    scala.util.boundary.Label[Object^'s1]^'s2
-   |  Required: scala.util.boundary.Label[Object^{any}]^
+   |Found:    scala.util.boundary.Label[Object^'s1]^
+   |Required: scala.util.boundary.Label[Object^{any}]^²
    |
-   |  where:    ^   refers to a root capability classified as Control in the type of value local
-   |            any is the root capability caps.any
+   |where:    ^   refers to a root capability classified as Control created in value local when constructing instance scala.util.boundary.Label[Object^'s1]
+   |          ^²  refers to a root capability classified as Control in the type of value local
+   |          any is the root capability caps.any
    |
  6 |      boundary[Unit]: l2 ?=>
  7 |        boundary.break(l2)(using l1) // error

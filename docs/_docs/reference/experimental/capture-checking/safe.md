@@ -11,12 +11,22 @@ Safe mode is an extension of capture checking that enforces that a program is wr
 Full Scala 3 has elements that are incompatible with capability safety, such as type casts and other unsafe features. These are essential escape hatches in some situations. But they should be used with care, and should not be available in agent-generated code or other untrusted code that does not pass review.
 
 To distinguish between these two usage modes, there is a safe language subset that can be specified with a command-line option or a language import:
-```scala sc:nocompile
+```scala sc-name:safe-context
 import language.experimental.safe
 ```
 
-```scala sc-hidden sc-name:safe-context
-import language.experimental.safe
+```scala sc-hidden sc-name:assume-safe-context
+import language.experimental.captureChecking
+import caps.*
+```
+
+```scala sc-hidden sc-name:assume-safe-mailer-context sc-compile-with:assume-safe-context
+case class Email(value: String)
+
+def userPrompt(msg: String): Boolean = true
+
+object Mailer:
+  def send(email: Email): Unit = ()
 ```
 
 It makes sense for agentic tooling to subject all compilations of agent-generated code to be compiled in _safe mode_ using this language import. Safe mode imposes the following restrictions:
@@ -27,6 +37,8 @@ It makes sense for agentic tooling to subject all compilations of agent-generate
   1. No access to runtime reflection.
   1. Compile with capture checking enabled, including tracking all mutation effects.
   1. Can access global objects only if they are implemented safely themselves.
+
+One project that makes use of safe mode is [TACIT](https://github.com/lampepfl/tacit). TACIT is a framework for AI agents where agent-submitted Scala 3 code is validated and type-checked with capture checking enabled in safe mode before it is run through a typed capability API.
 
 One needs to disallow unchecked casts or pattern matches since these might ``forget'' retained capabilities (Point 1 above).
 The same holds for features from the `caps.unsafe` module (2), uses of `@unchecked...` annotations (3), and uses of runtime reflection (4).
@@ -41,8 +53,12 @@ is done, the library module can be made available for use by safe code.
 
 This scheme is supported by a new `@assumeSafe` annotation, available in
 module `caps`.
-Modules tagged with this annotation are assumed to be callable from  agent-generated code. `@assumeSafe` comes with none of the restrictions that `safe` implies. Instead it is the obligation of the programmer to verify that the module is indeed safe. For instance caching a function results could be implemented like this:
-```scala sc:nocompile
+Modules tagged with this annotation are assumed to be callable from  agent-generated code. `@assumeSafe` comes with none of the restrictions that `safe` implies. Instead it is the obligation of the programmer to verify that the module is indeed safe.
+
+The following examples show how such components can be implemented. They are not themselves compiled in safe mode.
+
+For instance caching a function results could be implemented like this:
+```scala sc-compile-with:assume-safe-context
 import caps.unsafe.untrackedCaptures
 import caps.assumeSafe
 import scala.collection.mutable.HashMap
@@ -58,8 +74,8 @@ class Memoized[A, B](f: A -> B) {
 ```
 Or, here is an outline of an email function that prompts a user for confirmation before
 sending. Here, we assume that the `Mailer` object is neither safe nor assumed safe.
-Agents can still send email through `CheckedMailer`, but only after user confirmation.
-```scala sc:nocompile
+Agents can still send email through `CheckedMailer`, but only after user confirmation. This implementation is not itself compiled in safe mode.
+```scala sc-compile-with:assume-safe-context,assume-safe-mailer-context
 import caps.assumeSafe
 
 @assumeSafe

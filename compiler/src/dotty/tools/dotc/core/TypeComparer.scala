@@ -55,6 +55,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     maxErrorLevel = -1
     errorNotes = Nil
     undoLog.clear()
+    frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -1609,8 +1610,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def isCaptureVarComparison: Boolean =
       isCaptureCheckingOrSetup
-      && tp1.derivesFrom(defn.Caps_CapSet)
-      && tp2.derivesFrom(defn.Caps_CapSet)
+      && tp1.derivesFromCapSet
+      && tp2.derivesFromCapSet
 
     // begin recur
     if tp2 eq NoType then false

@@ -217,7 +217,7 @@ object ScriptTestEnv {
     printf("===> test script name [%s]\n", scriptFile.getName)
 
   def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
-    import scala.sys.process._
+    import scala.sys.process.*
     val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.absPath)
       ++ scriptArgs
     Process(cmd).lazyLines_!.foreach { println }

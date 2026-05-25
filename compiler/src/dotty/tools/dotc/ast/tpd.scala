@@ -826,6 +826,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       CaseDef(tree: Tree)(pat, guard, body)
     override def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(using Context): Try =
       Try(tree: Tree)(expr, cases, finalizer)
+
+    def TypeTree(tree: Tree)(inferred: Boolean)(using Context): TypeTree = tree match
+      case tree: TypeTree if tree.isInferred == inferred => tree
+      case _ => finalize(tree, tpd.TypeTree(tree.tpe, inferred))
   }
 
   class TimeTravellingTreeCopier extends TypedTreeCopier {

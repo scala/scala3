@@ -2,14 +2,11 @@ package dotty.tools.dotc
 package config
 
 import Settings.Setting.ChoiceWithHelp
-import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
 
 object ScalaSettingsProperties:
 
-  private lazy val minTargetVersion = classfileVersionMap.keysIterator.min
-  private lazy val maxTargetVersion = classfileVersionMap.keysIterator.max
-
+  private val minTargetVersion = 17
+  private val maxTargetVersion = 26
   private val minReleaseVersion = 17
 
   def supportedTargetVersions: List[String] =

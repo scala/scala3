@@ -3,16 +3,18 @@ package dotty.tools.backend.jvm
 import java.nio.channels.ClosedByInterruptException
 import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
 import java.util.concurrent.*
-
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.profile.ThreadPoolFactory
+
 import scala.util.control.NonFatal
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Types.IdentityTypeMap.mapCtx
+import dotty.tools.dotc.report
 
 import scala.compiletime.uninitialized
 
@@ -22,6 +24,7 @@ import scala.compiletime.uninitialized
  */
 private[jvm] sealed trait GeneratedClassHandler {
   val postProcessor: PostProcessor
+  val ctx: Context
 
   /**
     * Pass the result of code generation for a compilation unit to this handler for post-processing
@@ -43,7 +46,7 @@ private[jvm] object GeneratedClassHandler {
   def apply(postProcessor: PostProcessor)(using ictx: Context): GeneratedClassHandler = {
     val compilerSettings = postProcessor.frontendAccess.compilerSettings
     val handler = compilerSettings.backendParallelism match {
-      case 1 => new SyncWritingClassHandler(postProcessor)
+      case 1 => new SyncWritingClassHandler(postProcessor, ictx)
 
       case maxThreads =>
         // if (settings.areStatisticsEnabled)
@@ -62,16 +65,16 @@ private[jvm] object GeneratedClassHandler {
         val queueSize = compilerSettings.backendMaxWorkerQueue.getOrElse(maxThreads * 2)
         val threadPoolFactory = ThreadPoolFactory(Phases.genBCodePhase)
         val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, new CallerRunsPolicy, "non-ast")
-        new AsyncWritingClassHandler(postProcessor, javaExecutor)
+        new AsyncWritingClassHandler(postProcessor, ictx, javaExecutor)
     }
 
     if compilerSettings.optInlinerEnabled || compilerSettings.optClosureInvocations then
-      new GlobalOptimisingGeneratedClassHandler(postProcessor, handler)
+      new GlobalOptimisingGeneratedClassHandler(postProcessor, ictx, handler)
     else
       handler
   }
 
-  private class GlobalOptimisingGeneratedClassHandler(val postProcessor: PostProcessor, underlying: WritingClassHandler)
+  private class GlobalOptimisingGeneratedClassHandler(val postProcessor: PostProcessor, val ctx: Context, underlying: WritingClassHandler)
     extends GeneratedClassHandler {
 
     private val generatedUnits = ListBuffer.empty[GeneratedCompilationUnit]
@@ -108,13 +111,12 @@ private[jvm] object GeneratedClassHandler {
 
     final def postProcessUnit(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
       unitInPostProcess.task = Future:
-        frontendAccess.withThreadLocalReporter(unitInPostProcess.bufferedReporting):
-          // we 'take' classes to reduce the memory pressure
-          // as soon as the class is consumed and written, we release its data
-          unitInPostProcess.takeClasses().foreach:
-            postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
-          unitInPostProcess.takeTasty().foreach:
-            postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
+        // we 'take' classes to reduce the memory pressure
+        // as soon as the class is consumed and written, we release its data
+        unitInPostProcess.takeClasses().foreach:
+          postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
+        unitInPostProcess.takeTasty().foreach:
+          postProcessor.sendToDisk(_, unitInPostProcess.sourceFile)
     }
 
     protected def takeProcessingUnits(): List[CompilationUnitInPostProcess] = {
@@ -124,8 +126,6 @@ private[jvm] object GeneratedClassHandler {
     }
 
     final def complete(): Unit = {
-      import frontendAccess.directBackendReporting
-
       def stealWhileWaiting(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
         val task = unitInPostProcess.task
         while (!task.isCompleted)
@@ -151,19 +151,19 @@ private[jvm] object GeneratedClassHandler {
       takeProcessingUnits().foreach { unitInPostProcess =>
         try
           stealWhileWaiting(unitInPostProcess)
-          unitInPostProcess.bufferedReporting.relayReports(directBackendReporting)
           // We know the future is complete, throw the exception if it completed with a failure
           unitInPostProcess.task.value.get.get
         catch
           case _: ClosedByInterruptException => throw new InterruptedException()
           case NonFatal(t) =>
             t.printStackTrace()
-            frontendAccess.backendReporting.error(em"unable to write ${unitInPostProcess.sourceFile} $t")
+            given Context = ctx
+            report.error(em"unable to write ${unitInPostProcess.sourceFile} $t")
       }
     }
   }
 
-  private final class SyncWritingClassHandler(val postProcessor: PostProcessor)
+  private final class SyncWritingClassHandler(val postProcessor: PostProcessor, val ctx: Context)
     extends WritingClassHandler(_.nn.run()) {
 
     override def toString: String = "SyncWriting"
@@ -171,7 +171,7 @@ private[jvm] object GeneratedClassHandler {
     def tryStealing: Option[Runnable] = None
   }
 
-  private final class AsyncWritingClassHandler(val postProcessor: PostProcessor, override val javaExecutor: ThreadPoolExecutor)
+  private final class AsyncWritingClassHandler(val postProcessor: PostProcessor, val ctx: Context, override val javaExecutor: ThreadPoolExecutor)
     extends WritingClassHandler(javaExecutor) {
 
     override def toString: String = s"AsyncWriting[additional threads:${javaExecutor.getMaximumPoolSize}]"
@@ -207,6 +207,4 @@ final private class CompilationUnitInPostProcess(private var classes: List[Gener
 
   /** the main async task submitted onto the scheduler */
   var task: Future[Unit] = uninitialized
-
-  val bufferedReporting = new BufferingBackendReporting()
 }

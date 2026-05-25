@@ -2,7 +2,7 @@ package dotc
 
 import dotty.tools.vulpix.{ParallelTesting, TestFlags, TestGroup}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object comptest extends ParallelTesting {
 

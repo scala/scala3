@@ -804,3 +804,37 @@ class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-experime
         s"Output: '$output' did not contain expected definition: ${defn}",
         normalizedOutput.contains(normalizedDefn)
       )
+
+class ReplPrintDimentionsTests extends ReplTest(ReplTest.defaultOptions) {
+  private def runTest(settings: List[String], expected: String): Unit =
+    resetToInitial(settings)
+
+    initially:
+      run("""
+        case class Test(i: Int, s: String)
+        val t = Test(1, "test")""")
+
+      assertEquals("// defined case class Test\n" + expected, storedOutput().trim())
+
+  @Test def testDefaults =
+    runTest(Nil, """val t: Test = Test(i = 1, s = "test")""")
+
+  @Test def testWidth =
+    runTest(
+      List("-pagewidth", "15"),
+      """
+        |val t: Test = Test(
+        |  i = 1,
+        |  s = "test"
+        |)""".stripMargin.trim
+    )
+
+  @Test def testWidthAndHeight =
+    runTest(
+      List("-pagewidth", "15", "-Xrepl-print-height", "3"),
+      """
+        |val t: Test = Test(
+        |  i = 1,
+        |...""".stripMargin.trim
+    )
+}

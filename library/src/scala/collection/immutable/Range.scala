@@ -101,9 +101,9 @@ sealed abstract class Range(
    *
    *  If the range is empty, `numRangeElements` does not have a meaningful value.
    *
-   *  Otherwise, `numRangeElements` is interpreted in the range [1, 2^32],
+   *  Otherwise, `numRangeElements` is interpreted in the range [1, 2<sup>32</sup>],
    *  respecting modular arithmetics wrt. the unsigned interpretation.
-   *  In other words, it is 0 if the mathematical value should be 2^32, and the
+   *  In other words, it is 0 if the mathematical value should be 2<sup>32</sup>, and the
    *  standard unsigned int encoding of the mathematical value otherwise.
    *
    *  This interpretation allows to represent all values with the correct

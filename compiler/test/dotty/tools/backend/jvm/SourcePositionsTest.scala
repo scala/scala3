@@ -1,12 +1,13 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
+import dotty.DottyBytecodeTest
 
-import org.junit.Assert._
+import scala.language.unsafeNulls
+import org.junit.Assert.*
 import org.junit.Test
 
 class SourcePositionsTest extends DottyBytecodeTest:
-  import ASMConverters._
+  import dotty.AsmConverters.*
 
   @Test def issue18238_a(): Unit = {
     val code =

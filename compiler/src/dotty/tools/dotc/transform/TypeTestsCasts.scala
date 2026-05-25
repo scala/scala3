@@ -224,8 +224,9 @@ object TypeTestsCasts {
             !(!testCls.isPrimitiveValueClass && foundCls.isPrimitiveValueClass) &&
                // foundCls can be `Boolean`, while testCls is `Integer`
                // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
-            !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass
+            !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass &&
                // we don't have the logic to handle derived value classes
+            !ctx.platform.typeMightBeSubtypeAtRuntime(foundCls, testCls)
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issues a warning or an error otherwise.
@@ -248,12 +249,7 @@ object TypeTestsCasts {
               else true
             end check
 
-            val foundEffectiveClass = effectiveClass(expr.tpe.widen)
-
-            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
-              false
-            else foundClasses.exists(check)
+            foundClasses.exists(check)
           end checkSensical
 
           val tp = if expr.tpe.isPrimitiveValueType then defn.boxedType(expr.tpe) else expr.tpe
@@ -272,7 +268,7 @@ object TypeTestsCasts {
             }
             else if (testCls.isPrimitiveValueClass)
               foundClsSyms match
-                case List(cls) if cls.isPrimitiveValueClass =>
+                case List(cls) if cls.isPrimitiveValueClass && !ctx.platform.typeMightBeSubtypeAtRuntime(testCls, cls) =>
                   constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
                 case _ =>
                   transformIsInstanceOf(
@@ -368,7 +364,7 @@ object TypeTestsCasts {
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           checkTypePattern(expr.tpe, argType, expr.srcPos, isTrusted)
           transformTypeTest(expr, argType,
-            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
+            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, don't flag it even if it always false
         }
         else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))

@@ -1095,7 +1095,7 @@ trait Implicits:
     val owner = ref.symbol.owner
     if owner.is(Module) then
       val companion = owner.sourceModule
-      if companion.isOneOf(Private | Protected) then ref.prefix match
+      ref.prefix match
         case companionRef: TermRef =>
           val pre = companionRef.prefix
           if !companion.isAccessibleFrom(pre) then
@@ -1768,8 +1768,8 @@ trait Implicits:
                           |Current result ${showResult(prevResult)} will be no longer eligible
                           |  because it is not defined before the search position.
                           |Result with new rules: ${showResult(result)}.
-                          |To opt into the new rules, compile with `-source future` or use
-                          |the `scala.language.future` language import.
+                          |To opt into the new rules, compile with `-source 3.6` (or higher) or use
+                          |the `scala.language.`3.6` language import.
                           |
                           |To fix the problem without the language import, you could try one of the following:
                           |  - use a `given ... with` clause as the enclosing given,
