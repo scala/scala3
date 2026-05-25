@@ -339,29 +339,19 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       }
 
     /* We need to inline recursively throughout generated specialized traits - see tests/run/specialized-trait-requires-inline-trait-inlining.scala */
-    // TODO: How do we calculate the spans correctly?
-    val inlineInlineTraits = new TreeTypeMap(treeMap = (tree: Tree) => tree match {
-      case tree: TypeDef if tree.symbol.isInlineTrait =>
-        val tree1 = Inlines.checkAndTransformInlineTrait(tree)
-        val tree2 = if Inlines.needsInlining(tree1) then Inlines.inlineParentInlineTraits(tree1) else tree1
-        tree2
-      case tree: TypeDef if Inlines.needsInlining(tree) =>
-        Inlines.inlineParentInlineTraits(tree)
-      case t => t
-    })
 
     val generatedTraitStats1 = generatedTraitStats.map {
       case tree: TypeDef =>
         assert(tree.symbol.isInlineTrait)
-        val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree),allowSpecialized=true).asInstanceOf[TypeDef]
-        cpy.TypeDef(inlined)(name = inlined.name, rhs = inlineInlineTraits(inlined.rhs)).withSpan(inlined.span)
+        val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree)).asInstanceOf[TypeDef]
+        cpy.TypeDef(inlined)(name = inlined.name, rhs = inlined.rhs).withSpan(inlined.span)
     } 
 
     val generatedClassStats1 = generatedClassStats.map {
       case tree: TypeDef =>
-        assert(Inlines.needsInlining(tree, allowSpecializedTraits=true))
-        val inlined = Inlines.inlineParentInlineTraits(tree, allowSpecialized=true).asInstanceOf[TypeDef]
-        cpy.TypeDef(inlined)(name = inlined.name, rhs = inlineInlineTraits(inlined.rhs)).withSpan(inlined.span)
+        assert(Inlines.needsInlining(tree))
+        val inlined = Inlines.inlineParentInlineTraits(tree).asInstanceOf[TypeDef]
+        cpy.TypeDef(inlined)(name = inlined.name, rhs = inlined.rhs).withSpan(inlined.span)
     }
 
     val (generatedTraitStatsFinal, generatedClassStatsFinal, specializationsFinal) = 
@@ -387,12 +377,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
     val statsFinal = generatedTraitStatsFinal ++
                      generatedClassStatsFinal ++ 
-                     stats.map(stat =>  replaceImplementationClassesMap(specializationsFinal)(
-                       if (!stat.symbol.isSpecializedTraitImplementationClass && !stat.symbol.isSpecializedTraitInterface) then // We already processed these in an earlier recursive call
-                         Inlines.inlineParentInlineTraits(stat, allowSpecialized = true, allowNonSpecialized = false) // Perform inlining into class Bar extends Foo[Int] from user code. // TODO: I don't really like this gating. 
-                       else
-                         stat
-                     ))
+                     stats.map(stat =>  replaceImplementationClassesMap(specializationsFinal)(stat))
 
     (statsFinal.map(removeRedundantOverridesMap(_)), specializationsFinal)
 }
@@ -621,6 +606,10 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val
                                                                            (part.typeSymbol eq defn.AnyClass) || 
                                                                            (part.typeSymbol eq defn.ObjectClass) ||
                                                                            (part.typeSymbol eq defn.AnyValClass)))
+
+  // Only works before erasure.
+  def isFullySpecialized: Boolean =
+    !specializedTypeArgs.exists(_.tpe.existsPart(part => (part.typeSymbol.isTypeParam)))
 
   // Note: We only care about the specialized arguments for equality; a specialization of Vec[A: Specialized, B] with B = Int and one
   // with B = String can be considered to be the same as they use the same specialized trait

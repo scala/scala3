@@ -273,7 +273,7 @@ it is possible to create arbitrarily long chains requiring alternating between s
 this problem arises not only with the `$sp$` traits, but also the `$impl$` classes (see `specialized-trait-inlining-causes-implementation-required.scala`).
 
 To resolve this problem without alternating between and looping the `specializeInlineTraits` and `desugarSpecializedTraits` phases in an inconvenient way, we opt to make:
-- `specializeInlineTraits` responsible for inlining inline traits written directly in user code.
+- `specializeInlineTraits` responsible for inlining inline traits written directly in user code. If a specialized trait creates an inline trait inlining opportunity which is not specialized, this is dealt with by specializeInlineTraits. Further if a user writes `class Bar extends Foo[Int]` where Foo is declared Specialized, `specializeInlineTraits` will do the inlining. 
 - `desugarSpecializedTraits` responsible for finding specializations and generating the required `$sp$` traits and `$impl$` classes, inlining the parent specialized traits into these classes, and repeating until no more inlining can be performed and no more `$sp$` traits and `$impl$` classes are needed. This phase also performs replacement of e.g. `Vec[Int]` with `Vec$sp$Int` and `new Vec[Int]` with `new Vec$impl$Int`.
 - `pruneInlineTraits` and `replaceInlinedTraitSymbols` responsible respectively for converting inline traits to pure interfaces, and for replacing members accessed on inline receivers with the corresponding inlined symbols. This is *whether the inline traits in question come from inline traits in source code or specialized trait expansion, in both cases.* (see the document on inline traits for a more detailed description of these phases). 
 
