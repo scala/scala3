@@ -29,6 +29,7 @@ import dotty.tools.dotc.typer.Synthesizer
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Flags.GivenOrImplicit
 import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
+import dotty.tools.dotc.core.NameKinds.FlatName
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.report
@@ -74,7 +75,10 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
                   :: inheritedParents                                                                              // parents of the original trait in the form Foo[Int] (later specialized to Foo$sp$Int)
 
     val traitSymbol = newNormalizedClassSymbol(
-      specialization.traitSymbol.owner,
+      specialization.traitSymbol.owner.enclosingPackageClass, // For specialized traits defined inside objects/classes etc, pre-Flatten the $sp$ and $impl$ def trees (i.e.
+                                                              // make them live in the enclosing package with the flattened name). We do this because it's easier than 
+                                                              // finding the defining tree of the object, which would require scanning the whole file, and it
+                                                              // might be in another compilation unit / already compiled.
       DesugarSpecializedTraits.newSpecializedTraitName(specialization),
       Flags.Synthetic | Flags.Trait | Flags.Inline,
       parents,
@@ -140,7 +144,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val parents = List(objectParent, traitSpParent, originalTraitSpecializedParent)
 
     val newImplementationClassSymbol = newNormalizedClassSymbol(
-      specialization.traitSymbol.owner,
+      specialization.traitSymbol.owner.enclosingPackageClass,
       DesugarSpecializedTraits.newImplementationClassName(specialization),
       Flags.Synthetic,
       parents,
@@ -396,7 +400,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
   override protected def newTransformer(using Context): Transformer = new Transformer:
     override def transform(tree: Tree)(using Context): Tree = 
       tree match { // TODO: Is Package level processing really what we want? Given we are going to output the classes somewhere else do we not really want either to deepFold the whole tree directly or do a more direct transform?
-        case pkg@PackageDef(pid, stats) => // TODO: If we do everything ourselves and match only on the package then we can get rid of the MacroTransform aspect and just have a Phase with the transformPackageDef method.
+        case pkg@PackageDef(pid, stats) => // TODO: If we do everything ourselves and match only on the package then we can get rid of the MacroTransform aspect and just have a Phase with the transformPackageDef method or even transformStats ideally
           
           def checkType(t: Type, pos: SrcPos) = t.widen.dealias match {
             case Specialization.SpecializedEvidence(_) => 
@@ -415,12 +419,25 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
           val (stats1, specializedTraitCache2) = transformStatements(stats, ctx.specializedTraitState.specializedTraitCache.get)
           ctx.specializedTraitState.specializedTraitCache = Some(specializedTraitCache2) // TODO: Avoid mutation here - we will make the cache mutable instead I think. Makes more sense
-          cpy.PackageDef(pkg)(pid, stats1)
+          
+          val grouped = stats1.groupBy(tree => tree.symbol.enclosingPackageClass)
+          
+          tpd.PackageDef(Ident(defn.EmptyPackageVal.namedType),
+            grouped.getOrElse(defn.RootClass, List()) :::
+            grouped.getOrElse(defn.EmptyPackageClass, List()) :::
+            grouped.toList.filter((pk, stmts) => pk != defn.RootClass && pk != defn.EmptyPackageClass).map((pkg, stmts) => tpd.PackageDef(Ident(pkg.sourceModule.namedType), stmts))
+          )
       }
 
   private def collectReferencedSpecializations(stats: List[Tree], specializations: SpecializedTraitCache)(using Context): SpecializedTraitCache =
     stats.foldLeft(specializations)((specializations, tree) => {
       tree.deepFold(specializations)((specializations, tree) => tree match
+        case t@TypeDef(name, tmpl: Template) if t.symbol.isSpecializedTrait => 
+          if !t.symbol.isStatic then
+            // The approach we use for flattening makes this quite tricky: see e.g. tests/neg/specialized-trait-scoped-inside-object-deep-nesting.scala.
+            // In theory can scan the tree to find where to put the generated traits instead, but this still doesn't work cross-CU, so for now we ban.
+            report.error("Specialized traits may not be defined inside classes or traits (this would make them path-dependent which is not currently supported); they may be defined inside objects.", t.symbol.srcPos)
+          specializations
         case Typed(Apply(Select(New(anon),ctor),List()), t: TypeTree) if anon.symbol.isAnonymousClass =>
           (t.tpe, t.span) match {
             case Specialization(spec) if spec.isSpecialized => specializations.addInterfaceAndImplementation(spec)
@@ -475,15 +492,28 @@ object DesugarSpecializedTraits:
   val name: String = "desugarSpecializedTraits"
   val description: String = "Replaces traits having type parameters that have the Specialized annotation with specialized versions"
 
+  // TODO: Do we want to compress this more by adopting e.g. specializedTypeNames from scala 2? 
+  // TODO: NameKind?
+  def canonicalName(tp: Type)(using Context): String = tp.dealias match
+    case AppliedType(tycon, args) =>
+      canonicalName(tycon) + args.map(canonicalName).mkString("$_$")
+    case other =>
+      other.typeSymbol.fullName.toString.replace('.', '$')
+
+
   // TODO: What happens with this name generation if we have Vec[Vec[T]] for example? We potentially don't have an Ident
   // TODO: Check what happens here when we have a case where the types being specialized into are user defined instead of primitives or type vars.
-  private def generateName(specialization: Specialization, suffix: String)(using Context) = // TODO: Probably don't use show
-    (specialization.traitSymbol.name ++ suffix).asTypeName ++ specialization.specializedTypeArgs.map(t => t.tpe.show).mkString(str.SPECIALIZED_TRAIT_TYPE_SEP)
+  private def generateName(specialization: Specialization, suffix: String)(using Context) = 
+    val name = (specialization.traitSymbol.name ++ suffix).asTypeName ++ specialization.specializedTypeArgs.map(t => canonicalName(t.tpe)).mkString(str.SPECIALIZED_TRAIT_TYPE_SEP)
+    if specialization.traitSymbol.owner.is(Flags.Package) then
+      name
+    else
+      FlatName(specialization.traitSymbol.owner.flatName.toTermName, name.toTermName).toSimpleName.toTypeName
 
-  private[transform] def newSpecializedTraitName(specialization: Specialization)(using Context): TypeName = 
+  /*private[transform]*/ def newSpecializedTraitName(specialization: Specialization)(using Context): TypeName = 
     generateName(specialization, str.SPECIALIZED_TRAIT_SUFFIX)
 
-  private[transform] def newImplementationClassName(specialization: Specialization)(using Context): TypeName = 
+  /*private[transform]*/ def newImplementationClassName(specialization: Specialization)(using Context): TypeName = 
     generateName(specialization, str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
 end DesugarSpecializedTraits
 

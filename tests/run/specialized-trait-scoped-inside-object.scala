@@ -6,4 +6,4 @@ object MySpecializedStuff:
     
     def foo = new Foo[Int] {}
 
-@main def main = MySpecializedStuff.foo.bar
+@main def Test = MySpecializedStuff.foo.bar

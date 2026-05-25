@@ -6,4 +6,4 @@ def bar(xs: List[Foo[Int]]) = xs.head
 
 @main def Test =
     val myList = List(new Foo[Int]() {}, new Foo[Int]() {})
-    assert(bar(myList).foo == "Foo$impl$Int")
+    assert(bar(myList).foo == "Foo$impl$scala$Int")
