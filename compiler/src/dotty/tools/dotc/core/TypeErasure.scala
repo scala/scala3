@@ -783,7 +783,11 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
         else eraseNormalClassRef(tp)
-      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) =>
+      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until 
+                                                                                   // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
+                                                                                   // foo(Foo):Int. Only at erasure do the symbol swap. This ensures
+                                                                                   // the signatures don't change before erasure.
+                                    && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
         val specName = DesugarSpecializedTraits.newSpecializedTraitName(spec) // TODO: Maybe better as method on spec
         val interfaceSymbol = spec.traitSymbol.owner.enclosingPackageClass.info.decls.lookup(specName)
         assert(interfaceSymbol.exists && interfaceSymbol.isClass)
