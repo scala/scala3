@@ -373,7 +373,10 @@ object Inlines:
                   val parentTraitInliner = InlineParentTrait(parent)
                   // Inline body
                   val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
-                  val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
+                  // Need to put the new defs first because we process in linearization order to make overridees correct,
+                  // but we want parent definitions to come first so that if child inline traits refer to values defined in a parent
+                  // inline trait these are defined. 
+                  val inlinedDefs1 = parentTraitInliner.expandDefs(overriddenSymbols) ::: inlineDefs 
                   cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
                   
                   val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
@@ -1060,7 +1063,6 @@ object Inlines:
       if rhs.isEmpty then
         rhs
       else
-
         val symbolMap = mutable.Map[Symbol, Symbol]()
         // TODO make version of inlined that does not return bindings?
         val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parent.span), Nil, inlined(rhs)._2.withSpan(parent.span).cloneIn(parentSym.source)).withSpan(parent.span) // TODO: This inlines also calls to inline defs that were made in the inline trait body, is that desirable? 
