@@ -219,9 +219,9 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
             ctx.specializedTraitState.specializedTraitCache.get.getInterfaceSymbol(spec).map:
               specializedSymbol => 
               if spec.unspecializedTypeArgs.nonEmpty then
-                AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs)  // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
+                AppliedTypeTree(Ident(specializedSymbol.typeRef), spec.unspecializedTypeArgs).withSpan(tree.span)  // TODO: Matching on a Specialization and then outputting ATT is weird - maybe have a method on specialization to convert to ATT .toAppliedTypeTree?
               else
-                TypeTree(specializedSymbol.typeRef)
+                TypeTree(specializedSymbol.typeRef).withSpan(tree.span)
             .getOrElse(tree)
           case tree => tree
         }
@@ -253,12 +253,14 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
                   anon.parentCalls match { 
                     case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) if (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) =>
-
-                      specializations.getImplementationSymbol(spec).map( specializedSymbol => 
-                        Typed(
-                          Select(New(ref(specializedSymbol)),anon.ctor).appliedToTypeTrees(spec.unspecializedTypeArgs)
-                                                                       .appliedToArgss(tpd.allArgss(app).tail.nestedMap(_.changeNonLocalOwners(anon.symbol.owner))) // Remove the type params which are not needed
+                      specializations.getImplementationSymbol(spec).map( specializedSymbol =>
+                        inContext(ctx.withSource(anon.typeTree.source)) {
+                          Typed(
+                            Select(New(ref(specializedSymbol)), anon.ctor)
+                              .appliedToTypeTrees(spec.unspecializedTypeArgs)
+                              .appliedToArgss(tpd.allArgss(app).tail.nestedMap(_.changeNonLocalOwners(anon.symbol.owner))) // Skip the type params which are not needed
                           , specializeTypeTree(anon.typeTree))
+                        }.withSpan(anon.typeTree.span)
                       ).getOrElse(tree) // We don't replace non-specialized anonymous class instantiations e.g. new Foo[T] where T is defined in the enclosing scope.
                     case _ => 
                       report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", anon.srcPos)
