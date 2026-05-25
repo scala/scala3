@@ -335,17 +335,19 @@ Local private members (members with the same access patterns as the former `priv
 
 [4] As long as this doesn't create a cycle e.g.:
 ```scala
-inline trait C[S]: // error: Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.
+inline trait C[S]:
    def v(x: S): S = x
    def w: Unit = 
       val x = new D[S] {}
       println("w")
 
-inline trait D[S]: // error: Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.
+inline trait D[S]: 
    def v(x: S): S = x
    def w: Unit = 
       val x = new C[S] {}
       println("w")
+
+class T extends D // error: Inlining of inline traits looped. Tried to inline trait D into its own body.
 ```
 
 [5] Supported with same behaviour as in normal traits. In particular, the following is completely fine, and will be inlined into B.

@@ -347,18 +347,22 @@ object Inlines:
 
   def inlineParentInlineTraits(cls: Tree)(using Context): Tree =
     cls match {
-      // case cls @ tpd.TypeDef(_, impl: Template) if cls.symbol.owner.ownersIterator.exists(_.isInlineTrait) => // TODO: We can relax this if we use a seen list to avoid cycles
-      //   report.error("May not inline an inline trait into a class defined inside another inline trait. If you really need to do this, make the inline trait Specialized or move the class definition outside the trait.", cls.srcPos)
-      //   cls
       case cls @ tpd.TypeDef(_, impl: Template) =>
         checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val ancestors = inlineTraitAncestors(cls)
         val cycleFound = ancestors.exists { parent =>
-          if cls.symbol.ownersIterator.contains(symbolFromParent(parent)) then
-            // TODO: This appears at the inline trait D line rather than the line corresponding to the inlining - should we be worried ? 
-            report.error("Inlining of inline traits looped, which will create an infinitely long program. This is not allowed.", cls.sourcePos)
-          cls.symbol.ownersIterator.contains(symbolFromParent(parent))
+          val parentSym = symbolFromParent(parent)
+          val errorPos = if cls.symbol.ownersIterator.contains(parentSym) then Some(cls.srcPos) // Trying to inline into the tree which defines parentSym (need to catch this separately
+                                                                                                // as need to catch it before we inline the second time to avoid tripping an assertion) 
+                         else if ctx.inlineTraitState.inlineOrigins(cls.symbol).contains(parentSym) then 
+                          val userPos = tpd.enclosingInlineds.last.srcPos // Select the user code that caused this error so we get two errors if there are two problematic inlines, not one
+                          Some(userPos) // Trying to inline into the inlined body of parentSym not in the defn tree
+                         else None // Fine
+          errorPos.foreach(pos =>
+            report.error(s"Inlining of inline traits looped. Tried to inline ${parentSym} into its own body.", pos)
+          )
+          errorPos.nonEmpty
         }
 
         if cycleFound then cls
@@ -842,6 +846,7 @@ object Inlines:
     private val parentSym = symbolFromParent(parent)
     private val paramAccessorsMapper = ParamAccessorsMapper()
 
+    private val child = ctx.owner
     private val childThisType = ctx.owner.thisType
     private val childThisTree = This(ctx.owner.asClass).withSpan(parent.span)
 
@@ -1058,7 +1063,7 @@ object Inlines:
 
         val symbolMap = mutable.Map[Symbol, Symbol]()
         // TODO make version of inlined that does not return bindings?
-        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parentSym.span), Nil, inlined(rhs)._2.withSpan(parent.span).cloneIn(parentSym.source)).withSpan(parent.span) // TODO: This inlines also calls to inline defs that were made in the inline trait body, is that desirable? 
+        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parent.span), Nil, inlined(rhs)._2.withSpan(parent.span).cloneIn(parentSym.source)).withSpan(parent.span) // TODO: This inlines also calls to inline defs that were made in the inline trait body, is that desirable? 
         
         // In case of nested inline trait inlines, because BodyAnnotation is out of date,
         // body inlined misses nested expansion, but we have the symbols for the items that should be there
@@ -1097,6 +1102,9 @@ object Inlines:
 
             val ctor = tpd.DefDef(newConstructorSymbol.asTerm, rhsFun)
             symbolMap(tree.symbol) = newSym
+
+            ctx.inlineTraitState.registerInlineOrigin(newSym, child, parentSym)
+
             tpd.ClassDefWithParents(newSym.asClass, ctor, tmpl1.parents, tmpl1.body)
           case tree => tree
         })
@@ -1148,6 +1156,10 @@ object Inlines:
     // The map has (foo#1000, trait B) => foo#2000
     val inlinedTraitSymbols = mutable.HashMap[(Symbol, Symbol), Symbol]()
 
+    // For a class symbol created during inlining of an inline trait,
+    // the chain of inlined traits which produced it. We don't actually care about the order. 
+    val inlineOrigins = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty)
+
     // Record that we just inlined oldSym into childClasslike which created
     // childClassLike.newSym
     def registerInlinedSymbol(oldSym: Symbol, newSym: Symbol, childClasslike: Symbol) =
@@ -1160,6 +1172,9 @@ object Inlines:
     // Check if oldSym has been inlined into childClasslike
     def inlinedSymbolIsRegistered(oldSym: Symbol, childClasslike: Symbol) =
       inlinedTraitSymbols.contains((oldSym, childClasslike))
+
+    def registerInlineOrigin(newSym: Symbol, owner: Symbol, parentSym: Symbol): Unit =
+      inlineOrigins(newSym) = inlineOrigins(owner) + parentSym
   end InlineTraitState
 
 end Inlines
