@@ -61,10 +61,10 @@ Sometimes you may want to stop the compiler after a certain phase, for example t
 knock-on errors from occurring from a bug in an earlier phase. Use the flag
 `-Ystop-after:<phase-name>` to prevent any phases executing afterwards.
 
-> e.g. `-Vprint:<phase>` where `phase` is a miniphase, will print after
-> the whole phase group is complete, which may be several miniphases after `phase`.
-> Instead you can use `-Ystop-after:<phase> -Vprint:<phase>` to stop
-> immediately after the miniphase and see the trees that you intended.
+> Note: `-Ystop-after:<miniphase>` stops after the whole phase group containing
+> `<miniphase>` (a MegaPhase fuses its mini-phases into one traversal).
+> Combined with `-Vprint:<miniphase>`, the printed trees reflect the state at
+> the end of the group, which may include mini-phases after `<miniphase>`.
 
 ## Printing TASTy of a Class
 

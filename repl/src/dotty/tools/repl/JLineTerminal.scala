@@ -2,7 +2,9 @@ package dotty.tools
 package repl
 
 import scala.language.unsafeNulls
+import scala.io.AnsiColor
 
+import java.io.{InputStream, InterruptedIOException}
 import dotc.core.Contexts.*
 import dotc.parsing.Scanners.Scanner
 import dotc.parsing.Tokens.*
@@ -14,41 +16,63 @@ import org.jline.reader.Parser.ParseContext
 import org.jline.reader.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
-import org.jline.terminal.TerminalBuilder
 import org.jline.terminal.Attributes
 import org.jline.terminal.Attributes.ControlChar
+import org.jline.terminal.TerminalBuilder
+import org.jline.terminal.Terminal.Signal
 import org.jline.utils.AttributedString
+import org.jline.utils.NonBlockingReader
 
-class JLineTerminal extends java.io.Closeable {
-  // import java.util.logging.{Logger, Level}
-  // Logger.getLogger("org.jline").setLevel(Level.FINEST)
+// `stdin` alternates between a background Ctrl-C monitor and the foreground
+// wrapped `System.in` reader. These states track which side currently owns it.
+private enum InputState:
+  case Monitoring, ForegroundRead, Closed
 
-  private val terminal =
-    val builder = TerminalBuilder.builder()
-    if System.getenv("TERM") == "dumb" then
-      // Force dumb terminal if `TERM` is `"dumb"`.
-      // Note: the default value for the `dumb` option is `null`, which allows
-      // JLine to fall back to a dumb terminal. This is different than `true` or
-      // `false` and can't be set using the `dumb` setter.
-      // This option is used at https://github.com/jline/jline3/blob/894b5e72cde28a551079402add4caea7f5527806/terminal/src/main/java/org/jline/terminal/TerminalBuilder.java#L528.
-      builder.dumb(true)
-    builder.build()
-  
-  // Save original attributes before entering raw mode
+class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null) extends java.io.Closeable {
+  def this() = this(null)
+  private val terminal: org.jline.terminal.Terminal =
+    if providedTerminal != null then providedTerminal
+    else
+      val builder = TerminalBuilder.builder()
+      if System.getenv("TERM") == "dumb" then
+        // Force dumb terminal if `TERM` is `"dumb"`.
+        // Note: the default value for the `dumb` option is `null`, which allows
+        // JLine to fall back to a dumb terminal. This is different than `true` or
+        // `false` and can't be set using the `dumb` setter.
+        // This option is used at https://github.com/jline/jline3/blob/894b5e72cde28a551079402add4caea7f5527806/terminal/src/main/java/org/jline/terminal/TerminalBuilder.java#L528.
+        builder.dumb(true)
+      builder.build()
+
   private val originalAttributes = terminal.getAttributes
-
-  // Disable VINTR so Ctrl-C is not converted to SIGINT by the tty driver, then enter raw mode
-  // This disables special character processing so Ctrl-C is passed through as 0x03
-  val noIntr = new Attributes(originalAttributes)
-  noIntr.setControlChar(ControlChar.VINTR, 0)
-  terminal.setAttributes(noIntr)
+  private val noIntrAttributes = new Attributes(originalAttributes)
+  noIntrAttributes.setControlChar(ControlChar.VINTR, 0)
+  terminal.setAttributes(noIntrAttributes)
   terminal.enterRawMode()
 
-
   private val history = new DefaultHistory
+  @volatile private var monitoringThread: Thread | Null = null
+
+  private val userLineReader =
+    LineReaderBuilder
+      .builder()
+      .terminal(terminal)
+      .parser(new SimpleParser())
+      .build()
+
+  bindCtrlCInterrupt(userLineReader)
+  private val userInput = new UserInputStream(userLineReader, terminal.encoding())
+
+  private def bindCtrlCInterrupt(lr: LineReader): Unit =
+    lr.getKeyMaps.get(LineReader.MAIN).bind(
+      new Widget { override def apply(): Boolean = throw new UserInterruptException("") },
+      "\u0003"
+    )
 
   private def magenta(str: String)(using Context) =
-    if (ctx.settings.color.value != "never") Console.MAGENTA + str + Console.RESET
+    // Deliberately do not use these properties on `Console` to avoid initializing it,
+    // and thus capturing stdin/stdout/stderr state in its `Console.in/out/err` properties,
+    // since the REPL may wish to change the std streams before giving control to the user.
+    if (ctx.settings.color.value != "never") AnsiColor.MAGENTA + str + AnsiColor.RESET
     else str
   protected def promptStr = "scala"
   private def prompt(using Context)        = magenta(s"\n$promptStr> ")
@@ -92,41 +116,79 @@ class JLineTerminal extends java.io.Closeable {
       .option(DISABLE_EVENT_EXPANSION, true)    // don't process escape sequences in input
       .build()
 
-    lineReader.getKeyMaps.get(LineReader.MAIN).bind(
-      new Widget { override def apply(): Boolean = throw new UserInterruptException("") },
-      "\u0003"
-    )
+    bindCtrlCInterrupt(lineReader)
     lineReader.readLine(prompt)
   }
 
   def close(): Unit =
+    userInput.signalClosed()
+    // Defensive: normally withMonitoringCtrlC joins and nulls the thread,
+    // but if close() is called during an abnormal exit, clean up here.
+    monitoringThread match
+      case thread: Thread =>
+        Thread.interrupted() // clear interrupt flag in case user code interrupted this thread
+        thread.join()
+      case null =>
     try terminal.setAttributes(originalAttributes)
     finally terminal.close()
+
+  def userInputStream: InputStream =
+    userInput
+
+  /** For tests: peek at the terminal's input reader with a short timeout.
+   *  Returns `NonBlockingReader.EOF` (-1) if the reader is closed, or
+   *  `NonBlockingReader.READ_EXPIRED` (-2) if it's open but has no data ready.
+   */
+  private[repl] def peekTerminalReader(timeoutMs: Long): Int =
+    terminal.reader().peek(timeoutMs)
 
   /** Execute a block while monitoring for Ctrl-C keypresses.
    *  Calls the handler when Ctrl-C is detected during block execution.
    */
   def withMonitoringCtrlC[T](handler: () => Unit)(block: => T): T = {
-    @volatile var monitoring = true
-    val terminalReader = terminal.reader()
-
-    val monitorThread = new Thread(() => {
-      while (monitoring) {
+    // If you change Ctrl+C handling in any way, make sure you manually check that
+    // reading from both `System.in` and `Console.in` still works in embedded hosts.
+    // In raw mode, SIGINT is not generated by the terminal (Ctrl-C is detected
+    // by reading byte 3 from the raw stream). This handler is a fallback for
+    // external signals, e.g. `kill -INT`.
+    val previousHandler = terminal.handle(Signal.INT, _ => handler())
+    val reader = terminal.reader()
+    userInput.startMonitoring()
+    val thread = new Thread(() =>
+      while userInput.waitUntilActive() == InputState.Monitoring do
         val ch =
-          try terminalReader.read(1) // timeout after 1ms so the loop gets a chance to check `monitoring`
-          catch { case _: Exception => -1 } // Ignore all read errors, just continue
+          try reader.read(100L)
+          catch case _: Exception => NonBlockingReader.READ_EXPIRED
 
-        if (ch == 3 /* Ctrl-C is ASCII 0x03 */ && monitoring) handler()
-      }
-    }, "REPL-CtrlC-Monitor")
-    monitorThread.setDaemon(true)
-    monitorThread.start()
+        if ch == NonBlockingReader.READ_EXPIRED then ()
+        else if ch == NonBlockingReader.EOF then userInput.signalClosed()
+        else if ch == 3 then handler()
+        else
+          // if the user is trying to use stdin and we consumed a character, put it "back" into the reader's buffer,
+          // otherwise the behavior will be nonsensical
+          if userLineReader.isReading then
+            userLineReader.getBuffer.write(ch.toChar)
+            userLineReader.callWidget(LineReader.REDRAW_LINE)
+            userLineReader.callWidget(LineReader.REDISPLAY)
+          else
+            userInput.enqueueChar(ch)
+    , "REPL-CtrlC-Monitor")
+    monitoringThread = thread
+    thread.setDaemon(true)
+    thread.start()
 
     try block
     finally {
-      monitoring = false
-      Thread.interrupted() // clear any interrupted flag so the `join` below doesn't explode
-      monitorThread.join()
+      userInput.signalClosed()
+      // Do not call `reader.close()` here — `terminal.reader()` returns the
+      // terminal's shared NonBlockingReader, and closing it closes the
+      // terminal's input side, breaking the next `readLine()` call. The
+      // monitor thread's `reader.read(100L)` returns within ~100ms, after
+      // which the loop sees the Closed state and exits.
+      Thread.interrupted() // clear interrupted flag so join below doesn't explode
+      thread.join()
+      monitoringThread = null
+      terminal.handle(Signal.INT, previousHandler)
     }
   }
 
@@ -136,8 +198,6 @@ class JLineTerminal extends java.io.Closeable {
       val highlighted = SyntaxHighlighting.highlight(buffer)
       AttributedString.fromAnsi(highlighted)
     }
-    def setErrorPattern(errorPattern: java.util.regex.Pattern): Unit = {}
-    def setErrorIndex(errorIndex: Int): Unit = {}
   }
 
   /** Provide multi-line editing support */
@@ -188,7 +248,7 @@ class JLineTerminal extends java.io.Closeable {
 
 
           // we need to enclose the last backtick, which unclosed produces ERROR token
-          if (token == ERROR && input(start) == '`') then
+          if token == ERROR && input(start) == '`' then
             lastBacktickErrorStart = Some(start)
           else
             lastBacktickErrorStart = None
@@ -231,4 +291,132 @@ class JLineTerminal extends java.io.Closeable {
       }
     }
   }
+}
+
+/** A `System.in` wrapper that lets the REPL monitor raw terminal input for Ctrl-C
+ *  without stealing bytes from user code reading from `System.in` / `Console.in`.
+ *
+ *  The monitor thread peeks at terminal input while REPL code is running. Any
+ *  non-Ctrl-C input it sees is buffered here so later `read()` calls from user
+ *  code observe the same bytes instead of losing them to the monitor.
+ */
+private final class UserInputStream(
+  userLineReader: LineReader,
+  encoding: java.nio.charset.Charset
+) extends InputStream {
+  private var bytes = new Array[Byte](16)
+  private var byteCount = 0
+  private var state = InputState.ForegroundRead
+ 
+  /** Blocks until the state is no longer ForegroundRead. Returns the active state. */
+  def waitUntilActive(): InputState = synchronized {
+    while state == InputState.ForegroundRead do wait()
+    state
+  }
+
+  def enqueueChar(ch: Int): Unit = synchronized {
+    val encoded = String.valueOf(ch.toChar).getBytes(encoding)
+    enqueueBytes(encoded)
+  }
+
+  def signalClosed(): Unit = synchronized {
+    state = InputState.Closed
+    notifyAll()
+  }
+
+  def startMonitoring(): Unit = synchronized {
+    byteCount = 0
+    state = InputState.Monitoring
+    notifyAll()
+  }
+
+  private def resumeMonitoring(): Unit = synchronized {
+    if state != InputState.Closed then
+      state = InputState.Monitoring
+    notifyAll()
+  }
+
+  private def enqueueBytes(data: Array[Byte]): Unit = synchronized {
+    ensureCapacity(byteCount + data.length)
+    Array.copy(data, 0, bytes, byteCount, data.length)
+    byteCount += data.length
+  }
+
+  private def pollByte(): Option[Int] = synchronized {
+    if byteCount > 0 then
+      val value = bytes(0) & 0xff
+      removePrefix(1)
+      Some(value)
+    else if state == InputState.Closed then Some(-1)
+    else
+      state = InputState.ForegroundRead
+      None
+  }
+
+  private def drainTo(buf: Array[Byte], offset: Int, maxLen: Int): Int = synchronized {
+    val n = math.min(maxLen, byteCount)
+    Array.copy(bytes, 0, buf, offset, n)
+    removePrefix(n)
+    n
+  }
+
+  private def ensureCapacity(required: Int): Unit =
+    if required > bytes.length then
+      var newSize = bytes.length
+      while newSize < required do newSize *= 2
+      val newBytes = new Array[Byte](newSize)
+      Array.copy(bytes, 0, newBytes, 0, byteCount)
+      bytes = newBytes
+
+  private def removePrefix(n: Int): Unit =
+    byteCount -= n
+    if byteCount > 0 then
+      Array.copy(bytes, n, bytes, 0, byteCount)
+
+  private def readUserInputByte(): Int = {
+    while true do
+      pollByte() match
+        case Some(value) => return value
+        case None =>
+          try
+            val line = userLineReader.readLine("")
+            val lineBytes = (line + System.lineSeparator()).getBytes(encoding)
+            enqueueBytes(lineBytes)
+          catch
+            case _: EndOfFileException | _: UserInterruptException | _: InterruptedException =>
+              return -1
+          finally
+            resumeMonitoring()
+
+    -1
+  }
+
+  override def read(): Int =
+    readUserInputByte()
+
+  override def read(bytes: Array[Byte], offset: Int, length: Int): Int =
+    if length == 0 then 0
+    else
+      val first = read()
+      if first == -1 then -1
+      else
+        bytes(offset) = first.toByte
+        drainTo(bytes, offset + 1, length - 1) + 1
+}
+
+private final class SimpleParser extends reader.Parser {
+  private class ParsedLine(val inputLine: String, val inputCursor: Int) extends reader.CompletingParsedLine {
+    def word(): String = inputLine
+    def wordCursor(): Int = inputCursor
+    def wordIndex(): Int = 0
+    def words(): java.util.List[String] = java.util.List.of(inputLine)
+    def line(): String = inputLine
+    def cursor(): Int = inputCursor
+    def escape(candidate: CharSequence, complete: Boolean): CharSequence = candidate
+    def rawWordCursor(): Int = inputCursor
+    def rawWordLength(): Int = inputLine.length
+  }
+
+  def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine =
+    new ParsedLine(input, cursor)
 }

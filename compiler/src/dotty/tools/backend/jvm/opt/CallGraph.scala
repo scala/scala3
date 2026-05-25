@@ -29,8 +29,7 @@ import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 
 class CallGraph(frontendAccess: PostProcessorFrontendAccess,
-                byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                ts: CoreBTypes) {
+                byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
 
   /**
    * The call graph contains the callsites in the program being compiled.

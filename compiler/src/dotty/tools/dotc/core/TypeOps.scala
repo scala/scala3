@@ -504,8 +504,7 @@ object TypeOps:
             mapOver(tl)
           case _ =>
             super.apply(tp)
-      catch case ex: Throwable =>
-        handleRecursive("traversing for avoiding local references", s"${tp.show}" , ex)
+      catch case ex: Throwable => handleRecursive("traversing for avoiding local references", s"${tp.show}", ex)
     end apply
 
     /** Three deviations from standard derivedSelect:

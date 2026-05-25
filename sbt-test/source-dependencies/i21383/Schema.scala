@@ -1,0 +1,2 @@
+@MyAnnot("hello")
+class Foo

@@ -31,12 +31,12 @@ import IterableOnce.elemsToCopyToArray
  *
  *  Note: `IterableOnce` does not extend [[IterableOnceOps]]. This is different than the general
  *  design of the collections library, which uses the following pattern:
- *  ```
- *   trait Seq extends Iterable with SeqOps
- *   trait SeqOps extends IterableOps
+ *  ```scala sc:compile
+ *   transparent trait SeqOps[+A, +CC[_], +C] extends Any
+ *   trait Seq[+A] extends Iterable[A] with SeqOps[A, Seq, Seq[A]]
  *
- *   trait IndexedSeq extends Seq with IndexedSeqOps
- *   trait IndexedSeqOps extends SeqOps
+ *   transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C]
+ *   trait IndexedSeq[+A] extends Seq[A] with IndexedSeqOps[A, IndexedSeq, IndexedSeq[A]]
  *  ```
  *
  *  The goal is to provide a minimal interface without any sequential operations. This allows
@@ -45,6 +45,8 @@ import IterableOnce.elemsToCopyToArray
  *
  *  @define coll collection
  *  @define ccoll $coll
+ *
+ *  @tparam A the element type of the collection
  */
 trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
 
@@ -53,6 +55,8 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
    *  If an `IterableOnce` object is in fact an [[scala.collection.Iterator]], this method always returns itself,
    *  in its current state, but if it is an [[scala.collection.Iterable]], this method always returns a new
    *  [[scala.collection.Iterator]].
+   *
+   *  @return an iterator over all elements of this $coll
    */
   def iterator: Iterator[A]^{this}
 
@@ -75,6 +79,8 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
    *  [[scala.collection.Stepper.EfficientSplit]], the converters in [[scala.jdk.StreamConverters]]
    *  allow creating parallel streams, whereas bare `Stepper`s can be converted only to sequential
    *  streams.
+   *
+   *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
    */
   def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S^{this} = {
     import convert.impl._
@@ -162,7 +168,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.foreach(...) instead", "2.13.0")
   @`inline` def foreach[U](f: A => U): Unit = it match {
-    case it: Iterable[A] => it.foreach(f)
+    case it: Iterable[A @unchecked] => it.foreach(f)
     case _ => it.iterator.foreach(f)
   }
 
@@ -174,7 +180,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.toArray", "2.13.0")
   def toArray[B >: A: ClassTag]: Array[B] = it match {
-    case it: Iterable[B] => it.toArray[B]
+    case it: Iterable[B @unchecked] => it.toArray[B]
     case _ => it.iterator.toArray[B]
   }
 
@@ -208,25 +214,25 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.isEmpty instead", "2.13.0")
   def isEmpty: Boolean = it match {
-    case it: Iterable[A] => it.isEmpty
+    case it: Iterable[A @unchecked] => it.isEmpty
     case _ => it.iterator.isEmpty
   }
 
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString(start: String, sep: String, end: String): String = it match {
-    case it: Iterable[A] => it.mkString(start, sep, end)
+    case it: Iterable[A @unchecked] => it.mkString(start, sep, end)
     case _ => it.iterator.mkString(start, sep, end)
   }
 
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString(sep: String): String = it match {
-    case it: Iterable[A] => it.mkString(sep)
+    case it: Iterable[A @unchecked] => it.mkString(sep)
     case _ => it.iterator.mkString(sep)
   }
 
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString: String = it match {
-    case it: Iterable[A] => it.mkString
+    case it: Iterable[A @unchecked] => it.mkString
     case _ => it.iterator.mkString
   }
 
@@ -250,13 +256,13 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
 
   @deprecated("Use .iterator.map instead or consider requiring an Iterable", "2.13.0")
   def map[B](f: A => B): IterableOnce[B]^{f} = it match {
-    case it: Iterable[A]^{f} => it.map(f)
+    case it: Iterable[A @unchecked]^{f} => it.map(f)
     case _ => it.iterator.map(f)
   }
 
   @deprecated("Use .iterator.flatMap instead or consider requiring an Iterable", "2.13.0")
   def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B]^{f} = it match {
-    case it: Iterable[A] => it.flatMap(f)
+    case it: Iterable[A @unchecked] => it.flatMap(f)
     case _ => it.iterator.flatMap(f)
   }
 
@@ -288,13 +294,17 @@ object IterableOnce {
     math.max(0, total)
   }
 
-  /** Calls `copyToArray` on the given collection, regardless of whether or not it is an `Iterable`. */
+  /** Calls `copyToArray` on the given collection, regardless of whether or not it is an `Iterable`.
+   *
+   *  @tparam A the element type of the source collection
+   *  @tparam B the element type of the destination array, a supertype of `A`
+   */
   @inline private[collection] def copyElemsToArray[A, B >: A](elems: IterableOnce[A]^,
                                                               xs: Array[B],
                                                               start: Int = 0,
                                                               len: Int = Int.MaxValue): Int =
     elems match {
-      case src: Iterable[A] => src.copyToArray[B](xs, start, len)
+      case src: Iterable[A @unchecked] => src.copyToArray[B](xs, start, len)
       case src              => src.iterator.copyToArray[B](xs, start, len)
     }
 }
@@ -332,6 +342,9 @@ object IterableOnce {
  *              The order of applications of the operator is unspecified and may be nondeterministic.
  *  @define exactlyOnce
  *              Each element appears exactly once in the computation.
+ *
+ *  @tparam A the element type of the collection
+ *  @tparam CC the type constructor for the collection's "same element type" results (e.g., `List` for `List[Int]`)
  */
 transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
@@ -383,12 +396,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  ```
-   *      scala> List(1, 2, 3, 100, 4).takeWhile(n => n < 10)
-   *      val res0: List[Int] = List(1, 2, 3)
-   *
-   *      scala> List(1, 2, 3, 100, 4).takeWhile(n => n == 0)
-   *      val res1: List[Int] = List()
+   *  ```scala sc:compile
+   *      List(1, 2, 3, 100, 4).takeWhile(n => n < 10) // List(1, 2, 3)
+   *      List(1, 2, 3, 100, 4).takeWhile(n => n == 0) // List()
    *  ```
    *
    *  Use [[span]] to obtain both the prefix and suffix.
@@ -418,12 +428,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  ```
-   *      scala> List(1, 2, 3, 100, 4).dropWhile(n => n < 10)
-   *      val res0: List[Int] = List(100, 4)
-   *
-   *      scala> List(1, 2, 3, 100, 4).dropWhile(n => n == 0)
-   *      val res1: List[Int] = List(1, 2, 3, 100, 4)
+   *  ```scala sc:compile
+   *      List(1, 2, 3, 100, 4).dropWhile(n => n < 10) // List(100, 4)
+   *      List(1, 2, 3, 100, 4).dropWhile(n => n == 0) // List(1, 2, 3, 100, 4)
    *  ```
    *
    *  Use [[span]] to obtain both the prefix and suffix.
@@ -467,19 +474,19 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *    For example:
    *
-   *    ```
+   *    ```scala sc:compile
    *      def getWords(lines: Seq[String]): Seq[String] = lines.flatMap(line => line.split("\\W+"))
    *    ```
    *
    *    The type of the resulting collection is guided by the static type of this $coll. This might
    *    cause unexpected results sometimes. For example:
    *
-   *    ```
+   *    ```scala sc:compile
    *      // lettersOf will return a Seq[Char] of likely repeated letters, instead of a Set
    *      def lettersOf(words: Seq[String]) = words.flatMap(word => word.toSet)
    *
-   *      // lettersOf will return a Set[Char], not a Seq
-   *      def lettersOf(words: Seq[String]) = words.toSet.flatMap(word => word.toSeq)
+   *      // lettersOf2 will return a Set[Char], not a Seq
+   *      def lettersOf2(words: Seq[String]) = words.toSet.flatMap(word => word.toSeq)
    *
    *      // xs will be an Iterable[Int]
    *      val xs = Map("a" -> List(11, 111), "b" -> List(22, 222)).flatMap(_._2)
@@ -501,7 +508,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *    The resulting collection's type will be guided by the
    *    type of $coll. For example:
    *
-   *    ```
+   *    ```scala sc:compile
    *    val xs = List(
    *               Set(1, 2, 3),
    *               Set(1, 2, 3)
@@ -626,6 +633,9 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
 
   /** Applies `f` to each element for its side effects.
    *  Note: `U` parameter needed to help scalac's type inference.
+   *
+   *  @tparam U the return type of `f`; the value is discarded, but the type parameter aids type inference
+   *  @param f the function to apply to each element for its side effects
    */
   def foreach[U](f: A => U): Unit = {
     val it = iterator
@@ -1264,6 +1274,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  $mayNotTerminateInf
    *  $orderDependent
    *
+   *  @tparam B the result type of the partial function
    *  @param pf   the partial function
    *  @return     an option value containing pf applied to the first
    *              value for which it is defined, or `None` if none exists.
@@ -1372,15 +1383,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  ```
-   *      scala> val a = List(1,2,3,4)
-   *      a: List[Int] = List(1, 2, 3, 4)
-   *
-   *      scala> val b = new StringBuilder()
-   *      b: StringBuilder =
-   *
-   *      scala> a.addString(b , "List(" , ", " , ")")
-   *      res5: StringBuilder = List(1, 2, 3, 4)
+   *  ```scala sc:compile
+   *      val a = List(1,2,3,4) // List(1, 2, 3, 4)
+   *      val b = new StringBuilder()
+   *      a.addString(b , "List(" , ", " , ")") // List(1, 2, 3, 4)
    *  ```
    *
    *  @param  b    the string builder to which elements are appended.
@@ -1410,15 +1416,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  ```
-   *      scala> val a = List(1,2,3,4)
-   *      a: List[Int] = List(1, 2, 3, 4)
-   *
-   *      scala> val b = new StringBuilder()
-   *      b: StringBuilder =
-   *
-   *      scala> a.addString(b, ", ")
-   *      res0: StringBuilder = 1, 2, 3, 4
+   *  ```scala sc:compile
+   *      val a = List(1,2,3,4) // List(1, 2, 3, 4)
+   *      val b = new StringBuilder()
+   *      a.addString(b, ", ") // 1, 2, 3, 4
    *  ```
    *
    *  @param  b    the string builder to which elements are appended.
@@ -1433,15 +1434,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  Example:
    *
-   *  ```
-   *      scala> val a = List(1,2,3,4)
-   *      a: List[Int] = List(1, 2, 3, 4)
-   *
-   *      scala> val b = new StringBuilder()
-   *      b: StringBuilder =
-   *
-   *      scala> val h = a.addString(b)
-   *      h: StringBuilder = 1234
+   *  ```scala sc:compile
+   *      val a = List(1,2,3,4) // List(1, 2, 3, 4)
+   *      val b = new StringBuilder()
+   *      val h = a.addString(b) // 1234
    *  ```
    *
    *  @param  b    the string builder to which elements are appended.
@@ -1452,11 +1448,21 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   /** Given a collection factory `factory`, converts this $coll to the appropriate
    *  representation for the current element type `A`. Example uses:
    *
+   *  ```scala sc-name:import-and-xs sc-hidden
+   *  import scala.collection.mutable.ArrayBuffer
+   *  import scala.collection.immutable.BitSet
+   *  val xs: Iterable[Int] = Seq(1, 2, 3, 4, 5)
    *  ```
+   *
+   *  ```scala sc-compile-with:import-and-xs
    *      xs.to(List)
    *      xs.to(ArrayBuffer)
    *      xs.to(BitSet) // for xs: Iterable[Int]
    *  ```
+   *
+   *  @tparam C1 the target collection type
+   *  @param factory the factory for the target collection type
+   *  @return a new collection of type `C1` containing all elements of this $coll
    */
   def to[C1](factory: Factory[A, C1]): C1^{this} = factory.fromSpecific(this)
 
@@ -1479,7 +1485,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  @tparam K The key type for the resulting map.
    *  @tparam V The value type for the resulting map.
-   *  @param ev An implicit coercion from `A` to `[K, V]`.
+   *  @param ev an implicit evidence that `A` is a subtype of `(K, V)`
    *  @return This $coll as a `Map[K, V]`.
    */
   def toMap[K, V](implicit ev: A <:< (K, V)): immutable.Map[K, V] =

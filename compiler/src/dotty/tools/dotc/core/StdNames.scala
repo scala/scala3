@@ -285,7 +285,7 @@ object StdNames {
     final val SignatureATTR: N                    = "Signature"
     final val SourceFileATTR: N                   = "SourceFile"
     final val SyntheticATTR: N                    = "Synthetic"
-
+    final val PermittedSubclassesATTR: N          = "PermittedSubclasses"
 
 // ----- Term names -----------------------------------------
 
@@ -719,7 +719,7 @@ object StdNames {
       final val MINUS_USCORE: N = "-_"
       final val PLUS_USCORE : N = "+_"
 
-      final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
+      final val isUnary: Set[Name | Null] = Set(MINUS, PLUS, TILDE, BANG)
     }
 
     object specializedTypeNames {

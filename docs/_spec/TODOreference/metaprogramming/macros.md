@@ -4,7 +4,7 @@ title: "Macros"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros.html
 ---
 
-> **Warning:** Always enable `-Xcheck-macros` when developing macros. Without it, the compiler will not validate generated code, which may be unsound and lead to undefined behavior.
+> When developing macros, enable the `-Xcheck-macros` compiler option to run extra safety checks.
 
 ## Multi-Staging
 

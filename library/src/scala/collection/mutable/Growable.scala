@@ -25,6 +25,8 @@ import language.experimental.captureChecking
  *  @define Coll `Growable`
  *  @define add add
  *  @define Add Add
+ *
+ *  @tparam A the type of elements that can be added to this collection
  */
 trait Growable[-A] extends Clearable {
 

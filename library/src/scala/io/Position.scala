@@ -31,17 +31,28 @@ import annotation.nowarn
  *  the undefined position is 0:   `encode(0,0) == 0`
  *  encodings are non-negative :   `encode(line,column) >= 0`
  *  position order is preserved:
+ *  ```scala sc:compile sc-name:lines-and-columns
+ *  val line1 = 1
+ *  val column1 = 2
+ *  val line2 = 1
+ *  val column2 = 3
  *  ```
+ *  ```scala sc-compile-with:lines-and-columns
  *  (line1 <= line2) || (line1 == line2 && column1 <= column2)
  *  ```
  *  implies
- *  ```
- *  encode(line1,column1) <= encode(line2,column2)
+ *  ```scala sc-compile-with:lines-and-columns
+ *  import scala.io.Position.encode
+ *  encode(line1, column1) <= encode(line2, column2)
  *  ```
  */
 @deprecated("this class will be removed", "2.10.0")
 private[scala] abstract class Position {
-  /** Definable behavior for overflow conditions. */
+  /** Definable behavior for overflow conditions.
+   *
+   *  @param line the 1-based line number to validate (0 for undefined, negative values throw)
+   *  @param column the 1-based column number to validate (must be 0 when `line` is 0, negative values throw)
+   */
   def checkInput(line: Int, column: Int): Unit
 
   /** Number of bits used to encode the line number. */
@@ -53,7 +64,11 @@ private[scala] abstract class Position {
   /** Mask to decode the column number. */
   final val COLUMN_MASK = (1 << COLUMN_BITS) - 1
 
-  /** Encodes a position into a single integer. */
+  /** Encodes a position into a single integer.
+   *
+   *  @param line the 1-based line number, or 0 for undefined; values at or above `LINE_MASK` are clamped and the column is set to 0
+   *  @param column the 1-based column number, or 0 for undefined; clamped to `COLUMN_MASK`, ignored when `line` >= `LINE_MASK`
+   */
   final def encode(line: Int, column: Int): Int = {
     checkInput(line, column)
 
@@ -63,13 +78,22 @@ private[scala] abstract class Position {
       (line << COLUMN_BITS) | scala.math.min(COLUMN_MASK, column)
   }
 
-  /** Returns the line number of the encoded position. */
+  /** Returns the line number of the encoded position.
+   *
+   *  @param pos the encoded position as returned by `encode`
+   */
   final def line(pos: Int): Int = (pos >> COLUMN_BITS) & LINE_MASK
 
-  /** Returns the column number of the encoded position. */
+  /** Returns the column number of the encoded position.
+   *
+   *  @param pos the encoded position as returned by `encode`
+   */
   final def column(pos: Int): Int = pos & COLUMN_MASK
 
-  /** Returns a string representation of the encoded position. */
+  /** Returns a string representation of the encoded position.
+   *
+   *  @param pos the encoded position as returned by `encode`
+   */
   def toString(pos: Int): String = line(pos) + ":" + column(pos)
 }
 

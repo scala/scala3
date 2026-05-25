@@ -24,6 +24,7 @@ object MiMaFilters {
 
       // Breaking changes since last reference version
       Build.mimaPreviousDottyVersion -> Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.None.orNull"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.util.control.NonLocalReturns$ReturnThrowable"),
         // THIS IS FINE, IT SHOULD HAVE BEEN THIS WAY
         ProblemFilters.exclude[MissingTypesProblem]("scala.Function1$"),

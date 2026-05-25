@@ -73,9 +73,9 @@ As with other capability based schemes, one needs to guard against capabilities
 that are captured in results. For instance, here is a problematic use case:
 ```scala sc:fail sc-compile-with:checked-exceptions-base
 def escaped(xs: Double*): (() => Double) throws LimitExceeded =
-  try () => xs.map(f).sum // error: CanThrow escapes into returned closure
+  try () => xs.map(f).sum
   catch case ex: LimitExceeded => () => -1
-val crasher = escaped(1, 2, 10e+11)
+val crasher = escaped(1, 2, 10e+11) // error: CanThrow escapes into returned closure
 crasher()
 ```
 This code needs to be rejected since otherwise the call to `crasher()` would cause

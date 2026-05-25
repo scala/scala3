@@ -39,9 +39,8 @@ object GenericSignatures {
     if (sym0.isLocal && !sym0.isClass) None
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
-  @noinline
   private final def javaSig0(sym0: Symbol, info: Type)(using Context): Option[String] = {
-    // This works as long as mangled names are always valid valid Java identifiers,
+    // This works as long as mangled names are always valid Java identifiers,
     // if we change our name encoding, we'll have to `throw new UnknownSig` here for
     // names which are not valid Java identifiers (see git history of this method).
     def sanitizeName(name: Name): String = name.mangledString
@@ -196,14 +195,14 @@ object GenericSignatures {
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
       assert(sym.isClass)
-      val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
+      // Time travel necessary so we get the full name after inner classes have been lifted to package scope
+      val name = atPhase(flattenPhase.next) { sanitizeName(sym.fullName).replace('.', '/') }
       builder.append('L').append(name)
     }
 
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
-      @tailrec
       def argSig(tp: Type): Unit =
-        tp match {
+        tp.dealias match {
           case bounds: TypeBounds =>
             if (!(defn.AnyType <:< bounds.hi)) {
               builder.append('+')
@@ -214,10 +213,26 @@ object GenericSignatures {
               boxedSig(bounds.lo)
             }
             else builder.append('*')
-          case EtaExpansion(tp) =>
-            argSig(tp)
-          case _: HKTypeLambda =>
-            builder.append('*')
+          case hkt: HKTypeLambda =>
+            hkt.resultType match
+              case a: AppliedType =>
+                if hkt.paramInfos.forall(i => i.lo.isNothingType && i.hi.isAny) then
+                  // For unbounded arguments, instead of emitting `X<j.l.Object>`,
+                  // emit just `X` as a raw type if it's a class;
+                  // this helps with Java compat in cases where the exact generic arguments were erased
+                  if a.tycon.dealias.typeSymbol.isClass then
+                    jsig(a.tycon)
+                  else
+                    // but if it's an HKT, we cannot represent that in a Java generic signature, so emit a wildcard
+                    builder.append("*")
+                else
+                  // For bounded arguments, we can't translate it cleanly so emit an erased type
+                  jsig(erasure(a.tycon))
+              case res if res.isPrimitiveValueType =>
+                // value classes cannot appear as generic arguments
+                jsig(defn.boxedType(res))
+              case res =>
+                jsig(res)
           case _ =>
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
@@ -262,7 +277,6 @@ object GenericSignatures {
     enum ValueClassBoxing:
       case Box, Unbox, UnboxOnlyPrimitives
 
-    @noinline
     def jsig(tp0: Type, toplevel: Boolean = false, vcBoxing: ValueClassBoxing = ValueClassBoxing.Unbox): Unit = {
       inline def jsig1(tp0: Type): Unit = jsig(tp0)
 
@@ -333,8 +347,19 @@ object GenericSignatures {
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
             if (vcBoxing == ValueClassBoxing.Unbox) {
-              val erasedUnderlying = fullErasure(tp)
-              jsig(erasedUnderlying, toplevel = toplevel)
+              val underlying = ValueClasses.underlyingOfValueClass(sym.asClass)
+              val seenUnderlying = underlying.asSeenFrom(tp, sym)
+              // For binary compatibility with Scala 2, as documented in TypeErasure,
+              // we need to special cases for polymorphic value classes:
+              // `Foo[X]` erases to `X` except that primitives use their boxed type,
+              // and `Bar[X]` for `class Bar[A](x: Array[A]) extends AnyVal` erases like the definition-site `Array[A]`.
+              // The end-to-end binary compatibility is checked by i8001
+              // There are more targeted tests for generic signatures at i24276 and t6344
+              val compatibleUnderlying =
+                if seenUnderlying.isPrimitiveValueType && !underlying.isPrimitiveValueType then defn.boxedType(seenUnderlying)
+                else if underlying.derivesFrom(defn.ArrayClass) then erasure(underlying)
+                else seenUnderlying
+              jsig(compatibleUnderlying, toplevel = toplevel)
             } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
@@ -486,7 +511,31 @@ object GenericSignatures {
   }
 
   private object RefOrAppliedType {
-    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match {
+    private enum ResolvedAppliedType:
+      case Resolved(t: Type)
+      case NotResolved
+      case Bail
+    // In the special case where we see a type parameter applied to type parameters,
+    // such as `K[X, Y]` given `[X, Y, K <: Iterable[(X, Y)]]`, we must find its bound
+    // and instantiate it, otherwise in our example we end up with `Iterable[X, Y]` which is nonsensical.
+    private def resolveAppliedType(a: AppliedType)(using Context): ResolvedAppliedType =
+      a.tycon match
+        case TypeParamRef(binder, paramNum) =>
+          binder.paramInfos(paramNum).hi match
+            case hkt @ HKTypeLambda(_, _) =>
+              val instantiated = hkt.instantiate(a.args).dealias
+              // However, since Java doesn't have a way to refer to HKTs in generic signatures,
+              // we must trade precision for termination by only resolving one level,
+              // otherwise we end up in infinite loops,
+              // e.g., in `X[A] <: Thing[X[A]]` or `X[A] <: X[Thing[A]]` we keep resolving `X`.
+              // In that case we must completely give up on the genericity, i.e.,
+              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature! 
+              if instantiated.existsPart(_ == a.tycon) then ResolvedAppliedType.Bail
+              else ResolvedAppliedType.Resolved(instantiated)
+            case _ => ResolvedAppliedType.NotResolved
+        case _ => ResolvedAppliedType.NotResolved
+
+    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
       case TypeParamRef(_, _) =>
         Some((tp.typeSymbol, tp, Nil))
       case TermParamRef(_, _) =>
@@ -494,11 +543,13 @@ object GenericSignatures {
       case TypeRef(pre, _) if !tp.typeSymbol.isAliasType =>
         val sym = tp.typeSymbol
         Some((sym, pre, Nil))
-      case AppliedType(pre, args) =>
-        Some((pre.typeSymbol, pre, args))
+      case a @ AppliedType(pre, args) =>
+        resolveAppliedType(a) match
+          case ResolvedAppliedType.Resolved(resolved) => unapply(resolved)
+          case ResolvedAppliedType.NotResolved => Some((pre.typeSymbol, pre, args))
+          case ResolvedAppliedType.Bail => None
       case _ =>
         None
-    }
   }
 
   private def needsJavaSig(tp: Type, throwsArgs: List[Type])(using Context): Boolean = !ctx.settings.XnoGenericSig.value && {

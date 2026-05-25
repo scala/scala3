@@ -21,6 +21,12 @@ case class WrappedSnippet(
       .flatten
       .flatMap(_.sourcePosition(diagPos, sourceFile, outerColumnOffset))
 
+  def sourceSpanPosition(diagPos: SourcePosition, sourceFile: SourceFile): Option[Position] =
+    lineMappings
+      .lift(diagPos.line)
+      .flatten
+      .flatMap(_.sourceSpanPosition(diagPos, sourceFile, outerColumnOffset))
+
 object WrappedSnippet:
   // `wrappedColumnOffset` accounts for indentation added by the synthetic wrapper.
   case class WrappedLineMapping(sourceLine: Int, relativeLine: Int, wrappedColumnOffset: Int):
@@ -29,12 +35,32 @@ object WrappedSnippet:
       sourceFile: SourceFile,
       outerColumnOffset: Int
     ): Option[Position] =
+      mapPosition(diagPos, sourceFile, outerColumnOffset, diagPos.column, diagPos.column)
+
+    def sourceSpanPosition(
+      diagPos: SourcePosition,
+      sourceFile: SourceFile,
+      outerColumnOffset: Int
+    ): Option[Position] =
+      val endColumn =
+        if diagPos.startLine == diagPos.endLine then diagPos.endColumn
+        else diagPos.startColumn
+      mapPosition(diagPos, sourceFile, outerColumnOffset, diagPos.startColumn, endColumn)
+
+    private def mapPosition(
+      diagPos: SourcePosition,
+      sourceFile: SourceFile,
+      outerColumnOffset: Int,
+      startBase: Int,
+      endBase: Int
+    ): Option[Position] =
       val lineOffset = sourceFile match
         case NoSource => Some(0)
         case sf: SourceFile => sf.lineToOffsetOpt(sourceLine)
       lineOffset.map: offset =>
-        val sourceColumn = (diagPos.column + outerColumnOffset - wrappedColumnOffset).max(0)
-        val span = Span(offset + sourceColumn, offset + sourceColumn)
+        val startColumn = (startBase + outerColumnOffset - wrappedColumnOffset).max(0)
+        val endColumn = (endBase + outerColumnOffset - wrappedColumnOffset).max(startColumn)
+        val span = Span(offset + startColumn, offset + endColumn)
         Position(SourcePosition(sourceFile, span), relativeLine)
 
   val indent: Int = 2

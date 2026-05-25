@@ -36,8 +36,8 @@ class A: // error
   val x: A^{any.only[caps.Control]} = ???
   private val y = ??? : A^{any.only[caps.Control]}  // ok
 
-class B extends caps.Control: // error
-  val x: A^ = ???
+class B extends caps.Control:
+  val x: A^ = ??? // error
   private val y = ??? : A^{any.only[caps.Control]}  // ok
 
 class C: // error

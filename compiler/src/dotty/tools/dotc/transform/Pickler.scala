@@ -30,7 +30,6 @@ import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
 import dotty.tools.dotc.util.chaining.*
 import scala.concurrent.ExecutionContext
-import scala.util.control.NonFatal
 import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.file.Files
 
@@ -104,8 +103,8 @@ object Pickler {
             case jar: JarArchive => jar.close()
             case _ =>
         catch
-          case NonFatal(t) =>
-            ctx.reporter.error(em"Error closing early output: ${t}")
+          case ex: Exception =>
+            ctx.reporter.error(em"Error closing early output: $ex")
 
       asyncTastyWritten.trySuccess:
         Some(
@@ -162,11 +161,11 @@ object Pickler {
           if !async.cancelled then
             val _ = writer.writeTasty(internalName, pickled)
       catch
-        case NonFatal(t) => ctx.reporter.exception(em"writing TASTy to early output", t)
+        case ex: Exception => ctx.reporter.exception(em"writing TASTy to early output", ex)
       finally
         writer.close()
     catch
-      case NonFatal(t) => ctx.reporter.exception(em"closing early output writer", t)
+      case ex: Exception => ctx.reporter.exception(em"closing early output writer", ex)
     finally
       async.signalAsyncTastyWritten()
   }
@@ -306,7 +305,7 @@ class Pickler extends Phase {
           treePkl.pickle(tree :: Nil)
           true
         catch
-          case NonFatal(ex) if ctx.isBestEffort =>
+          case ex: Exception if ctx.isBestEffort =>
             report.bestEffortError(ex, "Some best-effort tasty files will not be generated.")
             false
       Profile.current.recordTasty(treePkl.buf.length)

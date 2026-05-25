@@ -10,6 +10,7 @@ import CaptureSet.{Refs, emptyRefs, HiddenSet}
 import NameKinds.WildcardParamName
 import config.Printers.capt
 import StdNames.nme
+import transform.LiftCoverage
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
@@ -21,12 +22,12 @@ import Capabilities.*
  *  methods below. Rough summary:
  *
  *   - Hidden sets of arguments must not be referred to in the same application
- *   - Hidden sets of (result-) types must not be referred to alter in the same scope.
+ *   - Hidden sets of (result-) types must not be referred to later in the same scope.
  *   - Returned hidden sets can only refer to consume parameters.
- *   - If returned hidden sets refer to an encloding this, the reference must be
+ *   - If returned hidden sets refer to an enclosing this, the reference must be
  *     from a consume method.
  *   - Consumed entities cannot be used subsequently.
- *   - Entitites cannot be consumed in a loop.
+ *   - Entities cannot be consumed in a loop.
  */
 object SepCheck:
 
@@ -34,7 +35,7 @@ object SepCheck:
   enum Captures derives CanEqual:
     case None
     case Explicit   // one or more explicitly declared captures
-    case Hidden     // exacttly one hidden captures
+    case Hidden     // exactly one hidden capture
     case NeedsCheck // one hidden capture and one other capture (hidden or declared)
 
     def add(that: Captures): Captures =
@@ -51,7 +52,7 @@ object SepCheck:
     case Qualifier(qual: Tree, meth: Symbol)
     case RHS(rhs: Tree, mvar: Symbol)
 
-    /** If this is a Result tole, the associated symbol, otherwise NoSymbol */
+    /** If this is a Result role, the associated symbol, otherwise NoSymbol */
     def dclSym = this match
       case Result(sym, _) => sym
       case _ => NoSymbol
@@ -85,7 +86,7 @@ object SepCheck:
     /** The references in the set. The array should be treated as immutable in client code */
     def refs: Array[Capability]
 
-    /** The associated source positoons and type roles. The array should be treated as immutable in client code */
+    /** The associated source positions and type roles. The array should be treated as immutable in client code */
     def locs: Array[(SrcPos, TypeRole)]
 
     /** The number of references in the set */
@@ -339,7 +340,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The set of references that were consumed so far in the current method */
   private var consumed: MutConsumedSet = MutConsumedSet()
 
-  /** Infos aboput Labeled expressions enclosing the current traversal point.
+  /** Infos about Labeled expressions enclosing the current traversal point.
    *  For each labeled expression, it's label name, and a list buffer containing
    *  all consumed sets of return expressions referring to that label.
    */
@@ -599,13 +600,22 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case _ =>
   end checkAssign
 
+  /** Is `tree` a coverage-lifted local temp or a reference to one?
+   *  These aliases are identified through the attachment set by `LiftCoverage`,
+   *  not by broad synthetic checks.
+   */
+  private def isCoverageLiftedTemp(tree: Tree)(using Context): Boolean = tree match
+    case tree: ValDef => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
+    case tree: Ident => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
+    case _ => false
+
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
    */
   def checkUse(tree: Tree)(using Context): Unit =
     val used = tree.markedFree.elems
-    if !used.isEmpty then
+    if !used.isEmpty && !isCoverageLiftedTemp(tree) then
       capt.println(i"check use $tree: $used")
       val usedPeaks = used.allPeaks
       if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
@@ -682,7 +692,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         hiddenRef.pathRoot match
           case ref: TermRef if ref.symbol != role.dclSym =>
             val refSym = ref.symbol
-            if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
+            if currentOwner.enclosingMethodOrClassOrObject.isProperlyContainedIn(refSym.enclosingMethodOrClassOrObject) then
               report.error(em"""Separation failure: $descr non-local $refSym""", pos)
             else if refSym.is(TermParam)
               && !refSym.isConsumeParam
@@ -690,7 +700,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             then
               badParams += refSym
           case ref: ThisType =>
-            val encl = currentOwner.enclosingMethodOrClass
+            val encl = currentOwner.enclosingMethodOrClassOrObject
             if encl.isProperlyContainedIn(ref.cls)
                 && !encl.is(Synthetic)
                 && !encl.hasAnnotation(defn.ConsumeAnnot)
@@ -994,6 +1004,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
    *  application as right hand sides.
+   *  Also excluded are local temps marked by `LiftCoverage`, which are aliases
+   *  introduced solely to preserve coverage evaluation order.
    *  Hidden sets of checked definitions are added to `defsShadow`.
    */
   def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
@@ -1001,6 +1013,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if !sym.isOneOf(TermParamOrAccessor)
        && !sym.needsResultRefinement
        && !isUnsafeAssumeSeparate(tree.rhs)
+       && !isCoverageLiftedTemp(tree)
     then
       checkType(tree.tpt, sym)
       capt.println(i"sep check def $sym: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
@@ -1008,10 +1021,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def inSection[T](op: => T)(using Context): T =
     val savedDefsShadow = defsShadow
-    val savedPrevionsDefs = previousDefs
+    val savedPreviousDefs = previousDefs
     try op
     finally
-      previousDefs = savedPrevionsDefs
+      previousDefs = savedPreviousDefs
       defsShadow = savedDefsShadow
 
   def traverseSection[T](tree: Tree)(using Context) = inSection(traverseChildren(tree))

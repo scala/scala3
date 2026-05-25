@@ -2,7 +2,6 @@ package dotty.tools
 package backend.jvm
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Flags.{JavaStatic, Method}
@@ -24,7 +23,7 @@ import scala.tools.asm.{Handle, Opcodes, Type}
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
  * instance.
  */
-class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(using Context) {
+class BackendUtils(val ts: WellKnownBTypes) {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -33,11 +32,8 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
    * inlining: when inlining an indyLambda instruction into a class, we need to make sure the class
    * has the method.
    */
-  private val indyLambdaImplMethods: Lazy[ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]]] =
-    ppa.perRunLazy(new ConcurrentHashMap)
-
-  // take advantage of the fact classfile versions are consecutive
-  lazy val classfileVersion: Int = ppa.compilerSettings.target.toInt + (Opcodes.V17 - 17)
+  private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
+    new ConcurrentHashMap
 
   def collectSerializableLambdas(classNode: ClassNode): Array[Handle] = {
     val indyLambdaBodyMethods = new mutable.ArrayBuffer[Handle]
@@ -128,27 +124,6 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
     MethodBType(ts.jliSerializedLambdaRef :: Nil, ts.ObjectRef).descriptor
   }
 
-  /**
-   * Visit the class node and collect all referenced nested classes.
-   */
-  def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
-    val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
-      def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
-        ts.classBTypeFromInternalName(internalName).get.info.nestedClasses
-
-      def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-        val c = ts.classBTypeFromInternalName(internalName).get
-        Option.when(c.isNestedClass)(c)
-      }
-
-      def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
-        // don't crash on invalid generic signatures
-      }
-    }
-    c.visit(classNode)
-    (c.declaredInnerClasses, c.referredInnerClasses)
-  }
-
   /*
    * Populates the InnerClasses JVM attribute with `refedInnerClasses`. See also the doc on inner
    * classes in BTypes.scala.
@@ -175,13 +150,13 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   }
 
   def onIndyLambdaImplMethodIfPresent[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): Option[T] =
-    indyLambdaImplMethods.get.get(hostClass) match {
+    indyLambdaImplMethods.get(hostClass) match {
       case null => None
       case methods => Some(methods.synchronized(action(methods)))
     }
 
   def onIndyLambdaImplMethod[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): T = {
-    val methods = indyLambdaImplMethods.get.computeIfAbsent(hostClass, _ => mutable.Map.empty)
+    val methods = indyLambdaImplMethods.computeIfAbsent(hostClass, _ => mutable.Map.empty)
     methods.synchronized(action(methods))
   }
 
@@ -191,38 +166,6 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
 
   def removeIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode): Unit = {
     onIndyLambdaImplMethodIfPresent(hostClass)(_.get(method).foreach(_.remove(indy)))
-  }
-
-  /**
-   * The methods used as lambda bodies for IndyLambda instructions within `hostClass`. Note that
-   * the methods are not necessarily defined within the `hostClass` (when an IndyLambda is inlined
-   * into a different class).
-   */
-  def indyLambdaBodyMethods(hostClass: InternalName): mutable.SortedSet[Handle] = {
-    object handleOrdering extends Ordering[Handle] {
-      override def compare(x: Handle, y: Handle): Int = {
-        if (x eq y) return 0
-
-        val t = Ordering.Int.compare(x.getTag, y.getTag)
-        if (t != 0) return t
-
-        val i = Ordering.Boolean.compare(x.isInterface, y.isInterface)
-        if (x.isInterface != y.isInterface) return i
-
-        val o = x.getOwner.compareTo(y.getOwner)
-        if (o != 0) return o
-
-        val n = x.getName.compareTo(y.getName)
-        if (n != 0) return n
-
-        x.getDesc.compareTo(y.getDesc)
-      }
-    }
-
-    given Ordering[Handle] = handleOrdering
-    val res = mutable.TreeSet.empty[Handle]
-    onIndyLambdaImplMethodIfPresent(hostClass)(methods => res.addAll(methods.valuesIterator.flatMap(_.valuesIterator)))
-    res
   }
 
   /**
@@ -355,8 +298,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
       (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
 
   lazy val modulesAllowSkipInitialization: Set[InternalName] =
-    if (!ppa.compilerSettings.optAllowSkipCoreModuleInit) Set.empty
-    else Set(
+    Set(
       "scala/Predef$",
       "scala/runtime/ScalaRunTime$",
       "scala/runtime/Scala3RunTime$",

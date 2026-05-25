@@ -273,7 +273,7 @@ object language {
     /** Adds support for clause interleaving:
       * Methods can now have as many type clauses as they like, this allows to have type bounds depend on terms: `def f(x: Int)[A <: x.type]: A`
       *
-      * @see [[https://github.com/scala/improvement-proposals/blob/main/content/clause-interleaving.md]]
+      * @see [[https://docs.scala-lang.org/sips/clause-interleaving.html]]
       */
     @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
     @deprecated("`clauseInterleaving` is now standard, no language import is needed", since = "3.6")
@@ -607,4 +607,22 @@ object language {
     */
   @compileTimeOnly("`3.9` can only be used at compile time in import statements")
   object `3.9`
+
+  /** Sets source version to 3.10-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.10-migration` can only be used at compile time in import statements")
+  object `3.10-migration`
+
+  /** Sets source version to 3.10
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.10` can only be used at compile time in import statements")
+  object `3.10`
+
+  // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!
+  // When adding a new `3.x` / `3.x-migration` here, add matching tests:
+  // `tests/pos/source-import-3-x.scala` and `tests/pos/source-import-3-x-migration.scala`.
 }

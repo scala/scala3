@@ -162,7 +162,7 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *           arguments `x` to `k(this(x))`.
    */
   override def andThen[C](k: B => C): PartialFunction[A, C]^{this, k} = k match {
-    case pf: (PartialFunction[B, C]^{k}) => andThen(pf)
+    case pf: (PartialFunction[B @unchecked, C @unchecked]^{k}) => andThen(pf)
     case _                         => new AndThen[A, B, C](this, k)
   }
 

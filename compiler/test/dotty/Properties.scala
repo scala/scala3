@@ -105,6 +105,9 @@ object Properties {
   /** fansi jar */
   def sourcecode: String = sys.props("dotty.tests.classes.sourcecode")
 
+  /** scala-xml jar */
+  def scalaXml: String = sys.props("dotty.tests.classes.scalaXml")
+
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
 

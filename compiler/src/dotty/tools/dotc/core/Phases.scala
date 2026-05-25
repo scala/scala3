@@ -4,7 +4,6 @@ package core
 
 import Periods.*
 import Contexts.*
-import dotty.tools.backend.jvm.GenBCode
 import DenotTransformers.*
 import Denotations.*
 import Decorators.*
@@ -19,7 +18,6 @@ import cc.CheckCaptures
 import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
-import scala.util.control.NonFatal
 import scala.compiletime.uninitialized
 
 object Phases {
@@ -76,7 +74,6 @@ object Phases {
     final def fusePhases(phasess: List[List[Phase]],
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
-                           stopAfterPhases: List[String],
                            YCheckAfter: List[String])(using Context): List[Phase] = {
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
@@ -91,7 +88,7 @@ object Phases {
 
       val filteredPhases = phasess.map(_.filter { p =>
         try isEnabled(p)
-        finally stop |= stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
+        finally stop |= stopBeforePhases.contains(p.phaseName)
       })
 
       var i = 0
@@ -258,7 +255,6 @@ object Phases {
     private var myMixinPhase: Phase = uninitialized
     private var myCountOuterAccessesPhase: Phase = uninitialized
     private var myFlattenPhase: Phase = uninitialized
-    private var myGenBCodePhase: Phase = uninitialized
     private var myCheckCapturesPhase: Phase = uninitialized
 
     private var myCheckCapturesPhaseId: PhaseId = -2
@@ -293,7 +289,6 @@ object Phases {
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
-    final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
     final def checkCapturesPhaseId: PhaseId = myCheckCapturesPhaseId
 
@@ -328,7 +323,6 @@ object Phases {
       myFlattenPhase = phaseOfClass(classOf[Flatten])
       myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
       myGettersPhase = phaseOfClass(classOf[Getters])
-      myGenBCodePhase = phaseOfClass(classOf[GenBCode])
       myCheckCapturesPhase = phaseOfClass(classOf[CheckCaptures])
     }
 
@@ -419,7 +413,7 @@ object Phases {
           catch
             case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
               unitCtx.typerState.resetTo(previousTyperState)
-            case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+            case ex: Exception if !ctx.run.enrichedErrorMessage =>
               println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
               throw ex
           finally ctx.run.advanceUnit()
@@ -543,7 +537,7 @@ object Phases {
       ctx.run.enterUnit(ctx.compilationUnit)
       && {
         try {body; true}
-        catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+        catch case ex: Exception if !ctx.run.enrichedErrorMessage =>
           report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
         finally ctx.run.advanceUnit()
@@ -590,7 +584,6 @@ object Phases {
   def mixinPhase(using Context): Phase                  = ctx.base.mixinPhase
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
-  def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
   def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
   def checkCapturesPhaseId(using Context): PhaseId      = ctx.base.checkCapturesPhaseId
 

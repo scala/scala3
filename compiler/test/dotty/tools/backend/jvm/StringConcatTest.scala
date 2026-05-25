@@ -51,7 +51,7 @@ class StringConcatTest extends DottyBytecodeTest {
 
     checkBCode(code) { dir =>
       def instructions(meth: String): List[Instruction] = {
-        val clsIn = dir.lookupName("C.class", directory = false).input
+        val clsIn = dir.lookupName("C.class", directory = false).nn.input
         val clsNode = loadClassNode(clsIn)
         instructionsFromMethod(getMethod(clsNode, meth))
       }

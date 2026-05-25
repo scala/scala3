@@ -889,7 +889,7 @@ trait Implicits:
     && ctx.mode.is(Mode.ImplicitsEnabled)
     && from.isValueType
     && (  from.isValueSubType(to)
-       || inferView(dummyTreeOfType(from), to)
+       || inferView(dummyTreeOfType(from).withSpan(ctx.tree.span), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
           // TODO: investigate why we can't TyperState#test here
        || from.widen.isNamedTupleType && to.derivesFrom(defn.TupleClass)
@@ -1074,8 +1074,8 @@ trait Implicits:
     || locally:
       if strictEquality then
         strictEqualityPatternMatching &&
-          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) &&
-          ltp <:< lift(rtp)
+          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
+          ltp <:< rtp
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
@@ -1863,15 +1863,33 @@ trait Implicits:
       // is larger (see `typeSize`) and is constructed using the same set of types and type
       // constructors (see `coveringSet`).
       //
+      // We also treat two candidates as equivalent for this check when they are sibling
+      // givens declared in the same owner that share a declared signature. Such siblings
+      // (a common pattern when modeling type class hierarchies, see i24914) demand the
+      // same context parameters, so exploring one and then another under the same
+      // prototype shape makes no progress and would otherwise lead to a factorial
+      // blow-up of the search before the expression-count limit eventually kicks in.
+      // We use `frozen_=:=` so the check does not commit constraint updates.
+      //
       // We are able to tie a recursive knot if there is compatible term already under
       // construction which is separated from this context by at least one by name argument
       // as we ascend the chain of open implicits to the outermost search context.
+
+      def equivalentCandidates(c1: Candidate, c2: Candidate): Boolean =
+        if c1.ref eq c2.ref then true
+        else
+          val sym1 = c1.ref.symbol
+          val sym2 = c2.ref.symbol
+          sym1.exists
+            && sym2.exists
+            && sym1.maybeOwner == sym2.maybeOwner
+            && c1.ref.info.frozen_=:=(c2.ref.info)
 
       @tailrec
       def loop(history: SearchHistory, belowByname: Boolean): Boolean =
         history match
           case prev @ OpenSearch(cand1, tp, outer) =>
-            if cand1.ref eq cand.ref then
+            if equivalentCandidates(cand1, cand) then
               lazy val wildTp = wildApprox(tp.widenExpr)
               if belowByname && (wildTp <:< wildPt) then
                 fullyDefinedType(tp, "by-name implicit parameter", srcPos)

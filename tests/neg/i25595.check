@@ -1,0 +1,7 @@
+-- Error: tests/neg/i25595.scala:5:4 -----------------------------------------------------------------------------------
+5 |val ((x1, f1), (x2, f2)): ( // error
+  |    ^^^^^^^^^^^^^^^^^^^^
+  |    Type ascriptions after patterns other than:
+  |      * variable pattern, e.g. `case x: String =>`
+  |      * number literal pattern, e.g. `case 10.5: Double =>`
+  |    are no longer supported. Remove the type ascription or move it to a separate variable pattern.

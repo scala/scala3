@@ -5304,8 +5304,8 @@ local1 => val local p: N$1
 local2 => type N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
-local5 => val local Nat_this: Succ[Zero.type]
-local6 => val local Nat_this: Succ[_] forSome { type _  <: Succ[Zero.type] }
+local5 => val local Nat_this: Succ[Nat_this.type]
+local6 => val local Nat_this: Succ[Nat_this.type]
 recursion/Nats. => final object Nats extends Object { self: Nats.type => +9 decls }
 recursion/Nats.Nat# => sealed trait Nat extends Object { self: Nat => +3 decls }
 recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]

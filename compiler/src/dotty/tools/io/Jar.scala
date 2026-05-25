@@ -7,8 +7,6 @@
 package dotty.tools
 package io
 
-import scala.language.unsafeNulls
-
 import java.io.{ InputStream, OutputStream, DataOutputStream }
 import java.util.jar.*
 import scala.jdk.CollectionConverters.*
@@ -47,7 +45,7 @@ class Jar(file: File) {
   lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
   lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
 
-  def mainClass: Option[String]     = manifest.map(_(Name.MAIN_CLASS))
+  def mainClass: Option[String]     = manifest.flatMap(_.attrs.get(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
   def classPathString: Option[String] =
     for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH) if !cp.trim().isEmpty()) yield cp
@@ -69,7 +67,7 @@ class Jar(file: File) {
     Iterator.continually(in.getNextJarEntry()).takeWhile(_ != null).toList
   }
 
-  def getEntryStream(entry: JarEntry): java.io.InputStream = jarFile.getInputStream(entry) match
+  def getEntryStream(entry: JarEntry): java.io.InputStream | Null = jarFile.getInputStream(entry) match
     case null   => errorFn("No such entry: " + entry) ; null
     case x      => x
 
@@ -137,7 +135,7 @@ object Jar {
       this(k) = v
 
     def underlying: JManifest = manifest
-    def attrs: mutable.Map[Name, String] = manifest.getMainAttributes().asInstanceOf[AttributeMap].asScala withDefaultValue null
+    def attrs: mutable.Map[Name, String] = manifest.getMainAttributes().asInstanceOf[AttributeMap].asScala
     def initialMainAttrs: Map[Attributes.Name, String] = {
       import scala.util.Properties.*
       Map(
@@ -146,12 +144,12 @@ object Jar {
       )
     }
 
-    def apply(name: Attributes.Name): String        = attrs(name)
-    def apply(name: String): String                 = apply(new Attributes.Name(name))
+    def apply(name: Attributes.Name): String | Null = attrs.getOrElse(name, null)
+    def apply(name: String): String | Null          = apply(new Attributes.Name(name))
     def update(key: Attributes.Name, value: String): Option[String] = attrs.put(key, value)
     def update(key: String, value: String): Option[String]          = attrs.put(new Attributes.Name(key), value)
 
-    def mainClass: String = apply(Name.MAIN_CLASS)
+    def mainClass: String | Null = apply(Name.MAIN_CLASS)
     def mainClass_=(value: String): Option[String] = update(Name.MAIN_CLASS, value)
   }
 

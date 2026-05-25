@@ -12,7 +12,6 @@ import reporting.TestReporter
 
 import java.io.*
 import java.nio.file.{Path => JPath}
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.charset.StandardCharsets
 
 import interfaces.Diagnostic.INFO
@@ -46,6 +45,7 @@ class PrintingTest {
       case e: Throwable =>
         println(s"Compile $path exception:")
         e.printStackTrace()
+        throw e
     }
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator

@@ -42,9 +42,13 @@ import scala.language.`2.13`
  *  convenience value `Breaks`.
  *
  *  Example usage:
- *  ```
+ *  ```scala sc:compile
  *  val mybreaks = new Breaks
  *  import mybreaks.{break, breakable}
+ *
+ *  var done = false
+ *  def f(x: Int): Int = x
+ *  val xs = (1 to 10).toList
  *
  *  breakable {
  *    for (x <- xs) {
@@ -58,9 +62,15 @@ import scala.language.`2.13`
  *
  *  Any intervening exception handlers should use `NonFatal`,
  *  or use `Try` for evaluation:
- *  ```
+ *  ```scala sc:compile
+ *  import scala.util.Try
+ *
  *  val mybreaks = new Breaks
  *  import mybreaks.{break, breakable}
+ *
+ *  var quit = false
+ *  def f(x: Int): Int = x
+ *  val xs = (1 to 10).toList
  *
  *  breakable {
  *    for (x <- xs) Try { if (quit) break else f(x) }.foreach(println)
@@ -74,6 +84,8 @@ class Breaks {
   /** A block from which one can exit with a `break`. The `break` may be
    *  executed further down in the call stack provided that it is called on the
    *  exact same instance of `Breaks`.
+   *
+   *  @param op the computation to execute, which may call `break` to exit early
    */
   def breakable(op: => Unit): Unit =
     try op catch { case ex: BreakControl if ex eq breakException => }
@@ -85,13 +97,20 @@ class Breaks {
   /** Try a computation that produces a value, supplying a default
    *  to be used if the computation terminates with a `break`.
    *
-   *  ```
+   *  ```scala sc:compile
+   *  val mybreaks = new Breaks
+   *  import mybreaks.{break, breakable, tryBreakable}
+   *
    *  tryBreakable {
-   *   (1 to 3).map(i => if (math.random < .5) break else i * 2)
+   *   (1 to 3).map(i => if math.random() < .5 then break() else i * 2)
    *  } catchBreak {
    *   Vector.empty
    *  }
    *  ```
+   *
+   *  @tparam T the result type of the computation
+   *  @param op the computation to evaluate, which may call `break` to abort
+   *  @return a `TryBlock` whose `catchBreak` method provides the fallback value if `break` is invoked
    */
   def tryBreakable[T](op: => T): TryBlock[T] =
     new TryBlock[T] {
@@ -111,13 +130,12 @@ class Breaks {
 /** An object that can be used for the break control abstraction.
  *
  *  Example usage:
- *  ```
+ *  ```scala sc:compile
  *  import Breaks.{break, breakable}
  *
  *  breakable {
- *    for (...) {
- *      if (...) break
- *    }
+ *    for i <- 1 to 10 do
+ *      if i == 5 then break
  *  }
  *  ```
  */

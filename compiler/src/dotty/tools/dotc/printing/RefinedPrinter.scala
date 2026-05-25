@@ -179,7 +179,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val (printPure, refsText) =
       if refs == null then (isPure, Str(""))
       else if isElidableUniversal(refs) then (false, Str(""))
-      else (isPure, toTextGeneralCaptureSet(refs))
+      else refs match
+        case cs: CaptureSet if cs.isConst && cs.elems.isEmpty => (true, Str(""))
+        case _ => (isPure, toTextGeneralCaptureSet(refs))
     arrow(isContextual, printPure) ~ refsText
 
   private def toTextFunction(args: List[Type], res: Type, fn: MethodType | AppliedType,
@@ -340,7 +342,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(elemtp) ~ "[]"
       case tp: LazyRef if !printDebug =>
         try toText(tp.ref)
-        catch case ex: Throwable => "..."
+        catch case _: Exception => "..."
       case sel: cc.PathSelectionProto =>
         "?.{ " ~ toText(sel.selector) ~ "}"
       case AnySelectionProto =>

@@ -155,7 +155,7 @@ object ExecutionContext {
    *  in case the `opportunistic` field is missing (example below). The resulting `ExecutionContext` has batching
    *  behavior in all Scala 2.13 versions (`global` is batching in 2.13.0-3).
    *
-   *  ```
+   *  ```scala sc:compile
    *  implicit val ec: scala.concurrent.ExecutionContext = try {
    *   scala.concurrent.ExecutionContext.getClass
    *     .getDeclaredMethod("opportunistic")
@@ -174,19 +174,23 @@ object ExecutionContext {
    *   1. Writing a Scala `object` in the `scala` package (example below).
    *   1. Writing a Java source file. This works because `private[scala]` is emitted as `public` in Java bytecode.
    *
-   *  ```
-   *  // Option 1
-   *  implicit val ec: scala.concurrent.ExecutionContext =
-   *   (scala.concurrent.ExecutionContext:
-   *     {def opportunistic: scala.concurrent.ExecutionContextExecutor}
-   *   ).opportunistic
+   *  ```scala sc:compile
+   *  import scala.language.reflectiveCalls
    *
-   *  // Option 2
-   *  package scala {
-   *   object OpportunisticEC {
-   *     implicit val ec: scala.concurrent.ExecutionContext =
-   *       scala.concurrent.ExecutionContext.opportunistic
-   *   }
+   *  type ExecutionContextCompanionApi = AnyRef {
+   *    def opportunistic: scala.concurrent.ExecutionContextExecutor
+   *  }
+   *
+   *  implicit val ec: scala.concurrent.ExecutionContext =
+   *    scala.concurrent.ExecutionContext
+   *      .asInstanceOf[ExecutionContextCompanionApi]
+   *      .opportunistic
+   *  ```
+   *
+   *  ```scala sc:compile
+   *  object OpportunisticEC {
+   *    implicit val ec: scala.concurrent.ExecutionContext =
+   *      scala.concurrent.ExecutionContext.opportunistic
    *  }
    *  ```
    *
@@ -252,7 +256,7 @@ object ExecutionContext {
    *  If it is guaranteed that none of the executed tasks are blocking, a single-threaded `ExecutorService`
    *  can be used to create an `ExecutionContext` as follows:
    *
-   *  ```
+   *  ```scala sc:compile
    *  import java.util.concurrent.Executors
    *  val ec = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
    *  ```

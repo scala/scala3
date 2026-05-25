@@ -48,7 +48,7 @@ import dotty.tools.dotc.transform.SpecializedTraitState
 
 object Contexts {
 
-  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback]()
+  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback | Null]()
   private val (incCallbackLoc,       store2) = store1.newLocation[IncrementalCallback | Null]()
   private val (printerFnLoc,         store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,     store4) = store3.newLocation[SettingsState]()
@@ -170,7 +170,7 @@ object Contexts {
     def store: Store
 
     /** The compiler callback implementation, or null if no callback will be called. */
-    def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
+    def compilerCallback: CompilerCallback | Null = store(compilerCallbackLoc)
 
     /** The Zinc callback implementation if we are run from Zinc, null otherwise */
     def incCallback: IncrementalCallback | Null = store(incCallbackLoc)
@@ -928,7 +928,7 @@ object Contexts {
   }
 
   /** A context base defines state and associated methods that exist once per
-   *  compiler run.
+   *  logical compiler instance.
    */
   class ContextBase extends ContextState
                        with Phases.PhasesBase

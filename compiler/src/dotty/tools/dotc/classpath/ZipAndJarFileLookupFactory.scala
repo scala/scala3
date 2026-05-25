@@ -4,8 +4,6 @@
 package dotty.tools.dotc
 package classpath
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.net.URL
 import java.nio.file.Files
@@ -26,13 +24,16 @@ sealed trait ZipAndJarFileLookupFactory {
 
   def create(zipFile: AbstractFile)(using Context): ClassPath =
     val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
-    if (ctx.settings.YdisableFlatCpCaching.value || zipFile.file == null) createForZipFile(zipFile, release)
-    else createUsingCache(zipFile, release)
+    val jFile = zipFile.file
+    if ctx.settings.YdisableFlatCpCaching.value || jFile == null then
+      createForZipFile(zipFile, jFile, release)
+    else
+      createUsingCache(zipFile, jFile, release)
 
-  protected def createForZipFile(zipFile: AbstractFile, release: Option[String]): ClassPath
+  protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath
 
-  private def createUsingCache(zipFile: AbstractFile, release: Option[String]): ClassPath =
-    cache.getOrCreate(zipFile.file.toPath, () => createForZipFile(zipFile, release))
+  private def createUsingCache(zipFile: AbstractFile, jFile: File, release: Option[String]): ClassPath =
+    cache.getOrCreate(jFile.toPath, () => createForZipFile(zipFile, jFile, release))
 }
 
 /**
@@ -140,9 +141,9 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     case class PackageInfo(packageName: String, subpackages: List[AbstractFile])
   }
 
-  override protected def createForZipFile(zipFile: AbstractFile, release: Option[String]): ClassPath =
-    if (zipFile.file == null) createWithoutUnderlyingFile(zipFile)
-    else ZipArchiveClassPath(zipFile.file, release)
+  override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =
+    if (jFile == null) createWithoutUnderlyingFile(zipFile)
+    else ZipArchiveClassPath(jFile, release)
 
   private def createWithoutUnderlyingFile(zipFile: AbstractFile) = zipFile match {
     case manifestRes: ManifestResources =>
@@ -172,7 +173,9 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isScalaOrJavaSource
   }
 
-  override protected def createForZipFile(zipFile: AbstractFile, release: Option[String]): ClassPath = ZipArchiveSourcePath(zipFile.file)
+  override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =
+    assert(jFile != null, "Zip file in ZipAndJarSourcePathFactory cannot be null")
+    ZipArchiveSourcePath(jFile)
 }
 
 final class FileBasedCache[T] {

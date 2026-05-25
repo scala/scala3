@@ -123,7 +123,7 @@ object SymbolProvider:
 
   def compilerSymbols(symbol: String)(using Context): List[Symbol] =
     try toSymbols(SymbolInfo.getPartsFromSymbol(symbol))
-    catch case NonFatal(e) => Nil
+    catch case NonFatal(_) => Nil
 
   private def normalizePackage(pkg: String): String =
     pkg.replace("/", ".").stripSuffix(".")

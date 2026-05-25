@@ -3,10 +3,15 @@ package tools
 package vulpix
 
 import scala.language.unsafeNulls
+import scala.util.Properties.javaSpecVersion
 
 import java.io.File
 
+import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
+
 object TestConfiguration {
+
+  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse("17"))
 
   val pageWidth = 120
 
@@ -59,7 +64,8 @@ object TestConfiguration {
       Properties.jlineReader,
       Properties.fansi,
       Properties.pprint,
-      Properties.sourcecode
+      Properties.sourcecode,
+      Properties.scalaXml
   ))
 
   lazy val replWithStagingClasspath = 
@@ -102,6 +108,9 @@ object TestConfiguration {
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
   val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
+
+  val oldSyntax = defaultOptions `and` "-old-syntax"
+  val newSyntax = defaultOptions `and` "-new-syntax"
 
   /** Default target of the generated class files */
   private def defaultTarget: String = "17"

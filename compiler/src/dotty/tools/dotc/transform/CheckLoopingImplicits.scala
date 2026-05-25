@@ -54,6 +54,8 @@ class CheckLoopingImplicits extends MiniPhase:
             )
 
     def checkNotLooping(t: Tree): Unit = t match
+      case t if InstrumentCoverage.isCoverageProbe(t) =>
+        ()
       case t: Ident =>
         checkNotSelfRef(t)
       case t @ Select(qual, _) =>
@@ -105,7 +107,7 @@ class CheckLoopingImplicits extends MiniPhase:
     if sym.isOneOf(GivenOrImplicit | Lazy | ExtensionMethod)
       || sym.name == nme.apply && sym.owner.is(Module) && sym.owner.sourceModule.isOneOf(GivenOrImplicit)
     then
-      checkNotLooping(mdef.rhs)
+      checkNotLooping(InstrumentCoverage.stripLeadingCoverage(mdef.rhs))
     mdef
   end transform
 end CheckLoopingImplicits

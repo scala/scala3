@@ -44,6 +44,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     extends MemberDef {
     type ThisTree[+T <: Untyped] <: Trees.NameTree[T] & Trees.MemberDef[T] & ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
+    def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
   /** An untyped template with a derives clause. Derived parents are added to the end

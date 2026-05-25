@@ -47,7 +47,7 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
 
   /** Uses creationContext to produce the message */
   override def getMessage: String =
-    try toMessage.message catch case ex: Throwable => "TypeError"
+    try toMessage.message catch case _: Exception => "TypeError"
 
 object TypeError:
   def apply(msg: Message)(using Context) = new TypeError:
@@ -131,7 +131,7 @@ end RecursionOverflow
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive:
-  inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
+  private inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
     var e: Throwable | Null = exc
     while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
     e
@@ -155,7 +155,7 @@ end handleRecursive
  */
 class CyclicReference(
     val denot: SymDenotation,
-    val optTrace: Option[Array[CyclicReference.TraceElement]])(using Context)
+    val optTrace: Array[CyclicReference.TraceElement] | Null)(using Context)
 extends TypeError:
   var inImplicitSearch: Boolean = false
 
@@ -204,8 +204,16 @@ extends TypeError:
 
 object CyclicReference:
 
+  private def traceElements(using Context): Array[TraceElement] | Null =
+    val run = ctx.run
+    if run == null then null
+    else
+      val trace = run.cyclicReferenceTrace
+      if trace == null then null
+      else trace.toArray
+
   def apply(denot: SymDenotation)(using Context): CyclicReference =
-    val ex = new CyclicReference(denot, ctx.property(Trace).map(_.toArray))
+    val ex = new CyclicReference(denot, traceElements)
     if ex.computeStackTrace then
       cyclicErrors.println(s"Cyclic reference involving $denot")
       val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
@@ -215,26 +223,15 @@ object CyclicReference:
 
   type TraceElement = Context ?=> String
   type Trace = mutable.ArrayBuffer[TraceElement]
-  val Trace = Property.Key[Trace]
-
-  private def isTraced(using Context) =
-    ctx.property(CyclicReference.Trace).isDefined
-
-  private def pushTrace(info: TraceElement)(using Context): Unit =
-    for buf <- ctx.property(CyclicReference.Trace) do
-      buf += info
-
-  private def popTrace()(using Context): Unit =
-    for buf <- ctx.property(CyclicReference.Trace) do
-      buf.dropRightInPlace(1)
 
   inline def trace[T](info: TraceElement)(inline op: => T)(using Context): T =
-    val traceCycles = isTraced
+    val run = ctx.run
+    val traceCycles = run != null && run.cyclicReferenceTrace != null
     try
-      if traceCycles then pushTrace(info)
+      if traceCycles then run.nn.cyclicReferenceTrace.nn += info
       op
     finally
-      if traceCycles then popTrace()
+      if traceCycles then run.nn.cyclicReferenceTrace.nn.dropRightInPlace(1)
 
   inline def trace[T](prefix: String, sym: Symbol)(inline op: => T)(using Context): T =
     trace((ctx: Context) ?=> i"$prefix$sym")(op)

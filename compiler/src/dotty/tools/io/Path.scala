@@ -210,7 +210,7 @@ class Path private[io] (val jpath: JPath) {
 
   // deletions
   def delete(): Unit =
-    try { Files.deleteIfExists(jpath) } catch { case _: DirectoryNotEmptyException => }
+    try { Files.deleteIfExists(jpath) } catch { case _: java.io.IOException => }
 
   /** Deletes the path recursively. Returns false on failure.
    *  Use with caution!

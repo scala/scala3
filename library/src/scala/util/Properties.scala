@@ -17,6 +17,7 @@ import scala.language.`2.13`
 import java.io.{IOException, PrintWriter}
 import java.util.jar.Attributes.{Name => AttributeName}
 import scala.annotation.tailrec
+import language.experimental.captureChecking
 
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {

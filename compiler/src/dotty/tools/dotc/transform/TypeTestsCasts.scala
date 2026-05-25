@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package transform
 
-import scala.language.unsafeNulls as _
-
 import core.*
 import Contexts.*, Symbols.*, Types.*, Constants.*, StdNames.*, Decorators.*
 import ast.untpd

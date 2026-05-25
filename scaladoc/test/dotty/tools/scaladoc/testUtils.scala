@@ -7,7 +7,7 @@ import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotty.tools.scaladoc.test.BuildInfo
 import org.junit.Assert._
 import java.io.File
-import java.nio.file.Paths
+import java.nio.file.{Path, Paths}
 
 
 case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnostic], infos: List[Diagnostic]):
@@ -18,7 +18,7 @@ case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnost
 
 extension (c: CompilerContext) def reportedDiagnostics: ReportedDiagnostics =
   val t = c.reporter.asInstanceOf[TestReporter]
-  ReportedDiagnostics(t.errors.result, t.warnings.result, t.infos.result)
+  ReportedDiagnostics(t.errors.result(), t.warnings.result(), t.infos.result())
 
 def assertNoWarning(diag: ReportedDiagnostics) = assertEquals("Warnings should be empty", Nil, diag.warningMsgs)
 def assertNoErrors(diag: ReportedDiagnostics) = assertEquals("Erros should be empty", Nil, diag.errorMsgs)
@@ -79,4 +79,4 @@ def tastyFiles(name: String, allowEmpty: Boolean = false, rootPck: String = "tes
   assert(files.nonEmpty || allowEmpty)
   files.toSeq
 
-def testDocPath = Paths.get(BuildInfo.testDocumentationRoot)
+def testDocPath: Path = Paths.get(BuildInfo.testDocumentationRoot)

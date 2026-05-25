@@ -1,7 +1,5 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
 
 import scala.jdk.CollectionConverters.*

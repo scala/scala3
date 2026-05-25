@@ -43,6 +43,9 @@ transparent trait IsMap[Repr] extends IsIterable[Repr] {
    *  @note The third type parameter of the returned `MapOps` value is
    *       still `Iterable` (and not `Map`) because `MapView[K, V]` only
    *       extends `MapOps[K, V, View, View[A]]`.
+   *
+   *  @param c the collection to convert to `MapOps`
+   *  @return a `MapOps[K, V, Iterable, C]` view of the collection
    */
   override def apply(c: Repr): MapOps[K, V, Tupled[Iterable]#Ap, C]
 

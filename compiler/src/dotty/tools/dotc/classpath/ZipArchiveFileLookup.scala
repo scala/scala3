@@ -20,8 +20,6 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
   val zipFile: File
   def release: Option[String]
 
-  assert(zipFile ne null, "Zip file in ZipArchiveFileLookup cannot be null")
-
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
   override def asClassPathStrings: Seq[String] = Seq(zipFile.getPath)
 
