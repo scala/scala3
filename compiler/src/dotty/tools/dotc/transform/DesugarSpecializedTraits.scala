@@ -58,7 +58,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
       def apply(t: Type) = specialization.specializedTypeParamsToTypeArgumentsMap.view.mapValues(_.tpe).applyOrElse(t, mapOver) // TODO: If we can do just types we can get rid of this 
   
-    val inheritedParents = specialization.traitSymbol.denot.info.parents.filterNot(_ eq defn.ObjectType).map(tm(_))
+    val inheritedParents = specialization.traitSymbol.denot.info.parents.filterNot(_.typeSymbol == defn.ObjectClass).map(tm(_))
     // Parents may be specializable and so we need to specialize them as well
     // See ArrayIterator extends Iterator in specialized-trait-collections-example.scala
     val specializations1 = inheritedParents.foldLeft(specializations)((specializations, parent) => 
