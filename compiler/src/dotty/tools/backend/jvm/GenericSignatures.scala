@@ -86,8 +86,8 @@ object GenericSignatures {
 
       // a signature should always start with a class
       validParents.headOption match
-        case None => boxedSig(defn.ObjectType)
-        case Some(head) if isInterfaceOrTrait(head.typeSymbol) => boxedSig(defn.ObjectType)
+        case None => jsig(defn.ObjectType)
+        case Some(head) if isInterfaceOrTrait(head.typeSymbol) => jsig(defn.ObjectType)
         case _ => ()
       validParents.foreach(boxedSig)
     }
@@ -222,11 +222,9 @@ object GenericSignatures {
                 else
                   // For bounded arguments, we can't translate it cleanly so emit an erased type
                   jsig(erasure(a.tycon))
-              case res if res.isPrimitiveValueType =>
-                // value classes cannot appear as generic arguments
-                jsig(defn.boxedType(res))
               case res =>
-                jsig(res)
+                // value classes cannot appear as generic arguments
+                jsig(res, vcBoxing = ValueClassBoxing.Box)
           case _ =>
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
