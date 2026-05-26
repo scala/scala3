@@ -1623,8 +1623,26 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(using Context): Type = NoPrefix
 
-    def typeRef(using Context): TypeRef =
-      TypeRef(maybeOwner.thisType, symbol)
+    private var myCachedTypeRef: TypeRef | Null = null
+    private var myCachedTypeRefPeriod: Period = Nowhere
+
+    def typeRef(using Context): TypeRef = {
+      val cached = myCachedTypeRef
+      if (cached != null && myCachedTypeRefPeriod == ctx.period) cached
+      else {
+        val pre = maybeOwner.thisType
+        val ref = TypeRef(pre, symbol)
+        if (!isProvisional && !pre.isProvisional) {
+          myCachedTypeRef = ref
+          myCachedTypeRefPeriod = ctx.period
+        }
+        else if (cached != null) {
+          myCachedTypeRef = null
+          myCachedTypeRefPeriod = Nowhere
+        }
+        ref
+      }
+    }
 
     private var myTermRef: TermRef | Null = null
     private var myTermRefPeriod: Period = Nowhere
