@@ -111,7 +111,7 @@ object Build {
   }
 
   // LTS or Next
-  val versionLine = "Next"
+  val versionLine = "LTS"
 
   /** Minor version against which we check binary compatibility.
    *
