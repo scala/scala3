@@ -324,6 +324,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree],
       superArgs: List[Tree] = Nil, adaptVarargs: Boolean = false)(using Context): TypeDef =
+    ClassDef(cls, constr, body, superArgs, adaptVarargs, NoSymbol)
+
+  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree],
+      superArgs: List[Tree], adaptVarargs: Boolean, localDummy: Symbol)(using Context): TypeDef =
     val firstParent :: otherParents = cls.info.parents: @unchecked
 
     def adaptedSuperArgs(ctpe: Type): List[Tree] = ctpe match
@@ -346,10 +350,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case _ => assert(false, i"multiple applicable parent constructors of $firstParent for supercall arguments $superArgs")
         New(firstParent, parentConstr.asTerm, adaptedSuperArgs(parentConstr.info))
 
-    ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
+    ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body, localDummy)
   end ClassDef
 
-  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef = {
+  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef =
+    ClassDefWithParents(cls, constr, parents, body, NoSymbol)
+
+  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree], localDummy: Symbol)(using Context): TypeDef = {
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(newSelfSym(cls))
       else EmptyValDef
@@ -359,11 +366,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val newTypeParams =
       for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
       yield TypeDef(tparam)
-    val findLocalDummy = FindLocalDummyAccumulator(cls)
-    val localDummy = body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)
-      .orElse(newLocalDummy(cls))
+    val templateDummy =
+      if localDummy.exists then
+        assert(isTemplateLocalDummy(cls, localDummy),
+          i"local dummy $localDummy has owner ${localDummy.owner}, expected $cls")
+        localDummy
+      else
+        val findLocalDummy = FindLocalDummyAccumulator(cls)
+        body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)
+          .orElse(newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ++ body)
-      .withType(localDummy.termRef)
+      .withType(templateDummy.termRef)
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
 
@@ -604,11 +617,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  the RHS of a method contains a class owned by the method, this would be
    *  an error.)
    */
-  def ModuleDef(sym: TermSymbol, body: List[Tree])(using Context): tpd.Thicket = {
+  def ModuleDef(sym: TermSymbol, body: List[Tree])(using Context): tpd.Thicket =
+    ModuleDef(sym, body, NoSymbol)
+
+  def ModuleDef(sym: TermSymbol, body: List[Tree], localDummy: Symbol)(using Context): tpd.Thicket = {
     val modcls = sym.moduleClass.asClass
     val constrSym = modcls.primaryConstructor `orElse` newDefaultConstructor(modcls).entered
     val constr = DefDef(constrSym.asTerm, EmptyTree)
-    val clsdef = ClassDef(modcls, constr, body)
+    val clsdef = ClassDef(modcls, constr, body, Nil, adaptVarargs = false, localDummy)
     val valdef = ValDef(sym, New(modcls.typeRef).select(constrSym).appliedToNone)
     Thicket(valdef, clsdef)
   }
@@ -630,13 +646,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else nullLiteral.select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
 
+  private def isTemplateLocalDummy(cls: ClassSymbol, sym: Symbol)(using Context): Boolean =
+    sym.isLocalDummy && sym.owner == cls
+
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(using Context) extends TreeAccumulator[Symbol] {
     def apply(sym: Symbol, tree: Tree)(using Context) =
       if (sym.exists) sym
       else if (tree.isDef) {
         val owner = tree.symbol.owner
-        if (owner.isLocalDummy && owner.owner == cls) owner
-        else if (owner == cls) foldOver(sym, tree)
+        if (isTemplateLocalDummy(cls, owner)) owner
         else sym
       }
       else foldOver(sym, tree)
