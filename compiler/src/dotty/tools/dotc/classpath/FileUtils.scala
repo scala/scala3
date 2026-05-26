@@ -29,7 +29,7 @@ object FileUtils {
 
     def isScalaBinary: Boolean = file.isClass || file.isTasty
 
-    def isScalaOrJavaSource: Boolean = !file.isDirectory && file.ext.isScalaOrJava
+    def isSource: Boolean = !file.isDirectory && file.ext.isSourceExtension
 
     // TODO do we need to check also other files using ZipMagicNumber like in scala.tools.nsc.io.Jar.isJarOrZip?
     def isJarOrZip: Boolean = file.ext.isJarOrZip
@@ -78,12 +78,15 @@ object FileUtils {
   private val SUFFIX_TASTY = ".tasty"
   private val SUFFIX_BETASTY = ".betasty"
   private val SUFFIX_JAVA = ".java"
-  private val SUFFIX_SIG = ".sig"
+
+  private val sourceSuffixes = Set(SUFFIX_SCALA, SUFFIX_JAVA)
 
   def stripSourceExtension(fileName: String): String =
-    if (endsScala(fileName)) stripClassExtension(fileName)
-    else if (endsJava(fileName)) stripJavaExtension(fileName)
+    if endsSourceExtension(fileName) then stripExtension(fileName)
     else throw new FatalError("Unexpected source file ending: " + fileName)
+
+  def endsSourceExtension(fileName: String): Boolean =
+    sourceSuffixes.exists(ends(fileName, _))
 
   def dirPath(forPackage: String): String = forPackage.replace('.', JFile.separatorChar)
 
@@ -91,23 +94,8 @@ object FileUtils {
 
   inline private def ends (filename:String, suffix:String) = filename.endsWith(suffix) && filename.length > suffix.length
 
-  def endsClass(fileName: String): Boolean =
-    ends (fileName, SUFFIX_CLASS) || fileName.endsWith(SUFFIX_SIG)
-
-  def endsScalaOrJava(fileName: String): Boolean =
-    endsScala(fileName) || endsJava(fileName)
-
-  def endsJava(fileName: String): Boolean =
-    ends (fileName, SUFFIX_JAVA)
-
-  def endsScala(fileName: String): Boolean =
-    ends (fileName, SUFFIX_SCALA)
-
-  def stripClassExtension(fileName: String): String =
+  def stripExtension(fileName: String): String =
     fileName.substring(0, fileName.lastIndexOf('.'))
-
-  def stripJavaExtension(fileName: String): String =
-    fileName.substring(0, fileName.length - 5) // equivalent of fileName.length - SUFFIX_JAVA.length
 
   // probably it should match a pattern like [a-z_]{1}[a-z0-9_]* but it cannot be changed
   // because then some tests in partest don't pass
