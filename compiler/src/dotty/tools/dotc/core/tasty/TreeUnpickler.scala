@@ -1183,6 +1183,12 @@ class TreeUnpickler(reader: TastyReader,
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
             // avoids space leaks by not capturing the current context
 
+            // TODO: Sometimes the annotated source files are wrong when inlining macros
+            // into inline traits. This seems to fix it as we reload the correct source 
+            // if not cached, but there ought to be a better way. 
+            treeAtAddr.filterInPlace { (addr, _) =>
+              addr.index < statsStart.index || addr.index >= end.index
+            }
             val fork = forkAt(statsStart)
             val stats = fork.readIndexedStats(localDummy, end)
             val inlinedMembers = (tparams ++ vparams ++ stats).filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
