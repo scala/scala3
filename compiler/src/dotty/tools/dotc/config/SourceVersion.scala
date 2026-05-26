@@ -20,6 +20,7 @@ enum SourceVersion:
   case `3.8-migration`, `3.8`
   case `3.9-migration`, `3.9`
   case `3.10-migration`, `3.10`
+  case `3.11-migration`, `3.11`
   // Add 3.x-migration and 3.x here
   // !!! Keep in sync with scala.language !!!
   case `2.13`
