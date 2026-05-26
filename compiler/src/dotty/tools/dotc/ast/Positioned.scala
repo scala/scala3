@@ -17,8 +17,10 @@ import scala.compiletime.uninitialized
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
+abstract class Positioned private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
   import Positioned.{ids, nextId, debugId}
+
+  def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
 
   private var mySpan: Span = uninitialized
 
@@ -47,7 +49,9 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
   def span_=(span: Span): Unit =
     mySpan = span
 
-  span = envelope(src)
+  span =
+    if initialSpan.coords == Positioned.ComputeSpan.coords then envelope(src)
+    else Span(initialSpan.coords)
 
   def source: SourceFile = mySource
 
@@ -239,6 +243,10 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 }
 
 object Positioned {
+  private[ast] final class InitialSpan(val coords: Long) extends AnyVal
+  private[ast] val ComputeSpan: InitialSpan = new InitialSpan(Long.MinValue)
+  private[ast] def initialSpan(span: Span): InitialSpan = new InitialSpan(span.coords)
+
   @sharable private var debugId = Int.MinValue
   @sharable private var ids: java.util.WeakHashMap[Positioned, Int] | Null = null
   @sharable private var nextId: Int = 0
