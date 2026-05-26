@@ -35,6 +35,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def description: String = Constructors.description
 
+  override def preservesApplicationTypes: Boolean = true
+
   override def runsAfter: Set[String] = Set(HoistSuperArgs.name)
   override def runsAfterGroupsOf: Set[String] = Set(Memoize.name)
     // Memoized needs to be finished because we depend on the ownerchain after Memoize

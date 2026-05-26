@@ -672,6 +672,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     TypedTreeCopier()
 
   val cpyBetweenPhases: TimeTravellingTreeCopier = TimeTravellingTreeCopier()
+  val cpyBetweenApplicationTypePreservingPhases: TimeTravellingTreeCopier =
+    ApplicationTypePreservingTreeCopier()
 
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
@@ -700,7 +702,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         }
     }
 
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = tree match {
+    protected def typedApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = tree match {
       case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
       case _ =>
         val tree1 = untpdCpy.Apply(tree)(fun, args)
@@ -712,7 +714,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         }
     }
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = tree match {
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+      typedApply(tree)(fun, args)
+
+    protected def typedTypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = tree match {
       case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
       case _ =>
         val tree1 = untpdCpy.TypeApply(tree)(fun, args)
@@ -723,6 +728,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case _ => ta.assignType(tree1, fun, args)
         }
     }
+
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply =
+      typedTypeApply(tree)(fun, args)
 
     override def Literal(tree: Tree)(const: Constant)(using Context): Literal =
       ta.assignType(untpdCpy.Literal(tree)(const))
@@ -877,6 +885,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
+  }
+
+  class ApplicationTypePreservingTreeCopier extends TimeTravellingTreeCopier {
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+      typedApply(tree)(fun, args)
+
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply =
+      typedTypeApply(tree)(fun, args)
   }
 
   override def skipTransform(tree: Tree)(using Context): Boolean = tree.tpe.isError

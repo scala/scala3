@@ -46,6 +46,11 @@ object MegaPhase {
     /** If set, use relaxed typing for all phases in group */
     def relaxedTypingInGroup: Boolean = false
 
+    /** If set, this phase does not change the widened function types, term refs,
+     *  or typing assumptions used to compute Apply/TypeApply result types.
+     */
+    def preservesApplicationTypes: Boolean = false
+
     val cpy: TypedTreeCopier = cpyBetweenPhases
 
     def prepareForIdent(tree: Ident)(using Context): Context = ctx
@@ -168,7 +173,9 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  private val cpy: TypedTreeCopier = cpyBetweenPhases
+  private val cpy: TypedTreeCopier =
+    if miniPhases.forall(_.preservesApplicationTypes) then cpyBetweenApplicationTypePreservingPhases
+    else cpyBetweenPhases
 
   /** Transform node using all phases in this group that have idxInGroup >= start */
   def transformNode(tree: Tree, start: Int)(using Context): Tree = {
