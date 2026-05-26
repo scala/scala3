@@ -3910,10 +3910,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               implicitArgs(formals2, argIndex + 1, pt)
 
             val arg = inferImplicitArg(formal, tree.span.endPos)
+
+            def tryConstrainResult(pt: Type): Boolean =
+              try constrainResult(tree.symbol, wtp, pt)
+              catch case _: TyperState.BadTyperStateAssertion => false
+
             arg.tpe match
               case failed: AmbiguousImplicits =>
                 val pt1 = pt.deepenProtoTrans
-                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && constrainResult(tree.symbol, wtp, pt1)
+                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1)
                 then implicitArgs(formals, argIndex, pt1)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt1)
               case failed: SearchFailureType =>

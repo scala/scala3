@@ -28,6 +28,7 @@ import scala.meta.pc.PcSymbolInformation as IPcSymbolInformation
 import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.pc.reports.ReportContext
 
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.InferExpectedType
@@ -52,7 +53,9 @@ case class ScalaPresentationCompiler(
     folderPath: Option[Path] = None,
     reportsLevel: ReportLevel = ReportLevel.Info,
     completionItemPriority: CompletionItemPriority = (_: String) => 0,
-    reportContext: ReportContext = EmptyReportContext()
+    reportContext: ReportContext = EmptyReportContext(),
+    sourcePath: ju.function.Supplier[ju.List[Path]] = () => Nil.asJava,
+    semanticdbFileManager: SemanticdbFileManager = SemanticdbFileManager.EMPTY
 ) extends PresentationCompiler:
 
   given ReportContext = reportContext
@@ -122,20 +125,37 @@ case class ScalaPresentationCompiler(
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
     copy(reportsLevel = ReportLevel.fromString(level))
 
+  override def withSemanticdbFileManager(
+      semanticdbFileManager: SemanticdbFileManager
+  ): PresentationCompiler =
+    copy(semanticdbFileManager = semanticdbFileManager)
+
   val compilerAccess: CompilerAccess[StoreReporter, InteractiveDriver] =
     Scala3CompilerAccess(
       config,
       sh,
-      () => new Scala3CompilerWrapper(CachingDriver(driverSettings))
+      () =>
+        new Scala3CompilerWrapper(CachingDriver(
+          driverSettings,
+          sourcePath,
+          semanticdbFileManager,
+          config.sourcePathMode()
+        ))
     )(using ec)
 
-  val driverSettings =
+  val driverSettings: List[String] =
     val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
     val defaultFlags = List("-color:never")
     val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
-
-    filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
-      .mkString(File.pathSeparator) :: Nil
+    val classpathFlags = List("-classpath", classpath.mkString(File.pathSeparator))
+    val sourcePathFlags = if config.sourcePathMode() != SourcePathMode.DISABLED then
+      List("-Ylogical-package-loading")
+    else Nil
+    filteredOptions ++
+      defaultFlags ++
+      implicitSuggestionTimeout ++
+      classpathFlags ++
+      sourcePathFlags
 
   private def removeDoubleOptions(options: List[String]): List[String] =
     options match
@@ -185,7 +205,7 @@ case class ScalaPresentationCompiler(
       new CompletionProvider(
         search,
         driver,
-        () => InteractiveDriver(driverSettings),
+        () => InteractiveDriver(driverSettings, driver.logicalRootPackage),
         params,
         config,
         buildTargetIdentifier,
@@ -469,7 +489,21 @@ case class ScalaPresentationCompiler(
       PcRenameProvider(driver, params, Some(name)).rename().asJava
     }(params.toQueryContext)
 
-  def newInstance(
+  override def newInstance(
+      buildTargetIdentifier: String,
+      classpath: ju.List[Path],
+      options: ju.List[String],
+      sourcePath: ju.function.Supplier[ju.List[Path]]
+  ): PresentationCompiler = {
+    copy(
+      buildTargetIdentifier = buildTargetIdentifier,
+      classpath = classpath.asScala.toSeq,
+      options = options.asScala.toList,
+      sourcePath = sourcePath
+    )
+  }
+
+  override def newInstance(
       buildTargetIdentifier: String,
       classpath: ju.List[Path],
       options: ju.List[String]

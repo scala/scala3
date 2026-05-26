@@ -1,0 +1,8 @@
+-- [E172] Type Error: tests/neg/i20768/Bystander.scala:15:42 -----------------------------------------------------------
+15 |            >> StateT.pure(computedResult) // error
+   |                                          ^
+   |Ambiguous given instances: both method catsInstancesForList in object Monad and method catsBimonadForFunction0 in object Monad match type cats.Monad[[_] =>> Any] of parameter F of method pure in object StateT
+-- [E172] Type Error: tests/neg/i20768/Bystander.scala:14:21 -----------------------------------------------------------
+14 |            .set(???) // error
+   |                     ^
+   |Ambiguous given instances: both method catsInstancesForList in object Monad and method catsBimonadForFunction0 in object Monad match type cats.Monad[F] of parameter F of method set in object StateT

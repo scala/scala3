@@ -4,14 +4,14 @@ package tasty
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
-
-import Contexts.*, Decorators.*
+import Contexts.*
+import Decorators.*
 import Names.Name
 import TastyUnpickler.*
 import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 import java.nio.file.{Files, Paths}
-import dotty.tools.io.{JarArchive, Path}
+import dotty.tools.io.{AbstractFile, JarArchive, Path}
 import dotty.tools.tasty.TastyFormat.header
 
 import scala.compiletime.uninitialized
@@ -50,8 +50,11 @@ object TastyPrinter:
           System.exit(1)
       else if arg.endsWith(".jar") then
         val jar = JarArchive.open(Path(arg), create = false)
+        def tastyFiles(file: AbstractFile): Iterator[AbstractFile] =
+          if file.isDirectory then file.iterator().flatMap(tastyFiles)
+          else Iterator.single(file).filter(_.name.endsWith(".tasty"))
         try
-          for file <- jar.iterator() if file.name.endsWith(".tasty") do
+          for file <- tastyFiles(jar) do
             printTasty(s"$arg ${file.path}", file.toByteArray)
         finally jar.close()
       else
@@ -186,7 +189,7 @@ class TastyPrinter(bytes: Array[Byte]) {
       sb.append(s"  lines: ${lineSizes.length}\n")
       sb.append(s"  line sizes:\n")
       val windowSize = 20
-      for window <-posUnpickler.lineSizes.sliding(windowSize, windowSize) do
+      for window <- lineSizes.sliding(windowSize, windowSize) do
         sb.append("     ").append(window.mkString(", ")).append("\n")
       // sb.append(posUnpickler.lineSizes.mkString("  line sizes: ", ", ", "\n"))
       sb.append("  positions:\n")

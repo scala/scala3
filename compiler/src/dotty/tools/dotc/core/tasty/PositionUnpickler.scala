@@ -27,7 +27,10 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
       myLineSizes = new Array[Int](lines)
       var i = 0
       while i < lines do
-        myLineSizes(i) += readNat()
+        // This should be `readNat()` per the spec,
+        // but previous compiler versions had a bug and could write `-1` as a Nat
+        val lineSize = readLongNat()
+        myLineSizes(i) += (if lineSize == 0xFFFFFFFFL then -1 else lineSize.toInt)
         i += 1
 
       mySpans = util.HashMap[Addr, Span]()
@@ -68,6 +71,7 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
     mySourceNameRefs
   }
 
+  // Can include -1 entries for "unknown", as previous compiler versions had a bug
   private[tasty] def lineSizes: Array[Int] = {
     ensureDefined()
     myLineSizes
