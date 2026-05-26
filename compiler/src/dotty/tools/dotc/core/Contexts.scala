@@ -515,14 +515,22 @@ object Contexts {
       withTyperState(typerState.uncommittedAncestor)
 
     /** Ensures recursive operations obey the fuel limit, and throws user-friendly errors when they do not. */
-    inline final def handleRecursive[T](title: String, details: RecursiveOperationDetails, weight: Int = 1)(inline block: T): T =
+    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, weight: Int = 1)(inline block: T): T =
+      // This method is hot, as it must be called every so often in potentially recursive operations
+      // to catch stack overflows before they actually happen.
+      // Thus, it's important for it not to allocate or do any unnecessary work,
+      // which is why `base.recursiveOperations` is a preallocated array of mutable classes in which we can copy the arguments.
+      // We use the fact that `base.recursiveOperations.length` is set to the max fuel to not have to explicitly load it.
+      // Also, we support `-Xno-enrich-error-messages` by setting `base.recursiveDepth` to `Int.MinValue`, ensuring the throw check never fires.
+      // These two checks don't add overhead because accessing `ops` needs `depth` to be bounds-checked anyway.
       val depth = base.recursiveDepth
       val ops = base.recursiveOperations
       if depth >= ops.length then
         throw new RecursionOverflow(ops, title, details, weight)
-      ops(depth).title = title
-      ops(depth).details = details
-      ops(depth).weight = weight
+      if depth >= 0 then
+        ops(depth).title = title
+        ops(depth).details = details
+        ops(depth).weight = weight
       base.recursiveDepth = depth + 1
       try block
       finally base.recursiveDepth = depth
@@ -943,7 +951,7 @@ object Contexts {
     usePhases(List(SomePhase), FreshContext(this))
 
     /** Initializes the `ContextBase` with a starting context.
-     *  This initializes the `platform` and the `definitions`.
+     *  This initializes the `platform`, the `recursiveOperations` based on max fuel, and the `definitions`.
      */
     def initialize()(using Context): Unit = {
       // In interactive mode (REPL/IDE), preserve the existing platform if already initialized.
@@ -953,6 +961,9 @@ object Contexts {
       if _platform == null || !ctx.mode.is(Mode.Interactive) then
         _platform = newPlatform
       platform.init()
+      // See `Context.handleRecursive` for an explanation of these values
+      recursiveOperations = Array.fill[RecursiveOperation](ctx.settings.XmaxFuel.value)(RecursiveOperation.blank())
+      recursiveDepth = if ctx.settings.XnoEnrichErrorMessages.value then Int.MinValue else 0
       definitions.init()
     }
 
@@ -1026,10 +1037,10 @@ object Contexts {
     private[dotc] var coverage: Coverage | Null = null
 
     // The array will be initialized with a number of slots corresponding to the max fuel,
-    // for now give it 1 slot so a single call to handleRecursive works for trivial things
+    // for now give it 10 slots so a few calls to handleRecursive work for trivial things
     // before the compiler has really started
     private[dotc] var recursiveDepth: Int = 0
-    private[dotc] var recursiveOperations: Array[RecursiveOperation] = Array(RecursiveOperation.blank())
+    private[dotc] var recursiveOperations: Array[RecursiveOperation] = Array.fill(10)(RecursiveOperation.blank())
 
     // Types state
     /** A table for hash consing unique types */
