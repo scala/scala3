@@ -51,6 +51,11 @@ object MegaPhase {
      */
     def preservesApplicationTypes: Boolean = false
 
+    /** If set, this phase does not change the mechanically fixed result types of
+     *  closures with stable child types or trivial control-flow nodes.
+     */
+    def preservesTrivialResultTypes: Boolean = false
+
     val cpy: TypedTreeCopier = cpyBetweenPhases
 
     def prepareForIdent(tree: Ident)(using Context): Context = ctx
@@ -174,7 +179,9 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
   private val cpy: TypedTreeCopier =
-    if miniPhases.forall(_.preservesApplicationTypes) then cpyBetweenApplicationTypePreservingPhases
+    if miniPhases.forall(phase => phase.preservesApplicationTypes && phase.preservesTrivialResultTypes) then
+      cpyBetweenSafeTypePreservingPhases
+    else if miniPhases.forall(_.preservesApplicationTypes) then cpyBetweenApplicationTypePreservingPhases
     else cpyBetweenPhases
 
   /** Transform node using all phases in this group that have idxInGroup >= start */

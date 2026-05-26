@@ -18,6 +18,8 @@ class WInferUnion extends MiniPhase {
 
   override def preservesApplicationTypes: Boolean = true
 
+  override def preservesTrivialResultTypes: Boolean = true
+
   override def isEnabled(using Context): Boolean = ctx.settings.Whas.inferUnion
 
   override def transformTypeApply(tree: tpd.TypeApply)(using Context): tpd.Tree =

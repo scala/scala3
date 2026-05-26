@@ -674,6 +674,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   val cpyBetweenPhases: TimeTravellingTreeCopier = TimeTravellingTreeCopier()
   val cpyBetweenApplicationTypePreservingPhases: TimeTravellingTreeCopier =
     ApplicationTypePreservingTreeCopier()
+  val cpyBetweenSafeTypePreservingPhases: TimeTravellingTreeCopier =
+    SafeTypePreservingTreeCopier()
 
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
@@ -776,7 +778,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = {
+    protected def typedClosure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = {
       val tree1 = untpdCpy.Closure(tree)(env, meth, tpt)
       tree match {
         case tree: Closure if sameTypes(env, tree.env) && (meth.tpe eq tree.meth.tpe) && (tpt.tpe eq tree.tpt.tpe) =>
@@ -784,6 +786,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case _ => ta.assignType(tree1, meth, tpt)
       }
     }
+
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
+      typedClosure(tree)(env, meth, tpt)
 
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = {
       val tree1 = untpdCpy.Match(tree)(selector, cases)
@@ -893,6 +898,33 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply =
       typedTypeApply(tree)(fun, args)
+  }
+
+  class SafeTypePreservingTreeCopier extends ApplicationTypePreservingTreeCopier {
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
+      typedClosure(tree)(env, meth, tpt)
+
+    override def Labeled(tree: Tree)(bind: Bind, expr: Tree)(using Context): Labeled =
+      tree match
+        case tree: Labeled if tree.tpe eq bind.symbol.info =>
+          untpdCpy.Labeled(tree)(bind, expr).withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(untpdCpy.Labeled(tree)(bind, expr))
+
+    override def Return(tree: Tree)(expr: Tree, from: Tree)(using Context): Return =
+      tree match
+        case tree: Return if tree.tpe eq defn.NothingType =>
+          untpdCpy.Return(tree)(expr, from).withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(untpdCpy.Return(tree)(expr, from))
+
+    override def WhileDo(tree: Tree)(cond: Tree, body: Tree)(using Context): WhileDo =
+      val expectedType = if cond eq EmptyTree then defn.NothingType else defn.UnitType
+      tree match
+        case tree: WhileDo if tree.tpe eq expectedType =>
+          untpdCpy.WhileDo(tree)(cond, body).withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(untpdCpy.WhileDo(tree)(cond, body))
   }
 
   override def skipTransform(tree: Tree)(using Context): Boolean = tree.tpe.isError
