@@ -212,8 +212,22 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       Stats.trackTime("Annotations copySymbols"):
         val ttm =
           new TreeTypeMap:
+            override def withMappedSym(sym: Symbol) =
+              if sym.isClass then withMappedSyms(sym :: Nil, mapSymbols(sym :: Nil, this, true))
+              else withMappedSym(sym, mapSymbol(sym, this, true))
+            override def withMappedSyms(sym1: Symbol, sym2: Symbol) =
+              if sym1.isClass || sym2.isClass || (sym1 eq sym2) then
+                val syms = sym1 :: sym2 :: Nil
+                withMappedSyms(syms, mapSymbols(syms, this, true))
+              else
+                val (mapped1, mapped2) = mapTwoSymbols(sym1, sym2, this, true)
+                withMappedSyms(sym1, sym2, mapped1, mapped2)
             override def withMappedSyms(syms: List[Symbol]) =
-              withMappedSyms(syms, mapSymbols(syms, this, true))
+              syms match
+                case Nil => this
+                case sym :: Nil => withMappedSym(sym)
+                case sym1 :: sym2 :: Nil => withMappedSyms(sym1, sym2)
+                case _ => withMappedSyms(syms, mapSymbols(syms, this, true))
         ttm(tree)
 
     /** Transforms the given annotation tree. */

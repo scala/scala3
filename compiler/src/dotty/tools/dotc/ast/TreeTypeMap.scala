@@ -316,7 +316,7 @@ class TreeTypeMap(
 
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
-      val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
+      val tmap = withMappedLocalSyms(impl, self)
       val bodyCtx = ctx.withOwner(mapOwner(impl.symbol.owner))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
@@ -438,7 +438,7 @@ class TreeTypeMap(
           val rhs1 = tmap.transform(rhs)
           cpy.CaseDef(cdef)(pat1, guard1, rhs1)
         case labeled @ Labeled(bind, expr) =>
-          val tmap = withMappedSyms(bind.symbol :: Nil)
+          val tmap = withMappedSym(bind.symbol)
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
@@ -450,21 +450,40 @@ class TreeTypeMap(
   override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
     transformDefs(trees)._2
 
+  private def withMappedLocalSyms(stat1: Tree, stat2: Tree)(using Context): TreeTypeMap =
+    val sym1 = if stat1.isDef && stat1.symbol.exists then stat1.symbol else NoSymbol
+    val sym2 = if stat2.isDef && stat2.symbol.exists then stat2.symbol else NoSymbol
+    if sym1 eq NoSymbol then
+      if sym2 eq NoSymbol then this else withMappedSym(sym2)
+    else if sym2 eq NoSymbol then withMappedSym(sym1)
+    else withMappedSyms(sym1, sym2)
+
   def transformDefs[TT <: Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
     var pending = trees
+    var local1: Symbol = NoSymbol
+    var local2: Symbol = NoSymbol
     var localBuf: mutable.ListBuffer[Symbol] | Null = null
     while pending.nonEmpty do
       val stat = pending.head
       if stat.isDef then
         val sym = stat.symbol
         if sym.exists then
-          if localBuf == null then localBuf = new mutable.ListBuffer[Symbol]
-          localBuf += sym
+          if local1 eq NoSymbol then local1 = sym
+          else if local2 eq NoSymbol then local2 = sym
+          else
+            if localBuf == null then
+              localBuf = new mutable.ListBuffer[Symbol]
+              localBuf += local1
+              localBuf += local2
+            localBuf += sym
       pending = pending.tail
 
-    if localBuf == null then (this, transformSub(trees))
+    if local1 eq NoSymbol then (this, transformSub(trees))
     else
-      val tmap = withMappedSyms(localBuf.toList)
+      val tmap =
+        if local2 eq NoSymbol then withMappedSym(local1)
+        else if localBuf == null then withMappedSyms(local1, local2)
+        else withMappedSyms(localBuf.toList)
       (tmap, tmap.transformSub(trees))
   }
 
@@ -492,6 +511,40 @@ class TreeTypeMap(
     xs1.isEmpty && ys1.isEmpty
 
   /** The current tree map composed with a substitution [from -> to] */
+  def withSubstitution(from: Symbol, to: Symbol): TreeTypeMap =
+    if from eq to then this
+    else {
+      assert(!substToContains(from))
+      assert(!substFromContains(to))
+      assert(!newOwnerContains(from))
+      assert(!oldOwnerContains(to))
+      copy(
+        typeMap,
+        treeMap,
+        from :: oldOwners,
+        to :: newOwners,
+        from :: substFrom,
+        to :: substTo)
+    }
+
+  /** The current tree map composed with two substitutions [from1 -> to1, from2 -> to2] */
+  def withSubstitution(from1: Symbol, from2: Symbol, to1: Symbol, to2: Symbol): TreeTypeMap =
+    if (from1 eq to1) && (from2 eq to2) then this
+    else {
+      assert(!substToContains(from1) && !substToContains(from2))
+      assert(!substFromContains(to1) && !substFromContains(to2))
+      assert(!newOwnerContains(from1) && !newOwnerContains(from2))
+      assert(!oldOwnerContains(to1) && !oldOwnerContains(to2))
+      copy(
+        typeMap,
+        treeMap,
+        from1 :: from2 :: oldOwners,
+        to1 :: to2 :: newOwners,
+        from1 :: from2 :: substFrom,
+        to1 :: to2 :: substTo)
+    }
+
+  /** The current tree map composed with a substitution [from -> to] */
   def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =
     if (from eq to) || sameSymbols(from, to) then this
     else {
@@ -517,14 +570,57 @@ class TreeTypeMap(
    *  and return a treemap that contains the substitution
    *  between original and mapped symbols.
    */
-  def withMappedSyms(syms: List[Symbol]): TreeTypeMap =
-    withMappedSyms(syms, mapSymbols(syms, this))
+  def withMappedSym(sym: Symbol): TreeTypeMap =
+    if sym.isClass then
+      val syms = sym :: Nil
+      withMappedSymsGeneral(syms, mapSymbols(syms, this))
+    else withMappedSym(sym, mapSymbol(sym, this))
+
+  /** Apply `typeMap` and `ownerMap` to two symbols and return a treemap
+   *  that contains the substitution between originals and mapped symbols.
+   */
+  def withMappedSyms(sym1: Symbol, sym2: Symbol): TreeTypeMap =
+    if sym1.isClass || sym2.isClass || (sym1 eq sym2) then
+      val syms = sym1 :: sym2 :: Nil
+      withMappedSymsGeneral(syms, mapSymbols(syms, this))
+    else
+      val (mapped1, mapped2) = mapTwoSymbols(sym1, sym2, this)
+      withMappedSyms(sym1, sym2, mapped1, mapped2)
+
+  /** Apply `typeMap` and `ownerMap` to given symbols `syms`
+   *  and return a treemap that contains the substitution
+   *  between original and mapped symbols.
+   */
+  def withMappedSyms(syms: List[Symbol]): TreeTypeMap = syms match
+    case Nil => this
+    case sym :: Nil => withMappedSym(sym)
+    case sym1 :: sym2 :: Nil => withMappedSyms(sym1, sym2)
+    case _ => withMappedSyms(syms, mapSymbols(syms, this))
+
+  protected def withMappedSym(sym: Symbol, mapped: Symbol): TreeTypeMap =
+    if (sym eq mapped) then this
+    else if sym.isClass || mapped.isClass then withMappedSymsGeneral(sym :: Nil, mapped :: Nil)
+    else withSubstitution(sym, mapped)
+
+  protected def withMappedSyms(sym1: Symbol, sym2: Symbol, mapped1: Symbol, mapped2: Symbol): TreeTypeMap =
+    if (sym1 eq mapped1) && (sym2 eq mapped2) then this
+    else if sym1.isClass || sym2.isClass || mapped1.isClass || mapped2.isClass || (sym1 eq sym2) then
+      withMappedSymsGeneral(sym1 :: sym2 :: Nil, mapped1 :: mapped2 :: Nil)
+    else withSubstitution(sym1, sym2, mapped1, mapped2)
 
   /** The tree map with the substitution between originals `syms`
    *  and mapped symbols `mapped`. Also goes into mapped classes
    *  and substitutes their declarations.
    */
-  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap =
+  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = (syms, mapped) match
+    case (Nil, Nil) => this
+    case (sym :: Nil, mappedSym :: Nil) => withMappedSym(sym, mappedSym)
+    case (sym1 :: sym2 :: Nil, mapped1 :: mapped2 :: Nil) =>
+      withMappedSyms(sym1, sym2, mapped1, mapped2)
+    case _ =>
+      withMappedSymsGeneral(syms, mapped)
+
+  private def withMappedSymsGeneral(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap =
     if (syms eq mapped) || sameSymbols(syms, mapped) then this
     else
       val substMap = withSubstitution(syms, mapped)

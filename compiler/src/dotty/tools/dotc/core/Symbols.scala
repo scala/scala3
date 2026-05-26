@@ -921,6 +921,64 @@ object Symbols extends SymUtils {
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
 
+  private def symbolInfoUnchanged(original: Symbol, ttmap: TreeTypeMap)(using Context): Boolean =
+    (ttmap.mapType(original.info) eq original.info) && !ttmap.mapsOwner(original.owner)
+
+  private def freshMappedSymbol(original: Symbol, ttmap: TreeTypeMap)(using Context): Symbol =
+    val odenot = original.denot
+    original.copy(
+      owner = ttmap.mapOwner(odenot.owner),
+      flags = odenot.flags &~ Touched,
+      info = NoCompleter,
+      privateWithin = ttmap.mapOwner(odenot.privateWithin),
+      coord = original.coord)
+
+  private def installNonClassMappedInfo(original: Symbol, copy: Symbol, ttmap1: TreeTypeMap)(using Context): Unit =
+    val odenot = original.denot
+    val completer = new LazyType:
+
+      def complete(denot: SymDenotation)(using Context): Unit =
+        val oinfo = original.info
+        denot.info = oinfo // See the corresponding note in mapSymbols.
+        denot.info = ttmap1.mapType(oinfo)
+        denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
+
+    copy.info = completer
+
+  /** Singleton specialization of `mapSymbols` for non-class symbols. */
+  def mapSymbol(original: Symbol, ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): Symbol =
+    if original.isClass then mapSymbols(original :: Nil, ttmap, mapAlways).head
+    else if symbolInfoUnchanged(original, ttmap) && !mapAlways then original
+    else
+      val copy = freshMappedSymbol(original, ttmap)
+      val ttmap1 = ttmap.withSubstitution(original, copy)
+      installNonClassMappedInfo(original, copy, ttmap1)
+      copy.ensureCompleted()
+      copy
+
+  /** Two-symbol specialization of `mapSymbols` for non-class symbols. */
+  def mapTwoSymbols(
+      original1: Symbol,
+      original2: Symbol,
+      ttmap: TreeTypeMap,
+      mapAlways: Boolean = false)(using Context): (Symbol, Symbol) =
+    if original1.isClass || original2.isClass then
+      val mapped = mapSymbols(original1 :: original2 :: Nil, ttmap, mapAlways)
+      (mapped.head, mapped.tail.head)
+    else
+      val unchanged1 = symbolInfoUnchanged(original1, ttmap)
+      val unchanged2 = symbolInfoUnchanged(original2, ttmap)
+      if unchanged1 && unchanged2 && !mapAlways then (original1, original2)
+      else
+        val copy1 = freshMappedSymbol(original1, ttmap)
+        val copy2 = freshMappedSymbol(original2, ttmap)
+        val ttmap1 = ttmap.withSubstitution(original1, original2, copy1, copy2)
+        installNonClassMappedInfo(original1, copy1, ttmap1)
+        installNonClassMappedInfo(original2, copy2, ttmap1)
+        copy1.ensureCompleted()
+        copy2.ensureCompleted()
+        (copy1, copy2)
+
   /** Map given symbols, subjecting their attributes to the mappings
    *  defined in the given TreeTypeMap `ttmap`.
    *  Cross symbol references are brought over from originals to copies.
