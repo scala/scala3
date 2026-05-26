@@ -73,7 +73,7 @@ object Feature:
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
-    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
+    (separationChecking, "Enable experimental separation checking (implies captureChecking)"),
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (packageObjectValues, "Enable experimental package objects as values"),
