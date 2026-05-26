@@ -1890,7 +1890,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
    *  which we represent as classes.
    */
   private def isEmittedInterface(sym: Symbol)(using Context): Boolean =
-    sym.is(Trait) ||
-      sym.is(JavaDefined) && (toDenot(sym).isAnnotation || sym.is(ModuleClass) && (sym.companionClass.is(PureInterface)) || sym.companionClass.is(Trait))
+    val denot = sym.denot
+    denot.is(Trait) ||
+      denot.is(JavaDefined) && {
+        denot.isAnnotation || {
+          val companion = denot.companionClass.denot
+          denot.is(ModuleClass) && companion.is(PureInterface) || companion.is(Trait)
+        }
+      }
 
 }
