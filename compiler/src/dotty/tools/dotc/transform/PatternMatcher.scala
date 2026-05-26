@@ -416,7 +416,7 @@ object PatternMatcher {
             else if isUnapplySeq && isProductSeqMatch(unappType, args.length, unapp.srcPos) then
               val selectors = productSelectors(unappType).map(ref(unappResult).select(_))
               unapplyProductSeqPlan(selectors, args)
-             else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
+            else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
               val components =
                 (0 until unappResult.denot.info.tupleElementTypes.getOrElse(Nil).length)
                   .toList.map(tupleApp(_, ref(unappResult)))
