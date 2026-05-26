@@ -83,7 +83,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       DesugarSpecializedTraits.newSpecializedTraitName(specialization),
       Flags.Synthetic | Flags.Trait | Flags.Inline,
       parents,
-      NoType, // TODO: What happens if the creator of the specialized inline trait provides a self type? 
+      tm(specialization.traitSymbol.asClass.classInfo.selfType),
       specialization.traitSymbol.privateWithin,
       spanCoord(specialization.span),
       specialization.traitSymbol.compilationUnitInfo
@@ -131,8 +131,13 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val freshTypeVarMap = new TypeMap:
       def apply(t: Type) = tpMap.applyOrElse(t, mapOver)
 
-    // TODO: What happens if the creator of the specialized inline trait provides a self type?
-    traitOrClassSymbol.info = ClassInfo(traitOrClassSymbol.owner.thisType, traitOrClassSymbol, traitOrClassSymbol.info.parents.map(freshTypeVarMap(_)), traitOrClassSymbol.info.decls) 
+    def mapSelfType(st: Type | Symbol): Type | Symbol = 
+      if st.isInstanceOf[Symbol] then
+        st.asInstanceOf[Symbol].copy(info = freshTypeVarMap(st.asInstanceOf[Symbol].info))
+      else
+        freshTypeVarMap(st.asInstanceOf[Type])
+
+    traitOrClassSymbol.info = ClassInfo(traitOrClassSymbol.owner.thisType, traitOrClassSymbol, traitOrClassSymbol.info.parents.map(freshTypeVarMap(_)), traitOrClassSymbol.info.decls, mapSelfType(traitOrClassSymbol.classInfo.selfInfo)) 
   
   // Order is depended on in Erasure::typedClassDef and TypeErasure:eraseParent
   private def generateImplementationClassParents(specialization: Specialization, interfaceSymbol: ClassSymbol)(using Context) = 
@@ -150,7 +155,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       DesugarSpecializedTraits.newImplementationClassName(specialization),
       Flags.Synthetic,
       parents,
-      NoType, // TODO: What happens if the creator of the specialized inline trait provides a self type? 
+      NoType,
       specialization.traitSymbol.privateWithin,
       spanCoord(specialization.span),
       specialization.traitSymbol.compilationUnitInfo
