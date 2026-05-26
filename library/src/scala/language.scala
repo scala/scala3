@@ -615,6 +615,21 @@ object language {
   @compileTimeOnly("`3.10` can only be used at compile time in import statements")
   object `3.10`
 
+
+  /** Sets source version to 3.10-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.11-migration` can only be used at compile time in import statements")
+  object `3.11-migration`
+
+  /** Sets source version to 3.10
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.11` can only be used at compile time in import statements")
+  object `3.11`
+
   // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!
   // When adding a new `3.x` / `3.x-migration` here, add matching tests:
   // `tests/pos/source-import-3-x.scala` and `tests/pos/source-import-3-x-migration.scala`.

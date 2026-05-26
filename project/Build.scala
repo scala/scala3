@@ -56,7 +56,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.9.0"
+  val developedVersion = "3.10.0"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -83,7 +83,7 @@ object Build {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimental
    */
-  val expectedTastyVersion = "28.9-experimental-1"
+  val expectedTastyVersion = "28.10-experimental-1"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
@@ -120,7 +120,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.8.0"
+  val mimaPreviousDottyVersion = "3.8.0" // TODO: update to 3.9.0 when released
 
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.14.0"
