@@ -930,7 +930,7 @@ object Symbols extends SymUtils {
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
     if (originals.forall(sym =>
         (ttmap.mapType(sym.info) eq sym.info) &&
-        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
+        !ttmap.mapsOwner(sym.owner)) && !mapAlways)
       originals
     else {
       val copies: List[Symbol] = for (original <- originals) yield
@@ -991,7 +991,7 @@ object Symbols extends SymUtils {
       // if some child is among the mapped symbols
       for orig <- ttmap1.substFrom do
         if orig.is(Sealed) && orig.children.exists(originals.contains) then
-          val sealedCopy = orig.subst(ttmap1.substFrom, ttmap1.substTo)
+          val sealedCopy = ttmap1.mapSubstitution(orig)
           sealedCopy.annotations = sealedCopy.annotations.mapConserve(ttmap1.apply)
 
       copies

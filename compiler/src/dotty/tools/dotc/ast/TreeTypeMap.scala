@@ -7,6 +7,7 @@ import Types.*, Contexts.*, Flags.*
 import Symbols.*, Annotations.*, Trees.*, Symbols.*, Constants.Constant
 import Decorators.*
 import config.Config
+import java.util.IdentityHashMap
 import scala.collection.mutable
 
 
@@ -53,6 +54,107 @@ class TreeTypeMap(
       substTo: List[Symbol])(using Context): TreeTypeMap =
     new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, cacheTypeMap = cacheTypeMap)
 
+  private var mySubstFromLookup: IdentityHashMap[Symbol, java.lang.Boolean] | Null = null
+  private var mySubstToLookup: IdentityHashMap[Symbol, java.lang.Boolean] | Null = null
+  private var myOldOwnerLookup: IdentityHashMap[Symbol, java.lang.Boolean] | Null = null
+  private var myNewOwnerLookup: IdentityHashMap[Symbol, java.lang.Boolean] | Null = null
+
+  private def symbolSetLookup(
+      syms: List[Symbol],
+      lookup: IdentityHashMap[Symbol, java.lang.Boolean] | Null): IdentityHashMap[Symbol, java.lang.Boolean] =
+    if lookup != null then lookup
+    else
+      val fresh = new IdentityHashMap[Symbol, java.lang.Boolean](syms.length)
+      var xs = syms
+      while xs.nonEmpty do
+        fresh.put(xs.head, java.lang.Boolean.TRUE)
+        xs = xs.tail
+      fresh
+
+  private def substFromLookup: IdentityHashMap[Symbol, java.lang.Boolean] =
+    val lookup = symbolSetLookup(substFrom, mySubstFromLookup)
+    mySubstFromLookup = lookup
+    lookup
+
+  private def substToLookup: IdentityHashMap[Symbol, java.lang.Boolean] =
+    val lookup = symbolSetLookup(substTo, mySubstToLookup)
+    mySubstToLookup = lookup
+    lookup
+
+  private def oldOwnerLookup: IdentityHashMap[Symbol, java.lang.Boolean] =
+    val lookup = symbolSetLookup(oldOwners, myOldOwnerLookup)
+    myOldOwnerLookup = lookup
+    lookup
+
+  private def newOwnerLookup: IdentityHashMap[Symbol, java.lang.Boolean] =
+    val lookup = symbolSetLookup(newOwners, myNewOwnerLookup)
+    myNewOwnerLookup = lookup
+    lookup
+
+  private def substToContains(sym: Symbol): Boolean =
+    var xs = substTo
+    var remaining = 3
+    while xs.nonEmpty && remaining > 0 do
+      if sym eq xs.head then return true
+      xs = xs.tail
+      remaining -= 1
+    xs.nonEmpty && substToLookup.get(sym) != null
+
+  private def substFromContains(sym: Symbol): Boolean =
+    var xs = substFrom
+    var remaining = 3
+    while xs.nonEmpty && remaining > 0 do
+      if sym eq xs.head then return true
+      xs = xs.tail
+      remaining -= 1
+    xs.nonEmpty && substFromLookup.get(sym) != null
+
+  private def oldOwnerContains(sym: Symbol): Boolean =
+    var xs = oldOwners
+    var remaining = 3
+    while xs.nonEmpty && remaining > 0 do
+      if sym eq xs.head then return true
+      xs = xs.tail
+      remaining -= 1
+    xs.nonEmpty && oldOwnerLookup.get(sym) != null
+
+  private def newOwnerContains(sym: Symbol): Boolean =
+    var xs = newOwners
+    var remaining = 3
+    while xs.nonEmpty && remaining > 0 do
+      if sym eq xs.head then return true
+      xs = xs.tail
+      remaining -= 1
+    xs.nonEmpty && newOwnerLookup.get(sym) != null
+
+  private def hasAnyInSubstTo(syms: List[Symbol]): Boolean =
+    var xs = syms
+    while xs.nonEmpty do
+      if substToContains(xs.head) then return true
+      xs = xs.tail
+    false
+
+  private def hasAnyInSubstFrom(syms: List[Symbol]): Boolean =
+    var xs = syms
+    while xs.nonEmpty do
+      if substFromContains(xs.head) then return true
+      xs = xs.tail
+    false
+
+  private def hasAnyInNewOwners(syms: List[Symbol]): Boolean =
+    var xs = syms
+    while xs.nonEmpty do
+      if newOwnerContains(xs.head) then return true
+      xs = xs.tail
+    false
+
+  private def hasAnyInOldOwners(syms: List[Symbol]): Boolean =
+    var xs = syms
+    while xs.nonEmpty do
+      if oldOwnerContains(xs.head) then return true
+      xs = xs.tail
+    false
+
   private def hasSubstitutionPair(from: Symbol, to: Symbol): Boolean =
     var fs = substFrom
     var ts = substTo
@@ -80,7 +182,27 @@ class TreeTypeMap(
     found
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
-  def mapOwner(sym: Symbol): Symbol = sym.subst(oldOwners, newOwners)
+  def mapOwner(sym: Symbol): Symbol =
+    var olds = oldOwners
+    var news = newOwners
+    while olds.nonEmpty && news.nonEmpty do
+      if sym eq olds.head then return news.head
+      olds = olds.tail
+      news = news.tail
+    sym
+
+  /** Is `sym` one of the owner keys remapped by this TreeTypeMap? */
+  def mapsOwner(sym: Symbol): Boolean = oldOwnerContains(sym)
+
+  /** If `sym` is one of `substFrom`, replace by the corresponding symbol in `substTo`. */
+  def mapSubstitution(sym: Symbol): Symbol =
+    var from = substFrom
+    var to = substTo
+    while from.nonEmpty && to.nonEmpty do
+      if sym eq from.head then return to.head
+      from = from.tail
+      to = to.tail
+    sym
 
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
@@ -378,10 +500,10 @@ class TreeTypeMap(
       // setting up a proper substitution abstraction with a compose operator that
       // guarantees idempotence. But this might be too inefficient in some cases.
       // We'll cross that bridge when we need to.
-      assert(!from.exists(substTo contains _))
-      assert(!to.exists(substFrom contains _))
-      assert(!from.exists(newOwners contains _))
-      assert(!to.exists(oldOwners contains _))
+      assert(!hasAnyInSubstTo(from))
+      assert(!hasAnyInSubstFrom(to))
+      assert(!hasAnyInNewOwners(from))
+      assert(!hasAnyInOldOwners(to))
       copy(
         typeMap,
         treeMap,
