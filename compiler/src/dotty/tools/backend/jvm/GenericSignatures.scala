@@ -1,20 +1,21 @@
 package dotty.tools
-package dotc
-package transform
+package backend
+package jvm
 
-import core.Annotations.*
-import core.Contexts.*
-import core.Phases.*
-import core.Definitions
-import core.Flags.*
-import core.Names.Name
-import core.NameOps.isContextFunction
-import core.Symbols.*
-import core.TypeApplications.TypeParamInfo
-import core.TypeErasure.*
-import core.Types.*
-import core.classfile.ClassfileConstants
-import dotty.tools.dotc.core.Decorators.i
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Phases.*
+import dotty.tools.dotc.core.Definitions
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.TypeApplications.*
+import dotty.tools.dotc.core.TypeErasure.*
+import dotty.tools.dotc.core.classfile.ClassfileConstants
+import dotty.tools.dotc.transform.ValueClasses
 
 import java.lang.StringBuilder
 import scala.annotation.tailrec
