@@ -173,18 +173,20 @@ trait ConstraintHandling {
    */
   def fullLowerBound(param: TypeParamRef)(using Context): Type =
     val maxLevel = nestingLevel(param)
+    val lo = nonParamBounds(param).lo
     var loParams = constraint.minLower(param)
     if maxLevel != Int.MaxValue then
       loParams = loParams.mapConserve(atLevel(maxLevel, _))
-    loParams.foldLeft(nonParamBounds(param).lo)(_ | _)
+    loParams.foldLeft(lo)(_ | _)
 
   /** The full upper bound of `param`, see the documentation of `fullLowerBounds` above. */
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
     val maxLevel = nestingLevel(param)
+    val hi = nonParamBounds(param).hi
     var hiParams = constraint.minUpper(param)
     if maxLevel != Int.MaxValue then
       hiParams = hiParams.mapConserve(atLevel(maxLevel, _))
-    hiParams.foldLeft(nonParamBounds(param).hi)(_ & _)
+    hiParams.foldLeft(hi)(_ & _)
 
   /** Full bounds of `param`, including other lower/upper params.
     *
@@ -789,7 +791,7 @@ trait ConstraintHandling {
   def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
-      tl.paramRefs.forall { param =>
+      constraint.canSkipAddPropagation(tl) || tl.paramRefs.forall { param =>
         val lower = constraint.lower(param)
         val upper = constraint.upper(param)
         constraint.entry(param) match {
