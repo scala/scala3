@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.*
-import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*
+import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*, SymDenotations.*
 
 import collection.mutable.{LinkedHashMap, LinkedHashSet}
 import annotation.constructorOnly
@@ -70,10 +70,14 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
    *  free variable proxies from their enclosing class.
    */
   private def isLocal(sym: Symbol)(using Context): Boolean =
-    val owner = sym.maybeOwner
-    owner.isTerm
-    || owner.is(Trait) && isLocal(owner)
-    || sym.isConstructor && isLocal(owner)
+    isLocal(sym.denot)
+
+  private def isLocal(denot: SymDenotation)(using Context): Boolean =
+    val owner = denot.maybeOwner
+    val ownerDenot = owner.denot
+    ownerDenot.isTerm
+    || ownerDenot.is(Trait) && isLocal(ownerDenot)
+    || denot.isConstructor && isLocal(ownerDenot)
 
   /** Set `logicOwner(sym)` to `owner` if `owner` is more deeply nested
    *  than the previous value of `logicOwner(sym)`.

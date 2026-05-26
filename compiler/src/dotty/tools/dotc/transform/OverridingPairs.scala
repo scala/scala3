@@ -4,6 +4,7 @@ package transform
 
 import core.*
 import Flags.*, Symbols.*, Contexts.*, Scopes.*, Decorators.*, Types.Type
+import SymDenotations.*
 import NameKinds.DefaultGetterName
 import NullOpsDecorator.*
 import collection.immutable.BitSet
@@ -33,8 +34,11 @@ object OverridingPairs:
      *  But it may be refined in subclasses.
      */
     protected def exclude(sym: Symbol): Boolean =
-      !sym.memberCanMatchInheritedSymbols
-      || isCaptureChecking && atPhase(ctx.phase.prev)(sym.is(Private))
+      exclude(sym.denot)
+
+    protected final def exclude(denot: SymDenotation): Boolean =
+      !denot.memberCanMatchInheritedSymbols
+      || isCaptureChecking && atPhase(ctx.phase.prev)(denot.symbol.is(Private))
         // for capture checking we drop the private flag of certain parameter accessors
         // but these still need no overriding checks
 
