@@ -299,6 +299,21 @@ trait TypeAssigner {
     case Nil =>
       tp
 
+  private def safeSubstParams(tp: Type, fntpe: MethodType,
+      args: List[Tree], dependencyMask: Long, skolems: SkolemBuffer)(using Context): Type =
+    if dependencyMask < 0 then safeSubstParams(tp, fntpe.paramRefs, args, skolems)
+    else if dependencyMask == 0 then tp
+    else
+      def loop(tp: Type, args: List[Tree], idx: Int): Type = args match
+        case arg :: args1 =>
+          val tp1 =
+            if idx >= 63 || (dependencyMask & (1L << idx)) == 0 then tp
+            else safeSubstParam(tp, fntpe.paramRef(idx), arg.tpe, sk => skolems += ((arg, sk)))
+          loop(tp1, args1, idx + 1)
+        case Nil =>
+          tp
+      loop(tp, args, 0)
+
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(using Context): Apply = {
     var skolems: SkolemBuffer | Null = null
     val ownType = fn.tpe.widen match {
@@ -306,7 +321,7 @@ trait TypeAssigner {
         if fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping then
           if fntpe.isResultDependent then
             skolems = new mutable.ListBuffer()
-            safeSubstParams(fntpe.resultType, fntpe.paramRefs, args, skolems.nn)
+            safeSubstParams(fntpe.resultType, fntpe, args, fntpe.resultDependencyParamMask, skolems.nn)
           else fntpe.resultType // fast path optimization
         else
           val erroringPhase =

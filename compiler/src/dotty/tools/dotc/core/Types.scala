@@ -4332,6 +4332,7 @@ object Types extends TypeUtils {
 
     private var myDependencyStatus: DependencyStatus = Unknown
     private var myParamDependencyStatus: DependencyStatus = Unknown
+    private var myResultDependencyParamMask: Long = Long.MinValue
 
     private def depStatus(initial: DependencyStatus, tp: Type, forParams: Boolean)(using Context): DependencyStatus =
       class DepAcc extends TypeAccumulator[DependencyStatus]:
@@ -4433,6 +4434,59 @@ object Types extends TypeUtils {
      */
     def isParamDependent(using Context): Boolean =
       paramDependencyStatus == TrueDeps
+
+    /** A bit mask of term parameters that occur in the raw result type, or -1
+     *  if the result dependency is not precise enough for per-parameter skips.
+     */
+    def resultDependencyParamMask(using Context): Long =
+      if dependencyStatus != TrueDeps then 0L
+      else
+        val cached = myResultDependencyParamMask
+        if cached != Long.MinValue then cached
+        else
+          val mask = computeResultDependencyParamMask
+          if mask >= 0 then myResultDependencyParamMask = mask
+          mask
+
+    private def computeResultDependencyParamMask(using Context): Long =
+      val UnknownMask = -1L
+      def combine(mask1: Long, mask2: Long): Long =
+        if mask1 < 0 || mask2 < 0 then UnknownMask else mask1 | mask2
+      def paramBit(n: Int): Long =
+        if n >= 0 && n < 63 then 1L << n else UnknownMask
+
+      object dependencyParamAcc extends TypeAccumulator[Long]:
+        override protected def stopAt: StopAt = StopAt.None
+        override protected def applyToAnnot(mask: Long, annot: Annotation): Long =
+          if mask < 0 then mask
+          else if annot.refersToParamOf(thisLambdaType) then UnknownMask
+          else mask
+
+        def apply(mask: Long, tp: Type): Long =
+          if mask < 0 then mask
+          else tp match
+            case tp: TermParamRef if tp.binder eq thisLambdaType =>
+              combine(mask, paramBit(tp.paramNum))
+            case tp: NamedType =>
+              if tp.prefix eq NoPrefix then mask else this(mask, tp.prefix)
+            case tp: TypeVar if !tp.isInstantiated =>
+              UnknownMask
+            case tp: LazyRef if !tp.completed =>
+              UnknownMask
+            case CapturingType(parent, refs) =>
+              var result = this(mask, parent)
+              val elems = refs.elems
+              for ref <- elems do
+                result = ref match
+                  case tp: TermParamRef if tp.binder eq thisLambdaType =>
+                    combine(result, paramBit(tp.paramNum))
+                  case tp =>
+                    this(result, tp.coreType)
+              result
+            case _ =>
+              foldOver(mask, tp)
+
+      dependencyParamAcc(0L, resType)
 
     /** Like isResultDependent, but without attempt to eliminate dependencies with de-aliasing */
     def looksResultDependent(using Context): Boolean =
