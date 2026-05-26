@@ -13,7 +13,7 @@ import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import util.{SimpleIdentitySet, SrcPos}
+import util.{Property, SimpleIdentitySet, SrcPos}
 import Nullables.computeNullableDeeply
 
 import collection.mutable
@@ -424,6 +424,52 @@ object Inliner:
 
   private[inlines] def newSym(name: Name, flags: FlagSet, info: Type, span: Span)(using Context): Symbol =
     newSymbol(ctx.owner, name, flags, info, coord = span)
+
+  private val InlineRhsLeafSummaryKey = Property.Key[InlineRhsLeafSummary]()
+
+  private final class InlineRhsLeafSummary private (val leafTypes: Array[Type]):
+    def foreachType(op: Type => Unit): Unit =
+      var idx = 0
+      while idx < leafTypes.length do
+        op(leafTypes(idx))
+        idx += 1
+
+  private object InlineRhsLeafSummary:
+    val Empty = new InlineRhsLeafSummary(new Array[Type](0))
+
+    final class Builder:
+      private var leafTypes: Array[Type] | Null = null
+      private var used = 0
+
+      private def ensureCapacity(): Array[Type] =
+        val existing = leafTypes
+        if existing == null then
+          val fresh = new Array[Type](16)
+          leafTypes = fresh
+          fresh
+        else if used == existing.length then
+          val fresh = new Array[Type](existing.length * 2)
+          java.lang.System.arraycopy(existing, 0, fresh, 0, existing.length)
+          leafTypes = fresh
+          fresh
+        else existing
+
+      def add(tpe: Type): Unit =
+        val types = ensureCapacity()
+        types(used) = tpe
+        used += 1
+
+      def result(): InlineRhsLeafSummary =
+        if used == 0 then Empty
+        else
+          val result = new Array[Type](used)
+          java.lang.System.arraycopy(leafTypes, 0, result, 0, used)
+          new InlineRhsLeafSummary(result)
+
+  private def inlineRhsLeafType(tree: Tree)(using Context): Type = tree match
+    case _: This | _: Ident | _: TypeTree => tree.typeOpt
+    case tree: Quote => tree.bodyType
+    case _ => NoType
 end Inliner
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -923,11 +969,19 @@ class Inliner(val call: tpd.Tree)(using Context):
       registerType(t)
       traverseChildren(t)
 
-  /** Register type of leaf node */
-  private def registerLeaf(tree: Tree): Unit = tree match
-    case _: This | _: Ident | _: TypeTree => registerTypes.traverse(tree.typeOpt)
-    case tree: Quote => registerTypes.traverse(tree.bodyType)
-    case _ =>
+  /** Register types of the RHS leaf nodes that can introduce inline proxies. */
+  private def registerInlineRhsLeaves(rhs: Tree): Unit =
+    rhs.getAttachment(InlineRhsLeafSummaryKey) match
+      case Some(summary) =>
+        summary.foreachType(tpe => registerTypes.traverse(tpe))
+      case None =>
+        val summary = new InlineRhsLeafSummary.Builder
+        rhs.foreachSubTree: tree =>
+          val tpe = inlineRhsLeafType(tree)
+          if tpe.exists then
+            summary.add(tpe)
+            registerTypes.traverse(tpe)
+        rhs.putAttachment(InlineRhsLeafSummaryKey, summary.result())
 
   /** Make `tree` part of inlined expansion. This means its owner has to be changed
    *  from its `originalOwner`, and, if it comes from outside the inlined method
@@ -979,7 +1033,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     if !isIdempotentExpr(inlineCallPrefix) then registerType(inlinedMethod.owner.thisType)
 
     // Register types of all leaves of inlined body so that the `paramProxy` and `thisProxy` maps are defined.
-    rhsToInline.foreachSubTree(registerLeaf)
+    registerInlineRhsLeaves(rhsToInline)
 
     // Compute bindings for all this-proxies, appending them to bindingsBuf
     computeThisBindings()
