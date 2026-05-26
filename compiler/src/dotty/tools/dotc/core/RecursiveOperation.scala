@@ -58,7 +58,7 @@ final class RecursionOverflow(private val rawOps: Array[RecursiveOperation],
     val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.map(_.weight).sum)._2
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
-        |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
-        |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.
+        |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
+        |For the unprocessed stack overflow trace, compile with -Xno-enrich-error-messages.
         |A recurring operation is (inner to outer):
         |${opsString(mostCommon).stripMargin}"""
