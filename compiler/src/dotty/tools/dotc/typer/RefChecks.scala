@@ -32,6 +32,122 @@ object RefChecks {
   val name: String = "refchecks"
   val description: String = "checks related to abstract members and overriding"
 
+  final class MemberTypeScratch:
+    private val membersToCheck = new ScratchSet[Name](4096, maxRetainedCapacity = 16384)
+    private val seenClasses = new ScratchSet[Symbol](256, maxRetainedCapacity = 1024)
+    private var inUse = false
+
+    def withSets[T](op: (ScratchSet[Name], ScratchSet[Symbol]) => T): T =
+      if inUse then
+        val nestedMembersToCheck = new ScratchSet[Name](4096, maxRetainedCapacity = 16384)
+        val nestedSeenClasses = new ScratchSet[Symbol](256, maxRetainedCapacity = 1024)
+        try op(nestedMembersToCheck, nestedSeenClasses)
+        finally
+          nestedMembersToCheck.clear()
+          nestedSeenClasses.clear()
+      else
+        inUse = true
+        try op(membersToCheck, seenClasses)
+        finally
+          membersToCheck.clear()
+          seenClasses.clear()
+          inUse = false
+
+  final class ScratchSet[T <: AnyRef](initialCapacity: Int, maxRetainedCapacity: Int):
+    private val initialTableCapacity = roundToPower(initialCapacity)
+    private val initialSlotCapacity = 16 min initialTableCapacity
+    private var table = new Array[AnyRef | Null](initialTableCapacity)
+    private var slots = new Array[Int](initialSlotCapacity)
+    private var used = 0
+    private var limit = tableLimit(table.length)
+
+    private def tableLimit(capacity: Int): Int = capacity / 2
+
+    private def roundToPower(n: Int): Int =
+      if n < 4 then 4
+      else 1 << (32 - Integer.numberOfLeadingZeros(n - 1))
+
+    private def hash(key: T): Int =
+      val h = key.hashCode
+      val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+      val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
+      if j == 0 then 0x41081989 else j
+
+    private def index(hash: Int): Int = hash & (table.length - 1)
+
+    private def ensureSlotCapacity(capacity: Int): Unit =
+      if capacity > slots.length then
+        val slots1 = new Array[Int](slots.length * 2)
+        Array.copy(slots, 0, slots1, 0, slots.length)
+        slots = slots1
+
+    private def addFresh(elem: T): Unit =
+      var idx = index(hash(elem))
+      while table(idx) != null do
+        idx = index(idx + 1)
+      table(idx) = elem
+      ensureSlotCapacity(used + 1)
+      slots(used) = idx
+      used += 1
+
+    private def growTable(): Unit =
+      val oldTable = table
+      val oldSlots = slots
+      val oldUsed = used
+      table = new Array[AnyRef | Null](oldTable.length * 2)
+      slots = new Array[Int](oldSlots.length max oldUsed)
+      used = 0
+      limit = tableLimit(table.length)
+      var i = 0
+      while i < oldUsed do
+        addFresh(oldTable(oldSlots(i)).asInstanceOf[T])
+        i += 1
+
+    private def resetTable(): Unit =
+      table = new Array[AnyRef | Null](initialTableCapacity)
+      slots = new Array[Int](initialSlotCapacity)
+      used = 0
+      limit = tableLimit(table.length)
+
+    def clear(): Unit =
+      if table.length > maxRetainedCapacity then resetTable()
+      else
+        var i = 0
+        while i < used do
+          table(slots(i)) = null
+          i += 1
+        used = 0
+
+    def add(elem: T): Boolean =
+      var idx = index(hash(elem))
+      var entry = table(idx)
+      while entry != null do
+        if entry.equals(elem) then return false
+        idx = index(idx + 1)
+        entry = table(idx)
+      table(idx) = elem
+      ensureSlotCapacity(used + 1)
+      slots(used) = idx
+      used += 1
+      if used > limit then growTable()
+      true
+
+    def contains(elem: T): Boolean =
+      var idx = index(hash(elem))
+      var entry = table(idx)
+      while entry != null do
+        if entry.equals(elem) then return true
+        idx = index(idx + 1)
+        entry = table(idx)
+      false
+
+    def foreach[U](f: T => U): Unit =
+      var idx = 0
+      while idx < table.length do
+        val elem = table(idx)
+        if elem != null then f(elem.asInstanceOf[T])
+        idx += 1
+
   private val defaultMethodFilter = new NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean = name.is(DefaultGetterName)
     def isStable = true
@@ -321,7 +437,10 @@ object RefChecks {
    *   @param makeOverridingPairsChecker A function for creating a OverridePairsChecker instance
    *                                    from the class symbol and the self type
    */
-  def checkAllOverrides(clazz: ClassSymbol, makeOverridingPairsChecker: ((ClassSymbol, Type) => Context ?=> OverridingPairsChecker) | Null = null)(using Context): Unit = {
+  def checkAllOverrides(
+      clazz: ClassSymbol,
+      makeOverridingPairsChecker: ((ClassSymbol, Type) => Context ?=> OverridingPairsChecker) | Null = null,
+      memberTypeScratch: MemberTypeScratch | Null = null)(using Context): Unit = {
     val self = clazz.thisType
     val upwardsSelf = upwardsThisType(clazz)
     var hasErrors = false
@@ -884,46 +1003,46 @@ object RefChecks {
       // the rules of overriding and linearization. This method checks that the implementation has indeed
       // a type that subsumes the full member type.
       def checkMemberTypesOK() = {
+        def checkWithScratch(membersToCheck: ScratchSet[Name], seenClasses: ScratchSet[Symbol]) =
+          // First compute all member names we need to check in `membersToCheck`.
+          // We do not check
+          //  - types
+          //  - synthetic members or bridges
+          //  - members in other concrete classes, since these have been checked before
+          //    (this is done for efficiency)
+          //  - members in a prefix of inherited parents that all come from Java or Scala2
+          //    (this is done to avoid false positives since Scala2's rules for checking are different)
+          def addDecls(cls: Symbol): Unit =
+            if (seenClasses.add(cls)) {
+              for (mbr <- cls.info.decls)
+                if (mbr.isTerm && !mbr.isOneOf(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols)
+                  membersToCheck.add(mbr.name)
+              cls.info.parents.map(_.classSymbol)
+                .filter(_.isOneOf(AbstractOrTrait))
+                .dropWhile(_.isOneOf(JavaDefined | Scala2x))
+                .foreach(addDecls)
+            }
+          addDecls(clazz)
 
-        // First compute all member names we need to check in `membersToCheck`.
-        // We do not check
-        //  - types
-        //  - synthetic members or bridges
-        //  - members in other concrete classes, since these have been checked before
-        //    (this is done for efficiency)
-        //  - members in a prefix of inherited parents that all come from Java or Scala2
-        //    (this is done to avoid false positives since Scala2's rules for checking are different)
-        val membersToCheck = new util.HashSet[Name](4096)
-        val seenClasses = new util.HashSet[Symbol](256)
-        def addDecls(cls: Symbol): Unit =
-          if (!seenClasses.contains(cls)) {
-            seenClasses += cls
-            for (mbr <- cls.info.decls)
-              if (mbr.isTerm && !mbr.isOneOf(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
-                  !membersToCheck.contains(mbr.name))
-                membersToCheck += mbr.name
-            cls.info.parents.map(_.classSymbol)
-              .filter(_.isOneOf(AbstractOrTrait))
-              .dropWhile(_.isOneOf(JavaDefined | Scala2x))
-              .foreach(addDecls)
+          // For each member, check that the type of its symbol, as seen from `self`
+          // can override the info of this member
+          withMode(Mode.IgnoreCaptures) {
+            for (name <- membersToCheck)
+              for (mbrd <- self.member(name).alternatives) {
+                val mbr = mbrd.symbol
+                val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
+                if (!mbrType.overrides(mbrd.info, matchLoosely = true))
+                  report.errorOrMigrationWarning(
+                    em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
+                        |  its type             $mbrType
+                        |  does not conform to  ${mbrd.info}""",
+                    (if (mbr.owner == clazz) mbr else clazz).srcPos, MigrationVersion.Scala2to3)
+              }
           }
-        addDecls(clazz)
-
-        // For each member, check that the type of its symbol, as seen from `self`
-        // can override the info of this member
-        withMode(Mode.IgnoreCaptures) {
-          for (name <- membersToCheck)
-            for (mbrd <- self.member(name).alternatives) {
-              val mbr = mbrd.symbol
-              val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
-              if (!mbrType.overrides(mbrd.info, matchLoosely = true))
-                report.errorOrMigrationWarning(
-                  em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
-                      |  its type             $mbrType
-                      |  does not conform to  ${mbrd.info}""",
-                  (if (mbr.owner == clazz) mbr else clazz).srcPos, MigrationVersion.Scala2to3)
-          }
-        }
+        if memberTypeScratch == null then
+          val scratch = new MemberTypeScratch
+          scratch.withSets(checkWithScratch)
+        else memberTypeScratch.withSets(checkWithScratch)
       }
 
       /** Check that inheriting a case class does not constitute a variant refinement
@@ -1472,6 +1591,8 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   import tpd.*
 
+  private val memberTypeScratch = new MemberTypeScratch
+
   override def phaseName: String = RefChecks.name
 
   override def description: String = RefChecks.description
@@ -1518,7 +1639,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkParents(cls, tree.parents)
     if (cls.is(Trait)) tree.parents.foreach(checkParentPrefix(cls, _))
     checkCompanionNameClashes(cls)
-    checkAllOverrides(cls)
+    checkAllOverrides(cls, memberTypeScratch = memberTypeScratch)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
     tree
   } catch {
