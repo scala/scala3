@@ -380,17 +380,58 @@ trait TypeAssigner {
           else if !args.hasSameLengthAs(paramNames) then
             wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           else {
+            def selfReferenceFreeArg(tp: Type): Boolean = tp match
+              case _: ThisType | NoPrefix =>
+                true
+              case tp: TypeRef =>
+                selfReferenceFreePrefix(tp.prefix)
+              case tp: AppliedType =>
+                selfReferenceFreeArg(tp.tycon) && selfReferenceFreeArgs(tp.args)
+              case tp: AndOrType =>
+                selfReferenceFreeArg(tp.tp1) && selfReferenceFreeArg(tp.tp2)
+              case TypeBounds(lo, hi) =>
+                selfReferenceFreeArg(lo) && selfReferenceFreeArg(hi)
+              case tp: JavaArrayType =>
+                selfReferenceFreeArg(tp.elemType)
+              case tp: WildcardType =>
+                selfReferenceFreeArg(tp.optBounds)
+              case _ =>
+                false
+
+            def selfReferenceFreePrefix(tp: Type): Boolean = tp match
+              case _: ThisType | NoPrefix =>
+                true
+              case tp: AppliedType =>
+                selfReferenceFreeArg(tp.tycon) && selfReferenceFreeArgs(tp.args)
+              case tp: AndOrType =>
+                selfReferenceFreeArg(tp.tp1) && selfReferenceFreeArg(tp.tp2)
+              case tp: JavaArrayType =>
+                selfReferenceFreeArg(tp.elemType)
+              case _ =>
+                false
+
+            def selfReferenceFreeArgs(args: List[Type]): Boolean =
+              var rest = args
+              var result = true
+              while result && rest.nonEmpty do
+                result = selfReferenceFreeArg(rest.head)
+                rest = rest.tail
+              result
+
             // Make sure arguments don't contain the type `pt` itself.
             // Make a copy of `pt` if that's the case.
             // This is done to compensate for the fact that normally every
             // reference to a polytype would have to be a fresh copy of that type,
             // but we want to avoid that because it would increase compilation cost.
             // See pos/i6682a.scala for a test case where the defensive copying matters.
-            val needsFresh = new ExistsAccumulator(_ eq pt, StopAt.None, forceLazy = false)
             val argTypes = args.tpes
-            val pt1 = if argTypes.exists(needsFresh(false, _)) then
-              pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
-            else pt
+            val pt1 =
+              if selfReferenceFreeArgs(argTypes) then pt
+              else
+                val needsFresh = new ExistsAccumulator(_ eq pt, StopAt.None, forceLazy = false)
+                if argTypes.exists(needsFresh(false, _)) then
+                  pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
+                else pt
             pt1.instantiate(argTypes)
           }
         }
