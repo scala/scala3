@@ -149,6 +149,13 @@ object Trees {
     /** Shorthand for `denot.symbol`. */
     final def symbol(using Context): Symbol = denot.symbol
 
+    /** The owner to install when running a MegaPhase transform under this tree.
+     *  Equal to `symbol` for every tree except `PackageDef`, which folds in the
+     *  `PackageVal -> moduleClass` adjustment that `MegaPhase.inLocalContext`
+     *  used to perform on every ValDef/DefDef/TypeDef.
+     */
+    def localCtxOwner(using Context): Symbol = symbol
+
     /** Does this tree represent a type? */
     def isType: Boolean = false
 
@@ -374,6 +381,10 @@ object Trees {
   abstract class NamedDefTree[+T <: Untyped](implicit @constructorOnly src: SourceFile)
   extends NameTree[T] with DefTree[T] with WithEndMarker[T] {
     type ThisTree[+T <: Untyped] <: NamedDefTree[T]
+
+    override def localCtxOwner(using Context): Symbol = typeOpt match
+      case tpe: ThisType => tpe.cls
+      case _ => symbol
 
     protected def srcName(using Context): Name =
       if name == nme.CONSTRUCTOR then nme.this_
@@ -1049,6 +1060,9 @@ object Trees {
     type ThisTree[+T <: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
     protected def srcName(using Context): Name = pid.name
+    override def localCtxOwner(using Context): Symbol =
+      val sym = symbol
+      if sym.is(PackageVal) then sym.moduleClass else sym
   }
 
   /** arg @annot */
