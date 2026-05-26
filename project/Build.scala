@@ -120,7 +120,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.8.0"
+  val mimaPreviousDottyVersion = "3.8.0" // TODO: update to 3.9.0 when released
 
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.14.0"
