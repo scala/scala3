@@ -233,9 +233,19 @@ object GenericSignatures {
         }
 
       assert(sym.isClass)
-      // Time travel necessary so we get the full name after inner classes have been lifted to package scope
-      val name = atPhase(flattenPhase.next) { sanitizeName(sym.fullName).replace('.', '/') }
-      builder.append('L').append(name)
+      pre.widen match {
+        // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
+        // (see test `inner-of-generic` for an example of Java compatibility)
+        case RefOrAppliedType(preSym, prePre, preArgs) if preArgs.nonEmpty =>
+          classSig(preSym, prePre, preArgs)
+          builder.replace(builder.length() - 1, builder.length(), ".") // instead of ending the outer name with ';', we add an inner name
+          builder.append(sanitizeName(sym.targetName))
+        // For the rest, we time-travel so we get the full name after inner classes have been lifted to package scope
+        case _ =>
+          val name = atPhase(flattenPhase.next) { sanitizeName(sym.fullName).replace('.', '/') }
+          builder.append('L')
+          builder.append(name)
+      }
       if (args.nonEmpty) {
         builder.append('<')
         args foreach argSig
