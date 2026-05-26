@@ -323,6 +323,20 @@ object Contexts {
     /** SourceFile with given path, memoized */
     def getSource(path: String): SourceFile = getSource(path.toTermName)
 
+    /** SourceFile with given path and TASTy position metadata, memoized.
+     *
+     *  The position stream has already supplied the line sizes, so callers that
+     *  only need source identity and line/column mapping should not force the
+     *  source contents through `getSource`.
+     */
+    def getPositionOnlySource(path: String, lineSizes: Array[Int]): SourceFile = getFile(path) match
+      case NoAbstractFile => NoSource
+      case file =>
+        val source = base.sources.getOrElseUpdate(file,
+          SourceFile.positionOnly(file, lineSizes, Codec(settings.encoding.value)))
+        if !source.initialized then source.setLineIndicesFromLineSizes(lineSizes)
+        source
+
     /** AbstractFile with given path name, memoized */
     def getFile(name: TermName): AbstractFile = base.files.get(name) match
       case Some(file) =>
