@@ -325,28 +325,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     val generatedClassStats = specializations1.getNewImplementationSymbols.toList.map(buildImplementationClassTree)
 
     val specializations2 = specializations1.installNewInterfaceSymbols.installNewImplementationSymbols
-
-    /* We have Vec$sp$Int extends Vec[Int] in order to do the inlining, but then remove this parent 
-      afterwards to avoid interface implementation problems (see tests/run/specialized-trait-as-parameter.scala,
-      tests/run/specialized-trait-as-return-type.scala) */
-    extension (classTree: Tree)
-      def updateParents(parentUpdater: List[Type] => List[Type]) = (classTree: @unchecked) match {
-        case td@TypeDef(name, t@Template(constr, preParentsOrDerived, self, preBody)) =>  
-
-        val cls = td.symbol.asClass
-        val oldInfo = cls.classInfo
-        val newInfo = oldInfo.derivedClassInfo(declaredParents = parentUpdater(oldInfo.declaredParents))
-        cls.info = newInfo
-        cls.copySymDenotation(info = newInfo).installAfter(DesugarSpecializedTraits.this)
-      }
-
-      def refreshClassDef = (classTree: @unchecked) match {
-        case td@TypeDef(name, t@Template(constr, preParentsOrDerived, self, preBody)) =>  
-          ClassDef(td.symbol.asClass, constr, t.body)
-      }
-
-    /* We need to inline recursively throughout generated specialized traits - see tests/run/specialized-trait-requires-inline-trait-inlining.scala */
-
+    
     val generatedTraitStats1 = generatedTraitStats.map {
       case tree: TypeDef =>
         assert(tree.symbol.isInlineTrait)
