@@ -1272,6 +1272,9 @@ object Contexts {
     /** Next denotation transformer id */
     private[core] var nextDenotTransformerId: Array[Periods.PhaseId] = uninitialized
 
+    /** Next non-identity denotation transformer id */
+    private[core] var nextNonIdentityDenotTransformerId: Array[Periods.PhaseId] = uninitialized
+
     private[core] var denotTransformers: Array[DenotTransformer] = uninitialized
 
     /** Flag to suppress inlining, set after overflow */
