@@ -84,7 +84,6 @@ class Driver {
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
       fileNamesOrNone.map(fileNames =>
-        ctx.base.recursiveOperations = Array.fill[RecursiveOperation](ctx.settings.XmaxFuel.value)(RecursiveOperation.blank())
         MacroClassLoader.init(ictx)
         Positioned.init
         if !ctx.settings.Yreporter.isDefault && ctx.settings.Yreporter.value != "help" then
