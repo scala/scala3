@@ -53,17 +53,30 @@ class TreeTypeMap(
       substTo: List[Symbol])(using Context): TreeTypeMap =
     new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, cacheTypeMap = cacheTypeMap)
 
+  private def hasSubstitutionPair(from: Symbol, to: Symbol): Boolean =
+    var fs = substFrom
+    var ts = substTo
+    while fs.nonEmpty && ts.nonEmpty do
+      if (fs.head eq from) && (ts.head eq to) then return true
+      fs = fs.tail
+      ts = ts.tail
+    false
+
   // `mapOwnerThis` only substitutes ThisType prefixes whose `cls` matches a
   // ClassSymbol in `oldOwners`; entries that aren't ClassSymbols are stepped
-  // over without effect. When `oldOwners` contains no ClassSymbols at all
-  // (e.g. Inliner's initial `inlinedMethod :: Nil`), the whole TypeMap walk
-  // is a no-op on every NamedType visited — precompute the gate once.
-  private val hasOwnerClass: Boolean =
-    var xs = oldOwners
+  // over without effect. Class owner remaps introduced by `withSubstitution`
+  // are already covered by `substSym`, so only class owners without a matching
+  // substitution pair need the extra TypeMap walk.
+  private val hasUncoveredOwnerClass: Boolean =
+    var olds = oldOwners
+    var news = newOwners
     var found = false
-    while !found && (xs ne Nil) do
-      if xs.head.isClass then found = true
-      xs = xs.tail
+    while !found && (olds ne Nil) do
+      val old = olds.head
+      val next = news.head
+      if old.isClass && !hasSubstitutionPair(old, next) then found = true
+      olds = olds.tail
+      news = news.tail
     found
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
@@ -144,10 +157,9 @@ class TreeTypeMap(
   private def computeMapType(tp: Type): Type =
     val tp1 = if typeMap eq IdentityTypeMap then tp else typeMap(tp)
     val tp2 = if substFrom.isEmpty then tp1 else substMap.nn(tp1)
-    // Fast path: when no ClassSymbol appears in `oldOwners`, `mapOwnerThis`
-    // is the identity (the recursion in `mapPrefix` only substitutes for
-    // ClassSymbol entries). Skip the TypeMap walk in that case.
-    if !hasOwnerClass then tp2 else mapOwnerThis(tp2)
+    // Skip the owner-this TypeMap when there is no owner-only class remap left
+    // after the symbol substitution above.
+    if !hasUncoveredOwnerClass then tp2 else mapOwnerThis(tp2)
   end computeMapType
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
