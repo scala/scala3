@@ -80,7 +80,7 @@ object PositionPickler:
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
       val relativePath = SourceFile.relativePath(source, relativePathReference)
-      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
+      buf.writeInt(pickler.nameBuffer.stringLiteralIndex(relativePath).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
