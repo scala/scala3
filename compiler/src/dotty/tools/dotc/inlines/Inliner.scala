@@ -29,7 +29,57 @@ import scala.annotation.constructorOnly
 object Inliner:
   import tpd.*
 
-  private[inlines] type DefBuffer = mutable.ListBuffer[ValOrDefDef]
+  private[inlines] type DefBuffer = mutable.ListBuffer[BindingDef]
+
+  private[inlines] final class MemberDefWorklist private (
+      private val first: MemberDef | Null,
+      private val rest: List[MemberDef]):
+
+    def foreach(op: MemberDef => Unit): Unit =
+      val first1 = first
+      if first1 ne null then op(first1)
+      rest.foreach(op)
+
+    def withFirst(member: MemberDef): MemberDefWorklist =
+      if first == null then MemberDefWorklist.one(member)
+      else new MemberDefWorklist(member, rest)
+
+    def prepended(member: MemberDef): MemberDefWorklist =
+      val first1 = first
+      if first1 == null then MemberDefWorklist.one(member)
+      else new MemberDefWorklist(member, first1 :: rest)
+
+  private[inlines] object MemberDefWorklist:
+    val empty: MemberDefWorklist = new MemberDefWorklist(null, Nil)
+
+    def one(member: MemberDef): MemberDefWorklist =
+      new MemberDefWorklist(member, Nil)
+
+    final class Builder:
+      private var first: MemberDef | Null = null
+      private var rest: mutable.ListBuffer[MemberDef] | Null = null
+
+      def +=(member: MemberDef): Unit =
+        if first == null then first = member
+        else
+          if rest == null then rest = new mutable.ListBuffer[MemberDef]
+          rest.nn += member
+
+      def result(): MemberDefWorklist =
+        val first1 = first
+        if first1 == null then empty
+        else new MemberDefWorklist(first1, if rest == null then Nil else rest.nn.toList)
+
+  private[inlines] final case class BindingDef(
+      tree: ValOrDefDef,
+      memberDefs: MemberDefWorklist | Null)
+
+  private[inlines] object BindingDef:
+    def known(tree: ValOrDefDef, nestedMemberDefs: MemberDefWorklist = MemberDefWorklist.empty): BindingDef =
+      BindingDef(tree, nestedMemberDefs.prepended(tree))
+
+    def unknown(tree: ValOrDefDef): BindingDef =
+      BindingDef(tree, null)
 
   private[inlines] final class SmallFallbackMap[K <: AnyRef, V <: AnyRef](threshold: Int):
     private var keys: Array[AnyRef] | Null = null
@@ -431,10 +481,59 @@ class Inliner(val call: tpd.Tree)(using Context):
   private val thisProxy = new SmallFallbackMap[ClassSymbol, TermRef](threshold = 4)
 
   /** A buffer for bindings that define proxies for actual arguments */
-  private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
+  private val bindingsBuf = new mutable.ListBuffer[BindingDef]
 
   private[inlines] def newSym(name: Name, flags: FlagSet, info: Type)(using Context): Symbol =
     Inliner.newSym(name, flags, info, call.span)
+
+  private final class MemberDefCollectingTreeTypeMap(
+      memberDefs: MemberDefWorklist.Builder,
+      typeMap: Type => Type = IdentityTypeMap,
+      treeMap: Tree => Tree = identity,
+      oldOwners: List[Symbol] = Nil,
+      newOwners: List[Symbol] = Nil,
+      substFrom: List[Symbol] = Nil,
+      substTo: List[Symbol] = Nil)(using Context)
+    extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo):
+
+    override def copy(
+        typeMap: Type => Type,
+        treeMap: Tree => Tree,
+        oldOwners: List[Symbol],
+        newOwners: List[Symbol],
+        substFrom: List[Symbol],
+        substTo: List[Symbol])(using Context): TreeTypeMap =
+      new MemberDefCollectingTreeTypeMap(
+        memberDefs, typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
+
+    override def transform(tree: Tree)(using Context): Tree =
+      val tree1 = super.transform(tree)
+      tree1 match
+        case member: MemberDef => memberDefs += member
+        case _ =>
+      tree1
+
+  private def collectMemberDefs(tree: Tree)(using Context): MemberDefWorklist =
+    val memberDefs = new MemberDefWorklist.Builder
+    tree.foreachSubTree:
+      case member: MemberDef => memberDefs += member
+      case _ =>
+    memberDefs.result()
+
+  private def changeOwnerWithMemberDefs[ThisTree <: Tree](
+      tree: ThisTree, from: Symbol, to: Symbol)(using Context): (ThisTree, MemberDefWorklist) =
+    if from == to then (tree, collectMemberDefs(tree))
+    else
+      def loop(from: Symbol, froms: List[Symbol], tos: List[Symbol]): (ThisTree, MemberDefWorklist) =
+        if from.isWeakOwner && !from.owner.isClass then
+          loop(from.owner, from :: froms, to :: tos)
+        else
+          val memberDefs = new MemberDefWorklist.Builder
+          val tree1 =
+            new MemberDefCollectingTreeTypeMap(
+              memberDefs, oldOwners = from :: froms, newOwners = tos).apply(tree)
+          (tree1, memberDefs.result())
+      loop(from, Nil, to :: Nil)
 
   /** A binding for the parameter of an inline method. This is a `val` def for
    *  by-value parameters and a `def` def for by-name parameters. `val` defs inherit
@@ -474,15 +573,16 @@ class Inliner(val call: tpd.Tree)(using Context):
     if isByName then
       bindingFlags |= Method
     val boundSym = newSym(InlineBinderName.fresh(name.asTermName), bindingFlags, bindingType).asTerm
+    val (ownedArg, argMemberDefs) = changeOwnerWithMemberDefs(arg, ctx.owner, boundSym)
     val binding = {
-      var newArg = arg.changeOwner(ctx.owner, boundSym)
+      var newArg = ownedArg
       if bindingFlags.is(Inline) && argIsBottom then
         newArg = Typed(newArg, TypeTree(formal.widenExpr)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
       if isByName then DefDef(boundSym, newArg)
       else ValDef(boundSym, newArg, inferred = true)
     }.withSpan(boundSym.span)
     inlining.println(i"parameter binding: $binding, $argIsBottom")
-    buf += binding
+    buf += BindingDef.known(binding, argMemberDefs)
     binding
   }
 
@@ -562,7 +662,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       val binding = accountForOpaques(
         ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym), inferred = true).withSpan(selfSym.span))
       bindingsBuf += binding
-      inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
+      inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last.tree}")
       lastSelf = selfSym
       lastLevel = level
       lastCls = cls
@@ -615,7 +715,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             val refinedType = refiningRef.info
             val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(refinedType), inferred = true).withSpan(span)
             inlining.println(i"add opaque alias proxy $refiningDef for $ref in $tp")
-            bindingsBuf += refiningDef
+            bindingsBuf += BindingDef.known(refiningDef)
             opaqueProxies += ((ref, refiningSym.termRef))
       case _ =>
     }
@@ -669,13 +769,14 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  and every reference to `refined` in the inlined expression is replaced by
    *  `refined_$this`.
    */
-  private def accountForOpaques(binding: ValDef)(using Context): ValDef =
+  private def accountForOpaques(binding: ValDef)(using Context): BindingDef =
     addOpaqueProxies(binding.symbol.info, binding.span, forThisProxy = true)
-    if opaqueProxies.isEmpty then binding
+    if opaqueProxies.isEmpty then BindingDef.known(binding)
     else
       binding.symbol.info = mapOpaques.typeMap(binding.symbol.info)
-      mapOpaques.transform(binding).asInstanceOf[ValDef]
-        .showing(i"transformed this binding exposing opaque aliases: $result", inlining)
+      BindingDef.unknown:
+        mapOpaques.transform(binding).asInstanceOf[ValDef]
+          .showing(i"transformed this binding exposing opaque aliases: $result", inlining)
   end accountForOpaques
 
   /** If value argument contains references to objects that contain opaque types,
@@ -862,7 +963,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       if mappedCallValueArgss ne callValueArgss then
         inlining.println(i"mapped value args = ${mappedCallValueArgss.flatten}%, %")
 
-      val paramBindingsBuf = new DefBuffer
+      val paramBindingsBuf = new mutable.ListBuffer[BindingDef]
       // Compute bindings for all parameters, appending them to bindingsBuf
       if !computeParamBindings(
           inlinedMethod.info, callTypeArgs,
@@ -1002,17 +1103,39 @@ class Inliner(val call: tpd.Tree)(using Context):
         case _ =>
       siz
 
+    def setDefTreesByTraversal(tree: Tree)(using Context): Unit =
+      tree.foreachSubTree:
+        case tree: MemberDef => tree.setDefTree
+        case _ =>
+
+    def checkMemberDefWorklist(binding: BindingDef)(using Context): Unit =
+      val memberDefs = binding.memberDefs
+      if memberDefs ne null then
+        var expected: SimpleIdentitySet[MemberDef] = SimpleIdentitySet.empty
+        binding.tree.foreachSubTree:
+          case member: MemberDef => expected += member
+          case _ =>
+        var actual: SimpleIdentitySet[MemberDef] = SimpleIdentitySet.empty
+        memberDefs.foreach(member => actual += member)
+        assert(
+          actual == expected,
+          i"inline binding member-def worklist mismatch for ${binding.tree}: expected ${expected.toList}%, %, actual ${actual.toList}%, %")
+
+    def setDefTrees(binding: BindingDef)(using Context): Unit =
+      val memberDefs = binding.memberDefs
+      if memberDefs eq null then setDefTreesByTraversal(binding.tree)
+      else
+        if ctx.debug then checkMemberDefWorklist(binding)
+        memberDefs.foreach(_.setDefTree)
+
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
       bindingsBuf.mapInPlace { binding =>
         // Set trees to symbols allow macros to see the definition tree.
         // This is used by `underlyingArgument`.
-        val binding1 = reducer.normalizeBinding(binding)(using inlineCtx).setDefTree
-        binding1.foreachSubTree {
-          case tree: MemberDef => tree.setDefTree
-          case _ =>
-        }
+        val binding1 = reducer.normalizeBinding(binding)(using inlineCtx)
+        setDefTrees(binding1)(using inlineCtx)
         binding1
       }
 
@@ -1021,12 +1144,12 @@ class Inliner(val call: tpd.Tree)(using Context):
 
       if (ctx.settings.verbose.value) {
         inlining.println(i"to inline = $rhsToInline")
-        inlining.println(i"original bindings = ${bindingsBuf.toList}%\n%")
+        inlining.println(i"original bindings = ${bindingsBuf.toList.map(_.tree)}%\n%")
         inlining.println(i"original expansion = $expansion1")
       }
 
       // Drop unused bindings
-      val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList, expansion1)
+      val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList.map(_.tree), expansion1)
 
       if (inlinedMethod == defn.Compiletime_error) issueError()
 
@@ -1043,7 +1166,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   private object InlineableArg {
     lazy val paramProxies = paramProxyValues.toSet
     def unapply(tree: Trees.Ident[?])(using Context): Option[Tree] = {
-      def search(buf: DefBuffer) = buf.find(_.name == tree.name)
+      def search(buf: DefBuffer) = buf.find(_.tree.name == tree.name).map(_.tree)
       if (paramProxies.contains(tree.typeOpt))
         search(bindingsBuf) match {
           case Some(bind: ValOrDefDef) if bind.symbol.is(Inline) =>
