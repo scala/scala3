@@ -393,18 +393,25 @@ object SourceFile {
       else new String(bytes, charset).toCharArray
     else new String(bytes, charset).toCharArray
 
-  def apply(file: AbstractFile, codec: Codec): SourceFile =
+  private def decodedChars(file: AbstractFile, codec: Codec): Array[Char] =
     // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
     // so cope with failure.
-    val chars =
-      try decodeToChars(file.toByteArray, codec)
-      catch
-        case _: FileSystemException => Array.empty[Char]
+    try decodeToChars(file.toByteArray, codec)
+    catch
+      case _: FileSystemException => Array.empty[Char]
+
+  def apply(file: AbstractFile, codec: Codec): SourceFile =
+    val chars = decodedChars(file, codec)
 
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)
     else
       SourceFile(file, chars)
+
+  def positionOnly(file: AbstractFile, lineSizes: Array[Int], codec: Codec): SourceFile =
+    val source = SourceFile(file, SourceFile(file, codec).content())
+    source.setLineIndicesFromLineSizes(lineSizes)
+    source
 
   def apply(file: AbstractFile, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
 }

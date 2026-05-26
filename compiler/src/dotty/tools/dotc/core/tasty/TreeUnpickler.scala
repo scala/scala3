@@ -1837,11 +1837,9 @@ class TreeUnpickler(reader: TastyReader,
     def sourceChangeContext(addr: Addr = currentAddr)(using Context): Context = {
       val path = sourcePathAt(addr)
       if (path.nonEmpty) {
-        val sourceFile = ctx.getSource(path)
-        posUnpicklerOpt match
-          case Some(posUnpickler) if !sourceFile.initialized =>
-            sourceFile.setLineIndicesFromLineSizes(posUnpickler.lineSizes)
-          case _ =>
+        val sourceFile = posUnpicklerOpt match
+          case Some(posUnpickler) => ctx.getPositionOnlySource(path, posUnpickler.lineSizes)
+          case _ => ctx.getSource(path)
         pickling.println(i"source change at $addr: $path")
         ctx.withSource(sourceFile)
       }
