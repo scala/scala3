@@ -12,13 +12,14 @@ import core.Comments.Comment
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
-import core.Symbols.{defn, Symbol}
+import core.Symbols.{defn, Symbol, TermSymbol}
 import core.Constants.Constant
 import core.NameKinds.DefaultGetterName
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
+import cc.CapturingOrRetainsType
 import coverage.*
 import typer.LiftImpure
 import util.{Property, SourcePosition, SourceFile}
@@ -78,6 +79,15 @@ object LiftCoverage extends LiftImpure:
 
   override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
     tree.putAttachment(CoverageLiftedTemp, ())
+
+  override protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: tpd.Tree)(using Context): tpd.Tree =
+    val liftedRef = tpd.ref(lifted.termRef)
+    val hasCaptures =
+      liftedType.existsPart:
+        case CapturingOrRetainsType(_, refs) => !refs.isAlwaysEmpty
+        case _ => false
+    if liftingArgs && hasCaptures then tpd.Typed(liftedRef, tpd.TypeTree(liftedType, inferred = true))
+    else liftedRef
 
   override def noLift(expr: tpd.Tree)(using Context) =
     if liftingArgs then noLiftArg(expr)
