@@ -6,6 +6,7 @@ import java.nio.file.{Files, Path}
 
 import ast.tpd
 import ast.tpd.*
+import ast.desugar.TrailingForMap
 import collection.mutable
 import core.Comments.Comment
 import core.Flags.*
@@ -96,11 +97,12 @@ object LiftCoverage extends LiftImpure:
   def liftForCoverage(
     defs: mutable.ListBuffer[tpd.Tree],
     tree: tpd.Apply,
+    shouldLiftSelectedApply: tpd.Apply => Boolean = _ => false,
     coverageCallFor: tpd.Apply => Option[tpd.Apply] = _ => None
   )(using Context): tpd.Tree =
     def recur(tree: tpd.Apply, instrumentCurrent: Boolean): tpd.Tree =
       val liftedFun = tree.fun match
-        case sel @ tpd.Select(app: tpd.Apply, name) =>
+        case sel @ tpd.Select(app: tpd.Apply, name) if shouldLiftSelectedApply(app) =>
           liftApp(defs, tpd.cpy.Select(sel)(recur(app, instrumentCurrent = true), name))
         case _ =>
           liftApp(defs, tree.fun)
@@ -363,7 +365,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           // Also, tree.fun can be lifted too.
           // See LiftCoverage for the internal working of this lifting.
           val liftedDefs = mutable.ListBuffer[Tree]()
-          val liftedApp = LiftCoverage.liftForCoverage(liftedDefs, app, coverageCallForSelectedApply)
+          val liftedApp = LiftCoverage.liftForCoverage(liftedDefs, app, selectedApplyNeedsLift, coverageCallForSelectedApply)
 
           InstrumentedParts(liftedDefs.toList, coverageCall, liftedApp)
         else
@@ -741,29 +743,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * should not be changed to {val $x = f(); T($x)}(1) but to {val $x = f(); val $y = 1; T($x)($y)}
      */
     private def needsLift(tree: Apply)(using Context): Boolean =
-      def isShortCircuitedOp(sym: Symbol) =
-        sym == defn.Boolean_&& || sym == defn.Boolean_||
-
-      def isUnliftableFun(fun: Tree) =
-        /*
-         * We don't want to lift a || getB(), to avoid calling getB if a is true.
-         * Same idea with a && getB(): if a is false, getB shouldn't be called.
-         *
-         * On top of that, the `s`, `f` and `raw` string interpolators are special-cased
-         * by the compiler and will disappear in phase StringInterpolatorOpt, therefore
-         * they shouldn't be lifted.
-         */
-        val sym = fun.symbol
-        sym.exists && (
-          isShortCircuitedOp(sym)
-          || StringInterpolatorOpt.isCompilerIntrinsic(sym)
-          || sym == defn.Object_synchronized
-          || isContextFunctionApply(fun)
-        )
-      end isUnliftableFun
-
       def hasSelectedApply(fun: Tree): Boolean = fun match
-        case Select(app: Apply, _) => canInstrumentApply(app) || hasSelectedApply(app.fun)
+        case Select(app: Apply, _) => selectedApplyNeedsLift(app)
         case TypeApply(fn, _) => hasSelectedApply(fn)
         case _ => false
 
@@ -774,7 +755,45 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
       nestedApplyNeedsLift ||
       !isUnliftableFun(fun)
-      && (hasSelectedApply(fun) || !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift))
+      && (
+        !tree.hasAttachment(TrailingForMap) && hasSelectedApply(fun)
+        || !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      )
+
+    private def selectedApplyNeedsLift(tree: Apply)(using Context): Boolean =
+      !LiftCoverage.isUnsafeAssumeSeparate(tree)
+      && canInstrumentApply(tree)
+      && needsLiftWithoutSelectedApply(tree)
+
+    private def needsLiftWithoutSelectedApply(tree: Apply)(using Context): Boolean =
+      val fun = tree.fun
+      val nestedApplyNeedsLift = fun match
+        case a: Apply => needsLiftWithoutSelectedApply(a)
+        case _ => false
+
+      nestedApplyNeedsLift ||
+      !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+
+    private def isShortCircuitedOp(sym: Symbol)(using Context) =
+      sym == defn.Boolean_&& || sym == defn.Boolean_||
+
+    private def isUnliftableFun(fun: Tree)(using Context) =
+      /*
+       * We don't want to lift a || getB(), to avoid calling getB if a is true.
+       * Same idea with a && getB(): if a is false, getB shouldn't be called.
+       *
+       * On top of that, the `s`, `f` and `raw` string interpolators are special-cased
+       * by the compiler and will disappear in phase StringInterpolatorOpt, therefore
+       * they shouldn't be lifted.
+       */
+      val sym = fun.symbol
+      sym.exists && (
+        isShortCircuitedOp(sym)
+        || StringInterpolatorOpt.isCompilerIntrinsic(sym)
+        || sym == defn.Object_synchronized
+        || isContextFunctionApply(fun)
+      )
+    end isUnliftableFun
 
     private def coverageCallForSelectedApply(tree: Apply)(using Context): Option[Apply] =
       Option.when(!LiftCoverage.isUnsafeAssumeSeparate(tree) && canInstrumentApply(tree))(
