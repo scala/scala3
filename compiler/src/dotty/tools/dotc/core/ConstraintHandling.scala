@@ -397,10 +397,20 @@ trait ConstraintHandling {
       if Config.failOnInstantiationToNothing
       then assert(false, msg)
       else report.log(msg)
-    def others = if isUpper then constraint.lower(param) else constraint.upper(param)
     val bound = adjust(rawBound)
+
+    def addOtherBounds(): Boolean =
+      val others = if isUpper then constraint.lower(param) else constraint.upper(param)
+      others match
+        case Nil =>
+          true
+        case other :: Nil =>
+          addOneBound(other, bound, isUpper)
+        case _ =>
+          others.forall(addOneBound(_, bound, isUpper))
+
     bound.exists
-    && addOneBound(param, bound, isUpper) && others.forall(addOneBound(_, bound, isUpper))
+    && addOneBound(param, bound, isUpper) && addOtherBounds()
         .showing(i"added $description = $result$location", constr)
   end addBoundTransitively
 
