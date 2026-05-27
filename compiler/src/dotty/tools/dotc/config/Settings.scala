@@ -320,8 +320,6 @@ object Settings:
       if matches then
         given ArgsSummary = state0
         deprecation match
-        case Some(Deprecation(msg, _)) if ignoreInvalidArgs => // a special case for Xlint
-          state.warn(s"Option $name is deprecated: $msg", args)
         case _ =>
           prefix match
           case Some(prefix) =>
