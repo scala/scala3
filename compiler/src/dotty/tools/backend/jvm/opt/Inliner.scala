@@ -24,9 +24,8 @@ import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.analysis.*
-import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
+import BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
 class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,

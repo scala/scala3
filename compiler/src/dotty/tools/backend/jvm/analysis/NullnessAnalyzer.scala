@@ -15,13 +15,13 @@ package backend.jvm
 package analysis
 
 import java.util
-
 import scala.annotation.switch
 import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
-import dotty.tools.backend.jvm.BackendUtils.isModuleLoad
+import dotty.tools.backend.jvm.opt.BackendUtils
+import dotty.tools.backend.jvm.opt.BackendUtils.isModuleLoad
 
 /**
  * See the package object `analysis` for details on the ASM analysis framework.

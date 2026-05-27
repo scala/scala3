@@ -76,8 +76,8 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     assert(
       classSym != defn.NothingClass && classSym != defn.NullClass,
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
-    assert(classSym != defn.ArrayClass || BackendUtils.compilingArray, classSym)
-    assert(!classSym.isPrimitiveValueClass || BackendUtils.compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
+    assert(classSym != defn.ArrayClass || compilingArray, classSym)
+    assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
 
     classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
   }
@@ -354,7 +354,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       val staticForwarders = if classSym.is(Trait) then
         // !!! This logic duplicates PlainSkelBuilder::makeStaticForwarder, copy changes there !!!
         classSym.info.decls.filter(s => s.isTerm && !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
-          BackendUtils.makeStatifiedDefSymbol(s.asTerm, BackendUtils.traitSuperAccessorName(s).toTermName)
+          SymbolUtils.makeStatifiedDefSymbol(s.asTerm, SymbolUtils.traitSuperAccessorName(s).toTermName)
         })
       else Nil
       classMethods ++ staticForwarders
@@ -395,4 +395,21 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   @tailrec
   private def isOriginallyStaticOwner(sym: Symbol)(using Context): Boolean =
     sym.is(PackageClass) || sym.is(ModuleClass) && isOriginallyStaticOwner(sym.originalOwner.originalLexicallyEnclosingClass)
+  
+  private def compilingArray(using Context) =
+    ctx.compilationUnit.source.file.name == "Array.scala"
+
+  private val primitiveCompilationUnits = Set(
+    "Unit.scala",
+    "Boolean.scala",
+    "Char.scala",
+    "Byte.scala",
+    "Short.scala",
+    "Int.scala",
+    "Float.scala",
+    "Long.scala",
+    "Double.scala"
+  )
+  private def compilingPrimitive(using Context) =
+    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
 }

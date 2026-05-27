@@ -23,7 +23,7 @@ import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import dotty.tools.backend.jvm.BackendUtils.*
+import BackendUtils.*
 
 import scala.tools.asm
 

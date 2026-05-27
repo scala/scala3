@@ -1160,7 +1160,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
      *  `varsInScope`, ending at the current program point.
      */
     def emitLocalVarScopes(): Unit =
-      if (BackendUtils.emitVars) {
+      if (emitVars) {
         val end = currProgramPoint()
         for ((sym, start) <- varsInScope.nn.reverse) {
           emitLocalVarScope(sym, start, end)
@@ -1483,7 +1483,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         val ownerBType = bTypeLoader.bTypeFromType(method.owner.info)
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
-          val staticName = BackendUtils.traitSuperAccessorName(method)
+          val staticName = SymbolUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
           if (isInterface) {

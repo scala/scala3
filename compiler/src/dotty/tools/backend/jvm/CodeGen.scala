@@ -23,7 +23,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 import SymbolUtils.given
 import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
-import opt.CallGraph
+import opt.{BackendUtils, CallGraph}
 
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
               val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,

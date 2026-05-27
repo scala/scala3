@@ -16,6 +16,10 @@ import dotty.tools.dotc.core.Contexts.Context
  *
  */
 trait BCodeIdiomatic {
+  private val debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
+  final val emitSource = debugLevel >= 1
+  final val emitLines = debugLevel >= 2
+  final val emitVars = debugLevel >= 3
 
   def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit
 

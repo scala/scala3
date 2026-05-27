@@ -574,7 +574,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         EMPTY_STRING_ARRAY
       )
 
-      if (BackendUtils.emitSource) {
+      if (emitSource) {
         mirrorClass.visitSource("" + ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 

@@ -24,7 +24,7 @@ import scala.tools.asm.tree.analysis.Frame
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
+import BackendUtils.isArrayGetLength
 
 /**
  * Optimizations within a single method. Certain optimizations enable others, for example removing

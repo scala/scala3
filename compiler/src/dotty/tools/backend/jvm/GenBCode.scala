@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, BackendUtils, CallGraph}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 

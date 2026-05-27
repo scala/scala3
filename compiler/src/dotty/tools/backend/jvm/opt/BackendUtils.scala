@@ -1,7 +1,7 @@
-package dotty.tools
-package backend.jvm
+package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
+import dotty.tools.backend.jvm.*
 import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Flags.{JavaStatic, Method}
@@ -19,8 +19,7 @@ import scala.tools.asm.tree.*
 import scala.tools.asm.{Handle, Opcodes, Type}
 
 /**
- * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
- * instance.
+ * This component hosts tools and utilities used in the optimizer that require access to a `WellKnownBTypes` instance.
  */
 class BackendUtils(val ts: WellKnownBTypes) {
 
@@ -386,11 +385,6 @@ class BackendUtils(val ts: WellKnownBTypes) {
 
 object BackendUtils {
 
-  private def debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
-  final val emitSource = debugLevel >= 1
-  final val emitLines = debugLevel >= 2
-  final val emitVars = debugLevel >= 3
-
   private lazy val primitiveTypes: Map[String, asm.Type] = Map(
     ("Unit", asm.Type.VOID_TYPE),
     ("Boolean", asm.Type.BOOLEAN_TYPE),
@@ -585,46 +579,10 @@ object BackendUtils {
   def isTraitSuperAccessorOrMixinForwarder(method: MethodNode, owner: ClassBType): Boolean = {
     isTraitSuperAccessor(method, owner) || isMixinForwarder(method, owner)
   }
-  
-  def traitSuperAccessorName(sym: Symbol)(using Context): String = {
-    val nameString = sym.javaSimpleName
-    if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
-    else nameString + "$"
-  }
-
-  def makeStatifiedDefSymbol(origSym: TermSymbol, name: TermName)(using Context): TermSymbol =
-    val info = origSym.info match
-      case mt: MethodType =>
-        MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
-    origSym.copy(
-      name = name.toTermName,
-      flags = Method | JavaStatic,
-      info = info
-    ).asTerm
 
   // ===
 
-  def compilingArray(using Context) =
-    ctx.compilationUnit.source.file.name == "Array.scala"
-
-  private val primitiveCompilationUnits = Set(
-    "Unit.scala",
-    "Boolean.scala",
-    "Char.scala",
-    "Byte.scala",
-    "Short.scala",
-    "Int.scala",
-    "Float.scala",
-    "Long.scala",
-    "Double.scala"
-  )
-
-  def compilingPrimitive(using Context) =
-    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
-
-  // ===
-
-  def methodSignature(classInternalName: InternalName, name: String, desc: String) = {
+  def methodSignature(classInternalName: InternalName, name: String, desc: String): String = {
     classInternalName + "::" + name + desc
   }
 
