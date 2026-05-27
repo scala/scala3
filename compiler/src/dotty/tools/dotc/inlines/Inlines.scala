@@ -920,6 +920,15 @@ object Inlines:
                 case None => Select(this(qual), name)
             }
           }
+        case ident: Ident if ident.isType =>
+          // A type parameter of the inline trait written as an identifier in source (e.g. the `S`
+          // in `new C[S] {}` if nested inside an inline trait) is not handled by the usual inlining machinery
+          // because S is not a method type parameter. We have our own way of handling this in types
+          // in the type map but need to also map the tree reference.
+          // See tests/pos/specialized-trait-inlining-causes-implementation-required-loop-bad.scala.
+          val mapped = inlinerTypeMap(ident.tpe)
+          if mapped ne ident.tpe then TypeTree(mapped).withSpan(ident.span)
+          else ident
         case tree =>
           tree
       }
