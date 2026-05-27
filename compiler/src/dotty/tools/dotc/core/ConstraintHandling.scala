@@ -320,41 +320,50 @@ trait ConstraintHandling {
       // Narrow one of the bounds of type parameter `param`
       // If `isUpper` is true, ensure that `param <: `bound`,
       // otherwise ensure that `param >: bound`.
-      val narrowedBounds: TypeBounds =
-        val bound = legalBound(param, rawBound, isUpper)
-        val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
+      val bound = legalBound(param, rawBound, isUpper)
+      val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
 
-        val saved = homogenizeArgs
-        homogenizeArgs = Config.alignArgsInAnd
-        try
-          withUntrustedBounds(
-            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
-            else oldBounds.derivedTypeBounds(lo | bound, hi))
-        finally
-          homogenizeArgs = saved
-      end narrowedBounds
-
-      // If the narrowed bounds are equal and not recursive,
-      // we can remove `param` from the constraint.
-      def tryReplace(newBounds: TypeBounds): Boolean =
-        val TypeBounds(lo, hi) = newBounds
-        val canReplace = (lo eq hi) && !newBounds.existsPart(_ eq param, StopAt.Static)
-        if canReplace then constraint = constraint.replace(param, lo)
+      def tryReplaceInst(inst: Type): Boolean =
+        val canReplace = !inst.existsPart(_ eq param, StopAt.Static)
+        if canReplace then constraint = constraint.replace(param, inst)
         canReplace
 
-      tryReplace(narrowedBounds) || locally:
-        //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
-        val c1 = constraint.updateEntry(param, narrowedBounds)
-        (c1 eq constraint)
-        || {
-          constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
-          val isSat = isSub(lo, hi)
-          if isSat then
-            // isSub may have narrowed the bounds further
-            tryReplace(constraint.nonParamBounds(param))
-          isSat
-        }
+      val exactSolve =
+        if isUpper then bound eq lo
+        else bound eq hi
+
+      if exactSolve && tryReplaceInst(bound) then true
+      else
+        val narrowedBounds: TypeBounds =
+          val saved = homogenizeArgs
+          homogenizeArgs = Config.alignArgsInAnd
+          try
+            withUntrustedBounds(
+              if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
+              else oldBounds.derivedTypeBounds(lo | bound, hi))
+          finally
+            homogenizeArgs = saved
+        end narrowedBounds
+
+        // If the narrowed bounds are equal and not recursive,
+        // we can remove `param` from the constraint.
+        def tryReplace(newBounds: TypeBounds): Boolean =
+          val TypeBounds(lo, hi) = newBounds
+          (lo eq hi) && tryReplaceInst(lo)
+
+        tryReplace(narrowedBounds) || locally:
+          //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
+          val c1 = constraint.updateEntry(param, narrowedBounds)
+          (c1 eq constraint)
+          || {
+            constraint = c1
+            val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
+            val isSat = isSub(lo, hi)
+            if isSat then
+              // isSub may have narrowed the bounds further
+              tryReplace(constraint.nonParamBounds(param))
+            isSat
+          }
   end addOneBound
 
   protected def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
