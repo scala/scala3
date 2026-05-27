@@ -3,13 +3,11 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-
 import scala.tools.asm
 import scala.annotation.switch
-import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
+import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.report
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -18,8 +16,9 @@ import dotty.tools.dotc.report
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic(using Context) {
+trait BCodeIdiomatic {
 
+  def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
   val INSTANCE_CONSTRUCTOR_NAME = "<init>"
@@ -88,41 +87,24 @@ trait BCodeIdiomatic(using Context) {
 
     def jmethod: asm.tree.MethodNode
 
-    import asm.Opcodes;
+    import asm.Opcodes
 
     final def emit(opc: Int): Unit = { jmethod.visitInsn(opc) }
 
     /*
      * can-multi-thread
      */
-    final def genPrimitiveArithmetic(op: ArithmeticOp, kind: BType): Unit = {
-
-      import Primitives.{ ADD, SUB, MUL, DIV, REM, NOT }
-
-      op match {
-
-        case ADD => add(kind)
-        case SUB => sub(kind)
-        case MUL => mul(kind)
-        case DIV => div(kind)
-        case REM => rem(kind)
-
-        case NOT =>
-          if (kind.isIntSizedType) {
-            emit(Opcodes.ICONST_M1)
-            emit(Opcodes.IXOR)
-          } else if (kind == LONG) {
-            jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
-            jmethod.visitInsn(Opcodes.LXOR)
-          } else {
-            abort(s"Impossible to negate an $kind")
-          }
-
-        case _ =>
-          abort(s"Unknown arithmetic primitive $op")
+    final def genPrimitiveNot(kind: BType): Unit =
+      if (kind.isIntSizedType) {
+        emit(Opcodes.ICONST_M1)
+        emit(Opcodes.IXOR)
+      } else if (kind == LONG) {
+        jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
+        jmethod.visitInsn(Opcodes.LXOR)
+      } else {
+        throw new AssertionError(s"Impossible to negate an $kind")
       }
-
-    } // end of method genPrimitiveArithmetic()
+    end genPrimitiveNot
 
     /*
      * can-multi-thread
@@ -191,7 +173,7 @@ trait BCodeIdiomatic(using Context) {
       recipe: String,
       argTypes: Seq[asm.Type],
       constants: Seq[String],
-      ts: CoreBTypes
+      ts: WellKnownBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
@@ -323,7 +305,6 @@ trait BCodeIdiomatic(using Context) {
         case _ =>
           assert(elem.isNonVoidPrimitiveType)
           val rand = {
-            // using `asm.Type.SHORT` instead of `BType.SHORT` because otherwise "warning: could not emit switch for @switch annotated match"
             elem match {
               case BOOL   => Opcodes.T_BOOLEAN
               case BYTE   => Opcodes.T_BYTE
@@ -356,25 +337,26 @@ trait BCodeIdiomatic(using Context) {
     final def rem(tk: BType): Unit = { emitPrimitive(JCodeMethodN.remOpcodes, tk) } // can-multi-thread
 
     // can-multi-thread
-    final def invokespecial(owner: String, name: String, desc: String, itf: Boolean): Unit = {
-      emitInvoke(Opcodes.INVOKESPECIAL, owner, name, desc, itf)
+    final def invokespecial(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
+      emitInvoke(Opcodes.INVOKESPECIAL, owner, name, desc, itf, pos)
     }
     // can-multi-thread
-    final def invokestatic(owner: String, name: String, desc: String, itf: Boolean): Unit = {
-      emitInvoke(Opcodes.INVOKESTATIC, owner, name, desc, itf)
+    final def invokestatic(owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
+      emitInvoke(Opcodes.INVOKESTATIC, owner, name, desc, itf, pos)
     }
     // can-multi-thread
-    final def invokeinterface(owner: String, name: String, desc: String): Unit = {
-      emitInvoke(Opcodes.INVOKEINTERFACE, owner, name, desc, itf = true)
+    final def invokeinterface(owner: String, name: String, desc: String, pos: Positioned | Null)(using Context): Unit = {
+      emitInvoke(Opcodes.INVOKEINTERFACE, owner, name, desc, itf = true, pos)
     }
     // can-multi-thread
-    final def invokevirtual(owner: String, name: String, desc: String): Unit = {
-      emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false)
+    final def invokevirtual(owner: String, name: String, desc: String, pos: Positioned | Null)(using Context): Unit = {
+      emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false, pos)
     }
 
-    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean): Unit = {
+    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
       val node = new MethodInsnNode(opcode, owner, name, desc, itf)
       jmethod.instructions.add(node)
+      recordCallsitePosition(node, pos)
     }
 
 
@@ -386,8 +368,8 @@ trait BCodeIdiomatic(using Context) {
     final def emitIF_ICMP(cond: TestOp, label: asm.Label): Unit = { jmethod.visitJumpInsn(cond.opcodeIFICMP(), label) }
     // can-multi-thread
     final def emitIF_ACMP(cond: TestOp, label: asm.Label): Unit = {
-      assert((cond == EQ) || (cond == NE), cond)
-      val opc = if (cond == EQ) Opcodes.IF_ACMPEQ else Opcodes.IF_ACMPNE
+      assert((cond == TestOp.EQ) || (cond == TestOp.NE), cond)
+      val opc = if (cond == TestOp.EQ) Opcodes.IF_ACMPEQ else Opcodes.IF_ACMPNE
       jmethod.visitJumpInsn(opc, label)
     }
     // can-multi-thread
@@ -437,7 +419,7 @@ trait BCodeIdiomatic(using Context) {
       i = 1
       while (i < keys.length) {
         if (keys(i-1) == keys(i)) {
-          abort("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
         }
         i += 1
       }
@@ -554,11 +536,6 @@ trait BCodeIdiomatic(using Context) {
     final def checkCast(tk: RefBType): Unit = {
       // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
-    }
-
-    def abort(msg: String): Nothing = {
-      report.error(msg)
-      throw new RuntimeException(msg)
     }
 
   } // end of class JCodeMethodN

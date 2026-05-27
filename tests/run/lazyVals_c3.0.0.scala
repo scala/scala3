@@ -1,3 +1,4 @@
+// scalajs: --skip
 // Compiled with 3.0.0 and run with current compiler
 class Foo:
   lazy val x =

@@ -3,7 +3,7 @@ layout: doc-page
 title: Dotty Internals 1: Trees & Symbols (Meeting Notes)
 ---
 
-These are meeting notes for the [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) talk by [Dmitry Petrashko](http://twitter.com/darkdimius) on Mar 21, 2017.
+These are meeting notes for the [Dotty Internals 1: Trees & Symbols](https://www.youtube.com/watch?v=yYd-zuDd3S8) talk by [Dmitry Petrashko](https://twitter.com/darkdimius) on Mar 21, 2017.
 
 # Entry point
 `dotc/Compiler.scala`

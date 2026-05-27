@@ -1,4 +1,4 @@
-[[syntax trees at end of MegaPhase{dropOuterAccessors, dropParentRefinements, checkNoSuperThis, flatten, transformWildcards, moveStatic, expandPrivate, restoreScopes, selectStatic, Collect entry points, repeatableAnnotations}]] // tests/printing/transformed/lazy-vals-new.scala
+[[syntax trees at end of MegaPhase{dropOuterAccessors, dropParentRefinements, checkNoSuperThis, flatten, transformWildcards, moveStatic, expandPrivate, restoreScopes, selectStatic, repeatableAnnotations}]] // tests/printing/transformed/lazy-vals-new.scala
 package <empty> {
   @SourceFile("tests/printing/transformed/lazy-vals-new.scala") final module
     class A extends Object {
@@ -19,7 +19,7 @@ package <empty> {
         classOf[Object {...}], "x$lzy1", classOf[Object])
     private def writeReplace(): Object =
       new scala.runtime.ModuleSerializationProxy(classOf[A])
-    @volatile private lazy var x$lzy1: Object = null
+    @volatile private lazy var x$lzy1: Object = null.asInstanceOf[Object]
     lazy def x(): Int =
       {
         val result: Object = A.x$lzy1

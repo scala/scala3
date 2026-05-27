@@ -9,8 +9,8 @@ import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
 import scala.meta.pc.reports.ReportContext
+import scala.util.control.NonFatal
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
@@ -115,10 +115,9 @@ class CompletionProvider(
               case _ => tpdPath0
           case _ => tpdPath0
 
-        val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
-        val indexedCtx = IndexedContext(pos)(using locatedCtx)
+        val indexedCtx = IndexedContext(pos, tpdPath, newctx)
 
-        val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using locatedCtx)
+        val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using indexedCtx.ctx)
 
         val autoImportsGen = AutoImports.generator(
           completionPos.toSourcePosition,
@@ -132,7 +131,7 @@ class CompletionProvider(
         val (completions, searchResult) =
           new Completions(
             text,
-            locatedCtx,
+            indexedCtx.ctx,
             search,
             buildTargetIdentifier,
             completionPos,
@@ -155,7 +154,7 @@ class CompletionProvider(
             completionPos,
             tpdPath,
             indexedCtx
-          )(using locatedCtx)
+          )(using indexedCtx.ctx)
         }
         val isIncomplete = searchResult match
           case SymbolSearch.Result.COMPLETE => false
@@ -224,9 +223,13 @@ class CompletionProvider(
     // to recalculate the description
     // related issue https://github.com/lampepfl/scala3/issues/11941
     lazy val kind: CompletionItemKind = underlyingCompletion.completionItemKind
-    val description = underlyingCompletion.description(printer)
+    val description =
+      try underlyingCompletion.description(printer)
+      catch case NonFatal(_) => underlyingCompletion.label
     val label =
-      if config.isDetailIncludedInLabel then completion.labelWithDescription(printer)
+      if config.isDetailIncludedInLabel then
+        try completion.labelWithDescription(printer)
+        catch case NonFatal(_) => completion.label
       else completion.label
     val ident = underlyingCompletion.insertText.getOrElse(underlyingCompletion.label)
     lazy val isInStringInterpolation =

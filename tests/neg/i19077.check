@@ -1,0 +1,35 @@
+-- Error: tests/neg/i19077.scala:4:35 ----------------------------------------------------------------------------------
+4 |def g(@deprecatedName("a") x: Int, a: Int) = x+a // error
+  |                                   ^^^^^^
+  |                                   parameter name must be distinct from deprecated name
+-- Error: tests/neg/i19077.scala:6:36 ----------------------------------------------------------------------------------
+6 |def h(@deprecatedName("a") x: Int, @deprecatedName("a") y: Int) = x+y // error
+  |                                   ^^^^^^^^^^^^^^^^^^^^
+  |                                   deprecated parameter name must be distinct from other names
+-- Error: tests/neg/i19077.scala:8:15 ----------------------------------------------------------------------------------
+8 |def i(x: Int, @deprecatedName("x") y: Int) = x+y // error
+  |              ^^^^^^^^^^^^^^^^^^^^
+  |              deprecated parameter name must be distinct from other names
+-- [E161] Naming Error: tests/neg/i19077.scala:10:35 -------------------------------------------------------------------
+10 |def j(x: Int, @deprecatedName("x") x: Int) = x // error
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              x is already defined as parameter x
+   |
+   |              Note that overloaded methods must all be defined in the same group of toplevel definitions
+-- Error: tests/neg/i19077.scala:13:15 ---------------------------------------------------------------------------------
+13 |  f(1, 2, 3, x = 42) // error
+   |             ^^^^^^
+   |             parameter x of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+-- Error: tests/neg/i19077.scala:14:15 ---------------------------------------------------------------------------------
+14 |  f(1, 2, 3, w = 42) // error
+   |             ^^^^^^
+   |             parameter w of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+-- Error: tests/neg/i19077.scala:15:20 ---------------------------------------------------------------------------------
+15 |  f(1, 2, w = 42, z = 27) // error
+   |                  ^^^^^^
+   |                  parameter z of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+-- Error: tests/neg/i19077.scala:16:20 ---------------------------------------------------------------------------------
+16 |  f(1, 2, z = 42, w = 27) // error
+   |                  ^^^^^^
+   |                  parameter w of method f: (x: Int, y: Int, z: Int): Int is already instantiated
+there was 1 deprecation warning; re-run with -deprecation for details

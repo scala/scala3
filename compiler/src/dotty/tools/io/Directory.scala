@@ -8,8 +8,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{Files, Paths}
 
 

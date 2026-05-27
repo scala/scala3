@@ -15,6 +15,7 @@ subsection:
           - page: contributing/issues/cause.md
           - page: contributing/issues/areas.md
       - index: contributing/debugging/debugging.md
+        directory: debugging
         subsection:
           - page: contributing/debugging/ide-debugging.md
           - page: contributing/debugging/inspection.md

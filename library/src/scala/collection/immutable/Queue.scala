@@ -37,6 +37,8 @@ import scala.collection.mutable.{Builder, ListBuffer}
  *  @define coll immutable queue
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
+ *
+ *  @tparam A the type of elements contained in this queue
  */
 
 sealed class Queue[+A] protected(protected val in: List[A], protected val out: List[A])
@@ -139,6 +141,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
   /** Creates a new queue with element added at the end
    *  of the old queue.
    *
+   *  @tparam B the element type of the returned queue, a supertype of `A`
    *  @param  elem        the element to insert
    */
   def enqueue[B >: A](elem: B): Queue[B] = new Queue(elem :: in, out)
@@ -160,7 +163,9 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
    *  The elements are appended in the order they are given out by the
    *  iterator.
    *
+   *  @tparam B the element type of the returned queue, a supertype of `A`
    *  @param  iter        an iterable object
+   *  @return a new queue with all elements of `iter` appended at the end
    */
   def enqueueAll[B >: A](iter: scala.collection.Iterable[B]^): Queue[B] = appendedAll(iter)
 

@@ -19,7 +19,7 @@ import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import scala.annotation.internal.sharable
 import scala.annotation.switch
 
-object Scala3:
+private[semanticdb] object Scala3:
   import Symbols.*
   import core.NameOps.*
 

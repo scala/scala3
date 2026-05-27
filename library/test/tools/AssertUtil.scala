@@ -226,10 +226,18 @@ object AssertUtil {
           o match {
             case a: Array[AnyRef] =>
               a.foreach(e => if (e != null && !e.isInstanceOf[Reference[?]]) stack.push(e))
+            case ar: AtomicReference[?] =>
+                // we can't reflect into it, but we can just look
+                stack.push(ar.get())
             case _ =>
               for (f <- o.getClass.allFields)
                 if (!Modifier.isStatic(f.getModifiers) && !f.getType.isPrimitive && !classOf[Reference[?]].isAssignableFrom(f.getType))
-                  stack.push(f.follow(o))
+                  try {
+                    stack.push(f.follow(o))
+                  } catch {
+                    // we can't look into arbitrary classes, but thankfully this only happens for String, which we know can't hold arbitrary fields
+                    case _: InaccessibleObjectException => assert(o.getClass.getName == "java.lang.String", o.getClass.getName)
+                  }
           }
         }
         refq.poll() match {

@@ -40,14 +40,14 @@ import scala.runtime.Statics.releaseFence
  *
  *  **Space:** `List` implements **structural sharing** of the tail list. This means that many operations are either
  *  zero- or constant-memory cost.
- *  ```
+ *  ```scala sc:compile
  *  val mainList = List(3, 2, 1)
  *  val with4 =    4 :: mainList  // re-uses mainList, costs one :: instance
  *  val with42 =   42 :: mainList // also re-uses mainList, cost one :: instance
  *  val shorter =  mainList.tail  // costs nothing as it uses the same 2::1::Nil instances as mainList
  *  ```
  *
- *  @example ```
+ *  @example ```scala sc:compile
  *  // Make a list via the companion object factory
  *  val days = List("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
  *
@@ -96,14 +96,18 @@ sealed abstract class List[+A]
    *  @return  a list which contains `x` as first element and
    *           which continues with this list.
    *  Example:
-   *  ```1 :: List(2, 3) = List(2, 3).::(1) = List(1, 2, 3) ```
+   *  ```scala sc:compile
+   *  1 :: List(2, 3) = List(2, 3).::(1) = List(1, 2, 3)
+   *  ```
    */
   def :: [B >: A](elem: B): List[B] =  new ::(elem, this)
 
   /** Adds the elements of a given list in front of this list.
    *
    *  Example:
-   *  ```List(1, 2) ::: List(3, 4) = List(3, 4).:::(List(1, 2)) = List(1, 2, 3, 4) ```
+   *  ```scala sc:compile
+   *  List(1, 2) ::: List(3, 4) == List(3, 4).:::(List(1, 2)) // List(1, 2, 3, 4)
+   *  ```
    *
    *  @param prefix  The list elements to prepend.
    *  @return a list resulting from the concatenation of the given
@@ -424,7 +428,7 @@ sealed abstract class List[+A]
   }
 
   override def corresponds[B](that: collection.Seq[B])(p: (A, B) => Boolean): Boolean = that match {
-    case that: LinearSeq[B] =>
+    case that: LinearSeq[B @unchecked] =>
       var i = this
       var j = that
       while (!(i.isEmpty || j.isEmpty)) {
@@ -652,7 +656,7 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
   override def tail: List[A] = next
 
   @publicInBinary
-  private[::] def next$access$1 = next
+  private[::] def `next$access$1` = next
 
 }
 

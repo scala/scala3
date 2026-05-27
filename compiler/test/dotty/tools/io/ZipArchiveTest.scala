@@ -6,12 +6,11 @@ import java.io.IOException
 import java.net.{URI, URL, URLClassLoader}
 import java.nio.file.{Files, Path, Paths}
 import java.util.jar.{Attributes, Manifest, JarEntry, JarOutputStream}
-import java.lang.invoke.{MethodHandles, MethodType}
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
-import scala.util.chaining._
+import scala.util.chaining.*
 import scala.util.Using
 
 class ZipArchiveTest {
@@ -46,23 +45,7 @@ class ZipArchiveTest {
   }
 
   private val bootClassLoader: ClassLoader = {
-    if (!util.Properties.isJavaAtLeast("9")) null
-    else {
-      try {
-        MethodHandles
-          .lookup()
-          .findStatic(
-            classOf[ClassLoader],
-            "getPlatformClassLoader",
-            MethodType.methodType(classOf[ClassLoader])
-          )
-          .invoke()
-          .asInstanceOf[ClassLoader]
-      } catch {
-        case _: Throwable =>
-          null
-      }
-    }
+    ClassLoader.getPlatformClassLoader
   }
 
   private def classLoader(location: URI): ClassLoader =
@@ -103,7 +86,7 @@ class ZipArchiveTest {
   }
 
   private def createTestZip(): Path = Files.createTempFile("junit", ".zip").tap { f =>
-    import java.util.zip._
+    import java.util.zip.*
     Using.resource(new ZipOutputStream(Files.newOutputStream(f))) { zout =>
       zout.setLevel(Deflater.NO_COMPRESSION)
       zout.setMethod(ZipOutputStream.STORED)
@@ -122,8 +105,8 @@ class ZipArchiveTest {
   private def createTestZip2(): Path = {
     import java.nio.file.FileSystems
     import java.net.URI
-    import scala.util.chaining._
-    import scala.jdk.CollectionConverters._
+    import scala.util.chaining.*
+    import scala.jdk.CollectionConverters.*
     val f = Files.createTempFile("junit", ".zip")
     Files.delete(f)
     val uri = URI.create(s"jar:${f.toUri}")

@@ -1,4 +1,4 @@
-name: Dotty
+name: Scala 3
 
 on:
   push:
@@ -34,7 +34,6 @@ concurrency:
 
 env:
   DOTTY_CI_RUN: true
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 # In this file, we set `--cpu-shares 4096` on every job. This might seem useless
 # since it means that every container has the same weight which should be
@@ -166,7 +165,7 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: scala.msi
           path: .
@@ -240,9 +239,7 @@ jobs:
    uses: ./.github/workflows/test-msi.yml
    needs: [build-msi-package]
    with:
-     # Ensure that version starts with prefix 3.
-     # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
-     version: "3."
+     version: ${{ needs.build-msi-package.outputs.version }}
      java-version: 17
 
   build-sdk-package:
@@ -279,5 +276,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.2
+      - uses: VirtusLab/scala-cli-setup@v1.14
       - run: scala-cli format --check

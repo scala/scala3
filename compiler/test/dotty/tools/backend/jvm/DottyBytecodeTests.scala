@@ -1,20 +1,20 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
+import dotty.DottyBytecodeTest
 
-import org.junit.Assert._
+import scala.language.unsafeNulls
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.tools.asm
-import asm._
-import asm.tree._
-
+import scala.tools.asm.*
+import scala.tools.asm.tree.*
 import scala.tools.asm.Opcodes
-import scala.jdk.CollectionConverters._
-import Opcodes._
+import scala.tools.asm.Opcodes.*
+import scala.jdk.CollectionConverters.*
 
 class DottyBytecodeTests extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
   @Test def nullChecks = {
     val source = """
                  |class Foo {
@@ -425,7 +425,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   @Test def dontWrapArraysInJavaVarargs = {
     val source =
       """
-        |import java.nio.file._
+        |import java.nio.file.*
         |class Test {
         |  def test(xs: Array[String]) = {
         |     val p4 = Paths.get("Hello", xs*)
@@ -1724,9 +1724,9 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       val clsIn      = dir.lookupName("Foo.class", directory = false).input
       val clsNode    = loadClassNode(clsIn)
-      def testSig(methodName: String, expectedSignature: String) = {
-        val signature = clsNode.methods.asScala.filter(_.name == methodName).map(_.signature)
-        assertEquals(List(expectedSignature), signature)
+      def testSig(methodName: String, expectedDescriptor: String) = {
+        val descriptor = clsNode.methods.asScala.filter(_.name == methodName).map(_.desc)
+        assertEquals(List(expectedDescriptor), descriptor)
       }
       testSig("foo", "()I")
       testSig("bar", "()I")
@@ -1981,17 +1981,16 @@ class DottyBytecodeTests extends DottyBytecodeTest {
    * https://github.com/scala/scala3/issues/20496
    */
   @Test def deterministicAdditionalImports = {
+    val javaSource =
+    """interface Actor { default void receive() { } }
+      |interface Timers { default void timers() { } }""".stripMargin
     val source =
-    """trait Actor:
-        |  def receive() = ()
-        |trait Timers:
-        |  def timers() = ()
-        |abstract class ShardCoordinator extends Actor with Timers
-        |class PersistentShardCoordinator extends ShardCoordinator:
-        |  def foo =
-        |    super.receive()
-        |    super.timers()""".stripMargin
-    checkBCode(source) { dir =>
+    """abstract class ShardCoordinator extends Actor with Timers
+      |class PersistentShardCoordinator extends ShardCoordinator:
+      |  def foo =
+      |    super.receive()
+      |    super.timers()""".stripMargin
+    checkBCode(scalaSources = List(source), javaSources = List(javaSource)) { dir =>
       val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
 
@@ -2058,6 +2057,35 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val clsIn = dir.lookupName("Test.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       assert(clsNode.methods.asScala.exists(_.name == "test"))
+    }
+  }
+
+  @Test def presenceOfGenericSignatures = {
+    val source =
+      """|object Test:
+         |  def no0(x: Int): Unit = ()
+         |  def no1(x: Array[Int]): Array[Int] = x
+         |  def no2(x: String): String = x
+         |  def no3(): Array[String] = Array.empty
+         |
+         |  def yes0[A](x: A): A = x
+         |  def yes1[A, B](x: A): B = ???
+         |  def yes2[A](x: Int): Unit = ()
+         |  def yes3[A](x: Array[A]): A = x(0)
+         |
+         |  @scala.annotation.varargs def v(x: String*): String = x(0)
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Test$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      for noMeth <- clsNode.methods.asScala if noMeth.name.startsWith("no") do
+        assert(noMeth.signature == null, s"${noMeth.name} should not have a signature but does: ${noMeth.signature}")
+      for yesMeth <- clsNode.methods.asScala if yesMeth.name.startsWith("yes") do
+        assert(yesMeth.signature != null, s"${yesMeth.name} should have a signature but does not")
+      // regression test for issue #10837
+      val varargMeths = clsNode.methods.asScala.filter(_.name.startsWith("v"))
+      val bridge = varargMeths.filter(_.desc == "([Ljava/lang/String;)Ljava/lang/String;").head
+      assert(bridge.signature == null, "vararg bridges should not have generic signatures")
     }
   }
 }

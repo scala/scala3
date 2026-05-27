@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 import lib.InnerClass
 import lib.InnerClassGen
 import lib.RawTypes

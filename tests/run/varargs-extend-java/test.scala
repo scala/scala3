@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 import scala.annotation.varargs
 
 class VarargImpl extends VarargAbstract {

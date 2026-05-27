@@ -2169,7 +2169,7 @@ Symbols:
 example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
 example/InstrumentTyper#AnnotatedType# => type AnnotatedType  = Int @param
 example/InstrumentTyper#`<init>`(). => primary ctor <init> (): InstrumentTyper
-example/InstrumentTyper#all(). => method all => List[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
+example/InstrumentTyper#all(). => method all => List[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 example/InstrumentTyper#clazzOf. => final val method clazzOf Option[Int]
 example/InstrumentTyper#singletonType(). => method singletonType (param x: Predef.type): Nothing
 example/InstrumentTyper#singletonType().(x) => param x: Predef.type
@@ -2231,7 +2231,7 @@ Occurrences:
 [24:37..24:40): Int -> scala/Int#
 
 Synthetics:
-[8:12..8:16):List => *.apply[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
+[8:12..8:16):List => *.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]]
 [8:12..21:3):List(
     Literal.int,
     Literal.long,
@@ -2245,7 +2245,7 @@ Synthetics:
     Literal.javaEnum,
     Literal.clazzOf,
     List()
-  ) => List.apply[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]](*)
+  ) => List.apply[Int | Long | Float | Double | Char | String | Boolean | Unit | LinkOption | Class[Option[Int]] | List[Nothing]](*)
 [20:4..20:8):List => *.apply[Nothing]
 [20:4..20:10):List() => List.apply[Nothing](*)
 
@@ -3764,7 +3764,7 @@ Text => empty
 Language => Scala
 Symbols => 13 entries
 Occurrences => 35 entries
-Diagnostics => 1 entries
+Diagnostics => 4 entries
 Synthetics => 4 entries
 
 Symbols:
@@ -3820,9 +3820,12 @@ Occurrences:
 [23:4..23:19): StructuralTypes -> example/StructuralTypes.
 
 Diagnostics:
+[15:2..15:11): [warning] A pure expression does nothing in statement position
+[16:2..16:10): [warning] A pure expression does nothing in statement position
 [17:20..17:23): [warning] Alphanumeric method foo is not declared infix; it should not be used as infix operator.
 Instead, use method syntax .foo(...) or backticked identifier `foo`.
 The latter can be rewritten automatically under -rewrite -source 3.4-migration.
+[22:2..22:13): [warning] A pure expression does nothing in statement position
 
 Synthetics:
 [15:2..15:6):user => reflectiveSelectable(*)
@@ -4318,10 +4321,10 @@ Language => Scala
 Symbols => 22 entries
 Occurrences => 45 entries
 Diagnostics => 3 entries
-Synthetics => 21 entries
+Synthetics => 17 entries
 
 Symbols:
-example/ValPattern# => class ValPattern extends Object { self: ValPattern => +14 decls }
+example/ValPattern# => class ValPattern extends Object { self: ValPattern => +12 decls }
 example/ValPattern#`<init>`(). => primary ctor <init> (): ValPattern
 example/ValPattern#`leftVar_=`(). => var method leftVar_= (param x$1: Int): Unit
 example/ValPattern#`leftVar_=`().(x$1) => param x$1: Int
@@ -4397,13 +4400,11 @@ Diagnostics:
 [31:15..31:25): [warning] unset local variable, consider using an immutable val instead
 
 Synthetics:
-[4:22..4:28):(1, 2) => Tuple2.apply[Int, Int](*)
 [5:6..5:10):Some => *.unapply[Int]
 [6:4..6:8):Some => *.apply[Int]
 [6:4..6:11):Some(1) => Some.apply[Int](*)
 [8:6..8:10):List => *.unapplySeq[Nothing]
 [8:11..8:15):Some => *.unapply[Nothing]
-[10:28..10:34):(1, 2) => Tuple2.apply[Int, Int](*)
 [11:6..11:10):Some => *.unapply[Int]
 [12:4..12:8):Some => *.apply[Int]
 [12:4..12:11):Some(1) => Some.apply[Int](*)
@@ -4416,11 +4417,9 @@ Synthetics:
         rightVar
       ) => Tuple6.apply[Int, Int, Int, Int, Int, Int](*)
 [25:4..25:11):locally => *[Unit]
-[26:26..26:32):(1, 2) => Tuple2.apply[Int, Int](*)
 [27:10..27:14):Some => *.unapply[Int]
 [28:8..28:12):Some => *.apply[Int]
 [28:8..28:15):Some(1) => Some.apply[Int](*)
-[30:32..30:38):(1, 2) => Tuple2.apply[Int, Int](*)
 [31:10..31:14):Some => *.unapply[Int]
 [32:8..32:12):Some => *.apply[Int]
 [32:8..32:15):Some(1) => Some.apply[Int](*)
@@ -5305,8 +5304,8 @@ local1 => val local p: N$1
 local2 => type N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
-local5 => val local Nat_this: Succ[Zero.type]
-local6 => val local Nat_this: Succ[_] forSome { type _  <: Succ[Zero.type] }
+local5 => val local Nat_this: Succ[Nat_this.type]
+local6 => val local Nat_this: Succ[Nat_this.type]
 recursion/Nats. => final object Nats extends Object { self: Nats.type => +9 decls }
 recursion/Nats.Nat# => sealed trait Nat extends Object { self: Nat => +3 decls }
 recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]

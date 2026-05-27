@@ -10,8 +10,26 @@
    |        Reference `C.this.f` is not included in the allowed capture set {any} of the self type of class C.
    |
    |        where:    any is a root capability classified as Unscoped in the type of class C
--- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:17:15 -----------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/unscoped-classifier.scala:17:15 ------------------------
 17 |    def gg() = g()     // error but msg could be better
    |               ^
-   |               Read-only method gg accesses exclusive capability `g`;
-   |               method gg should be declared an update method to allow this.
+   |      Reference `g` is not included in the allowed capture set {any, any²} of the self type of class E.
+   |
+   |      where:    any  is a root capability classified as Unscoped in the type of class E
+   |                any² is a root capability classified as Unscoped created in class E when constructing instance E
+-- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:8:6 -------------------------------------------------
+8 |  val a: Async^ = new Async {}  // error
+  |      ^
+  |      value a's type Async^ is classified as scala.caps.Control,
+  |      but it is a field of class B which is classied as scala.caps.Unscoped.
+  |      Field classifiers have to conform to the classifier of the containing class.
+  |
+  |      where:    ^ refers to a root capability classified as Control in the type of value a
+-- Error: tests/neg-custom-args/captures/unscoped-classifier.scala:13:6 ------------------------------------------------
+13 |  val f: () => Unit = ???   // error
+   |      ^
+   |      value f's type () => Unit is unclassified,
+   |      but it is a field of class D which is classied as scala.caps.Unscoped.
+   |      Field classifiers have to conform to the classifier of the containing class.
+   |
+   |      where:    => refers to a root capability in the type of value f

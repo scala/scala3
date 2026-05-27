@@ -25,7 +25,7 @@ import scala.collection.mutable.Builder
  *  Allows for range queries to be performed on its keys, and implementations must guarantee that traversal happens in
  *  sorted order, according to the map's [[scala.math.Ordering]].
  *
- *  @example ```
+ *  @example ```scala sc:compile
  *  import scala.collection.immutable.SortedMap
  *
  *  // Make a SortedMap via the companion object factory
@@ -69,6 +69,7 @@ trait SortedMap[K, +V]
    *
    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
    *
+   *  @tparam V1 the type of the values in the resulting map, a supertype of `V`
    *  @param d     the function mapping keys to values, used for non-present keys
    *  @return      a wrapper of the map with a default value
    */
@@ -80,6 +81,7 @@ trait SortedMap[K, +V]
    *
    *  Invoking transformer methods (e.g. `map`) will not preserve the default value.
    *
+   *  @tparam V1 the type of the values in the resulting map, a supertype of `V`
    *  @param d     default value used for non-present keys
    *  @return      a wrapper of the map with a default value
    */

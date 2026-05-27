@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import scala.language.unsafeNulls
-
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.core.*
@@ -20,7 +18,13 @@ object JSDefinitions {
     ctx.platform.asInstanceOf[SJSPlatform].jsDefinitions
 }
 
-final class JSDefinitions()(using Context) {
+final class JSDefinitions() {
+
+  private var initCtx: Context = uninitialized
+  private given currentContext[Dummy_so_its_a_def]: Context = initCtx
+
+  def init()(using Context): Unit =
+    this.initCtx = ctx
 
   @threadUnsafe lazy val InlineAnnotType: TypeRef = requiredClassRef("scala.inline")
   def InlineAnnot(using Context) = InlineAnnotType.symbol.asClass

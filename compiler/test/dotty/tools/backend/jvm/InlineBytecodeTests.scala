@@ -1,16 +1,16 @@
 package dotty.tools.backend.jvm
 
+import dotty.DottyBytecodeTest
+
 import scala.language.unsafeNulls
+import org.junit.{Ignore, Test}
 
-import org.junit.Assert._
-import org.junit.Test
-
-import scala.tools.asm.Opcodes._
-
-import scala.jdk.CollectionConverters._
+import scala.tools.asm.Opcodes.*
+import scala.jdk.CollectionConverters.*
 
 class InlineBytecodeTests extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
+
   @Test def inlineUnit = {
     val source = """
                  |class Foo {
@@ -75,64 +75,6 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  /** Disabled since locally comes from Predef now
-  @Test
-  def inlineLocally = {
-    val source =
-         """
-         |class Foo {
-         |  def meth1: Unit = locally {
-         |    val a = 5
-         |    a
-         |  }
-         |
-         |  def meth2: Unit = {
-         |    val a = 5
-         |    a
-         |  }
-         |}
-         """.stripMargin
-
-    checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
-      val clsNode    = loadClassNode(clsIn)
-      val meth1      = getMethod(clsNode, "meth1")
-      val meth2      = getMethod(clsNode, "meth2")
-
-      val instructions1 = instructionsFromMethod(meth1)
-      val instructions2 = instructionsFromMethod(meth2)
-
-      assert(instructions1 == instructions2,
-        "`locally` was not properly inlined in `meth1`\n" +
-        diffInstructions(instructions1, instructions2))
-    }
-  }
-  */
-/*
-  @Test def inlineNn = {
-    val source =
-      s"""
-         |class Foo {
-         |  def meth1(x: Int | Null): Int = x.nn
-         |  def meth2(x: Int | Null): Int = x.getClass; x
-         |}
-         """.stripMargin
-
-    checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Foo.class", directory = false).input
-      val clsNode = loadClassNode(clsIn)
-      val meth1 = getMethod(clsNode, "meth1")
-      val meth2 = getMethod(clsNode, "meth2")
-
-      val instructions1 = instructionsFromMethod(meth1)
-      val instructions2 = instructionsFromMethod(meth2)
-
-      assert(instructions1 == instructions2,
-        "`nn` was not properly inlined in `meth1`\n" +
-        diffInstructions(instructions1, instructions2))
-    }
-  }
-*/
   @Test def i4947 = {
     val source = """class Foo {
                    |  transparent inline def track[T](inline f: T): T = {
@@ -369,7 +311,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
-    // Testing that a is not boxed
+  // Testing that a is not boxed
   @Test def i4522 = {
     val source = """class Foo {
                    |  def test: Int = {
@@ -478,7 +420,6 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
-
   @Test def i9246 = {
     val source = """class Foo:
                    |  inline def check(v:Double): Unit = if(v==0) throw new Exception()
@@ -519,7 +460,6 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       assert(methods == List("<init>", "a", "test"), clsNode.methods.asScala.toList.map(_.name))
     }
   }
-
 
   @Test def i9466 = {
     val source = """class Test:
@@ -651,7 +591,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = // TODO room for constant folding
+      val expected =
         List(
           IntOp(BIPUSH, 6),
           Op(IRETURN),

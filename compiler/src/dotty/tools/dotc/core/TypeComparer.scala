@@ -17,7 +17,6 @@ import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications.*
 import Variances.{Variance, variancesConform}
 import Constants.Constant
-import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
@@ -55,6 +54,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     maxErrorLevel = -1
     errorNotes = Nil
     undoLog.clear()
+    frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -670,24 +670,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
             // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
             // (---> orphan params during pickling)
-            def isSubInfo(info1: Type, info2: Type): Boolean = (info1, info2) match
-              case (info1: PolyType, info2: PolyType) =>
-                info1.paramNames.hasSameLengthAs(info2.paramNames)
-                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case (info1: MethodType, info2: MethodType) =>
-                matchingMethodParams(info1, info2, precise = false)
-                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case (info1 @ CapturingType(parent1, refs1), info2: Type)
-              if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                compareCaptures(info1, refs1, info2, info2.captureSet)
-                  && isSubInfo(parent1, info2)
-              case (info1: Type, CapturingType(parent2, refs2))
-              if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
-                  && isSubInfo(info1, parent2)
-              case _ =>
-                isSubType(info1, info2)
+            def isSubInfo(info1: Type, info2: Type): Boolean =
+              try (info1, info2) match
+                case (info1: PolyType, info2: PolyType) =>
+                  info1.paramNames.hasSameLengthAs(info2.paramNames)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+                case (info1: MethodType, info2: MethodType) =>
+                  matchingMethodParams(info1, info2, precise = false)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+                case (info1 @ CapturingType(parent1, refs1), info2: Type)
+                if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
+                  compareCaptures(info1, refs1, info2, info2.captureSet)
+                    && isSubInfo(parent1, info2)
+                case (info1: Type, CapturingType(parent2, refs2))
+                if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
+                  val refs1 = info1.captureSet
+                  (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
+                    && isSubInfo(info1, parent2)
+                case _ =>
+                  isSubType(info1, info2)
+              catch case ex: AssertionError =>
+                println(i"error while subinfo $info1 <:< $info2")
+                throw ex
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
@@ -873,26 +877,29 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           try
             if refs1.isAlwaysEmpty && refs1.mutability == CaptureSet.Mutability.Ignored then
               recur(tp1, parent2)
-            else
-              // The singletonOK branch is because we sometimes have a larger capture set in a singleton
-              // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
-              // the type of a closure (in one of the variants we are considering). In that case the
-              // capture set of `f.type` is `{x}` but the capture set of the underlying type is `{}`.
-              // So without the `singletonOK` test, a singleton might not be a subtype of its underlying type.
-              // Eamples where this arises is capt-capibility.scala and function-combinators.scala
-              val singletonOK = tp1 match
-                case tp1: SingletonType
-                if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate) =>
-                  recur(tp1.widen, tp2)
-                case _ =>
-                  false
-              singletonOK
-              || compareCaptures(tp1, refs1, tp2, refs2)
-                  && (recur(tp1.widen.stripCapturing, parent2)
-                     || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
-                        // this alternative is needed in case the right hand side is a
-                        // capturing type that contains the lhs as an alternative of a union type.
-                    )
+            else parent2 match
+              case AndType(p1, p2) =>
+                recur(tp1, p1.capturing(refs2)) && recur(tp1, p2.capturing(refs2))
+              case _ =>
+                // The singletonOK branch is because we sometimes have a larger capture set in a singleton
+                // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
+                // the type of a closure (in one of the variants we are considering). In that case the
+                // capture set of `f.type` is `{x}` but the capture set of the underlying type is `{}`.
+                // So without the `singletonOK` test, a singleton might not be a subtype of its underlying type.
+                // Examples where this arises is capt-capibility.scala and function-combinators.scala
+                val singletonOK = tp1 match
+                  case tp1: SingletonType
+                  if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.VarState.Separate) =>
+                    recur(tp1.widen, tp2)
+                  case _ =>
+                    false
+                singletonOK
+                || compareCaptures(tp1, refs1, tp2, refs2)
+                    && (recur(tp1.widen.stripCapturing, parent2)
+                      || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
+                          // this alternative is needed in case the right hand side is a
+                          // capturing type that contains the lhs as an alternative of a union type.
+                      )
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
@@ -1606,8 +1613,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def isCaptureVarComparison: Boolean =
       isCaptureCheckingOrSetup
-      && tp1.derivesFrom(defn.Caps_CapSet)
-      && tp2.derivesFrom(defn.Caps_CapSet)
+      && tp1.derivesFromCapSet
+      && tp2.derivesFromCapSet
 
     // begin recur
     if tp2 eq NoType then false
@@ -1633,12 +1640,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           needsGc = false
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
-      catch case NonFatal(ex) =>
-        if ex.isInstanceOf[AssertionError] then showGoal(tp1, tp2)
-        recCount -= 1
-        restore()
-        successCount = savedSuccessCount
-        throw ex
+      catch
+        case ex: AssertionError =>
+          showGoal(tp1, tp2)
+          recCount -= 1
+          restore()
+          successCount = savedSuccessCount
+          throw ex
+        case ex: Exception =>
+          recCount -= 1
+          restore()
+          successCount = savedSuccessCount
+          throw ex
   }
 
   /** Undo all actions in undoLog following prevSize */
@@ -2984,7 +2997,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         explainPoly(tp1)
         explainPoly(tp2)
       }
-    catch case NonFatal(ex) =>
+    catch case ex: Exception =>
       report.echo(s"assertion failure [[cannot display since $ex was thrown]]")
 
   /** Record statistics about the total number of subtype checks
@@ -3302,8 +3315,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     // sjrd: I will not be surprised when this causes further issues in the future.
     // This is a compromise to be able to fix #21295 without breaking the world.
     def cannotBeNothing(tp: Type): Boolean = tp match
-      case tp: TypeParamRef => cannotBeNothing(tp.paramInfo)
-      case _                => !(tp.loBound.stripTypeVar <:< defn.NothingType)
+      case tp: TypeParamRef                       => cannotBeNothing(tp.paramInfo)
+      case tp: TypeRef if tp.symbol.is(TypeParam) => cannotBeNothing(tp.info.bounds)
+      case _                                      => !(tp.loBound.stripTypeVar <:< defn.NothingType)
 
     // It is possible to conclude that two types applied are disjoint by
     // looking at covariant type parameters if the said type parameters
@@ -3974,10 +3988,19 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             MatchTypeTrace.emptyScrutinee(scrut)
             NoType
       case Nil =>
-        /* TODO warn ? then re-enable warn/12974.scala:26
         val noCasesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        report.warning(reporting.MatchTypeNoCases(noCasesText), pos = ???)
-        */
+        val pos = ctx.source.atSpan(ctx.owner.span)
+        val isStableScrut = !scrut.isInstanceOf[TypeVar]
+
+        // Emit warn for user-facing term-level typing, and avoid intermediate / redundant reports
+        val doEmit =
+          pos.exists
+            && ctx.owner.isTerm
+            && isStableScrut
+            && ctx.phase.isTyper
+        if doEmit then
+          report.warning(reporting.MatchTypeNoCases(noCasesText), pos)
+
         MatchTypeTrace.noMatches(scrut, cases)
         NoType
 

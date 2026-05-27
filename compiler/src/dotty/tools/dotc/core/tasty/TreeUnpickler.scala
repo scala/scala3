@@ -3,8 +3,6 @@ package dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
-
 import Comments.docCtx
 import Contexts.*
 import Symbols.*
@@ -96,7 +94,7 @@ class TreeUnpickler(reader: TastyReader,
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  private var roots: Set[SymDenotation] = null
+  private var roots: Set[SymDenotation] = uninitialized
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
@@ -188,7 +186,7 @@ class TreeUnpickler(reader: TastyReader,
       if (tag >= firstLengthTreeTag) goto(readEnd())
       else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
       else if (tag >= firstASTTreeTag) skipTree()
-      else if (tag >= firstNatTreeTag) readNat()
+      else if (tag >= firstNatTreeTag) readLongInt()
     }
     def skipTree(): Unit = skipTree(readByte())
 
@@ -225,7 +223,7 @@ class TreeUnpickler(reader: TastyReader,
           if (mode == MemberDefsOnly) skipTree(tag)
           else if (tag >= firstLengthTreeTag) {
             val end = readEnd()
-            var nrefs = numRefs(tag)
+            val nrefs = numRefs(tag)
             if (nrefs < 0) {
               for (i <- nrefs until 0) scanTree(buf)
               goto(end)
@@ -241,7 +239,7 @@ class TreeUnpickler(reader: TastyReader,
           }
           else if (tag >= firstNatASTTreeTag) { readNat(); scanTree(buf) }
           else if (tag >= firstASTTreeTag) scanTree(buf)
-          else if (tag >= firstNatTreeTag) readNat()
+          else if (tag >= firstNatTreeTag) readLongInt()
       }
     }
 
@@ -798,7 +796,13 @@ class TreeUnpickler(reader: TastyReader,
         val tp = reader.readType()
         def readAnnotTree(rdr: TreeReader)(using Context) =
           if isCompactAnnotTypeTag(rdr.reader.nextByte) then TypeTree(rdr.readType())
-          else rdr.readTree()
+          // Annotation trees may be inspected by macros via `annot.tree` and
+          // spliced into a macro expansion; the re-typer of that expansion
+          // requires every untyped tree to have a span (Typer.assertPositioned).
+          // For incremental compilation the enclosing unpickling does not use
+          // Mode.ReadPositions, so without this the deserialized annotation
+          // tree has no spans and the re-typer crashes (issue #21383).
+          else rdr.readTree()(using ctx.addMode(Mode.ReadPositions))
         val lazyAnnotTree = reader.readLaterWithOwner(end, readAnnotTree(_))
         owner =>
           new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
@@ -1880,7 +1884,7 @@ class TreeUnpickler(reader: TastyReader,
    */
   class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
 
-    private var myChildren: List[OwnerTree] = null
+    private var myChildren: List[OwnerTree] | Null = null
 
     /** All definitions that have the definition at `addr` as closest enclosing definition */
     def children: List[OwnerTree] = {
@@ -1889,7 +1893,7 @@ class TreeUnpickler(reader: TastyReader,
         reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
         buf.toList
       }
-      myChildren
+      myChildren.nn
     }
 
     /** Find the owner of definition at `addr` */
@@ -1922,7 +1926,8 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     override def toString: String =
-      s"OwnerTree(${addr.index}, ${end.index}, ${if (myChildren == null) "?" else myChildren.mkString(" ")})"
+      val children = myChildren
+      s"OwnerTree(${addr.index}, ${end.index}, ${if (children == null) "?" else children.mkString(" ")})"
   }
 }
 

@@ -1,0 +1,13 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/impure-fresh.scala:6:25 ----------------------------------
+6 |val y: () -> A^{fresh} = x  // error
+  |                         ^
+  |                         Found:    (x : () => A^{fresh})
+  |                         Required: () -> A^{fresh²}
+  |
+  |                         Note that capability `x` cannot flow into capture set {}.
+  |
+  |                         where:    =>     refers to a root capability in the type of value x
+  |                                   fresh  is a root capability associated with the result type of (): A^{fresh}
+  |                                   fresh² is a root capability associated with the result type of (): A^{fresh²}
+  |
+  | longer explanation available when compiling with `-explain`

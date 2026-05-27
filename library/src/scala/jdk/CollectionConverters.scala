@@ -23,27 +23,20 @@ import scala.collection.convert.{AsJavaExtensions, AsScalaExtensions}
   * Note: to create [[java.util.stream.Stream Java Streams]] that operate on Scala collections
   * (sequentially or in parallel), use [[StreamConverters]].
   *
-  * ```
-  *   import scala.jdk.CollectionConverters._
-  *   val s: java.util.Set[String] = Set("one", "two").asJava
+  * ```scala sc:compile
+  * import scala.jdk.CollectionConverters.*
+  * val s: java.util.Set[String] = Set("one", "two").asJava
   * ```
   *
   * The conversions return adapters for the corresponding API, i.e., the collections are wrapped,
   * not copied. Changes to the original collection are reflected in the view, and vice versa:
   *
-  * ```
-  *   scala> import scala.jdk.CollectionConverters._
-  *
-  *   scala> val s = collection.mutable.Set("one")
-  *   s: scala.collection.mutable.Set[String] = HashSet(one)
-  *
-  *   scala> val js = s.asJava
-  *   js: java.util.Set[String] = [one]
-  *
-  *   scala> js.add("two")
-  *
-  *   scala> s
-  *   res2: scala.collection.mutable.Set[String] = HashSet(two, one)
+  * ```scala sc:compile
+  * import scala.jdk.CollectionConverters.*
+  * val s = collection.mutable.Set("one")
+  * val js = s.asJava
+  * js.add("two")
+  * assert(s == collection.mutable.Set("one", "two"))
   * ```
   *
   * The following conversions are supported via `asScala` and `asJava`:
@@ -84,13 +77,13 @@ import scala.collection.convert.{AsJavaExtensions, AsScalaExtensions}
   * In all cases, converting from a source type to a target type and back
   * again will return the original source object. For example:
   *
-  * ```
-  *   import scala.jdk.CollectionConverters._
+  * ```scala sc:compile
+  * import scala.jdk.CollectionConverters.*
   *
-  *   val source = new scala.collection.mutable.ListBuffer[Int]
-  *   val target: java.util.List[Int] = source.asJava
-  *   val other: scala.collection.mutable.Buffer[Int] = target.asScala
-  *   assert(source eq other)
+  * val source = new scala.collection.mutable.ListBuffer[Int]
+  * val target: java.util.List[Int] = source.asJava
+  * val other: scala.collection.mutable.Buffer[Int] = target.asScala
+  * assert(source eq other)
   * ```
   */
 object CollectionConverters extends AsJavaExtensions with AsScalaExtensions

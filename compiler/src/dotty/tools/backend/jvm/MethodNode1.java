@@ -18,7 +18,8 @@ import scala.tools.asm.tree.LabelNode;
 import scala.tools.asm.tree.MethodNode;
 /**
  * A subclass of {@link MethodNode} to customize the representation of
- * label nodes with {@link LabelNode1}.
+ * label nodes with {@link LabelNode1},
+ * including setting their value.
  */
 public class MethodNode1 extends MethodNode {
     public MethodNode1(int api, int access, String name, String descriptor, String signature, String[] exceptions) {
@@ -40,6 +41,7 @@ public class MethodNode1 extends MethodNode {
     @Override
     protected LabelNode getLabelNode(Label label) {
         if (!(label.info instanceof LabelNode)) {
+            // the base method does not pass `label` here, this is important for our use of these nodes
             label.info = new LabelNode1(label);
         }
         return (LabelNode) label.info;

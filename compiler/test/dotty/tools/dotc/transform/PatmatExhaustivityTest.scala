@@ -11,7 +11,7 @@ import reporting.TestReporter
 
 import dotty.tools.io.Directory
 
-import java.io._
+import java.io.*
 import java.nio.file.{Path => JPath}
 
 import org.junit.Test
@@ -52,7 +52,7 @@ class PatmatExhaustivityTest {
   /** A single test with multiple files grouped in a folder */
   private def compileDir(path: JPath): Boolean = {
     val files = Directory(path).list.toList
-      .filter(_.ext.isScalaOrJava)
+      .filter(_.ext.isSourceExtension)
       .map(_.jpath)
 
     val actualLines   = compile(files)

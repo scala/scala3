@@ -28,7 +28,7 @@ enum ScalaSettingCategories(val prefixLetter: String) extends SettingCategory:
 
 object ScalaSettings extends ScalaSettings
 
-// Kept as seperate type to avoid breaking backward compatibility
+// Kept as separate type to avoid breaking backward compatibility
 abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
   val settingsByCategory: Map[SettingCategory, List[Setting[?]]] =
     allSettings.groupBy(_.category)
@@ -43,7 +43,7 @@ abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
   val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_.name -> s)).toMap
 
 
-trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
+trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, OptimizerSettings, WarningSettings, XSettings, YSettings:
   self: SettingGroup =>
 
   /* Path related settings */
@@ -153,8 +153,10 @@ private sealed trait VerboseSettings:
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
   val VprofileDetails = IntSetting(VerboseSetting, "Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
-  val VreplMaxPrintElements: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-elements", "Number of elements to be printed before output is truncated.", 1000)
-  val VreplMaxPrintCharacters: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-characters", "Number of characters to be printed before output is truncated.", 50000)
+  @deprecated(message = "No longer supported, scheduled for removal", since = "3.9.0")
+  val VreplMaxPrintElements: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-elements", "Number of elements to be printed before output is truncated.", 1000, deprecation = Some(Deprecation("Configuring output truncation is no longer supported")))
+  @deprecated(message = "No longer supported, scheduled for removal", since = "3.9.0")
+  val VreplMaxPrintCharacters: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-characters", "Number of characters to be printed before output is truncated.", 50000, deprecation = Some(Deprecation("Configuring output truncation is no longer supported")))
 
 /** -W "Warnings" settings
  */
@@ -264,12 +266,13 @@ private sealed trait WarningSettings:
          |
          |The default configuration is empty.
          |
-         |User-defined configurations are added to the left. The leftmost rule matching
-         |a warning message defines the action.
+         |The last matching configuration for a diagnostic, in definition order,
+         |determines the action for that diagnostic message.
          |
          |Examples:
          |  - change every warning into an error: -Wconf:any:error
          |  - silence deprecations: -Wconf:cat=deprecation:s
+         |  - error but silence deprecations: -Wall -Wconf:any:e,cat=deprecation:s
          |  - silence a deprecation: -Wconf:origin=java\.lang\.Thread\.getId:s
          |  - silence warnings in src_managed directory: -Wconf:src=src_managed/.*:s
          |
@@ -318,6 +321,109 @@ private sealed trait WarningSettings:
     def inferUnion(using Context): Boolean = allOr(WinferUnion)
     def safeInit(using Context): Boolean = allOr(WsafeInit)
 
+/** "Optimizer" settings */
+private sealed trait OptimizerSettings:
+  self: SettingGroup =>
+
+  val opt = BooleanSetting(RootSetting, "opt", "Optimize generated JVM bytecode.")
+
+  val YoptSpecific = MultiChoiceHelpSetting(
+    ForkSetting,
+    name = "Yopt-specific",
+    helpArg = "optimization",
+    descr = "Enable specific optimizations: `-Yopt-specific:unreachable-code`; `-Yopt-specific:help` for details.",
+    choices = List(
+      ChoiceWithHelp("unreachable-code", "Eliminate unreachable code, exception handlers guarding no instructions, redundant metadata (debug information, line numbers)."),
+      ChoiceWithHelp("simplify-jumps", "Simplify branching instructions, eliminate unnecessary ones."),
+      ChoiceWithHelp("compact-locals", "Eliminate empty slots in the sequence of local variables."),
+      ChoiceWithHelp("copy-propagation", "Eliminate redundant local variables and unused values (including closures). Enables unreachable-code."),
+      ChoiceWithHelp("redundant-casts", "Eliminate redundant casts using a type propagation analysis."),
+      ChoiceWithHelp("box-unbox", "Eliminate box-unbox pairs within the same method (also tuples, xRefs, value class instances). Enables unreachable-code."),
+      ChoiceWithHelp("nullness-tracking", "Track nullness / non-nullness of local variables and apply optimizations."),
+      ChoiceWithHelp("closure-invocations", "Rewrite closure invocations to the implementation method."),
+      ChoiceWithHelp("allow-skip-core-module-init", "Allow eliminating unused module loads for core modules of the standard library (e.g., Predef, ClassTag)."),
+      ChoiceWithHelp("assume-modules-non-null", "Assume loading a module never results in null (happens if the module is accessed in its super constructor)."),
+      ChoiceWithHelp("allow-skip-class-loading", "Allow optimizations that can skip or delay class loading.")
+    ),
+    default = Nil
+  )
+  private def optEnabled(s: String)(using Context): Boolean = opt.value || YoptSpecific.value.contains(s)
+  def optUnreachableCode(using Context): Boolean = optEnabled("unreachable-code")
+  def optSimplifyJumps(using Context): Boolean = optEnabled("simplify-jumps")
+  def optCompactLocals(using Context): Boolean = optEnabled("compact-locals")
+  def optCopyPropagation(using Context): Boolean = optEnabled("copy-propagation")
+  def optRedundantCasts(using Context): Boolean = optEnabled("redundant-casts")
+  def optBoxUnbox(using Context): Boolean = optEnabled("box-unbox")
+  def optNullnessTracking(using Context): Boolean = optEnabled("nullness-tracking")
+  def optClosureInvocations(using Context): Boolean = optEnabled("closure-invocations")
+  def optAllowSkipCoreModuleInit(using Context): Boolean = optEnabled("allow-skip-core-module-init")
+  def optAssumeModulesNonNull(using Context): Boolean = optEnabled("assume-modules-non-null")
+  def optAllowSkipClassLoading(using Context): Boolean = optEnabled("allow-skip-class-loading")
+
+  val inlineHelp =
+    """Inlining requires a list of patterns defining where code can be inlined from: `-opt-inline:p1,p2`. (Use `-opt-inline:help` for more details)
+      |
+      |  *              Matches classes in the empty package
+      |  **             All classes
+      |  a.C            Class a.C
+      |  a.*            Classes in package a
+      |  a.**           Classes in a and in sub-packages of a
+      |  **.Util        Classes named Util in any package (including the empty package)
+      |  a.**.*Util*    Classes in a and sub-packages with Util in their name (including a.Util)
+      |  a.C$D          The nested class D defined in class a.C
+      |  scala.Predef$  The scala.Predef object
+      |  <sources>      Classes defined in source files compiled in the current compilation, either
+      |                 passed explicitly to the compiler or picked up from the `-sourcepath`
+      |
+      |`-opt-inline:p` may be specified multiple times to extend the list of patterns.
+      |A leading `!` means exclude anything that matches the pattern. The last matching pattern wins.
+      |For example, `a.**,!a.b.**` includes classes in `a` and sub-packages, but not in `a.b` and sub-packages.
+      |
+      |When patterns are supplied on a command line, it is usually necessary to quote special shell characters
+      |such as `*`, `<`, `>`, and `$`: `'-opt-inline:p.*,!p.C$D' '-opt-inline:<sources>'`.
+      |Quoting may not be needed in a build file.""".stripMargin
+  val optInline: Setting[List[String]] = MultiStringSetting(RootSetting, "opt-inline", "filter", inlineHelp)
+  def optInlineEnabled(using Context): Boolean = optInline.value.nonEmpty
+
+  val YoptInlineHeuristics = ChoiceSetting(
+    ForkSetting,
+    name = "Yopt-inline-heuristics",
+    helpArg = "strategy",
+    descr = "Set the heuristics for inlining decisions.",
+    choices = List("at-inline-annotated", "everything", "default"),
+    default = "default")
+
+  val Wopt = MultiChoiceHelpSetting(
+    WarningSetting,
+    name = "Wopt",
+    helpArg = "warning",
+    descr = "Enable optimizer warnings, `help` for details.",
+    choices = List(
+      ChoiceWithHelp("all", ""),
+      ChoiceWithHelp("at-inline-failed-summary", "One-line summary if there were @inline method calls that could not be inlined."),
+      ChoiceWithHelp("at-inline-failed", "A detailed warning for each @inline method call that could not be inlined."),
+      ChoiceWithHelp("any-inline-failed", "A detailed warning for every callsite that was chosen for inlining by the heuristics, but could not be inlined."),
+      ChoiceWithHelp("no-inline-mixed", "In mixed compilation, warn at callsites methods defined in java sources (the inlining decision cannot be made without bytecode)."),
+      ChoiceWithHelp("no-inline-missing-bytecode", "Warn if an inlining decision cannot be made because a the bytecode of a class or member cannot be found on the compilation classpath."),
+      ChoiceWithHelp("no-inline-missing-attribute", "Warn if an inlining decision cannot be made because a Scala classfile does not have a ScalaInlineInfo attribute.")
+    ),
+    default = Nil
+  )
+  private def optWarningsEnabled(s: String)(using Context): Boolean = Wopt.value.contains("all") || Wopt.value.contains(s)
+  def optWarningsSummaryOnly(using Context): Boolean = optWarningsEnabled("at-inline-failed-summary")
+  def optWarningEmitAtInlineFailed(using Context): Boolean =
+    optWarningsEnabled("at-inline-failed-summary") ||
+      optWarningsEnabled("at-inline-failed") ||
+      optWarningsEnabled("any-inline-failed")
+  def optWarningEmitAnyInlineFailed(using Context): Boolean = optWarningsEnabled("any-inline-failed")
+  def optWarningNoInlineMixed(using Context): Boolean = optWarningsEnabled("no-inline-mixed")
+  def optWarningNoInlineMissingBytecode(using Context): Boolean = optWarningsEnabled("no-inline-missing-bytecode")
+  def optWarningNoInlineMissingScalaInlineInfoAttr(using Context): Boolean = optWarningsEnabled("no-inline-missing-attribute")
+
+  val YoptLogInline: Setting[String] = StringSetting(ForkSetting, "Yopt-log-inline", "package/Class.method", "Print a summary of inliner activity; `_` to print all, prefix match to select.", "")
+  val YoptTrace = StringSetting(ForkSetting, "Yopt-trace", "package/Class.method", "Trace the optimizer progress for methods; `_` to print all, prefix match to select.", "")
+
+
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
   self: SettingGroup =>
@@ -334,6 +440,7 @@ private sealed trait XSettings:
   val XprintSuspension: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprint-suspension", "Show when code is suspended until macros are compiled.")
   val Xprompt: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprompt", "Display a prompt after each error (debugging option).")
   val XreplDisableDisplay: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xrepl-disable-display", "Do not display definitions in REPL.")
+  val XreplPrintHeight: Setting[Int] = IntSetting(AdvancedSetting, "Xrepl-print-height", "Set the row height for pretty-printing in the REPL.", 50)
   val XreplInterruptInstrumentation: Setting[String] = StringSetting(
     AdvancedSetting,
     "Xrepl-interrupt-instrumentation",
@@ -422,9 +529,10 @@ private sealed trait YSettings:
   val Yskip: Setting[List[String]] = PhasesSetting(ForkSetting, "Yskip", "Skip")
   val YbackendParallelism: Setting[Int] = IntChoiceSetting(ForkSetting, "Ybackend-parallelism", "maximum worker threads for backend", 1 to 16, 1)
   val YbackendWorkerQueue: Setting[Int] = IntChoiceSetting(ForkSetting, "Ybackend-worker-queue", "backend threads worker queue size", 0 to 1000, 0)
-  val YstopAfter: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after", aliases = List("-stop")) // backward compat
+  val YstopAfter: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after the phase group containing the named phase. Mini-phases fused into a MegaPhase share a group, so the rest of that group still runs.", aliases = List("-stop")) // backward compat
   val YstopBefore: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
+  val YlogicalPackageLoading: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylogical-package-loading", "Enable logical package loading. This will load the logical package structure by preparsing the source files to discover the package structure. To be used together with -sourcepath option.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydetailed-stats", "Show detailed internal compiler stats (needs Stats.enabled to be set to true).")
   val YprintPos: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprint-pos", "Show tree positions.")
   val YprintPosSyms: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprint-pos-syms", "Show symbol definitions positions.")
@@ -519,9 +627,5 @@ private sealed trait YSettings:
   // Deprecated: lifted from -Y to -W
   @deprecated(message = "Lifted to -W, Scheduled for removal.", since = "3.5.0")
   val YcheckInit: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init", "Ensure safe initialization of objects.", deprecation = Deprecation.renamed("-Wsafe-init"))
-
-  // Deprecated: Scheduled for removal
-  @deprecated(message = "Scheduled for removal.", since = "3.5.0")
-  val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles", deprecation = Deprecation.removed())
 end YSettings
 

@@ -199,7 +199,7 @@ class StepperTest {
     testStepper(anyStepper(vi), vi.stepper, vl, size, testElemOrder = false, orderedFlag = true)
   }
 
-  /*@Test
+  @Test
   def mapSteppers(): Unit = {
     for (size <- sizes; (factory, elemsOrdered) <- mapFactories) {
       val l = List.fill(size)(r.nextInt() -> r.nextInt()).distinctBy(_._1)
@@ -211,7 +211,7 @@ class StepperTest {
       val svl = l.map({case (k, v) => (k, v.toString)})
       testMap(svl, factory.from(svl), size, elemsOrdered, hasOrderedFlag(factory))
     }
-  }*/
+  }
 
   @Test
   def sortedMapSteppers(): Unit =

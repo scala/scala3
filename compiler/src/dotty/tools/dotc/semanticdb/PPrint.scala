@@ -6,7 +6,8 @@ import scala.collection.mutable
 import dotty.tools.dotc.semanticdb.Scala3.given
 import SymbolInformation.Kind.*
 import dotty.tools.dotc.util.SourceFile
-class SymbolInformationPrinter (symtab: PrinterSymtab):
+
+private[semanticdb] class SymbolInformationPrinter (symtab: PrinterSymtab):
   val notes = InfoNotes()
   val infoPrinter = InfoPrinter(notes)
 
@@ -274,7 +275,7 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
 end SymbolInformationPrinter
 
 extension (info: SymbolInformation)
-  def prefixBeforeTpe: String = {
+  private[semanticdb] def prefixBeforeTpe: String = {
     info.kind match {
       case LOCAL | FIELD | PARAMETER | SELF_PARAMETER | UNKNOWN_KIND | Unrecognized(_) =>
         ": "
@@ -284,25 +285,24 @@ extension (info: SymbolInformation)
     }
   }
 
-trait PrinterSymtab:
+private[semanticdb] trait PrinterSymtab:
   def info(symbol: String): Option[SymbolInformation]
-object PrinterSymtab:
+
+private[semanticdb] object PrinterSymtab:
   def fromTextDocument(doc: TextDocument): PrinterSymtab =
     val map = doc.symbols.map(info => (info.symbol, info)).toMap
     new PrinterSymtab {
       override def info(symbol: String): Option[SymbolInformation] = map.get(symbol)
     }
 
-def processRange(sb: StringBuilder, range: Range): Unit =
+private[semanticdb] def processRange(sb: StringBuilder, range: Range): Unit =
   sb.append('[')
     .append(range.startLine).append(':').append(range.startCharacter)
     .append("..")
     .append(range.endLine).append(':').append(range.endCharacter)
     .append("):")
 
-
-
-class SyntheticPrinter(symtab: PrinterSymtab, source: SourceFile) extends SymbolInformationPrinter(symtab):
+private[semanticdb] class SyntheticPrinter(symtab: PrinterSymtab, source: SourceFile) extends SymbolInformationPrinter(symtab):
 
   def pprint(synth: Synthetic): String =
     val sb = new StringBuilder()

@@ -3,8 +3,6 @@ package dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
-
 import dotty.tools.tasty.TastyFormat.*
 import dotty.tools.tasty.besteffort.BestEffortTastyFormat.ERRORtype
 import dotty.tools.tasty.TastyBuffer.*
@@ -14,16 +12,12 @@ import ast.{untpd, tpd}
 import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annotations.*, Flags.*
 import Comments.{Comment, docCtx}
 import NameKinds.*
-import StdNames.{nme, tpnme}
+import StdNames.nme
 import config.Config
 import config.Feature.sourceVersion
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
-import quoted.QuotePatterns
-
-object TreePickler:
-  class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
 
 class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   val buf: TreeBuffer = new TreeBuffer
@@ -31,7 +25,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   import buf.*
   import pickler.nameBuffer.nameIndex
   import tpd.*
-  import TreePickler.*
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
   private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
@@ -402,13 +395,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             pickleTreeUnlessEmpty(rhs)
           pickleModifiers(sym, mdef)
         }
-      catch
-        case ex: Throwable =>
-          if !ctx.settings.XnoEnrichErrorMessages.value
-            && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
-            throw StackSizeExceeded(mdef)
-          else
-            throw ex
+      catch case t: Throwable => handleRecursive("tree pickling", mdef.show, t)
       if sym.is(Method) && sym.owner.isClass then
         profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
       for docCtx <- ctx.docCtx do
@@ -471,7 +458,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 writeByte(QUALTHIS)
                 pickleTree(qual.withType(tref))
               case _: ErrorType if ctx.isBestEffort =>
-                pickleTree(qual)
+                if qual.hasType then
+                  pickleTree(qual.asInstanceOf[Tree]) // it has a type, so it's a valid tpd.Tree
+                else
+                  pickleErrorType()
               case _ => pickleCapturedThis
         case Select(qual, name) =>
           name match {
@@ -932,34 +922,30 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       // Such annotations will be reconstituted when unpickling the child class.
       // See tests/pickling/i3149.scala
     case _ if ctx.isBestEffort && !ann.symbol.denot.isError => true
-    case _ =>
-      ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
+    case _ => defn.unpicklableAnnotations.contains(ann.symbol)
   }
 
   def pickleAnnotation(owner: Symbol, mdef: MemberDef, ann: Annotation)(using Context): Unit =
     if !isUnpicklable(owner, ann) then
       writeByte(ANNOTATION)
-      withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
+      val annotTree = ann match
+        case ann: CompactAnnotation =>
+          if sourceVersion.enablesCompactAnnotation then ann.tree else ann.oldTree
+        case _ =>
+          ann.tree
+      withLength { pickleType(ann.symbol.typeRef); pickleTree(annotTree) }
       var treeBuf = annotTrees.lookup(mdef)
       if treeBuf == null then
         treeBuf = new mutable.ListBuffer[Tree]
         annotTrees(mdef) = treeBuf
-      treeBuf += ann.tree
+      treeBuf += annotTree
 
 // ---- main entry points ---------------------------------------
 
   def pickle(trees: List[Tree])(using Context): Unit = {
     profile = Profile.current
     for tree <- trees do
-      try
-        if !tree.isEmpty then pickleTree(tree)
-      catch case ex: StackSizeExceeded =>
-        report.error(
-          em"""Recursion limit exceeded while pickling ${ex.mdef}
-              |in ${ex.mdef.symbol.showLocated}.
-              |You could try to increase the stacksize using the -Xss JVM option.
-              |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.""",
-          ex.mdef.srcPos)
+      if !tree.isEmpty then pickleTree(tree)
 
     def missing = forwardSymRefs.keysIterator
       .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")

@@ -27,7 +27,7 @@ def map[A, B](xs: LazyList[A]^, f: A => B): LazyList[B]^{f, xs} =
 class CC
 type Cap = CC^
 
-val cap1: Cap = CC()
+val cap1: Cap = CC() // error
 val cap2: Cap = CC()
 val cap3: Cap = CC()
 

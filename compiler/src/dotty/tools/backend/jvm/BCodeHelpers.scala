@@ -3,15 +3,9 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-
-import scala.annotation.threadUnsafe
 import scala.tools.asm
-import scala.tools.asm.AnnotationVisitor
-import scala.tools.asm.ClassWriter
+import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
-import scala.compiletime.uninitialized
-
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations.*
@@ -25,18 +19,15 @@ import dotty.tools.dotc.core.NameKinds.ExpandedName
 import dotty.tools.dotc.core.Signature
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.Symbols.{requiredClass => _, *}
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.TypeErasure
-import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.dotc.transform.ElimErasedValueType
 import dotty.tools.dotc.transform.Mixin
-import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
-
 import tpd.*
-import DottyBackendInterface.{*, given}
+import dotty.tools.dotc.config.ScalaSettingsProperties
 
 /*
  *  Encapsulates functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -45,24 +36,24 @@ import DottyBackendInterface.{*, given}
  *  @version 1.0
  *
  */
-trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends BCodeIdiomatic {
+trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) extends BCodeIdiomatic {
 
-  val ts: CoreBTypesFromSymbols
-
-  private def ScalaATTRName: String = "Scala"
-  private def ScalaSignatureATTRName: String = "ScalaSig"
-
-  @threadUnsafe private lazy val AnnotationRetentionAttr: ClassSymbol = requiredClass("java.lang.annotation.Retention")
-  @threadUnsafe private lazy val AnnotationRetentionSourceAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
-  @threadUnsafe private lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
-  @threadUnsafe private lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-
-  final def traitSuperAccessorName(sym: Symbol): String = {
-    val nameString = sym.javaSimpleName
-    if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
-    else nameString + "$"
-  }
-
+  // OK to cache because it won't change across Contexts
+  private var cachedClassfileVersion: Int | Null = null
+  protected def classfileVersion(using Context): Int =
+    if cachedClassfileVersion == null then
+      val releaseValue = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
+      val targetValue = Option(ctx.settings.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
+      val target = (releaseValue, targetValue) match
+        case (Some(release), None) => release
+        case (None, Some(target)) => target
+        case (Some(release), Some(_)) =>
+          report.warning(s"The value of ${ctx.settings.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
+          release
+        case (None, None) => ScalaSettingsProperties.supportedTargetVersions.min // least supported version by default
+      // take advantage of the fact classfile versions are consecutive
+      cachedClassfileVersion = target.toInt + (Opcodes.V17 - 17)
+    cachedClassfileVersion.nn
 
   /*
    * can-multi-thread
@@ -106,133 +97,83 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     /*
      * can-multi-thread
      */
-    def pickleMarkerLocal = {
-      createJAttribute(ScalaSignatureATTRName, versionPickle.bytes, 0, versionPickle.writeIndex)
+    def pickleMarkerLocal(using Context) = {
+      createJAttribute(nme.ScalaSignatureATTR.toString, versionPickle.bytes, 0, versionPickle.writeIndex)
     }
 
     /*
      * can-multi-thread
      */
-    def pickleMarkerForeign = {
-      createJAttribute(ScalaATTRName, new Array[Byte](0), 0, 0)
+    def pickleMarkerForeign(using Context) = {
+      createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
     }
   } // end of trait BCPickles
 
-  trait BCInnerClassGen {
+  trait BCAnnotGen {
+    // OK to cache these across Contexts, what they refer to won't change
+    private var cachedAnnotationRetentionAttr: ClassSymbol | Null = null
+    private var cachedAnnotationRetentionSource: TermSymbol | Null = null
+    private var cachedAnnotationRetentionClass: TermSymbol | Null = null
+    private var cachedAnnotationRetentionRuntime: TermSymbol | Null = null
 
-    private def debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
+    private def annotationRetentionAttr(using Context): ClassSymbol =
+      if cachedAnnotationRetentionAttr eq null then
+        cachedAnnotationRetentionAttr = requiredClass("java.lang.annotation.Retention")
+      cachedAnnotationRetentionAttr.nn
 
-    final val emitSource = debugLevel >= 1
-    final val emitLines  = debugLevel >= 2
-    final val emitVars   = debugLevel >= 3
+    private def annotationRetentionSourceAttr(using Context): TermSymbol =
+      if cachedAnnotationRetentionSource eq null then
+        cachedAnnotationRetentionSource = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+      cachedAnnotationRetentionSource.nn
 
-    /**
-     * The class internal name for a given class symbol.
-     */
-    final def internalName(sym: Symbol): String = {
-      // For each java class, the scala compiler creates a class and a module (thus a module class).
-      // If the `sym` is a java module class, we use the java class instead. This ensures that the
-      // ClassBType is created from the main class (instead of the module class).
-      // The two symbols have the same name, so the resulting internalName is the same.
-      val classSym = if (sym.is(JavaDefined) && sym.is(ModuleClass)) sym.linkedClass else sym
-      getClassBType(classSym).internalName
-    }
+    private def annotationRetentionClassAttr(using Context): TermSymbol =
+      if cachedAnnotationRetentionClass eq null then
+        cachedAnnotationRetentionClass = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+      cachedAnnotationRetentionClass.nn
 
-    private def assertClassNotArray(sym: Symbol): Unit = {
-      assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || compilingArray, sym)
-    }
+    private def annotationRetentionRuntimeAttr(using Context): TermSymbol =
+      if cachedAnnotationRetentionRuntime eq null then
+        cachedAnnotationRetentionRuntime = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+      cachedAnnotationRetentionRuntime.nn
 
-    private def assertClassNotArrayNotPrimitive(sym: Symbol): Unit = {
-      assertClassNotArray(sym)
-      assert(!ts.primitiveTypeMap.contains(sym) || compilingPrimitive, sym)
-    }
-
-    /**
-     * The ClassBType for a class symbol.
-     *
-     * The class symbol scala.Nothing is mapped to the class scala.runtime.Nothing$. Similarly,
-     * scala.Null is mapped to scala.runtime.Null$. This is because there exist no class files
-     * for the Nothing / Null. If used for example as a parameter type, we use the runtime classes
-     * in the classfile method signature.
-     *
-     * Note that the referenced class symbol may be an implementation class. For example when
-     * compiling a mixed-in method that forwards to the static method in the implementation class,
-     * the class descriptor of the receiver (the implementation class) is obtained by creating the
-     * ClassBType.
-     */
-    final def getClassBType(sym: Symbol): ClassBType = {
-      assertClassNotArrayNotPrimitive(sym)
-
-      if (sym == defn.NothingClass) ts.srNothingRef
-      else if (sym == defn.NullClass) ts.srNullRef
-      else ts.classBTypeFromSymbol(sym)
-    }
 
     /*
      * must-single-thread
      */
-    final def asmMethodType(msym: Symbol): MethodBType = {
-      assert(msym.is(Method), s"not a method-symbol: $msym")
-      val resT: BType =
-        if (msym.isClassConstructor || msym.isConstructor) UNIT
-        else toTypeKind(msym.info.resultType)
-      MethodBType(msym.info.firstParamTypes.map(toTypeKind), resT)
-    }
-
-    /**
-     * The jvm descriptor of a type.
-     */
-    final def typeDescriptor(t: Type): String = { toTypeKind(t).descriptor   }
-
-    /**
-     * The jvm descriptor for a symbol.
-     */
-    final def symDescriptor(sym: Symbol): String = getClassBType(sym).descriptor
-
-    final def toTypeKind(tp: Type): BType = typeToTypeKind(tp)(this)
-
-  } // end of trait BCInnerClassGen
-
-  trait BCAnnotGen extends BCInnerClassGen {
-
-    /*
-     * must-single-thread
-     */
-    def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation]): Unit =
+    def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation])(using Context): Unit =
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = cw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
-        emitAssocs(av, assocs)(this)
+        val av = cw.visitAnnotation(bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
+        emitAssocs(av, assocs)
       }
 
     /*
      * must-single-thread
      */
-    def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation]): Unit =
+    def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation])(using Context): Unit =
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = mw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
-        emitAssocs(av, assocs)(this)
+        val av = mw.visitAnnotation(bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
+        emitAssocs(av, assocs)
       }
 
     /*
      * must-single-thread
      */
-    def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation]): Unit =
+    def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation])(using Context): Unit =
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val av = fw.visitAnnotation(typeDescriptor(typ), isRuntimeVisible(annot))
-        emitAssocs(av, assocs)(this)
+        val av = fw.visitAnnotation(bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
+        emitAssocs(av, assocs)
       }
 
     /*
      * must-single-thread
      */
-    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol]): Unit =
+    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol])(using Context): Unit =
       for param <- params do
         var access = asm.Opcodes.ACC_FINAL
         if param.is(Artifact) then access |= asm.Opcodes.ACC_SYNTHETIC
@@ -241,31 +182,31 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     /*
      * must-single-thread
      */
-    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]]): Unit =
+    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]])(using Context): Unit =
       val annotationss = pannotss.map(_.filter(shouldEmitAnnotation))
       if (annotationss.forall(_.isEmpty)) return
       for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
-        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, typeDescriptor(typ), isRuntimeVisible(annot))
-        emitAssocs(pannVisitor, assocs)(this)
+        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
+        emitAssocs(pannVisitor, assocs)
       }
 
 
-    private def shouldEmitAnnotation(annot: Annotation): Boolean = {
+    private def shouldEmitAnnotation(annot: Annotation)(using Context): Boolean = {
       annot.symbol.is(JavaDefined) &&
-        retentionPolicyOf(annot) != AnnotationRetentionSourceAttr
+        retentionPolicyOf(annot) != annotationRetentionSourceAttr
     }
 
-    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])(innerClasesStore: BCInnerClassGen): Unit = {
+    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])(using Context): Unit = {
       for ((name, value) <- assocs)
-        emitArgument(av, name.mangledString, value.asInstanceOf[Tree])(innerClasesStore)
+        emitArgument(av, name.mangledString, value.asInstanceOf[Tree])
       av.visitEnd()
     }
 
     private def emitArgument(av:   AnnotationVisitor,
-                           name: String,
-                           arg:  Tree)(innerClasesStore: BCInnerClassGen): Unit = {
+                             name: String,
+                             arg:  Tree)(using Context): Unit = {
       val narg = normalizeArgument(arg)
       // Transformation phases are not run on annotation trees, so we need to run
       // `constToLiteral` at this point.
@@ -277,12 +218,12 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
             case StringTag =>
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
-            case ClazzTag => av.visit(name, typeToTypeKind(TypeErasure.erasure(const.typeValue))(innerClasesStore).toASMType)
+            case ClazzTag => av.visit(name, bTypeLoader.bTypeFromType(TypeErasure.erasure(const.typeValue)).toASMType)
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
         case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnum) =>
-          val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
+          val edesc = bTypeLoader.bTypeFromType(t.tpe).descriptor // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
         // Handle final val aliases to Java enum values.
@@ -293,12 +234,12 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
             case _ => false
         } =>
           val enumRef = atPhase(erasurePhase)(t.symbol.info.finalResultType.asInstanceOf[TermRef])
-          val edesc = innerClasesStore.typeDescriptor(enumRef)
+          val edesc = bTypeLoader.bTypeFromType(enumRef).descriptor
           val evalue = enumRef.termSymbol.javaSimpleName
           av.visitEnum(name, edesc, evalue)
         case t: SeqLiteral =>
           val arrAnnotV: AnnotationVisitor = av.visitArray(name)
-          for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg)(innerClasesStore) }
+          for (arg <- t.elems) { emitArgument(arrAnnotV, null, arg) }
           arrAnnotV.visitEnd()
 
         case Apply(fun, args) if fun.symbol == defn.ArrayClass.primaryConstructor ||
@@ -317,29 +258,29 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
             }
           }
           for arg <- flatArgs do
-            emitArgument(arrAnnotV, null, arg)(innerClasesStore)
+            emitArgument(arrAnnotV, null, arg)
           arrAnnotV.visitEnd()
   /*
         case sb @ ScalaSigBytes(bytes) =>
           // see http://www.scala-lang.org/sid/10 (Storage of pickled Scala signatures in class files)
           // also JVMS Sec. 4.7.16.1 The element_value structure and JVMS Sec. 4.4.7 The CONSTANT_Utf8_info Structure.
           if (sb.fitsInOneString) {
-            av.visit(name, BCodeAsmCommon.strEncode(sb))
+            av.visit(name, BCodeUtils.strEncode(sb))
           } else {
             val arrAnnotV: asm.AnnotationVisitor = av.visitArray(name)
-            for(arg <- BCodeAsmCommon.arrEncode(sb)) { arrAnnotV.visit(name, arg) }
+            for(arg <- BCodeUtils.arrEncode(sb)) { arrAnnotV.visit(name, arg) }
             arrAnnotV.visitEnd()
           }          // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
   */
         case t @ Apply(constr, args) if t.tpe.classSymbol.is(JavaAnnotation) =>
           val typ = t.tpe.classSymbol.denot.info
           val assocs = assocsFromApply(t)
-          val desc = innerClasesStore.typeDescriptor(typ) // the class descriptor of the nested annotation class
+          val desc = bTypeLoader.bTypeFromType(typ).descriptor // the class descriptor of the nested annotation class
           val nestedVisitor = av.visitAnnotation(name, desc)
-          emitAssocs(nestedVisitor, assocs)(innerClasesStore)
+          emitAssocs(nestedVisitor, assocs)
 
         case Inlined(_, _, expansion) =>
-          emitArgument(av, name, arg = expansion)(innerClasesStore)
+          emitArgument(av, name, arg = expansion)
 
         case t =>
           report.error(em"Annotation argument is not a constant", t.sourcePos)
@@ -352,9 +293,9 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       case _ => arg
     }
 
-    private def isRuntimeVisible(annot: Annotation): Boolean =
-      if (toDenot(annot.tree.tpe.typeSymbol).hasAnnotation(AnnotationRetentionAttr))
-        retentionPolicyOf(annot) == AnnotationRetentionRuntimeAttr
+    private def isRuntimeVisible(annot: Annotation)(using Context): Boolean =
+      if (toDenot(annot.tree.tpe.typeSymbol).hasAnnotation(annotationRetentionAttr))
+        retentionPolicyOf(annot) == annotationRetentionRuntimeAttr
       else {
         // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
         // annotation is emitted with visibility `RUNTIME`
@@ -362,11 +303,11 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
         true
       }
 
-    private def retentionPolicyOf(annot: Annotation): Symbol =
-      annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
-        flatMap(_.argument(0).map(_.tpe.termSymbol)).getOrElse(AnnotationRetentionClassAttr)
+    private def retentionPolicyOf(annot: Annotation)(using Context): Symbol =
+      annot.tree.tpe.typeSymbol.getAnnotation(annotationRetentionAttr).
+        flatMap(_.argument(0).map(_.tpe.termSymbol)).getOrElse(annotationRetentionClassAttr)
 
-    private def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
+    private def assocsFromApply(tree: Tree)(using Context): List[(Name, Tree)] = {
       tree match {
         case Block(_, expr) => assocsFromApply(expr)
         case Apply(fun, args) =>
@@ -383,34 +324,55 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
 
   trait BCJGenSigGen {
 
-    def getCurrentCUnit(): CompilationUnit
-
     /**
      * Generates the generic signature for `sym` before erasure.
      *
      * @param sym   The symbol for which to generate a signature.
      * @param owner The owner of `sym`.
+     * @param descriptor The descriptor of the symbol; the signature is unnecessary if they are equal.
      * @return The generic signature of `sym` before erasure, as specified in the Java Virtual
      *         Machine Specification, §4.3.4, or `null` if `sym` doesn't need a generic signature.
      * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
      */
-    def getGenericSignature(sym: Symbol, owner: Symbol): String | Null = {
+    def getGenericSignature(sym: Symbol, owner: Symbol, descriptor: String | Null)(using Context): String | Null = {
       atPhase(erasurePhase) {
-        def computeMemberTpe(): Type =
-          if (sym.is(Method)) sym.denot.info
-          else if sym.denot.validFor.phaseId > erasurePhase.id && sym.isField && sym.getter.exists then
-            // Memoization field of getter entered after erasure, see run/i17069 for an example
-            sym.getter.denot.info.resultType
-          else owner.denot.thisType.memberInfo(sym)
+        // Finding the member's type is nontrivial because of erasure and how it interacts with other phases.
+        def computeMemberType(): Type = {
+          // Mixins are resolved _after_ erasure, so we cannot simply ask for "the information before erasure" for these,
+          // since that information never existed.
+          // Thus, we first check if the symbol was specifically marked as having generic information,
+          mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(sym) match
+            // and if so, we use it.
+            case Some(genericInfo) => return genericInfo
+            case _ => ()
 
-        val memberTpe = if sym.is(MixedIn) then
-          mixinPhase.asInstanceOf[Mixin].mixinForwarderGenericInfos.get(sym) match
-            case Some(genericInfo) => genericInfo
-            case none              => computeMemberTpe()
+          // Methods are straightforward.
+          if sym.is(Method) then
+            return sym.denot.info
+
+          // Fields have two special cases:
+          if sym.isField then
+            // we must use the getter if entered after erasure at memoize, see tests/generic-java-signatures/17069.scala for an example
+            if sym.denot.validFor.firstPhaseId > erasurePhase.id then
+              if sym.getter.exists then
+                return sym.getter.denot.info.resultType
+
+              // there might be a getter created after erasure by the mixin phase,
+              // and if so we must use the information that the mixin phase stored for it.
+              // However, we can't do this if the result is a primitive, since field generic signatures can only be reference types (JVMS §4.7.9.1)
+              val mixinGetter = atPhase(mixinPhase.next) { sym.getter }
+              if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
+                case Some(ExprType(genericInfo)) if !genericInfo.isPrimitiveValueType => return genericInfo // since we're looking for the getter, we get an ExprType
+                case _ => ()
+
+          owner.denot.thisType.memberInfo(sym)
+        }
+
+        if ctx.base.settings.XnoGenericSig.value then null
         else
-          computeMemberTpe()
-
-        getGenericSignatureHelper(sym, owner, memberTpe).orNull
+          val genSig = getGenericSignatureHelper(sym, owner, computeMemberType())
+          if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
+          else genSig.toString
       }
     }
 
@@ -422,10 +384,10 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      *
      * must-single-thread
      */
-    private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean): Unit = {
-      val moduleName     = internalName(module)
+    private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean)(using Context): Unit = {
+      val moduleName     = bTypeLoader.classBTypeFromSymbol(module).internalName
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(toTypeKind)
+      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
       // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,
@@ -433,19 +395,19 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
        *  and we don't know what classes might be subclassing the companion class.  See SI-4827.
        */
       // TODO: evaluate the other flags we might be dropping on the floor here.
-      val flags = GenBCodeOps.PublicStatic | (
+      val flags = asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC | (
         if (m.is(JavaVarargs)) asm.Opcodes.ACC_VARARGS else 0
       ) | (
         if (isSynthetic) asm.Opcodes.ACC_SYNTHETIC else 0
       )
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
-      val jgensig = getStaticForwarderGenericSignature(m, module)
+      val jReturnType = bTypeLoader.bTypeFromType(methodInfo.resultType)
+      val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
+      val jgensig = getStaticForwarderGenericSignature(m, module, mdesc)
       val (throws, others) = m.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
-      val jReturnType = toTypeKind(methodInfo.resultType)
-      val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
       val mirrorMethodName = m.javaSimpleName
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
                                         else BCodeUtils.checkConstantStringLength(mirrorMethodName, mdesc)
@@ -470,7 +432,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
 
       mirrorMethod.visitCode()
 
-      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, symDescriptor(module))
+      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, bTypeLoader.classBTypeFromSymbol(module).descriptor)
 
       var index = 0
       for(jparamType <- paramJavaTypes) {
@@ -479,7 +441,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
         index += jparamType.size
       }
 
-      mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, asmMethodType(m).descriptor, false)
+      mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, bTypeLoader.methodBTypeFromSymbol(m).descriptor, false)
       mirrorMethod.visitInsn(jReturnType.typedOpcode(asm.Opcodes.IRETURN))
 
       mirrorMethod.visitMaxs(0, 0) // just to follow protocol, dummy arguments
@@ -494,7 +456,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      *
      * must-single-thread
      */
-    def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
+    def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol)(using Context): Unit = {
       assert(moduleClass.is(ModuleClass), moduleClass)
       report.debuglog(s"Dumping mirror class for object: $moduleClass")
 
@@ -529,7 +491,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
      *  The members are sorted by name and signature to guarantee a stable ordering.
      */
-    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet): List[Symbol] = {
+    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet)(using Context): List[Symbol] = {
       // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
       val names = tp.memberNames(takeAllFilter).toSeq.sorted
       val buffer = mutable.ListBuffer[Symbol]()
@@ -550,13 +512,13 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      *
      * must-single-thread
      */
-    def getExceptions(excs: List[Annotation]): List[String] = {
+    def getExceptions(excs: List[Annotation])(using Context): List[String] = {
       for (case ThrownException(exc) <- excs.distinct)
-      yield internalName(TypeErasure.erasure(exc).classSymbol)
+      yield bTypeLoader.classBTypeFromSymbol(TypeErasure.erasure(exc).classSymbol).internalName
     }
   } // end of trait BCForwardersGen
 
-  trait BCClassGen extends BCInnerClassGen {
+  trait BCClassGen {
 
     // Used as threshold above which a tableswitch bytecode instruction is preferred over a lookupswitch.
     // There's a space tradeoff between these multi-branch instructions (details in the JVM spec).
@@ -571,7 +533,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
       // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
       jclass.visitField(
-        GenBCodeOps.PrivateStaticFinal,
+        asm.Opcodes.ACC_PRIVATE | asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
         "serialVersionUID",
         "J",
         null, // no java-generic-signature
@@ -582,16 +544,12 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
 
   /* functionality for building plain and mirror classes */
   abstract class JCommonBuilder
-    extends BCInnerClassGen
-    with    BCAnnotGen
+    extends BCAnnotGen
     with    BCForwardersGen
     with    BCPickles { }
 
   /* builder of mirror classes */
   class JMirrorBuilder extends JCommonBuilder {
-
-    private var cunit: CompilationUnit = uninitialized
-    def getCurrentCUnit(): CompilationUnit = cunit
 
     /* Generate a mirror class for a top-level module. A mirror class is a class
      *  containing only static methods that forward to the corresponding method
@@ -601,29 +559,27 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
      *
      *  must-single-thread
      */
-    def genMirrorClass(moduleClass: Symbol, cunit: CompilationUnit): asm.tree.ClassNode = {
+    def genMirrorClass(moduleClass: Symbol)(using Context): asm.tree.ClassNode = {
       assert(moduleClass.is(ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
-      this.cunit = cunit
-      val bType      = ts.mirrorClassBTypeFromSymbol(moduleClass)
-      val moduleName = internalName(moduleClass) // + "$"
+      val bType      = bTypeLoader.mirrorClassBTypeFromSymbol(moduleClass)
+      val moduleName = bTypeLoader.classBTypeFromSymbol(moduleClass).internalName
       val mirrorName = bType.internalName
       val mirrorClass = new asm.tree.ClassNode
       if !BCodeUtils.checkConstantStringLength(mirrorName) then
         report.error("Mirror class name is too long for the JVM", moduleClass.srcPos)
         return mirrorClass // not filled, but we cannot create it, and we just reported an error
       mirrorClass.visit(
-        backendUtils.classfileVersion,
-        bType.info.get.flags,
+        classfileVersion,
+        bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,
-        ts.ObjectRef.internalName,
+        bTypes.ObjectRef.internalName,
         EMPTY_STRING_ARRAY
       )
 
-      if (emitSource) {
-        mirrorClass.visitSource("" + cunit.source.file.name,
-                                null /* SourceDebugExtension */)
+      if (BackendUtils.emitSource) {
+        mirrorClass.visitSource("" + ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
       val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Module)) moduleClass.companionClass else moduleClass.companionModule)
@@ -640,159 +596,18 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
 
   } // end of class JMirrorBuilder
 
-  trait JAndroidBuilder {
-    self: BCInnerClassGen =>
-
-    /* From the reference documentation of the Android SDK:
-     *  The `Parcelable` interface identifies classes whose instances can be written to and restored from a `Parcel`.
-     *  Classes implementing the `Parcelable` interface must also have a static field called `CREATOR`,
-     *  which is an object implementing the `Parcelable.Creator` interface.
-     */
-    val androidFieldName = "CREATOR".toTermName
-
-    lazy val AndroidParcelableInterface : Symbol = NoSymbol // getClassIfDefined("android.os.Parcelable")
-    lazy val AndroidCreatorClass        : Symbol = NoSymbol // getClassIfDefined("android.os.Parcelable$Creator")
-
-    /*
-     * must-single-thread
-     */
-    def isAndroidParcelableClass(sym: Symbol) =
-      (AndroidParcelableInterface != NoSymbol) &&
-      (sym.info.parents.map(_.typeSymbol) contains AndroidParcelableInterface)
-
-    /*
-     * must-single-thread
-     */
-    def legacyAddCreatorCode(clinit: asm.MethodVisitor, cnode: asm.tree.ClassNode, thisName: String): Unit = {
-      val androidCreatorType = getClassBType(AndroidCreatorClass)
-      val tdesc_creator = androidCreatorType.descriptor
-
-      cnode.visitField(
-        GenBCodeOps.PublicStaticFinal,
-        "CREATOR",
-        tdesc_creator,
-        null, // no java-generic-signature
-        null  // no initial value
-      ).visitEnd()
-
-      val moduleName = thisName + "$"
-
-      // GETSTATIC `moduleName`.MODULE$ : `moduleName`;
-      clinit.visitFieldInsn(
-        asm.Opcodes.GETSTATIC,
-        moduleName,
-        str.MODULE_INSTANCE_FIELD,
-        "L" + moduleName + ";"
-      )
-
-      // INVOKEVIRTUAL `moduleName`.CREATOR() : android.os.Parcelable$Creator;
-      val bt = MethodBType(Nil, androidCreatorType)
-      clinit.visitMethodInsn(
-        asm.Opcodes.INVOKEVIRTUAL,
-        moduleName,
-        "CREATOR",
-        bt.descriptor,
-        false
-      )
-
-      // PUTSTATIC `thisName`.CREATOR;
-      clinit.visitFieldInsn(
-        asm.Opcodes.PUTSTATIC,
-        thisName,
-        "CREATOR",
-        tdesc_creator
-      )
-    }
-
-  } // end of trait JAndroidBuilder
-
-  /**
-   * This method returns the BType for a type reference, for example a parameter type.
-   *
-   * If the result is a ClassBType for a nested class, it is added to the innerClassBufferASM.
-   *
-   * If `t` references a class, toTypeKind ensures that the class is not an implementation class.
-   * See also comment on getClassBTypeAndRegisterInnerClass, which is invoked for implementation
-   * classes.
-   */
-  private def typeToTypeKind(tp: Type)(storage: BCInnerClassGen): BType = {
-    val defn = ctx.definitions
-    import Types.*
-    /**
-      * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
-      * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
-      */
-    def primitiveOrClassToBType(sym: Symbol): BType = {
-      assert(sym.isClass, sym)
-      assert(sym != defn.ArrayClass || compilingArray, sym)
-      ts.primitiveTypeMap.getOrElse(sym, storage.getClassBType(sym))
-    }
-
-    /**
-      * When compiling Array.scala, the type parameter T is not erased and shows up in method
-      * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
-      */
-    def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
-      assert(sym.isType && compilingArray, sym)
-      ts.ObjectRef
-    }
-
-    tp.widenDealias match {
-      case JavaArrayType(el) =>ArrayBType(typeToTypeKind(el)(storage)) // Array type such as Array[Int] (kept by erasure)
-      case t: TypeRef =>
-        t.info match {
-
-          case _ =>
-            if (!t.symbol.isClass) nonClassTypeRefToBType(t.symbol)  // See comment on nonClassTypeRefToBType
-            else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
-        }
-      case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
-
-      /* AnnotatedType should (probably) be eliminated by erasure. However, we know it happens for
-        * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
-        * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
-        */
-      case a @ AnnotatedType(t, _) =>
-        report.debuglog(s"typeKind of annotated type $a")
-        typeToTypeKind(t)(storage)
-
-      /* The cases below should probably never occur. They are kept for now to avoid introducing
-        * new compiler crashes, but we added a warning. The compiler / library bootstrap and the
-        * test suite don't produce any warning.
-        */
-
-      case tp =>
-        report.warning(
-          s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
-            "If possible, please file a bug on https://github.com/scala/scala3/issues")
-
-        tp match {
-          case tp: ThisType if tp.cls == defn.ArrayClass => ts.ObjectRef // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
-          case tp: ThisType                         => storage.getClassBType(tp.cls)
-          // case t: SingletonType                   => primitiveOrClassToBType(t.classSymbol)
-          case t: SingletonType                     => typeToTypeKind(t.underlying)(storage)
-          case t: RefinedType                       => typeToTypeKind(t.parent)(storage)
-        }
-    }
-  }
-
-  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): Option[String] = {
-    if (needsGenericSignature(sym)) {
-      val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
-      if (erasedTypeSym.isPrimitiveValueClass) {
-        // Suppress signatures for symbols whose types erase in the end to primitive
-        // value types. This is needed to fix #7416.
-        None
-      } else {
-        val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
-        if (ctx.settings.XverifySignatures.value) {
-          jsOpt.foreach(verifySignature(sym, _))
-        }
-
-        jsOpt
-      }
+  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
+    val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
+    if (erasedTypeSym.isPrimitiveValueClass) {
+      // Suppress signatures for symbols whose types erase in the end to primitive
+      // value types. This is needed to fix #7416.
+      null
     } else {
-      None
+      val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
+      if (jsOpt != null && ctx.settings.XverifySignatures.value) {
+        verifySignature(sym, jsOpt.toString)
+      }
+      jsOpt
     }
   }
 
@@ -800,15 +615,13 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     import scala.tools.asm.util.CheckClassAdapter
     def wrap(body: => Unit): Unit = {
       try body
-      catch {
-        case ex: Throwable =>
-          report.error(
-            em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
-                 |signature: $sig
-                 |if this is reproducible, please report bug at https://github.com/scala/scala3/issues
-               """, sym.sourcePos)
-          throw  ex
-      }
+      catch case ex: Exception =>
+        report.error(
+          em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+               |signature: $sig
+               |if this is reproducible, please report bug at https://github.com/scala/scala3/issues
+             """, sym.sourcePos)
+        throw ex
     }
 
     wrap {
@@ -824,57 +637,23 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
     }
   }
 
-  // @M don't generate java generics sigs for (members of) implementation
-  // classes, as they are monomorphic (TODO: ok?)
-  private final def needsGenericSignature(sym: Symbol): Boolean = !(
-    // pp: this condition used to include sym.hasexpandedname, but this leads
-    // to the total loss of generic information if a private member is
-    // accessed from a closure: both the field and the accessor were generated
-    // without it.  This is particularly bad because the availability of
-    // generic information could disappear as a consequence of a seemingly
-    // unrelated change.
-      ctx.base.settings.XnoGenericSig.value
-    || sym.is(Artifact)
-    || sym.isAllOf(LiftedMethod)
-    || sym.is(Bridge)
-  )
-
-  private def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol): String = {
+  private def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol, descriptor: String | Null)(using Context): String | Null = {
     // scala/bug#3452 Static forwarder generation uses the same erased signature as the method if forwards to.
     // By rights, it should use the signature as-seen-from the module class, and add suitable
     // primitive and value-class boxing/unboxing.
     // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
-    val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
-    val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
-    if (erasedMemberType =:= sym.denot.info)
-      getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
+    if !ctx.base.settings.XnoGenericSig.value then
+      val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
+      val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
+      if (erasedMemberType =:= sym.denot.info)
+        val gensig = getGenericSignatureHelper(sym, moduleClass, memberTpe)
+        if gensig == null || descriptor.contentEquals(gensig) then null
+        else gensig.toString
+      else null
     else null
   }
-
-  def abort(msg: String): Nothing = {
-    report.error(msg)
-    throw new RuntimeException(msg)
-  }
-
-  private def compilingArray(using Context) =
-    ctx.compilationUnit.source.file.name == "Array.scala"
-
-  private val primitiveCompilationUnits = Set(
-    "Unit.scala",
-    "Boolean.scala",
-    "Char.scala",
-    "Byte.scala",
-    "Short.scala",
-    "Int.scala",
-    "Float.scala",
-    "Long.scala",
-    "Double.scala"
-  )
-
-  private def compilingPrimitive(using Context) =
-    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
 }
 
 object BCodeHelpers {

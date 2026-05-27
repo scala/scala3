@@ -126,7 +126,7 @@ trait TraceSyntax:
         case ex: runtime.NonLocalReturnControl[T @unchecked] =>
           finalize(trailing(ex.value))
           throw ex
-        case ex: Throwable =>
+        case ex: Exception =>
           val msg = s"<== $q = <missing> (with exception $ex)"
           finalize(msg)
           throw ex

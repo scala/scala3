@@ -350,7 +350,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   }
 
   /** Checks whether predicate `p` is true for all result parts of this expression,
-   *  where we zoom into Ifs, Matches, Tries, and Blocks.
+   *  where we zoom into Ifs, Matches, Tries, Blocks, and Parens.
    */
   def forallResults(tree: Tree, p: Tree => Boolean): Boolean = tree match
     case If(_, thenp, elsep) => forallResults(thenp, p) && forallResults(elsep, p)
@@ -359,6 +359,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
       cases.forall(c => forallResults(c.body, p))
       && (finalizer.isEmpty || forallResults(finalizer, p))
     case Block(_, expr) => forallResults(expr, p)
+    case untpd.Parens(expr) => forallResults(expr, p)
     case _ => p(tree)
 
   /** The tree stripped of the possibly nested applications (term and type).
@@ -510,14 +511,29 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   def bodyKind(body: List[Tree])(using Context): FlagSet =
     body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
 
+  /** Is `tree` a DerivedTypeTree, possibly followed by type arguments? */
+  def hasDerivedTree(tree: Tree)(using Context): Boolean = tree match
+    case tree: DerivedTypeTree => true
+    case AppliedTypeTree(tpt, _) => hasDerivedTree(tpt)
+    case _ => false
+
   /** Info of a variable in a pattern: The named tree and its type */
   type VarInfo = (NameTree, Tree)
 
-  /** An extractor for trees of the form `id` or `id: T` */
+  /** An extractor for trees of the form `id` or `id: T` or `_: T` (but not `_`) */
   object IdPattern {
     def unapply(tree: Tree)(using Context): Option[VarInfo] = tree match {
       case id: Ident if id.name != nme.WILDCARD => Some((id, TypeTree()))
       case Typed(id: Ident, tpt) => Some((id, tpt))
+      case _ => None
+    }
+  }
+
+  /** An extractor for trees of the form `(...)` or `(...): T`. */
+  object TuplePattern {
+    def unapply(tree: Tree)(using Context): Option[(List[Tree], Tree)] = tree match {
+      case Tuple(elems) => Some((elems, TypeTree()))
+      case Typed(Tuple(elems), tpt) => Some((elems, tpt))
       case _ => None
     }
   }
@@ -596,6 +612,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           || sym == defn.Predef_classOf
           || sym == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType]
           || defn.capsErasedValueMethods.contains(sym)
+          || sym == defn.Any_typeCast
       then Pure
       else Impure
     case Apply(fn, args) =>
@@ -1099,8 +1116,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false
+      def isDynamicMethod(name: Name): Boolean =
+        name == nme.applyDynamic || name == nme.selectDynamic ||
+        name == nme.updateDynamic || name == nme.applyDynamicNamed
       !tree.symbol.exists
       && tree.isTerm
+      && !isDynamicMethod(tree.name)  // Don't treat dynamic method calls as structural (prevents infinite recursion)
       && hasRefinement(tree.qualifier.tpe)
     funPart(tree) match
       case tree: Select =>

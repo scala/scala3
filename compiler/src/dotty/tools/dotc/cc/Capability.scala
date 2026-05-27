@@ -8,7 +8,7 @@ import util.{SimpleIdentitySet, EqHashMap}
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
-import Periods.{NoRunId, RunWidth}
+import Periods.{NoRunId, RunId, RunWidth}
 import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.{Refs, emptyRefs, VarState}
@@ -17,6 +17,7 @@ import Flags.*
 import config.Printers.capt
 import annotation.constructorOnly
 import ast.tpd
+import tpd.*
 import printing.{Printer, Showable}
 import printing.Texts.Text
 import reporting.{Message, trace}
@@ -48,7 +49,7 @@ import collection.immutable
  */
 object Capabilities:
   opaque type Validity = Int
-  def validId(runId: Int, iterId: Int): Validity =
+  def validId(runId: RunId, iterId: Int): Validity =
     runId + (iterId << RunWidth)
   def currentId(using Context): Validity = validId(ctx.runId, ccState.iterationId)
   val invalid: Validity = validId(NoRunId, 0)
@@ -69,8 +70,20 @@ object Capabilities:
 
   trait SetCapability extends CoreCapability
 
-  trait DerivedCapability extends Capability:
+  trait DerivedCapability extends Capability {
     def underlying: Capability
+
+    /** A new capability like this one but with `c` as underlying.
+     *  @pre: `c` is of an acceptable type for this capabilitty class
+     */
+    def newLikeThis(c: Capability): DerivedCapability
+
+    /** The same capability but with `c` as underlying.
+     *  @pre: `c` is of an acceptable type for this capabilitty class
+     */
+    def derivedCapability(c: Capability): DerivedCapability =
+      if c eq underlying then this else newLikeThis(c)
+  }
 
   /** If `x` is a capability, its maybe capability `x?`. `x?` stands for a capability
    *  `x` that might or might not be part of a capture set. We have `{} <: {x?} <: {x}`.
@@ -89,7 +102,8 @@ object Capabilities:
    *
    *   but it has fewer issues with type inference.
    */
-  case class Maybe(underlying: Capability) extends DerivedCapability
+  case class Maybe(underlying: Capability) extends DerivedCapability:
+    def newLikeThis(c: Capability) = Maybe(c)
 
   /** The readonly capability `x.rd`. We have {x.rd} <: {x}.
    *
@@ -98,7 +112,8 @@ object Capabilities:
    *      (x?).readOnly = (x.rd)?
    */
   case class ReadOnly(underlying: CoreCapability | RootCapability | Reach | Restricted)
-  extends DerivedCapability
+  extends DerivedCapability:
+    def newLikeThis(c: Capability) = ReadOnly(c.asInstanceOf)
 
   /** The restricted capability `x.only[C]`. We have {x.only[C]} <: {x}.
    *
@@ -108,7 +123,8 @@ object Capabilities:
    *      (x.rd).restrict[T] = (x.restrict[T]).rd
    */
   case class Restricted(underlying: CoreCapability | RootCapability | Reach, cls: ClassSymbol)
-  extends DerivedCapability
+  extends DerivedCapability:
+    def newLikeThis(c: Capability) = Restricted(c.asInstanceOf, cls)
 
   /** If `x` is a capability, its reach capability `x*`. `x*` stands for all
    *  capabilities reachable through `x`.
@@ -123,7 +139,8 @@ object Capabilities:
    *      (x.rd).reach      = (x.reach).rd
    *      (x.only[T]).reach = (x*).only[T]
    */
-  case class Reach(underlying: ObjectCapability) extends DerivedCapability
+  case class Reach(underlying: ObjectCapability) extends DerivedCapability:
+    def newLikeThis(c: Capability) = Reach(c.asInstanceOf)
 
   /** A class for the global root capabilities referenced as `caps.any` and `caps.fresh`.
    *  They do not subsume other capabilities, except in arguments of `withCapAsRoot` calls.
@@ -197,8 +214,7 @@ object Capabilities:
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
       if ccConfig.useLocalCapLevels && !CCState.collapseLocalCaps then
-        val refOwner = ref.levelOwner
-        ccOwner.isContainedIn(refOwner)
+        ccOwner.isContainedIn(ref.levelOwner.widenOwner(skipModules = true))
         || classifier.derivesFrom(defn.Caps_Unscoped)
       else ref.core match
         case ResultCap(_) | _: ParamRef => false
@@ -500,6 +516,7 @@ object Capabilities:
         case tp1: (TermRef | TypeRef) => // can't use NamedType here since it is not a capability
           if tp1.symbol.maybeOwner.isClass && !tp1.symbol.is(TypeParam) then
             tp1.prefix match
+              case pre: ObjectCapability if pre.refersToPackage => tp1
               case pre: Capability => pre.pathRoot
               case _ => tp1
           else tp1
@@ -515,6 +532,7 @@ object Capabilities:
     */
     final def pathOwner(using Context): Symbol = pathRoot match
       case tp1: ThisType => tp1.cls
+      case tp1: TermRef if tp1.symbol.is(Module) => tp1.symbol.moduleClass
       case tp1: NamedType => tp1.symbol.owner
       case _: GlobalCap => defn.CapsModule.moduleClass
       case tp1: LocalCap => tp1.ccOwner
@@ -558,27 +576,20 @@ object Capabilities:
 
     final def ccOwner(using Context): Symbol = computeOwner(mapUnscoped = false)
 
-    final def visibility(using Context): Symbol = this match
-      case self: LocalCap => adjustOwner(computeOwner(mapUnscoped = true))
-      case _ =>
-        val vis = computeOwner(mapUnscoped = true)
-        if vis.is(Param) then vis.owner else vis
-
     /** The symbol that represents the level closest-enclosing ccOwner.
      *  Symbols representing levels are
-     *   - class symbols, but not inner (non-static) module classes
+     *   - class symbols
      *   - method symbols, but not accessors or constructors
      *  For Unscoped LocalCaps the level owner is the top-level class.
      */
     final def levelOwner(using Context): Symbol =
-      adjustOwner(computeOwner(mapUnscoped = true))
+      computeOwner(mapUnscoped = true).widenOwner(skipModules = false)
 
-    final def adjustOwner(owner: Symbol)(using Context): Symbol =
-      if !owner.exists
-        || owner.isClass && (!owner.is(Flags.Module) || owner.isStatic)
-        || owner.is(Flags.Method, butNot = Flags.Accessor)
-      then owner
-      else adjustOwner(owner.owner)
+    final def visibility(using Context): Symbol =
+      val vis = computeOwner(mapUnscoped = true)
+      this match
+        case self: LocalCap => vis.widenOwner(skipModules = false)
+        case _ => if vis.is(Param) then vis.owner else vis
 
     /** Tests whether the capability derives from capability class `cls`. */
     def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = this match
@@ -586,11 +597,6 @@ object Capabilities:
       case self: DerivedCapability => self.underlying.derivesFromCapTrait(cls)
       case self: CoreCapability => self.superType.derivesFromCapTrait(cls)
       case _ => false
-
-    def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-    def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
-    def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
-    def derivesFromUnscoped(using Context): Boolean = derivesFromCapTrait(defn.Caps_Unscoped)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
@@ -764,7 +770,7 @@ object Capabilities:
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
         case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
         case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
-        case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
+        case y: TypeRef if y.derivesFromCapSet =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
           // They can be other capture set variables, which are bounded by `CapSet`,
           // like `def test[X^, Y^, Z >: X <: Y]`.
@@ -775,13 +781,15 @@ object Capabilities:
               this.subsumes(hi)
             case _ =>
               y.captureSetOfInfo.elems.forall(this.subsumes)
+        case y: ThisType if y.cls.is(Module) =>
+          this.subsumes(y.cls.sourceModule.termRef)
         case _ => false
       || this.match
           case Reach(x1) => x1.subsumes(y.stripReach)
           case Restricted(x1, cls) => y.isKnownClassifiedAs(cls) && x1.subsumes(y)
           case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
           case x: TypeRef if assumedContainsOf(x).contains(y) => true
-          case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
+          case x: TypeRef if x.derivesFromCapSet =>
             x.info match
               case TypeBounds(CapturingType(_, lorefs), _) =>
                 lorefs.elems.exists(_.subsumes(y))
@@ -789,6 +797,8 @@ object Capabilities:
                 lo.subsumes(y)
               case _ =>
                 x.captureSetOfInfo.elems.exists(_.subsumes(y))
+          case x: ThisType if x.cls.is(Module) =>
+            x.cls.sourceModule.termRef.subsumes(y)
           case _ => false
       catch case ex: AssertionError =>
         println(i"error while subsumes $this >> $y")
@@ -833,15 +843,17 @@ object Capabilities:
         case x: ResultCap =>
           y match
             case y: ResultCap => vs.unify(x, y)
-            case _ => y.derivesFromShared
+            case _ => y.derivesFromCapTrait(defn.Caps_SharedCapability)
         case _: GlobalCap =>
+          def globalCapSubsumes =
+            canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
           y match
             case _: GlobalCap => this eq y
             case _: ResultCap => false
-            case _: LocalCap if CCState.collapseLocalCaps => true
-            case _ =>
-              y.derivesFromShared
-              || canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
+            case _: LocalCap if CCState.collapseLocalCaps || globalCapSubsumes => true
+            case _ => globalCapSubsumes
+              // also had: || y.derivesFromCapTrait(defn.Caps_SharedCapability)
+              // but this fails i25863a.scala, i.e compilers without errors where there should be
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>
@@ -969,6 +981,20 @@ object Capabilities:
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
 
+  /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
+   *  if `cls1` and `cls2` don't have a common ancestor classifier. It is
+   *  assumed that each of `cls1` and `cls2` is either a classifier class or
+   *  is equal to AnyClass.
+   */
+  def greatestClassifier(cls1: ClassSymbol, cls2: ClassSymbol)(using Context): ClassSymbol =
+    if cls1.isSubClass(cls2) then cls1
+    else if cls2.isSubClass(cls1) then cls2
+    else
+      cls1.classDenot.baseClasses
+        .find: bc1 =>
+          bc1.isClassifiedCapabilityClass && cls2.isSubClass(bc1)
+        .getOrElse(defn.AnyClass)
+
   /** The smallest list D of class symbols in cs1 and cs2 such that
    *  every class symbol in cs1 and cs2 is a subclass of a class symbol in D
    */
@@ -998,7 +1024,7 @@ object Capabilities:
     case TypeArg(tp: Type)
     case UnsafeAssumePure
     case Formal(pref: ParamRef, app: tpd.Apply)
-    case ResultInstance(methType: Type, meth: Symbol)
+    case ResultInstance(methType: Type, tree: Tree)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
     case NewInstance(tp: Type, fields: List[Symbol])
@@ -1034,15 +1060,24 @@ object Capabilities:
         if meth.exists
         then i" when checking argument to parameter ${pref.paramName} of $meth"
         else ""
-      case ResultInstance(mt, meth) =>
-        val methDescr = if meth.exists then i"$meth's type " else ""
-        i" when instantiating $methDescr$mt"
+      case ResultInstance(mt, tree) =>
+        def methDescr(tree: Tree): String = tree match
+          case app: GenericApply =>
+            methDescr(app.fun)
+          case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen.stripCapturing) =>
+            i"function ${methDescr(qual)}"
+          case _ if tree.symbol.exists =>
+            i"${tree.symbol}'s type "
+          case _ =>
+            ""
+        i" when instantiating ${methDescr(tree)}$mt"
       case UnapplyInstance(info) =>
         i" when instantiating argument of unapply with type $info"
       case LocalInstance(restpe) =>
         i" when instantiating expected result type $restpe of function literal"
       case NewInstance(tp, fields) =>
-        i" when constructing instance $tp$contributingStr"
+        if tp.typeSymbol.is(Module) then contributingStr
+        else i" when constructing instance $tp$contributingStr"
       case LambdaExpected(respt) =>
         i" when instantiating expected result type $respt of lambda"
       case LambdaActual(restp: Type) =>
@@ -1058,7 +1093,6 @@ object Capabilities:
   end Origin
 
   // ---------- Maps between different kinds of root capabilities -----------------
-
 
   /** Map each occurrence of `caps.any` to a different LocalCap instance
    *  Exception: CapSet^ stays as it is.
@@ -1109,7 +1143,7 @@ object Capabilities:
 
   end GlobalCapToLocal
 
-  /** Maps caps.any to LocalCap instances. GlobalToLocalCap is a BiTypeMap since we don't want to
+  /** Maps caps.any to LocalCap instances. GlobalCapToLocal is a BiTypeMap since we don't want to
    *  freeze a set when it is mapped. On the other hand, we do not want LocalCap
    *  values to flow back to caps.any since that would fail disallowRootCapability
    *  tests elsewhere. We therefore use `withNoVarsMapped` to prevent
@@ -1223,7 +1257,7 @@ object Capabilities:
 
   abstract class CapMap(using Context) extends BiTypeMap:
     override def mapOver(t: Type): Type = t match
-      case t @ FunctionOrMethod(args, res) if variance > 0 && !t.isAliasFun =>
+      case t @ FunctionOrMethod(_, _) if variance > 0 && !t.isAliasFun =>
         t // `t` should be mapped in this case by a different call to `toResult`. See [[toResultInResults]].
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
@@ -1236,7 +1270,7 @@ object Capabilities:
 
     override def mapCapability(c: Capability, deep: Boolean) = c match
       case c: LocalCap =>
-        if variance > 0 then
+        if variance >= 0 then
           if sym.isAnonymousFunction && c.classifier.derivesFrom(defn.Caps_Unscoped) then
             c
           else if sym.exists && !c.ccOwner.isContainedIn(sym) then
@@ -1245,12 +1279,9 @@ object Capabilities:
           else
             ResultCap(mt).setOrigin(c)
         else
-          if variance == 0 then
-            fail(em"""$localResType captures the root capability `any` in invariant position.
-                     |This capability cannot be converted to a fresh capability in the result type of a function.""")
           // we accept variance < 0, and leave the `any` as it is          c
           c
-      case GlobalFresh if variance > 0 =>
+      case GlobalFresh =>
         ResultCap(mt) // if variance <= 0 we leave the fresh to be flagged later
       case _ =>
         super.mapCapability(c, deep)

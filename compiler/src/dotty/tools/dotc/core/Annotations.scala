@@ -26,7 +26,11 @@ object Annotations {
 
     def hasSymbol(sym: Symbol)(using Context) = symbol == sym
 
-    def matches(cls: Symbol)(using Context): Boolean = symbol.derivesFrom(cls)
+    def matches(cls: Symbol)(using Context): Boolean =
+      // No annotation matches `AnyClass`. This is necessary since `AnyClass`
+      // is returned if a requiredClass call fails, and we want to be
+      // conservative in this case.
+      (cls ne defn.AnyClass) && symbol.derivesFrom(cls)
 
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
 

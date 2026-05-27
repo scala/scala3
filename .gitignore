@@ -39,6 +39,8 @@ metals.sbt
 .scala-build
 sbt-launch.jar
 
+.claude
+
 # Partest
 dotty.jar
 dotty-lib.jar
@@ -67,6 +69,7 @@ testlogs/
 
 before-pickling.txt
 after-pickling.txt
+after-printing.txt
 bench/compile.txt
 
 community-build/scala3-bootstrapped.version

@@ -49,7 +49,7 @@
 38 |  val z3 = h[(() -> Cap) @retains[x.type]](() => x)(() => C())  // error
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           Separation failure: Illegal access to {x} which is hidden by the previous definition
-   |           of value z2 with type () ->{} C^.
+   |           of value z2 with type () -> C^.
    |           This type hides capabilities  {any, x}
    |
    |           where:    ^   refers to a root capability in the type of value z2

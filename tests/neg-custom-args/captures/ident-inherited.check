@@ -1,0 +1,56 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ident-inherited/Test_2.scala:6:22 ------------------------
+6 |  val a: () -> Unit = () => this.println()    // error
+  |                      ^^^^^^^^^^^^^^^^^^^^
+  |                    Found:    () ->{test.Test} Unit
+  |                    Required: () -> Unit
+  |
+  |                    Note that capability `any` cannot flow into capture set {}.
+  |
+  |                    Note that capability `test.Test` cannot flow into capture set {}.
+  |                    Note that object Test is a capability because it uses capabilities {test.Consol}
+  |
+  |                    where:    any is a root capability classified as SharedCapability in the type of object Consol
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ident-inherited/Test_2.scala:7:22 ------------------------
+7 |  val b: () -> Unit = () => this.print    // error
+  |                      ^^^^^^^^^^^^^^^^
+  |                    Found:    () ->{test.Test} Unit
+  |                    Required: () -> Unit
+  |
+  |                    Note that capability `any` cannot flow into capture set {}.
+  |
+  |                    Note that capability `test.Test` cannot flow into capture set {}.
+  |                    Note that object Test is a capability because it uses capabilities {test.Consol}
+  |
+  |                    where:    any is a root capability classified as SharedCapability in the type of object Consol
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ident-inherited/Test_2.scala:8:22 ------------------------
+8 |  val c: () -> Unit = () => println()    // error
+  |                      ^^^^^^^^^^^^^^^
+  |                    Found:    () ->{test.Test} Unit
+  |                    Required: () -> Unit
+  |
+  |                    Note that capability `any` cannot flow into capture set {}.
+  |
+  |                    Note that capability `test.Test` cannot flow into capture set {}.
+  |                    Note that object Test is a capability because it uses capabilities {test.Consol}
+  |
+  |                    where:    any is a root capability classified as SharedCapability in the type of object Consol
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ident-inherited/Test_2.scala:9:22 ------------------------
+9 |  val d: () -> Unit = () => print    // error
+  |                      ^^^^^^^^^^^
+  |                    Found:    () ->{test.Test} Unit
+  |                    Required: () -> Unit
+  |
+  |                    Note that capability `any` cannot flow into capture set {}.
+  |
+  |                    Note that capability `test.Test` cannot flow into capture set {}.
+  |                    Note that object Test is a capability because it uses capabilities {test.Consol}
+  |
+  |                    where:    any is a root capability classified as SharedCapability in the type of object Consol
+  |
+  | longer explanation available when compiling with `-explain`
