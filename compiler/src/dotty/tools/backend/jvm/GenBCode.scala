@@ -88,7 +88,7 @@ class GenBCode extends Phase { self =>
   private var _wellKnownBTypes: WellKnownBTypes | Null = null
   def wellKnownBTypes(using Context): WellKnownBTypes = {
     if _wellKnownBTypes eq null then
-      _wellKnownBTypes = WellKnownBTypes(frontendAccess, bTypeLoader)(using ctx)
+      _wellKnownBTypes = WellKnownBTypes(bTypeLoader)(using ctx)
     _wellKnownBTypes.nn
   }
 
@@ -141,6 +141,9 @@ class GenBCode extends Phase { self =>
       case null => ()
 
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
+    // as long as we might initialize `generatedClassHandler` (or anything else) in here, we must set the context's phase,
+    // otherwise we'll initialize stuff like KnownBTypes with a context at the wrong phase, thus the symbols won't have the denotations we expect
+    given unitCtx: Context = ctx.fresh.setPhase(this)
     try
       val result = super.runOn(units)
       for (exn, f) <- generatedClassHandler.complete() do
