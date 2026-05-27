@@ -75,32 +75,34 @@ dd .snippet {
 }
 
 .snippet-showhide {
-  visibility: hidden;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.snippet-showhide-text {
   white-space: nowrap;
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.snippet-showhide::after {
-  margin-left: calc(5 * var(--base-spacing));
-  visibility: visible;
+.snippet-showhide-text::before {
   content: "Show all lines";
-  color: var(--action-primary-content-default);
-  text-decoration: none;
-  cursor: pointer;
 }
 
-.snippet-showhide:checked::after {
-  visibility: visible;
+.snippet-showhide:checked + .snippet-showhide-text::before {
   content: "Hide";
-  color: var(--action-primary-content-default);
-  text-decoration: none;
-  cursor: pointer;
 }
 
-.snippet-showhide-label:hover::before {
+.snippet-showhide-button:hover .snippet-showhide-text {
   color: var(--action-primary-content-hover);
 }
 
-.snippet-showhide-label:active::before {
+.snippet-showhide-button:active .snippet-showhide-text {
   color: var(--action-primary-content-active);
 }
 
@@ -145,7 +147,8 @@ dd .snippet {
   top: 20%;
   left: 50%;
   margin-left: -25%;
-  background-color: rgba(245, 245, 245, 1);
+  background-color: var(--action-primary-background-default-solid);
+  color: var(--text-primary);
   padding: calc(2 * var(--base-spacing));
   border-radius: 4px;
   width: 50%;
@@ -163,6 +166,270 @@ dd .snippet {
 
 .scastie.embedded {
   width: unset !important;
+}
+
+/* Make the embedded Scastie popup follow the scaladoc document theme rather
+ * than its hard-coded light theme. Scastie currently uses CodeMirror 6, so
+ * we target the cm-* / tok-* class names (not the CodeMirror 5 names). All
+ * selectors are scoped under .snippet-popup so nothing leaks to non-popup
+ * content. See scala/scala3#25414. */
+.snippet-popup .cm-editor,
+.snippet-popup .cm-scroller,
+.snippet-popup .cm-content,
+.snippet-popup .cm-line,
+.snippet-popup .cm-gutters,
+.snippet-popup .cm-gutter,
+.snippet-popup .cm-foldGutter,
+.snippet-popup .cm-panels,
+.snippet-popup .cm-panel,
+.snippet-popup .cm-tooltip {
+  background-color: var(--action-primary-background-default-solid) !important;
+  color: var(--code-syntax-highlighting-code-fg) !important;
+}
+
+.snippet-popup .cm-gutters {
+  border-right: 1px solid var(--action-primary-border-default) !important;
+}
+
+.snippet-popup .cm-lineNumbers .cm-gutterElement,
+.snippet-popup .cm-foldGutter .cm-gutterElement {
+  color: var(--code-syntax-highlighting-line-number) !important;
+}
+
+.snippet-popup .cm-activeLine,
+.snippet-popup .cm-activeLineGutter {
+  background-color: var(--action-primary-background-hover) !important;
+}
+
+.snippet-popup .cm-cursor,
+.snippet-popup .cm-cursor-primary {
+  border-left-color: var(--text-primary) !important;
+}
+
+.snippet-popup .cm-selectionBackground,
+.snippet-popup .cm-focused .cm-selectionBackground,
+.snippet-popup .cm-selectionMatch {
+  background-color: var(--action-primary-background-selected) !important;
+}
+
+.snippet-popup .cm-matchingBracket {
+  outline: 1px solid var(--action-primary-border-default) !important;
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* Scastie applies syntax highlighting via Tree-sitter scope class names
+ * (not CodeMirror's .tok-* names). The actual selectors live in scastie's
+ * embedded.css as `.scastie .app.{light,dark} .cm-s-solarized .X`. We
+ * override those with scaladoc's theme colors so the popup matches the
+ * surrounding document instead of staying solarized. Most Scastie rules
+ * lack !important, so ours wins regardless of order; for the two that DO
+ * use !important (.method-call, .constructor) we add higher-specificity
+ * rules below. */
+/* Tree-sitter via CodeMirror 6 tags finer-grained scopes than scaladoc's
+ * hljs renderer does (e.g. it tags package-path segments as .type-qualifier,
+ * decorators as .attribute, etc.). Rather than collapse them all back into
+ * scaladoc's smaller semantic palette, give each Tree-sitter category its
+ * own hue drawn from scaladoc's underlying Radix-style color tokens. The
+ * *11 variants are theme-aware (light/dark adapt automatically via
+ * :root.theme-dark in colors.css), so this gives a richer-than-hljs popup
+ * theme that still tracks the document's light/dark mode. */
+
+/* Map every Tree-sitter scope class Scastie uses to scaladoc's semantic
+ * highlight variables so the popup's palette tracks the document's hljs
+ * palette exactly (light & dark adapt automatically via colors.css). We
+ * never demote a Tree-sitter highlight to the default code color — every
+ * scope keeps its own color, the colors just shift to scaladoc's tones. */
+
+/* Keywords + control flow. */
+.snippet-popup .keyword,
+.snippet-popup .keyword-function,
+.snippet-popup .keyword-operator,
+.snippet-popup .keyword-return,
+.snippet-popup .conditional,
+.snippet-popup .repeat,
+.snippet-popup .include,
+.snippet-popup .exception,
+.snippet-popup .tag,
+.snippet-popup .tag-delimiter { color: var(--code-syntax-highlighting-keyword) !important; }
+
+/* All "type"-shaped scopes share scaladoc's type teal. Tree-sitter tags
+ * package-path segments, builtins, and user types with .type / .type-builtin
+ * / .namespace / .symbol; keeping them uniform here matches hljs's
+ * --code-syntax-highlighting-type for `Int`, `Mutable`, etc., and the same
+ * teal carries the visual cue Tree-sitter intends for namespaces. */
+.snippet-popup .type,
+.snippet-popup .type-builtin,
+.snippet-popup .namespace,
+.snippet-popup .symbol { color: var(--code-syntax-highlighting-type) !important; }
+
+/* "Title" tokens — class/trait/object definition heads AND function/method
+ * declarations and call sites. Mapped to scaladoc's --code-syntax-highlighting-title
+ * (--grass9), which is darker than --grass11 and matches how hljs colors
+ * class/method names in the document. */
+.snippet-popup .type-definition,
+.snippet-popup .function,
+.snippet-popup .function-builtin,
+.snippet-popup .function-macro,
+.snippet-popup .function-call,
+.snippet-popup .method,
+.snippet-popup .method-call,
+.snippet-popup .constructor { color: var(--code-syntax-highlighting-title) !important; }
+
+/* Type modifiers (`inline`, `transparent`, etc.). Distinct purple so they
+ * don't blur into either keywords or type names. */
+.snippet-popup .type-qualifier { color: var(--code-syntax-highlighting-meta) !important; }
+
+/* Strings and string-shaped literals. */
+.snippet-popup .string,
+.snippet-popup .character,
+.snippet-popup .text-literal { color: var(--code-syntax-highlighting-string) !important; }
+.snippet-popup .string-escape,
+.snippet-popup .string-regex { color: var(--code-syntax-highlighting-subst) !important; }
+
+/* Numeric literals and symbolic constants. */
+.snippet-popup .number,
+.snippet-popup .float,
+.snippet-popup .boolean,
+.snippet-popup .constant,
+.snippet-popup .constant-builtin,
+.snippet-popup .constant-macro { color: var(--code-syntax-highlighting-literal) !important; }
+
+/* Comments. */
+.snippet-popup .comment { color: var(--code-syntax-highlighting-comment) !important; font-style: italic; }
+
+/* Identifier-like scopes Tree-sitter colors but hljs would leave plain —
+ * route them through scaladoc's `--code-syntax-highlighting-variable` so they
+ * stay highlighted (rich Tree-sitter coloring preserved) but in the
+ * document's variable hue rather than Scastie's solarized red. */
+.snippet-popup .variable,
+.snippet-popup .property,
+.snippet-popup .field { color: var(--code-syntax-highlighting-variable) !important; }
+
+/* Built-in "magic" identifiers (`this`, `super`, …) — same family as
+ * variables, italicized to distinguish. */
+.snippet-popup .variable-builtin { color: var(--code-syntax-highlighting-variable) !important; font-style: italic; }
+
+/* Annotations / decorators / labels — share scaladoc's `--meta` slot
+ * (yellow). */
+.snippet-popup .attribute,
+.snippet-popup .tag-attribute,
+.snippet-popup .label { color: var(--code-syntax-highlighting-meta) !important; }
+
+/* Errors. */
+.snippet-popup .error { color: var(--code-syntax-highlighting-deletion) !important; text-decoration: underline wavy; }
+
+/* Plain function-parameter names and prose tokens — kept at default code
+ * color since Tree-sitter only weakly distinguishes these. */
+.snippet-popup .parameter,
+.snippet-popup .active-parameter,
+.snippet-popup .text,
+.snippet-popup .text-reference,
+.snippet-popup .operator,
+.snippet-popup .punctuation-bracket,
+.snippet-popup .punctuation-delimiter,
+.snippet-popup .punctuation-special { color: var(--code-syntax-highlighting-code-fg) !important; }
+
+/* Markdown / docstring-style text tokens. */
+.snippet-popup .text-emphasis { font-style: italic !important; color: var(--code-syntax-highlighting-code-fg) !important; }
+.snippet-popup .text-strong { font-weight: bold !important; color: var(--code-syntax-highlighting-code-fg) !important; }
+.snippet-popup .text-title { font-weight: bold !important; color: var(--code-syntax-highlighting-title) !important; }
+
+/* Scastie sets !important on .method-call and .constructor with the selector
+ * `.scastie .app.{light,dark} .cm-s-solarized .X` (specificity 0,5,0). Match
+ * that with 6 classes so we win the !important-vs-!important tiebreak. */
+.snippet-popup .scastie.embedded .app .cm-s-solarized .method-call,
+.snippet-popup .scastie.embedded .app .cm-s-solarized .constructor {
+  color: var(--code-syntax-highlighting-title) !important;
+}
+
+/* Keep CodeMirror's `.tok-*` overrides as a fallback: any HighlightStyle that
+ * was configured with `class: "tok-X"` (rather than a Tree-sitter scope) will
+ * still hit these rules. */
+.snippet-popup .tok-keyword { color: var(--code-syntax-highlighting-keyword) !important; }
+.snippet-popup .tok-string,
+.snippet-popup .tok-string2 { color: var(--code-syntax-highlighting-string) !important; }
+.snippet-popup .tok-number,
+.snippet-popup .tok-atom,
+.snippet-popup .tok-bool,
+.snippet-popup .tok-literal { color: var(--code-syntax-highlighting-literal) !important; }
+.snippet-popup .tok-comment { color: var(--code-syntax-highlighting-comment) !important; font-style: italic; }
+.snippet-popup .tok-variableName,
+.snippet-popup .tok-propertyName { color: var(--code-syntax-highlighting-variable) !important; }
+.snippet-popup .tok-typeName,
+.snippet-popup .tok-className,
+.snippet-popup .tok-namespace { color: var(--code-syntax-highlighting-type) !important; }
+.snippet-popup .tok-definition,
+.snippet-popup .tok-labelName { color: var(--code-syntax-highlighting-title) !important; }
+.snippet-popup .tok-meta,
+.snippet-popup .tok-macroName { color: var(--code-syntax-highlighting-meta) !important; }
+.snippet-popup .tok-operator,
+.snippet-popup .tok-punctuation { color: var(--code-syntax-highlighting-code-fg) !important; }
+.snippet-popup .tok-deleted { color: var(--code-syntax-highlighting-deletion) !important; }
+.snippet-popup .tok-inserted { color: var(--code-syntax-highlighting-addition) !important; }
+.snippet-popup .tok-invalid { color: var(--code-syntax-highlighting-deletion) !important; text-decoration: underline wavy; }
+
+/* Force the popup's editor to use the exact same font (and weight) scaladoc
+ * uses for in-document snippets. Without this Scastie's CodeMirror falls
+ * back to whatever Fira Code variant is on the system, which renders with
+ * subtly different stroke weight than scaladoc's `FiraCode-Regular`, making
+ * identical CSS colors look brighter or thinner side-by-side. */
+.snippet-popup .scastie .cm-editor,
+.snippet-popup .scastie .cm-scroller,
+.snippet-popup .scastie .cm-content,
+.snippet-popup .scastie .cm-line,
+.snippet-popup .scastie .inline {
+  font-family: "FiraCode-Regular", "Fira Code", ui-monospace, monospace !important;
+  font-weight: 400 !important;
+}
+
+/* Scastie UI chrome: the Run button, Console pane, top bar, resize handler,
+ * and editor-buttons icons all default to solarized blue/teal. Re-theme them
+ * to scaladoc variables so the whole popup is consistent. */
+.snippet-popup .scastie .console-container .run-button,
+.snippet-popup .scastie .console-container .run-button:hover {
+  background: var(--action-primary-background-default-solid) !important;
+  color: var(--action-primary-content-default) !important;
+  border: 1px solid var(--action-primary-border-default) !important;
+}
+.snippet-popup .scastie .console-container .run-button:hover {
+  background: var(--action-primary-background-hover) !important;
+  color: var(--action-primary-content-hover) !important;
+}
+
+.snippet-popup .scastie .editor-container .console,
+.snippet-popup .scastie .editor-container .switcher-show,
+.snippet-popup .scastie .editor-container .switcher-hide,
+.snippet-popup .scastie .console-container {
+  background: var(--action-primary-background-default-solid) !important;
+  color: var(--text-primary) !important;
+}
+
+.snippet-popup .scastie .editor-container .handler {
+  background: var(--action-primary-border-default) !important;
+}
+
+.snippet-popup .scastie .editor-topbar,
+.snippet-popup .scastie .editor-mobile {
+  background: var(--action-primary-background-default-solid) !important;
+  box-shadow: none !important;
+}
+
+.snippet-popup .scastie .editor-buttons .btn,
+.snippet-popup .scastie .editor-buttons .btn:hover {
+  background: transparent !important;
+}
+.snippet-popup .scastie .editor-buttons .btn { color: var(--action-primary-content-default) !important; }
+.snippet-popup .scastie .editor-buttons .btn:hover { color: var(--action-primary-content-hover) !important; }
+.snippet-popup .scastie .editor-buttons .btn.disabled { color: var(--text-secondary, var(--code-syntax-highlighting-comment)) !important; }
+
+/* The main scastie panel and editor wrapper background. Match the popup. */
+.snippet-popup .scastie .main-panel,
+.snippet-popup .scastie .code .editor-wrapper,
+.snippet-popup .scastie .code .editor-wrapper .cm-s-solarized,
+.snippet-popup .scastie .code .editor-wrapper .cm-s-solarized .cm-gutters {
+  background: var(--action-primary-background-default-solid) !important;
+  color: var(--code-syntax-highlighting-code-fg) !important;
 }
 
 .tooltip-container {
@@ -199,64 +466,98 @@ dd .snippet {
   border-bottom: 2px dotted pink;
 }
 
+/* !important here is load-bearing. Scastie's embedded.css (loaded into <head>
+ * when the user clicks Run on a snippet) overrides hljs-* rules with its
+ * solarized palette, which would otherwise re-theme every code block on the
+ * page. See scala/scala3#25414. */
 .hljs-keyword {
-  color: var(--code-method-highlighting-keyword);
+  color: var(--code-method-highlighting-keyword) !important;
 }
 
 .hljs-comment {
-  color: var(--code-syntax-highlighting-comment);
+  color: var(--code-syntax-highlighting-comment) !important;
 }
 
 .hljs-quote {
-  color: var(--code-syntax-highlighting-quote);
+  color: var(--code-syntax-highlighting-quote) !important;
 }
 
 .hljs-line-number {
-  color: var(--code-syntax-highlighting-line-number);
+  color: var(--code-syntax-highlighting-line-number) !important;
 }
 
 .hljs-title {
-  color: var(--code-syntax-highlighting-title);
+  color: var(--code-syntax-highlighting-title) !important;
 }
 
 .hljs-keyword {
-  color: var(--code-syntax-highlighting-keyword);
+  color: var(--code-syntax-highlighting-keyword) !important;
 }
 
 .hljs-code-fg {
-  color: var(--code-syntax-highlighting-code-fg);
+  color: var(--code-syntax-highlighting-code-fg) !important;
 }
 
 .hljs-literal {
-  color: var(--code-syntax-highlighting-literal);
+  color: var(--code-syntax-highlighting-literal) !important;
 }
 
 .hljs-type {
-  color: var(--code-syntax-highlighting-type);
+  color: var(--code-syntax-highlighting-type) !important;
 }
 
 .hljs-subst {
-  color: var(--code-syntax-highlighting-subst);
+  color: var(--code-syntax-highlighting-subst) !important;
 }
 
 .hljs-meta {
-  color: var(--code-syntax-highlighting-meta);
+  color: var(--code-syntax-highlighting-meta) !important;
 }
 
 .hljs-string {
-  color: var(--code-syntax-highlighting-string);
+  color: var(--code-syntax-highlighting-string) !important;
 }
 
 .hljs-deletion {
-  color: var(--code-syntax-highlighting-deletion);
+  color: var(--code-syntax-highlighting-deletion) !important;
 }
 
 .hljs-addition {
-  color: var(--code-syntax-highlighting-addition);
+  color: var(--code-syntax-highlighting-addition) !important;
 }
 
 .hljs-variable {
-  color: var(--code-syntax-highlighting-variable);
+  color: var(--code-syntax-highlighting-variable) !important;
+}
+
+/* Scastie's embedded.css ships solarized colors for additional hljs classes
+ * scaladoc doesn't style itself; neutralize them so Scala snippets retain
+ * the document theme while the Scastie popup is open. */
+.hljs,
+.hljs-tag,
+.hljs-name,
+.hljs-bullet,
+.hljs-template-variable,
+.hljs-selector-tag,
+.hljs-symbol,
+.hljs-number,
+.hljs-link,
+.hljs-attr,
+.hljs-built_in,
+.hljs-doctag,
+.hljs-regexp,
+.hljs-attribute,
+.hljs-template-tag,
+.hljs-operator,
+.hljs-punctuation,
+.hljs-section,
+.hljs-strong,
+.hljs-emphasis,
+.hljs-code {
+  color: inherit !important;
+  background: transparent !important;
+  font-weight: inherit !important;
+  font-style: inherit !important;
 }
 
 /* Scrollbar */
