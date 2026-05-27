@@ -32,7 +32,7 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes) extends BCodeSkelBuilder {
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -155,7 +155,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         // binary operation
         case rarg :: Nil =>
           val isShift = isShiftOp(code)
-          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), bTypes)
+          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), bTypes.ObjectRef)
 
           if (isShift || isBitwiseOp(code)) {
             assert(resKind.isIntegralType || (resKind == BOOL),
@@ -522,7 +522,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           val thrownType = expectedType
           // `throw null` is valid although scala.Null (as defined in src/library-aux) isn't a subtype of Throwable.
           // Similarly for scala.Nothing (again, as defined in src/library-aux).
-          assert(thrownType == bTypes.srNullRef || thrownType == bTypes.srNothingRef || thrownType.asClassBType.isSubtypeOf(bTypes.jlThrowableRef))
+          assert(thrownType.isNull || thrownType.isNothing || thrownType.asClassBType.isSubtypeOf(bTypes.jlThrowableRef))
           emit(asm.Opcodes.ATHROW)
     end genAdaptAndSendToDest
 
@@ -1169,7 +1169,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     end emitLocalVarScopes
 
     def adapt(from: BType, to: BType)(using Context): Unit = {
-      if (from == bTypes.srNothingRef) {
+      if (from.isNothing) {
         /* There are two possibilities for from being Nothing: emitting a "throw e" expressions and
          * loading a (phantom) value of type Nothing.
          *
@@ -1216,7 +1216,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
          */
         if (lastInsn.getOpcode != asm.Opcodes.ATHROW)
           emit(asm.Opcodes.ATHROW)
-      } else if (from == bTypes.srNullRef) {
+      } else if (from.isNull) {
         /* After loading an expression of type `scala.runtime.Null$`, introduce POP; ACONST_NULL.
          * This is required to pass the verifier: in Scala's type system, Null conforms to any
          * reference type. In bytecode, the type Null is represented by scala.runtime.Null$, which
@@ -1607,7 +1607,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           genLoad(nonNullSide, bTypes.ObjectRef)
           genCZJUMP(success, failure, op, bTypes.ObjectRef, targetIfNoJump)
         } else {
-          val tk = tpeTK(l).maxType(tpeTK(r), bTypes)
+          val tk = tpeTK(l).maxType(tpeTK(r), bTypes.ObjectRef)
           genLoad(l, tk)
           stack.push(tk)
           genLoad(r, tk)

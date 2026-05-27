@@ -540,7 +540,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
           a.length - 2 == b.length && a(0) == 'L' && a.last == ';' && a.regionMatches(1, b, 0, b.length) ||
           b.length - 2 == a.length && b(0) == 'L' && b.last == ';' && b.regionMatches(1, a, 0, a.length)
       }
-      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, "java/lang/Object") || {
+      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ClassBType.javaLangObjectInternalName) || {
         val aType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN)
         val bType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)
         // TODO instead of getOrElse, we should bubble the warning up...

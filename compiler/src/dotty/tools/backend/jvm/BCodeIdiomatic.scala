@@ -176,12 +176,12 @@ trait BCodeIdiomatic {
       recipe: String,
       argTypes: Seq[asm.Type],
       constants: Seq[String],
-      ts: WellKnownBTypes
+      bTypes: KnownBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
-        asm.Type.getMethodDescriptor(ts.StringRef.toASMType, argTypes*),
-        ts.jliStringConcatFactoryMakeConcatWithConstantsHandle,
+        asm.Type.getMethodDescriptor(bTypes.StringRef.toASMType, argTypes*),
+        bTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants)*
       )
     }

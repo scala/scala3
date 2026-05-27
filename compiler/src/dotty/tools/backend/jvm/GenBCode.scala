@@ -78,11 +78,16 @@ class GenBCode extends Phase { self =>
     _bTypeLoader.nn
   }
 
+  private var _knownBTypes: KnownBTypes | Null = null
+  def knownBTypes(using Context): KnownBTypes = {
+    if _knownBTypes eq null then
+      _knownBTypes = KnownBTypes(bTypeLoader)(using ctx)
+    _knownBTypes.nn
+  }
+
   private var _wellKnownBTypes: WellKnownBTypes | Null = null
   def wellKnownBTypes(using Context): WellKnownBTypes = {
     if _wellKnownBTypes eq null then
-      // lazy load to break the circular dependency
-      def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
       _wellKnownBTypes = WellKnownBTypes(frontendAccess, bTypeLoader)(using ctx)
     _wellKnownBTypes.nn
   }
@@ -125,7 +130,7 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      _codeGen = new CodeGen(optimizerUtils, primitives, frontendAccess, callGraph, bTypeLoader, wellKnownBTypes, generatedClassHandler)
+      _codeGen = new CodeGen(optimizerUtils, primitives, frontendAccess, callGraph, bTypeLoader, knownBTypes, wellKnownBTypes, generatedClassHandler)
     _codeGen.nn
   }
 

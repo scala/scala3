@@ -69,7 +69,7 @@ object TypeFlowInterpreter {
   // Marker trait for BasicValue subclasses that add a special meaning on top of the value's `getType`.
   trait SpecialValue
 
-  private val obj = Type.getObjectType("java/lang/Object")
+  private val obj = Type.getObjectType(ClassBType.javaLangObjectInternalName)
 
   // A BasicValue with equality that knows about special versions
   class SpecialAwareBasicValue(tpe: Type | Null) extends BasicValue(tpe) {

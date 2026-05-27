@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Decorators.em
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
+import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.report
 import dotty.tools.io.PlainFile.toPlainFile
 
@@ -153,6 +154,7 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
    *  It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
    */
   private final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags) {
+    private val objectRef = bTypeLoader.classBTypeFromSymbol(defn.ObjectClass)
 
     /**
      * This method is used by asm when computing stack map frames.
@@ -162,7 +164,7 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
       // i.e., have been loaded either from symbols or from class files.
       val a = bTypeLoader.previouslyConstructedClassBType(inameA).get
       val b = bTypeLoader.previouslyConstructedClassBType(inameB).get
-      val lub = a.jvmWiseLUB(b, bTypes)
+      val lub = a.jvmWiseLUB(b, objectRef)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.

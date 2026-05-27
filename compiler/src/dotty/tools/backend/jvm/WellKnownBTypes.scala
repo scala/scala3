@@ -10,6 +10,138 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames.*
 import PostProcessorFrontendAccess.Lazy
 
+import scala.annotation.constructorOnly
+
+final class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) {
+  val ObjectRef: ClassBType = loader.classBTypeFromSymbol(defn.ObjectClass)
+  val StringRef: ClassBType = loader.classBTypeFromSymbol(defn.StringClass)
+  val srNullRef: ClassBType = loader.classBTypeFromSymbol(defn.RuntimeNullClass)
+  val jlClassRef: ClassBType = loader.classBTypeFromSymbol(defn.ClassClass)
+
+  val jlThrowableRef: ClassBType = loader.classBTypeFromSymbol(defn.ThrowableClass)
+  val jlClassCastExceptionRef: ClassBType = loader.classBTypeFromSymbol(defn.ClassCastExceptionClass)
+
+  val srBoxesRuntimeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
+
+  private val jliLambdaMetafactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
+  private val jliStringConcatFactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])
+  private val jliMethodHandlesLookupRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandlesLookupClass)
+  private val jliMethodTypeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
+  private val jliMethodHandleRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandleClass)
+  private val jliCallSiteRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
+  val jliLambdaMetaFactoryMetafactoryHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliLambdaMetafactoryRef.internalName,
+    "metafactory",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false
+  )
+  val jliLambdaMetaFactoryAltMetafactoryHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliLambdaMetafactoryRef.internalName,
+    "altMetafactory",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false
+  )
+  val jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliStringConcatFactoryRef.internalName,
+    "makeConcatWithConstants",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false
+  )
+
+  /**
+   * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
+   * operand stack (ldc instruction taking a class literal), see genConstant.
+   */
+  val boxedClassOfPrimitive: Map[BType, ClassBType] = Map(
+    UNIT   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Void]),
+    BOOL   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
+    BYTE   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Byte]),
+    SHORT  -> loader.classBTypeFromSymbol(requiredClass[java.lang.Short]),
+    CHAR   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Character]),
+    INT    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Integer]),
+    LONG   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Long]),
+    FLOAT  -> loader.classBTypeFromSymbol(requiredClass[java.lang.Float]),
+    DOUBLE -> loader.classBTypeFromSymbol(requiredClass[java.lang.Double])
+  )
+
+  /**
+   * Maps the method symbol for a box method to the boxed type of the result. For example, the
+   * method symbol for `Byte.box()` is mapped to the ClassBType `java/lang/Byte`.
+   */
+  val boxResultType: Map[Symbol, ClassBType] = Map(
+    Erasure.Boxing.boxMethod(defn.UnitClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Void]),
+    Erasure.Boxing.boxMethod(defn.BooleanClass) -> loader.classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
+    Erasure.Boxing.boxMethod(defn.ByteClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Byte]),
+    Erasure.Boxing.boxMethod(defn.ShortClass)   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Short]),
+    Erasure.Boxing.boxMethod(defn.CharClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Character]),
+    Erasure.Boxing.boxMethod(defn.IntClass)     -> loader.classBTypeFromSymbol(requiredClass[java.lang.Integer]),
+    Erasure.Boxing.boxMethod(defn.LongClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Long]),
+    Erasure.Boxing.boxMethod(defn.FloatClass)   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Float]),
+    Erasure.Boxing.boxMethod(defn.DoubleClass)  -> loader.classBTypeFromSymbol(requiredClass[java.lang.Double])
+  )
+  /**
+   * Maps the method symbol for an unbox method to the primitive type of the result.
+   * For example, the method symbol for `Byte.unbox()` is mapped to the PrimitiveBType BYTE.
+   */
+  val unboxResultType: Map[Symbol, BType] = Map(
+    Erasure.Boxing.unboxMethod(defn.UnitClass)    -> UNIT,
+    Erasure.Boxing.unboxMethod(defn.BooleanClass) -> BOOL,
+    Erasure.Boxing.unboxMethod(defn.ByteClass)    -> BYTE,
+    Erasure.Boxing.unboxMethod(defn.ShortClass)   -> SHORT,
+    Erasure.Boxing.unboxMethod(defn.CharClass)    -> CHAR,
+    Erasure.Boxing.unboxMethod(defn.IntClass)     -> INT,
+    Erasure.Boxing.unboxMethod(defn.LongClass)    -> LONG,
+    Erasure.Boxing.unboxMethod(defn.FloatClass)   -> FLOAT,
+    Erasure.Boxing.unboxMethod(defn.DoubleClass)  -> DOUBLE
+  )
+
+  val asmBoxTo: Map[BType, MethodNameAndType] = Map(
+    BOOL   -> MethodNameAndType("boxToBoolean",   MethodBType(List(BOOL),   boxedClassOfPrimitive(BOOL))),
+    BYTE   -> MethodNameAndType("boxToByte",      MethodBType(List(BYTE),   boxedClassOfPrimitive(BYTE))),
+    CHAR   -> MethodNameAndType("boxToCharacter", MethodBType(List(CHAR),   boxedClassOfPrimitive(CHAR))),
+    SHORT  -> MethodNameAndType("boxToShort",     MethodBType(List(SHORT),  boxedClassOfPrimitive(SHORT))),
+    INT    -> MethodNameAndType("boxToInteger",   MethodBType(List(INT),    boxedClassOfPrimitive(INT))),
+    LONG   -> MethodNameAndType("boxToLong",      MethodBType(List(LONG),   boxedClassOfPrimitive(LONG))),
+    FLOAT  -> MethodNameAndType("boxToFloat",     MethodBType(List(FLOAT),  boxedClassOfPrimitive(FLOAT))),
+    DOUBLE -> MethodNameAndType("boxToDouble",    MethodBType(List(DOUBLE), boxedClassOfPrimitive(DOUBLE)))
+  )
+  val asmUnboxTo: Map[BType, MethodNameAndType] = Map(
+    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ObjectRef), BOOL)),
+    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ObjectRef), BYTE)),
+    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ObjectRef), CHAR)),
+    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ObjectRef), SHORT)),
+    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ObjectRef), INT)),
+    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectRef), LONG)),
+    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectRef), FLOAT)),
+    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
+  )
+
+  import dotty.tools.backend.ScalaPrimitivesOps.*
+  val typeOfArrayOp: Map[Int, BType] = Map(
+    ZARRAY_LENGTH -> BOOL, ZARRAY_GET -> BOOL, ZARRAY_SET -> BOOL,
+    BARRAY_LENGTH -> BYTE, BARRAY_GET -> BYTE, BARRAY_SET -> BYTE,
+    SARRAY_LENGTH -> SHORT, SARRAY_GET -> SHORT, SARRAY_SET -> SHORT,
+    CARRAY_LENGTH -> CHAR, CARRAY_GET -> CHAR, CARRAY_SET -> CHAR,
+    IARRAY_LENGTH -> INT, IARRAY_GET -> INT, IARRAY_SET -> INT,
+    LARRAY_LENGTH -> LONG, LARRAY_GET -> LONG, LARRAY_SET -> LONG,
+    FARRAY_LENGTH -> FLOAT, FARRAY_GET -> FLOAT, FARRAY_SET -> FLOAT,
+    DARRAY_LENGTH -> DOUBLE, DARRAY_GET -> DOUBLE, DARRAY_SET -> DOUBLE,
+    OARRAY_LENGTH -> ObjectRef, OARRAY_GET -> ObjectRef, OARRAY_SET -> ObjectRef
+  )
+}
+
 
 case class MethodNameAndType(name: String, methodType: MethodBType)
 
@@ -43,30 +175,6 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
 
   lazy val boxedClasses: Set[ClassBType] = boxedClassOfPrimitive.values.toSet
 
-  /**
-   * Maps the method symbol for a box method to the boxed type of the result. For example, the
-   * method symbol for `Byte.box()` is mapped to the ClassBType `java/lang/Byte`.
-   */
-  def boxResultType: Map[Symbol, ClassBType] = _boxResultType.get
-  private lazy val _boxResultType: Lazy[Map[Symbol, ClassBType]] = ppa.perRunLazy{
-    val boxMethods = defn.ScalaValueClasses().map{x =>
-      (x, Erasure.Boxing.boxMethod(x.asClass))
-    }.toMap
-    for ((valueClassSym, boxMethodSym) <- boxMethods)
-      yield boxMethodSym -> boxedClassOfPrimitive(ts.bTypeFromSymbol(valueClassSym))
-  }
-
-  /**
-   * Maps the method symbol for an unbox method to the primitive type of the result.
-   * For example, the method symbol for `Byte.unbox()` is mapped to the PrimitiveBType BYTE. */
-  def unboxResultType: Map[Symbol, BType] = _unboxResultType.get
-  private lazy val _unboxResultType = ppa.perRunLazy[Map[Symbol, BType]]{
-    val unboxMethods: Map[Symbol, Symbol] =
-      defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
-    for ((valueClassSym, unboxMethodSym) <- unboxMethods)
-      yield unboxMethodSym -> ts.bTypeFromSymbol(valueClassSym)
-  }
-
   def srBoxedUnitRef: ClassBType = _srBoxedUnitRef.get
   private lazy val _srBoxedUnitRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[scala.runtime.BoxedUnit]))
 
@@ -76,20 +184,11 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
   def PredefRef: ClassBType = _PredefRef.get
   private lazy val _PredefRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.ScalaPredefModuleClass))
 
-  def jlClassRef: ClassBType = _jlClassRef.get
-  private lazy val _jlClassRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[java.lang.Class[?]]))
-
-  def jlThrowableRef: ClassBType = _jlThrowableRef.get
-  private lazy val _jlThrowableRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.ThrowableClass))
-
   def jlCloneableRef: ClassBType = _jlCloneableRef.get
   private lazy val _jlCloneableRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(defn.JavaCloneableClass))
 
   def jiSerializableRef: ClassBType = _jiSerializableRef.get
   private lazy val _jiSerializableRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[java.io.Serializable]))
-
-  def jlClassCastExceptionRef: ClassBType = _jlClassCastExceptionRef.get
-  private lazy val _jlClassCastExceptionRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[java.lang.ClassCastException]))
 
   def jlIllegalArgExceptionRef: ClassBType = _jlIllegalArgExceptionRef.get
   private lazy val _jlIllegalArgExceptionRef: Lazy[ClassBType] = ppa.perRunLazy(ts.classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException]))
@@ -165,47 +264,6 @@ final class WellKnownBTypes(ppa: PostProcessorFrontendAccess, ts: BTypeLoader)(u
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false)}
-
-  /**
-   * Methods in scala.runtime.BoxesRuntime
-   * No need to wrap in Lazy to synchronize access, symbols won't change
-   */
-  lazy val asmBoxTo  : Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("boxToBoolean",   MethodBType(List(BOOL),   boxedClassOfPrimitive(BOOL))),
-    BYTE   -> MethodNameAndType("boxToByte",      MethodBType(List(BYTE),   boxedClassOfPrimitive(BYTE))),
-    CHAR   -> MethodNameAndType("boxToCharacter", MethodBType(List(CHAR),   boxedClassOfPrimitive(CHAR))),
-    SHORT  -> MethodNameAndType("boxToShort",     MethodBType(List(SHORT),  boxedClassOfPrimitive(SHORT))),
-    INT    -> MethodNameAndType("boxToInteger",   MethodBType(List(INT),    boxedClassOfPrimitive(INT))),
-    LONG   -> MethodNameAndType("boxToLong",      MethodBType(List(LONG),   boxedClassOfPrimitive(LONG))),
-    FLOAT  -> MethodNameAndType("boxToFloat",     MethodBType(List(FLOAT),  boxedClassOfPrimitive(FLOAT))),
-    DOUBLE -> MethodNameAndType("boxToDouble",    MethodBType(List(DOUBLE), boxedClassOfPrimitive(DOUBLE)))
-  )
-
-  lazy val asmUnboxTo: Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ObjectRef), BOOL)),
-    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ObjectRef), BYTE)),
-    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ObjectRef), CHAR)),
-    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ObjectRef), SHORT)),
-    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ObjectRef), INT)),
-    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectRef), LONG)),
-    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectRef), FLOAT)),
-    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
-  )
-
-  lazy val typeOfArrayOp: Map[Int, BType] = {
-    import dotty.tools.backend.ScalaPrimitivesOps.*
-    Map(
-      (List(ZARRAY_LENGTH, ZARRAY_GET, ZARRAY_SET) map (_ -> BOOL))   ++
-        (List(BARRAY_LENGTH, BARRAY_GET, BARRAY_SET) map (_ -> BYTE))   ++
-        (List(SARRAY_LENGTH, SARRAY_GET, SARRAY_SET) map (_ -> SHORT))  ++
-        (List(CARRAY_LENGTH, CARRAY_GET, CARRAY_SET) map (_ -> CHAR))   ++
-        (List(IARRAY_LENGTH, IARRAY_GET, IARRAY_SET) map (_ -> INT))    ++
-        (List(LARRAY_LENGTH, LARRAY_GET, LARRAY_SET) map (_ -> LONG))   ++
-        (List(FARRAY_LENGTH, FARRAY_GET, FARRAY_SET) map (_ -> FLOAT))  ++
-        (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
-        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) *
-    )
-  }
 
   // java/lang/Boolean -> MethodNameAndType(valueOf,(Z)Ljava/lang/Boolean;)
   def javaBoxMethods: Map[InternalName, MethodNameAndType] = _javaBoxMethods.get

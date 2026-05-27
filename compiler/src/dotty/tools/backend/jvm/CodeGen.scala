@@ -26,9 +26,9 @@ import dotty.tools.dotc.interfaces.CompilerCallback
 import opt.{OptimizerUtils, CallGraph}
 
 class CodeGen(val optimizerUtils: OptimizerUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
-              val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
+              val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes, val bTypes: WellKnownBTypes,
               val generatedClassHandler: GeneratedClassHandler) {
-  private class Impl extends BCodeHelpers(bTypeLoader, bTypes), BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+  private class Impl extends BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry {
     def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
       callGraph.callsitePositions.get(m) = pos match {
         case p: Positioned => p.sourcePos
