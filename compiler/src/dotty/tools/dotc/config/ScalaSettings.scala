@@ -627,9 +627,5 @@ private sealed trait YSettings:
   // Deprecated: lifted from -Y to -W
   @deprecated(message = "Lifted to -W, Scheduled for removal.", since = "3.5.0")
   val YcheckInit: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init", "Ensure safe initialization of objects.", deprecation = Deprecation.renamed("-Wsafe-init"))
-
-  // Deprecated: Scheduled for removal
-  @deprecated(message = "Scheduled for removal.", since = "3.5.0")
-  val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles", deprecation = Deprecation.removed())
 end YSettings
 
