@@ -351,49 +351,53 @@ object Inlines:
         checkInlineTraitOverrides(cls.symbol.asClass)
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
         val ancestors = inlineTraitAncestors(cls)
-        val cycleFound = ancestors.exists { parent =>
-          val parentSym = symbolFromParent(parent)
-          val errorPos = if cls.symbol.ownersIterator.contains(parentSym) then Some(cls.srcPos) // Trying to inline into the tree which defines parentSym (need to catch this separately
-                                                                                                // as need to catch it before we inline the second time to avoid tripping an assertion) 
-                         else if ctx.inlineTraitState.inlineOrigins(cls.symbol).contains(parentSym) then 
-                          val userPos = tpd.enclosingInlineds.last.srcPos // Select the user code that caused this error so we get two errors if there are two problematic inlines, not one
-                          Some(userPos) // Trying to inline into the inlined body of parentSym not in the defn tree
-                         else None // Fine
-          errorPos.foreach(pos =>
-            report.error(s"Inlining of inline traits looped. Tried to inline ${parentSym} into its own body.", pos)
-          )
-          errorPos.nonEmpty
-        }
-
-        if cycleFound then cls
-        else {
-          val newDefs = inContext(ctx.withOwner(cls.symbol)) {
-            ancestors.foldLeft((List.empty[Tree], impl.body)){
-              case ((inlineDefs, childDefs), parent) =>
-                  val parentTraitInliner = InlineParentTrait(parent)
-                  // Inline body
-                  val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
-                  // Need to put the new defs first because we process in linearization order to make overridees correct,
-                  // but we want parent definitions to come first so that if child inline traits refer to values defined in a parent
-                  // inline trait these are defined. 
-                  val inlinedDefs1 = parentTraitInliner.expandDefs(overriddenSymbols) ::: inlineDefs 
-                  cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
-                  
-                  val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
-                  (parentTraitInliner.adaptSuperCalls(inlinedDefs1), childDefs1)
-            }
+        if cls.symbol.isAnonymousClass && ancestors.exists(tree => Specialization.unapply(tree.tpe).exists(_.isSpecialized)) then
+          cls // No need to inline into specialized trait anonymous class instances; these will later be replaced by $impl$ classes.
+        else 
+          val cycleFound = ancestors.exists { parent =>
+            val parentSym = symbolFromParent(parent)
+            val errorPos = if cls.symbol.ownersIterator.contains(parentSym) then Some(cls.srcPos) // Trying to inline into the tree which defines parentSym (need to catch this separately
+                                                                                                  // as need to catch it before we inline the second time to avoid tripping an assertion) 
+                          else if ctx.inlineTraitState.inlineOrigins(cls.symbol).contains(parentSym) then 
+                            val userPos = tpd.enclosingInlineds.last.srcPos // Select the user code that caused this error so we get two errors if there are two problematic inlines, not one
+                            Some(userPos) // Trying to inline into the inlined body of parentSym not in the defn tree
+                          else None // Fine
+            
+            errorPos.foreach(pos =>
+              report.error(s"Inlining of inline traits looped. Tried to inline ${parentSym} into its own body.", pos)
+            )
+            errorPos.nonEmpty
           }
 
-          val newbody = newDefs._1 ::: newDefs._2
-          val paramAccessors = newbody.filter(_.symbol.is(ParamAccessor))
-          
-          for pacc <- paramAccessors
-              otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
-          do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
+          if cycleFound then cls
+          else {
+            val newDefs = inContext(ctx.withOwner(cls.symbol)) {
+              ancestors.foldLeft((List.empty[Tree], impl.body)){
+                case ((inlineDefs, childDefs), parent) =>
+                    val parentTraitInliner = InlineParentTrait(parent)
+                    // Inline body
+                    val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
+                    // Need to put the new defs first because we process in linearization order to make overridees correct,
+                    // but we want parent definitions to come first so that if child inline traits refer to values defined in a parent
+                    // inline trait these are defined. 
+                    val inlinedDefs1 = parentTraitInliner.expandDefs(overriddenSymbols) ::: inlineDefs 
+                    cls.symbol.flags = updateFlagsFromInlinedParent(cls.symbol.flags, parent.symbol.flags)
+                    
+                    val childDefs1 = parentTraitInliner.adaptSuperCalls(childDefs)
+                    (parentTraitInliner.adaptSuperCalls(inlinedDefs1), childDefs1)
+              }
+            }
 
-          val impl1 = cpy.Template(impl)(body = newbody)
+            val newbody = newDefs._1 ::: newDefs._2
+            val paramAccessors = newbody.filter(_.symbol.is(ParamAccessor))
+            
+            for pacc <- paramAccessors
+                otherstat <- newbody if !otherstat.symbol.is(ParamAccessor) && otherstat.denot.matches(pacc.denot.asSingleDenotation)
+            do report.error(s"Inlining of inline trait created name conflict on ${pacc.denot.name}. Constructor parameters of inline receivers may not collide with members of inline traits.", pacc.srcPos) 
 
-          cpy.TypeDef(cls)(rhs = impl1)
+            val impl1 = cpy.Template(impl)(body = newbody)
+
+            cpy.TypeDef(cls)(rhs = impl1)
         }
       case _ =>
         cls
