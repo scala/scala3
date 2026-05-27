@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, BackendUtils, CallGraph}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, OptimizerUtils, CallGraph}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
@@ -34,11 +34,11 @@ class GenBCode extends Phase { self =>
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
 
-  private var _backendUtils: BackendUtils | Null = null
-  def backendUtils(using Context): BackendUtils = {
-    if _backendUtils eq null then
-      _backendUtils = BackendUtils(wellKnownBTypes)
-    _backendUtils.nn
+  private var _optimizerUtils: OptimizerUtils | Null = null
+  def optimizerUtils(using Context): OptimizerUtils = {
+    if _optimizerUtils eq null then
+      _optimizerUtils = OptimizerUtils(wellKnownBTypes)
+    _optimizerUtils.nn
   }
 
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
@@ -58,7 +58,7 @@ class GenBCode extends Phase { self =>
   private var _byteCodeRepository: BCodeRepository | Null = null
   def byteCodeRepository(using Context): BCodeRepository = {
     if _byteCodeRepository eq null then
-      _byteCodeRepository = BCodeRepository(ctx.platform.classPath, backendUtils)
+      _byteCodeRepository = BCodeRepository(ctx.platform.classPath, optimizerUtils)
     _byteCodeRepository.nn
   }
 
@@ -97,7 +97,7 @@ class GenBCode extends Phase { self =>
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, backendUtils, bTypeLoader, wellKnownBTypes)
+      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, wellKnownBTypes)
     _postProcessor.nn
   }
 
@@ -125,7 +125,7 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, callGraph, bTypeLoader, wellKnownBTypes, generatedClassHandler)
+      _codeGen = new CodeGen(optimizerUtils, primitives, frontendAccess, callGraph, bTypeLoader, wellKnownBTypes, generatedClassHandler)
     _codeGen.nn
   }
 

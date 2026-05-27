@@ -19,7 +19,7 @@ import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
 import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
-import dotty.tools.backend.jvm.opt.BackendUtils.LambdaMetaFactoryCall
+import dotty.tools.backend.jvm.opt.OptimizerUtils.LambdaMetaFactoryCall
 
 abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
   import TypeFlowInterpreter.*

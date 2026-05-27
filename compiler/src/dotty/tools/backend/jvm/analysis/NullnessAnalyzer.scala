@@ -20,8 +20,8 @@ import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
-import dotty.tools.backend.jvm.opt.BackendUtils
-import dotty.tools.backend.jvm.opt.BackendUtils.isModuleLoad
+import dotty.tools.backend.jvm.opt.OptimizerUtils
+import dotty.tools.backend.jvm.opt.OptimizerUtils.isModuleLoad
 
 /**
  * See the package object `analysis` for details on the ASM analysis framework.
@@ -216,7 +216,7 @@ class NullnessFrame(nLocals: Int, nStack: Int) extends AliasingFrame[NullnessVal
         aliasesOf(this.stackTop - numArgs)
 
       case INVOKESTATIC =>
-        var nullChecked = BackendUtils.argumentsNullCheckedByCallee(insn.asInstanceOf[MethodInsnNode])
+        var nullChecked = OptimizerUtils.argumentsNullCheckedByCallee(insn.asInstanceOf[MethodInsnNode])
         var i = 0
         var res: AliasSet | Null = null
         while (nullChecked > 0) {

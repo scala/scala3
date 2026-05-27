@@ -14,7 +14,7 @@ package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import BackendUtils.LambdaMetaFactoryCall
+import OptimizerUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.ClassNode1
 import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
@@ -31,7 +31,7 @@ import scala.tools.asm.{Attribute, ClassReader, Type}
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
+class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
 
   type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
@@ -273,7 +273,7 @@ class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
             iter.remove()
           case AbstractInsnNode.INVOKE_DYNAMIC_INSN => insn match {
             case LambdaMetaFactoryCall(indy, _, implMethod, _, _) =>
-              backendUtils.addIndyLambdaImplMethod(classNode.name, m, indy, implMethod)
+              optimizerUtils.addIndyLambdaImplMethod(classNode.name, m, indy, implMethod)
             case _ =>
           }
           case _ =>

@@ -23,14 +23,14 @@ import scala.util.chaining.scalaUtilChainingOps
  */
 class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
                     byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                    callGraph: CallGraph, backendUtils: BackendUtils,
+                    callGraph: CallGraph, optimizerUtils: OptimizerUtils,
                     bTypeLoader: BTypeLoader, bTypes: WellKnownBTypes)(using Context) {
 
   private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(frontendAccess, backendUtils, byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new Inliner(frontendAccess, backendUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(backendUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
+  private val inliner             = new Inliner(frontendAccess, optimizerUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOpt(optimizerUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   given FileWriters.ReadOnlyContext = FileWriters.ReadOnlyContext.eager
   private val classfileWriter: FileWriters.ClassfileWriter = {
@@ -122,7 +122,7 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
   }
 
   private def setSerializableLambdas(classNode: ClassNode): Unit = {
-    import backendUtils.{collectSerializableLambdas, addLambdaDeserialize}
+    import optimizerUtils.{collectSerializableLambdas, addLambdaDeserialize}
     val serializableLambdas = collectSerializableLambdas(classNode)
     if serializableLambdas.nonEmpty then
       addLambdaDeserialize(classNode, serializableLambdas)
@@ -131,7 +131,7 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
   private def setInnerClasses(classNode: ClassNode): Unit = {
     classNode.innerClasses.nn.clear()
     val (declared, referred) = bTypeLoader.collectNestedClasses(classNode)
-    backendUtils.addInnerClasses(classNode, declared, referred)
+    optimizerUtils.addInnerClasses(classNode, declared, referred)
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {

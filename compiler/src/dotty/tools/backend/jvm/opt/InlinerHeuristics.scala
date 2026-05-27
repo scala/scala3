@@ -27,7 +27,7 @@ import PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
 import dotty.tools.dotc.report
 
-class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, byteCodeRepository: BCodeRepository,
+class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
                         callGraph: CallGraph, ts: WellKnownBTypes,
                         settings: OptimizerSettings) {
 
@@ -61,18 +61,18 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
 
             case Some(Left(w)) =>
               if (w.emitWarning(settings)) {
-                ppa.optimizerWarning(em"${w.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
+                ppa.optimizerWarning(em"${w.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
               }
 
             case None =>
               if (callsiteWarning.exists(_.emitWarning(settings))) {
-                ppa.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
+                ppa.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
               }
           }
 
         case callsite @ UnknownCallsite(ins, meth, clas, pos, _, warning) =>
           if (warning.emitWarning(settings)) {
-            ppa.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", BackendUtils.siteString(clas.internalName, meth.name), pos)
+            ppa.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", OptimizerUtils.siteString(clas.internalName, meth.name), pos)
           }
       }
       (methodNode, requests)
@@ -184,7 +184,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     // or aliases, because otherwise it's too confusing for users looking at generated code, they will
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
-      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
+      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
 
     if (isGeneratedForwarder) None
     else {
@@ -217,7 +217,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
             else None
 
           def shouldInlineArrayOp =
-            if (BackendUtils.isRuntimeArrayLoadOrUpdate(callsite.callsiteInstruction) && callsite.argInfos.get(1).contains(StaticallyKnownArray)) Some(KnownArrayOp)
+            if (OptimizerUtils.isRuntimeArrayLoadOrUpdate(callsite.callsiteInstruction) && callsite.argInfos.get(1).contains(StaticallyKnownArray)) Some(KnownArrayOp)
             else None
 
           def shouldInlineForwarder = Option {
@@ -226,17 +226,17 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
             val calleeCallsites = callGraph.callsites.get(callee.callee)
             val allowPrivateCalls = calleeCallsites.size == 1 && (calleeCallsites.head match
               case (_, nestedCallsite: KnownCallsite) =>
-                backendUtils.looksLikeForwarderOrFactoryOrTrivial(
+                optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(
                   nestedCallsite.callee.callee,
                   nestedCallsite.callee.calleeDeclarationClass.internalName,
                   allowPrivateCalls = false
                 ) > 0
               case _ => false
             )
-            val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
+            val forwarderKind = optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
             if (forwarderKind < 0)
               null
-            else if (BCodeUtils.isSyntheticMethod(callee.callee) || BackendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
+            else if (BCodeUtils.isSyntheticMethod(callee.callee) || OptimizerUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
               SyntheticForwarder
             else forwarderKind match {
               case 1 => TrivialMethod

@@ -23,14 +23,14 @@ import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import BackendUtils.*
+import OptimizerUtils.*
 
 import scala.tools.asm
 
-class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner, ts: WellKnownBTypes, settings: OptimizerSettings) {
+class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner, ts: WellKnownBTypes, settings: OptimizerSettings) {
 
   private val modulesAllowSkipInitialization =
-    if settings.optAllowSkipCoreModuleInit then backendUtils.modulesAllowSkipInitialization else Set.empty
+    if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an
@@ -399,7 +399,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
             case INVOKESPECIAL =>
               val mi = insn.asInstanceOf[MethodInsnNode]
-              if (backendUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
+              if (optimizerUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
 
             case _ =>
           }
@@ -432,7 +432,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       def handleClosureInst(indy: InvokeDynamicInsnNode): Unit = {
         toRemove += indy
         callGraph.removeClosureInstantiation(indy, method)
-        backendUtils.removeIndyLambdaImplMethod(owner, method, indy)
+        optimizerUtils.removeIndyLambdaImplMethod(owner, method, indy)
         handleInputs(indy, Type.getArgumentTypes(indy.desc).length)
       }
 
@@ -476,24 +476,24 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (backendUtils.isBoxedUnit(prod) || BackendUtils.isJavaLangStaticLoad(prod) || BackendUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
+            if (optimizerUtils.isBoxedUnit(prod) || OptimizerUtils.isJavaLangStaticLoad(prod) || OptimizerUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
             val methodInsn = prod.asInstanceOf[MethodInsnNode]
-            if (backendUtils.isSideEffectFreeCall(methodInsn)) {
+            if (optimizerUtils.isSideEffectFreeCall(methodInsn)) {
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
-            } else if (backendUtils.isScalaUnbox(methodInsn)) {
-              val tp = backendUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
+            } else if (optimizerUtils.isScalaUnbox(methodInsn)) {
+              val tp = optimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
               val boxTp = ts.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               castAdded = true
-            } else if (backendUtils.isJavaUnbox(methodInsn)) {
+            } else if (optimizerUtils.isJavaUnbox(methodInsn)) {
               val nullCheck = mutable.ListBuffer.empty[AbstractInsnNode]
               val nonNullLabel = newLabelNode
               nullCheck += new JumpInsnNode(IFNONNULL, nonNullLabel)
@@ -515,7 +515,7 @@ class CopyProp(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
             }
 
           case NEW =>
-            if (backendUtils.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
+            if (optimizerUtils.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
             else popAfterProd()
 
           case LDC =>

@@ -21,7 +21,7 @@ import scala.tools.asm.{Handle, Opcodes, Type}
 /**
  * This component hosts tools and utilities used in the optimizer that require access to a `WellKnownBTypes` instance.
  */
-class BackendUtils(val ts: WellKnownBTypes) {
+class OptimizerUtils(val ts: WellKnownBTypes) {
 
   /**
    * Classes with indyLambda closure instantiations where the SAM type is serializable (e.g. Scala's
@@ -173,7 +173,7 @@ class BackendUtils(val ts: WellKnownBTypes) {
     onIndyLambdaImplMethodIfPresent(hostClass)(ms => ms.getOrElse(method, Nil).toMap).getOrElse(Map.empty)
   }
   
-  def isPredefLoad(insn: AbstractInsnNode): Boolean = BackendUtils.isModuleLoad(insn, _ == ts.PredefRef.internalName)
+  def isPredefLoad(insn: AbstractInsnNode): Boolean = OptimizerUtils.isModuleLoad(insn, _ == ts.PredefRef.internalName)
 
   // ==============================================================================================
 
@@ -276,12 +276,12 @@ class BackendUtils(val ts: WellKnownBTypes) {
     isScalaBox(mi) ||  // not Scala unbox, it may CCE
       isJavaBox(mi) || // not Java unbox, it may NPE
       isSideEffectFreeConstructorCall(mi) ||
-      BackendUtils.isClassTagApply(mi)
+      OptimizerUtils.isClassTagApply(mi)
   }
 
   // methods that are known to return a non-null result
   def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
-    isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || BackendUtils.isClassTagApply(mi) ||
+    isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || OptimizerUtils.isClassTagApply(mi) ||
       isTupleApply(mi)
   }
 
@@ -307,7 +307,7 @@ class BackendUtils(val ts: WellKnownBTypes) {
       "scala/collection/ArrayOps$",
       "scala/collection/StringOps$",
       "scala/TupleXXL$"
-    ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$") ++ BackendUtils.primitiveTypes.keysIterator
+    ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$") ++ OptimizerUtils.primitiveTypes.keysIterator
 
   private lazy val classesOfSideEffectFreeConstructors: Set[String] =
     sideEffectFreeConstructors.map(_._1)
@@ -383,7 +383,7 @@ class BackendUtils(val ts: WellKnownBTypes) {
   }
 }
 
-object BackendUtils {
+object OptimizerUtils {
 
   private lazy val primitiveTypes: Map[String, asm.Type] = Map(
     ("Unit", asm.Type.VOID_TYPE),

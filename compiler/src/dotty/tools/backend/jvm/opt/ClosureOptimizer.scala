@@ -24,11 +24,11 @@ import scala.tools.asm.tree.*
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
-import BackendUtils.*
+import OptimizerUtils.*
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
-class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
+class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
                        ts: WellKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                        settings: OptimizerSettings) {
@@ -109,7 +109,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, backendUtils)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
 
         if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get.get(method) match {
           case Some(closureInits) =>
@@ -118,7 +118,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                ppa.optimizerWarning(em"${warning.toString}", BackendUtils.siteString(ownerClass, method.name), warning.pos)
+                ppa.optimizerWarning(em"${warning.toString}", OptimizerUtils.siteString(ownerClass, method.name), warning.pos)
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
@@ -303,9 +303,9 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
         if (invokeArgTypes(i) == implMethodArgTypes(i)) {
           res(i) = None
         } else if (isPrimitiveType(implMethodArgTypes(i)) && invokeArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(backendUtils.getScalaUnbox(implMethodArgTypes(i)))
+          res(i) = Some(optimizerUtils.getScalaUnbox(implMethodArgTypes(i)))
         } else if (isPrimitiveType(invokeArgTypes(i)) && implMethodArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(backendUtils.getScalaBox(invokeArgTypes(i)))
+          res(i) = Some(optimizerUtils.getScalaBox(invokeArgTypes(i)))
         } else {
           assert(!isPrimitiveType(invokeArgTypes(i)), invokeArgTypes(i))
           assert(!isPrimitiveType(implMethodArgTypes(i)), implMethodArgTypes(i))
@@ -390,12 +390,12 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
       if (isPrimitiveType(invocationReturnType) && bodyReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
           if (invocationReturnType.getSort == Type.VOID) getPop(1)
-          else backendUtils.getScalaUnbox(invocationReturnType)
+          else optimizerUtils.getScalaUnbox(invocationReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else if (isPrimitiveType(bodyReturnType) && invocationReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
-          if (bodyReturnType.getSort == Type.VOID) backendUtils.getBoxedUnit
-          else backendUtils.getScalaBox(bodyReturnType)
+          if (bodyReturnType.getSort == Type.VOID) optimizerUtils.getBoxedUnit
+          else optimizerUtils.getScalaBox(bodyReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else {
         // see comment of that method
@@ -460,7 +460,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // Rewriting a closure invocation may render code unreachable. For example, the body method of
     // (x: T) => ??? has return type Nothing$, and an ATHROW is added (see fixLoadedNothingOrNullValue).
-    BackendUtils.clearDceDone(ownerMethod)
+    OptimizerUtils.clearDceDone(ownerMethod)
   }
 
   /**
