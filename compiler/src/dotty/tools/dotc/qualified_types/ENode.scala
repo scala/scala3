@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.Hashable.Binders
 import dotty.tools.dotc.core.Names.{termName, Name}
 import dotty.tools.dotc.core.Names.Designator
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Symbols.{defn, NoSymbol, Symbol}
+import dotty.tools.dotc.core.Symbols.{defn, toDenot, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Types.{
   AndType,
   AnnotatedType,
@@ -273,7 +273,18 @@ enum ENode extends Showable:
   def normalizeTypes()(using Context): ENode =
     trace(i"normalizeTypes($this)", Printers.qualifiedTypes):
       ctx.base.qualifiedTypesStats.record("ENode.normalizeTypes"):
-        mapTypes(NormalizeMap()).promoteAnyEquals()
+        mapTypes(NormalizeMap()).promoteAnyEquals().canonicalizeMembers()
+
+  /** Canonicalize each `Select`'s member by resolving it against the static
+   *  type of its qualifier, i.e. the override that virtual dispatch would
+   *  pick for that receiver.
+   *
+   *  See tests/pos-custom-args/qualified-types/trait.scala
+   */
+  private def canonicalizeMembers()(using Context): ENode =
+    map:
+      case node @ Select(qual, member) => node.derived(qual, ENode.resolveMember(qual.resultType, member))
+      case node => node
 
   /** After type normalization, `Any_==` calls whose receiver type is now
    *  known to be a value type or case class can be promoted to `OpApply(Equal, ...)`.
@@ -577,6 +588,18 @@ object ENode:
   private def freshSkolem(underlying: Type)(using Context): ENodeVar.Skolem =
     val owner = QualifiedTypes.skolemOwner
     ENodeVar.Skolem(owner, ctx.base.freshSkolemIndex(owner))(underlying)
+
+  /** Resolve `member` to the most specific override visible from receiver
+   *  type `siteTp` — the symbol virtual dispatch would select for that
+   *  receiver. Returns `member` unchanged when it cannot participate in an
+   *  override or `siteTp` has no matching member. See
+   *  [[ENode.canonicalizeMembers]].
+   */
+  private def resolveMember(siteTp: Type, member: Symbol)(using Context): Symbol =
+    if member.exists && member.maybeOwner.isClass && siteTp.exists then
+      val resolved = member.matchingMember(siteTp)
+      if resolved.exists then resolved else member
+    else member
 
   private def isEmptyPrefix(tp: Type): Boolean =
     tp match
