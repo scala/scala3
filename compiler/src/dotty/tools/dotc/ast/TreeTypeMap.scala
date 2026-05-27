@@ -314,6 +314,8 @@ class TreeTypeMap(
     val source = tree.source
     if source.exists && (source ne ctx.source) then ctx.withSource(source) else ctx
 
+  protected def noteTransformedMemberDef(member: MemberDef)(using Context): Unit = ()
+
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedLocalSyms(impl, self)
@@ -417,6 +419,10 @@ class TreeTypeMap(
           else cpy.Alternative(alt)(transform(trees)(using altCtx))(using altCtx)
         case lit @ Literal(Constant(tpe: Type)) =>
           cpy.Literal(lit)(Constant(mapType(tpe)))
+        case vdef: ValDef =>
+          val res = super.transform(vdef).asInstanceOf[ValDef]
+          noteTransformedMemberDef(res)
+          res
         case ddef @ DefDef(name, paramss, tpt, _) =>
           val (tmap1, paramss1) = transformAllParamss(paramss)
           val res = cpy.DefDef(ddef)(name, paramss1, tmap1.transform(tpt), tmap1.transform(ddef.rhs))
@@ -425,6 +431,11 @@ class TreeTypeMap(
             case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))
             case ann => ann
           }
+          noteTransformedMemberDef(res)
+          res
+        case tdef: TypeDef =>
+          val res = super.transform(tdef).asInstanceOf[TypeDef]
+          noteTransformedMemberDef(res)
           res
         case tdef @ LambdaTypeTree(tparams, body) =>
           val (tmap1, tparams1) = transformDefs(tparams)

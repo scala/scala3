@@ -555,12 +555,8 @@ class Inliner(val call: tpd.Tree)(using Context):
       new MemberDefCollectingTreeTypeMap(
         memberDefs, typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
-    override def transform(tree: Tree)(using Context): Tree =
-      val tree1 = super.transform(tree)
-      tree1 match
-        case member: MemberDef => memberDefs += member
-        case _ =>
-      tree1
+    override protected def noteTransformedMemberDef(member: MemberDef)(using Context): Unit =
+      memberDefs += member
 
   private def collectMemberDefs(tree: Tree)(using Context): MemberDefWorklist =
     val memberDefs = new MemberDefWorklist.Builder
