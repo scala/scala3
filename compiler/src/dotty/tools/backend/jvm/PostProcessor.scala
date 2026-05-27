@@ -46,8 +46,7 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  @annotation.nowarn("cat=deprecation")
-  def sendToDisk(clazz: GeneratedClass): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
+  def sendToDisk(clazz: GeneratedClass): Unit = {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =

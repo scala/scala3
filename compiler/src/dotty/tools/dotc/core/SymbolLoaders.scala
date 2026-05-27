@@ -556,8 +556,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val tastyUUID = unpickler.unpickler.header.uuid
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else
-      // This will be the case in any of our tests that compile with `-Youtput-only-tasty`, or when
-      // tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
+      // This will be the case when a tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
       report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
 
   private def checkBeTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =
