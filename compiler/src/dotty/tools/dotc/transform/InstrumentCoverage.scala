@@ -522,8 +522,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
               tree
 
           case tree: Assign =>
-            // only transform the rhs
-            cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
+            if tree.lhs.symbol.is(Erased) then tree
+            else
+              // only transform the rhs
+              cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
 
           case tree: Return =>
             // only transform the expr, because `from` is a "pointer"
