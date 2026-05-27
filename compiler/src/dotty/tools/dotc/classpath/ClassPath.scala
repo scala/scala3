@@ -46,7 +46,7 @@ trait PackageEntry {
 sealed trait BinaryFileEntry extends ClassRepresentation {
   def file: AbstractFile
   final def fileName: String = file.name
-  final def name: String = FileUtils.stripClassExtension(file.name) // class name
+  final def name: String = FileUtils.stripExtension(file.name) // class name
   final def source: Option[AbstractFile] = None
 }
 
@@ -96,6 +96,6 @@ private[dotty] trait NoSourcePaths {
 }
 
 private[dotty] trait NoClassPaths {
-  def findClassFile(className: String): Option[AbstractFile] = None
+  def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = None
   private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = Seq.empty
 }

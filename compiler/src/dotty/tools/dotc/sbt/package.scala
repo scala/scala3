@@ -10,8 +10,6 @@ import interfaces.IncrementalCallback
 import dotty.tools.io.FileWriters.BufferingReporter
 import dotty.tools.dotc.core.Decorators.em
 
-import scala.util.control.NonFatal
-
 inline val TermNameHash = 1987 // 300th prime
 inline val TypeNameHash = 1993 // 301st prime
 inline val InlineParamHash = 1997 // 302nd prime
@@ -24,7 +22,7 @@ def asyncZincPhasesCompleted(cb: IncrementalCallback, pending: Option[BufferingR
     cb.apiPhaseCompleted()
     cb.dependencyPhaseCompleted()
   catch
-    case NonFatal(t) =>
+    case t: Exception =>
       zincReporter.exception(em"signaling API and Dependencies phases completion", t)
   zincReporter
 

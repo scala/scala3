@@ -13,42 +13,42 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import org.eclipse.lsp4j as l
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.utils.TermNameInference.*
 
-/**
- * Facilitates the code action that converts a wildcard lambda to a lambda with named parameters
- * e.g.
+import org.eclipse.lsp4j as l
+
+/** Facilitates the code action that converts a wildcard lambda to a lambda with
+ *  named parameters e.g.
  *
- * List(1, 2).map(<<_>> + 1) => List(1, 2).map(i => i + 1)
+ *  List(1, 2).map(<<_>> + 1) => List(1, 2).map(i => i + 1)
  */
 final class PcConvertToNamedLambdaParameters(
     driver: InteractiveDriver,
     params: OffsetParams
 ):
-  import PcConvertToNamedLambdaParameters._
+  import PcConvertToNamedLambdaParameters.*
 
-  def convertToNamedLambdaParameters: ju.List[l.TextEdit] = {
+  def convertToNamedLambdaParameters: ju.List[l.TextEdit] =
     val uri = params.uri
     val filePath = Paths.get(uri)
     driver.run(
       uri,
-      SourceFile.virtual(filePath.toString, params.text),
+      SourceFile.virtual(filePath.toString, params.text)
     )
-    given newctx: Context = driver.localContext(params)
+    given ctx: Context = driver.currentCtx
     val pos = driver.sourcePosition(params)
     val trees = driver.openedTrees(uri)
     val treeList = Interactive.pathTo(trees, pos)
     // Extractor for a lambda function (needs context, so has to be defined here)
-    val LambdaExtractor = Lambda(using newctx)
+    val LambdaExtractor = Lambda(using ctx)
     // select the most inner wildcard lambda
     val firstLambda = treeList.collectFirst {
       case LambdaExtractor(params, rhsFn) if params.forall(isWildcardParam) =>
         params -> rhsFn
     }
 
-    firstLambda match {
+    firstLambda match
       case Some((params, lambda)) =>
         // avoid names that are either defined or referenced in the lambda
         val namesToAvoid = allDefAndRefNamesInTree(lambda)
@@ -87,8 +87,6 @@ final class PcConvertToNamedLambdaParameters(
           List.empty.asJava
       case _ =>
         List.empty.asJava
-    }
-  }
 
 end PcConvertToNamedLambdaParameters
 
@@ -96,20 +94,23 @@ object PcConvertToNamedLambdaParameters:
   val codeActionId = "ConvertToNamedLambdaParameters"
 
   class Lambda(using Context):
-    def unapply(tree: tpd.Block): Option[(List[tpd.ValDef], tpd.Tree)] = tree match {
-      case tpd.Block((ddef @ tpd.DefDef(_, tpd.ValDefs(params) :: Nil, _, body: tpd.Tree)) :: Nil, tpd.Closure(_, meth, _))
-      if ddef.symbol == meth.symbol =>
-        params match {
+    def unapply(tree: tpd.Block): Option[(List[tpd.ValDef], tpd.Tree)] = tree match
+      case tpd.Block(
+            (ddef @ tpd.DefDef(_, tpd.ValDefs(params) :: Nil, _, body: tpd.Tree)) :: Nil,
+            tpd.Closure(_, meth, _)
+          )
+          if ddef.symbol == meth.symbol =>
+        params match
           case List(param) =>
             // lambdas with multiple wildcard parameters are represented as a single parameter function and a block with wildcard valdefs
             Some(multipleUnderscoresFromBody(param, body))
           case _ => Some(params -> body)
-        }
       case _ => None
-    }
-  end Lambda
 
-  private def multipleUnderscoresFromBody(param: tpd.ValDef, body: tpd.Tree)(using Context): (List[tpd.ValDef], tpd.Tree) = body match {
+  private def multipleUnderscoresFromBody(
+      param: tpd.ValDef,
+      body: tpd.Tree
+  )(using Context): (List[tpd.ValDef], tpd.Tree) = body match
     case tpd.Block(defs, expr) if param.symbol.is(Flags.Synthetic) =>
       val wildcardParamDefs = defs.collect {
         case valdef: tpd.ValDef if isWildcardParam(valdef) => valdef
@@ -117,9 +118,8 @@ object PcConvertToNamedLambdaParameters:
       if wildcardParamDefs.size == defs.size then wildcardParamDefs -> expr
       else List(param) -> body
     case _ => List(param) -> body
-  }
 
-  def isWildcardParam(param: tpd.ValDef)(using Context): Boolean =
+  def isWildcardParam(param: tpd.ValDef): Boolean =
     param.name.toString.startsWith("_$")
 
   def findParamReferencePosition(param: tpd.ValDef, lambda: tpd.Tree)(using Context): Option[SourcePosition] =
@@ -133,7 +133,6 @@ object PcConvertToNamedLambdaParameters:
             traverseChildren(tree)
     FindParamReference.traverse(lambda)
     pos
-  end findParamReferencePosition
 
   def allDefAndRefNamesInTree(tree: tpd.Tree)(using Context): List[String] =
     object FindDefinitionsAndRefs extends tpd.TreeAccumulator[List[String]]:
@@ -148,6 +147,5 @@ object PcConvertToNamedLambdaParameters:
           case _ =>
             super.foldOver(x, tree)
     FindDefinitionsAndRefs.foldOver(Nil, tree)
-  end allDefAndRefNamesInTree
 
 end PcConvertToNamedLambdaParameters

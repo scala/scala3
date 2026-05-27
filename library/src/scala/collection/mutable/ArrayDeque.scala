@@ -27,7 +27,7 @@ import scala.reflect.ClassTag
   *  take amortized constant time. In general, removals and insertions at i-th index are O(min(i, n-i))
   *  and thus insertions and removals from end/beginning are fast.
   *
-  *  @note Subclasses ''must'' override the `ofArray` protected method to return a more specific type.
+  *  @note Subclasses *must* override the `ofArray` protected method to return a more specific type.
   *
   *  @tparam A  the type of this ArrayDeque's elements.
   *

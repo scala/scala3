@@ -4,17 +4,17 @@ package tasty
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
-
-import Contexts.*, Decorators.*
+import Contexts.*
+import Decorators.*
 import Names.Name
 import TastyUnpickler.*
 import util.Spans.offsetToInt
-import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection, AttributesSection}
-import java.nio.file.{Files, Paths}
-import dotty.tools.io.{JarArchive, Path}
-import dotty.tools.tasty.TastyFormat.header
-import scala.collection.immutable.BitSet
+import dotty.tools.tasty.TastyFormat.{ASTsSection, AttributesSection, CommentsSection, PositionsSection}
 
+import java.nio.file.{Files, Paths}
+import dotty.tools.io.{AbstractFile, JarArchive, Path}
+
+import scala.collection.immutable.BitSet
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyBuffer.Addr
 import dotty.tools.dotc.core.Names.TermName
@@ -59,8 +59,11 @@ object TastyPrinter:
           System.exit(1)
       else if arg.endsWith(".jar") then
         val jar = JarArchive.open(Path(arg), create = false)
+        def tastyFiles(file: AbstractFile): Iterator[AbstractFile] =
+          if file.isDirectory then file.iterator.flatMap(tastyFiles)
+          else if file.hasTastyExtension then Iterator.single(file) else Iterator.empty
         try
-          for file <- jar.iterator if file.hasTastyExtension do
+          for file <- tastyFiles(jar) do
             printTasty(s"$arg ${file.path}", file.toByteArray, isBestEffortTasty = false)
         finally jar.close()
       else
@@ -213,7 +216,7 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
       sb.append(s"  lines: ${lineSizes.length}\n")
       sb.append(s"  line sizes:\n")
       val windowSize = 20
-      for window <-posUnpickler.lineSizes.sliding(windowSize, windowSize) do
+      for window <- lineSizes.sliding(windowSize, windowSize) do
         sb.append("     ").append(window.mkString(", ")).append("\n")
       // sb.append(posUnpickler.lineSizes.mkString("  line sizes: ", ", ", "\n"))
       sb.append("  positions:\n")

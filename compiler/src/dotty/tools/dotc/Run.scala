@@ -31,13 +31,13 @@ import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 
 import scala.collection.mutable, mutable.ListBuffer
-import scala.util.control.NonFatal
 import scala.io.Codec
 
 import Run.Progress
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
+import dotty.tools.io.FileWriters
 import dotty.tools.dotc.util.chaining.*
 import java.util.{Timer, TimerTask}
 
@@ -288,6 +288,26 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     _asyncTasty = Some(async)
     () => async.cancel()
 
+  /** Wait for async TASTy operations (including Zinc callbacks like
+   *  `apiPhaseCompleted`/`dependencyPhaseCompleted`) to complete and relay any
+   *  buffered reports. This must happen before we return to Zinc, which calls
+   *  `getCycleResultOnce` immediately after. See scala/scala3#25774.
+   */
+  private def syncAsyncTasty()(using Context): Unit =
+    for
+      async <- _asyncTasty
+      bufferedReporter <- async.sync()
+      report <- bufferedReporter.resetReports()
+    do
+      import reporting.Diagnostic
+      report match
+        case FileWriters.Report.Error(msg, pos) =>
+          ctx.reporter.report(Diagnostic.Error(msg(ctx), pos))
+        case FileWriters.Report.Warning(msg, pos) =>
+          ctx.reporter.report(Diagnostic.Warning(msg(ctx), pos))
+        case FileWriters.Report.Log(msg) =>
+          ctx.reporter.report(Diagnostic.Info(msg, NoSourcePosition))
+
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
    */
@@ -296,13 +316,16 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.
    */
-  var ccEnabledSomewhere = Feature.enabledBySetting(Feature.captureChecking)(using ictx)
+  var ccEnabledSomewhere = Feature.ccEnabledBySetting(using ictx)
+
+  /** If -explain-cycles is set, a trace of cyclic reference dependencies, otherwise null */
+  var cyclicReferenceTrace: CyclicReference.Trace | Null = null
 
   private var myEnrichedErrorMessage = false
 
   def compile(files: List[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
-    catch case NonFatal(ex) if !this.enrichedErrorMessage =>
+    catch case ex: Exception if !this.enrichedErrorMessage =>
       val files1 = if units.isEmpty then files else units.map(_.source.file)
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
@@ -355,7 +378,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
+      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases, runCtx)
 
     if ctx.settings.YnoDoubleBindings.value then
@@ -370,7 +393,16 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
         if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
         else None
 
-      for phase <- allPhases do
+      def matchesStopAfter(p: Phase): Boolean = p match
+        case mp: dotty.tools.dotc.transform.MegaPhase =>
+          mp.miniPhases.exists(sub => stopAfter.contains(sub.phaseName))
+        case _ =>
+          stopAfter.contains(p.phaseName)
+
+      var stopped = false
+      var i = 0
+      while i < allPhases.length && !stopped do
+        val phase = allPhases(i)
         doEnterPhase(phase)
         val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then
@@ -403,13 +435,15 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
           end if
         end if
         doAdvancePhase(phase, wasRan = phaseWillRun)
-      end for
+        if matchesStopAfter(phase) then stopped = true
+        i += 1
+      end while
       profiler.finished()
     }
 
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
-      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
+      cyclicReferenceTrace = new CyclicReference.Trace()
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     val cancelAsyncTasty: () => Unit =
@@ -419,11 +453,12 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
     cancelAsyncTasty()
+    syncAsyncTasty()
 
+    suppressions.runFinished()
     ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
-    suppressions.runFinished()
     while (finalizeActions.nonEmpty && canProgress()) {
       val action = finalizeActions.remove(0)
       action()
@@ -544,7 +579,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
     super[CaptureRunInfo].reset()
-    myCtx = null
+    // TODO: This makes `runContext` unusable after being reset.
+    myCtx = null.asInstanceOf[Context]
     myUnits = Nil
     myUnitsCached = Nil
   }
@@ -579,11 +615,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     start.setRun(this: @unchecked)
   }
 
-  private var myCtx: Context | Null = rootContext(using ictx)
+  private var myCtx: Context = rootContext(using ictx)
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
-  assert(runContext.runId <= Periods.MaxPossibleRunId)
+  given runContext[Dummy_so_its_a_def]: Context = myCtx
 }
 
 object Run {

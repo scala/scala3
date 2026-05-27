@@ -14,8 +14,6 @@
 
 package dotty.tools.dotc.profile
 
-import scala.language.unsafeNulls
-
 import java.io.{BufferedWriter, IOException, OutputStreamWriter, Writer}
 import java.nio.CharBuffer
 import java.nio.charset.{Charset, CharsetEncoder, StandardCharsets}
@@ -28,7 +26,6 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
 import scala.annotation.internal.sharable
-import compiletime.uninitialized
 
 object FileUtils {
   def newAsyncBufferedWriter(path: Path, charset: Charset = StandardCharsets.UTF_8.nn, options: Array[OpenOption] = NO_OPTIONS, threadsafe: Boolean = false): LineWriter = {
@@ -140,7 +137,7 @@ object FileUtils {
     override def close(): Unit = {
       background.ensureProcessed(current)
       background.ensureProcessed(AsyncBufferedWriter.Close)
-      current = null
+      current = null.asInstanceOf[CharBuffer] // deinit for GC
       Await.result(background.asyncStatus.future, Duration.Inf)
       underlying.close()
     }
@@ -152,7 +149,7 @@ object FileUtils {
       //a failure detected will case an Failure, Success indicates a close
       val asyncStatus = Promise[Unit]()
       private val scheduled = new AtomicBoolean
-      @volatile var reuseBuffer: CharBuffer = uninitialized
+      @volatile var reuseBuffer: CharBuffer | Null = null
 
       def ensureProcessed(buffer: CharBuffer): Unit = {
         if (asyncStatus.isCompleted) {
@@ -187,9 +184,9 @@ object FileUtils {
             }
           }
         } catch {
-          case t: Throwable =>
-            asyncStatus.tryFailure(t)
-            throw t
+          case ex: Exception =>
+            asyncStatus.tryFailure(ex)
+            throw ex
         }
         finally scheduled.set(false)
 

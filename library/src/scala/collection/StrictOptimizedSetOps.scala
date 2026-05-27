@@ -15,13 +15,12 @@ package scala.collection
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/**
-  * Trait that overrides set operations to take advantage of strict builders.
-  *
-  * @tparam A  Elements type
-  * @tparam CC Collection type constructor
-  * @tparam C  Collection type
-  */
+/** Trait that overrides set operations to take advantage of strict builders.
+ *
+ *  @tparam A  Elements type
+ *  @tparam CC Collection type constructor
+ *  @tparam C  Collection type
+ */
 transparent trait StrictOptimizedSetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   extends SetOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {

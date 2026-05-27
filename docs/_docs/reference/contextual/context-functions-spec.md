@@ -72,7 +72,7 @@ documentation](../dropped-features/limit22.md).
 
 See the section on Expressiveness from [Simplicitly: foundations and
 applications of implicit function
-types](https://dl.acm.org/citation.cfm?id=3158130).
+types](https://dl.acm.org/doi/10.1145/3158130).
 
 ## Type Checking
 

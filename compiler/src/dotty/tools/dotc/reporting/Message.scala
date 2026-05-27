@@ -284,6 +284,8 @@ object Message:
         boxText
         ~ toTextLocal(parent)
         ~ seen.record("^", isType = true, refs.elems.nth(0).asInstanceOf[RootCapability])
+      case refs: CaptureSet.Var if refs.isIgnored =>
+        toText(parent)
       case _ =>
         super.toTextCapturing(parent, refs, boxText)
 
@@ -314,7 +316,7 @@ object Message:
       super.toText(sym)
   end Printer
 
-end Message
+end Message 
 
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned
@@ -515,3 +517,15 @@ object NoExplanation {
     if (m.explanation == "") Some(m)
     else None
 }
+
+final class InferUnionWarning(tp: Type)(using Context)
+  extends Message(ErrorMessageID.InferUnionWarningID):
+
+  def kind: MessageKind = MessageKind.Type
+
+  def msg(using Context): String =
+    i"""A type argument was inferred to be union type $tp
+       |This may indicate a programming error.
+       |"""
+
+  def explain(using Context): String = ""

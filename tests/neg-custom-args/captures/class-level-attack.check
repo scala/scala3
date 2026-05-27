@@ -4,7 +4,7 @@
    |                                 Found:    IO^{x}
    |                                 Required: IO^{any}
    |
-   |                                 Note that capability `x` is not included in capture set {any}
+   |                                 Note that capability `x` cannot flow into capture set {any}
    |                                 because (x : IO^) in method set is not visible from any in value r.
    |
    |                                 where:    ^   refers to a root capability in the type of parameter x

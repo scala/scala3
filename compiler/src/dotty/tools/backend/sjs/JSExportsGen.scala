@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -976,7 +974,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[jsNames.LocalName] =
       (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(using NoPosition).name)
 
-    private val restParamName: jsNames.LocalName =
+    private val restParamName: jsNames.LocalName | Null =
       if (needsRestParam) freshLocalIdent("rest")(using NoPosition).name
       else null
 
@@ -986,7 +984,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       }
 
       val restParam = {
-        if (needsRestParam)
+        if (restParamName != null)
           Some(js.ParamDef(js.LocalIdent(restParamName), NoOriginalName, jstpe.AnyType, mutable = false))
         else
           None
@@ -1012,7 +1010,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
 
     def genRestArgRef()(implicit pos: Position): js.Tree = {
-      assert(needsRestParam, s"trying to generate a reference to non-existent rest param at $pos")
+      assert(restParamName != null, s"trying to generate a reference to non-existent rest param at $pos")
       js.VarRef(restParamName)(jstpe.AnyType)
     }
 
@@ -1021,7 +1019,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         js.VarRef(paramName)(jstpe.AnyType)
       }
 
-      if (needsRestParam) {
+      if (restParamName != null) {
         val restArgRef = js.VarRef(restParamName)(jstpe.AnyType)
         fixedArgRefs :+ js.JSSpread(restArgRef)
       } else {

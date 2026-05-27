@@ -17,13 +17,16 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 
 /** The canonical builder for collections that are growable, i.e. that support an
-  * efficient `+=` method which adds an element to the collection.
-  *
-  * GrowableBuilders can produce only a single instance of the collection they are growing.
-  *
-  * @define Coll `GrowingBuilder`
-  * @define coll growing builder
-  */
+ *  efficient `+=` method which adds an element to the collection.
+ *
+ *  GrowableBuilders can produce only a single instance of the collection they are growing.
+ *
+ *  @define Coll `GrowingBuilder`
+ *  @define coll growing builder
+ *
+ *  @tparam Elem the type of elements that can be added to the builder
+ *  @tparam To the type of the resulting growable collection, which must be a subtype of `Growable[Elem]`
+ */
 class GrowableBuilder[Elem, To <: Growable[Elem]](protected val elems: To)
   extends Builder[Elem, To] {
 

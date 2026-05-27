@@ -1,9 +1,9 @@
--- Warning: tests/warn/infer-or-type.scala:6:18 ------------------------------------------------------------------------
+-- [E225] Type Warning: tests/warn/infer-or-type.scala:6:18 ------------------------------------------------------------
 6 |  val _ = List(1).contains("") // warn
   |          ^^^^^^^^^^^^^^^^
   |          A type argument was inferred to be union type Int | String
   |          This may indicate a programming error.
--- Warning: tests/warn/infer-or-type.scala:7:10 ------------------------------------------------------------------------
+-- [E225] Type Warning: tests/warn/infer-or-type.scala:7:10 ------------------------------------------------------------
 7 |  val _ = Pair(1, "") // warn
   |          ^^^^
   |          A type argument was inferred to be union type Int | String

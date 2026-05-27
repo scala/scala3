@@ -4,7 +4,7 @@
    |        Found:    (a1 : A^)
    |        Required: A^{any}
    |
-   |        Note that capability `a1` is not included in capture set {any}
+   |        Note that capability `a1` cannot flow into capture set {any}
    |        because (a1 : A^) in method b is not visible from any in variable a.
    |
    |        where:    ^   refers to a root capability in the type of value a1

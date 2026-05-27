@@ -14,19 +14,18 @@ package scala.annotation
 
 import scala.language.`2.13`
 
-/**
- * To customize the error message that's emitted when an implicit of type
- * `C[T1,..., TN]` cannot be found, annotate the class `C` with `@implicitNotFound`.
- * Assuming `C` has type parameters `X1, ..., XN`, the error message will be the
- * result of replacing all occurrences of `\${Xi}` in the string `msg` with the
- * string representation of the corresponding type argument `Ti`.
- * The annotation is effectively inherited by subtypes if they are not annotated.
+/** To customize the error message that's emitted when an implicit of type
+ *  `C[T1,..., TN]` cannot be found, annotate the class `C` with `@implicitNotFound`.
+ *  Assuming `C` has type parameters `X1, ..., XN`, the error message will be the
+ *  result of replacing all occurrences of `\${Xi}` in the string `msg` with the
+ *  string representation of the corresponding type argument `Ti`.
+ *  The annotation is effectively inherited by subtypes if they are not annotated.
  *
- * The annotation can also be attached to implicit parameters. In this case, `\${Xi}`
- * can refer to type parameters in the current scope. The `@implicitNotFound` message
- * on the parameter takes precedence over the one on the parameter's type.
+ *  The annotation can also be attached to implicit parameters. In this case, `\${Xi}`
+ *  can refer to type parameters in the current scope. The `@implicitNotFound` message
+ *  on the parameter takes precedence over the one on the parameter's type.
  *
- * {{{
+ *  ```
  *   import scala.annotation.implicitNotFound
  *
  *   @implicitNotFound("Could not find an implicit C[\${T}, \${U}]")
@@ -42,17 +41,17 @@ import scala.language.`2.13`
  *     k.m[String]
  *     k.n[String]
  *   }
- * }}}
+ *  ```
  *
- * The compiler issues the following error messages:
+ *  The compiler issues the following error messages:
  *
- * <pre>
- * Test.scala:13: error: Could not find an implicit C[List[Int], String]
+ *  <pre>
+ *  Test.scala:13: error: Could not find an implicit C[List[Int], String]
  *   k.m[String]
  *      ^
- * Test.scala:14: error: Specific message for C of list of Int and String
+ *  Test.scala:14: error: Specific message for C of list of Int and String
  *   k.n[String]
  *      ^
- * </pre>
+ *  </pre>
  */
 final class implicitNotFound(msg: String) extends scala.annotation.ConstantAnnotation

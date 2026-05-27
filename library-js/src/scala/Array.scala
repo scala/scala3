@@ -27,11 +27,11 @@ import scala.runtime.ScalaRunTime.{array_apply, array_update}
 
 /** Utility methods for operating on arrays.
  *  For example:
- *  {{{
+ *  ```
  *  val a = Array(1, 2)
  *  val b = Array.ofDim[Int](2)
  *  val c = Array.concat(a, b)
- *  }}}
+ *  ```
  *  where the array objects `a`, `b` and `c` have respectively the values
  *  `Array(1, 2)`, `Array(0, 0)` and `Array(1, 2, 0, 0)`.
  *
@@ -61,7 +61,11 @@ object Array {
     val emptyObjectArray  = new Array[Object](0)
   }
 
-  /** Provides an implicit conversion from the Array object to a collection Factory. */
+  /** Provides an implicit conversion from the Array object to a collection Factory.
+   *
+   *  @tparam A the element type of the array, must have a `ClassTag`
+   *  @param dummy the `Array` companion object, used to trigger the implicit conversion
+   */
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
@@ -69,8 +73,10 @@ object Array {
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 
-  /**
-   * Returns a new [[scala.collection.mutable.ArrayBuilder]].
+  /** Returns a new [[scala.collection.mutable.ArrayBuilder]].
+   *
+   *  @tparam T the element type of the array to build
+   *  @param t the `ClassTag` for the element type, used to create the correct array type at runtime
    */
   def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T](using t)
 
@@ -133,14 +139,19 @@ object Array {
   }
 
   /** Copies one array to another, truncating or padding with default values (if
-    * necessary) so the copy has the specified length.
-    *
-    * Equivalent to Java's
-    *   `java.util.Arrays.copyOf(original, newLength)`,
-    * except that this works for primitive and object arrays in a single method.
-    *
-    * @see `java.util.Arrays#copyOf`
-    */
+   *  necessary) so the copy has the specified length.
+   *
+   *  Equivalent to Java's
+   *   `java.util.Arrays.copyOf(original, newLength)`,
+   *  except that this works for primitive and object arrays in a single method.
+   *
+   *  @see `java.util.Arrays#copyOf`
+   *
+   *  @tparam A the element type of the array
+   *  @param original the array to be copied
+   *  @param newLength the length of the copy to be returned
+   *  @return a copy of the original array, truncated or padded with default values to obtain the specified length
+   */
   def copyOf[A](original: Array[A], newLength: Int): Array[A] = (original match {
     case x: Array[BoxedUnit]  => newUnitArray(newLength).asInstanceOf[Array[A]]
     case x: Array[AnyRef]     => java.util.Arrays.copyOf(x, newLength)
@@ -155,18 +166,24 @@ object Array {
   }).asInstanceOf[Array[A]]
 
   /** Copies one array to another, truncating or padding with default values (if
-    * necessary) so the copy has the specified length. The new array can have
-    * a different type than the original one as long as the values are
-    * assignment-compatible. When copying between primitive and object arrays,
-    * boxing and unboxing are supported.
-    *
-    * Equivalent to Java's
-    *   `java.util.Arrays.copyOf(original, newLength, newType)`,
-    * except that this works for all combinations of primitive and object arrays
-    * in a single method.
-    *
-    * @see `java.util.Arrays#copyOf`
-    */
+   *  necessary) so the copy has the specified length. The new array can have
+   *  a different type than the original one as long as the values are
+   *  assignment-compatible. When copying between primitive and object arrays,
+   *  boxing and unboxing are supported.
+   *
+   *  Equivalent to Java's
+   *   `java.util.Arrays.copyOf(original, newLength, newType)`,
+   *  except that this works for all combinations of primitive and object arrays
+   *  in a single method.
+   *
+   *  @see `java.util.Arrays#copyOf`
+   *
+   *  @tparam A the element type of the destination array
+   *  @param original the array to be copied
+   *  @param newLength the length of the copy to be returned
+   *  @param ct the `ClassTag` for the target element type, used to create the correct array type at runtime
+   *  @return a copy of the original array, converted to type `Array[A]`, truncated or padded with default values to obtain the specified length
+   */
   def copyAs[A](original: Array[_], newLength: Int)(implicit ct: ClassTag[A]): Array[A] = {
     val runtimeClass = ct.runtimeClass
     if (runtimeClass == Void.TYPE) newUnitArray(newLength).asInstanceOf[Array[A]]
@@ -192,7 +209,10 @@ object Array {
     result
   }
 
-  /** Returns an array of length 0. */
+  /** Returns an array of length 0.
+   *
+   *  @tparam T the element type of the empty array
+   */
   def empty[T: ClassTag]: Array[T] = new Array[T](0)
 
   /** Creates an array with given elements.
@@ -212,7 +232,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Boolean` objects. */
+  /** Creates an array of `Boolean` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Boolean, xs: Boolean*): Array[Boolean] = {
     val array = new Array[Boolean](xs.length + 1)
@@ -225,7 +249,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Byte` objects. */
+  /** Creates an array of `Byte` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Byte, xs: Byte*): Array[Byte] = {
     val array = new Array[Byte](xs.length + 1)
@@ -238,7 +266,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Short` objects. */
+  /** Creates an array of `Short` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Short, xs: Short*): Array[Short] = {
     val array = new Array[Short](xs.length + 1)
@@ -251,7 +283,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Char` objects. */
+  /** Creates an array of `Char` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Char, xs: Char*): Array[Char] = {
     val array = new Array[Char](xs.length + 1)
@@ -264,7 +300,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Int` objects. */
+  /** Creates an array of `Int` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Int, xs: Int*): Array[Int] = {
     val array = new Array[Int](xs.length + 1)
@@ -277,7 +317,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Long` objects. */
+  /** Creates an array of `Long` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Long, xs: Long*): Array[Long] = {
     val array = new Array[Long](xs.length + 1)
@@ -290,7 +334,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Float` objects. */
+  /** Creates an array of `Float` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Float, xs: Float*): Array[Float] = {
     val array = new Array[Float](xs.length + 1)
@@ -303,7 +351,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Double` objects. */
+  /** Creates an array of `Double` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   // Subject to a compiler optimization in Cleanup, see above.
   def apply(x: Double, xs: Double*): Array[Double] = {
     val array = new Array[Double](xs.length + 1)
@@ -316,7 +368,11 @@ object Array {
     array
   }
 
-  /** Creates an array of `Unit` objects. */
+  /** Creates an array of `Unit` objects.
+   *
+   *  @param x the first element
+   *  @param xs the remaining elements
+   */
   def apply(x: Unit, xs: Unit*): Array[Unit] = {
     val array = new Array[Unit](xs.length + 1)
     array(0) = x
@@ -328,28 +384,59 @@ object Array {
     array
   }
 
-  /** Creates array with given dimensions. */
+  /** Creates array with given dimensions.
+   *
+   *  @tparam T the element type of the array
+   *  @param n1 the number of elements in the 1st dimension
+   */
   def ofDim[T: ClassTag](n1: Int): Array[T] =
     new Array[T](n1)
-  /** Creates a 2-dimensional array. */
+  /** Creates a 2-dimensional array.
+   *
+   *  @tparam T the element type of the array
+   *  @param n1 the number of elements in the 1st dimension
+   *  @param n2 the number of elements in the 2nd dimension
+   */
   def ofDim[T: ClassTag](n1: Int, n2: Int): Array[Array[T]] = {
     val arr: Array[Array[T]] = (new Array[Array[T]](n1): Array[Array[T]])
     for (i <- 0 until n1) arr(i) = new Array[T](n2)
     arr
     // tabulate(n1)(_ => ofDim[T](n2))
   }
-  /** Creates a 3-dimensional array. */
+  /** Creates a 3-dimensional array.
+   *
+   *  @tparam T the element type of the array
+   *  @param n1 the number of elements in the 1st dimension
+   *  @param n2 the number of elements in the 2nd dimension
+   *  @param n3 the number of elements in the 3rd dimension
+   */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int): Array[Array[Array[T]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3))
-  /** Creates a 4-dimensional array. */
+  /** Creates a 4-dimensional array.
+   *
+   *  @tparam T the element type of the array
+   *  @param n1 the number of elements in the 1st dimension
+   *  @param n2 the number of elements in the 2nd dimension
+   *  @param n3 the number of elements in the 3rd dimension
+   *  @param n4 the number of elements in the 4th dimension
+   */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int): Array[Array[Array[Array[T]]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3, n4))
-  /** Creates a 5-dimensional array. */
+  /** Creates a 5-dimensional array.
+   *
+   *  @tparam T the element type of the array
+   *  @param n1 the number of elements in the 1st dimension
+   *  @param n2 the number of elements in the 2nd dimension
+   *  @param n3 the number of elements in the 3rd dimension
+   *  @param n4 the number of elements in the 4th dimension
+   *  @param n5 the number of elements in the 5th dimension
+   */
   def ofDim[T: ClassTag](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int): Array[Array[Array[Array[Array[T]]]]] =
     tabulate(n1)(_ => ofDim[T](n2, n3, n4, n5))
 
   /** Concatenates all arrays into a single array.
    *
+   *  @tparam T the element type of the arrays
    *  @param xss the given arrays
    *  @return   the array created from concatenating `xss`
    */
@@ -364,11 +451,12 @@ object Array {
    *  of times.
    *
    *  Note that this means that `elem` is computed a total of n times:
-   *  {{{
-   * scala> Array.fill(3){ math.random }
-   * res3: Array[Double] = Array(0.365461167592537, 1.550395944913685E-4, 0.7907242137333306)
-   *  }}}
+   *  ```
+   *  scala> Array.fill(3){ math.random }
+   *  res3: Array[Double] = Array(0.365461167592537, 1.550395944913685E-4, 0.7907242137333306)
+   *  ```
    *
+   *  @tparam T the element type of the array
    *  @param   n  the number of elements desired
    *  @param   elem the element computation
    *  @return an Array of size n, where each element contains the result of computing
@@ -391,6 +479,7 @@ object Array {
   /** Returns a two-dimensional array that contains the results of some element
    *  computation a number of times.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   elem the element computation
@@ -401,6 +490,7 @@ object Array {
   /** Returns a three-dimensional array that contains the results of some element
    *  computation a number of times.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -412,6 +502,7 @@ object Array {
   /** Returns a four-dimensional array that contains the results of some element
    *  computation a number of times.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -424,6 +515,7 @@ object Array {
   /** Returns a five-dimensional array that contains the results of some element
    *  computation a number of times.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -437,9 +529,10 @@ object Array {
   /** Returns an array containing values of a given function over a range of integer
    *  values starting from 0.
    *
+   *  @tparam T the element type of the array
    *  @param  n   The number of elements in the array
    *  @param  f   The function computing element values
-   *  @return A traversable consisting of elements `f(0),f(1), ..., f(n - 1)`
+   *  @return an array consisting of elements `f(0), f(1), ..., f(n - 1)`
    */
   def tabulate[T: ClassTag](n: Int)(f: Int => T): Array[T] = {
     if (n <= 0) {
@@ -458,6 +551,7 @@ object Array {
   /** Returns a two-dimensional array containing values of a given function
    *  over ranges of integer values starting from `0`.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   f   The function computing element values
@@ -468,6 +562,7 @@ object Array {
   /** Returns a three-dimensional array containing values of a given function
    *  over ranges of integer values starting from `0`.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -479,6 +574,7 @@ object Array {
   /** Returns a four-dimensional array containing values of a given function
    *  over ranges of integer values starting from `0`.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -491,6 +587,7 @@ object Array {
   /** Returns a five-dimensional array containing values of a given function
    *  over ranges of integer values starting from `0`.
    *
+   *  @tparam T the element type of the array
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
@@ -504,7 +601,7 @@ object Array {
   /** Returns an array containing a sequence of increasing integers in a range.
    *
    *  @param start  the start value of the array
-   *  @param end    the end value of the array, exclusive (in other words, this is the first value '''not''' returned)
+   *  @param end    the end value of the array, exclusive (in other words, this is the first value **not** returned)
    *  @return  the array with values in range `start, start + 1, ..., end - 1`
    *  up to, but excluding, `end`.
    */
@@ -513,7 +610,7 @@ object Array {
   /** Returns an array containing equally spaced values in some integer interval.
    *
    *  @param start the start value of the array
-   *  @param end   the end value of the array, exclusive (in other words, this is the first value '''not''' returned)
+   *  @param end   the end value of the array, exclusive (in other words, this is the first value **not** returned)
    *  @param step  the increment value of the array (may not be zero)
    *  @return      the array with values in `start, start + step, ...` up to, but excluding `end`
    */
@@ -533,6 +630,7 @@ object Array {
 
   /** Returns an array containing repeated applications of a function to a start value.
    *
+   *  @tparam T the element type of the array
    *  @param start the start value of the array
    *  @param len   the number of elements returned by the array
    *  @param f     the function that is repeatedly applied
@@ -574,8 +672,9 @@ object Array {
 
   /** Called in a pattern match like `{ case Array(x,y,z) => println('3 elements')}`.
    *
+   *  @tparam T the element type of the array
    *  @param x the selector value
-   *  @return  sequence wrapped in a [[scala.Some]], if `x` is an Array, otherwise `None`
+   *  @return  a [[UnapplySeqWrapper]] wrapping the array for pattern matching extraction
    */
   def unapplySeq[T](x: Array[T]): UnapplySeqWrapper[T] = new UnapplySeqWrapper(x)
 
@@ -592,12 +691,12 @@ object Array {
 /** Arrays are mutable, indexed collections of values. `Array[T]` is Scala's representation
  *  for Java's `T[]`.
  *
- *  {{{
+ *  ```
  *  val numbers = Array(1, 2, 3, 4)
  *  val first = numbers(0) // read the first element
  *  numbers(3) = 100 // replace the 4th array element with 100
  *  val biggerNumbers = numbers.map(_ * 2) // multiply all numbers by two
- *  }}}
+ *  ```
  *
  *  Arrays make use of two common pieces of Scala syntactic sugar, shown on lines 2 and 3 of the above
  *  example code.
@@ -614,11 +713,11 @@ object Array {
  *  The conversion to `ArrayOps` takes priority over the conversion to `ArraySeq`. For instance,
  *  consider the following code:
  *
- *  {{{
+ *  ```
  *  val arr = Array(1, 2, 3)
  *  val arrReversed = arr.reverse
  *  val seqReversed : collection.Seq[Int] = arr.reverse
- *  }}}
+ *  ```
  *
  *  Value `arrReversed` will be of type `Array[Int]`, with an implicit conversion to `ArrayOps` occurring
  *  to perform the `reverse` operation. The value of `seqReversed`, on the other hand, will be computed
@@ -627,9 +726,9 @@ object Array {
  *
  *  @author Martin Odersky
  *  @since  1.0
- *  @see [[http://www.scala-lang.org/files/archive/spec/2.13/ Scala Language Specification]], for in-depth information on the transformations the Scala compiler makes on Arrays (Sections 6.6 and 6.15 respectively.)
- *  @see [[http://docs.scala-lang.org/sips/completed/scala-2-8-arrays.html "Scala 2.8 Arrays"]] the Scala Improvement Document detailing arrays since Scala 2.8.
- *  @see [[http://docs.scala-lang.org/overviews/collections/arrays.html "The Scala 2.8 Collections' API"]] section on `Array` by Martin Odersky for more information.
+ *  @see [Scala Language Specification](http://www.scala-lang.org/files/archive/spec/2.13/), for in-depth information on the transformations the Scala compiler makes on Arrays (Sections 6.6 and 6.15 respectively.)
+ *  @see ["Scala 2.8 Arrays"](http://docs.scala-lang.org/sips/completed/scala-2-8-arrays.html) the Scala Improvement Document detailing arrays since Scala 2.8.
+ *  @see ["The Scala 2.8 Collections' API"](http://docs.scala-lang.org/overviews/collections/arrays.html) section on `Array` by Martin Odersky for more information.
  *  @hideImplicitConversion scala.Predef.booleanArrayOps
  *  @hideImplicitConversion scala.Predef.byteArrayOps
  *  @hideImplicitConversion scala.Predef.charArrayOps
@@ -659,6 +758,8 @@ object Array {
  *  @define willNotTerminateInf
  *  @define collectExample
  *  @define undefinedorder
+ *
+ *  @tparam T the type of the elements in the array
  */
 final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable { self =>
 
@@ -689,7 +790,7 @@ final class Array[T](_length: Int) extends java.io.Serializable with java.lang.C
 
   /** Clones the Array.
    *
-   *  @return A clone of the Array.
+   *  @return a clone of the array
    */
   override def clone(): Array[T] = throw new Error()
 }

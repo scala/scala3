@@ -219,10 +219,28 @@ trait TypesSupport:
           case other => noSupported(s"Not supported type in refinement $info")
         }
 
+        // Check whether a type contains `fresh` anywhere in its structure.
+        // This is used to force dependent rendering for function types like
+        // `(x: AnyRef^) -> AnyRef^{fresh}` where the result is not syntactically
+        // dependent on params but the `fresh` existential is semantically scoped
+        // by the function type (see scoped-capabilities.md). We recurse through
+        // CapturingType (to look past capture annotations) and AppliedType (to find
+        // fresh inside type arguments, e.g. `() -> AnyRef^{fresh}` stored as
+        // `Function0[AnyRef^{fresh}]`).
+        def resultHasFresh(tp: TypeRepr): Boolean = tp match
+          case CapturingType(parent, refs) => refs.exists(_.isFreshCap) || resultHasFresh(parent)
+          case AppliedType(_, args) => args.exists(resultHasFresh)
+          case _ => false
+
         def parseDependentFunctionType(info: TypeRepr): SSignature = info match {
           case m: MethodType =>
             val isCtx = isContextualMethod(m)
-            if isDependentMethod(m) then
+            // Use dependent rendering (preserving named params and precise arrow) when either:
+            // 1. The method is syntactically dependent (result references a param), or
+            // 2. CC is enabled and the result contains `fresh`, because `fresh` in a
+            //    function result is existentially bound by the function type, making the
+            //    dependent form semantically significant (see scoped-capabilities.md).
+            if isDependentMethod(m) || (ccEnabled && resultHasFresh(m.resType)) then
               val paramList = getParamList(m)
               val arrPrefix = if isCtx then "?" else ""
               val arrow =
@@ -529,8 +547,29 @@ trait TypesSupport:
       case ReachCapability(c)     => emitCapability(c, skipThisTypePrefix) :+ Keyword("*")
       case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
-      case ThisType(_)            => List(Keyword("this"))
+      case t @ ThisType(tpe)      =>
+        // Render `this` for self-references and `EnclosingClass.this` otherwise.
+        // We deliberately call `inner` without `inCC` in scope so the enclosing
+        // class name renders as a clickable Type element rather than Plain
+        // (see the `tpe(symbol)` helper, which collapses to Plain when inCC is set).
+        if skipPrefix(t, elideThis, originalOwner, skipThisTypePrefix) then List(Keyword("this"))
+        else inner(tpe, skipThisTypePrefix) ++ plain(".").l ++ List(Keyword("this"))
       case t                      => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
+
+  protected def emitCaptureRefsSignature(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+    emitUseRefsSignature(refs.map(_ -> false), skipThisTypePrefix)
+
+  protected def emitUseRefsSignature(using Quotes)(refs: List[(reflect.TypeRepr, Boolean)], skipThisTypePrefix: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+    refs match
+      case Nil => Nil
+      case _ =>
+        def emitRef(ref: reflect.TypeRepr, initially: Boolean) =
+          val csig = emitCapability(ref, skipThisTypePrefix)
+          if initially then csig ++ List(plain(" "), Keyword("initially"))
+          else csig
+        refs
+          .map((r, init) => emitRef(r, init))
+          .reduce((left, right) => left ++ (Plain(", ") :: right))
 
   private def emitCaptureSet(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean, omitCap: Boolean = true)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
@@ -543,15 +582,21 @@ trait TypesSupport:
           case other => other.reduce((r, e) => r ++ (List(Plain(", ")) ++ e))
         Plain("{") :: (res1 ++ List(Plain("}")))
 
-  // Within the context of `elideThis`, some capabilities can actually be pure.
+  // Determines whether a capture set reference should be rendered in the current context.
+  // Some capabilities (like `this` in a pure class) are elided. We need to handle all
+  // capability wrappers (reach `c*`, read-only `c.rd`, classifier `.only[C]`) by
+  // recursing into the underlying capability, and always render root capabilities
+  // (`cap`/`any`) and `fresh`.
   private def isCapturedInContext(using Quotes)(ref: reflect.TypeRepr)(using elideThis: reflect.ClassDef): Boolean =
     import reflect._
     ref match
-      case t if t.isCaptureRoot  => true
-      case ReachCapability(c)    => isCapturedInContext(c)
-      case ReadOnlyCapability(c) => isCapturedInContext(c)
-      case ThisType(tr)          => !elideThis.symbol.typeRef.isPureClass(elideThis) /* is the current class pure? */
-      case t                     => !t.isPureClass(elideThis)
+      case t if t.isCaptureRoot   => true
+      case t if t.isFreshCap      => true
+      case ReachCapability(c)     => isCapturedInContext(c)
+      case ReadOnlyCapability(c)  => isCapturedInContext(c)
+      case OnlyCapability(c, _)   => isCapturedInContext(c)
+      case ThisType(tr)           => !elideThis.symbol.typeRef.isPureClass(elideThis)
+      case t                      => !t.isPureClass(elideThis)
 
   private def emitCapturing(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._

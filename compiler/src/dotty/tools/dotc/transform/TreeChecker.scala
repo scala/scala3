@@ -26,10 +26,6 @@ import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 import cc.RetainingAnnotation
 
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
-
-import scala.util.control.NonFatal
-
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
  *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
  *  It also performs the following checks:
@@ -52,7 +48,8 @@ class TreeChecker extends Phase with SymTransformer {
   def testDuplicate(sym: Symbol, registry: mutable.Map[String, Symbol], typ: String)(using Context): Unit = {
     val name = sym.javaClassName
     val isDuplicate = this.flatClasses && registry.contains(name)
-    assert(!isDuplicate, s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
+    // Allow users to define a class "java" even on the JVM
+    assert(!isDuplicate || name == "java", s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
     registry(name) = sym
   }
 
@@ -104,7 +101,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def phaseName: String = "Ycheck"
 
-  def run(using Context): Unit =
+  protected def run(using Context): Unit =
     if (ctx.settings.YtestPickler.value && ctx.phase.prev.isInstanceOf[Pickler])
       report.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
     else if (ctx.phase.prev.isCheckable)
@@ -130,7 +127,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(using checkingCtx)
     catch {
-      case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
+      case ex: Exception =>     //TODO CHECK. Check that we are bootstrapped
         inContext(checkingCtx) {
           println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev.megaPhase(using ctx)} ***")
         }
@@ -199,10 +196,10 @@ object TreeChecker {
     }
   }.apply(tp0)
 
-  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree])(using Context): Unit =
+  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree], assertionFunc: (Boolean, String) => Unit)(using Context): Unit =
     val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
     val treeParents = parents.map(_.tpe.dealias.typeSymbol)
-    assert(symbolParents == treeParents,
+    assertionFunc(symbolParents == treeParents,
       i"""Parents of class symbol differs from the parents in the tree for $sym
           |
           |Parents in symbol: $symbolParents
@@ -438,7 +435,7 @@ object TreeChecker {
         checkNoOrphans(res.tpe)
         phasesToCheck.foreach(_.checkPostCondition(res))
         res
-      catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+      catch case ex: Exception if !ctx.run.enrichedErrorMessage =>
         val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
         printer.println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
         throw ex
@@ -580,7 +577,7 @@ object TreeChecker {
       assert(ctx.owner.isClass)
       val sym = ctx.owner.asClass
       if !sym.isPrimitiveValueClass then
-        TreeChecker.checkParents(sym, impl.parents)
+        TreeChecker.checkParents(sym, impl.parents, assert)
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
@@ -602,8 +599,7 @@ object TreeChecker {
 
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
-        !x.name.is(DocArtifactName) &&
-        !(ctx.phase.id >= genBCodePhase.id && x.name == str.MODULE_INSTANCE_FIELD.toTermName)
+        !x.name.is(DocArtifactName)
 
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
@@ -765,8 +761,13 @@ object TreeChecker {
 
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
+      def isAllowedTypeArg(tp: Type): Boolean = tp.dealias match
+        case _: TypeRef | _: TermRef | _: ThisType => true
+        case tp: AndType => isAllowedTypeArg(tp.tp1) && isAllowedTypeArg(tp.tp2)
+        case _ => false
+
       for arg <- args do
-        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef | TermRef | ThisType], "Unexpected type arg in Hole: " + arg.tpe)
+        assert(arg.isTerm || isAllowedTypeArg(arg.tpe), "Unexpected type arg in Hole: " + arg.tpe)
 
       // Check result type of the hole
       if isTerm then assert(tree1.typeOpt <:< pt)
@@ -818,6 +819,7 @@ object TreeChecker {
       assert((tp1 eq tp2) || (tp1 <:< tp2), {
         val mismatch = TypeMismatch(tp1, tp2, None)
         i"""|Type Mismatch (while checking $step):
+            |Position: ${tree.srcPos.sourcePos.showLineColumn}
             |${mismatch.message}${mismatch.explanation}
             |tree = $tree ${tree.className}""".stripMargin
       })
@@ -832,8 +834,8 @@ object TreeChecker {
 
   def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
     if ctx.settings.XcheckMacros.value then
-      // We want make sure that transparent inline macros are checked in the same way that
-      // non transparent macros are, so we try to prepare a context which would make
+      // We want to make sure that transparent inline macros are checked in the same way that
+      // non-transparent macros are, so we try to prepare a context which would make
       // the checks behave the same way for both types of macros.
       //
       // E.g. Different instances of skolem types are by definition not able to be a subtype of

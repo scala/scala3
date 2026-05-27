@@ -1,7 +1,9 @@
--- Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:3:8 --------------------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:3:8 ---------------------------------
 3 |  this: D^ => // error
   |        ^^
-  |reference `any` captured by this self type is not included in the allowed capture set {} of pure base class class C
+  |Reference `any` of the self type of class D is not included in the allowed capture set {} of pure base class class C.
+  |
+  |where:    any is the root capability caps.any
 -- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:2:6 -----------------------------------
 2 |class D extends C: // error
   |      ^

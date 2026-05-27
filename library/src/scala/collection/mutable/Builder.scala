@@ -16,13 +16,16 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 
 /** Base trait for collection builders.
-  *
-  * After calling `result()` the behavior of a Builder (which is not also a [[scala.collection.mutable.ReusableBuilder]])
-  * is undefined. No further methods should be called. It is common for mutable collections to be their own non-reusable
-  * Builder, in which case `result()` simply returns `this`.
-  *
-  * @see [[scala.collection.mutable.ReusableBuilder]] for Builders which can be reused after calling `result()`
-  */
+ *
+ *  After calling `result()` the behavior of a Builder (which is not also a [[scala.collection.mutable.ReusableBuilder]])
+ *  is undefined. No further methods should be called. It is common for mutable collections to be their own non-reusable
+ *  Builder, in which case `result()` simply returns `this`.
+ *
+ *  @see [[scala.collection.mutable.ReusableBuilder]] for Builders which can be reused after calling `result()`
+ *
+ *  @tparam A the type of elements that can be added to this builder
+ *  @tparam To the type of collection produced by this builder
+ */
 trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
 
   /** Clears the contents of this builder.
@@ -50,13 +53,18 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
    *  to have the same size as the given collection, plus some delta.
    *
    *  This method provides a hint only if the collection has a known size,
-   *  as specified by the following pseudocode:
+   *  as specified by the following code:
    *
-   *  {{{
+   *  ```scala sc-name:builder-sizehint-context sc-hidden
+   *    val coll: scala.collection.IterableOnce[?] = ???
+   *    val delta: Int = 0
+   *    def sizeHint(size: Int): Unit = ()
+   *  ```
+   *  ```scala sc-compile-with:builder-sizehint-context
    *    if (coll.knownSize != -1)
    *      if (coll.knownSize + delta <= 0) sizeHint(0)
    *      else sizeHint(coll.knownSize + delta)
-   *  }}}
+   *  ```
    *
    *  If the delta is negative and the result size is known to be negative,
    *  then the size hint is issued at zero.
@@ -75,17 +83,17 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
     }
 
   /** Gives a hint how many elements are expected to be added
-    *  when the next `result` is called, together with an upper bound
-    *  given by the size of some other collection. Some builder classes
-    *  will optimize their representation based on the hint. However,
-    *  builder implementations are still required to work correctly even if the hint is
-    *  wrong, i.e. a different number of elements is added.
-    *
-    *  @param size  the hint how many elements will be added.
-    *  @param boundingColl  the bounding collection. If it is
-    *                       an IndexedSeqLike, then sizes larger
-    *                       than collection's size are reduced.
-    */
+   *  when the next `result` is called, together with an upper bound
+   *  given by the size of some other collection. Some builder classes
+   *  will optimize their representation based on the hint. However,
+   *  builder implementations are still required to work correctly even if the hint is
+   *  wrong, i.e. a different number of elements is added.
+   *
+   *  @param size  the hint how many elements will be added.
+   *  @param boundingColl  the bounding collection. If it is
+   *                       an IndexedSeqLike, then sizes larger
+   *                       than collection's size are reduced.
+   */
   // should probably be `boundingColl: IterableOnce[_]`, but binary compatibility
   final def sizeHintBounded(size: Int, boundingColl: scala.collection.Iterable[?]^): Unit = {
     val s = boundingColl.knownSize
@@ -94,7 +102,11 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
     }
   }
 
-  /** A builder resulting from this builder by mapping the result using `f`. */
+  /** A builder resulting from this builder by mapping the result using `f`.
+   *
+   *  @tparam NewTo the type of collection produced by the returned builder
+   *  @param f the function to apply to this builder's result
+   */
   def mapResult[NewTo](f: To => NewTo): Builder[A, NewTo]^{this, f} = new Builder[A, NewTo] {
     def addOne(x: A): this.type = { self += x; this }
     def clear(): Unit = self.clear()

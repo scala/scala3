@@ -20,6 +20,7 @@ import core.Decorators.*
 import core.Constants.*
 import core.Definitions.*
 import core.Annotations.BodyAnnotation
+import core.MissingType
 import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes.*
@@ -49,7 +50,7 @@ class Erasure extends Phase with DenotTransformer {
   override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
 
-  def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = try ref match {
     case ref: SymDenotation =>
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
@@ -130,11 +131,14 @@ class Erasure extends Phase with DenotTransformer {
         ref.symbol, transformInfo(ref.symbol, ref.symbol.info), currentStablePeriod, ref.prefix)
     case _ =>
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
-  }
+  } catch case ex: MissingType =>
+    // Handle missing types from dependencies (e.g., JDK version mismatch)
+    report.error(ex.toMessage, ref.symbol.srcPos)
+    ref  // Keep old denotation on error
 
   private val eraser = new Erasure.Typer(this)
 
-  def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     unit.tpdTree = eraser.typedExpr(unit.tpdTree)(using ctx.fresh.setTyper(eraser).setPhase(this.next))
   }
@@ -698,13 +702,10 @@ object Erasure {
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
-        case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe: @unchecked
-          if (sym.owner.is(Flags.Trait))
-            cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
-              .withType(SuperType(thisType, sym.owner.typeRef))
-          else
-            qual.withType(SuperType(thisType, thisType.firstParent.typeConstructor))
+        case Super(thisQual, untpd.EmptyTypeIdent) if sym.owner.is(Flags.Trait) =>
+          val SuperType(thisType, _) = qual.tpe: @unchecked
+          cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
+            .withType(SuperType(thisType, sym.owner.typeRef))
         case _ =>
           qual
       }
@@ -800,8 +801,9 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams =>
+        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
           args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
             if isErased then
               checkPureErased(arg, isArgument = true,

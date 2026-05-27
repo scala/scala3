@@ -6,35 +6,33 @@ import java.nio.file.Path
 import java.util.Optional
 import java.util as ju
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-import scala.meta.internal.metals.CompilerVirtualFileParams
-import scala.meta.pc.reports.EmptyReportContext
-import scala.meta.internal.metals.PcQueryContext
-import scala.meta.pc.reports.ReportContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.EmptySymbolSearch
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.*
-import scala.meta.pc.{PcSymbolInformation as IPcSymbolInformation}
+import scala.meta.pc.PcSymbolInformation as IPcSymbolInformation
+import scala.meta.pc.reports.EmptyReportContext
+import scala.meta.pc.reports.ReportContext
 
-import dotty.tools.pc.completions.CompletionProvider
-import dotty.tools.pc.InferExpectedType
-import dotty.tools.pc.completions.OverrideCompletions
-import dotty.tools.pc.buildinfo.BuildInfo
-import dotty.tools.pc.SymbolInformationProvider
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.pc.InferExpectedType
+import dotty.tools.pc.SymbolInformationProvider
+import dotty.tools.pc.buildinfo.BuildInfo
+import dotty.tools.pc.completions.CompletionProvider
+import dotty.tools.pc.completions.OverrideCompletions
 
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
 
-/**
- * The raw public API of the presentation compiler that does not handle synchronisation.
- * Scala compiler can't run concurrent code at that point, so we need to enforce sequential, single threaded execution.
+/** The raw public API of the presentation compiler that does not handle
+ *  synchronisation. Scala compiler can't run concurrent code at that point, so
+ *  we need to enforce sequential, single threaded execution.
  *
- * It has to be implemented by the consumer of this API.
+ *  It has to be implemented by the consumer of this API.
  */
 case class RawScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
@@ -46,7 +44,9 @@ case class RawScalaPresentationCompiler(
     folderPath: Option[Path] = None,
     reportsLevel: ReportLevel = ReportLevel.Info,
     completionItemPriority: CompletionItemPriority = (_: String) => 0,
-    reportContext: ReportContext = EmptyReportContext()
+    reportContext: ReportContext = EmptyReportContext(),
+    sourcePath: ju.function.Supplier[ju.List[Path]] = () => Nil.asJava,
+    semanticdbFileManager: SemanticdbFileManager = SemanticdbFileManager.EMPTY
 ) extends RawPresentationCompiler:
 
   def this() = this("uninitialized-presentation-compiler")
@@ -54,62 +54,68 @@ case class RawScalaPresentationCompiler(
   given ReportContext = reportContext
 
   override def supportedCodeActions(): ju.List[String] = List(
-     CodeActionId.ConvertToNamedArguments,
-     CodeActionId.ImplementAbstractMembers,
-     CodeActionId.ExtractMethod,
-     CodeActionId.InlineValue,
-     CodeActionId.InsertInferredType,
-     CodeActionId.InsertInferredMethod,
-     PcConvertToNamedLambdaParameters.codeActionId
-   ).asJava
+    CodeActionId.ConvertToNamedArguments,
+    CodeActionId.ImplementAbstractMembers,
+    CodeActionId.ExtractMethod,
+    CodeActionId.InlineValue,
+    CodeActionId.InsertInferredType,
+    CodeActionId.InsertInferredMethod,
+    PcConvertToNamedLambdaParameters.codeActionId,
+  ).asJava
 
   override val scalaVersion = BuildInfo.scalaVersion
 
   private val forbiddenOptions = Set("-print-tasty")
   private val forbiddenDoubleOptions = Set.empty[String]
 
-  val driverSettings =
+  val driverSettings: List[String] =
     val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
     val defaultFlags = List("-color:never")
     val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
+    val classpathFlags = List("-classpath", classpath.mkString(File.pathSeparator))
+    val sourcePathFlags = if config.sourcePathMode() != SourcePathMode.DISABLED then
+      List("-Ylogical-package-loading")
+    else Nil
+    filteredOptions ++
+      defaultFlags ++
+      implicitSuggestionTimeout ++
+      classpathFlags ++
+      sourcePathFlags
 
-    filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
-      .mkString(File.pathSeparator) :: Nil
-
-  lazy val driver: InteractiveDriver = CachingDriver(driverSettings)
+  lazy val driver: InteractiveDriver =
+    CachingDriver(driverSettings, sourcePath, semanticdbFileManager, config.sourcePathMode())
 
   override def codeAction[T](
-    params: OffsetParams,
-    codeActionId: String,
-    codeActionPayload: Optional[T]
-   ): ju.List[TextEdit] =
-     (codeActionId, codeActionPayload.asScala) match
-        case (
-              CodeActionId.ConvertToNamedArguments,
-              Some(argIndices: ju.List[_])
-            ) =>
-          val payload = argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
-          convertToNamedArguments(params, payload)
-        case (CodeActionId.ImplementAbstractMembers, _) =>
-          implementAbstractMembers(params)
-        case (CodeActionId.InsertInferredType, _) =>
-          insertInferredType(params)
-        case (CodeActionId.InsertInferredMethod, _) =>
-          insertInferredMethod(params)
-        case (CodeActionId.InlineValue, _) =>
-          inlineValue(params)
-        case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
-          params match {
-            case range: RangeParams =>
-              extractMethod(range, extractionPos)
-            case _ => throw new IllegalArgumentException(s"Expected range parameters")
-          }
-        case (PcConvertToNamedLambdaParameters.codeActionId, _) =>
-          PcConvertToNamedLambdaParameters(driver, params).convertToNamedLambdaParameters
-        case (id, _) => throw new IllegalArgumentException(s"Unsupported action id $id")
+      params: OffsetParams,
+      codeActionId: String,
+      codeActionPayload: Optional[T]
+  ): ju.List[TextEdit] =
+    (codeActionId, codeActionPayload.asScala) match
+      case (
+            CodeActionId.ConvertToNamedArguments,
+            Some(argIndices: ju.List[?])
+          ) =>
+        val payload = argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
+        convertToNamedArguments(params, payload)
+      case (CodeActionId.ImplementAbstractMembers, _) =>
+        implementAbstractMembers(params)
+      case (CodeActionId.InsertInferredType, _) =>
+        insertInferredType(params)
+      case (CodeActionId.InsertInferredMethod, _) =>
+        insertInferredMethod(params)
+      case (CodeActionId.InlineValue, _) =>
+        inlineValue(params)
+      case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
+        params match
+          case range: RangeParams =>
+            extractMethod(range, extractionPos)
+          case _ => throw new IllegalArgumentException(s"Expected range parameters")
+      case (PcConvertToNamedLambdaParameters.codeActionId, _) =>
+        PcConvertToNamedLambdaParameters(driver, params).convertToNamedLambdaParameters
+      case (id, _) => throw new IllegalArgumentException(s"Unsupported action id $id")
 
   override def withCompletionItemPriority(
-    priority: CompletionItemPriority
+      priority: CompletionItemPriority
   ): RawPresentationCompiler =
     copy(completionItemPriority = priority)
 
@@ -148,7 +154,7 @@ case class RawScalaPresentationCompiler(
     CompletionProvider(
       search,
       driver,
-      () => InteractiveDriver(driverSettings),
+      () => InteractiveDriver(driverSettings, driver.logicalRootPackage),
       params,
       config,
       buildTargetIdentifier,
@@ -256,7 +262,7 @@ case class RawScalaPresentationCompiler(
       extractionPos,
       driver,
       search,
-      options.contains("-no-indent"),
+      options.contains("-no-indent")
     )
       .extractMethod()
       .asJava
@@ -284,7 +290,7 @@ case class RawScalaPresentationCompiler(
   ): ju.List[l.SelectionRange] =
     SelectionRangeProvider(
       driver,
-      params,
+      params
     ).selectionRange().asJava
 
   override def hover(
@@ -302,6 +308,20 @@ case class RawScalaPresentationCompiler(
       name: String
   ): ju.List[l.TextEdit] =
     PcRenameProvider(driver, params, Some(name)).rename().asJava
+
+  override def newInstance(
+      buildTargetIdentifier: String,
+      classpath: ju.List[Path],
+      options: ju.List[String],
+      sourcePath: ju.function.Supplier[ju.List[Path]]
+  ): RawPresentationCompiler = {
+    copy(
+      buildTargetIdentifier = buildTargetIdentifier,
+      classpath = classpath.asScala.toSeq,
+      options = options.asScala.toList,
+      sourcePath = sourcePath
+    )
+  }
 
   override def newInstance(
       buildTargetIdentifier: String,
@@ -341,5 +361,10 @@ case class RawScalaPresentationCompiler(
 
   override def withWorkspace(workspace: Path): RawPresentationCompiler =
     copy(folderPath = Some(workspace))
+
+  override def withSemanticdbFileManager(
+      semanticdbFileManager: SemanticdbFileManager
+  ): RawPresentationCompiler =
+    copy(semanticdbFileManager = semanticdbFileManager)
 
 end RawScalaPresentationCompiler

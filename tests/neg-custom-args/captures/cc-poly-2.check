@@ -4,7 +4,7 @@
    |                   Found:    (d : Test.D^)
    |                   Required: Test.D^{c1}
    |
-   |                   Note that capability `d` is not included in capture set {c1}.
+   |                   Note that capability `d` cannot flow into capture set {c1}.
    |
    |                   where:    ^ refers to a root capability in the type of value d
    |
@@ -15,6 +15,6 @@
    |                    Found:    (x : Test.D^{d})
    |                    Required: Test.D^{c1}
    |
-   |                    Note that capability `x` is not included in capture set {c1}.
+   |                    Note that capability `x` cannot flow into capture set {c1}.
    |
    | longer explanation available when compiling with `-explain`

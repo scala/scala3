@@ -25,20 +25,20 @@ import scala.runtime.AbstractFunction1
 
 
 /** This class implements immutable sorted sets using a tree.
-  *
-  *  @tparam A         the type of the elements contained in this tree set
-  *  @param ordering   the implicit ordering used to compare objects of type `A`
-  *
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#red-black-trees "Scala's Collection Library overview"]]
-  *  section on `Red-Black Trees` for more information.
-  *
-  *  @define Coll `immutable.TreeSet`
-  *  @define coll immutable tree set
-  *  @define orderDependent
-  *  @define orderDependentFold
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *
+ *  @tparam A         the type of the elements contained in this tree set
+ *  @param ordering   the implicit ordering used to compare objects of type `A`
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#red-black-trees)
+ *  section on `Red-Black Trees` for more information.
+ *
+ *  @define Coll `immutable.TreeSet`
+ *  @define coll immutable tree set
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[A, Any] | Null)(implicit val ordering: Ordering[A])
   extends AbstractSet[A]
     with SortedSet[A]
@@ -147,10 +147,10 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
   }
 
   /** Checks if this set contains element `elem`.
-    *
-    *  @param  elem    the element to check for membership.
-    *  @return true, iff `elem` is contained in this set.
-    */
+   *
+   *  @param  elem    the element to check for membership.
+   *  @return true, iff `elem` is contained in this set.
+   */
   def contains(elem: A): Boolean = RB.contains(tree, elem)
 
   override def range(from: A, until: A): TreeSet[A] = newSetOrSelf(RB.range(tree, from, until))
@@ -158,18 +158,18 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
   def rangeImpl(from: Option[A], until: Option[A]): TreeSet[A] = newSetOrSelf(RB.rangeImpl(tree, from, until))
 
   /** Creates a new `TreeSet` with the entry added.
-    *
-    *  @param elem    a new element to add.
-    *  @return        a new $coll containing `elem` and all the elements of this $coll.
-    */
+   *
+   *  @param elem    a new element to add.
+   *  @return        a new $coll containing `elem` and all the elements of this $coll.
+   */
   def incl(elem: A): TreeSet[A] =
     newSetOrSelf(RB.update(tree, elem, null, overwrite = false))
 
   /** Creates a new `TreeSet` with the entry removed.
-    *
-    *  @param elem    a new element to add.
-    *  @return        a new $coll containing all the elements of this $coll except `elem`.
-    */
+   *
+   *  @param elem    a new element to add.
+   *  @return        a new $coll containing all the elements of this $coll except `elem`.
+   */
   def excl(elem: A): TreeSet[A] =
     newSetOrSelf(RB.delete(tree, elem))
 
@@ -231,12 +231,11 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
   override protected def className = "TreeSet"
 }
 
-/**
-  * $factoryInfo
-  *
-  *  @define Coll `immutable.TreeSet`
-  *  @define coll immutable tree set
-  */
+/** $factoryInfo
+ *
+ *  @define Coll `immutable.TreeSet`
+ *  @define coll immutable tree set
+ */
 @SerialVersionUID(3L)
 object TreeSet extends SortedIterableFactory[TreeSet] {
 

@@ -96,13 +96,17 @@ object Inliner:
     }
   end isElideableExpr
 
-  // InlineCopier is a more fault-tolerant copier that does not cause errors when
-  // function types in applications are undefined. This is necessary since we copy at
-  // the same time as establishing the proper context in which the copied tree should
-  // be evaluated. This matters for opaque types, see neg/i14653.scala.
+  /** InlineCopier is a more fault-tolerant copier that does not cause errors in two situations:
+   *   - Function types in applications are undefined. This is necessary since we copy at
+   *     the same time as establishing the proper context in which the copied tree should
+   *     be evaluated. This matters for opaque types, see neg/i14653.scala.
+   *   - The application is spurious (in the sense of isSpuriousApply). We leave
+   *     the application around to be eliminated later by the inline typer.
+   */
   private class InlineCopier() extends TypedTreeCopier:
     override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
-      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
+      if fun.tpe.widen.exists && !isSpuriousApply(fun, args)
+      then super.Apply(tree)(fun, args)
       else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
 
   // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
@@ -938,6 +942,9 @@ class Inliner(val call: tpd.Tree)(using Context):
       val locked = ctx.typerState.ownedVars
       specializeEq(inlineIfNeeded(constToLiteral(BetaReduce(super.typedApply(tree, pt))), pt, locked))
 
+    override def isAcceptedSpuriousApply(fun: Tree, args: List[untpd.Tree])(using Context): Boolean =
+      tpd.isSpuriousApply(fun, args)
+
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
       val locked = ctx.typerState.ownedVars
       val tree1 = inlineIfNeeded(constToLiteral(BetaReduce(super.typedTypeApply(tree, pt))), pt, locked)
@@ -973,13 +980,17 @@ class Inliner(val call: tpd.Tree)(using Context):
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
         super.typedMatchFinish(tree, sel, wideSelType, cases, pt)
       else {
-        def selTyped(sel: Tree): Type = sel match {
+        def selTyped(sel: Tree): Tree = sel match {
           case Typed(sel2, _) => selTyped(sel2)
-          case Block(Nil, sel2) => selTyped(sel2)
-          case Inlined(_, Nil, sel2) => selTyped(sel2)
-          case _ => sel.tpe
+          case block @ Block(Nil, sel2) => tpd.cpy.Block(block)(Nil, selTyped(sel2))
+          case inlined @ Inlined(_, Nil, sel2) => tpd.cpy.Inlined(inlined)(inlined.call, inlined.bindings, selTyped(sel2))
+          case _ => sel
         }
-        val selType = if (sel.isEmpty) wideSelType else selTyped(sel)
+        val (retypedSel, selType) =
+          if (sel.isEmpty) (sel, wideSelType)
+          else
+            val retypedSel = selTyped(sel)
+            (retypedSel, retypedSel.tpe)
 
         /** Make an Inlined that has no bindings. */
         def flattenInlineBlock(tree: Tree): Tree = {
@@ -1044,7 +1055,7 @@ class Inliner(val call: tpd.Tree)(using Context):
                         | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
                 errorTree(tree, msg)
             }
-        reduceInlineMatchExpr(sel)
+        reduceInlineMatchExpr(retypedSel)
       }
 
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)

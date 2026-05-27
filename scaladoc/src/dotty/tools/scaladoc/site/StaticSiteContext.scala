@@ -8,7 +8,9 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.jdk.CollectionConverters._
+import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
+import dotty.tools.scaladoc.snippets.SnippetCompilerMessage
 
 class StaticSiteContext(
   val root: File,
@@ -46,6 +48,16 @@ class StaticSiteContext(
     def process(l: LoadedTemplate): List[LoadedTemplate] =
       l +: l.children.flatMap(process)
     process(staticSiteRoot.rootTemplate)
+
+  private val pendingSnippetMessages = ArrayBuffer.empty[SnippetCompilerMessage]
+
+  def bufferSnippetMessages(messages: Seq[SnippetCompilerMessage]): Unit =
+    pendingSnippetMessages ++= messages
+
+  def reportSnippetMessages(): Unit =
+    pendingSnippetMessages.foreach(_.emit()(using outerCtx))
+    pendingSnippetMessages.clear()
+
   /** Handles redirecting from multiple locations to one page
    *
    * For each entry in redirectFrom setting, create a page which contains code that redirects you to the page where the redirectFrom is defined.

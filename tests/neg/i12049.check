@@ -103,3 +103,19 @@
    |          Therefore, reduction cannot advance to the remaining case
    |
    |            case B => String
+-- [E184] Type Warning: tests/neg/i12049.scala:14:4 --------------------------------------------------------------------
+14 |val y3: String = ??? : Last[Int *: Int *: Boolean *: String *: EmptyTuple]  // error
+   |    ^
+   |    Match type reduction failed since selector EmptyTuple
+   |    matches none of the cases
+   |
+   |        case _ *: _ *: t => Last[t]
+   |        case t *: EmptyTuple => t
+-- [E184] Type Warning: tests/neg/i12049.scala:22:4 --------------------------------------------------------------------
+22 |val z3: (A, B, A) = ??? : Reverse[(A, B, A)] // error
+   |    ^
+   |    Match type reduction failed since selector A *: EmptyTuple.type
+   |    matches none of the cases
+   |
+   |        case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
+   |        case EmptyTuple => EmptyTuple

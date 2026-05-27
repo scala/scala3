@@ -19,19 +19,23 @@ import java.util.Spliterator
 import scala.collection.Stepper.EfficientSplit
 
 /** Abstracts all the generic operations of stepping over a collection
-  * that has an indexable ordering but may have gaps.
-  *
-  * For collections that are guaranteed to not have gaps, use `IndexedStepperBase` instead.
-  */
+ *  that has an indexable ordering but may have gaps.
+ *
+ *  For collections that are guaranteed to not have gaps, use `IndexedStepperBase` instead.
+ *
+ *  @tparam Sub the concrete stepper subtype, used as the self-type and return type of `trySplit`
+ *  @tparam Semi the concrete type of the split-off stepper half, constrained to be a subtype of `Sub`
+ *  @param i0 the starting index (inclusive) of the range to step over
+ *  @param iN the ending index (exclusive) of the range to step over
+ */
 private[convert] abstract class InOrderStepperBase[Sub, Semi <: Sub](protected var i0: Int, protected var iN: Int)
 extends EfficientSplit {
-  /** Sets `true` if the element at `i0` is known to be there.  `false` if either not known or is a gap.
-    */
+  /** Sets `true` if the element at `i0` is known to be there.  `false` if either not known or is a gap. */
   protected def found: Boolean
 
   /** Advance `i0` over any gaps, updating internal state so `found` is correct at the new position.
-    * Returns the new value of `found`.
-    */
+   *  Returns the new value of `found`.
+   */
   protected def findNext(): Boolean
 
   protected def semiclone(half: Int): Semi

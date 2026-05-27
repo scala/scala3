@@ -30,6 +30,8 @@ object ShutdownHookThread {
   }
   /** Creates, names, and registers a shutdown hook to run the
    *  given code.
+   *
+   *  @param body the code to execute when the JVM shuts down
    */
   def apply(body: => Unit): ShutdownHookThread = {
     val t = new ShutdownHookThread(() => body, hookName())

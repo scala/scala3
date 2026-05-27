@@ -17,6 +17,7 @@ import scala.language.`2.13`
 import java.io.{IOException, PrintWriter}
 import java.util.jar.Attributes.{Name => AttributeName}
 import scala.annotation.tailrec
+import language.experimental.captureChecking
 
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
@@ -175,14 +176,14 @@ private[scala] trait PropertiesTrait {
    *    is equal to or higher than the version denoted by the given string.
    *  @throws NumberFormatException if the given string is not a version string
    *
-   *  @example {{{
+   *  @example ```
    *  // In this example, the runtime's Java specification is assumed to be at version 8.
    *  isJavaAtLeast("1.8")            // true
    *  isJavaAtLeast("8")              // true
    *  isJavaAtLeast("9")              // false
    *  isJavaAtLeast("9.1")            // false
    *  isJavaAtLeast("1.9")            // throws
-   *  }}}
+   *  ```
    */
   def isJavaAtLeast(version: String): Boolean = {
     def versionOf(s: String, depth: Int): (Int, String) =

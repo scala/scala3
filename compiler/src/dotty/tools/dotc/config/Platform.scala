@@ -12,6 +12,11 @@ import core.Flags.Module
  */
 abstract class Platform {
 
+  /** Initialize platform-specific definitions for the current run.
+   *  Called at the start of each compilation run.
+   */
+  def init()(using Context): Unit = ()
+
   /** The root symbol loader. */
   def rootLoader(root: TermSymbol)(using Context): SymbolLoader
 
@@ -49,4 +54,12 @@ abstract class Platform {
   final def hasMainMethod(sym: Symbol)(using Context): Boolean =
     sym.info.member(nme.main).hasAltWith(d =>
       isMainMethod(d.symbol) && (sym.is(Module) || d.symbol.isStatic))
+
+  /**
+   * Whether instances of the class represented by the class symbol `c` **might** be a subtype of
+   * the class represented by the class symbol `potentialSuperClass` at runtime on this platform.
+   * This does not imply that they always will be,
+   * only that the compiler cannot fold `x.isInstanceOf[potentialSuperClass]` to false for for `x: c`
+   */
+  def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean
 }

@@ -8,4 +8,4 @@ package scala.annotation.internal
  *  underlying type in the types of local parameters.
  */
 @preview
-class $into extends annotation.StaticAnnotation
+class `$into` extends annotation.StaticAnnotation

@@ -1,7 +1,7 @@
 package scala.util
 import boundary.{Label, break}
 
-abstract class Result[+T, +E]
+sealed abstract class Result[+T, +E]
 case class Ok[+T](value: T)  extends Result[T, Nothing]
 case class Err[+E](value: E) extends Result[Nothing, E]
 
@@ -17,6 +17,11 @@ object Result:
     def mapErr[E1](f: E => E1): Result[T, E1] = r match
       case err: Err[_] => Err(f(err.value))
       case ok: Ok[_] => ok
+
+    /** Replace OK values, propagate Errs */
+    def ifOK[U](u: => U): Result[U, E] = r match
+      case ok: Ok[_] => Ok(u)
+      case err: Err[_] => err
 
     /** Map Ok values, propagate Errs */
     def map[U](f: T => U): Result[U, E] = r match
@@ -55,6 +60,11 @@ object Result:
 
   /** Right unit for chains of `*:`s. Returns an `Ok` with an `EmotyTuple` value. */
   def empty: Result[EmptyTuple, Nothing] = Ok(EmptyTuple)
+
+  /** scala.Option (for collection interop), not the one from `tests/run/errorhandling/optional.scala` */
+  inline def fromOption[T, E](opt: scala.Option[T], inline ifNone: E): Result[T, E] = opt match
+    case scala.Some(x) => Ok(x)
+    case scala.None => Err(ifNone)
 end Result
 
 /** A prompt for `_.?`. It establishes a boundary to which `_.?` returns */
@@ -63,5 +73,3 @@ object respond:
     boundary:
       val result = body
       Ok(result)
-
-

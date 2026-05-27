@@ -10,8 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT. See scala.Function0 for timestamp.
-
 package scala
 
 import scala.language.`2.13`
@@ -20,44 +18,46 @@ object Function1 {
 
   implicit final class UnliftOps[A, B] private[Function1](private val f: A => Option[B]) extends AnyVal {
     /** Converts an optional function to a partial function.
-      *
-      * @example Unlike [[Function.unlift]], this [[UnliftOps.unlift]] method can be used in extractors.
-      *          {{{
-      *          val of: Int => Option[String] = { i =>
-      *            if (i == 2) {
-      *              Some("matched by an optional function")
-      *            } else {
-      *              None
-      *            }
-      *          }
-      *
-      *          util.Random.nextInt(4) match {
-      *            case of.unlift(m) => // Convert an optional function to a pattern
-      *              println(m)
-      *            case _ =>
-      *              println("Not matched")
-      *          }
-      *          }}}
-      */
+     *
+     *  @example Unlike [[Function.unlift]], this [[UnliftOps.unlift]] method can be used in extractors.
+     *          ```
+     *          val of: Int => Option[String] = { i =>
+     *            if (i == 2) {
+     *              Some("matched by an optional function")
+     *            } else {
+     *              None
+     *            }
+     *          }
+     *
+     *          util.Random.nextInt(4) match {
+     *            case of.unlift(m) => // Convert an optional function to a pattern
+     *              println(m)
+     *            case _ =>
+     *              println("Not matched")
+     *          }
+     *          ```
+     *
+     *  @return a `PartialFunction` that is defined where `f` returns `Some` and undefined where `f` returns `None`
+     */
     def unlift: PartialFunction[A, B] = Function.unlift(f)
   }
 
 }
 
 /** A function of 1 parameter.
- *  
+ *
  *  In the following example, the definition of `succ` is
  *  shorthand, conceptually, for the anonymous class definition
  *  `anonfun1`, although the implementation details of how the
  *  function value is constructed may differ:
  *
- *  {{{
+ *  ```
  *  val succ = (x: Int) => x + 1
  *  val anonfun1 = new Function1[Int, Int] {
  *    def apply(x: Int): Int = x + 1
  *  }
  *  assert(succ(0) == anonfun1(0))
- *  }}}
+ *  ```
  *
  *  Note that the difference between `Function1` and [[scala.PartialFunction]]
  *  is that the latter can specify inputs which it will not handle.
@@ -65,6 +65,8 @@ object Function1 {
 @annotation.implicitNotFound(msg = "No implicit view available from ${T1} => ${R}.")
 trait Function1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends AnyRef {
   /** Applies the body of this function to the argument.
+   *
+   *  @param v1 the function argument
    *  @return   the result of function application.
    */
   def apply(v1: T1): R

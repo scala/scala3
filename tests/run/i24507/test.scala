@@ -1,4 +1,3 @@
-// scalajs: --skip
 import a._
 
 class T extends A {

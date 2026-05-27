@@ -15,7 +15,9 @@ package scala.ref
 import scala.language.`2.13`
 
 /**
- * @see `java.lang.ref.Reference`
+ *  @see `java.lang.ref.Reference`
+ *
+ *  @tparam T the type of the referenced object, constrained to `AnyRef` (i.e., non-primitive types)
  */
 trait Reference[+T <: AnyRef] extends Function0[T] {
   /** Returns the underlying value. */

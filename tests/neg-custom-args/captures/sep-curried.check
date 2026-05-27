@@ -4,7 +4,7 @@
    |                                        Found:    (y: Ref[Int]^{any}) ->{a} Unit
    |                                        Required: (y: Ref[Int]^{a}) ->{a} Unit
    |
-   |                                        Note that capability `a` is not included in capture set {any}.
+   |                                        Note that capability `a` cannot flow into capture set {any}.
    |
    |                                        where:    any is the root capability caps.any
    |

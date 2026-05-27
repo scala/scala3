@@ -24,7 +24,7 @@
    |      Found:    (C{val arg: C^}^{any} => Unit) -> Unit
    |      Required: (C => Unit) =>² Unit
    |
-   |      Note that capability `any` is not included in capture set {}.
+   |      Note that capability `any` cannot flow into capture set {}.
    |
    |      where:    =>  refers to the root capability caps.any
    |                =>² refers to a root capability in the type of value boxed2
@@ -38,7 +38,7 @@
    |  Found:    (x : () ->{filesList, sayHello} Unit)
    |  Required: () -> Unit
    |
-   |  Note that capability `filesList` is not included in capture set {}.
+   |  Note that capability `filesList` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i15772.scala:34:10 ------------------------------------------------------------

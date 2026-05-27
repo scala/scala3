@@ -17,6 +17,10 @@ import scala.language.`2.13`
 import scala.collection.mutable
 
 /** The internal implementation of scala.sys.Prop.
+ *
+ *  @tparam T the type of the property value after conversion from `String`
+ *  @param key the system property key used to look up the value
+ *  @param valueFn the function that converts the raw `String` property value to type `T`
  */
 private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends Prop[T] {
   def value: T = if (isSet) valueFn(get) else zero

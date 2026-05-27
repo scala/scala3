@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package core.classfile
 
-import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.core.Contexts.*
@@ -12,7 +11,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.util.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.tasty.TastyReader
+import dotty.tools.tasty.{ TastyReader, UnpickleException }
 
 import ClassfileParser.Header
 
@@ -32,12 +31,14 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
     this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)
-    this.pool =  null
+    this.pool = null.asInstanceOf[ConstantPool] // deinit for GC
   }
   catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
-      val addendum = Header.Version.brokenVersionAddendum(classfileVersion)
+      val addendum = e match
+        case _: UnpickleException => ""
+        case _ => Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
         i"""  class file ${classfile.canonicalPath} is broken$addendum,
           |  reading aborted with ${e.getClass}:
@@ -104,6 +105,6 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   class ConstantPool(using in: DataReader) extends ClassfileParser.AbstractConstantPool {
     def getClassOrArrayType(index: Int)(using ctx: Context, in: DataReader): Type = throw new UnsupportedOperationException
     def getClassSymbol(index: Int)(using ctx: Context, in: DataReader): Symbol = throw new UnsupportedOperationException
-    def getType(index: Int, isVarargs: Boolean)(using x$3: Context, x$4: DataReader): Type = throw new UnsupportedOperationException
+    def getType(index: Int, isVarargs: Boolean)(using Context, DataReader): Type = throw new UnsupportedOperationException
   }
 }

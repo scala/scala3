@@ -32,6 +32,7 @@ import scala.language.implicitConversions
 
 /** A class for character encoding/decoding preferences.
  *
+ *  @param charSet the character set used for encoding and decoding operations
  */
 class Codec(val charSet: Charset) {
   type Configure[T] = (T => T, Boolean)

@@ -2,10 +2,11 @@ package dotty.tools.dotc
 package config
 
 import CommandLineParser.tokenize
-import Settings._
-import dotty.tools.dotc.config.ScalaSettingCategories._
+import Settings.*
+import dotty.tools.Useables.given
+import dotty.tools.dotc.config.ScalaSettingCategories.*
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 import core.Decorators.toMessage
 import dotty.tools.io.{Path, PlainFile}
 
@@ -86,7 +87,7 @@ class ScalaSettingsTests:
     val feat = new Diagnostic.FeatureWarning(msg, util.NoSourcePosition)
     assertEquals(Action.Error, sut.action(feat))
     val warn = new Diagnostic.Warning(msg, util.NoSourcePosition)
-    assertEquals(Action.Warning, sut.action(warn))
+    assertEquals(Action.Default, sut.action(warn))
     val nowr = new Diagnostic.Warning("This is a problem.".toMessage, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(nowr))
 
@@ -239,7 +240,7 @@ class ScalaSettingsTests:
         )
       )
     )
-    assertEquals(result, Right(reporting.Action.Warning))
+    assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `WConf src filter silences warnings from a matching path for real file`: Unit =
     val result = Using.resource(Files.createTempFile("myfile", ".scala").nn) { file =>
@@ -269,7 +270,7 @@ class ScalaSettingsTests:
         )
       )
     }(using Files.deleteIfExists(_))
-    assertEquals(result, Right(reporting.Action.Warning))
+    assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `WConf src filter reports an error on an invalid regex`: Unit =
     val result = wconfSrcFilterTest(
@@ -316,5 +317,24 @@ class ScalaSettingsTests:
     assertEquals(2, result.warnings.length)
     assertEquals("Option -Xfatal-warnings is a deprecated alias: use -Werror instead", result.warnings.head)
     assertEquals(0, result.errors.length)
+
+  // see sbt-test/pipelining/pipelining-test/test
+  @Test def `-Xearly-tasty-output preferPrevious does not warn on change of value`: Unit =
+    val settings = ScalaSettings
+    val conf = Using.resource(Files.createTempDirectory("testDir")): dir =>
+      val args = List("-Ypickle-write", s"$dir/foo.jar", "-Ypickle-write", s"$dir/bar.jar")
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+      settings.processArguments(argSummary, processAll = true, skipped = Nil)
+    assert(conf.warnings.isEmpty, s"WARN: ${conf.warnings}")
+    assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
+
+  @Test def `-Xjava-tasty preferPrevious warns on change of value`: Unit =
+    val settings = ScalaSettings
+    val args = List("-Xjava-tasty", "-Xjava-tasty:false")
+    val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+    val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+    assertEquals(s"Warnings [${conf.warnings}]", 1, conf.warnings.size)
+    assertEquals("Ignoring conflicting value for Boolean flag -Xjava-tasty", conf.warnings.head)
+    assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
 
 end ScalaSettingsTests

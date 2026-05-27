@@ -2,12 +2,12 @@ package dotty.tools.pc.tests.edit
 
 import java.net.URI
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.mtags.CommonMtagsEnrichments
 import scala.meta.internal.pc.InlineValueProvider.Errors as InlineErrors
 import scala.meta.pc.DisplayableException
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
@@ -302,7 +302,6 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
          |}""".stripMargin
     )
 
-
   @Test def `i6924` =
     checkEdit(
       """|object O {
@@ -449,8 +448,8 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
     )
 
   @Test def `i7137b` =
-      checkEdit(
-        """|object O {
+    checkEdit(
+      """|object O {
             |  def foo = {
             |    val newValue = {
             |      val x = true
@@ -461,7 +460,7 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
             |  }
             |}
             |""".stripMargin,
-        """|object O {
+      """|object O {
             |  def foo = {
             |    def bar =
             |      val xx = {
@@ -471,7 +470,7 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
             |  }
             |}
             |""".stripMargin
-      )
+    )
 
   @Test def `no-new-line` =
     checkEdit(
@@ -496,6 +495,126 @@ class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
          |  }
          |}
          |""".stripMargin
+    )
+
+  @Test def `lambda-param-no-shadow` =
+    checkEdit(
+      """|object Main {
+         |  def test(x: Int) = {
+         |    val pq = List(1, 2, 3).map(x => x + 1)
+         |    <<pq>>.sum
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def test(x: Int) = {
+         |    List(1, 2, 3).map(x => x + 1).sum
+         |  }
+			|}""".stripMargin
+    )
+
+  @Test def `check-interpolates-string-properly` =
+    checkEdit(
+      """|object Main {
+         |  def f(): Unit = {
+         |    val x = "hi"
+         |    println(s"${<<x>>}!")
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def f(): Unit = {
+         |    println(s"${"hi"}!")
+         |  }
+         |}""".stripMargin
+    )
+
+  @Test def `check-interpolates-expression-properly` =
+    checkEdit(
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    val x = 1 + y
+         |    println(s"${<<x>>}$y")
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    println(s"${1 + y}$y")
+         |  }
+         |}""".stripMargin
+    )
+
+  @Test def `check-interpolation-no-unneeded-curly-braces` =
+    checkEdit(
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    val x = y
+         |    println(s"${<<x>>}$y")
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    println(s"${y}$y")
+         |  }
+         |}""".stripMargin
+    )
+
+  @Test def `check-interpolation-no-extra-curly-braces` =
+    checkEdit(
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    val x = y + 1
+         |    println(s"${<<x>>}$y")
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    println(s"${y + 1}$y")
+         |  }
+         |}""".stripMargin
+    )
+
+  @Test def `check-interpolation-inlining-inside-curly-exp-does-not-add-curly` =
+    checkEdit(
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    val x = y - 1
+         |    println(s"${<<x>> - y}")
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    println(s"${(y - 1) - y}")
+         |  }
+         |}""".stripMargin
+    )
+
+  @Test def `check-interpolation-inlining-within-curly-exp-adds-brackets` =
+    checkEdit(
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    val x = y - 1
+         |    println(s"${y - <<x>>}")
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    println(s"${y - (y - 1)}")
+         |  }
+         |}""".stripMargin
+    )
+
+  @Test def `check-interpolation-dollar-sign-variable` =
+    checkEdit(
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    val `$x` = y + 1
+         |    println(s"${<<`$x`>>}$y")
+         |  }
+         |}""".stripMargin,
+      """|object Main {
+         |  def f(y: Int): Unit = {
+         |    println(s"${y + 1}$y")
+         |  }
+         |}""".stripMargin
     )
 
   def checkEdit(

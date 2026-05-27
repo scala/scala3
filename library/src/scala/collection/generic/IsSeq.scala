@@ -20,15 +20,17 @@ import caps.unsafe.untrackedCaptures
 import scala.reflect.ClassTag
 
 /** Type class witnessing that a collection representation type `Repr` has
-  * elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
-  * some types `A` and `C`.
-  *
-  * This type enables simple enrichment of `Seq`s with extension methods which
-  * can make full use of the mechanics of the Scala collections framework in
-  * their implementation.
-  *
-  * @see [[scala.collection.generic.IsIterable]]
-  */
+ *  elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
+ *  some types `A` and `C`.
+ *
+ *  This type enables simple enrichment of `Seq`s with extension methods which
+ *  can make full use of the mechanics of the Scala collections framework in
+ *  their implementation.
+ *
+ *  @see [[scala.collection.generic.IsIterable]]
+ *
+ *  @tparam Repr the collection representation type that is witnessed to have sequence-like operations
+ */
 transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
@@ -36,11 +38,14 @@ transparent trait IsSeq[Repr] extends IsIterable[Repr] {
   override val conversion: Repr => SeqOps[A, Iterable, C] = apply(_)
 
   /** A conversion from the type `Repr` to `SeqOps[A, Iterable, C]`
-    *
-    * @note The second type parameter of the returned `SeqOps` value is
-    *       still `Iterable` (and not `Seq`) because `SeqView[A]` only
-    *       extends `SeqOps[A, View, View[A]]`.
-    */
+   *
+   *  @note The second type parameter of the returned `SeqOps` value is
+   *       still `Iterable` (and not `Seq`) because `SeqView[A]` only
+   *       extends `SeqOps[A, View, View[A]]`.
+   *
+   *  @param coll the collection to convert
+   *  @return a `SeqOps` instance that provides sequence operations on `coll`
+   */
   def apply(coll: Repr): SeqOps[A, Iterable, C]
 }
 

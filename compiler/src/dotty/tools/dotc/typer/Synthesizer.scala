@@ -315,8 +315,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     loop(formal)
 
   private def checkRefinement(formal: Type, name: TypeName, expected: Type, span: Span)(using Context): Unit =
-    val actual = formal.lookupRefined(name)
-    if actual.exists && !(expected =:= actual)
+    val actual = formal.findMember(name, NoPrefix).info
+    if actual.exists && !(actual.bounds.contains(expected))
     then report.error(
       em"$name mismatch, expected: $expected, found: $actual.", ctx.source.atSpan(span))
 
@@ -504,6 +504,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         case MirrorSource.Singleton(_, tref) =>
           val singleton = tref.termSymbol // prefer alias name over the original name
           val singletonPath = tpd.singleton(tref).withSpan(span)
+          checkRefinement(formal, tpnme.MirroredElemTypes, defn.EmptyTupleModule.termRef, span)
+          checkRefinement(formal, tpnme.MirroredElemLabels, defn.EmptyTupleModule.termRef, span)
           if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
             val mirrorType = formal.constrained_& {
               mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
@@ -596,8 +598,14 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   resType <:< target
                   val tparams = poly.paramRefs
                   val variances = childClass.typeParams.map(_.paramVarianceSign)
-                  val instanceTypes = tparams.lazyZip(variances).map: (tparam, variance) =>
-                    TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
+                  @tailrec def fixInstances(cur: List[Type]): List[Type] =
+                    val next = cur.mapConserve(_.substParams(poly, cur))
+                    if next eq cur then next else fixInstances(next)
+                  val instanceTypes = {
+                    val types0 = tparams.lazyZip(variances).map: (tparam, variance) =>
+                      TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
+                    fixInstances(types0)
+                  }
                   val instanceType = resType.substParams(poly, instanceTypes)
                   // this is broken in tests/run/i13332intersection.scala,
                   // because type parameters are not correctly inferred.

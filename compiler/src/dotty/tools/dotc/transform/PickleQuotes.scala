@@ -85,7 +85,7 @@ class PickleQuotes extends MacroTransform {
         assert(Inlines.inInlineMethod)
       case _ =>
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(using Context): Transformer = new Transformer {

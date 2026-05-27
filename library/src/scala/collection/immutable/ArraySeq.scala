@@ -27,14 +27,15 @@ import scala.runtime.ScalaRunTime
 import scala.util.Sorting
 import scala.util.hashing.MurmurHash3
 
-/**
-  * An immutable array.
-  *
-  * Supports efficient indexed access and has a small memory footprint.
-  *
-  * @define coll immutable array
-  * @define Coll `ArraySeq`
-  */
+/** An immutable array.
+ *
+ *  Supports efficient indexed access and has a small memory footprint.
+ *
+ *  @define coll immutable array
+ *  @define Coll `ArraySeq`
+ *
+ *  @tparam A the element type of the immutable array
+ */
 sealed abstract class ArraySeq[+A]
   extends AbstractSeq[A]
     with IndexedSeq[A]
@@ -44,16 +45,18 @@ sealed abstract class ArraySeq[+A]
     with Serializable{
 
   /** The tag of the element type. This does not have to be equal to the element type of this ArraySeq. A primitive
-    * ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
-    * or subtype of the element type. */
+   *  ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an array of a supertype
+   *  or subtype of the element type. 
+   */
   protected def elemTag: ClassTag[?]
 
   override def iterableFactory: SeqFactory[ArraySeq] = ArraySeq.untagged
 
   /** The wrapped mutable `Array` that backs this `ArraySeq`. Any changes to this array will break
-    * the expected immutability. Its element type does not have to be equal to the element type of this ArraySeq.
-    * A primitive ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an
-    * array of a supertype or subtype of the element type. */
+   *  the expected immutability. Its element type does not have to be equal to the element type of this ArraySeq.
+   *  A primitive ArraySeq can be backed by an array of boxed values and a reference ArraySeq can be backed by an
+   *  array of a supertype or subtype of the element type. 
+   */
   def unsafeArray: Array[?]
 
   protected def evidenceIterableFactory: ArraySeq.type = ArraySeq
@@ -88,9 +91,11 @@ sealed abstract class ArraySeq[+A]
     ArraySeq.unsafeWrapArray(unsafeArray.appended[Any](elem)).asInstanceOf[ArraySeq[B]]
 
   /** Fast concatenation of two [[ArraySeq]]s.
-    *
-    * @return null if optimisation not possible.
-    */
+   *
+   *  @tparam B the element type of the resulting sequence, a supertype of `A`
+   *  @param that the `ArraySeq` to append to this sequence
+   *  @return the concatenated `ArraySeq`, or `null` if optimization is not possible
+   */
   private def appendedAllArraySeq[B >: A](that: ArraySeq[B]): ArraySeq[B] | Null = {
     // Optimise concatenation of two ArraySeqs
     // For ArraySeqs with sizes of [100, 1000, 10000] this is [3.5, 4.1, 5.2]x as fast
@@ -267,11 +272,10 @@ sealed abstract class ArraySeq[+A]
     }
 }
 
-/**
-  * $factoryInfo
-  * @define coll immutable array
-  * @define Coll `ArraySeq`
-  */
+/** $factoryInfo
+ *  @define coll immutable array
+ *  @define Coll `ArraySeq`
+ */
 @SerialVersionUID(3L)
 object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   val untagged: SeqFactory[ArraySeq] = new ClassTagSeqFactory.AnySeqDelegate(self)
@@ -300,17 +304,20 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
     ArraySeq.unsafeWrapArray(elements)
   }
 
-  /**
-   * Wraps an existing `Array` into an `ArraySeq` of the proper primitive specialization type
-   * without copying. Any changes to wrapped array will break the expected immutability.
+  /** Wraps an existing `Array` into an `ArraySeq` of the proper primitive specialization type
+   *  without copying. Any changes to wrapped array will break the expected immutability.
    *
-   * Note that an array containing boxed primitives can be wrapped in an `ArraySeq` without
-   * copying. For example, `val a: Array[Any] = Array(1)` is an array of `Object` at runtime,
-   * containing `Integer`s. An `ArraySeq[Int]` can be obtained with a cast:
-   * `ArraySeq.unsafeWrapArray(a).asInstanceOf[ArraySeq[Int]]`. The values are still
-   * boxed, the resulting instance is an [[ArraySeq.ofRef]]. Writing
-   * `ArraySeq.unsafeWrapArray(a.asInstanceOf[Array[Int]])` does not work, it throws a
-   * `ClassCastException` at runtime.
+   *  Note that an array containing boxed primitives can be wrapped in an `ArraySeq` without
+   *  copying. For example, `val a: Array[Any] = Array(1)` is an array of `Object` at runtime,
+   *  containing `Integer`s. An `ArraySeq[Int]` can be obtained with a cast:
+   *  `ArraySeq.unsafeWrapArray(a).asInstanceOf[ArraySeq[Int]]`. The values are still
+   *  boxed, the resulting instance is an [[ArraySeq.ofRef]]. Writing
+   *  `ArraySeq.unsafeWrapArray(a.asInstanceOf[Array[Int]])` does not work, it throws a
+   *  `ClassCastException` at runtime.
+   *
+   *  @tparam T the element type of the array to wrap
+   *  @param x the array to wrap, which must not be modified after wrapping
+   *  @return an `ArraySeq` backed by the given array, using the appropriate primitive specialization
    */
   def unsafeWrapArray[T](x: Array[T]): ArraySeq[T] = ((x: @unchecked) match {
     case null              => null

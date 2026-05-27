@@ -9,7 +9,7 @@ object List:
 
 def test(io: Object^, async: Object^) =
   def compose(op: List[(() ->{any} Unit, () ->{any} Unit)]): List[() ->{op*} Unit] =
-    List(() => op.foreach((f,g) => { f(); g() })) // error (???)
+    List(() => op.foreach((f,g) => { f(); g() })) // was error now OK
 
   def compose1(op: List[(() ->{async} Unit, () ->{io} Unit)]): List[() ->{op*} Unit] =
     compose(op)

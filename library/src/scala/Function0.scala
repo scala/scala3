@@ -10,21 +10,18 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT.
-// genprod generated these sources at: 2025-08-11T16:44:44.712777821Z
-
 package scala
 
 import scala.language.`2.13`
 
 /** A function of 0 parameters.
- *  
+ *
  *  In the following example, the definition of `greeting` is
  *  shorthand, conceptually, for the anonymous class definition
  *  `anonfun0`, although the implementation details of how the
  *  function value is constructed may differ:
  *
- *  {{{
+ *  ```
  *  val name = "world"
  *  val greeting = () => s"hello, $name"
  *
@@ -32,7 +29,7 @@ import scala.language.`2.13`
  *    def apply(): String = s"hello, $name"
  *  }
  *  assert(greeting() == anonfun0())
- *  }}}
+ *  ```
  */
 trait Function0[@specialized(Specializable.Primitives) +R] extends AnyRef {
   /** Applies the body of this function to the arguments.

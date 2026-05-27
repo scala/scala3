@@ -21,7 +21,9 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.{IntStepper, Stepper}
 
 /** Implements `Stepper` on a `String` where you step through chars packed into `Int`.
-  */
+ *
+ *  @param underlying the `String` to step through
+ */
 private[collection] final class CharStringStepper(underlying: String, _i0: Int, _iN: Int)
 extends IndexedStepperBase[IntStepper, CharStringStepper](_i0, _iN)
 with IntStepper {
@@ -33,7 +35,11 @@ with IntStepper {
 }
 
 /** Implements `Stepper` on a `String` where you step through code points.
-  */
+ *
+ *  @param underlying the `String` to step through by code point
+ *  @param i0 the starting char index (inclusive) into the string
+ *  @param iN the ending char index (exclusive) into the string
+ */
 private[collection] final class CodePointStringStepper(underlying: String, private var i0: Int, private var iN: Int)
 extends IntStepper with EfficientSplit {
   def characteristics: Int = Spliterator.IMMUTABLE | Spliterator.NONNULL | Spliterator.ORDERED

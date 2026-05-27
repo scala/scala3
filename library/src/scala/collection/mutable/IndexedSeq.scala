@@ -32,12 +32,12 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
     with SeqOps[A, CC, C] {
 
   /** Modifies this $coll by applying a function to all elements of this $coll.
-    *
-    *  @param f      the function to apply to each element.
-    *  @return       this $coll modified by replacing all elements with the
-    *                result of applying the given function `f` to each element
-    *                of this $coll.
-    */
+   *
+   *  @param f      the function to apply to each element.
+   *  @return       this $coll modified by replacing all elements with the
+   *                result of applying the given function `f` to each element
+   *                of this $coll.
+   */
   def mapInPlace(f: A => A): this.type = {
     var i = 0
     val siz = size
@@ -46,11 +46,12 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   }
 
   /** Sorts this $coll in place according to an Ordering.
-    *
-    * @see [[scala.collection.SeqOps.sorted]]
-    * @param  ord the ordering to be used to compare elements.
-    * @return modified input $coll sorted according to the ordering `ord`.
-    */
+   *
+   *  @see [[scala.collection.SeqOps.sorted]]
+   *  @tparam B a supertype of the element type `A` for which an `Ordering` is available
+   *  @param  ord the ordering to be used to compare elements.
+   *  @return modified input $coll sorted according to the ordering `ord`.
+   */
   def sortInPlace[B >: A]()(implicit ord: Ordering[B]): this.type = {
     val len = this.length
     if (len > 1) {
@@ -71,16 +72,22 @@ transparent trait IndexedSeqOps[A, +CC[_] <: caps.Pure, +C <: AnyRef]
   }
 
   /** Sorts this $coll in place according to a comparison function.
-    *
-    * @see [[scala.collection.SeqOps.sortWith]]
-    */
+   *
+   *  @see [[scala.collection.SeqOps.sortWith]]
+   *
+   *  @param lt the less-than comparison function; should return `true` if the first argument strictly precedes the second in the desired ordering
+   */
   def sortInPlaceWith(lt: (A, A) => Boolean): this.type = sortInPlace()(using Ordering.fromLessThan(lt))
 
   /** Sorts this $coll in place according to the Ordering which results from transforming
-    * an implicitly given Ordering with a transformation function.
-    *
-    * @see [[scala.collection.SeqOps.sortBy]]
-    */
+   *  an implicitly given Ordering with a transformation function.
+   *
+   *  @see [[scala.collection.SeqOps.sortBy]]
+   *
+   *  @tparam B the target type of the transformation function `f`, for which an `Ordering` must exist
+   *  @param f the transformation function that extracts a sort key of type `B` from each element
+   *  @param ord the implicit ordering on type `B` used to compare transformed elements
+   */
   def sortInPlaceBy[B](f: A => B)(implicit ord: Ordering[B]): this.type = sortInPlace()(using ord.on(f))
 
 }

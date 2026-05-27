@@ -17,9 +17,9 @@ import language.experimental.captureChecking
 
 Requires the import above:
 ```scala
-import language.experimental.captureChecking
 import language.experimental.separationChecking
 ```
+This will implicitly enable capture checking as well.
 
 ### SBT Project Template
 
@@ -33,7 +33,7 @@ Using the command line through explicit parameters:
 scala -S 3.nightly -language:experimental.captureChecking
 ```
 or when reading from a file:
-```scala
+```scala sc:nocompile
 // foo.scala:
 //> using scala 3.nightly
 import language.experimental.captureChecking

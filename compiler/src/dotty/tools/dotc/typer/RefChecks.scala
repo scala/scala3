@@ -20,9 +20,11 @@ import config.SourceVersion.`3.0`
 import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
+import Annotations.Annotation
 import Constants.Constant
 import cc.{stripCapturing, CCState}
 import cc.Mutability.isUpdateMethod
+import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
 
 object RefChecks {
   import tpd.*
@@ -337,6 +339,29 @@ object RefChecks {
         val clazzNameEnd = clazz.srcPos.span.start + clazz.name.stripModuleClassSuffix.lastPart.length
         clazz.srcPos.sourcePos.copy(span = clazz.srcPos.span.withEnd(clazzNameEnd))
 
+    /** True when `clazz` is the synthetic anonymous class generated for an
+     *  enum case (either a simple case via `$new` or a parameterized one
+     *  marked with `EnumCase`). */
+    def isEnumAnonCls = // courtesy of Checking.checkEnum
+      clazz.isAnonymousClass
+      && clazz.owner.isTerm
+      && {
+           clazz.owner.isAllOf(EnumCase)
+        || (clazz.owner.name eq nme.DOLLAR_NEW) && clazz.owner.isAllOf(Private | Synthetic)
+      }
+
+    /** Positions at which to report a "needs to be abstract" / "object creation
+     *  impossible" error for `clazz`. Normally a single position pointing at
+     *  the class name; for enum-case anonymous classes the error is moved to
+     *  the case definition(s) so the user sees it on `case Foo` rather than on
+     *  the synthetic `$anon`. */
+    def classErrorPositions: List[util.SrcPos] =
+      if !isEnumAnonCls then clazzNamePos :: Nil
+      else if clazz.owner.isAllOf(EnumCase) then clazz.owner.srcPos :: Nil
+      else
+        val e = clazz.parentSyms.head
+        e.children.filter(_.info.typeSymbol == e).map(_.srcPos)
+
     def printMixinOverrideErrors(): Unit =
       mixinOverrideErrors.toList match {
         case Nil =>
@@ -455,12 +480,17 @@ object RefChecks {
         if trueMatch && noErrorType then
           emitOverrideError(overrideErrorMsg(msg, compareTypes))
 
-      def overrideDeprecation(what: String, member: Symbol, other: Symbol, fix: String): Unit =
-        report.deprecationWarning(
-          em"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
-          if member.owner == clazz then member.srcPos else clazz.srcPos,
-          origin = other.showFullName
-        )
+      def overrideDeprecation(annot: Annotation, member: Symbol, other: Symbol): Unit =
+        if !CrossVersionChecks.skipDeprecation(member) then
+          val message =
+            annot.argumentConstantString(0).filter(_.nonEmpty)
+              .getOrElse(s"${infoString(member)} should be removed or renamed.")
+          val since = annot.argumentConstantString(1).filter(_.nonEmpty).map(" since " + _).getOrElse("")
+          val composed =
+            em"""overriding ${infoStringWithLocation(other)} is deprecated$since;
+                |  $message"""
+          val pos = if member.owner == clazz then member.srcPos else clazz.srcPos
+          report.deprecationWarning(msg = composed, pos, origin = other.showFullName)
 
       def autoOverride(sym: Symbol) =
         sym.is(Synthetic) && (
@@ -630,8 +660,8 @@ object RefChecks {
         overrideError("also needs to be declared with @publicInBinary")
       else if !other.isPreview && member.hasAnnotation(defn.PreviewAnnot) then // (1.15)
         overrideError("may not override non-preview member")
-      else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
-        overrideDeprecation("", member, other, "removed or renamed")
+      else
+        other.getAnnotation(defn.DeprecatedOverridingAnnot).foreach(overrideDeprecation(_, member, other))
     end checkOverride
 
     checker.checkAll(checkOverride)
@@ -640,15 +670,15 @@ object RefChecks {
     // Verifying a concrete class has nothing unimplemented.
     if (!clazz.isOneOf(AbstractOrTrait)) {
       val abstractErrors = new mutable.ListBuffer[String]
+      val concreteClassUnimplementedMethodError = new mutable.ListBuffer[Message]
       def abstractErrorMessage =
         // a little formatting polish
         if (abstractErrors.size <= 2) abstractErrors.mkString(" ")
         else abstractErrors.tail.mkString(abstractErrors.head + ":\n", "\n", "")
 
-      def abstractClassError(mustBeMixin: Boolean, msg: String): Unit = {
+      def abstractClassError(msg: String): Unit = {
         def prelude = (
           if (clazz.isAnonymousClass || clazz.is(Module)) "object creation impossible"
-          else if (mustBeMixin) s"$clazz needs to be a mixin"
           else if clazz.is(Synthetic) then "instance cannot be created"
           else s"$clazz needs to be abstract"
           ) + ", since"
@@ -727,38 +757,28 @@ object RefChecks {
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
-        def stubImplementations: List[String] = {
-          // Grouping missing methods by the declaring class
-          val regrouped = missingMethods.groupBy(_.owner).toList
-          def membersStrings(members: List[Symbol]) =
-            members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl + " = ???")
+        def stubImplementations: List[String] =
+          missingMethods.sortBy(_.name.toString).map: sym =>
+            sym.asSeenFrom(clazz.thisType).mapInfo(_.withCleanParamNames).showDcl + " = ???"
 
-          if (regrouped.tail.isEmpty)
-            membersStrings(regrouped.head._2)
-          else (regrouped.sortBy(_._1.name.toString()) flatMap {
-            case (owner, members) =>
-              ("// Members declared in " + owner.fullName) +: membersStrings(members) :+ ""
-          }).init
-        }
+        if missingMethods.isEmpty then return
 
-        // If there are numerous missing methods, we presume they are aware of it and
-        // give them a nicely formatted set of method signatures for implementing.
-        if (missingMethods.size > 1) {
-          abstractClassError(false, "it has " + missingMethods.size + " unimplemented members.")
-          val preface =
-            """|/** As seen from %s, the missing signatures are as follows.
-                 | *  For convenience, these are usable as stub implementations.
-                 | */
-                 |""".stripMargin.format(clazz)
-          abstractErrors += stubImplementations.map("  " + _ + "\n").mkString(preface, "", "")
+        lazy val actions =
+          createAddMissingMethodsAction(clazz, stubImplementations)
+            ++ createMakeClassAbstractAction(clazz)
+
+        if missingMethods.size > 1 then
+          concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(
+            clazz, missingMethods, addendum = "", actions)
           return
-        }
 
         for (member <- missingMethods) {
           def showDclAndLocation(sym: Symbol) =
-            s"${sym.showDcl} in ${sym.owner.showLocated}"
+            s"${sym.mapInfo(_.withCleanParamNames).showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
-            abstractClassError(false, s"${showDclAndLocation(member)} is not defined $msg")
+            val addendum = if msg.isEmpty then "" else s" $msg"
+            concreteClassUnimplementedMethodError += ConcreteClassHasUnimplementedMethods(
+              clazz, missingMethods, addendum, actions)
           val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -851,7 +871,7 @@ object RefChecks {
               val impl1 = clazz.thisType.nonPrivateMember(decl.name) // DEBUG
               report.log(i"${impl1}: ${impl1.info}") // DEBUG
               report.log(i"${clazz.thisType.memberInfo(decl)}") // DEBUG
-              abstractClassError(false, "there is a deferred declaration of " + infoString(decl) +
+              abstractClassError("there is a deferred declaration of " + infoString(decl) +
                 " which is not implemented in a subclass" + err.abstractVarMessage(decl))
           }
         if (bc.asClass.superClass.is(Abstract))
@@ -921,11 +941,17 @@ object RefChecks {
               |This is a limitation that enables better GADT constraints in case class patterns""".stripMargin
         do report.errorOrMigrationWarning(withExplain, clazz.srcPos, MigrationVersion.Scala2to3)
       checkNoAbstractMembers()
-      if (abstractErrors.isEmpty)
+      if (abstractErrors.isEmpty && concreteClassUnimplementedMethodError.isEmpty)
         checkNoAbstractDecls(clazz)
 
-      if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazzNamePos)
+      if abstractErrors.nonEmpty then
+        val msg = abstractErrorMessage
+        classErrorPositions.foreach(report.error(msg, _))
+      for
+        message <- concreteClassUnimplementedMethodError
+        pos <- classErrorPositions
+      do
+        report.error(message, pos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
@@ -1131,8 +1157,11 @@ object RefChecks {
    *  An extension method is hidden if it does not offer a parameter that is not subsumed
    *  by the corresponding parameter of the member with the same name (or of all alternatives of an overload).
    *
-   *  This check is suppressed if the method is an override. (Because the type of the receiver
-   *  may be narrower in the override.)
+   *  This check is suppressed if the method is an override of a deferred member
+   *  (because the type of the receiver in the override may be a concrete type arg).
+   *
+   *  If the receiver is an opaque alias, use its upper bound if it is not also opaque.
+   *  (Member lookup would dealias, and the check must approximate an arbitrary use site.)
    *
    *  If the extension method is parameterless, it is always hidden by a member of the same name.
    *  (Either the member is parameterless, or the reference is taken as the eta-expansion of the member.)
@@ -1176,13 +1205,23 @@ object RefChecks {
             && (x frozen_<:< m)
         memberIsImplicit && !methTp.hasImplicitParams || paramsCorrespond
       def targetOfHiddenExtension: Symbol =
+        val receiver =
+          explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
+            .dealiasKeepOpaques
+            .typeSymbol
         val target =
-          val target0 = explicitInfo.firstParamTypes.head // required for extension method, the putative receiver
-          target0.dealiasKeepOpaques.typeSymbol.info
-        val member = target.nonPrivateMember(sym.name)
-          .filterWithPredicate: member =>
-            member.symbol.isPublic && memberHidesMethod(member)
-        if member.exists then target.typeSymbol else NoSymbol
+          if receiver.isOpaqueAlias then
+            val hi = receiver.info.hiBound.dealiasKeepOpaques
+            if hi.typeSymbol.isOpaqueAlias then NoType
+            else hi.typeSymbol.info // use upper bound if not also opaque
+          else
+            receiver.info
+        if target.exists then
+          val member = target.nonPrivateMember(sym.name)
+            .filterWithPredicate: member =>
+              member.symbol.isPublic && memberHidesMethod(member)
+          if member.exists then receiver else NoSymbol // report the receiver not the target type where member was found
+        else NoSymbol
       if sym.is(HasDefaultParams) then
         val getterDenot =
           val receiverName = explicitInfo.firstParamNames.head
@@ -1292,11 +1331,117 @@ object RefChecks {
   end checkImplicitNotFoundAnnotation
 
   def checkAnyRefMethodCall(tree: Tree)(using Context): Unit =
+    extension (c: Context) def enclosingClass: Symbol =
+      c.outersIterator.find(_.isClassDefContext).map(_.owner).getOrElse(NoSymbol)
     if tree.symbol.exists && defn.topClasses.contains(tree.symbol.owner) then
       tree.tpe match
-        case tp: NamedType if tp.prefix.typeSymbol != ctx.owner.enclosingClass =>
+        case tp: NamedType if tp.prefix.typeSymbol != ctx.enclosingClass =>
           report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
         case _ => ()
+
+  private def createAddMissingMethodsAction(clazz: ClassSymbol, methods: List[String])(using Context): List[CodeAction] =
+    // Synthetic classes (e.g. anonymous classes generated by macros) may have
+    // no corresponding node in the untyped AST. In that case there's nothing
+    // to anchor a source-level patch to, so we don't offer the action.
+    NavigateAST.untypedPath(clazz.span) match
+      case (untypedTree: untpd.Tree) :: _ =>
+        addMissingMethodsActionPatch(clazz, methods, untypedTree)
+      case _ => Nil
+
+  /** Code action that prepends the `abstract` modifier to the class declaration.
+   *
+   *  Only offered for regular classes that can legally become abstract. We skip:
+   *    - modules (`object`s are implicitly final),
+   *    - anonymous classes (no source-level keyword to modify),
+   *    - case classes (cannot be abstract),
+   *    - already-final classes (mutually exclusive with abstract),
+   *    - synthetic classes (enum case singletons, given bodies, etc.).
+   *
+   *  As with [[createAddMissingMethodsAction]], if the class has no node in
+   *  the untyped AST (e.g. macro-generated) we skip silently.
+   */
+  private def createMakeClassAbstractAction(clazz: ClassSymbol)(using Context): List[CodeAction] =
+    import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+
+    val ineligible =
+      clazz.is(Module) || clazz.isAnonymousClass || clazz.is(Case) ||
+        clazz.is(Final) || clazz.is(Synthetic)
+    if ineligible then Nil
+    else NavigateAST.untypedPath(clazz.span) match
+      case (untypedTree: untpd.Tree) :: _ =>
+        val insertPos = untypedTree.sourcePos.withSpan(Span(untypedTree.span.start))
+        val patch = ActionPatch(insertPos, "abstract ")
+        List(CodeAction(s"Make `${clazz.name.show}` abstract", None, List(patch)))
+      case _ => Nil
+
+  private def addMissingMethodsActionPatch(
+      clazz: ClassSymbol,
+      methods: List[String],
+      untypedTree: untpd.Tree)(using Context): List[CodeAction] = {
+    import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+
+    val classSrcPos = clazz.srcPos
+    val content = classSrcPos.sourcePos.source.content()
+    val span = classSrcPos.endPos.span
+
+    val classText = new String(content.slice(untypedTree.span.start, untypedTree.span.end))
+    val classHasBraces = classText.contains("{") && classText.contains("}")
+
+    // Indentation for inserted methods
+    val lineStart = content.lastIndexWhere(isLineBreakChar, end = span.end - 1) + 1
+    val baseIndent = new String(content.slice(lineStart, span.end).takeWhile(c => c == ' ' || c == '\t'))
+    val indent = baseIndent + "  "
+
+    val formattedMethods = methods.map(m => s"$indent$m").mkString("\n")
+
+    val isBracelessSyntax = untypedTree match
+      case untpd.TypeDef(_, tmpl: untpd.Template) =>
+        !classText.contains("{") && tmpl.body.nonEmpty
+      case _ => false
+
+    if (classHasBraces) {
+      val insertBeforeBrace = untypedTree.sourcePos.withSpan(Span(untypedTree.span.end - 1))
+      val braceStart = classText.indexOf('{')
+      val braceEnd   = classText.lastIndexOf('}')
+      val bodyBetweenBraces = classText.slice(braceStart + 1, braceEnd)
+      val bodyIsEmpty = bodyBetweenBraces.forall(_.isWhitespace)
+      val bodyContainsNewLine = bodyBetweenBraces.exists(isLineBreakChar)
+
+      val prefix = if (bodyContainsNewLine) "" else "\n"
+      val patchText =
+        prefix +
+        formattedMethods +
+        "\n"
+
+      val patch = ActionPatch(insertBeforeBrace, patchText)
+      List(CodeAction("Add missing methods", None, List(patch)))
+    } else if (isBracelessSyntax) {
+      val insertAfterLastDef = untypedTree match
+        case untpd.TypeDef(_, tmpl: untpd.Template) if tmpl.body.nonEmpty =>
+          val lastDef = tmpl.body.last
+          lastDef.sourcePos.withSpan(Span(lastDef.span.end))
+        case _ =>
+          untypedTree.sourcePos.withSpan(Span(untypedTree.span.end))
+
+      val patchText = "\n" + formattedMethods
+
+      val patch = ActionPatch(insertAfterLastDef, patchText)
+      List(CodeAction("Add missing methods", None, List(patch)))
+    } else {
+      // Class has no body – add whole `{ ... }` after class header, same line
+      val insertAfterHeader = untypedTree.sourcePos.withSpan(Span(untypedTree.span.end))
+
+      val patchText =
+        " {\n" +
+        formattedMethods + "\n" +
+        "}"
+
+      val patch = ActionPatch(insertAfterHeader, patchText)
+      List(CodeAction("Add missing methods", None, List(patch)))
+    }
+  }
+
+
 }
 import RefChecks.*
 
@@ -1365,6 +1510,14 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkPublicFlexibleTypes(sym)
     tree
   }
+
+  override def transformTypeDef(tree: TypeDef)(using Context): tree.type =
+    if tree.isClassDef then
+      val sym = tree.symbol
+      val owner = sym.owner
+      if sym.is(Override) && owner.is(Package) then
+      report.error(OverridesNothing(sym), sym.srcPos)
+    tree
 
   override def transformTemplate(tree: Template)(using Context): Tree = try {
     val cls = ctx.owner.asClass

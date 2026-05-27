@@ -47,10 +47,18 @@ sealed abstract class ArrayBuilder[T]
 
   protected def resize(size: Int): Unit
 
-  /** Adds all elements of an array. */
+  /** Adds all elements of an array.
+   *
+   *  @param xs the array of elements to add
+   */
   def addAll(xs: Array[? <: T]): this.type = addAll(xs, 0, xs.length)
 
-  /** Adds a slice of an array. */
+  /** Adds a slice of an array.
+   *
+   *  @param xs the array from which a slice of elements is added
+   *  @param offset the start index within `xs` from which to copy elements (clamped to 0 if negative)
+   *  @param length the maximum number of elements to copy from `xs` (clamped to 0 if negative, and to the number of available elements)
+   */
   def addAll(xs: Array[? <: T], offset: Int, length: Int): this.type = {
     val offset1 = offset.max(0)
     val length1 = length.max(0)
@@ -79,8 +87,7 @@ sealed abstract class ArrayBuilder[T]
   }
 }
 
-/** A companion object for array builders.
- */
+/** A companion object for array builders. */
 object ArrayBuilder {
 
   /** Creates a new arraybuilder of type `T`.
@@ -148,11 +155,6 @@ object ArrayBuilder {
       if(elems ne null) java.util.Arrays.fill(elems.asInstanceOf[Array[AnyRef]], null)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofRef[?] => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofRef"
   }
 
@@ -188,11 +190,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofByte => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofByte"
@@ -232,11 +229,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofShort => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofShort"
   }
 
@@ -272,11 +264,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofChar => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofChar"
@@ -316,11 +303,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofInt => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofInt"
   }
 
@@ -356,11 +338,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofLong => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofLong"
@@ -400,11 +377,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofFloat => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofFloat"
   }
 
@@ -440,11 +412,6 @@ object ArrayBuilder {
         res
       }
       else mkArray(size)
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofDouble => (size == x.size) && (elems == x.elems)
-      case _ => false
     }
 
     override def toString() = "ArrayBuilder.ofDouble"
@@ -485,11 +452,6 @@ object ArrayBuilder {
       else mkArray(size)
     }
 
-    override def equals(other: Any): Boolean = other match {
-      case x: ofBoolean => (size == x.size) && (elems == x.elems)
-      case _ => false
-    }
-
     override def toString() = "ArrayBuilder.ofBoolean"
   }
 
@@ -525,11 +487,6 @@ object ArrayBuilder {
       var i = 0
       while (i < size) { ans(i) = (); i += 1 }
       ans
-    }
-
-    override def equals(other: Any): Boolean = other match {
-      case x: ofUnit => (size == x.size)
-      case _ => false
     }
 
     protected def resize(size: Int): Unit = capacity = size

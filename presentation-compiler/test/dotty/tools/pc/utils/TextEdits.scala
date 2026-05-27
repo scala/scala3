@@ -1,8 +1,8 @@
 package dotty.tools.pc.utils
 
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.language.unsafeNulls
+import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 
 import dotty.tools.pc.utils.TestExtensions.*
 
@@ -10,8 +10,8 @@ import org.eclipse.lsp4j.{CompletionItem, Range, TextEdit}
 
 object TextEdits:
   def applyEdits(text: String, edits: List[TextEdit]): String =
-    if (edits.isEmpty) text
-    else {
+    if edits.isEmpty then text
+    else
       val positions: List[(TextEdit, Range)] = edits
         .map(edit => (edit, Option(edit.getRange)))
         .collect { case (edit, Some(range)) =>
@@ -29,7 +29,6 @@ object TextEdits:
       }
       out.append(text, curr, text.length)
       out.toString
-    }
 
   def applyEdits(text: String, item: CompletionItem): String =
     val edits = item.getLeftTextEdit().toList ++

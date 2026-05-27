@@ -136,8 +136,11 @@ trait Dynamic {
         typedDynamicAssign(qual, name, sel.span, Nil)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
-      case _ =>
-        errorTree(tree, ReassignmentToVal(tree.lhs.symbol.name, pt))
+      case lhs =>
+        val name = lhs match
+          case nt: NameTree => nt.name
+          case _ => lhs.symbol.name
+        errorTree(tree, ReassignmentToVal(name, pt))
     }
   }
 
@@ -242,7 +245,7 @@ trait Dynamic {
           if tpe.classSymbol.isDerivedValueClass && qual.tpe <:< defn.ReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType
-            New(tpe.widen, tree.cast(underlying) :: Nil)
+            New(tpe.widen.dealias, tree.cast(underlying) :: Nil)
           else
             tree
         maybeBoxed.cast(tpe)

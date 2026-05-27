@@ -1,0 +1,22 @@
+-- [E040] Syntax Error: tests/neg/i12605.scala:3:32 --------------------------------------------------------------------
+3 |    List((2, 3), (3, 4)).filter case (a, b) => b > a // error // error
+  |                                ^^^^
+  |                                unindent expected, but 'case' found
+-- Error: tests/neg/i12605.scala:4:58 ----------------------------------------------------------------------------------
+4 |  def m(): List[(Int, Int)] = List((2, 3), (3, 4)).filter case (a, b) => b > a // error // error
+  |                                                          ^^^^
+  |                                                          end of statement expected but 'case' found
+-- [E007] Type Mismatch Error: tests/neg/i12605.scala:3:4 --------------------------------------------------------------
+3 |    List((2, 3), (3, 4)).filter case (a, b) => b > a // error // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    Found:    (((Int, Int)) => Boolean) => List[(Int, Int)]
+  |    Required: List[(Int, Int)]
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i12605.scala:4:30 -------------------------------------------------------------
+4 |  def m(): List[(Int, Int)] = List((2, 3), (3, 4)).filter case (a, b) => b > a // error // error
+  |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                              Found:    (((Int, Int)) => Boolean) => List[(Int, Int)]
+  |                              Required: List[(Int, Int)]
+  |
+  | longer explanation available when compiling with `-explain`

@@ -5,7 +5,7 @@
    |                        Found:    Box[Ref^{a.rd}]^{}
    |                        Required: Box[Ref^{}]^{any.rd}
    |
-   |                        Note that capability `a.rd` is not included in capture set {}.
+   |                        Note that capability `a.rd` cannot flow into capture set {}.
    |
    |                        where:    any is a root capability classified as Unscoped in the type of value xs
    |
