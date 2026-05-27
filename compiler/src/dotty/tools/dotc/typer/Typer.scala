@@ -4849,7 +4849,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         missingArgs(wtp)
     }
 
-    def adaptNoArgsOther(wtp: Type, functionExpected: Boolean): Tree = {
+    def adaptNoArgsOther(wtp: Type, functionExpected: => Boolean): Tree = {
       val implicitFun = defn.isContextFunctionType(wtp) && !untpd.isContextualClosure(tree)
       def caseCompanion =
           functionExpected &&
@@ -4952,7 +4952,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ => pt
 
     def adaptNoArgs(wtp: Type): Tree = {
-      val ptNorm = underlyingApplied(pt)
+      var ptNormCache: Type = NoType
+      def ptNorm =
+        if ptNormCache eq NoType then ptNormCache = underlyingApplied(pt)
+        ptNormCache
       def functionExpected = defn.isFunctionNType(ptNorm)
       def needsEta = pt.revealIgnored match
         case _: SingletonType | _: FunOrPolyProto => false
