@@ -4,6 +4,6 @@ trait T {
 }
 
 case class CT() extends T {
-  def valid: Boolean = true
+  final def valid: Boolean = true
   def f(v: {v: Unit with this.valid}): Boolean = true
 }
