@@ -1868,10 +1868,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // Note that if the isSubArgs test fails, we will proceed anyway by
           // dealising by doing a compareLower.
           def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
-            case tycon1: TypeParamRef =>
-              (tycon1 == tycon2 ||
-               canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
-              isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
               tycon2 match {
                 case tycon2: TypeRef =>
@@ -1928,6 +1924,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ =>
                   false
               }
+            case tycon1: TypeParamRef =>
+              (tycon1 == tycon2 ||
+               canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
+              isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeVar =>
               loop(tycon1.underlying, args1)
             case tycon1: AnnotatedType if !tycon1.isRefining =>
