@@ -19,6 +19,7 @@ import dotty.tools.io.AbstractFile
 import annotation.internal.sharable
 import dotty.tools.dotc.core.Periods.InitialRunId
 import scala.collection.mutable.UnrolledBuffer
+import scala.jdk.CollectionConverters.*
 
 object Profiler {
   def apply()(using Context): Profiler =
@@ -36,7 +37,7 @@ object Profiler {
 }
 
 private [profile] case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, durationMillis: Long, name:String, action:String, cause:String, threads:Long){
-  val endNanos = System.nanoTime()
+  val endNanos: Long = System.nanoTime()
 }
 
 private [profile] case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
@@ -134,19 +135,17 @@ private [profile] object NoOpProfiler extends Profiler {
 }
 
 private [profile] object RealProfiler {
-  import scala.jdk.CollectionConverters.*
-  val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
-  val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
-  val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
-  val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
-  val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
-  val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy
+  private val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
+  private val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
+  private val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
+  private val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
+  private val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
+  private val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy
   if (threadMx.isThreadCpuTimeSupported) threadMx.setThreadCpuTimeEnabled(true)
   private val idGen = new AtomicInteger()
 
   @nowarn("cat=deprecation")
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
-    import RealProfiler.*
     val current = Thread.currentThread()
 
     ProfileSnap(
@@ -174,7 +173,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   private final val GcThreadId = "GC"
 
   enum Category:
-    def name: String = this.toString().toLowerCase()
+    def name: String = this.toString.toLowerCase()
     case Run, Phase, File, TypeCheck, Implicit, Inline, Completion
   private [profile] val chromeTrace =
     if ctx.settings.YprofileTrace.isDefault
@@ -295,7 +294,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       traceThreadSnapshotCounters()
   }
 
-  private def traceThreadSnapshotCounters(initialSnap: => ProfileSnap = RealProfiler.snapThread(0)) =
+  private def traceThreadSnapshotCounters(initialSnap: => ProfileSnap = RealProfiler.snapThread(0)): Unit =
     if chromeTrace != null && System.nanoTime() > nextAfterUnitSnap then {
       val snap = initialSnap
       chromeTrace.traceCounterEvent("allocBytes", "allocBytes", snap.allocatedBytes, processWide = false)
@@ -381,7 +380,7 @@ private [profile] sealed trait ProfileReporter {
 }
 
 private [profile] object ConsoleProfileReporter extends ProfileReporter {
-  @sharable var totalAlloc = 0L
+  @sharable private var totalAlloc = 0L
 
   override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
     reportCommon(EventType.BACKGROUND, profiler, threadRange)
