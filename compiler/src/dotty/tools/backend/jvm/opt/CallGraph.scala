@@ -67,7 +67,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
    * in the call graph to remember its source position, which is required for inliner warnings.
    */
-  val callsitePositions: Lazy[concurrent.Map[MethodInsnNode, SourcePosition]] = frontendAccess.perRunLazy(TrieMap.empty)
+  val callsitePositions: concurrent.Map[MethodInsnNode, SourcePosition] = TrieMap.empty
 
   /**
    * Stores callsite instructions of invocations annotated `f(): @inline/noinline`.
@@ -102,7 +102,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   }
 
   def recordCallsitePosition(m: MethodInsnNode, pos: SourcePosition): Unit =
-    callsitePositions.get(m) = pos
+    callsitePositions(m) = pos
 
   def containsCallsite(callsite: Callsite): Boolean = callsites(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
 
@@ -197,7 +197,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
           // graph (or when inlining).
           val receiverNotNull = call.getOpcode == Opcodes.INVOKESTATIC
 
-          val pos = callsitePositions.get.getOrElse(call, NoSourcePosition)
+          val pos = callsitePositions.getOrElse(call, NoSourcePosition)
           methodCallsites += call -> callee.fold(
             w => UnknownCallsite(
               callsiteInstruction = call,
@@ -262,7 +262,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
         if (ins.getType == AbstractInsnNode.METHOD_INSN) {
           val mi = ins.asInstanceOf[MethodInsnNode]
           val clonedMi = cloned.asInstanceOf[MethodInsnNode]
-          callsitePositions.get(clonedMi) = callsitePos
+          callsitePositions(clonedMi) = callsitePos
           if (inlineAnnotatedCallsites.get(mi))
             inlineAnnotatedCallsites.get += clonedMi
           if (noInlineAnnotatedCallsites.get(mi))
