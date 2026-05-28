@@ -182,10 +182,8 @@ object Symbols extends SymUtils {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
-    final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-    final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final def isTerm(using Context): Boolean = lastDenot.isTerm
+    final def isType(using Context): Boolean = lastDenot.isType
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
