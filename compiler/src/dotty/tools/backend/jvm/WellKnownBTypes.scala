@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.StdNames.*
 
 import scala.annotation.constructorOnly
 
-final class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) {
+class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) {
   val ObjectRef: ClassBType = loader.classBTypeFromSymbol(defn.ObjectClass)
   val StringRef: ClassBType = loader.classBTypeFromSymbol(defn.StringClass)
   val srNullRef: ClassBType = loader.classBTypeFromSymbol(defn.RuntimeNullClass)
@@ -22,12 +22,12 @@ final class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Con
 
   val srBoxesRuntimeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
 
-  private val jliLambdaMetafactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
-  private val jliStringConcatFactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])
-  private val jliMethodHandlesLookupRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandlesLookupClass)
-  private val jliMethodTypeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
-  private val jliMethodHandleRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandleClass)
-  private val jliCallSiteRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
+  protected val jliLambdaMetafactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
+  protected val jliStringConcatFactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])
+  protected val jliMethodHandlesLookupRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandlesLookupClass)
+  protected val jliMethodTypeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
+  protected val jliMethodHandleRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandleClass)
+  protected val jliCallSiteRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
   val jliLambdaMetaFactoryMetafactoryHandle: Handle = new Handle(
     Opcodes.H_INVOKESTATIC,
     jliLambdaMetafactoryRef.internalName,
@@ -144,35 +144,13 @@ final class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Con
 
 case class MethodNameAndType(name: String, methodType: MethodBType)
 
-final class WellKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Context) {
-
-  val ObjectRef: ClassBType = ts.classBTypeFromSymbol(defn.ObjectClass)
+final class WellKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Context) extends KnownBTypes(ts) {
 
   val srNothingRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNothingClass)
-
-  val srNullRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNullClass)
-
-  /**
-   * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
-   * operand stack (ldc instruction taking a class literal), see genConstant.
-   */
-  val boxedClassOfPrimitive: Map[BType, ClassBType] = Map(
-    UNIT   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Void]),
-    BOOL   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
-    BYTE   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Byte]),
-    SHORT  -> ts.classBTypeFromSymbol(requiredClass[java.lang.Short]),
-    CHAR   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Character]),
-    INT    -> ts.classBTypeFromSymbol(requiredClass[java.lang.Integer]),
-    LONG   -> ts.classBTypeFromSymbol(requiredClass[java.lang.Long]),
-    FLOAT  -> ts.classBTypeFromSymbol(requiredClass[java.lang.Float]),
-    DOUBLE -> ts.classBTypeFromSymbol(requiredClass[java.lang.Double])
-  )
 
   val boxedClasses: Set[ClassBType] = boxedClassOfPrimitive.values.toSet
 
   val srBoxedUnitRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[scala.runtime.BoxedUnit])
-
-  val StringRef: ClassBType = ts.classBTypeFromSymbol(defn.StringClass)
 
   val PredefRef: ClassBType = ts.classBTypeFromSymbol(defn.ScalaPredefModuleClass)
 
@@ -184,42 +162,8 @@ final class WellKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Con
 
   val jliSerializedLambdaRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
 
-  val srBoxesRuntimeRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
-
-  private val jliCallSiteRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
-
-  private val jliLambdaMetafactoryRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
-
-  private val jliMethodHandleRef: ClassBType = ts.classBTypeFromSymbol(defn.MethodHandleClass)
-
-  private val jliMethodHandlesLookupRef: ClassBType = ts.classBTypeFromSymbol(defn.MethodHandlesLookupClass)
-
-  private val jliMethodTypeRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
-
-  private val jliStringConcatFactoryRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])
-
   private val srLambdaDeserialize: ClassBType = ts.classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize])
 
-
-  val jliLambdaMetaFactoryMetafactoryHandle: Handle = new Handle(
-    Opcodes.H_INVOKESTATIC,
-    jliLambdaMetafactoryRef.internalName,
-    "metafactory",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)
-
-  val jliLambdaMetaFactoryAltMetafactoryHandle: Handle = new Handle(
-    Opcodes.H_INVOKESTATIC,
-    jliLambdaMetafactoryRef.internalName,
-    "altMetafactory",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)
 
   val jliLambdaDeserializeBootstrapHandle: Handle = new Handle(
     Opcodes.H_INVOKESTATIC,
@@ -227,16 +171,6 @@ final class WellKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Con
     "bootstrap",
     MethodBType(
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)
-
-  val jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle = new Handle(
-    Opcodes.H_INVOKESTATIC,
-    jliStringConcatFactoryRef.internalName,
-    "makeConcatWithConstants",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false)
