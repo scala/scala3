@@ -4,8 +4,9 @@ package languageserver
 import java.net.URI
 import java.io._
 import java.nio.file._
-import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
-import java.util.function.Function
+import java.util as ju
+import ju.concurrent.{CompletableFuture, ConcurrentHashMap}
+import ju.function.Function
 
 import _root_.tools.jackson.databind.json.JsonMapper
 
@@ -200,7 +201,7 @@ class DottyLanguageServer extends LanguageServer
         computation()
     }
 
-  override def initialize(params: InitializeParams) = computeAsync { cancelToken =>
+  override def initialize(params: InitializeParams): CompletableFuture[InitializeResult] = computeAsync { cancelToken =>
     rootUri = params.getRootUri
     assert(rootUri != null)
 
@@ -301,7 +302,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   // FIXME: share code with NotAMember
-  override def completion(params: CompletionParams) = computeAsync { cancelToken =>
+  override def completion(params: CompletionParams): CompletableFuture[JEither[ju.List[CompletionItem], CompletionList]] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -322,7 +323,7 @@ class DottyLanguageServer extends LanguageServer
    *  If cursor is on a definition, show this definition together with all overridden
    *  and overriding definitions.
    */
-  override def definition(params: DefinitionParams) = computeAsync { cancelToken =>
+  override def definition(params: DefinitionParams): CompletableFuture[JEither[ju.List[? <: Location], ju.List[? <: LocationLink]]] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -334,7 +335,7 @@ class DottyLanguageServer extends LanguageServer
     Either.forLeft(definitions.flatMap(d => location(d.namePos)).asJava)
   }
 
-  override def references(params: ReferenceParams) = computeAsync { cancelToken =>
+  override def references(params: ReferenceParams): CompletableFuture[ju.List[? <: Location]] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
 
@@ -374,7 +375,7 @@ class DottyLanguageServer extends LanguageServer
     references.flatten.distinct.asJava
   }
 
-  override def rename(params: RenameParams) = computeAsync { cancelToken =>
+  override def rename(params: RenameParams): CompletableFuture[WorkspaceEdit] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -440,7 +441,7 @@ class DottyLanguageServer extends LanguageServer
     new WorkspaceEdit(changes.asJava)
   }
 
-  override def documentHighlight(params: DocumentHighlightParams) = computeAsync { cancelToken =>
+  override def documentHighlight(params: DocumentHighlightParams): CompletableFuture[ju.List[? <: DocumentHighlight]] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -460,7 +461,7 @@ class DottyLanguageServer extends LanguageServer
     }.distinct.asJava
   }
 
-  override def hover(params: HoverParams) = computeAsync { cancelToken =>
+  override def hover(params: HoverParams): CompletableFuture[Hover] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -484,7 +485,7 @@ class DottyLanguageServer extends LanguageServer
     }
   }
 
-  override def documentSymbol(params: DocumentSymbolParams) = computeAsync { cancelToken =>
+  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[ju.List[JEither[SymbolInformation, DocumentSymbol]]] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -508,7 +509,7 @@ class DottyLanguageServer extends LanguageServer
     } yield JEither.forLeft(info)).asJava
   }
 
-  override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
+  override def symbol(params: WorkspaceSymbolParams): CompletableFuture[JEither[ju.List[? <: SymbolInformation], ju.List[? <: WorkspaceSymbol]]] = computeAsync { cancelToken =>
     val query = params.getQuery
 
     Either.forLeft(drivers.values.toList.flatMap { driver =>
@@ -520,7 +521,7 @@ class DottyLanguageServer extends LanguageServer
     }.asJava)
   }
 
-  override def implementation(params: ImplementationParams) = computeAsync { cancelToken =>
+  override def implementation(params: ImplementationParams): CompletableFuture[JEither[ju.List[? <: Location], ju.List[? <: LocationLink]]] = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
 
@@ -551,7 +552,7 @@ class DottyLanguageServer extends LanguageServer
     Either.forLeft(implementations.flatten.asJava)
   }
 
-  override def signatureHelp(params: SignatureHelpParams) = computeAsync { canceltoken =>
+  override def signatureHelp(params: SignatureHelpParams): CompletableFuture[SignatureHelp] = computeAsync { canceltoken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
 
@@ -574,13 +575,13 @@ class DottyLanguageServer extends LanguageServer
 
   // Unimplemented features. If you implement one of them, you may need to add a
   // capability in `initialize`
-  override def codeAction(params: CodeActionParams) = null
-  override def codeLens(params: CodeLensParams) = null
-  override def formatting(params: DocumentFormattingParams) = null
-  override def rangeFormatting(params: DocumentRangeFormattingParams) = null
-  override def onTypeFormatting(params: DocumentOnTypeFormattingParams) = null
-  override def resolveCodeLens(params: CodeLens) = null
-  override def resolveCompletionItem(params: CompletionItem) = null
+  override def codeAction(params: CodeActionParams): CompletableFuture[ju.List[JEither[Command, CodeAction]]] | Null = null
+  override def codeLens(params: CodeLensParams): CompletableFuture[ju.List[? <: CodeLens]] | Null = null
+  override def formatting(params: DocumentFormattingParams): CompletableFuture[ju.List[? <: TextEdit]] | Null = null
+  override def rangeFormatting(params: DocumentRangeFormattingParams): CompletableFuture[ju.List[? <: TextEdit]] | Null = null
+  override def onTypeFormatting(params: DocumentOnTypeFormattingParams): CompletableFuture[ju.List[? <: TextEdit]] | Null = null
+  override def resolveCodeLens(params: CodeLens): CompletableFuture[CodeLens] | Null = null
+  override def resolveCompletionItem(params: CompletionItem): CompletableFuture[CompletionItem] | Null = null
 
   /**
    * Find the set of projects that have any of `definitions` on their classpath.
