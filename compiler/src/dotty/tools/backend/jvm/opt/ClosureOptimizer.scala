@@ -195,7 +195,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimiz
           Inliner.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
         }
 
-        def pos = callGraph.callsites.get(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
+        def pos = callGraph.callsites(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
         val stackSize: Either[RewriteClosureApplyToClosureBodyFailed, Int] = bodyAccessible match {
           case Left(w)      => Left(RewriteClosureAccessCheckFailed(pos, w))
           case Right(false) => Left(RewriteClosureIllegalAccess(pos, ownerClass.internalName))

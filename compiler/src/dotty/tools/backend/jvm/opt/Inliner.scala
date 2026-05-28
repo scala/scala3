@@ -244,7 +244,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
           }
 
         val rs = mutable.ListBuffer.empty[InlineRequest]
-        callGraph.callsites.get(method).valuesIterator foreach {
+        callGraph.callsites(method).valuesIterator foreach {
           // Don't inline: recursive calls, callsites that failed inlining before
           case cs: KnownCallsite if !failed(cs.callsiteInstruction) && !isLoop(cs.callsiteInstruction, cs.callee) =>
             heuristics.inlineRequest(cs) match {

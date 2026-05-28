@@ -52,7 +52,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
    * The call graph is less problematic because only methods being called are kept alive, not entire
    * classes. But we should keep an eye on this.
    */
-  val callsites: Lazy[mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty withDefaultValue Map.empty)
+  val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = concurrent.TrieMap.empty withDefaultValue Map.empty
 
   /**
    * Closure instantiations in the program being compiled.
@@ -90,22 +90,22 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   }
 
   def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
-    val methodCallsites = callsites.get(methodNode)
+    val methodCallsites = callsites(methodNode)
     val newCallsites = methodCallsites - invocation
-    if (newCallsites.isEmpty) callsites.get.subtractOne(methodNode)
-    else callsites.get(methodNode) = newCallsites
+    if (newCallsites.isEmpty) callsites.subtractOne(methodNode)
+    else callsites(methodNode) = newCallsites
     methodCallsites.get(invocation)
   }
 
   def addCallsite(callsite: Callsite): Unit = {
-    val methodCallsites = callsites.get(callsite.callsiteMethod)
-    callsites.get(callsite.callsiteMethod) = methodCallsites + (callsite.callsiteInstruction -> callsite)
+    val methodCallsites = callsites(callsite.callsiteMethod)
+    callsites(callsite.callsiteMethod) = methodCallsites + (callsite.callsiteInstruction -> callsite)
   }
 
   def recordCallsitePosition(m: MethodInsnNode, pos: SourcePosition): Unit =
     callsitePositions.get(m) = pos
 
-  def containsCallsite(callsite: Callsite): Boolean = callsites.get(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
+  def containsCallsite(callsite: Callsite): Boolean = callsites(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
 
   def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Option[ClosureInstantiation] = {
     val methodClosureInits = closureInstantiations.get(methodNode)
@@ -121,7 +121,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   }
 
   def refresh(methodNode: MethodNode, definingClass: ClassBType): Unit = {
-    callsites.get.subtractOne(methodNode)
+    callsites.subtractOne(methodNode)
     closureInstantiations.get.subtractOne(methodNode)
     // callsitePositions, inlineAnnotatedCallsites, noInlineAnnotatedCallsites, staticallyResolvedInvokespecial
     // are left unchanged. They contain individual instructions, the state for those remains valid in case
@@ -235,7 +235,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
         case _ =>
       }
 
-      callsites.get(methodNode) = methodCallsites
+      callsites(methodNode) = methodCallsites
       closureInstantiations.get(methodNode) = methodClosureInstantiations
     }
   }

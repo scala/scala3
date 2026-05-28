@@ -54,7 +54,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimi
 
     compilingMethods.map(methodNode => {
       var requests = Set.empty[InlineRequest]
-      callGraph.callsites.get(methodNode).valuesIterator foreach {
+      callGraph.callsites(methodNode).valuesIterator foreach {
         case callsite @ KnownCallsite(_, _, _, Callee(callee, _, _, _, _, _, _, callsiteWarning), _, _, _, pos, _, _) =>
           inlineRequest(callsite) match {
             case Some(Right(req)) => requests += req
@@ -223,7 +223,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimi
           def shouldInlineForwarder = Option {
             // In general, we cannot inline calls to methods that contain private calls here.
             // However (scala-dev#618) we should inline them if they call something that is itself trivial, as it will also be inlined.
-            val calleeCallsites = callGraph.callsites.get(callee.callee)
+            val calleeCallsites = callGraph.callsites(callee.callee)
             val allowPrivateCalls = calleeCallsites.size == 1 && (calleeCallsites.head match
               case (_, nestedCallsite: KnownCallsite) =>
                 optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(

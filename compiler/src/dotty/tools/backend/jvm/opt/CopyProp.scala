@@ -278,7 +278,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       }
 
       if (toInline.nonEmpty) {
-        val methodCallsites = callGraph.callsites.get(method).collect { case (k, v: KnownCallsite) => (k, v) }
+        val methodCallsites = callGraph.callsites(method).collect { case (k, v: KnownCallsite) => (k, v) }
         var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
         while (css.nonEmpty) {
           val cs = css.head
