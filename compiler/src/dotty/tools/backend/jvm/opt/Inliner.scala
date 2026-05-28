@@ -50,7 +50,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
           // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
           def hasMethod(c: ClassNode): Boolean = {
             val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
-            if (r) callGraph.staticallyResolvedInvokespecial.get += mi
+            if (r) callGraph.staticallyResolvedInvokespecial += mi
             r
           }
 

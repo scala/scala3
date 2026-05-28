@@ -81,11 +81,11 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
 
   // Contains `INVOKESPECIAL` instructions that were cloned by the inliner and need to be resolved
   // statically by the call graph. See Inliner.maybeInlinedLater.
-  val staticallyResolvedInvokespecial: Lazy[mutable.Set[MethodInsnNode]] = frontendAccess.perRunLazy(mutable.Set.empty)
+  val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = mutable.Set.empty
 
   def isStaticCallsite(call: MethodInsnNode): Boolean = {
     val opc = call.getOpcode
-    opc == Opcodes.INVOKESTATIC || opc == Opcodes.INVOKESPECIAL && staticallyResolvedInvokespecial.get(call)
+    opc == Opcodes.INVOKESTATIC || opc == Opcodes.INVOKESPECIAL && staticallyResolvedInvokespecial(call)
   }
 
   def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
@@ -267,8 +267,8 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
             inlineAnnotatedCallsites += clonedMi
           if (noInlineAnnotatedCallsites(mi))
             noInlineAnnotatedCallsites += clonedMi
-          if (staticallyResolvedInvokespecial.get(mi))
-            staticallyResolvedInvokespecial.get += clonedMi
+          if (staticallyResolvedInvokespecial(mi))
+            staticallyResolvedInvokespecial += clonedMi
         } else if (BCodeUtils.isStore(ins)) {
           val vi = ins.asInstanceOf[VarInsnNode]
           writtenLocals += vi.`var`
