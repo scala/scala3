@@ -409,9 +409,7 @@ object QualifiedTypes:
         EmptyTree
 
   def containsQualifier(tp: Type)(using Context): Boolean =
-    tp match
-      case QualifiedType(_, _) => true
-      case tp: TypeProxy => containsQualifier(tp.underlying)
-      case AndType(tp1, tp2) => containsQualifier(tp1) || containsQualifier(tp2)
-      case OrType(tp1, tp2) => containsQualifier(tp1) || containsQualifier(tp2)
-      case _ => false
+    tp.existsPart: tp =>
+      tp.dealiasKeepAnnots match
+        case QualifiedType(_, _) => true
+        case _ => false
