@@ -146,7 +146,7 @@ private [profile] object FileUtils {
       import scala.concurrent.ExecutionContext.Implicits.global
 
       private val pending = new LinkedBlockingQueue[CharBuffer]
-      //a failure detected will case an Failure, Success indicates a close
+      //a failure detected will cause a Failure, Success indicates a close
       val asyncStatus = Promise[Unit]()
       private val scheduled = new AtomicBoolean
       @volatile var reuseBuffer: CharBuffer | Null = null
