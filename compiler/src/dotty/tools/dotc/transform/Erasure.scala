@@ -37,6 +37,7 @@ import core.Mode
 import util.Property
 import reporting.*
 import scala.annotation.tailrec
+import dotty.tools.dotc.ast.tpd.*
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -808,6 +809,33 @@ object Erasure {
         case _ => typedExpr(ntree, pt)
       }
     }
+
+    /* Erase anonymous instances of specialized traits to $impl$ classes */
+    override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = tree.asInstanceOf[Block] match 
+      case AnonymousSpecializationInstance(anon) =>
+        inContext(preErasureCtx) {
+          Specialization.unapply(anon.typeTree.tpe, anon.typeTree.span).flatMap(spec => {
+            anon.parentCalls match {
+              case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) if spec.isSpecialized && (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) =>
+                val targetImplName = DesugarSpecializedTraits.newImplementationClassName(spec)
+                val implClass = spec.traitSymbol.enclosingPackageClass.info.decls.lookup(targetImplName)
+                assert(implClass.exists && implClass.isClass)
+                val erased = inContext(ctx.withSource(anon.typeTree.source)) {
+                    Typed(
+                        Select(New(ref(implClass)), anon.ctor)
+                                .appliedToTypeTrees(spec.unspecializedTypeArgs)
+                                .appliedToArgss(tpd.allArgss(app).tail.nestedMap(_.changeNonLocalOwners(anon.symbol.owner))) // Skip the type params which are not needed
+                            , anon.typeTree)
+                }.withSpan(anon.typeTree.span)
+                Some(erased)
+              case _ => None
+          }})
+        } match {
+          case Some(erased) => typedTyped(erased, anon.typeTree.tpe)
+          case None         => super.typedBlock(tree, pt)
+        }
+      case _ => super.typedBlock(tree, pt)
+
 
     override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind =
       atPhase(erasurePhase):
