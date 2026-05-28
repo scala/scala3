@@ -853,6 +853,10 @@ object SymDenotations {
     final def isPrimaryConstructor(using Context): Boolean =
       isConstructor && owner.primaryConstructor == symbol
 
+    /** Does this symbol denote a secondary constructor for its enclosing class? */
+    def isSecondaryConstructor(using Context): Boolean =
+      isConstructor && owner.primaryConstructor != symbol
+
     /** Does this symbol denote the static constructor of its enclosing class? */
     final def isStaticConstructor(using Context): Boolean =
       name.isStaticConstructorName

@@ -185,7 +185,7 @@ object NamedTupleDecomposition:
      *  the polymorphic mapping function `f`. The names of elements are preserved.
      *  If `x = (n1 = v1, ..., ni = vi)` then `x.map(f) = `(n1 = f(v1), ..., ni = f(vi))`.
      */
-    inline def map[F[_]](f: [t] => t => F[t]): Map[NamedTuple[N, V], F] =
+    inline def map[F[_]](f: [t] -> t -> F[t]): Map[NamedTuple[N, V], F] =
       x.toTuple.map[F](f)
 
     /** The named tuple consisting of all elements of this tuple in reverse. */

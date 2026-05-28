@@ -47,7 +47,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.{CheckCaptures, isRetainsLike, derivesFromCapSet}
+import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 
@@ -752,9 +752,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val sym = tree.tpe.termSymbol
     if sym.isNoValue && !ctx.isJava then
       if sym.is(Package)
-          && Feature.enabled(Feature.packageObjectValues)
           && tree.tpe.member(nme.PACKAGE).hasAltWith(_.symbol.isPackageObject)
       then
+      	// The feature is in preview for 3.10
+        Feature.checkPreviewFeature("package object values", tree.srcPos)
         typed(untpd.Select(untpd.TypedSplice(tree), nme.PACKAGE))
       else
         report.error(SymbolIsNotAValue(sym), tree.srcPos)
@@ -3172,7 +3173,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
-    if sym.isConstructor then
+    if sym.isConstructor then {
       if sym.is(Inline) then
         report.error("constructors cannot be `inline`", ddef)
 
@@ -3187,7 +3188,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           do
             if defn.isContextFunctionType(param.tpt.tpe) then
               report.error("case class element cannot be a context function", param.srcPos)
-      else
+      else {
         for params <- paramss1; param <- params do
           checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
@@ -3200,14 +3201,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && tree.span.exists && !tree.span.isSynthetic
             then
               report.error("secondary constructor must call a preceding constructor", app.srcPos)
+            if Feature.ccEnabled then
+              Setup.recordParamAliases(sym, app)
+
           case Block(call :: _, expr) =>
             checkThisConstrCall(call)
             checkThisConstrCall(expr)
           case _ =>
 
         checkThisConstrCall(rhs1)
-      end if
-    end if
+      }
+    }
 
     if sym.is(Method) && sym.owner.denot.isRefinementClass then
       for annot <- sym.paramSymss.flatten.filter(_.isTerm).flatMap(_.getAnnotation(defn.ImplicitNotFoundAnnot)) do
@@ -3471,7 +3475,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if defn.ScalaValueClasses()(cls) && Feature.shouldBehaveAsScala2 then
       constr1.symbol.resetFlag(Private)
 
-    val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    // If original type of self ValDef was a DerivedTypeTree, its type was
+    //  not given explicitly, and the ValDef exists only in order to introduce
+    //  a name alias for `this`. In this case represent the `tpt` of the ValDef
+    //  as an InferredTypeTree.
+    def tweakSelf(self1: ValDef, orig: untpd.ValDef): ValDef =
+      if untpd.hasDerivedTree(orig.tpt)
+      then tpd.cpy.ValDef(self1)(tpt = tpd.cpy.TypeTree(self1.tpt)(inferred = true))
+      else self1
+
+    val self1 = tweakSelf(typed(self)(using ctx.outer).asInstanceOf[ValDef], self) // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
@@ -4518,7 +4531,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               else
                 val union = tree.sourcePos.withSpan:
                   tree.srcPos.span.union(pt.args.last.srcPos.span)
-                if union.startLine != union.endLine then union // if multiline, show more context
+                if union.exists && union.startLine != union.endLine then union // if multiline, show more context
                 else tree.srcPos
             errorTree(tree, MethodDoesNotTakeParameters(tree), pos)
     }

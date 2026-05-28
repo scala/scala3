@@ -981,6 +981,20 @@ object Capabilities:
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
 
+  /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
+   *  if `cls1` and `cls2` don't have a common ancestor classifier. It is
+   *  assumed that each of `cls1` and `cls2` is either a classifier class or
+   *  is equal to AnyClass.
+   */
+  def greatestClassifier(cls1: ClassSymbol, cls2: ClassSymbol)(using Context): ClassSymbol =
+    if cls1.isSubClass(cls2) then cls1
+    else if cls2.isSubClass(cls1) then cls2
+    else
+      cls1.classDenot.baseClasses
+        .find: bc1 =>
+          bc1.isClassifiedCapabilityClass && cls2.isSubClass(bc1)
+        .getOrElse(defn.AnyClass)
+
   /** The smallest list D of class symbols in cs1 and cs2 such that
    *  every class symbol in cs1 and cs2 is a subclass of a class symbol in D
    */

@@ -553,7 +553,13 @@ object Parsers {
             // into a capturing type in the typer.
             syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
             errorTree
-          case Some(f) =>
+          case Some(f: FunctionWithMods) if f.mods.is(Impure) && ccEnabled =>
+            syntaxError(
+              em"""Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled.
+                  |Workaround: introduce an empty term-parameter list right after the type binder, e.g. `[A] => () -> B => C`.""",
+              arrowOffset)
+            errorTree
+          case _ =>
             PolyFunction(tparams, body)
 
 /* --------------- PLACEHOLDERS ------------------------------------------- */
@@ -4373,7 +4379,7 @@ object Parsers {
           case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ if (staged & StageKind.QuotedPattern) != 0
-              || sourceVersion.enablesNewGivens && in.isColon =>
+              || (sourceVersion.enablesNewGivens && in.isColon && !mods.is(Opaque)) =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))

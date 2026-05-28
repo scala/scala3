@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 import p._
 
 object Test extends App {

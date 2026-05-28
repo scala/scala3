@@ -1,6 +1,7 @@
 package dotty.tools.pc
 package completions
 
+import scala.annotation.nowarn
 import scala.meta.internal.pc.CompletionItemData
 
 import dotty.tools.dotc.core.Contexts.Context
@@ -48,6 +49,7 @@ sealed trait CompletionValue:
   def completionItemDataKind: Integer = CompletionItemData.None
   def description(printer: ShortenedTypePrinter)(using Context): String = ""
   def insertMode: Option[InsertTextMode] = None
+  @nowarn
   def completionData(buildTargetIdentifier: String)(
       using Context
   ): CompletionItemData = CompletionItemData("<no-symbol>", buildTargetIdentifier, kind = completionItemDataKind)
@@ -55,6 +57,7 @@ sealed trait CompletionValue:
 
   /** Label with potentially attached description.
    */
+  @nowarn
   def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
     label
   def lspTags(using Context): List[CompletionItemTag] = Nil

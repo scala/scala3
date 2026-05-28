@@ -20,8 +20,19 @@ class TypeUtils:
     def isErasedValueType(using Context): Boolean =
       self.isInstanceOf[ErasedValueType]
 
-    def isPrimitiveValueType(using Context): Boolean =
-      self.classSymbol.isPrimitiveValueClass
+    def isPrimitiveValueType(using Context): Boolean = self match
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if sym.isClass then sym.isPrimitiveValueClass
+        else tp.superType.isPrimitiveValueType
+      case tp: TypeProxy =>
+        tp.superType.isPrimitiveValueType
+      case tp: ClassInfo =>
+        tp.cls.isPrimitiveValueClass
+      case _ =>
+        // anything else definitely can't be one (e.g., AndType),
+        // so let's not waste time constructing a ClassSymbol
+        false
 
     /** Is this type a checked exception? This is the case if the type
      *  derives from Exception but not from RuntimeException. According to

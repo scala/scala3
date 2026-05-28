@@ -37,7 +37,6 @@ object Feature:
   val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
-  val packageObjectValues = experimental("packageObjectValues")
   val multiSpreads = experimental("multiSpreads")
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
@@ -73,10 +72,9 @@ object Feature:
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
-    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
+    (separationChecking, "Enable experimental separation checking (implies captureChecking)"),
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
-    (packageObjectValues, "Enable experimental package objects as values"),
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),

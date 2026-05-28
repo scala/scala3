@@ -22,6 +22,7 @@ import CheckCaptures.CheckerAPI
 import NamerOps.methodType
 import NameOps.isSelectorName
 import NameKinds.{CanThrowEvidenceName, TryOwnerName, DefaultGetterName}
+import Constants.Constant
 import Capabilities.*
 
 /** Operations accessed from CheckCaptures */
@@ -76,6 +77,38 @@ object Setup:
         case vd: ValDef => vd.symbol.name.is(CanThrowEvidenceName)
         case _ => false
     case _ => None
+
+  /** Add `caps.internal.paramAlias annotation("x")` to secondary constructor
+   *  parameters that get forwarded in the constructor's super call to a primary
+   *  constructor parameter named "x". Example:
+   *
+   *     class A(x: B^, y: Int):
+   *       def this(xx: B^) = this(xx, 0)
+   *
+   *  Here we add `@caps.internal.paramAlias("x")` s annotation to parameter `xx`.
+   *  The forward could also be indirect, that is the argument gets forwarded
+   *  to a secondary constructor parameter that itself has a @paramAlias annotation.
+   *  In that case the @paramAlias annotation is copied to the argument.
+   */
+  def recordParamAliases(constr: Symbol, superCall: Apply)(using Context): Unit = {
+
+    def addParamAlias(param: Symbol, name: String) =
+      val ann = Annotation(defn.ParamAliasAnnot, Literal(Constant(name)), param.span)
+      param.addAnnotation(ann)
+      capt.println(i"added $ann to $param of $constr")
+
+    val target = superCall.fun.symbol
+    for case (param, arg: Ident) <- target.paramSymss.flatten.filter(_.isTerm).lazyZip(superCall.args) do
+      if arg.symbol.is(Param) && arg.symbol.owner == constr then
+        if target == constr.owner.primaryConstructor then
+          addParamAlias(arg.symbol, param.name.toString)
+        else
+          for
+            ann <- param.annotations.filter(_.matches(defn.ParamAliasAnnot))
+            name <- ann.argumentConstantString(0)
+          do
+            addParamAlias(arg.symbol, name)
+  }
 
 end Setup
 import Setup.*
@@ -781,9 +814,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         checkClassifiedInheritance(cls)
         val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
+        // Is self info inferred, i.e. only the name is given but not the type?
+        def selfInfoIsInferred =
+          impl.body.exists:
+            case TypeDef(tpnme.SELF, tpt: TypeTree) => tpt.isInferred
+            case _ => false
+
         // Compute new self type
         val selfInfo1 =
-          if (selfInfo ne NoType) && !cls.is(ModuleClass) then
+          if (selfInfo ne NoType) && !cls.is(ModuleClass) && !selfInfoIsInferred then
             // if selfInfo is explicitly given then use that one, except if
             // self info applies to a module class, these still need to be inferred
             selfInfo

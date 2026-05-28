@@ -119,7 +119,7 @@ object PcConvertToNamedLambdaParameters:
       else List(param) -> body
     case _ => List(param) -> body
 
-  def isWildcardParam(param: tpd.ValDef)(using Context): Boolean =
+  def isWildcardParam(param: tpd.ValDef): Boolean =
     param.name.toString.startsWith("_$")
 
   def findParamReferencePosition(param: tpd.ValDef, lambda: tpd.Tree)(using Context): Option[SourcePosition] =

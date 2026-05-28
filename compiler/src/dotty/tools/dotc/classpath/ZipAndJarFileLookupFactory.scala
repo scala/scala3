@@ -170,7 +170,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
     override private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntry = SourceFileEntry(file)
-    override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isScalaOrJavaSource
+    override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isSource
   }
 
   override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =

@@ -45,6 +45,10 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
   override def phaseName: String = InsertExpression.name
   override def isCheckable: Boolean = false
 
+  private val (indexCheck, returnTypeCheck) = if config.oldSyntax
+    then ("if (idx == -1) throw new NoSuchElementException(name)", """if (returnTypeName == "void") { () } else { res }""")
+    else ("if idx == -1 then throw new NoSuchElementException(name)", """if returnTypeName == "void" then () else res""")
+
   // TODO move reflection methods (callMethod, getField, etc) to scala3-library
   // under scala.runtime (or scala.debug?) to avoid recompiling them again and again
   private val expressionClassSource =
@@ -59,13 +63,13 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         |
         |  def getLocalValue(name: String): Any = {
         |    val idx = names.indexOf(name)
-        |    if idx == -1 then throw new NoSuchElementException(name)
+        |    $indexCheck
         |    else values(idx)
         |  }
         |
         |  def setLocalValue(name: String, value: Any): Any = {
         |    val idx = names.indexOf(name)
-        |    if idx == -1 then throw new NoSuchElementException(name)
+        |    $indexCheck
         |    else values(idx) = value
         |  }
         |
@@ -80,7 +84,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         |      .getOrElse(throw new NoSuchMethodException(methodName))
         |    method.setAccessible(true)
         |    val res = unwrapException(method.invoke(obj, args*))
-        |    if returnTypeName == "void" then () else res
+        |    $returnTypeCheck
         |  }
         |
         |  def callConstructor(className: String, paramTypesNames: Array[String], args: Array[Object]): Any = {

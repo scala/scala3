@@ -29,6 +29,7 @@ import NameOps.isReplWrapperName
 import reporting.*
 import reporting.Message.Note
 import Annotations.Annotation
+import Constants.Constant
 import Capabilities.*
 import Mutability.*
 import util.common.alwaysTrue
@@ -991,14 +992,37 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means
      *   - Instantiate result type with actual arguments
-     *   - if `sym` is a constructor, refine its type with `refineInstanceType`
+     *   - if `sym` is a constructor, refine its type with `refineConstructorInstance`
      */
     override def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       val ownType =
         if !mt.isResultDependent then mt.resType
         else SubstParamsMap(mt, argTypes)(mt.resType)
+      def instCls = ownType.finalResultType.classSymbol.asClass
       if sym.needsResultRefinement then
-        refineConstructorInstance(ownType, mt, argTypes, ownType.finalResultType.classSymbol.asClass)
+        refineConstructorInstance(ownType, mt, argTypes, instCls)
+      else if sym.isSecondaryConstructor then
+        // Refine primary constructor instance with a list of arguments of matching
+        // length that is constructed as follows:
+        //   - If the argument is for a primary constructor parameter named `x`
+        //     and there is a secondary constructor parameter carrying an
+        //     annotation `@caps.internal.paramAlias("x")`, pick the actual argument
+        //     in `argTypes` that corresponds to this secondary constructor parameter.
+        //     We assume there can be at most one such secondary constructor parameter.
+        //   - Otherwise the argument is NoType.
+        instCls.primaryConstructor.info.stripPoly match
+          case primaryMt: MethodType =>
+            var aliasMap = Map.empty[Name, Type]
+            for (param, argType) <- sym.paramSymss.flatten.filter(_.isTerm).lazyZip(argTypes) do
+              for
+                ann <- param.annotations.filter(_.matches(defn.ParamAliasAnnot))
+                name <- ann.argumentConstantString(0)
+              do
+                aliasMap = aliasMap.updated(name.toTermName, argType)
+            val aliasedArgs = instCls.paramGetters.map: param =>
+              aliasMap.getOrElse(param.name, NoType)
+            refineConstructorInstance(ownType, primaryMt, aliasedArgs, instCls)
+          case _ => ownType
       else ownType
 
     /** Refine the type returned from a constructor as follows:
@@ -1028,16 +1052,19 @@ class CheckCaptures extends Recheck, SymTransformer:
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.refiningGetterNamed(getterName)
           if !getter.is(Private) && getter.hasTrackedParts then
-            if !getter.is(Tracked) then
-              refined = refined.refinedOverride(getterName, argType.unboxed)
-              // We can assume unboxed since the use set contributed by field selection is also the capture set
-              // So unboxing will not add anything to the use sets.
-              // This trick is also the principal reason why we can't make refineConstructorInstance
-              // an operation to work on the declared constructor types. We would miss the necessary unboxed that way.
-            if getter.hasAnnotation(defn.ConsumeAnnot) then
-              () // We make sure in checkClassDef, point (6), that consume parameters don't
-                 // contribute to the class capture set
-            else allCaptures ++= argType.captureSet
+            if argType.exists then
+              if !getter.is(Tracked) then
+                refined = refined.refinedOverride(getterName, argType.unboxed)
+                // We can assume unboxed since the use set contributed by field selection is also the capture set
+                // So unboxing will not add anything to the use sets.
+                // This trick is also the principal reason why we can't make refineConstructorInstance
+                // an operation to work on the declared constructor types. We would miss the necessary unboxed that way.
+              if getter.hasAnnotation(defn.ConsumeAnnot) then
+                () // We make sure in checkClassDef, point (6), that consume parameters don't
+                    // contribute to the class capture set
+              else allCaptures ++= argType.captureSet
+            else
+              allCaptures ++= cls.mapClassCaptures(core, getter.info.captureSet)
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.
