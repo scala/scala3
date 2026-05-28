@@ -563,7 +563,7 @@ object Contexts {
     def tolerateErrorsForBestEffort = isBestEffort || usedBestEffortTasty
 
     /** A fresh clone of this context embedded in this context. */
-    def fresh: FreshContext = freshOver(this)
+    def fresh: FreshContext = FreshContext(base).fastInit(this)
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
     def freshOver(outer: Context): FreshContext =
