@@ -91,19 +91,23 @@ object Substituters:
             val replacement = lookup.get(sym)
             if replacement != null then
               val prefix = tp.prefix
-              return (if prefix `eq` NoPrefix then NoPrefix else substSym(prefix, from, to, theMap)).select(replacement.nn)
+              return (if prefix `eq` NoPrefix then NoPrefix else theMap.substPrefix(prefix, from, to)).select(replacement.nn)
             if tp.prefix `eq` NoPrefix then return tp
-            else return tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
+            else return tp.derivedSelect(theMap.substPrefix(tp.prefix, from, to))
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
           if (fs.head eq sym)
             val prefix = tp.prefix
-            return (if prefix `eq` NoPrefix then NoPrefix else substSym(prefix, from, to, theMap)).select(ts.head)
+            return (if prefix `eq` NoPrefix then NoPrefix
+                    else if theMap != null then theMap.substPrefix(prefix, from, to)
+                    else substSym(prefix, from, to, theMap)
+                   ).select(ts.head)
           fs = fs.tail
           ts = ts.tail
         }
         if (tp.prefix `eq` NoPrefix) tp
+        else if theMap != null then tp.derivedSelect(theMap.substPrefix(tp.prefix, from, to))
         else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
       case tp: ThisType =>
         val sym = tp.cls
@@ -285,6 +289,24 @@ object Substituters:
           ts = ts.tail
         m
       else null
+
+    // One-slot MRU keyed by reference equality on the input prefix:
+    // sibling NamedTypes selecting different names from the same prefix
+    // (e.g. `outer.this.x` / `outer.this.y`) reuse the substituted prefix
+    // instead of re-walking it. The result is a pure function of the input
+    // prefix and the (from, to) lists, all immutable for this instance.
+    private var prefixIn: Type | Null = null
+    private var prefixOut: Type | Null = null
+
+    private[Substituters] def substPrefix(prefix: Type, from: List[Symbol], to: List[Symbol])(using Context): Type =
+      val cached = prefixIn
+      if cached != null && (prefix eq cached) then prefixOut.nn
+      else
+        val out = substSym(prefix, from, to, this)
+        prefixIn = prefix
+        prefixOut = out
+        out
+
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
     def inverse = SubstSymMap(to, from) // implicitly requires that `to` contains no duplicates.
   }
