@@ -25,8 +25,9 @@ import OptimizerUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
+import dotty.tools.dotc.ast.Positioned
 
 class CallGraph(frontendAccess: PostProcessorFrontendAccess,
                 byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
@@ -100,6 +101,9 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
     val methodCallsites = callsites.get(callsite.callsiteMethod)
     callsites.get(callsite.callsiteMethod) = methodCallsites + (callsite.callsiteInstruction -> callsite)
   }
+
+  def recordCallsitePosition(m: MethodInsnNode, pos: SourcePosition): Unit =
+    callsitePositions.get(m) = pos
 
   def containsCallsite(callsite: Callsite): Boolean = callsites.get(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
 

@@ -25,16 +25,10 @@ import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
 import opt.{OptimizerUtils, CallGraph}
 
-class CodeGen(val optimizerUtils: OptimizerUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
-              val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes, val bTypes: WellKnownBTypes,
+class CodeGen(val primitives: ScalaPrimitives,
+              val callGraph: Option[CallGraph], val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes,
               val generatedClassHandler: GeneratedClassHandler) {
-  private class Impl extends BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry {
-    def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
-      callGraph.callsitePositions.get(m) = pos match {
-        case p: Positioned => p.sourcePos
-        case null => NoSourcePosition
-      }
-  }
+  private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
   private val impl = new Impl()
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()

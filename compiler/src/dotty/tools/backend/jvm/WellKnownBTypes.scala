@@ -19,8 +19,11 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
 
   val jlThrowableRef: ClassBType = loader.classBTypeFromSymbol(defn.ThrowableClass)
   val jlClassCastExceptionRef: ClassBType = loader.classBTypeFromSymbol(defn.ClassCastExceptionClass)
+  val jlIllegalArgExceptionRef: ClassBType = loader.classBTypeFromSymbol(defn.IllegalArgumentExceptionClass)
 
   val srBoxesRuntimeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
+
+  val jliSerializedLambdaRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
 
   protected val jliLambdaMetafactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
   protected val jliStringConcatFactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])
@@ -28,6 +31,17 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
   protected val jliMethodTypeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
   protected val jliMethodHandleRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandleClass)
   protected val jliCallSiteRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
+  protected val srLambdaDeserialize: ClassBType = loader.classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize])
+  val jliLambdaDeserializeBootstrapHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    srLambdaDeserialize.internalName,
+    "bootstrap",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false
+  )
   val jliLambdaMetaFactoryMetafactoryHandle: Handle = new Handle(
     Opcodes.H_INVOKESTATIC,
     jliLambdaMetafactoryRef.internalName,
@@ -157,23 +171,6 @@ final class WellKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Con
   val jlCloneableRef: ClassBType = ts.classBTypeFromSymbol(defn.JavaCloneableClass)
 
   val jiSerializableRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.io.Serializable])
-
-  val jlIllegalArgExceptionRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
-
-  val jliSerializedLambdaRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
-
-  private val srLambdaDeserialize: ClassBType = ts.classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize])
-
-
-  val jliLambdaDeserializeBootstrapHandle: Handle = new Handle(
-    Opcodes.H_INVOKESTATIC,
-    srLambdaDeserialize.internalName,
-    "bootstrap",
-    MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
-      jliCallSiteRef
-    ).descriptor,
-    /* itf = */ false)
 
   // java/lang/Boolean -> MethodNameAndType(valueOf,(Z)Ljava/lang/Boolean;)
   val javaBoxMethods: Map[InternalName, MethodNameAndType] = _javaBoxMethods(using initctx)

@@ -102,7 +102,10 @@ class GenBCode extends Phase { self =>
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, wellKnownBTypes)
+      if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
+        _postProcessor = new PostProcessorWithOptimizations(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, wellKnownBTypes)
+      else
+        _postProcessor = new PostProcessor(bTypeLoader, knownBTypes)
     _postProcessor.nn
   }
 
@@ -130,7 +133,8 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      _codeGen = new CodeGen(optimizerUtils, primitives, frontendAccess, callGraph, bTypeLoader, knownBTypes, wellKnownBTypes, generatedClassHandler)
+      val cg = Option.when(ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations)(callGraph)
+      _codeGen = new CodeGen(primitives, cg, bTypeLoader, knownBTypes, generatedClassHandler)
     _codeGen.nn
   }
 
