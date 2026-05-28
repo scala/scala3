@@ -132,10 +132,15 @@ object TypeOps:
               val sym = tp.symbol
               if sym.isStatic && !sym.maybeOwner.seesOpaques then tp
               else
-                val saved = variance
-                variance = saved max 0
-                val prefix = this(tp.prefix)
-                variance = saved
+                // `saved max 0` is the identity when variance >= 0, so skip the save/restore.
+                val prefix =
+                  if variance >= 0 then this(tp.prefix)
+                  else
+                    val saved = variance
+                    variance = 0
+                    val res = this(tp.prefix)
+                    variance = saved
+                    res
                 derivedSelect(tp, prefix)
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case
