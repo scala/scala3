@@ -68,7 +68,10 @@ final class InferredTypeProvider(
     val pos = driver.sourcePosition(params)
     val newctx = driver.currentCtx.fresh
       .setCompilationUnit(unit)
-      .setSettings(driver.currentCtx.settings.YhideFlexibleTypes.updateIn(driver.currentCtx.settingsState.reinitializedCopy(), true))
+      .setSettings(driver.currentCtx.settings.YhideFlexibleTypes.updateIn(
+        driver.currentCtx.settingsState.reinitializedCopy(),
+        true
+      ))
     val path =
       Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
     val indexedCtx = IndexedContext(pos, path, newctx)
