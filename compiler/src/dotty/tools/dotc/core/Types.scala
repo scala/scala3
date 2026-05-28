@@ -6560,10 +6560,16 @@ object Types extends TypeUtils {
           if stopBecauseStaticOrLocal(tp) then tp
           else
             // see comment of TypeAccumulator's applyToPrefix
-            val saved = variance
-            variance = saved max 0
-            val prefix1 = this(tp.prefix)
-            variance = saved
+            // `saved max 0` is the identity when variance >= 0 (prefixes are
+            // never visited contravariantly there), so skip the save/restore.
+            val prefix1 =
+              if variance >= 0 then this(tp.prefix)
+              else
+                val saved = variance
+                variance = 0
+                val res = this(tp.prefix)
+                variance = saved
+                res
             if (prefix1 eq tp.prefix) then tp else derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
@@ -7101,11 +7107,14 @@ object Types extends TypeUtils {
       // by-name `op$proxy` thunk on this hot foldOver path. Mirrors precedent
       // 94af7d7d55 for the TypeMap.mapOver NamedType arm. Overridable: subclasses
       // (e.g. OrderingConstraint.ConstraintAwareTraversal) replace this entirely.
-      val saved = variance
-      variance = saved max 0
-      val res = this(x, tp.prefix)
-      variance = saved
-      res
+      // `saved max 0` is the identity when variance >= 0, so skip the save/restore.
+      if variance >= 0 then this(x, tp.prefix)
+      else
+        val saved = variance
+        variance = 0
+        val res = this(x, tp.prefix)
+        variance = saved
+        res
 
     def foldOver(x: T, tp: Type): T = {
       record(s"foldOver $getClass")
