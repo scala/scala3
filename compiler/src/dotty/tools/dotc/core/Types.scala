@@ -4169,7 +4169,17 @@ object Types extends TypeUtils {
         def applyPrefix(tp: NamedType) =
           if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
           then status // Note: a type ref with static symbol can still be dependent since the symbol might be refined in the enclosing type. See pos/15331.scala.
-          else compute(status, tp.prefix, theAcc)
+          else
+            // Skip the extra `compute` frame when the prefix is a terminator
+            // that would just return `status` unchanged. NoPrefix and ThisType
+            // hit the `case _: ThisType | _: BoundType | NoPrefix => status`
+            // arm directly; BoundType is excluded because TermParamRef (which
+            // also extends BoundType) is intercepted earlier in `compute` and
+            // can return TrueDeps.
+            val pre = tp.prefix
+            if (pre eq NoPrefix) || pre.isInstanceOf[ThisType]
+            then status
+            else compute(status, pre, theAcc)
         if status == TrueDeps then status
         else tp match
           case tp: TypeRef =>
