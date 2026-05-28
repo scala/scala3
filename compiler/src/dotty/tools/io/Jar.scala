@@ -156,7 +156,14 @@ object Jar {
   // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
   // for some ideas.
   private val ZipMagicNumber = List[Byte](80, 75, 3, 4)
-  private def magicNumberIsZip(f: Path) = f.isFile && (f.toFile.bytes().take(4).toList == ZipMagicNumber)
+  private def magicNumberIsZip(f: Path) = f.isFile && {
+    val in = f.toFile.inputStream()
+    try
+      val first4 = in.readNBytes(4)
+      first4.toList == ZipMagicNumber
+    finally
+      in.close()
+  }
 
   def isJarOrZip(f: Path): Boolean = isJarOrZip(f, true)
   def isJarOrZip(f: Path, examineFile: Boolean): Boolean =
