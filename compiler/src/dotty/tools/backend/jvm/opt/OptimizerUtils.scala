@@ -2,7 +2,6 @@ package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.*
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Flags.{JavaStatic, Method}
 import dotty.tools.dotc.core.Names.TermName

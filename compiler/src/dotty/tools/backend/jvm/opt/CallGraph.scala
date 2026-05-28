@@ -26,7 +26,6 @@ import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValu
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.dotc.ast.Positioned
 
 class CallGraph(frontendAccess: PostProcessorFrontendAccess,

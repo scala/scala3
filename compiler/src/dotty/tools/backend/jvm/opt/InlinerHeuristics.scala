@@ -23,7 +23,6 @@ import scala.tools.asm.tree.MethodNode
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
-import PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
 import dotty.tools.dotc.report
 
