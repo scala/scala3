@@ -51,7 +51,7 @@ class GenBCode extends Phase { self =>
   private var _primitives: ScalaPrimitives | Null = null
   def primitives(using Context): ScalaPrimitives = {
     if _primitives eq null then
-      _primitives = ScalaPrimitives(ctx)
+      _primitives = ScalaPrimitives()
     _primitives.nn
   }
 

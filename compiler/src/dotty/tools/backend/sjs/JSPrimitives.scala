@@ -7,10 +7,11 @@ import Contexts.*
 import Symbols.*
 import Decorators.em
 import dotty.tools.backend.ScalaPrimitives
-
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.ReadOnlyMap
+
+import scala.annotation.constructorOnly
 
 object JSPrimitives {
 
@@ -68,22 +69,22 @@ object JSPrimitives {
 
 }
 
-class JSPrimitives(ictx: Context) extends ScalaPrimitives(ictx) {
+class JSPrimitives()(using @constructorOnly initCtx: Context) extends ScalaPrimitives {
   import JSPrimitives.*
 
-  private lazy val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives(using ictx)
+  private val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives
 
   override def getPrimitive(sym: Symbol): Int =
     jsPrimitives.getOrElse(sym, super.getPrimitive(sym))
 
-  override def getPrimitive(app: Apply, tpe: Type): Int =
-    jsPrimitives.getOrElse(app.fun.symbol(using ictx), super.getPrimitive(app, tpe))
+  override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
+    jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
 
   override def isPrimitive(sym: Symbol): Boolean =
     jsPrimitives.contains(sym) || super.isPrimitive(sym)
 
-  override def isPrimitive(fun: Tree): Boolean =
-    jsPrimitives.contains(fun.symbol(using ictx)) || super.isPrimitive(fun)
+  override def isPrimitive(fun: Tree)(using Context): Boolean =
+    jsPrimitives.contains(fun.symbol) || super.isPrimitive(fun)
 
   /** Initialize the primitive map */
   private def initJSPrimitives(using Context): ReadOnlyMap[Symbol, Int] = {

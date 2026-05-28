@@ -1321,7 +1321,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     }
 
     /* Is the given symbol a primitive operation? */
-    def isPrimitive(fun: Tree): Boolean = {
+    def isPrimitive(fun: Tree)(using Context): Boolean = {
       primitives.isPrimitive(fun)
     }
 
