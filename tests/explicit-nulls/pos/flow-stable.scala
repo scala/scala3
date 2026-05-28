@@ -1,4 +1,3 @@
-// TODO: temporarily disable,
 // in the if expression, `x.type` becomes `((x : T | Null) & T).type` due to `x != null`
 // We need to make sure `(x : T | Null) & T` stable and concrete in order to use `.type`
 

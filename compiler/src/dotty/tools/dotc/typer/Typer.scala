@@ -585,6 +585,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
+  /** If `ref` is a trackable `TermRef` of an `OrNull` type that flow typing has
+   *  identified as non-null at this point, returns `Some(tpnn)` where `tpnn` is
+   *  the non-null leg. Otherwise returns `None`.
+   */
+  private def nonNullPart(ref: TermRef)(using Context): Option[Type] =
+    if ctx.explicitNulls
+      && ctx.notNullInfos.impliesNotNull(ref)
+      // If a reference is in the context, it is already trackable at the point we add it.
+      // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
+      && !ref.usedOutOfOrder
+    then ref match
+      case OrNull(tpnn) => Some(tpnn)
+      case _            => None
+    else None
+
   /** If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
    *  cast away `tree`s nullability. Otherwise, `tree` remains unchanged.
    *
@@ -594,17 +609,29 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   def toNotNullTermRef(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case ref: TermRef
-    if ctx.explicitNulls
-      && pt != LhsProto // Ensure it is not the lhs of Assign
-      && ctx.notNullInfos.impliesNotNull(ref)
-      // If a reference is in the context, it is already trackable at the point we add it.
-      // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
-      && !ref.usedOutOfOrder =>
-      ref match
-        case OrNull(tpnn) => tree.cast(AndType(ref, tpnn))
-        case _            => tree
+    if pt != LhsProto // Ensure it is not the lhs of Assign
+      && pt != SingletonTypeProto =>
+      nonNullPart(ref) match
+        case Some(tpnn) => tree.cast(AndType(ref, tpnn))
+        case None       => tree
     case _ =>
       tree
+
+  /** If `tree` is a singleton type tree whose ref is identified by flow typing to be
+   *  non-null, wrap it in an `&`-typed `AppliedTypeTree` carrying the non-null leg,
+   *  so the resulting type is `ref.type & tpnn`. The inner singleton tree's ref is
+   *  left unintersected, so PostTyper's realizability check on `ref.tpe` (which
+   *  rejects AndTypes containing parameter `TermRef`s as non-concrete) still passes.
+   */
+  def toNotNullSingletonTypeTree(tree: SingletonTypeTree)(using Context): Tree = tree.ref.tpe match
+    case ref: TermRef =>
+      nonNullPart(ref) match
+        case Some(tpnn) =>
+          typed(
+            untpd.makeAndType(untpd.TypedSplice(tree), untpd.TypedSplice(TypeTree(tpnn)))
+              .withSpan(tree.span))
+        case None => tree
+    case _ => tree
 
   /** Attribute an identifier consisting of a simple name or wildcard
    *
@@ -2694,7 +2721,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               // Fall through to normal path if widened type is not a TypeRef
               // (can happen with naming conflicts #25025)
         checkStable(ref1.tpe, tree.srcPos, "singleton type")
-        assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
+        toNotNullSingletonTypeTree(assignType(cpy.SingletonTypeTree(tree)(ref1), ref1))
 
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(using Context): TypTree = {
     val tpt1 = if tree.tpt == EmptyTree then TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
