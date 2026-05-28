@@ -1,7 +1,6 @@
 package dotty.tools.backend.jvm
 
 import java.nio.channels.ClosedByInterruptException
-import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
 import java.util.concurrent.*
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
@@ -47,7 +46,7 @@ private[jvm] object GeneratedClassHandler {
   def parallel(postProcessor: PostProcessor, maxThreads: Int, queueSize: Int, genBCode: GenBCode, profiler: Profiler): GeneratedClassHandler = {
     val additionalThreads = maxThreads - 1
     val threadPoolFactory = ThreadPoolFactory(genBCode, profiler)
-    val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, new CallerRunsPolicy, "non-ast")
+    val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, "gen-class-handler")
     new AsyncWritingClassHandler(postProcessor, javaExecutor)
   }
 
