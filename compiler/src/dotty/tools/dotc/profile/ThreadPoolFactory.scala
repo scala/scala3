@@ -1,18 +1,11 @@
 package dotty.tools.dotc.profile
 
-import java.util.concurrent.ThreadPoolExecutor.AbortPolicy
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Contexts.*
 
 sealed trait ThreadPoolFactory {
-
-  def newUnboundedQueueFixedThreadPool(
-    nThreads: Int,
-    shortId: String,
-    priority : Int = Thread.NORM_PRIORITY) : ThreadPoolExecutor
 
   def newBoundedQueueFixedThreadPool(
     nThreads: Int,
@@ -30,7 +23,7 @@ object ThreadPoolFactory {
   }
 
   private abstract class BaseThreadPoolFactory(phase: Phase) extends ThreadPoolFactory {
-    val baseGroup = new ThreadGroup(s"dotc-${phase.phaseName}")
+    private val baseGroup = new ThreadGroup(s"dotc-${phase.phaseName}")
 
     private def childGroup(name: String) = new ThreadGroup(baseGroup, name)
 
@@ -60,12 +53,6 @@ object ThreadPoolFactory {
 
   private final class BasicThreadPoolFactory(phase: Phase) extends BaseThreadPoolFactory(phase) {
 
-    override def newUnboundedQueueFixedThreadPool(nThreads: Int, shortId: String, priority: Int): ThreadPoolExecutor = {
-      val threadFactory = new CommonThreadFactory(shortId, priority = priority)
-      //like Executors.newFixedThreadPool
-      new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue[Runnable], threadFactory)
-    }
-
     override def newBoundedQueueFixedThreadPool(nThreads: Int, maxQueueSize: Int, rejectHandler: RejectedExecutionHandler, shortId: String, priority: Int): ThreadPoolExecutor = {
       val threadFactory = new CommonThreadFactory(shortId, priority = priority)
       //like Executors.newFixedThreadPool
@@ -74,12 +61,6 @@ object ThreadPoolFactory {
   }
 
   private class ProfilingThreadPoolFactory(phase: Phase, private val profiler: RealProfiler) extends BaseThreadPoolFactory(phase) {
-
-    override def newUnboundedQueueFixedThreadPool(nThreads: Int, shortId: String, priority: Int): ThreadPoolExecutor = {
-      val threadFactory = new CommonThreadFactory(shortId, priority = priority)
-      //like Executors.newFixedThreadPool
-      new SinglePhaseInstrumentedThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue[Runnable], threadFactory, new AbortPolicy)
-    }
 
     override def newBoundedQueueFixedThreadPool(nThreads: Int, maxQueueSize: Int, rejectHandler: RejectedExecutionHandler, shortId: String, priority: Int): ThreadPoolExecutor = {
       val threadFactory = new CommonThreadFactory(shortId, priority = priority)
@@ -93,7 +74,7 @@ object ThreadPoolFactory {
       localData.set(data)
 
       val profileStart = RealProfiler.snapThread(0)
-      try worker.run finally {
+      try worker.run() finally {
         val snap = RealProfiler.snapThread(data.idleNs)
         val threadRange = ProfileRange(profileStart, snap, phase, shortId, data.taskCount, Thread.currentThread())
         profiler.completeBackground(threadRange)
@@ -114,7 +95,7 @@ object ThreadPoolFactory {
       var lastEndNs = 0L
     }
 
-    val localData = new ThreadLocal[ThreadProfileData]
+    private val localData = new ThreadLocal[ThreadProfileData]
 
     private class SinglePhaseInstrumentedThreadPoolExecutor
     (   corePoolSize: Int, maximumPoolSize: Int, keepAliveTime: Long, unit: TimeUnit,

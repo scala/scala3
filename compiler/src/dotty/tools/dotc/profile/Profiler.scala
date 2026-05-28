@@ -35,18 +35,18 @@ object Profiler {
   private[profile] val emptySnap: ProfileSnap = ProfileSnap(0, "", 0, 0, 0, 0, 0, 0, 0, 0)
 }
 
-case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, durationMillis: Long, name:String, action:String, cause:String, threads:Long){
+private [profile] case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, durationMillis: Long, name:String, action:String, cause:String, threads:Long){
   val endNanos = System.nanoTime()
 }
 
-case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
+private [profile] case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
                        idleTimeNanos:Long, cpuTimeNanos: Long, userTimeNanos: Long,
                        allocatedBytes:Long, heapBytes:Long,
                        totalClassesLoaded: Long, totalJITCompilationTime: Long) {
   def updateHeap(heapBytes:Long): ProfileSnap =
     copy(heapBytes = heapBytes)
 }
-case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpose:String, taskCount:Int, thread:Thread) {
+private [profile] case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpose:String, taskCount:Int, thread:Thread) {
   def allocatedBytes: Long = end.allocatedBytes - start.allocatedBytes
 
   def userNs: Long = end.userTimeNanos - start.userTimeNanos
@@ -362,7 +362,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       s"${enclosing.javaBinaryName}::${root.name}"
 }
 
-enum EventType(name: String):
+private [profile] enum EventType(name: String):
   // main thread with other tasks
   case MAIN extends EventType("main")
   // other task ( background thread)
@@ -370,7 +370,7 @@ enum EventType(name: String):
   // total for compile
   case GC extends EventType("GC")
 
-sealed trait ProfileReporter {
+private [profile] sealed trait ProfileReporter {
   def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit
   def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit
 
@@ -380,7 +380,7 @@ sealed trait ProfileReporter {
   def close(profiler: RealProfiler) :Unit
 }
 
-object ConsoleProfileReporter extends ProfileReporter {
+private [profile] object ConsoleProfileReporter extends ProfileReporter {
   @sharable var totalAlloc = 0L
 
   override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
@@ -401,7 +401,7 @@ object ConsoleProfileReporter extends ProfileReporter {
     println(s"Profiler GC reported ${data.gcEndMillis - data.gcStartMillis}ms")
 }
 
-class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
+private [profile] class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
   override def header(profiler: RealProfiler): Unit = {
     out.println(s"info, ${profiler.id}, version, 2, output, ${profiler.outDir}")
     out.println(s"header(main/background),startNs,endNs,runId,phaseId,phaseName,purpose,task-count,threadId,threadName,runNs,idleNs,cpuTimeNs,userTimeNs,allocatedByte,heapSize")

@@ -27,7 +27,7 @@ import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
 import scala.annotation.internal.sharable
 
-object FileUtils {
+private [profile] object FileUtils {
   def newAsyncBufferedWriter(path: Path, charset: Charset = StandardCharsets.UTF_8.nn, options: Array[OpenOption] = NO_OPTIONS, threadsafe: Boolean = false): LineWriter = {
     val encoder: CharsetEncoder = charset.newEncoder
     val writer = new OutputStreamWriter(Files.newOutputStream(path, options*), encoder)
