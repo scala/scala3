@@ -4898,13 +4898,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree
           }
         else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
-          case CompareResult.Fail(_) =>
+          case CompareResult.Fail(notes) =>
             wtp match
               case wtp: MethodType => missingArgs(wtp)
               case _ =>
                 typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
                 //typr.println(TypeComparer.explained(tree.tpe <:< pt))
-                adaptToSubType(wtp)
+                adaptToSubType(wtp, notes)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
              && !inContext(ctx.fresh.setGadtState(GadtState(GadtConstraint.empty))) {
@@ -5005,7 +5005,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case tree: Closure => cpy.Closure(tree)(tpt = TypeTree(samParent)).withType(samParent)
     }
 
-    def adaptToSubType(wtp: Type): Tree =
+    def adaptToSubType(wtp: Type, cmpNotes: List[Message.Note] = Nil): Tree =
       // try converting a constant to the target type
       tree.tpe.widenTermRefExpr.normalized match
         case ConstantType(x) =>
@@ -5074,7 +5074,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           val tree1 = healAdapt(tree, pt)
           if tree1 ne tree then readapt(tree1)
-          else err.typeMismatch(tree, pt, failure.notes)
+          else err.typeMismatch(tree, pt, cmpNotes ++ failure.notes)
 
       pt match
         case _: SelectionProto =>

@@ -26,7 +26,10 @@ import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
+import reporting.IllegalContravarianceInSpecializedTraitsNote
 import scala.util.boundary, boundary.break
+import dotty.tools.dotc.transform.Specialization
+import dotty.tools.dotc.transform.DesugarSpecializedTraits
 
 /** Provides methods to compare types.
  */
@@ -158,7 +161,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
     opaquesUsed = false
-    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(Nil)
+    errorNotes = Nil
+    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(errorNotes.map(_._2))
     else if GADTused then CompareResult.OKwithGADTUsed
     else if opaquesUsed then CompareResult.OKwithOpaquesUsed // we cast on GADTused, so handles if both are used
     else CompareResult.OK
@@ -1933,7 +1937,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then isSubType(arg2, arg1)
+                if v < 0 then 
+                  val isValidSubtype = isSubType(arg2, arg1)
+                  if tp1.classSymbol.isSpecializedTrait
+                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
+                     && isValidSubtype
+                     && !(DesugarSpecializedTraits.specType(arg1) eq DesugarSpecializedTraits.specType(arg2))
+                  then // using contravariance in a way which specialized trait erasure cannot support
+                    addErrorNote(IllegalContravarianceInSpecializedTraitsNote())
+                    false
+                  else
+                    isValidSubtype
                 else if v > 0 then isSubType(arg1, arg2)
                 else isSameType(arg2, arg1)
 
