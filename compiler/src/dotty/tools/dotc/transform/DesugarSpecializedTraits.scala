@@ -496,7 +496,7 @@ object SpecializedTraitCache:
   type GenInterfaceSymbol = (Specialization, SpecializedTraitCache) => Context ?=> (ClassSymbol, SpecializedTraitCache)
   type GenImplementationSymbol = (Specialization, ClassSymbol) => Context ?=> ClassSymbol
 
-
+// TODO: We don't need to share this between phases anymore and maybe we don't even need it at all. Can also rename. 
 class SpecializedTraitCache(
   private val newInterfaceSymbols: SpecializedTraitCache.SymbolMap = Map.empty,
   private val newImplementationSymbols: SpecializedTraitCache.SymbolMap = Map.empty,
