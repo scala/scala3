@@ -5,13 +5,8 @@ import java.util.concurrent.*
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.profile.{Profiler, ThreadPoolFactory}
-
-import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.report
+import dotty.tools.dotc.profile.{ProfiledThreadPool, Profiler}
 
 import scala.compiletime.uninitialized
 
@@ -45,8 +40,7 @@ private[jvm] object GeneratedClassHandler {
 
   def parallel(postProcessor: PostProcessor, maxThreads: Int, queueSize: Int, genBCode: GenBCode, profiler: Profiler): GeneratedClassHandler = {
     val additionalThreads = maxThreads - 1
-    val threadPoolFactory = ThreadPoolFactory(genBCode, profiler)
-    val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, "gen-class-handler")
+    val javaExecutor = ProfiledThreadPool.newExecutor(genBCode, profiler, additionalThreads, queueSize, "gen-class-handler")
     new AsyncWritingClassHandler(postProcessor, javaExecutor)
   }
 
