@@ -678,15 +678,9 @@ end SpecializedTraitState
 // Cache / only generate once instead of multiple times.
 // Ideally standardise on either specialization or specializationMap
 
-// TODO: Think carefully about use of primaryConstructor and the other appropriateConstructors call or whatever it was.
-
 // TODO: Need to try with a bigger project with multiple packages later on to see if we get the behaviour that we are expecting to get in terms of the classes that we generate.
 
 // TODO: need to test with explicit evidence / our own custom type classes
-
-// trait Vec$Sp[S] extends Vec[S, Int, Int, Int, Int]
-// inline trait Two[S: Specialized] extends Vec$sp[S]
-// Could potentially copy over the inline based on whether Two is inline or not? Needs some thought.
 
 // In the case of foo[S](a: Vec[S, Int, Int, Int, Int]) I think we ideally do want this because we should be able to get speed gains by accessing the specialized members 
 
@@ -694,11 +688,3 @@ end SpecializedTraitState
 // Maybe it is better to not allow partial specializations --  we can think about that.
 
 // TODO: Don't synthesize specialized instances for random generic types probably - as Hamza said we want to be able to control the specialization
-
-// Concerns:
-//  - The superclass of `C` is a top class, or `C` itself is a top class.
-
-// If we can manage to get rid of the inheritance there that could be helpful in terms of avoiding multiple values
-// BUT: generate a version which is with just inline traits that has this problem as well.
-// These implementation classes are type correct as long as we inject the knowledge that a specialization trait
-// like `Seq$sp$Int` is equal to its parameterized version `Seq[Int]`
