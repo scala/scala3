@@ -180,6 +180,19 @@ object Contexts {
         i += 2
       None
 
+    /** Like `property`, but returns the raw stored value (or `null` if absent)
+     *  without allocating a `Some` wrapper. Use this on hot paths where the
+     *  caller immediately tests presence / extracts the value.
+     */
+    def propertyRaw[T](key: Key[T]): T | Null =
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return arr(i + 1).asInstanceOf[T]
+        i += 2
+      null
+
     def propertyOrElse[T](key: Key[T], default: => T): T =
       val arr = morePropertiesArr
       var i = 0
