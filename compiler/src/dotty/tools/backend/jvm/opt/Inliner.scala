@@ -25,7 +25,7 @@ import scala.tools.asm.tree.analysis.Value
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
-import OptimizerUtils.LambdaMetaFactoryCall
+import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
 class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
@@ -1184,7 +1184,7 @@ final class MethodInlinerState(optLogInline: Option[String]) {
     @tailrec def impl(insn: AbstractInsnNode, res: List[KnownCallsite]): List[KnownCallsite] = inlinedCalls.get(insn) match {
       case Some(inlinedCallsite) =>
         val cs = inlinedCallsite.eliminatedCallsite
-        val res1 = if (skipForwarders && OptimizerUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.callee, cs.callee.calleeDeclarationClass)) res else cs :: res
+        val res1 = if (skipForwarders && AnalysisUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.callee, cs.callee.calleeDeclarationClass)) res else cs :: res
         impl(cs.callsiteInstruction, res1)
       case _ =>
         res
@@ -1202,7 +1202,7 @@ final class MethodInlinerState(optLogInline: Option[String]) {
   // If the chain has only forwarders, `returnForwarderIfNoOther` determines whether to return `None`
   // or the last inlined forwarder.
   def rootInlinedCallsiteWithWarning(call: AbstractInsnNode, returnForwarderIfNoOther: Boolean): Option[InlinedCallsite] = {
-    def isForwarder(callsite: KnownCallsite) = OptimizerUtils.isTraitSuperAccessorOrMixinForwarder(callsite.callee.callee, callsite.callee.calleeDeclarationClass)
+    def isForwarder(callsite: KnownCallsite) = AnalysisUtils.isTraitSuperAccessorOrMixinForwarder(callsite.callee.callee, callsite.callee.calleeDeclarationClass)
 
     def result(res: Option[InlinedCallsite]) = res match {
       case Some(r) if returnForwarderIfNoOther || !isForwarder(r.eliminatedCallsite) => res

@@ -24,8 +24,7 @@ import scala.tools.asm.tree.*
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
-import OptimizerUtils.*
-import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
+import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
 class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,

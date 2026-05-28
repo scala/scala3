@@ -24,7 +24,6 @@ import scala.tools.asm.tree.analysis.Frame
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import OptimizerUtils.isArrayGetLength
 
 /**
  * Optimizations within a single method. Certain optimizations enable others, for example removing
@@ -488,7 +487,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
   // Check for an Array.getLength(x) call where x is statically known to be of array type
   private def isArrayGetLengthOnStaticallyKnownArray(mi: MethodInsnNode, typeAnalyzer: NonLubbingTypeFlowAnalyzer): Boolean = {
-    OptimizerUtils.isArrayGetLength(mi) && {
+    AnalysisUtils.isArrayGetLength(mi) && {
       val f = typeAnalyzer.frameAt(mi)
       f.getValue(f.stackTop).getType.getSort == Type.ARRAY
     }

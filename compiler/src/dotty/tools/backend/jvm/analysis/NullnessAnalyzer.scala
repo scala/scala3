@@ -20,8 +20,6 @@ import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
-import dotty.tools.backend.jvm.opt.OptimizerUtils
-import dotty.tools.backend.jvm.opt.OptimizerUtils.isModuleLoad
 
 /**
  * See the package object `analysis` for details on the ASM analysis framework.
@@ -108,7 +106,7 @@ final class NullnessInterpreter(knownNonNullInvocation: MethodInsnNode => Boolea
 
     case Opcodes.GETSTATIC =>
       val fi = insn.asInstanceOf[FieldInsnNode]
-      if (modulesNonNull && isModuleLoad(fi, _ == fi.owner)) NotNullValue
+      if (modulesNonNull && AnalysisUtils.isModuleLoad(fi, _ == fi.owner)) NotNullValue
       else NullnessValue.unknown(insn)
 
     // for Opcodes.NEW, we use Unknown. The value will become NotNull after the constructor call.
@@ -216,7 +214,7 @@ class NullnessFrame(nLocals: Int, nStack: Int) extends AliasingFrame[NullnessVal
         aliasesOf(this.stackTop - numArgs)
 
       case INVOKESTATIC =>
-        var nullChecked = OptimizerUtils.argumentsNullCheckedByCallee(insn.asInstanceOf[MethodInsnNode])
+        var nullChecked = AnalysisUtils.argumentsNullCheckedByCallee(insn.asInstanceOf[MethodInsnNode])
         var i = 0
         var res: AliasSet | Null = null
         while (nullChecked > 0) {

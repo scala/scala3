@@ -23,7 +23,6 @@ import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import OptimizerUtils.*
 
 import scala.tools.asm
 
@@ -208,7 +207,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             if (receiverProds.size == 1) {
               toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
               toReplace(mi) = List(newArrayInstr)
-              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
+              toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if AnalysisUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
             }
           }
 
@@ -476,7 +475,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (optimizerUtils.isBoxedUnit(prod) || OptimizerUtils.isJavaLangStaticLoad(prod) || OptimizerUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
+            if (optimizerUtils.isBoxedUnit(prod) || AnalysisUtils.isJavaLangStaticLoad(prod) || AnalysisUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
@@ -510,7 +509,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
           case INVOKEDYNAMIC =>
             prod match {
-              case LambdaMetaFactoryCall(indy, _, _, _, _) => handleClosureInst(indy)
+              case AnalysisUtils.LambdaMetaFactoryCall(indy, _, _, _, _) => handleClosureInst(indy)
               case _ => popAfterProd()
             }
 

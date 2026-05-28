@@ -19,7 +19,6 @@ import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
 import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
-import dotty.tools.backend.jvm.opt.OptimizerUtils.LambdaMetaFactoryCall
 
 abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
   import TypeFlowInterpreter.*
@@ -47,7 +46,7 @@ abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opco
     val v = super.naryOperation(insn, values)
     insn.getOpcode match {
       case Opcodes.INVOKEDYNAMIC => insn match {
-        case LambdaMetaFactoryCall(_, _, _, _, _) => new LMFValue(v.getType)
+        case AnalysisUtils.LambdaMetaFactoryCall(_, _, _, _, _) => new LMFValue(v.getType)
         case _ => v
       }
       case _ => v

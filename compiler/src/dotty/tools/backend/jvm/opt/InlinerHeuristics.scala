@@ -24,6 +24,7 @@ import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
 import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
+import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.report
 
 class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
@@ -216,7 +217,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimi
             else None
 
           def shouldInlineArrayOp =
-            if (OptimizerUtils.isRuntimeArrayLoadOrUpdate(callsite.callsiteInstruction) && callsite.argInfos.get(1).contains(StaticallyKnownArray)) Some(KnownArrayOp)
+            if (AnalysisUtils.isRuntimeArrayLoadOrUpdate(callsite.callsiteInstruction) && callsite.argInfos.get(1).contains(StaticallyKnownArray)) Some(KnownArrayOp)
             else None
 
           def shouldInlineForwarder = Option {
@@ -235,7 +236,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimi
             val forwarderKind = optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
             if (forwarderKind < 0)
               null
-            else if (BCodeUtils.isSyntheticMethod(callee.callee) || OptimizerUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
+            else if (BCodeUtils.isSyntheticMethod(callee.callee) || AnalysisUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
               SyntheticForwarder
             else forwarderKind match {
               case 1 => TrivialMethod

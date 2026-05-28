@@ -21,9 +21,9 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BTypes.InternalName
-import OptimizerUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
-import dotty.tools.backend.jvm.analysis.*
+import dotty.tools.backend.jvm.analysis.{AnalysisUtils, *}
+import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.ast.Positioned
@@ -312,7 +312,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
         }
         argInfo.map((index, _))
     }
-    val isArrayLoadOrUpdateOnKnownArray = OptimizerUtils.isRuntimeArrayLoadOrUpdate(consumerInsn) &&
+    val isArrayLoadOrUpdateOnKnownArray = AnalysisUtils.isRuntimeArrayLoadOrUpdate(consumerInsn) &&
       consumerFrame.getValue(firstConsumedSlot + 1).getType.getSort == Type.ARRAY
     if (isArrayLoadOrUpdateOnKnownArray) samInfos.updated(1, StaticallyKnownArray)
     else samInfos

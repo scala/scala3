@@ -14,9 +14,9 @@ package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
-import OptimizerUtils.LambdaMetaFactoryCall
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.ClassNode1
+import dotty.tools.backend.jvm.analysis.AnalysisUtils.LambdaMetaFactoryCall
 import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
 import dotty.tools.io
 import dotty.tools.io.ClassPath
