@@ -98,20 +98,20 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimiz
 
     // the `toList` prevents modifying closureInstantiations while iterating it.
     // minimalRemoveUnreachableCode (called in the loop) removes elements
-    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.get.keysIterator.toList)
+    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toList)
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get.get(method) match {
+    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get(method) match {
       case Some(closureInitsBeforeDCE) if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
         LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
 
-        if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get.get(method) match {
+        if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
           case Some(closureInits) =>
             // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
             lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)

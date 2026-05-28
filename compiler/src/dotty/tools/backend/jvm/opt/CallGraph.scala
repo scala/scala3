@@ -61,8 +61,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
    * optimizer: finding callsites to re-write requires running a producers-consumers analysis on
    * the method. Here the closure instantiations are already grouped by method.
    */
-  //currently single threaded access only
-  val closureInstantiations: Lazy[mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty withDefaultValue Map.empty)
+  val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = concurrent.TrieMap.empty withDefaultValue Map.empty
 
   /**
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
@@ -108,10 +107,10 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
   def containsCallsite(callsite: Callsite): Boolean = callsites(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
 
   def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Option[ClosureInstantiation] = {
-    val methodClosureInits = closureInstantiations.get(methodNode)
+    val methodClosureInits = closureInstantiations(methodNode)
     val newClosureInits = methodClosureInits - indy
-    if (newClosureInits.isEmpty) closureInstantiations.get.subtractOne(methodNode)
-    else closureInstantiations.get(methodNode) = newClosureInits
+    if (newClosureInits.isEmpty) closureInstantiations.subtractOne(methodNode)
+    else closureInstantiations(methodNode) = newClosureInits
     methodClosureInits.get(indy)
   }
 
@@ -122,7 +121,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
 
   def refresh(methodNode: MethodNode, definingClass: ClassBType): Unit = {
     callsites.subtractOne(methodNode)
-    closureInstantiations.get.subtractOne(methodNode)
+    closureInstantiations.subtractOne(methodNode)
     // callsitePositions, inlineAnnotatedCallsites, noInlineAnnotatedCallsites, staticallyResolvedInvokespecial
     // are left unchanged. They contain individual instructions, the state for those remains valid in case
     // the inliner performs a rollback.
@@ -236,7 +235,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
       }
 
       callsites(methodNode) = methodCallsites
-      closureInstantiations.get(methodNode) = methodClosureInstantiations
+      closureInstantiations(methodNode) = methodClosureInstantiations
     }
   }
 
