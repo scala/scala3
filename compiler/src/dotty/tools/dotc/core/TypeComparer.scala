@@ -469,7 +469,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               if (sym1 ne NoSymbol) && (sym1 eq sym2) then
                 ctx.erasedTypes
                 || sym1.isStaticOwner
-                || isSubPrefix(tp1.prefix, tp2.prefix)
+                || {
+                     val pre1 = tp1.prefix
+                     val pre2 = tp2.prefix
+                     (pre1 eq pre2) || isSubPrefix(pre1, pre2)
+                   }
                 || thirdTryKnownClass(tp2, sym2)
               else
                 (tp1.name eq tp2.name)
@@ -513,7 +517,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               if (sym1 ne NoSymbol) && (sym1 eq sym2) then
                 ctx.erasedTypes
                 || sym1.isStaticOwner
-                || isSubPrefix(tp1.prefix, tp2.prefix)
+                || {
+                     val pre1 = tp1.prefix
+                     val pre2 = tp2.prefix
+                     (pre1 eq pre2) || isSubPrefix(pre1, pre2)
+                   }
                 || thirdTryNamed(tp2, info2)
               else
                 (tp1.name eq tp2.name)
