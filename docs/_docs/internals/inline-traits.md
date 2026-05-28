@@ -265,7 +265,7 @@ this pattern if the inline trait has no parameters.
 
 Note that this restriction does not block `inline trait extends trait` or `inline trait extends class` which are allowed with one (other) restriction:
  - Inline traits may not contain `super` references to classes or non-inline traits. This is because `super` references in scala may only reference
-   direct parents, and, after inlining, those references that were to direct parents in the original inline traits would now have to point to ancestor
+   direct parents, and, after inlining, those references that were to direct parents in the original inline traits would now have to point to ancestor // TODO: I think this ought to be fine actually because we can just call into the inline trait 
    classes which are further than 1 hop away.
 
 ## Benefits of inline traits
