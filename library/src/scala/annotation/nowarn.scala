@@ -37,7 +37,7 @@ import scala.language.`2.13`
  *   def f = { 1; deprecated() } // show deprecation warning
  *  ```
  *
- *  To ensure that a `@nowarn` annotation actually suppresses a warning, enable `-Xlint:unused` or `-Wunused:nowarn`.
+ *  To ensure that a `@nowarn` annotation actually suppresses a warning, enable `-Wunused:nowarn`.
  *  The unused annotation warning is emitted in category `unused-nowarn` and can be selectively managed
  *  using `-Wconf:cat=unused-nowarn:s`.
  */

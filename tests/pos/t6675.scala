@@ -7,14 +7,14 @@ object LeftOrRight {
 
 object Test {
   (Left((0, 0)): Either[(Int, Int), (Int, Int)]) match {
-    case LeftOrRight(pair @ (a, b)) => a // false -Xlint warning: "extractor pattern binds a single value to a Product2 of type (Int, Int)"
+    case LeftOrRight(pair @ (a, b)) => a // false -Wshadow warning: "extractor pattern binds a single value to a Product2 of type (Int, Int)"
   }
 
   (Left((0, 0)): Either[(Int, Int), (Int, Int)]) match {
-    case LeftOrRight((a, b)) => a // false -Xlint warning: "extractor pattern binds a single value to a Product2 of type (Int, Int)"
+    case LeftOrRight((a, b)) => a // false -Wshadow warning: "extractor pattern binds a single value to a Product2 of type (Int, Int)"
   }
 
   (Left((0, 0)): Either[(Int, Int), (Int, Int)]) match {
-    case LeftOrRight(a, b) => a // false -Xlint warning: "extractor pattern binds a single value to a Product2 of type (Int, Int)"
+    case LeftOrRight(a, b) => a // false -Wshadow warning: "extractor pattern binds a single value to a Product2 of type (Int, Int)"
   }
 }
