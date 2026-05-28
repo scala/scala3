@@ -5,4 +5,4 @@ class C:
 
 @main def Test =
   val e = new C().m
-  println(s"The secret is ${e.foo}")
+  assert(e.foo == 42)
