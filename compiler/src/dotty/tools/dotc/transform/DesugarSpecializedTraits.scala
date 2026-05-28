@@ -254,7 +254,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
                     report.error("Anonymous classes acting as instances of Specialized traits may not have additional members; you can make a named object instead if you like.", anon.srcPos)
 
                   anon.parentCalls match { 
-                    case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) if (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) => tree
+                    case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) if (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.baseClasses.exists(p => p == x.symbol.owner))) => 
+                      tree
                     case _ => 
                       report.error("Anonymous classes acting as instances of Specialized traits may not mix in other traits; you can make a named object instead if you like.", anon.srcPos)
                       tree
