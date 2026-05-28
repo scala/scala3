@@ -589,16 +589,23 @@ object ENode:
     val owner = QualifiedTypes.skolemOwner
     ENodeVar.Skolem(owner, ctx.base.freshSkolemIndex(owner))(underlying)
 
-  /** Resolve `member` to the most specific override visible from receiver
-   *  type `siteTp` — the symbol virtual dispatch would select for that
-   *  receiver. Returns `member` unchanged when it cannot participate in an
-   *  override or `siteTp` has no matching member. See
-   *  [[ENode.canonicalizeMembers]].
+  /** Resolve `member` to the most specific override visible from receiver type
+   *  `siteTp` — the symbol virtual dispatch would select for that receiver.
+   *  Returns `member` unchanged when it cannot participate in an override,
+   *  `siteTp` has no matching member, or the resolved symbol is not effectively
+   *  final.
+   *
+   *  The finality requirement keeps the rewrite sound under definition
+   *  unfolding (which we don't do yet): only when no further subclass can
+   *  override does virtual dispatch on every receiver of static type `siteTp`
+   *  provably land on `resolved`.
+   *
+   *  See [[ENode.canonicalizeMembers]].
    */
   private def resolveMember(siteTp: Type, member: Symbol)(using Context): Symbol =
     if member.exists && member.maybeOwner.isClass && siteTp.exists then
       val resolved = member.matchingMember(siteTp)
-      if resolved.exists then resolved else member
+      if resolved.exists && resolved.isEffectivelyFinal then resolved else member
     else member
 
   private def isEmptyPrefix(tp: Type): Boolean =
