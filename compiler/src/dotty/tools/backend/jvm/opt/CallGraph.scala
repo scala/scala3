@@ -75,9 +75,9 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
    * when building the CallGraph, every Callsite object has an annotated(No)Inline field.
    */
   //currently single threaded access only
-  private val inlineAnnotatedCallsites: Lazy[mutable.Set[MethodInsnNode]] = frontendAccess.perRunLazy(mutable.Set.empty)
+  private val inlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = mutable.Set.empty
   //currently single threaded access only
-  private val noInlineAnnotatedCallsites: Lazy[mutable.Set[MethodInsnNode]] = frontendAccess.perRunLazy(mutable.Set.empty)
+  private val noInlineAnnotatedCallsites: mutable.Set[MethodInsnNode] = mutable.Set.empty
 
   // Contains `INVOKESPECIAL` instructions that were cloned by the inliner and need to be resolved
   // statically by the call graph. See Inliner.maybeInlinedLater.
@@ -216,8 +216,8 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
                    callsiteStackHeight = typeAnalyzer.frameAt(call).getStackSize,
                    receiverKnownNotNull = receiverNotNull,
                    callsitePosition = pos,
-                   annotatedInline = inlineAnnotatedCallsites.get(call),
-                   annotatedNoInline = noInlineAnnotatedCallsites.get(call)
+                   annotatedInline = inlineAnnotatedCallsites(call),
+                   annotatedNoInline = noInlineAnnotatedCallsites(call)
                  )
           )
 
@@ -263,10 +263,10 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
           val mi = ins.asInstanceOf[MethodInsnNode]
           val clonedMi = cloned.asInstanceOf[MethodInsnNode]
           callsitePositions(clonedMi) = callsitePos
-          if (inlineAnnotatedCallsites.get(mi))
-            inlineAnnotatedCallsites.get += clonedMi
-          if (noInlineAnnotatedCallsites.get(mi))
-            noInlineAnnotatedCallsites.get += clonedMi
+          if (inlineAnnotatedCallsites(mi))
+            inlineAnnotatedCallsites += clonedMi
+          if (noInlineAnnotatedCallsites(mi))
+            noInlineAnnotatedCallsites += clonedMi
           if (staticallyResolvedInvokespecial.get(mi))
             staticallyResolvedInvokespecial.get += clonedMi
         } else if (BCodeUtils.isStore(ins)) {
