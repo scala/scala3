@@ -67,7 +67,10 @@ final class InferredMethodProvider(
 
     val newctx = driver.currentCtx.fresh
       .setCompilationUnit(unit)
-      .setSettings(driver.currentCtx.settings.YhideFlexibleTypes.updateIn(driver.currentCtx.settingsState.reinitializedCopy(), true))
+      .setSettings(driver.currentCtx.settings.YhideFlexibleTypes.updateIn(
+        driver.currentCtx.settingsState.reinitializedCopy(),
+        true
+      ))
     val indexedContext = IndexedContext(pos, path, newctx)
     import indexedContext.ctx
 
