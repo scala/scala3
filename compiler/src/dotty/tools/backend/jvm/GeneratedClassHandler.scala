@@ -45,14 +45,6 @@ private[jvm] object GeneratedClassHandler {
     new SyncWritingClassHandler(postProcessor)
 
   def parallel(postProcessor: PostProcessor, maxThreads: Int, queueSize: Int, genBCode: GenBCode, profiler: Profiler): GeneratedClassHandler = {
-    // if (settings.areStatisticsEnabled)
-    //   runReporting.warning(
-    //     NoPosition,
-    //     "JVM statistics are not reliable with multi-threaded JVM class writing.\n" +
-    //     "To collect compiler statistics remove the " + settings.YaddBackendThreads.name + " setting.",
-    //     WarningCategory.Other,
-    //     site = ""
-    //   )
     val additionalThreads = maxThreads - 1
     val threadPoolFactory = ThreadPoolFactory(genBCode, profiler)
     val javaExecutor = threadPoolFactory.newBoundedQueueFixedThreadPool(additionalThreads, queueSize, new CallerRunsPolicy, "non-ast")
