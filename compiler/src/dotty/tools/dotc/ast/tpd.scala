@@ -1359,8 +1359,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     final override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
       transformStats(trees, exprOwner, sameStats)
     override def transformBlock(blk: Block)(using Context) =
-      transformStats(blk.stats, ctx.owner,
-        stats1 => ctx ?=> cpy.Block(blk)(stats1, transform(blk.expr)))
+      if blk.stats.isEmpty then
+        cpy.Block(blk)(Nil, transform(blk.expr))
+      else
+        transformStats(blk.stats, ctx.owner,
+          stats1 => ctx ?=> cpy.Block(blk)(stats1, transform(blk.expr)))
 
   val sameStats: List[Tree] => Context ?=> List[Tree] = stats => stats
 
