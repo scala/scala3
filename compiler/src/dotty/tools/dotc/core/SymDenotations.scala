@@ -219,7 +219,13 @@ object SymDenotations {
         }
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
+      // Clear the cached completeness bit BEFORE swapping `myInfo` so a concurrent
+      // reader of `info` can never observe `myInfoIsComplete = true` paired with a
+      // half-written `myInfo`. The final bit value is written AFTER the swap and is
+      // `@volatile`, so the release/acquire pairs the new bit with the new `myInfo`.
+      myInfoIsComplete = false
       myInfo = tp
+      myInfoIsComplete = !tp.isInstanceOf[LazyType]
       invalidateStaticCaches()
     }
 
@@ -643,6 +649,7 @@ object SymDenotations {
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+      myInfoIsComplete = true // NoType is not a LazyType
       invalidateStaticCaches()
       invalidateAbsentSensitiveCaches()
     }

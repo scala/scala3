@@ -245,15 +245,33 @@ object Denotations {
   abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
 
+    /** Cached `!myInfo.isInstanceOf[LazyType]` bit, maintained by `info_=` and `markAbsent`.
+     *  Replaces the per-call `instanceof[LazyType]` check in `info` with a primitive
+     *  field read. `@volatile` so the JIT cannot hoist the read out of a hot loop and
+     *  so write ordering pairs with reader-side acquire semantics: the writers below
+     *  clear this to `false` BEFORE touching `myInfo` and set the final value AFTER,
+     *  so a reader that observes `true` is guaranteed to see the post-update `myInfo`
+     *  and never a stale `true` paired with a half-written `myInfo`. A reader that
+     *  observes a stale `false` falls through to `completeInfo`, which re-checks the
+     *  actual type of `myInfo` to tolerate the race instead of throwing on the cast.
+     */
+    @volatile protected var myInfoIsComplete: Boolean = !myInfo.isInstanceOf[LazyType]
+
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
      *  Uncompleted denotations set myInfo to a LazyType.
      */
     final def info(using Context): Type = {
       def completeInfo = { // Written this way so that `info` is small enough to be inlined
-        this.asInstanceOf[SymDenotation].completeFrom(myInfo.asInstanceOf[LazyType]); info
+        // Re-read `myInfo` and pattern-match instead of an unconditional cast so
+        // that a stale `myInfoIsComplete = false` observed against an already-
+        // completed `myInfo` returns the completed type instead of throwing.
+        myInfo match
+          case lazyInfo: LazyType =>
+            this.asInstanceOf[SymDenotation].completeFrom(lazyInfo); info
+          case completed => completed
       }
-      if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
+      if (myInfoIsComplete) myInfo else completeInfo
     }
 
     /** The type info, or, if this is a SymDenotation where the symbol
