@@ -855,7 +855,8 @@ trait ConstraintHandling {
 
   /** Can `param` be constrained with new bounds? */
   final def canConstrain(param: TypeParamRef): Boolean =
-    (!frozenConstraint || (caseLambda `eq` param.binder)) && constraint.contains(param)
+    if frozenConstraint && (caseLambda `eq` NoType) then false
+    else (!frozenConstraint || (caseLambda `eq` param.binder)) && constraint.contains(param)
 
   /** Is `param` assumed to be a sub- and super-type of any other type?
    *  This holds if `TypeVarsMissContext` is set unless `param` is a part
