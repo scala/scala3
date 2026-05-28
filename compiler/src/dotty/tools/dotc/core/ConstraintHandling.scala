@@ -516,6 +516,14 @@ trait ConstraintHandling {
 
   final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
     if frozenConstraint && (caseLambda eq NoType) then isSub(tp1, tp2)
+    else if caseLambda eq NoType then
+      val savedFrozen = frozenConstraint
+      frozenConstraint = true
+      try isSub(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = NoType
+      }
     else
       val savedFrozen = frozenConstraint
       val savedLambda = caseLambda
@@ -529,6 +537,14 @@ trait ConstraintHandling {
 
   final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
     if frozenConstraint && (caseLambda eq NoType) then isSame(tp1, tp2)
+    else if caseLambda eq NoType then
+      val savedFrozen = frozenConstraint
+      frozenConstraint = true
+      try isSame(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = NoType
+      }
     else
       val savedFrozen = frozenConstraint
       val savedLambda = caseLambda
