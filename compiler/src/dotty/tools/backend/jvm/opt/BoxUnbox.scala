@@ -26,7 +26,7 @@ import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.dotc.core.StdNames.nme
 
-final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: WellKnownBTypes) {
+final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: OptimizerKnownBTypes) {
 
   /**
    * Eliminate box-unbox pairs within `method`. Such appear commonly after closure elimination:

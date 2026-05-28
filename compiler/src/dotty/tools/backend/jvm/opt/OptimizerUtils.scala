@@ -19,9 +19,9 @@ import scala.tools.asm.tree.*
 import scala.tools.asm.{Handle, Opcodes, Type}
 
 /**
- * This component hosts tools and utilities used in the optimizer that require access to a `WellKnownBTypes` instance.
+ * This component hosts tools and utilities used in the optimizer that require access to an `OptimizerKnownBTypes` instance.
  */
-class OptimizerUtils(val ts: WellKnownBTypes) {
+class OptimizerUtils(val ts: OptimizerKnownBTypes) {
 
   private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
     new ConcurrentHashMap

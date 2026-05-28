@@ -265,7 +265,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
 final class PostProcessorWithOptimizations(frontendAccess: PostProcessorFrontendAccess,
                                            byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
                                            callGraph: CallGraph, optimizerUtils: OptimizerUtils,
-                                           bTypeLoader: BTypeLoader, bTypes: WellKnownBTypes)(using Context) extends PostProcessor(bTypeLoader, bTypes) {
+                                           bTypeLoader: BTypeLoader, bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(bTypeLoader, bTypes) {
   private val optSettings         = new OptimizerSettings()
   private val closureOptimizer    = new ClosureOptimizer(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
   private val heuristics          = new InlinerHeuristics(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)

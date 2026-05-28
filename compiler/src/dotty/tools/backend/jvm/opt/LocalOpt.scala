@@ -151,7 +151,7 @@ import OptimizerUtils.isArrayGetLength
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
 class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner,
-               ts: WellKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+               ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                settings: OptimizerSettings) {
 
   import LocalOptImpls.*

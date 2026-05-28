@@ -30,7 +30,7 @@ import BCodeUtils.*
 
 class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
-                       ts: WellKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+                       ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                        settings: OptimizerSettings) {
 
   import ClosureOptimizer.*

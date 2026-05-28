@@ -28,7 +28,7 @@ import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMetho
 import dotty.tools.dotc.report
 
 class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
-                        callGraph: CallGraph, ts: WellKnownBTypes,
+                        callGraph: CallGraph, ts: OptimizerKnownBTypes,
                         settings: OptimizerSettings) {
 
   private lazy val inlineSourceMatcher: InlineSourceMatcher = new InlineSourceMatcher(settings.optInlineFrom)

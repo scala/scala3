@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, OptimizerUtils, CallGraph}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, OptimizerKnownBTypes, OptimizerUtils}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
@@ -37,7 +37,7 @@ class GenBCode extends Phase { self =>
   private var _optimizerUtils: OptimizerUtils | Null = null
   def optimizerUtils(using Context): OptimizerUtils = {
     if _optimizerUtils eq null then
-      _optimizerUtils = OptimizerUtils(wellKnownBTypes)
+      _optimizerUtils = OptimizerUtils(optimizerKnownBTypes)
     _optimizerUtils.nn
   }
 
@@ -85,11 +85,11 @@ class GenBCode extends Phase { self =>
     _knownBTypes.nn
   }
 
-  private var _wellKnownBTypes: WellKnownBTypes | Null = null
-  def wellKnownBTypes(using Context): WellKnownBTypes = {
-    if _wellKnownBTypes eq null then
-      _wellKnownBTypes = WellKnownBTypes(bTypeLoader)(using ctx)
-    _wellKnownBTypes.nn
+  private var _optimizerKnownBTypes: OptimizerKnownBTypes | Null = null
+  def optimizerKnownBTypes(using Context): OptimizerKnownBTypes = {
+    if _optimizerKnownBTypes eq null then
+      _optimizerKnownBTypes = OptimizerKnownBTypes(bTypeLoader)(using ctx)
+    _optimizerKnownBTypes.nn
   }
 
   private var _callGraph: CallGraph | Null = null
@@ -103,7 +103,7 @@ class GenBCode extends Phase { self =>
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
       if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
-        _postProcessor = new PostProcessorWithOptimizations(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, wellKnownBTypes)
+        _postProcessor = new PostProcessorWithOptimizations(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, optimizerKnownBTypes)
       else
         _postProcessor = new PostProcessor(bTypeLoader, knownBTypes)
     _postProcessor.nn
