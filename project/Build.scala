@@ -87,7 +87,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.3.8-RC1"
+  val referenceVersion = "3.3.7"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -98,7 +98,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.3.9"
+  val developedVersion = "3.3.8"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -107,7 +107,7 @@ object Build {
    *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
    *  During final, stable release is set exactly to `developedVersion`.
   */
-  val baseVersion = s"$developedVersion-RC1"
+  val baseVersion = s"$developedVersion-RC2"
 
   /** The version of TASTY that should be emitted, checked in runtime test
    *  For defails on how TASTY version should be set see related discussions:
