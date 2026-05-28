@@ -1389,6 +1389,7 @@ object Types extends TypeUtils {
       case tp: TermRef => // fast path for next most frequent case
         val denot = tp.denot
         if denot.isOverloaded then tp else denot.info.widen
+      case _: AppliedType => this // fast path: AppliedType.stripped eq this, so widen is identity
       case tp: SingletonType => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
       case tp =>
