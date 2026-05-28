@@ -46,6 +46,8 @@ import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.util.Spans.spanCoord
 import dotty.tools.dotc.util.Spans.NoSpan
+import dotty.tools.dotc.transform.DesugarSpecializedTraits.specType
+import dotty.tools.dotc.transform.DesugarSpecializedTraits.isTopClass
 
 class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
@@ -143,7 +145,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
   private def generateImplementationClassParents(specialization: Specialization, interfaceSymbol: ClassSymbol)(using Context) = 
     val objectParent = defn.ObjectType
     val traitSpParent = interfaceSymbol.typeRef.appliedTo(specialization.unspecializedTypeParams) // Set using old unspecializedTypeParams and replace after.
-    val originalTraitSpecializedParent = AppliedTypeTree(Ident(specialization.traitSymbol.typeRef), specialization.mapUnspecializedArgs(specialization.unspecializedTypeParams.map(TypeTree(_)))).tpe
+    val originalTraitSpecializedParent = AppliedTypeTree(Ident(specialization.traitSymbol.typeRef), specialization.mapSpecializedUnspecializedArgs(tr => TypeTree(specType(tr.tpe)), specialization.unspecializedTypeParams.map(TypeTree(_)))).tpe
     (objectParent, traitSpParent, originalTraitSpecializedParent)
 
   private def newImplementationClass(specialization: Specialization, interfaceSymbol: ClassSymbol)(using Context) =
@@ -445,7 +447,7 @@ object DesugarSpecializedTraits:
   // TODO: What happens with this name generation if we have Vec[Vec[T]] for example? We potentially don't have an Ident
   // TODO: Check what happens here when we have a case where the types being specialized into are user defined instead of primitives or type vars.
   private def generateName(specialization: Specialization, suffix: String)(using Context) = 
-    val name = (specialization.traitSymbol.name ++ suffix).asTypeName ++ specialization.specializedTypeArgs.map(t => canonicalName(t.tpe)).mkString(str.SPECIALIZED_TRAIT_TYPE_SEP)
+    val name = (specialization.traitSymbol.name ++ suffix).asTypeName ++ specialization.specializedTypeArgs.map(t => canonicalName(specType(t.tpe))).mkString(str.SPECIALIZED_TRAIT_TYPE_SEP)
     if specialization.traitSymbol.owner.is(Flags.Package) then
       name
     else
@@ -456,6 +458,21 @@ object DesugarSpecializedTraits:
 
   /*private[transform]*/ def newImplementationClassName(specialization: Specialization)(using Context): TypeName = 
     generateName(specialization, str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
+
+  def isTopClass(s: Symbol)(using Context): Boolean =
+    (s eq defn.AnyClass) || (s eq defn.AnyValClass) || (s eq defn.ObjectClass) || (s eq defn.AnyRefAlias)
+
+  def specType(tp: Type)(using Context): Type =
+    def isTopClassOrNothing(s: Symbol): Boolean =
+      (s eq defn.NothingClass) || isTopClass(s)
+
+    def isSimpleClassType(s: Symbol): Boolean =
+      s.isClass && !s.is(Flags.Trait) && s.typeParams.isEmpty && s.isStatic
+
+    tp.baseClasses.iterator.find(c =>
+      isSimpleClassType(c) && (isTopClassOrNothing(c) || isTopClassOrNothing(c.asClass.superClass))
+    ).map(_.typeRef).get
+
 end DesugarSpecializedTraits
 
 /*
@@ -540,29 +557,25 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val
   val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are marked with Specialized at their definition
   val unspecializedTypeArgs: List[Tree] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are not marked with Specialized at their definition 
 
-  val specializedTypeParamsToTypeArgumentsMap: Map[Type, Tree] = paramToArgList.toMap.filter((k, v) => specializedTypeParams.exists(_ =:= k))
+  val specializedTypeParamsToTypeArgumentsMap: Map[Type, Tree] = paramToArgList.toMap.filter((k, v) => specializedTypeParams.exists(_ =:= k)).view.mapValues(tr => TypeTree(specType(tr.tpe))).toMap // TODO: Maybe not efficient
   val specialization: List[Tree] = traitSymbol.typeParams.map(_.typeRef).map(specializedTypeParamsToTypeArgumentsMap.applyOrElse(_, TypeTree(_))) // TODO: Don't really like this name
 
   def constructorTypeParams: List[Type] = traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef)
   def unspecializedConstructorParams: List[Symbol] = traitSymbol.primaryConstructor.rawParamss.head.zip(traitSymbol.typeParams).filterNot((constrParam, typeParam) => specializedTypeParams.exists(_ =:= typeParam.typeRef)).map((constrParam, typeParam) => constrParam)
   def specializedConstructorParamToArgumentTypeMap: Map[Type, Type] = 
-    traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef).zip(paramToArgList).filter((constrParam, paramArg) => specializedTypeParams.exists(_ =:= paramArg._1)).map((constrParam, paramArg) => (constrParam, paramArg._2.tpe)).toMap
+    traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef).zip(paramToArgList).filter((constrParam, paramArg) => specializedTypeParams.exists(_ =:= paramArg._1)).map((constrParam, paramArg) => (constrParam, specType(paramArg._2.tpe))).toMap
 
   val hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
 
-  def mapUnspecializedArgs(unspec: List[Tree]): List[Tree] = paramToArgList.foldLeft((List.empty[Tree], unspec))((resUnspec, paramArg) => ((resUnspec, paramArg): @unchecked) match {
-    case ((result, unspec), (param, arg)) if specializedTypeParams.exists(_ =:= param) => (arg :: result, unspec)
+  def mapSpecializedUnspecializedArgs(spec: Tree => Tree, unspec: List[Tree]): List[Tree] = paramToArgList.foldLeft((List.empty[Tree], unspec))((resUnspec, paramArg) => ((resUnspec, paramArg): @unchecked) match {
+    case ((result, unspec), (param, arg)) if specializedTypeParams.exists(_ =:= param) => (spec(arg) :: result, unspec)
     case ((result, head :: rest), (param, arg))                                        => (head :: result, rest)
   })._1.reverse
 
-  /* If inline trait Foo[T] has a method taking another Foo[T] there's no point specializing the reference
-     since the resulting sp$T$ would be the same as the starting trait. */
+  /* If inline trait Foo[T: Specialized] has a method taking another Foo[T] there's no point specializing the reference
+     since the resulting sp$T$ would be the same as the starting trait. Also A[Object] specializes to A. */
   def isSpecialized: Boolean = 
-    hasSpecializedParams && typeArguments.exists(!_.tpe.existsPart(part => (part.typeSymbol.isTypeParam) ||
-                                                                           (part.typeSymbol eq defn.AnyClass) || 
-                                                                           (part.typeSymbol eq defn.ObjectClass) ||
-                                                                           (part.typeSymbol eq defn.AnyValClass)))
-
+    hasSpecializedParams && typeArguments.exists(tree => !isTopClass(specType(tree.tpe).classSymbol))
   // Only works before erasure.
   def isFullySpecialized: Boolean =
     !specializedTypeArgs.exists(_.tpe.existsPart(part => (part.typeSymbol.isTypeParam)))
@@ -573,10 +586,10 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val
   // We should really put that logic in the SpecializedTraitCache because it's at that point that we treat them as the same.
   override def equals(obj: Any): Boolean = 
     obj.isInstanceOf[Specialization] && obj.asInstanceOf[Specialization].traitSymbol == traitSymbol
-    && specializedTypeArgs.zip(obj.asInstanceOf[Specialization].specializedTypeArgs).forall((a1, a2) => a1.tpe =:= a2.tpe)
+    && specializedTypeArgs.zip(obj.asInstanceOf[Specialization].specializedTypeArgs).forall((a1, a2) => specType(a1.tpe) == specType(a2.tpe))
 
   override def hashCode(): Int = 
-    (traitSymbol, specializedTypeArgs.map(_.tpe.widen.dealias.show)).hashCode() // TODO: Consider not using show for this for performance reasons (correctness also?)
+    (traitSymbol, specializedTypeArgs.map(tr => specType(tr.tpe))).hashCode()
   
   override def toString(): String = 
     s"Specialization(${traitSymbol}, ${typeArguments}, ${span})"
