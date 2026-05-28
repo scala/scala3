@@ -3978,7 +3978,8 @@ final class IllegalContravarianceInSpecializedTraitsNote(using Context) extends 
     other.isInstanceOf[IllegalContravarianceInSpecializedTraitsNote]
 
 final class ContravarianceInSpecializedTraitsLimitation(using Context)
-    extends SyntaxMsg(ContravarianceInSpecializedTraitsLimitationID):
+    extends Message(ContravarianceInSpecializedTraitsLimitationID):
+  override def kind = MessageKind.PotentialIssue
   override protected def msg(using Context): String =
     i"Type parameter is both Specialized and contravariant. This imposes additional typing restrictions."
   override protected def explain(using Context): String =
