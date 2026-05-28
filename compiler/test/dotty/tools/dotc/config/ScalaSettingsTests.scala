@@ -98,8 +98,8 @@ class ScalaSettingsTests:
 
     val settings = ScalaSettings
     List[(String, Setting[?])](
-      // Fill this with newly-deprecated options; as of 3.10 there are none, but here's an example:
-      //createTestCase(settings.YtermConflict         , settings.XtermConflict, ":package"),
+      // Fill this with newly-deprecated options, optionally with a value:
+      createTestCase(settings.YkindProjector         , settings.XkindProjector, ":underscores"),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
@@ -113,8 +113,8 @@ class ScalaSettingsTests:
 
     val settings = ScalaSettings
     List[(String, Setting[?])](
-      // Fill this with newly-deprecated options; as of 3.10 there are none, but here's an example:
-      //createTestCase(settings.YtermConflict         , settings.XtermConflict, ":package"),
+      // Fill this with newly-deprecated options:
+      createTestCase(settings.YkindProjector         , settings.XkindProjector),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
@@ -125,8 +125,8 @@ class ScalaSettingsTests:
   @Test def `Aliases of deprecated options are correctly mapped to their replacements`: Unit =
     val settings = ScalaSettings
     val tests = List[Setting[?] *: Setting[?] *: Tuple](
-      // Fill this with newly-deprecated options; as of 3.10 there are none, but here's an example:
-      //settings.YtermConflict          -> settings.XtermConflict :* "package",
+      // Fill this with newly-deprecated options, optionally with a value:
+      settings.YkindProjector          -> settings.XkindProjector :* ":underscores",
     )
     for
       test <- tests
