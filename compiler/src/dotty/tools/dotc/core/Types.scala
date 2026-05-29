@@ -4363,7 +4363,7 @@ object Types extends TypeUtils {
 
     override protected def needsParamRebind(pinfos: List[Type])(using Context): Boolean =
       isCaptureCheckingOrSetup
-      || hasDependencies(if pinfos eq paramInfos then paramDependencyStatus else rawParamDependencyStatus(pinfos))
+      || hasDependencies(paramDependencyStatus)
 
     override protected def needsResultRebind(res: Type)(using Context): Boolean =
       isCaptureCheckingOrSetup
