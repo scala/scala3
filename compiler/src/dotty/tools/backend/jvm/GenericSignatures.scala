@@ -233,7 +233,7 @@ object GenericSignatures {
               // Hence the widenNullaryMethod.
         }
 
-      assert(sym.isClass)
+      assert(sym.isClass, s"Not a class: $sym")
       pre.widen match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
@@ -310,7 +310,7 @@ object GenericSignatures {
 
         case RefOrAppliedType(sym, pre, args) =>
           if isTypeParameterInSig(sym, sym0) then
-            assert(!sym.isAliasType || sym.info.isLambdaSub, "Unexpected alias type: " + sym)
+            assert(!sym.isAliasType || sym.info.isLambdaSub, s"Unexpected alias type: $sym")
             typeParamSig(sym.targetName.lastPart)
           else defn.specialErasure.get(sym) match
             case Some(special) =>
