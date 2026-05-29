@@ -292,11 +292,17 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
     val inlineSpecializedMethods = new TreeMapWithPreciseStatContexts {
       override def transform(tree: Tree)(using Context): Tree = tree match {
-        case app: Apply if app.symbol.isSpecializedMethod =>
-          val inlinedTree = Inlines.inlineCall(tree).asInstanceOf[Inlined]
-          val callTrace = Inlines.inlineCallTrace(tree.symbol, inlinedTree.sourcePos)(using ctx.withSource(inlinedTree.source))
-          val flattenedTree = cpy.Inlined(inlinedTree)(callTrace, inlinedTree.bindings, inlinedTree.expansion)(using inlineContext(inlinedTree))
-          super.transform(flattenedTree)
+        case MethodSpecialization(methSpec) if methSpec.isSpecialized =>
+          // TODO: Not sure why we needed this - it doesn't seem to make any difference
+          def flattenTree(inlinedTree: Tree): Tree = inlinedTree match {
+            case it@Inlined(call, bindings, expansion) =>
+              val callTrace = Inlines.inlineCallTrace(tree.symbol, inlinedTree.sourcePos)(using ctx.withSource(inlinedTree.source))
+              cpy.Inlined(it)(callTrace, bindings, expansion)(using inlineContext(it))
+            case Block(stats, expr) => Block(stats, flattenTree(expr)) 
+          }
+
+          val inlinedTree = Inlines.inlineCall(tree)
+          super.transform(flattenTree(inlinedTree))
         case tree => super.transform(tree)
       }
     }
@@ -348,7 +354,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
         case pkg@PackageDef(pid, stats) => // TODO: If we do everything ourselves and match only on the package then we can get rid of the MacroTransform aspect and just have a Phase with the transformPackageDef method or even transformStats ideally
           
           def checkType(t: Type, pos: SrcPos) = t.widen.dealias match {
-            case Specialization.SpecializedEvidence(_) => 
+            case SpecializedEvidence(_) => 
               report.error(s"Only inline traits and inline functions may take Specialized type parameters", pos)
             case _ =>
           }
@@ -409,7 +415,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
                 part.typeSymbol.isTypeParam &&
                 (!(if part.typeSymbol.owner.isClass then part.typeSymbol.owner.primaryConstructor else part.typeSymbol.owner).paramSymss.flatten.exists(
                   d => d.info match {
-                    case Specialization.SpecializedEvidence(tpeArg) =>
+                    case SpecializedEvidence(tpeArg) =>
                       tpeArg.typeSymbol.isTypeParam && tpeArg.typeSymbol.name == part.name
                     case _ => false
                   }
@@ -600,13 +606,32 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val
     s"Specialization(${traitSymbol}, ${typeArguments}, ${span})"
 end Specialization
 
-object Specialization:
-  object SpecializedEvidence {
-    def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
-      case AppliedType(tycon, List(tpeArg)) if (tycon =:= ctx.definitions.SpecializedClass.typeRef && tpeArg.typeSymbol.isTypeParam) => Some(tpeArg)
-      case _ => None
-    }
+/* Represents an application methodSymbol[typeArguments](termArgs1)(termArgs2) etc */
+class MethodSpecialization(val methodSymbol: Symbol, val typeArgss: List[List[Tree]])(using Context):
+  val specializedTypeParams: List[Type] = methodSymbol.paramSymss.flatten.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar }) // Type parameters marked with Specialized
+  private val paramToArgList = 
+    methodSymbol.paramSymss.filter(l => l.nonEmpty && l.head.is(Flags.TypeParam)).zip(typeArgss).map(
+    (params, args) => params.map(_.typeRef.asInstanceOf[Type]).zip(args) 
+  ).flatten
+
+  // TODO: Can we share these? General Specialization + Method + Trait
+  val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are marked with Specialized at their definition
+
+  val hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
+
+  def isSpecialized: Boolean = 
+    methodSymbol.isSpecializedMethod && hasSpecializedParams && specializedTypeArgs.exists(tree => !isTopClass(specType(tree.tpe).classSymbol))
+end MethodSpecialization
+
+// TODO: If we can get this in Specialization when we do inheritance that would be great.
+object SpecializedEvidence {
+  def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
+    case AppliedType(tycon, List(tpeArg)) if (tycon =:= ctx.definitions.SpecializedClass.typeRef && tpeArg.typeSymbol.isTypeParam) => Some(tpeArg)
+    case _ => None
   }
+}
+
+object Specialization:
 
   def unapply(tpt: Tree)(using Context): Option[Specialization] = tpt match {
     case AppliedTypeTree(specializedTrait: Ident, concreteTypeTrees: List[Tree]) => Some(Specialization(specializedTrait.denot.symbol, concreteTypeTrees, tpt.span))
@@ -642,8 +667,20 @@ object Specialization:
 
   def isSpecializedTrait(sym: Symbol)(using Context) = sym.isClass && sym.isAllOf(InlineTrait) && classSpecializedTypeParams(sym).nonEmpty
   def isSpecializedMethod(sym: Symbol)(using Context) = sym.isAllOf(InlineMethod) && methodSpecializedTypeParams(sym).nonEmpty
-  def traitParamIsSpecialized(traitSym: Symbol, tParam: Symbol)(using Context) = classSpecializedTypeParams(traitSym).exists(tp => tp.typeSymbol eq tParam) 
+  def traitParamIsSpecialized(traitSym: Symbol, tParam: Symbol)(using Context) = classSpecializedTypeParams(traitSym).exists(tp => tp.typeSymbol eq tParam)
 end Specialization
+
+object MethodSpecialization:
+  def unapply(tree: Tree)(using Context) = tree match {
+    case app: Apply => 
+      val methSym = tpd.methPart(app).symbol
+      if methSym.is(Flags.Method) then
+        Some(MethodSpecialization(methSym, tpd.typeArgss(app)))
+      else
+        None  
+    case _ => None
+  } 
+end MethodSpecialization
 
 class AnonymousSpecializationInstance(
   val srcPos: SrcPos,
