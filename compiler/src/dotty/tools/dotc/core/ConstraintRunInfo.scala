@@ -3,6 +3,8 @@ package core
 
 import Contexts.*
 import config.Printers.{default, typr}
+import dotty.tools.dotc.util.NoSourcePosition
+
 import scala.compiletime.uninitialized
 
 trait ConstraintRunInfo { self: Run =>

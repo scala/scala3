@@ -14,30 +14,27 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance, WrappedSourceFile}
-import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import util.{HashSet, NoSource, ReusableInstance, SimpleIdentityMap, SourceFile, SrcPos, Store, WrappedSourceFile}
+import typer.{Implicits, ImportInfo, Nullables, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import inlines.Inliner
 import Nullables.*
 import Implicits.ContextualImplicits
 import config.Settings.*
 import config.Config
 import reporting.*
-import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
+import io.{AbstractFile, NoAbstractFile, Path, PlainFile}
 import scala.io.Codec
 import collection.mutable
 import printing.*
-import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
+import config.{JavaPlatform, Platform, SJSPlatform, ScalaSettings}
 import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
-
 import scala.annotation.internal.sharable
-
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
 import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
-import util.Store
 import plugins.*
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
@@ -514,8 +511,14 @@ object Contexts {
     final def withUncommittedTyperState: Context =
       withTyperState(typerState.uncommittedAncestor)
 
-    /** Ensures recursive operations obey the fuel limit, and throws user-friendly errors when they do not. */
-    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, weight: Int = 1)(inline block: T): T =
+    /**
+     * Ensures recursive operations obey the fuel limit, and throws user-friendly errors when they do not.
+     *
+     * If a position is meaningful, pass one.
+     * If not, make sure this is called in a stack where a previous call had a meaningful position,
+     * or the final error won't have one.
+     */
+    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, pos: SrcPos | Null = null, weight: Int = 1)(inline block: T): T =
       // This method is hot, as it must be called every so often in potentially recursive operations
       // to catch stack overflows before they actually happen.
       // Thus, it's important for it not to allocate or do any unnecessary work,
@@ -526,12 +529,13 @@ object Contexts {
       val depth = base.recursiveDepth
       val ops = base.recursiveOperations
       if depth >= ops.length then
-        throw new RecursionOverflow(ops, title, details, weight)
+        throw RecursionOverflow(ops, title, details, pos, weight)
       if depth >= 0 then
+        base.recursiveDepth = depth + 1
         ops(depth).title = title
         ops(depth).details = details
+        ops(depth).pos = pos
         ops(depth).weight = weight
-      base.recursiveDepth = depth + 1
       try block
       finally base.recursiveDepth = depth
 

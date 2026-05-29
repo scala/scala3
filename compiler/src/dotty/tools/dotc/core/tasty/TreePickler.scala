@@ -379,7 +379,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       registerDef(sym)
       writeByte(tag)
       val addr = currentAddr
-      ctx.handleRecursive("tree pickling", mdef):
+      ctx.handleRecursive("tree pickling", mdef, mdef):
         withLength {
           pickleName(sym.name)
           pickleParams

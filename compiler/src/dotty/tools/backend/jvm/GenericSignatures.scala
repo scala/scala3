@@ -34,7 +34,10 @@ object GenericSignatures {
    *  @return The signature if it could be generated, `null` otherwise.
    */
   def javaSig(sym0: Symbol, info: Type)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info))
+    if mayNeedSignature(sym0, info) then
+      ctx.handleRecursive("generating the generic signature of", sym0, sym0):
+        atPhase(erasurePhase):
+          javaSig0(sym0, info)
     else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
