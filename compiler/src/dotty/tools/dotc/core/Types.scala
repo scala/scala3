@@ -6576,6 +6576,28 @@ object Types extends TypeUtils {
         case tp: LambdaType =>
           mapOverLambda(tp)
 
+        case tp: ConstantType =>
+          // Ground leaf: literal ConstantTypes map to themselves; only a
+          // class-literal constant (ClazzTag) carries a Type value that must be
+          // remapped through erasure (see tests/run/classof.scala). The tag
+          // compare is exactly equivalent to the old `Constant(_: Type)` test
+          // (ClazzTag is the only tag whose value is a Type), and handling
+          // ConstantType here skips the ~15-arm tail of the match for the common
+          // primitive/String literals.
+          if tp.value.tag == ClazzTag then
+            val classType = tp.value.tpe
+            val classType1 = this(classType)
+            if classType eq classType1 then tp
+            else classType1
+          else tp
+
+        case _ if (tp eq NoType) || tp.isInstanceOf[ErrorType] =>
+          // Ground leaves with no mappable substructure; return directly instead
+          // of walking the rest of the match to the default arm. ErrorType is the
+          // only FlexType caught here (TryDynamicCallType, the other FlexType, is
+          // left to the default arm).
+          tp
+
         case tp: AliasingBounds =>
           val saved = variance
           variance = 0
@@ -6619,12 +6641,6 @@ object Types extends TypeUtils {
         case tp @ SuperType(thistp, supertp) =>
           derivedSuperType(tp, this(thistp), this(supertp))
 
-        case tp @ ConstantType(const @ Constant(_: Type)) =>
-          val classType = const.tpe
-          val classType1 = this(classType)
-          if classType eq classType1 then tp
-          else classType1
-
         case tp: LazyRef =>
           LazyRef { refCtx =>
             given Context = refCtx
@@ -6662,7 +6678,10 @@ object Types extends TypeUtils {
           derivedSkolemType(tp, this(tp.info))
 
         case tp: WildcardType =>
-          derivedWildcardType(tp, mapOver(tp.optBounds))
+          // An unbounded wildcard has NoType bounds; derivedWildcardType(tp, NoType)
+          // returns tp, so skip the full mapOver(NoType) dispatch for it.
+          val ob = tp.optBounds
+          if ob.exists then derivedWildcardType(tp, mapOver(ob)) else tp
 
         case tp: JavaArrayType =>
           derivedJavaArrayType(tp, this(tp.elemType))
@@ -6948,11 +6967,13 @@ object Types extends TypeUtils {
       case _             => false
 
     override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
-      if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
+      if (tp1 eq tp.tp1) && (tp2 eq tp.tp2) then tp
+      else if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
       else tp.derivedAndType(tp1, tp2)
 
     override protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
-      if (isRange(tp1) || isRange(tp2)) range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
+      if (tp1 eq tp.tp1) && (tp2 eq tp.tp2) then tp
+      else if (isRange(tp1) || isRange(tp2)) range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
       else tp.derivedOrType(tp1, tp2)
 
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
