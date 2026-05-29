@@ -62,8 +62,6 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
 
   /* Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting(RootSetting, "print-tasty", "Prints the raw tasty.", aliases = List("--print-tasty"))
-  @deprecated(message = "Scheduled for removal in 3.9.0, no-op since 3.8.3", since = "3.8.3")
-  val printLines: Setting[Boolean] = BooleanSetting(RootSetting, "print-lines", "Show source code line numbers.", aliases = List("--print-lines"), deprecation = Deprecation.removed(Some("3.9.0")))
 
   /* Scala.js-related settings */
   val scalajsGenStaticForwardersForNonTopLevelObjects: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs-genStaticForwardersForNonTopLevelObjects", "Generate static forwarders even for non-top-level objects (Scala.js only).")
@@ -153,10 +151,6 @@ private sealed trait VerboseSettings:
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
   val VprofileDetails = IntSetting(VerboseSetting, "Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
-  @deprecated(message = "No longer supported, scheduled for removal", since = "3.9.0")
-  val VreplMaxPrintElements: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-elements", "Number of elements to be printed before output is truncated.", 1000, deprecation = Some(Deprecation("Configuring output truncation is no longer supported")))
-  @deprecated(message = "No longer supported, scheduled for removal", since = "3.9.0")
-  val VreplMaxPrintCharacters: Setting[Int] = IntSetting(VerboseSetting, "Vrepl-max-print-characters", "Number of characters to be printed before output is truncated.", 50000, deprecation = Some(Deprecation("Configuring output truncation is no longer supported")))
 
 /** -W "Warnings" settings
  */
@@ -492,9 +486,6 @@ private sealed trait XSettings:
 
   val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
-  @deprecated(message = "Superseded by -Wshadow, Scheduled for removal", since = "3.5.0")
-  val Xlint: Setting[?] = BooleanSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints. Scheduled for removal.")), ignoreInvalidArgs = true)
-
 end XSettings
 
 /** -Y "Forking" as in forked tongue or "Private" settings */
@@ -570,8 +561,6 @@ private sealed trait YSettings:
   val YmagicOffsetHeader: Setting[String] = StringSetting(ForkSetting, "Ymagic-offset-header", "header", "Specify the magic header comment that marks the start of the actual code in generated wrapper scripts. Example: -Ymagic-offset-header:SOURCE_CODE_START. Then, in the source, the magic comment `///SOURCE_CODE_START:<ORIGINAL_FILE_PATH>` marks the start of user code. The comment should be suffixed by `:<ORIGINAL_FILE_PATH>` to indicate the original file.", "")
 
   // Experimental language features
-  @deprecated(message = "This flag has no effect and will be removed in a future version.", since = "3.7.0")
-  val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism. (This flag has no effect)", deprecation = Deprecation.removed())
   val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
   val YflexifyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yflexify-tasty", "Apply flexification to Scala code compiled without -Yexplicit-nulls, when reading from tasty.")
@@ -593,43 +582,8 @@ private sealed trait YSettings:
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
   val YimplicitToGiven: Setting[Boolean] = BooleanSetting(ForkSetting, "Yimplicit-to-given", "Allows to rewrite the implicit keywords to their scala-3 given counterparts. Does not adjust imports. Use in conjunction with --rewrite.")
 
-  // Deprecated: lifted from -Y to -X
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YtermConflict: Setting[String] = ChoiceSetting(ForkSetting, "Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error", deprecation = Deprecation.renamed("-Xresolve-term-conflict"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YnoGenericSig: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-generic-signatures", "Suppress generation of generic signatures for Java.", deprecation = Deprecation.renamed("-Xno-generic-signatures"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val Ydumpclasses: Setting[String] = StringSetting(ForkSetting, "Ydump-classes", "dir", "Dump the generated bytecode to .class files (useful for reflective compilation that utilizes in-memory classloaders).", default = "", deprecation = Deprecation.renamed("-Xdump-classes"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YjarCompressionLevel: Setting[Int] = IntChoiceSetting(ForkSetting, "Yjar-compression-level", "compression level to use when writing jar files", Deflater.DEFAULT_COMPRESSION to Deflater.BEST_COMPRESSION, Deflater.DEFAULT_COMPRESSION, deprecation = Deprecation.renamed("-Xjar-compression-level"))
+  // Should be removed but causes a lot of breakage in practice, e.g., with old versions of the sbt-typelevel plugin
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YkindProjector: Setting[String] = ChoiceSetting(ForkSetting, "Ykind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Ykind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", List("disable", "", "underscores"), "disable", legacyArgs = true, deprecation = Deprecation.renamed("-Xkind-projector"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YdropComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydrop-docs", "Drop documentation when scanning source files.", aliases = List("-Ydrop-comments"), deprecation = Deprecation.renamed("-Xdrop-docs"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YcookComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycook-docs", "Cook the documentation (type check `@usecase`, etc.)", aliases = List("-Ycook-comments"), deprecation = Deprecation.renamed("-Xcook-docs"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YreadComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Yread-docs", "Read documentation from tasty.", deprecation = Deprecation.renamed("-Xread-docs"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
-  @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YdebugMacros: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-macros", "Show debug info when quote pattern match fails", deprecation = Deprecation.renamed("-Xdebug-macros"))
-
-  // @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.7.0")
-  // val YjavaTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Ypickle-java"), preferPrevious = true, deprecation = Deprecation.lifted("-Xjava-tasty"))
-  // @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.7.0")
-  // val YearlyTastyOutput: Setting[AbstractFile] = OutputSetting(ForkSetting, "Yearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Ypickle-write"), preferPrevious = true, deprecation = Deprecation.lifted("-Xearly-tasty-output"))
-  // @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.7.0")
-  // val YallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", deprecation = Deprecation.lifted("-Xallow-outline-from-tasty"))
-
-  // Deprecated: lifted from -Y to -W
-  @deprecated(message = "Lifted to -W, Scheduled for removal.", since = "3.5.0")
-  val YcheckInit: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init", "Ensure safe initialization of objects.", deprecation = Deprecation.renamed("-Wsafe-init"))
-
-  // Deprecated: Scheduled for removal
-  @deprecated(message = "Scheduled for removal.", since = "3.5.0")
-  val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles", deprecation = Deprecation.removed())
 end YSettings
 

@@ -39,7 +39,6 @@ import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
 import util.Store
 import plugins.*
-import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
 import scala.annotation.tailrec

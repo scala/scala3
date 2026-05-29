@@ -6,8 +6,6 @@ import scala.util.{Random, Properties}
 
 object Test:
 
-  val r: Random = Random() // error
-
   if Properties.propIsSet("foo") then
     Properties.clearProp("foo") // error
     Properties.setProp("foo", "invalid") // error

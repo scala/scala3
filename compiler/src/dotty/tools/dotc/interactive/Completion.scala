@@ -250,13 +250,13 @@ object Completion:
         scopeContext.names.flatMap {
           case (name, CompletionDenotation(denots, site)) if matches0(name) =>
             def isAccessible(denot: SingleDenotation): Boolean =
-              site.map(denot.symbol.isAccessibleFrom(_)).getOrElse(true)
+              site.forall(denot.symbol.isAccessibleFrom(_))
             val filtered = denots.filter(denot =>
               isValidCompletionSymbol(denot.symbol, mode, isNew) && isAccessible(denot)
             )
             if filtered.nonEmpty then Some(name -> filtered) else None
           case _ => None
-        }.toMap
+        }
       case None => completer.scopeCompletions.names.map((name, denot) => name -> denot.denots)
 
     val result = adjustedPath match
@@ -628,7 +628,7 @@ object Completion:
         try
           ctx.typer.tryApplyingExtensionMethod(termRef, qual)
             .map { tree =>
-             val tpe = asDefLikeType(tree.typeOpt.dealias)
+              val tpe = asDefLikeType(tree.typeOpt.dealias)
               termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
             }
         catch case ex: Exception =>

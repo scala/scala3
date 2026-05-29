@@ -607,8 +607,6 @@ final abstract class Short private extends AnyVal {
    */
   def %(x: Double): Double
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Short] = ???
 }
 
 object Short extends AnyValCompanion {

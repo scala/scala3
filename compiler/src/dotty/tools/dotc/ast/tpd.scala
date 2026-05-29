@@ -559,7 +559,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
+      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Nil else elemtp :: Nil)
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 

@@ -40,17 +40,14 @@ enum FileExtension(val toLowerCase: String):
   /** represents `".zip"` */
   def isZip: Boolean = this == Zip
   /** represents `".jar"` or `".zip"` */
-  def isJarOrZip: Boolean = FileExtension.JarOrZip.is(this)
+  def isJarOrZip: Boolean = FileExtension.JarOrZip.contains(this)
   /** represents `".scala"` or `".java"` */
-  def isScalaOrJava: Boolean = FileExtension.ScalaOrJava.is(this)
-  /** represents `".java"` or `.tasty` */
-  def isJavaOrTasty: Boolean = FileExtension.JavaOrTasty.is(this)
+  def isSourceExtension: Boolean = FileExtension.SourceExtension.contains(this)
 
 object FileExtension:
 
   private val JarOrZip: FlagSet[FileExtension] = FlagSet.empty | Zip | Jar
-  private val ScalaOrJava: FlagSet[FileExtension] = FlagSet.empty | Scala | Java
-  private val JavaOrTasty: FlagSet[FileExtension] = FlagSet.empty | Java | Tasty
+  private val SourceExtension: FlagSet[FileExtension] = FlagSet.empty | Scala | Java
 
   // this will be optimised to a single hashcode + equality check, and then fallback to slowLookup,
   // keep in sync with slowLookup.
