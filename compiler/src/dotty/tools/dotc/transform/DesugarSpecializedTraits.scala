@@ -580,7 +580,7 @@ class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val
   /* If inline trait Foo[T: Specialized] has a method taking another Foo[T] there's no point specializing the reference
      since the resulting sp$T$ would be the same as the starting trait. Also A[Object] specializes to A. */
   def isSpecialized: Boolean = 
-    hasSpecializedParams && typeArguments.exists(tree => !isTopClass(specType(tree.tpe).classSymbol))
+    hasSpecializedParams && specializedTypeArgs.exists(tree => !isTopClass(specType(tree.tpe).classSymbol))
   // Only works before erasure.
   def isFullySpecialized: Boolean =
     !specializedTypeArgs.exists(_.tpe.existsPart(part => (part.typeSymbol.isTypeParam)))
