@@ -1,23 +1,12 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/safemode-4.scala:9:24 ------------------------------------
-9 |  val r: Random = Random() // error
-  |                  ^^^^^^^^
-  |                  Found:    scala.util.Random^{any}
-  |                  Required: scala.util.Random
-  |
-  |                  Note that capability `any` cannot flow into capture set {}.
-  |
-  |                  where:    any is a root capability in the type of value self
-  |
-  | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/safemode-4.scala:12:15 --------------------------------------------------------
-12 |    Properties.clearProp("foo") // error
+-- Error: tests/neg-custom-args/captures/safemode-4.scala:10:15 --------------------------------------------------------
+10 |    Properties.clearProp("foo") // error
    |    ^^^^^^^^^^^^^^^^^^^^
    |    Cannot refer to method clearProp in trait PropertiesTrait from safe code since it is tagged @rejectSafe
--- Error: tests/neg-custom-args/captures/safemode-4.scala:13:15 --------------------------------------------------------
-13 |    Properties.setProp("foo", "invalid") // error
+-- Error: tests/neg-custom-args/captures/safemode-4.scala:11:15 --------------------------------------------------------
+11 |    Properties.setProp("foo", "invalid") // error
    |    ^^^^^^^^^^^^^^^^^^
    |    Cannot refer to method setProp in trait PropertiesTrait from safe code since it is tagged @rejectSafe
--- Error: tests/neg-custom-args/captures/safemode-4.scala:15:13 --------------------------------------------------------
-15 |  Properties.main(Array()) // error
+-- Error: tests/neg-custom-args/captures/safemode-4.scala:13:13 --------------------------------------------------------
+13 |  Properties.main(Array()) // error
    |  ^^^^^^^^^^^^^^^
    |  Cannot refer to method main in trait PropertiesTrait from safe code since it is tagged @rejectSafe
