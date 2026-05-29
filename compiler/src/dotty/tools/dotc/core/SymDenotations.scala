@@ -226,7 +226,13 @@ object SymDenotations {
       myInfoIsComplete = false
       myInfo = tp
       myInfoIsComplete = !tp.isInstanceOf[LazyType]
-      invalidateStaticCaches()
+      // No `invalidateStaticCaches()`: `isStatic`/`isStaticOwner`/`seesOpaques`
+      // read only FromStartFlags (JavaStatic, Module/ModuleClass, Package/PackageClass,
+      // Opaque) and the constructor-fixed `maybeOwner` chain — never `info`. Installing a
+      // (completed) info therefore cannot change any of those predicates, so it must not
+      // bump the shared `ownerChainCacheEpoch` (doing so thrashed those caches process-wide).
+      // Relevant flag changes still go through `flags_=`/`setFlag`/`resetFlag`, which keep
+      // invalidating, and `markAbsent` is unchanged.
     }
 
     /** The name, except
