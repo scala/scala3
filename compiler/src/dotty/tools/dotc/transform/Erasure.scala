@@ -810,7 +810,9 @@ object Erasure {
         inContext(preErasureCtx) {
           Specialization.unapply(anon.typeTree.tpe, anon.typeTree.span).flatMap(spec => {
             anon.parentCalls match {
-              case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) if spec.isSpecialized && (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.parentSyms.exists(p => p == x.symbol.owner))) =>
+              case (obj :: parentsOfSpecTrait) if spec.isSpecialized && (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.baseClasses.exists(p => p == x.symbol.owner))) =>
+                val app: Tree = parentsOfSpecTrait.find(p => p.symbol.owner == spec.traitSymbol).get
+                assert(app.isInstanceOf[Apply]) // At the very least we pass the Specialized instance.
                 val targetImplName = DesugarSpecializedTraits.newImplementationClassName(spec)
                 val implClass = spec.traitSymbol.enclosingPackageClass.info.decls.lookup(targetImplName)
                 assert(implClass.exists && implClass.isClass)
