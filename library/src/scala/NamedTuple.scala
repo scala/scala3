@@ -4,6 +4,7 @@ import collection.immutable.{SeqMap, ListMap}
 
 import language.experimental.captureChecking
 import scala.annotation.experimental
+import scala.annotation.unused
 
 object NamedTuple:
 
@@ -17,15 +18,13 @@ object NamedTuple:
   /** A type which is a supertype of all named tuples. */
   opaque type AnyNamedTuple = Any
 
-  // This formulation fixes the name types, following the standard established in this file.
-  // Alternatively you could require additional evidence and compare `N1` and `N2` types.
-  // However if this is explored, you must not use `CanEqual[N1, N2]` because `CanEqual`
-  // for Strings widens singletons.
-  // Comparing different name types with `=:=` could also be possible.
+  // Alternatively we could restrict `N` to be identical on both sides, but this provides less
+  // useful error messages
   @experimental
-  given namedTupleCanEqual: [N <: Tuple, V1 <: Tuple, V2 <: Tuple]
-    => (eq: CanEqual[V1, V2])
-    => CanEqual[NamedTuple[N, V1], NamedTuple[N, V2]] = CanEqual.derived
+  given namedTupleCanEqual: [N1 <: Tuple, N2 <: Tuple, V1 <: Tuple, V2 <: Tuple]
+    => (@unused eqN: N1 =:= N2)
+    => (@unused eqV: CanEqual[V1, V2])
+    => CanEqual[NamedTuple[N1, V1], NamedTuple[N2, V2]] = CanEqual.derived
 
   def apply[N <: Tuple, V <: Tuple](x: V): NamedTuple[N, V] = x
 
