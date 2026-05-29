@@ -21,5 +21,8 @@ i974.scala # cyclic reference
 i13864.scala # missing symbol in pickling
 type-params.scala # recursion limit exceeded
 
+unsafe-dollar-in-name.scala # missing owner in unpickler
+unsafe-dollar-in-name-2.scala # missing owner in unpickler
+
 # semantic db generation fails in the first compilation
 i15158.scala # cyclic reference - stack overflow
