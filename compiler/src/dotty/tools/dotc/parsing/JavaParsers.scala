@@ -317,7 +317,8 @@ object JavaParsers {
 
     def typeArgs(t: Tree): Tree = {
       var wildnum = 0
-      def typeArg(): Tree =
+      def typeArg(): Tree = {
+        val annots = annotations()
         if (in.token == QMARK) {
           val offset = in.offset
           in.nextToken()
@@ -335,7 +336,8 @@ object JavaParsers {
           }
         }
         else
-          typ()
+          annots.foldLeft(typ())((tp, ann) => Annotated(tp, ann))
+      }
       if (in.token == LT) {
         in.nextToken()
         val t1 = convertToTypeId(t)
