@@ -1,0 +1,312 @@
+-- Error: tests/neg-macros/cyclic/Macros_1.scala:19:65 -----------------------------------------------------------------
+19 |    case ConstantType(IntConstant(x)) if x >= 1 => createTupleAux(x) // error
+   |                                                   ^^^^^^^^^^^^^^^^^
+   |Recursion limit exceeded.
+   |Maybe there is an illegal cyclic reference?
+   |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
+   |For the unprocessed stack overflow trace, compile with -Xno-enrich-error-messages.
+   |A recurring operation is (inner to outer):
+   |
+   |  typing contextual$3: scala.quoted.Quotes
+   |  typing def $anonfun(using contextual$3: scala.quoted.Quotes): scala.quoted.Expr[A] = value
+   |  typing (using contextual$3: scala.quoted.Quotes) => value
+   |  typing ${(using contextual$3: scala.quoted.Quotes) => value}
+   |  typing val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |  typing {
+   |  val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |  ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |}
+   |  typing '{
+   |  {
+   |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |  }
+   |}
+   |  typing '{
+   |  {
+   |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |  }
+   |}.apply
+   |  typing '{
+   |  {
+   |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |  }
+   |}.apply(q)
+   |  typing if x$proxy32 == 0 then '{EmptyTuple}.apply(q) else
+   |  '{
+   |    {
+   |      val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |      ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |    }
+   |  }.apply(q)
+   |  ...
+   |
+   |  typing '{
+   |  {
+   |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x - 1)}.*:[A, Tuple](x$1)
+   |  }
+   |}
+   |  typing '{
+   |  {
+   |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x - 1)}.*:[A, Tuple](x$1)
+   |  }
+   |}.apply
+   |  typing '{
+   |  {
+   |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x - 1)}.*:[A, Tuple](x$1)
+   |  }
+   |}.apply(q)
+   |  typing if x == 0 then '{EmptyTuple}.apply(q) else
+   |  '{
+   |    {
+   |      val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |      ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x - 1)}.*:[A, Tuple](x$1)
+   |    }
+   |  }.apply(q)
+   |  typing {
+   |  createTupleAux(x)
+   |}
+   |  typing TypeRepr.of[N] match
+   |  {
+   |    case ConstantType(IntConstant(x)) if x >= 1 =>
+   |      createTupleAux(x)
+   |    case _ =>
+   |      report.errorAndAbort(
+   |        s"invalid tuple size {
+   |          {
+   |            Type.show[N]
+   |          }
+   |        }"
+   |      )
+   |  }
+   |  typing {
+   |  import q.reflect.*
+   |  inline transparent def createTupleAux(x: Int): scala.quoted.Expr[Tuple] =
+   |    if x == 0 then '{EmptyTuple} else '{${value} *: ${createTupleAux(x - 1)}}
+   |  TypeRepr.of[N] match
+   |    {
+   |      case ConstantType(IntConstant(x)) if x >= 1 =>
+   |        createTupleAux(x)
+   |      case _ =>
+   |        report.errorAndAbort(
+   |          s"invalid tuple size {
+   |            {
+   |              Type.show[N]
+   |            }
+   |          }"
+   |        )
+   |    }
+   |}
+   |  typing def createTupleImpl[N <: Int, A](value: scala.quoted.Expr[A])(using evidence$1: N : scala.quoted.Type,
+   |  evidence$2: A : scala.quoted.Type, q: scala.quoted.Quotes): scala.quoted.Expr[Tuple] =
+   |  {
+   |    import q.reflect.*
+   |    inline transparent def createTupleAux(x: Int): scala.quoted.Expr[Tuple] =
+   |      if x == 0 then '{EmptyTuple} else '{${value} *: ${createTupleAux(x - 1)}}
+   |    TypeRepr.of[N] match
+   |      {
+   |        case ConstantType(IntConstant(x)) if x >= 1 =>
+   |          createTupleAux(x)
+   |        case _ =>
+   |          report.errorAndAbort(
+   |            s"invalid tuple size {
+   |              {
+   |                Type.show[N]
+   |              }
+   |            }"
+   |          )
+   |      }
+   |  }
+   |  typing final module class Macros_1$package() { this: macros.Macros_1$package.type =>
+   |  inline transparent def createTuple[N <: Int, A](inline value: A): Tuple = ${macros.createTupleImpl[N, A]('{value})}
+   |  def createTupleImpl[N = : scala.quoted.Type, A = : scala.quoted.Type](value: scala.quoted.Expr[A])(using
+   |    q: scala.quoted.Quotes): scala.quoted.Expr[Tuple] =
+   |    {
+   |      import q.reflect.*
+   |      inline transparent def createTupleAux(x: Int): scala.quoted.Expr[Tuple] =
+   |        if x == 0 then '{EmptyTuple} else '{${value} *: ${createTupleAux(x - 1)}}
+   |      TypeRepr.of[N] match
+   |        {
+   |          case ConstantType(IntConstant(x)) if x >= 1 =>
+   |            createTupleAux(x)
+   |          case _ =>
+   |            report.errorAndAbort(
+   |              s"invalid tuple size {
+   |                {
+   |                  Type.show[N]
+   |                }
+   |              }"
+   |            )
+   |        }
+   |    }
+   |}
+   |  typing package macros {
+   |  import scala.quoted.*
+   |  inline transparent def createTuple[N <: Int, A](inline value: A): Tuple = ${macros.createTupleImpl[N, A]('{value})}
+   |  def createTupleImpl[N = : scala.quoted.Type, A = : scala.quoted.Type](value: scala.quoted.Expr[A])(using
+   |    q: scala.quoted.Quotes): scala.quoted.Expr[Tuple] =
+   |    {
+   |      import q.reflect.*
+   |      inline transparent def createTupleAux(x: Int): scala.quoted.Expr[Tuple] =
+   |        if x == 0 then '{EmptyTuple} else '{${value} *: ${createTupleAux(x - 1)}}
+   |      TypeRepr.of[N] match
+   |        {
+   |          case ConstantType(IntConstant(x)) if x >= 1 =>
+   |            createTupleAux(x)
+   |          case _ =>
+   |            report.errorAndAbort(
+   |              s"invalid tuple size {
+   |                {
+   |                  Type.show[N]
+   |                }
+   |              }"
+   |            )
+   |        }
+   |    }
+   |}
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |             ^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macros_1.scala:16
+16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
+   |                         ^^^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
+-- [E006] Not Found Error: tests/neg-macros/cyclic/Usage_2.scala:3:7 ---------------------------------------------------
+3 |import macros.* // error
+  |       ^^^^^^
+  |       Not found: macros
+  |
+  | longer explanation available when compiling with `-explain`

@@ -42,12 +42,8 @@ object Inferencing {
    *  Throws an error if type contains wildcards.
    */
   def fullyDefinedType(tp: Type, what: String, pos: SrcPos)(using Context): Type =
-    try
-      if isFullyDefined(tp, ForceDegree.all) then tp
-      else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos")
-    catch case ex: RecursionOverflow =>
-      report.error(ex, pos)
-      UnspecifiedErrorType
+    if isFullyDefined(tp, ForceDegree.all) then tp
+    else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos")
 
   /** Instantiate selected type variables `tvars` in type `tp` in a special mode:
    *   1. If a type variable is constrained from below (i.e. constraint bound != given lower bound)
