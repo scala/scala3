@@ -41,11 +41,9 @@ object Conversion:
    *  conversions are tried from the type of `t` to `T`. `into[T]` types are erased to `T`
    *  in all covariant positions of the types of parameter symbols.
    */
-  @preview
   opaque type into[+T] >: T = T
 
   /** Unwraps an `into`. */
   extension [T](x: into[T])
-    @preview
     def underlying: T = x
 end Conversion
