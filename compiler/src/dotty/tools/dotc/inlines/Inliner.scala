@@ -1575,16 +1575,26 @@ class Inliner(val call: tpd.Tree)(using Context):
           while refs.nonEmpty do
             updateRefCount(refs.head, 2) // can't be inlined, so make sure refCount is at least 2
             refs = refs.tail
+      // Descent-guard traverser: stops descending once `activeRefCounts == 0`.
+      // Once every tracked binding's refCount has saturated at 2, all retain/inline
+      // decisions are final and immutable, so visiting further nodes cannot change them.
+      // The guard is checked at node entry (a saturated sibling) AND after the node's own
+      // RefTree is processed (its own ref may saturate the last count) before descending.
+      // One reused traverser across `countRefs(tree)` + the bindings — allocation-neutral.
+      val refCounter = new TreeTraverser {
+        def traverse(tree: Tree)(using Context): Unit =
+          if activeRefCounts != 0 then
+            tree match
+              case t: RefTree =>
+                updateRefCount(t.symbol, 1)
+                updateTermRefCounts(t)
+              case t @ (_: New | _: TypeTree) =>
+                updateTermRefCounts(t)
+              case _ =>
+            if activeRefCounts != 0 then traverseChildren(tree)
+      }
       def countRefs(tree: Tree) =
-        if activeRefCounts != 0 then
-          tree.foreachSubTree {
-            case t: RefTree =>
-              updateRefCount(t.symbol, 1)
-              updateTermRefCounts(t)
-            case t @ (_: New | _: TypeTree) =>
-              updateTermRefCounts(t)
-            case _ =>
-          }
+        if activeRefCounts != 0 then refCounter.traverse(tree)
       countRefs(tree)
       for (binding <- bindings if activeRefCounts != 0) countRefs(binding)
 
