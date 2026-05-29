@@ -92,23 +92,6 @@ covtest
 C
 Class
 covtest.C
-<init>
-108
-120
-10
-toString
-Apply
-false
-0
-false
-x.toString()
-
-5
-Constructor.scala
-covtest
-C
-Class
-covtest.C
 f
 133
 138
@@ -120,7 +103,7 @@ false
 false
 def f
 
-6
+5
 Constructor.scala
 covtest
 C
@@ -137,7 +120,7 @@ false
 false
 1
 
-7
+6
 Constructor.scala
 covtest
 C
@@ -154,7 +137,7 @@ false
 false
 def x
 
-8
+7
 Constructor.scala
 covtest
 C
@@ -171,7 +154,7 @@ false
 false
 f(x)
 
-9
+8
 Constructor.scala
 covtest
 C
@@ -188,7 +171,7 @@ false
 false
 x
 
-10
+9
 Constructor.scala
 covtest
 C
@@ -205,7 +188,7 @@ false
 false
 2
 
-11
+10
 Constructor.scala
 covtest
 C
@@ -222,7 +205,7 @@ false
 false
 def g
 
-12
+11
 Constructor.scala
 covtest
 O
@@ -239,7 +222,7 @@ false
 false
 def g
 
-13
+12
 Constructor.scala
 covtest
 O
@@ -256,7 +239,7 @@ false
 false
 1
 
-14
+13
 Constructor.scala
 covtest
 O
@@ -273,7 +256,7 @@ false
 false
 def y
 
-15
+14
 Constructor.scala
 covtest
 O

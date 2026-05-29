@@ -60,23 +60,6 @@ Class
 org.scoverage.samples.CreditEngine
 $anonfun
 263
-269
-11
-StringOpssssss
-Apply
-false
-0
-false
-"if 1"
-
-3
-scoverage-samples-implicit-class.scala
-org.scoverage.samples
-CreditEngine
-Class
-org.scoverage.samples.CreditEngine
-$anonfun
-263
 276
 11
 !
@@ -85,6 +68,23 @@ true
 0
 false
 "if 1" ! "xd"
+
+3
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+CreditEngine
+Class
+org.scoverage.samples.CreditEngine
+$anonfun
+286
+303
+12
+println
+Apply
+false
+0
+false
+println("else 1")
 
 4
 scoverage-samples-implicit-class.scala
@@ -98,29 +98,12 @@ $anonfun
 12
 println
 Apply
-false
-0
-false
-println("else 1")
-
-5
-scoverage-samples-implicit-class.scala
-org.scoverage.samples
-CreditEngine
-Class
-org.scoverage.samples.CreditEngine
-$anonfun
-286
-303
-12
-println
-Apply
 true
 0
 false
 println("else 1")
 
-6
+5
 scoverage-samples-implicit-class.scala
 org.scoverage.samples
 CreditEngine
@@ -137,7 +120,7 @@ false
 false
 def receive
 
-7
+6
 scoverage-samples-implicit-class.scala
 org.scoverage.samples
 StringOpssssss
@@ -154,7 +137,7 @@ false
 false
 println(s + "!" + str)
 
-8
+7
 scoverage-samples-implicit-class.scala
 org.scoverage.samples
 StringOpssssss
@@ -171,24 +154,7 @@ false
 false
 s + "!" + str
 
-9
-scoverage-samples-implicit-class.scala
-org.scoverage.samples
-StringOpssssss
-Class
-org.scoverage.samples.StringOpssssss
-!
-160
-167
-5
-+
-Apply
-false
-0
-false
-s + "!"
-
-10
+8
 scoverage-samples-implicit-class.scala
 org.scoverage.samples
 StringOpssssss
@@ -205,7 +171,7 @@ false
 false
 def !
 
-11
+9
 scoverage-samples-implicit-class.scala
 org.scoverage.samples
 scoverage-samples-implicit-class$package

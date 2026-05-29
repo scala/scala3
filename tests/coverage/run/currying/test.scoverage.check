@@ -42,23 +42,6 @@ Test
 Object
 <empty>.Test
 f1
-48
-51
-2
-+
-Apply
-false
-0
-false
-a+b
-
-2
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-f1
 15
 21
 2
@@ -69,7 +52,7 @@ false
 false
 def f1
 
-3
+2
 currying/test.scala
 <empty>
 Test
@@ -86,24 +69,7 @@ false
 false
 a+b+c
 
-4
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-$anonfun
-105
-108
-4
-+
-Apply
-false
-0
-false
-a+b
-
-5
+3
 currying/test.scala
 <empty>
 Test
@@ -120,7 +86,7 @@ false
 false
 def f2
 
-6
+4
 currying/test.scala
 <empty>
 Test
@@ -137,24 +103,7 @@ false
 false
 a+b+c
 
-7
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-$anonfun
-166
-169
-7
-+
-Apply
-false
-0
-false
-a+b
-
-8
+5
 currying/test.scala
 <empty>
 Test
@@ -171,7 +120,7 @@ false
 false
 def g1
 
-9
+6
 currying/test.scala
 <empty>
 Test
@@ -188,24 +137,7 @@ false
 false
 a+b+c
 
-10
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-g2
-226
-229
-9
-+
-Apply
-false
-0
-false
-a+b
-
-11
+7
 currying/test.scala
 <empty>
 Test
@@ -222,7 +154,7 @@ false
 false
 def g2
 
-12
+8
 currying/test.scala
 <empty>
 Test
@@ -239,7 +171,7 @@ false
 false
 println(f1(0)(1)(2))
 
-13
+9
 currying/test.scala
 <empty>
 Test
@@ -256,7 +188,7 @@ false
 false
 f1(0)(1)(2)
 
-14
+10
 currying/test.scala
 <empty>
 Test
@@ -273,7 +205,7 @@ false
 false
 println(f2(0)(1)(2))
 
-15
+11
 currying/test.scala
 <empty>
 Test
@@ -290,41 +222,7 @@ false
 false
 f2(0)(1)(2)
 
-16
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-310
-315
-13
-apply
-Apply
-false
-0
-false
-f2(0)
-
-17
-currying/test.scala
-<empty>
-Test
-Object
-<empty>.Test
-main
-310
-318
-13
-apply
-Apply
-false
-0
-false
-f2(0)(1)
-
-18
+12
 currying/test.scala
 <empty>
 Test
@@ -341,7 +239,7 @@ false
 false
 println(g1(using 0)(using 1)(using 2))
 
-19
+13
 currying/test.scala
 <empty>
 Test
@@ -358,7 +256,7 @@ false
 false
 g1(using 0)(using 1)(using 2)
 
-20
+14
 currying/test.scala
 <empty>
 Test
@@ -375,7 +273,7 @@ false
 false
 println(g2(using 0)(using 1)(using 2))
 
-21
+15
 currying/test.scala
 <empty>
 Test
@@ -392,7 +290,7 @@ false
 false
 g2(using 0)(using 1)(using 2)
 
-22
+16
 currying/test.scala
 <empty>
 Test

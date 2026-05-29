@@ -161,74 +161,6 @@ A
 Class
 <empty>.A
 msg
-104
-116
-6
-+
-Apply
-false
-0
-false
-"string" + a
-
-9
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
-104
-122
-6
-+
-Apply
-false
-0
-false
-"string" + a + "."
-
-10
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
-104
-126
-6
-+
-Apply
-false
-0
-false
-"string" + a + "." + b
-
-11
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
-104
-132
-6
-+
-Apply
-false
-0
-false
-"string" + a + "." + b + "."
-
-12
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
 70
 77
 6
@@ -239,7 +171,7 @@ false
 false
 def msg
 
-13
+9
 lifting/test.scala
 <empty>
 A
@@ -256,7 +188,7 @@ false
 false
 0
 
-14
+10
 lifting/test.scala
 <empty>
 A
@@ -273,7 +205,7 @@ false
 false
 def integer
 
-15
+11
 lifting/test.scala
 <empty>
 A
@@ -290,7 +222,7 @@ false
 false
 def ex
 
-16
+12
 lifting/test.scala
 <empty>
 test$package
@@ -307,7 +239,7 @@ false
 false
 A()
 
-17
+13
 lifting/test.scala
 <empty>
 test$package
@@ -324,7 +256,7 @@ false
 false
 123
 
-18
+14
 lifting/test.scala
 <empty>
 test$package
@@ -341,7 +273,7 @@ false
 false
 -1
 
-19
+15
 lifting/test.scala
 <empty>
 test$package
@@ -358,7 +290,7 @@ false
 false
 def f
 
-20
+16
 lifting/test.scala
 <empty>
 test$package
@@ -375,7 +307,7 @@ false
 false
 a.msg(i, 0, a.integer)
 
-21
+17
 lifting/test.scala
 <empty>
 test$package
@@ -392,7 +324,7 @@ false
 false
 0
 
-22
+18
 lifting/test.scala
 <empty>
 test$package
@@ -409,7 +341,7 @@ false
 false
 a.integer
 
-23
+19
 lifting/test.scala
 <empty>
 test$package
@@ -426,7 +358,7 @@ false
 false
 println(x)
 
-24
+20
 lifting/test.scala
 <empty>
 test$package
@@ -443,7 +375,7 @@ false
 false
 a.ex.msg(i, 0, a.ex.integer)
 
-25
+21
 lifting/test.scala
 <empty>
 test$package
@@ -460,7 +392,7 @@ false
 false
 0
 
-26
+22
 lifting/test.scala
 <empty>
 test$package
@@ -477,7 +409,7 @@ false
 false
 a.ex
 
-27
+23
 lifting/test.scala
 <empty>
 test$package
@@ -494,7 +426,7 @@ false
 false
 a.ex.integer
 
-28
+24
 lifting/test.scala
 <empty>
 test$package
@@ -511,7 +443,7 @@ false
 false
 println(x)
 
-29
+25
 lifting/test.scala
 <empty>
 test$package
@@ -528,7 +460,7 @@ false
 false
 a.msg(f(), 0, i)
 
-30
+26
 lifting/test.scala
 <empty>
 test$package
@@ -545,7 +477,7 @@ false
 false
 f()
 
-31
+27
 lifting/test.scala
 <empty>
 test$package
@@ -562,7 +494,7 @@ false
 false
 0
 
-32
+28
 lifting/test.scala
 <empty>
 test$package
@@ -579,7 +511,7 @@ false
 false
 println(x)
 
-33
+29
 lifting/test.scala
 <empty>
 test$package
