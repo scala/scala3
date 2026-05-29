@@ -88,6 +88,7 @@ subsection:
       - page: reference/other-new-features/toplevel-definitions.md
       - page: reference/other-new-features/better-fors.md
       - page: reference/other-new-features/runtimeChecked.md
+      - page: reference/other-new-features/into.md
   - title: Other Changed Features
     directory: changed-features
     index: reference/changed-features/changed-features.md
@@ -143,8 +144,7 @@ subsection:
   - title: Preview Features
     directory: preview
     index: reference/preview/overview.md
-    subsection:
-      - page: reference/preview/into.md
+    subsection: []
   - title: Experimental Features
     directory: experimental
     index: reference/experimental/overview.md
@@ -437,4 +437,3 @@ subsection:
       - page: reference/error-codes/E229.md
       - page: reference/error-codes/E230.md
       - page: reference/error-codes/E231.md
-
