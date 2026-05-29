@@ -9,6 +9,15 @@ import Decorators.*
 import config.Config
 import java.util.IdentityHashMap
 import scala.collection.mutable
+import scala.annotation.internal.sharable
+
+object TreeTypeMap:
+  /** Shared identity sentinel for the `treeMap` parameter. Using a single
+   *  reference (instead of eta-expanding `identity` per construction) lets
+   *  `transform` skip the megamorphic no-op `treeMap(tree)` call for the ~51%
+   *  of TreeTypeMaps that carry no custom treeMap. Sound because `apply(t) eq t`.
+   */
+  @sharable val IdentityTreeMap: tpd.Tree => tpd.Tree = t => t
 
 
 /** A map that applies three functions and a substitution together to a tree and
@@ -36,7 +45,7 @@ import scala.collection.mutable
  */
 class TreeTypeMap(
   val typeMap: Type => Type = IdentityTypeMap,
-  val treeMap: tpd.Tree => tpd.Tree = identity,
+  val treeMap: tpd.Tree => tpd.Tree = TreeTypeMap.IdentityTreeMap,
   val oldOwners: List[Symbol] = Nil,
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
@@ -206,18 +215,25 @@ class TreeTypeMap(
 
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
+   *
+   *  Allocated only when `hasUncoveredOwnerClass` (the sole condition under which
+   *  `computeMapType` calls it); otherwise it would be ~110K dead anonymous-TypeMap
+   *  allocations per compile. A construction-time conditional `val` (not a `lazy val`)
+   *  so the captured context stays the construction-time `mapCtx`.
    */
-  private val mapOwnerThis = new TypeMap {
-    private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
-      case Nil => tp
-      case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
-      case _ :: from1 => mapPrefix(from1, to.tail, tp)
+  private val mapOwnerThis: TypeMap | Null =
+    if !hasUncoveredOwnerClass then null
+    else new TypeMap {
+      private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
+        case Nil => tp
+        case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
+        case _ :: from1 => mapPrefix(from1, to.tail, tp)
+      }
+      def apply(tp: Type): Type = tp match {
+        case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
+        case _ => mapOver(tp)
+      }
     }
-    def apply(tp: Type): Type = tp match {
-      case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
-      case _ => mapOver(tp)
-    }
-  }
 
   // Cached eagerly for non-empty substitutions so mapType's hot substitution
   // path can reuse the SubstSymMap without paying lazy-val accessor checks.
@@ -240,7 +256,28 @@ class TreeTypeMap(
   private var mapTypeMruKey: Type | Null = null
   private var mapTypeMruValue: Type | Null = null
   private var myMapTypeCache: util.EqHashMap[Type, Type] | Null = null
-  private val shouldCacheMapType = cacheTypeMap || substFrom.nonEmpty || oldOwners.nonEmpty
+  // `mapType(tp) eq tp` for EVERY input: identity typeMap leaves `tp1 eq tp`,
+  // empty substFrom leaves `tp2 eq tp1`, and no uncovered owner class means
+  // `mapOwnerThis` is never applied. This is the owner-only `changeOwner` map
+  // class (13,857 maps / 120,814 mapType calls on the corpus), which today pays
+  // the full MRU+EqHashMap+computeMapType machinery for a guaranteed no-op.
+  // The `!cacheTypeMap && !Config.checkTreesConsistent` guard keeps the bypass
+  // byte-identical under the debug flags (where it is a no-op either way).
+  private val typeIsIdentity: Boolean =
+    !cacheTypeMap
+      && (typeMap eq IdentityTypeMap)
+      && substFrom.isEmpty
+      && !hasUncoveredOwnerClass
+      && !Config.checkTreesConsistent
+  // Cache only when there is real per-type work: a substitution walk, an
+  // uncovered owner-class ThisType remap, or a custom typeMap. The
+  // `(typeMap ne IdentityTypeMap)` disjunct is REQUIRED to keep caching the
+  // inliner's top-level DeepTypeMap (custom typeMap, empty subst, non-class
+  // owner); without it that map re-runs `Inliner$$anon$8.apply`/`mapOver` per
+  // repeated type. Owner-only no-class maps (now `typeIsIdentity`) are routed to
+  // the uncached arm and never allocate an EqHashMap.
+  private val shouldCacheMapType =
+    cacheTypeMap || substFrom.nonEmpty || hasUncoveredOwnerClass || (typeMap ne IdentityTypeMap)
   // Exact identity-type maps with no symbol or owner state only need the
   // caller-provided treeMap; derived maps with local symbols recompute this.
   private val treeMapOnly =
@@ -253,11 +290,17 @@ class TreeTypeMap(
       && !Config.checkTreesConsistent
 
   def mapType(tp: Type): Type =
+    // For owner-only `changeOwner` maps the result is provably `tp` (see
+    // `typeIsIdentity`), so return it directly without touching the cache,
+    // covering the ~21K direct mapType calls (Literal/Template/withMappedSymsGeneral)
+    // that don't go through `withMappedType`. This branch is predictable-false for
+    // caching maps (`typeIsIdentity` and `shouldCacheMapType` are mutually exclusive).
+    if typeIsIdentity then tp
     // Cache only when we actually do non-trivial work (substSym walk and/or
     // ownerThis walk), or when a deterministic custom typeMap explicitly opts in.
     // Pure `typeMap(tp)` calls stay uncached by default because they may depend on
     // mutable state or have their own caching.
-    if shouldCacheMapType then
+    else if shouldCacheMapType then
       if mapTypeMruKey eq tp then return mapTypeMruValue.nn
       var cache = myMapTypeCache
       if cache == null then
@@ -281,7 +324,7 @@ class TreeTypeMap(
     val tp2 = if substFrom.isEmpty then tp1 else substMap.nn(tp1)
     // Skip the owner-this TypeMap when there is no owner-only class remap left
     // after the symbol substitution above.
-    if !hasUncoveredOwnerClass then tp2 else mapOwnerThis(tp2)
+    if !hasUncoveredOwnerClass then tp2 else mapOwnerThis.nn(tp2)
   end computeMapType
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
@@ -306,9 +349,16 @@ class TreeTypeMap(
 
   private def withMappedType(tree: Tree)(using Context): Tree =
     val tpe = tree.tpe
-    val tpe1 = mapType(tpe)
-    if (tpe1 eq tpe) && !tpe1.isInstanceOf[ErrorType] && !Config.checkTreesConsistent then tree
-    else tree.withType(tpe1)
+    // For owner-only `changeOwner` maps `mapType(tpe) eq tpe` always, so skip the
+    // `mapType` machinery entirely (the flag already includes
+    // `!Config.checkTreesConsistent`). Preserve the ErrorType branch byte-identically:
+    // `withType(tpe)` hits the `myTpe eq tpe` fast path and returns the same tree.
+    if typeIsIdentity then
+      if tpe.isInstanceOf[ErrorType] then tree.withType(tpe) else tree
+    else
+      val tpe1 = mapType(tpe)
+      if (tpe1 eq tpe) && !tpe1.isInstanceOf[ErrorType] && !Config.checkTreesConsistent then tree
+      else tree.withType(tpe1)
 
   private def sourceCtx(tree: Tree)(using Context): Context =
     val source = tree.source
@@ -316,7 +366,8 @@ class TreeTypeMap(
 
   protected def noteTransformedMemberDef(member: MemberDef)(using Context): Unit = ()
 
-  override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
+  override def transform(tree: Tree)(using Context): Tree =
+    (if treeMap eq TreeTypeMap.IdentityTreeMap then tree else treeMap(tree)) match {
     case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedLocalSyms(impl, self)
       val bodyCtx = ctx.withOwner(mapOwner(impl.symbol.owner))
