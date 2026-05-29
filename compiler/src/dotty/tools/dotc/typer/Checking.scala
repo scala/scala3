@@ -142,7 +142,7 @@ object Checking {
   }
 
   /** Check all applied type trees in inferred type `tpt` for well-formedness */
-  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
+  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit = ctx.handleRecursive("checking applied types in", tpt, tpt):
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
         tp.normalized match
@@ -510,7 +510,7 @@ object Checking {
             case bounds: TypeBounds =>
               checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
             case _ =>
-        catch case _: RecursionOverflow | _: CyclicReference =>
+        catch case _: CyclicReference =>
           report.error(em"cyclic reference involving type $name", pos)
     }
   }

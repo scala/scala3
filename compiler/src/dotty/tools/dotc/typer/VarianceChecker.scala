@@ -1,13 +1,17 @@
 package dotty.tools.dotc
 package typer
 
-import dotty.tools.dotc.ast.{ Trees, tpd }
+import dotty.tools.dotc.ast.{Trees, tpd}
 import core.*
-import Types.*, Contexts.*, Flags.*, Symbols.*, Trees.*
+import Types.*
+import Contexts.*
+import Flags.*
+import Symbols.*
+import Trees.*
 import Decorators.*
 import Variances.*
 import NameKinds.*
-import util.SrcPos
+import util.{NoSourcePosition, SrcPos}
 import config.Printers.variances
 import config.Feature.migrateTo3
 import reporting.trace
@@ -116,12 +120,15 @@ class VarianceChecker(using Context) {
       }
     }
 
+    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] =
+      apply(status, tp, NoSourcePosition)
+
     /** For PolyTypes, type parameters are skipped because they are defined
      *  explicitly (their TypeDefs will be passed here.) For MethodTypes, the
      *  same is true of the parameters (ValDefs).
      */
-    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = trace(s"variance checking $tp of $base at $variance", variances) {
-      ctx.handleRecursive("variance check of", tp):
+    def apply(status: Option[VarianceError], tp: Type, pos: SrcPos): Option[VarianceError] = trace(s"variance checking $tp of $base at $variance", variances) {
+      ctx.handleRecursive("variance check of", tp, pos):
         if (status.isDefined) status
         else tp match
           case tp: TypeRef =>
@@ -140,13 +147,13 @@ class VarianceChecker(using Context) {
             foldOver(status, tp)
     }
 
-    def checkInfo(info: Type): Option[VarianceError] = info match
+    def checkInfo(info: Type, pos: SrcPos): Option[VarianceError] = info match
       case info: MethodOrPoly =>
-        checkInfo(info.resultType) // params will be checked in their TypeDef or ValDef nodes.
+        checkInfo(info.resultType, pos) // params will be checked in their TypeDef or ValDef nodes.
       case _ =>
-        apply(None, info)
+        apply(None, info, pos)
 
-    def validateDefinition(base: Symbol): Option[VarianceError] =
+    def validateDefinition(base: Symbol, pos: SrcPos): Option[VarianceError] =
       val savedBase = this.base
       this.base = base
       val savedVariance = variance
@@ -156,14 +163,14 @@ class VarianceChecker(using Context) {
       if base.isMutableVar && !isLocal then
         base.removeAnnotation(defn.AssignedNonLocallyAnnot)
         variance = 0
-      try checkInfo(base.info)
+      try checkInfo(base.info, pos)
       finally
         this.base = savedBase
         this.variance = savedVariance
   }
 
   private object Traverser extends TreeTraverser {
-    def checkVariance(sym: Symbol, pos: SrcPos) = Validator.validateDefinition(sym) match {
+    def checkVariance(sym: Symbol, pos: SrcPos) = Validator.validateDefinition(sym, pos) match {
       case Some(VarianceError(tvar, required)) =>
         def msg =
           val enumAddendum =
