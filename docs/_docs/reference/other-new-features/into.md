@@ -1,11 +1,13 @@
 ---
 layout: doc-page
 title: The `into` Type and Modifier
-redirectFrom: /experimental/into.html
-nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/into.html
+redirectFrom:
+  - /experimental/into.html
+  - /preview/into.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/into.html
 ---
 
-This feature is available as a preview since Scala 3.8.0.
+This feature is available as stable since Scala 3.9.0.
 
 
 ## Summary
@@ -278,4 +280,3 @@ LocalModifier     ::=  ...  |  ‘into’
 ```
 
 `into` is a soft modifier. It is only allowed classes, traits, and opaque type aliases.
-
