@@ -1,7 +1,10 @@
 package scala.collection.immutable
 
 // "Disabled string conversions so as not to get confused!"
-import scala.Predef.{any2stringadd => _, *}
+// import scala.Predef.{any2stringadd => _, *}
+//                     ^^^^^^^^^^^^^^^^^^^^^^^
+// FIXME: editing Predef imports makes the name resolver prefer `ArrowAssoc` over the new `->` extension method,
+// which is not what we want. however if you try to unimport `ArrowAssoc` then you can no longer resolve `->` ?.
 
 import org.junit.Assert.{assertEquals, assertNotSame, assertSame, assertTrue}
 import org.junit.Test
@@ -12,7 +15,8 @@ class SetTest {
 
     def any[A](set: Set[A]): Set[Any] = {
       val anyset = set.toSet[Any]
-      assertTrue((anyset + "fish") contains "fish")
+      val fish = new Object()
+      assertTrue((anyset + fish) contains fish)
       anyset
     }
 
