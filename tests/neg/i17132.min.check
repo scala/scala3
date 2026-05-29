@@ -1,6 +1,6 @@
--- Error: tests/neg/i17132.min.scala:4:7 -------------------------------------------------------------------------------
+-- Error: tests/neg/i17132.min.scala:4:29 ------------------------------------------------------------------------------
 4 |class Q[T <: P[Any]] extends P[R[T]] // error
-  |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                             ^
   |Recursion limit exceeded.
   |Maybe there is an illegal cyclic reference?
   |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html

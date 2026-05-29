@@ -12,5 +12,9 @@ class SimpleLoop1 extends Expr:
 class SimpleLoop2 extends Expr:
   type Value = ExtractValue[SimpleLoop1]
 
-object Test1:
-  val x: ExtractValue[SimpleLoop1] = 1 // error
+trait Description:
+  type Elem <: Tuple
+
+class PrimBroken extends Expr:
+  type Value = Alias // error
+  type Alias = Value
