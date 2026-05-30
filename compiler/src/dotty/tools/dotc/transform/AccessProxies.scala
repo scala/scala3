@@ -85,6 +85,7 @@ abstract class AccessProxies {
       val sym = newSymbol(owner, name, Synthetic | Method, info, coord = accessed.span).entered
       if accessed.is(Private) then sym.setFlag(Final)
       else if sym.allOverriddenSymbols.exists(!_.is(Deferred)) then sym.setFlag(Override)
+      if accessed.is(Erased) then sym.setFlag(Erased)
       ExperimentalAnnotation.copy(accessed).foreach(sym.addAnnotation)
       sym
     }
