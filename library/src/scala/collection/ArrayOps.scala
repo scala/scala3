@@ -782,7 +782,14 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  @param   p     the predicate used to test elements.
    *  @return        `true` if the given predicate `p` is satisfied by at least one element of this array, otherwise `false`
    */
-  def exists(@deprecatedName("f", "2.13.3") p: A => Boolean): Boolean = indexWhere(p) >= 0
+  def exists(@deprecatedName("f", "2.13.3") p: A => Boolean): Boolean = {
+    var i = 0
+    while (i < xs.length) {
+      if (p(xs(i))) return true
+      i += 1
+    }
+    false
+  }
 
   /** Tests whether a predicate holds for all elements of this array.
    *
@@ -1273,7 +1280,14 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  @return     `true` if this array has an element that is equal (as
    *              determined by `==`) to `elem`, `false` otherwise.
    */
-  def contains(elem: A): Boolean = exists (_ == elem)
+  def contains(elem: A): Boolean = {
+    var i = 0
+    while (i < xs.length) {
+      if (elem == xs(i)) return true
+      i += 1
+    }
+    false
+  }
 
   /** Returns a copy of this array with patched values.
    *  Patching at negative indices is the same as patching starting at 0.
