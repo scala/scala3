@@ -50,19 +50,20 @@ sealed abstract class BitSet
 
   def incl(elem: Int): BitSet = {
     require(elem >= 0, "bitset element must be >= 0")
-    if (contains(elem)) this
-    else {
-      val idx = elem >> LogWL
-      updateWord(idx, word(idx) | (1L << elem))
-    }
+    val idx = elem >> LogWL
+    val mask = 1L << elem
+    val w = word(idx)
+    if ((w & mask) != 0) this
+    else updateWord(idx, w | mask)
   }
 
   def excl(elem: Int): BitSet = {
     require(elem >= 0, "bitset element must be >= 0")
-    if (contains(elem)) {
-      val idx = elem >> LogWL
-      updateWord(idx, word(idx) & ~(1L << elem))
-    } else this
+    val idx = elem >> LogWL
+    val mask = 1L << elem
+    val w = word(idx)
+    if ((w & mask) != 0) updateWord(idx, w & ~mask)
+    else this
   }
 
   /** Updates word at index `idx`; enlarges set if `idx` outside range of set.
