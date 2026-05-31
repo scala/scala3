@@ -299,6 +299,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
               val callTrace = Inlines.inlineCallTrace(tree.symbol, inlinedTree.sourcePos)(using ctx.withSource(inlinedTree.source))
               cpy.Inlined(it)(callTrace, bindings, expansion)(using inlineContext(it))
             case Block(stats, expr) => Block(stats, flattenTree(expr)) 
+            case t => t // if inlining failed due to max inlines reached
           }
 
           val inlinedTree = Inlines.inlineCall(tree)
@@ -324,7 +325,6 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
     val generatedClassStats1 = generatedClassStats.map {
       case tree: TypeDef =>
-        assert(Inlines.needsInlining(tree))
         val inlined = Inlines.inlineParentInlineTraits(tree).asInstanceOf[TypeDef]
         cpy.TypeDef(inlined)(name = inlined.name, rhs = inlined.rhs).withSpan(inlined.span)
     }
