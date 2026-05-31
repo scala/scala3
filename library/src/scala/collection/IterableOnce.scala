@@ -1283,13 +1283,10 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
   def collectFirst[B](pf: PartialFunction[A, B]^): Option[B] = {
     // Presumably the fastest way to get in and out of a partial function is for a sentinel function to return itself
     // (Tested to be lower-overhead than runWith.  Would be better yet to not need to (formally) allocate it)
-    val sentinel: scala.Function1[A, Any] = new AbstractFunction1[A, Any] {
-      def apply(a: A): AbstractFunction1[A, Any] = this
-    }
     val it = iterator
     while (it.hasNext) {
-      val x = pf.applyOrElse(it.next(), sentinel)
-      if (x.asInstanceOf[AnyRef] ne sentinel) return Some(x.asInstanceOf[B])
+      val x = pf.applyOrElse(it.next(), IterableOnceOps.collectFirstSentinel)
+      if (x.asInstanceOf[AnyRef] ne IterableOnceOps.collectFirstSentinel) return Some(x.asInstanceOf[B])
     }
     None
   }
@@ -1541,5 +1538,12 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
     val it = iterator
     while (it.hasNext) xs = it.next() :: xs
     xs
+  }
+}
+
+private[collection] object IterableOnceOps {
+  /** Reusable sentinel for collectFirst to avoid per-call allocation. */
+  val collectFirstSentinel: scala.Function1[Any, Any] = new scala.runtime.AbstractFunction1[Any, Any] {
+    def apply(a: Any): Any = this
   }
 }
