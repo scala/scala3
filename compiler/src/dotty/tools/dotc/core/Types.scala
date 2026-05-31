@@ -198,16 +198,23 @@ object Types extends TypeUtils {
     def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = this match {
       case this1: TypeRef =>
         // avoid forcing symbol if it's a class, not a type alias (see i15177.FakeEnum.scala)
-        if this1.symbol.isClass then this1.symbol eq sym
+        val sym1 = this1.symbol
+        if sym1.isClass then sym1 eq sym
         else this1.info match { // see comment in Namer#TypeDefCompleter#typeSig
           case TypeAlias(tp) => tp.isRef(sym, skipRefined)
-          case _ => this1.symbol eq sym
+          case _ => sym1 eq sym
         }
       case this1: RefinedOrRecType if skipRefined =>
         this1.parent.isRef(sym, skipRefined)
       case this1: AppliedType =>
         this1.tycon match {
-          case tref: TypeRef if tref.symbol.isClass => tref.symbol eq sym
+          case tref: TypeRef =>
+            val sym1 = tref.symbol
+            if sym1.isClass then sym1 eq sym
+            else
+              val this2 = this1.dealias
+              if (this2 ne this1) this2.isRef(sym, skipRefined)
+              else this1.underlying.isRef(sym, skipRefined)
           case _ =>
             val this2 = this1.dealias
             if (this2 ne this1) this2.isRef(sym, skipRefined)
