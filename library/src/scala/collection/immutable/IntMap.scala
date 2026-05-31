@@ -33,11 +33,10 @@ private[immutable] object IntMapUtils extends BitOperations.Int {
     else IntMap.Bin(p, m, t2, t1)
   }
 
-  def bin[T](prefix: Int, mask: Int, left: IntMap[T], right: IntMap[T]): IntMap[T] = (left, right) match {
-    case (left, IntMap.Nil) => left
-    case (IntMap.Nil, right) => right
-    case (left, right) => IntMap.Bin(prefix, mask, left, right)
-  }
+  @`inline` def bin[T](prefix: Int, mask: Int, left: IntMap[T], right: IntMap[T]): IntMap[T] =
+    if (left eq IntMap.Nil) right
+    else if (right eq IntMap.Nil) left
+    else IntMap.Bin(prefix, mask, left, right)
 }
 
 import IntMapUtils.{Int => _, _}

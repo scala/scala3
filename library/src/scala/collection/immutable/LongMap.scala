@@ -35,11 +35,10 @@ private[immutable] object LongMapUtils extends BitOperations.Long {
     else LongMap.Bin(p, m, t2, t1)
   }
 
-  def bin[T](prefix: Long, mask: Long, left: LongMap[T], right: LongMap[T]): LongMap[T] = (left, right) match {
-    case (left, LongMap.Nil) => left
-    case (LongMap.Nil, right) => right
-    case (left, right) => LongMap.Bin(prefix, mask, left, right)
-  }
+  @`inline` def bin[T](prefix: Long, mask: Long, left: LongMap[T], right: LongMap[T]): LongMap[T] =
+    if (left eq LongMap.Nil) right
+    else if (right eq LongMap.Nil) left
+    else LongMap.Bin(prefix, mask, left, right)
 }
 
 import LongMapUtils.{Long => _, _}
