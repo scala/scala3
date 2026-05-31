@@ -45,7 +45,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
   // This release fence is present because rootNode may have previously been mutated during construction.
   releaseFence()
 
-  private def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
+  @inline private def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
     if (rootNode eq newRootNode) this else new HashSet(newRootNode)
 
   override def iterableFactory: IterableFactory[HashSet] = HashSet
@@ -74,7 +74,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     s.asInstanceOf[S & EfficientSplit]
   }
 
-  def contains(element: A): Boolean = {
+  override final def contains(element: A): Boolean = {
     val elementUnimprovedHash = element.##
     val elementHash = improve(elementUnimprovedHash)
     rootNode.contains(element, elementUnimprovedHash, elementHash, 0)
