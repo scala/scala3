@@ -224,7 +224,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case IntMap.Nil =>
   }
 
-  override def foreachEntry[U](f: (Int, T) => U): Unit = this match {
+  override final def foreachEntry[U](f: (Int, T) => U): Unit = this match {
     case IntMap.Bin(_, _, left, right) => { left.foreachEntry(f); right.foreachEntry(f) }
     case IntMap.Tip(key, value) => f(key, value)
     case IntMap.Nil =>

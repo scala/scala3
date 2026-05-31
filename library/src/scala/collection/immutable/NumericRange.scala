@@ -121,9 +121,10 @@ sealed class NumericRange[T](
   }
 
   override def foreach[@specialized(Specializable.Unit) U](f: T => U): Unit = {
+    val len = length
     var count = 0
     var current = start
-    while (count < length) {
+    while (count < len) {
       f(current)
       current += step
       count += 1
