@@ -322,7 +322,10 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
       else if (zero(key, mask)) IntMap.Bin(prefix, mask, left.updated(key, value), right)
       else IntMap.Bin(prefix, mask, left, right.updated(key, value))
     case IntMap.Tip(key2, value2) =>
-      if (key == key2) IntMap.Tip(key, value)
+      if (key == key2) {
+        if (value.asInstanceOf[AnyRef] eq value2.asInstanceOf[AnyRef]) this
+        else IntMap.Tip(key, value)
+      }
       else join(key, IntMap.Tip(key, value), key2, this)
     case IntMap.Nil => IntMap.Tip(key, value)
   }

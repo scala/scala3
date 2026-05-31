@@ -316,7 +316,10 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
       else if (zero(key, mask)) LongMap.Bin(prefix, mask, left.updated(key, value), right)
       else LongMap.Bin(prefix, mask, left, right.updated(key, value))
     case LongMap.Tip(key2, value2) =>
-      if (key == key2) LongMap.Tip(key, value)
+      if (key == key2) {
+        if (value.asInstanceOf[AnyRef] eq value2.asInstanceOf[AnyRef]) this
+        else LongMap.Tip(key, value)
+      }
       else join(key, LongMap.Tip(key, value), key2, this)
     case LongMap.Nil => LongMap.Tip(key, value)
   }
