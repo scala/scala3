@@ -444,10 +444,10 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *  @note   Reuse: $consumesIterator
    */
   def indexWhere(p: A => Boolean, from: Int = 0): Int = {
-    var i = math.max(from, 0)
-    val dropped = drop(from)
-    while (dropped.hasNext) {
-      if (p(dropped.next())) return i
+    var i = 0
+    while (i < from && hasNext) { next(); i += 1 }
+    while (hasNext) {
+      if (p(next())) return i
       i += 1
     }
     -1
