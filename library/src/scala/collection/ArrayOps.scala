@@ -118,7 +118,7 @@ object ArrayOps {
       var i = 0
       while(i < xs.length) {
         val x = xs(i)
-        if(p(x)) b ++= f(xs(i))
+        if(p(x)) b ++= f(x)
         i += 1
       }
       b.result()
