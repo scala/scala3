@@ -269,11 +269,11 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
   override def isEmpty = this eq IntMap.Nil
   override def knownSize: Int = if (isEmpty) 0 else super.knownSize
   override def filter(f: ((Int, T)) => Boolean): IntMap[T] = this match {
-    case IntMap.Bin(prefix, mask, left, right) => {
-      val (newleft, newright) = (left.filter(f), right.filter(f))
+    case IntMap.Bin(prefix, mask, left, right) =>
+      val newleft = left.filter(f)
+      val newright = right.filter(f)
       if ((left eq newleft) && (right eq newright)) this
       else bin(prefix, mask, newleft, newright)
-    }
     case IntMap.Tip(key, value) =>
       if (f((key, value))) this
       else IntMap.Nil
