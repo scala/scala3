@@ -223,8 +223,9 @@ Therefore we have the following issues:
 So we impose an additional restriction on contravariance with specialized parameters:
 - If `A[F1]` is to be interpreted as `A[F2]` under `A[-T: Specialized]`,we require that `SpecType(F1) = SpecType(F2)`. Given that we also require `F1 >:> F2`, and looking at the definition of SpecType this is roughly equivalent to saying F1 may not be any of the top classes `Any`, `AnyVal`, `AnyRef` unless F2 is also.
 
-Covariance does not pose the same problem, because it corresponds to interpreting `A[F1]` as `A[F2]` where `F1 <:< F2`. Either`A[F1]` and `A[F2]` both erase to the same type (`A$sp$SpecType(F2)` or `A` if `F1` and `F2` are both top classes), or `A[F1]` erases to `A$sp$F1` and `A[F2]` erases to `A`. But `A$sp$F1` is a subtype of `A` by definition so the upcast will succeed (and upcasts are generally cheap compared to downcasts on the JVM so this is acceptable from a performance perspective).  
-
+Covariance has a similar problem:
+ - In general it works fine because it corresponds to interpreting `A[F1]` as `A[F2]` where `F1 <:< F2`. Either`A[F1]` and `A[F2]` both erase to the same type (`A$sp$SpecType(F2)` or `A` if `F1` and `F2` are both top classes), or `A[F1]` erases to `A$sp$F1` and `A[F2]` erases to `A`. But `A$sp$F1` is a subtype of `A` by definition so the upcast will succeed (and upcasts are generally cheap compared to downcasts on the JVM so this is acceptable from a performance perspective).  
+ - The only exception is with `Nothing`, because we want to interpret `A[Nothing]` as e.g. `A[Int]`, but we erase `A[Nothing]` to `A`. `A >:> A$sp$Int` so this doesn't work and we also have to ban it. This makes the code less ergonomic in some cases. For example `case object Nil extends List[Nothing]` has to become `inline trait NilC[T: Specialized] extends List[T]` and `inline def Nil[T: Specialized] = new NilC[T] () {}`, but we don't lose too much expressivity.
 
 <!-- TODO: The restrictions ensure that each time we create an instance of a specialized trait we know statically the classes of all `Specialized` type arguments Except if T \in Ts is defined in the enclosing scope e.g. as a class type parameter. Notion of material specialisation -->
 <!-- TODO: Do we also allow extensions? -->

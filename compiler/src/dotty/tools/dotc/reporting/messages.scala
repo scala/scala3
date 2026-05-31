@@ -3953,41 +3953,41 @@ final class IllegalUseOfSpecialized(using Context)
         trying to create a type synonym or a value with explicit type Specialized[X].  
       """
 
-/** Shows up as a TypeError (in the notes field) if contravariance is attempted
+/** Shows up as a TypeError (in the notes field) if variance is attempted
  *  in a way which is incompatible with specialized traits. */
-final class IllegalContravarianceInSpecializedTraitsNote(using Context) extends Note:
+final class IllegalVarianceInSpecializedTraitsNote(using Context) extends Note:
   def render(using Context): String =
     i"""
-    This use of contravariance is incompatible with specialized traits.
+    This use of variance is incompatible with specialized traits.
 
     Specialized traits achieve a performance gain through a special erasure.
     - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
     - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
     - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
-    This means that contravariance patterns that cross these erasure categories will fail at 
+    This means that variance patterns that cross these erasure categories will fail at 
     runtime due to a ClassCastException, so they are not permitted.
 
     Please see the docs for more information on how specialized traits are erased.
     Suggested fixes:
       - Make the type of the target site more general e.g. Foo[Object] instead of Foo[Animal].
-      - Reconsider if you really need to use Object / Any / AnyRef / AnyVal in your code. 
+      - Reconsider if you really need to use Nothing / Object / Any / AnyRef / AnyVal in your code. 
       - Remove Specialized from the definition of the corresponding parameter.
     """
 
   override def covers(other: Note)(using Context): Boolean =    
-    other.isInstanceOf[IllegalContravarianceInSpecializedTraitsNote]
+    other.isInstanceOf[IllegalVarianceInSpecializedTraitsNote]
 
-final class ContravarianceInSpecializedTraitsLimitation(using Context)
-    extends Message(ContravarianceInSpecializedTraitsLimitationID):
+final class VarianceInSpecializedTraitsLimitation(using Context)
+    extends Message(VarianceInSpecializedTraitsLimitationID):
   override def kind = MessageKind.PotentialIssue
   override protected def msg(using Context): String =
-    i"Type parameter is both Specialized and contravariant. This imposes additional typing restrictions."
+    i"Type parameter is both Specialized and variant. This imposes additional typing restrictions."
   override protected def explain(using Context): String =
     i"""Specialized traits achieve a performance gain through a special erasure.
     - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
     - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
     - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
-    This means that contravariance patterns that cross these erasure categories will fail at 
+    This means that certain variance patterns that cross these erasure categories will fail at 
     runtime due to a ClassCastException, so they are not permitted.
     
     For example, treating Foo[Any] as Foo[Animal] via contravariance is not allowed with Specialized. 
@@ -3999,5 +3999,5 @@ final class ContravarianceInSpecializedTraitsLimitation(using Context)
     @nowarn("id=E234")
     inline trait Foo[-T: Specialized]:
  
-    Otherwise, remove Specialized, or remove the contravariance.
+    Otherwise, remove Specialized, or remove the variance.
     """

@@ -48,7 +48,7 @@ import dotty.tools.dotc.util.Spans.spanCoord
 import dotty.tools.dotc.util.Spans.NoSpan
 import dotty.tools.dotc.transform.DesugarSpecializedTraits.specType
 import dotty.tools.dotc.transform.DesugarSpecializedTraits.isTopClass
-import dotty.tools.dotc.reporting.ContravarianceInSpecializedTraitsLimitation
+import dotty.tools.dotc.reporting.VarianceInSpecializedTraitsLimitation
 
 class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
 
@@ -389,8 +389,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
             // In theory can scan the tree to find where to put the generated traits instead, but this still doesn't work cross-CU, so for now we ban.
             report.error("Specialized traits may not be defined inside classes or traits (this would make them path-dependent which is not currently supported); they may be defined inside objects.", t.symbol.srcPos)
           t.symbol.typeParams.foreach: par =>
-            if par.paramVariance.is(Flags.Contravariant) && Specialization.classSpecializedTypeParams(t.symbol).exists(t => t.typeSymbol == par) then
-              report.warning(ContravarianceInSpecializedTraitsLimitation(), par.srcPos)
+            if par.paramVariance.isOneOf(Flags.Contravariant | Flags.Covariant) && Specialization.classSpecializedTypeParams(t.symbol).exists(t => t.typeSymbol == par) then
+              report.warning(VarianceInSpecializedTraitsLimitation(), par.srcPos)
           specializations
         case Typed(Apply(Select(New(anon),ctor),List()), t: TypeTree) if anon.symbol.isAnonymousClass =>
           (t.tpe, t.span) match {

@@ -26,7 +26,7 @@ import Capabilities.Capability
 import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
-import reporting.IllegalContravarianceInSpecializedTraitsNote
+import reporting.IllegalVarianceInSpecializedTraitsNote
 import scala.util.boundary, boundary.break
 import dotty.tools.dotc.transform.Specialization
 import dotty.tools.dotc.transform.DesugarSpecializedTraits
@@ -1944,11 +1944,22 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                      && isValidSubtype
                      && !(DesugarSpecializedTraits.specType(arg1) eq DesugarSpecializedTraits.specType(arg2))
                   then // using contravariance in a way which specialized trait erasure cannot support
-                    addErrorNote(IllegalContravarianceInSpecializedTraitsNote())
+                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
                     false
                   else
                     isValidSubtype
-                else if v > 0 then isSubType(arg1, arg2)
+                else if v > 0 then 
+                  val isValidSubtype = isSubType(arg1, arg2)
+                  if tp1.classSymbol.isSpecializedTrait
+                     && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
+                     && isValidSubtype
+                     && (arg1 ne arg2)
+                     && (arg1.classSymbol == defn.NothingClass)
+                  then
+                    addErrorNote(IllegalVarianceInSpecializedTraitsNote())
+                    false
+                  else
+                    isValidSubtype
                 else isSameType(arg2, arg1)
 
         val arg1 = args1.head
