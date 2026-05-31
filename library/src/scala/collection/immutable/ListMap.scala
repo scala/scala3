@@ -86,23 +86,22 @@ sealed class ListMap[K, +V]
   override def hashCode(): Int = {
     if (isEmpty) MurmurHash3.emptyMapHash
     else {
-      // Can't efficiently override foreachEntry directly in ListMap because it would need to preserve iteration
-      // order be reversing the list first. But mapHash is symmetric so the reversed order is fine here.
-      val _reversed = new immutable.AbstractMap[K, V] {
-        override def isEmpty: Boolean = ListMap.this.isEmpty
-        override def removed(key: K): Map[K, V] = ListMap.this.removed(key)
-        override def updated[V1 >: V](key: K, value: V1): Map[K, V1] = ListMap.this.updated(key, value)
-        override def get(key: K): Option[V] = ListMap.this.get(key)
-        override def iterator: Iterator[(K, V)] = ListMap.this.iterator
-        override def foreachEntry[U](f: (K, V) => U): Unit = {
-          var curr: ListMap[K, V] = ListMap.this
-          while (curr.nonEmpty) {
-            f(curr.key, curr.value)
-            curr = curr.next
-          }
-        }
+      var a, b, n = 0
+      var c = 1
+      var curr: ListMap[K, V] = this
+      while (curr.nonEmpty) {
+        val h = MurmurHash3.tuple2Hash(curr.key, curr.value)
+        a += h
+        b ^= h
+        c *= h | 1
+        n += 1
+        curr = curr.next
       }
-      MurmurHash3.mapHash(_reversed)
+      var h = MurmurHash3.mapSeed
+      h = MurmurHash3.mix(h, a)
+      h = MurmurHash3.mix(h, b)
+      h = MurmurHash3.mixLast(h, c)
+      MurmurHash3.finalizeHash(h, n)
     }
   }
 
