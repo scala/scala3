@@ -97,14 +97,19 @@ abstract class Positioned private[ast] (initialSpan: Positioned.InitialSpan)(imp
       def include(span: Span, x: Any): Span = x match {
         case p: Positioned =>
           if (p.source `ne` src) span
-          else if (p.span.exists) span.union(p.span)
-          else if (span.exists) {
-            if (span.end != MaxOffset)
-              p.span = p.envelope(src, span.endPos)
-            span
-          }
-          else // No span available to assign yet, signal this by returning a span with MaxOffset end
-            Span(MaxOffset, MaxOffset)
+          else
+            val pspan = p.span
+            if (pspan.exists) {
+              if (span.exists) Span(span.start min pspan.start, span.end max pspan.end, span.point)
+              else pspan
+            }
+            else if (span.exists) {
+              if (span.end != MaxOffset)
+                p.span = p.envelope(src, span.endPos)
+              span
+            }
+            else // No span available to assign yet, signal this by returning a span with MaxOffset end
+              Span(MaxOffset, MaxOffset)
         case m: untpd.Modifiers =>
           include(include(span, m.mods), m.annotations)
         case y :: ys =>
