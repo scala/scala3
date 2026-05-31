@@ -1611,7 +1611,7 @@ private final class BitmapIndexedSetNode[A](
               val leftNode = getNode(leftNodeIdx)
               val updated = leftNode.updated(
                 element = bm.getPayload(rightDataIdx),
-                originalHash = bm.getHash(rightDataIdx),
+                originalHash = rightOriginalHash,
                 hash = improve(rightOriginalHash),
                 shift = nextShift
               )
