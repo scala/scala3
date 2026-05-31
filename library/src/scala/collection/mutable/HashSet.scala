@@ -71,7 +71,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
    *
    *  @param originalHash the original hash code obtained from `##`
    */
-  private def improveHash(originalHash: Int): Int = {
+  @`inline` private def improveHash(originalHash: Int): Int = {
     // Improve the hash by xoring the high 16 bits into the low 16 bits just in case entropy is skewed towards the
     // high-value bits. We only use the lowest bits to determine the hash bucket. This is the same improvement
     // algorithm as in java.util.HashMap.
