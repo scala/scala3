@@ -2241,6 +2241,7 @@ object HashMap extends MapFactory[HashMap] {
   def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
     (source: @unchecked) match {
       case hs: HashMap[K, V] => hs
+      case _ if source.knownSize == 0 => empty[K, V]
       case _ => (newBuilder[K, V] ++= source).result()
     }
 
