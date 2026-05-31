@@ -7020,6 +7020,9 @@ object Types extends TypeUtils {
           }
         foldArgs(this(x, tycon), tyconTypeParams(tp), args)
 
+      case _: ConstantType | NoType | _: ErrorType =>
+        x
+
       case _: BoundType | _: ThisType => x
 
       case tp: LambdaType =>
