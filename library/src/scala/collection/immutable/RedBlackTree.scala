@@ -203,7 +203,7 @@ private[collection] object RedBlackTree {
       }
   }
 
-  def count(tree: Tree[?, ?] | Null) = if (tree eq null) 0 else tree.count
+  @`inline` def count(tree: Tree[?, ?] | Null) = if (tree eq null) 0 else tree.count
   def update[A: Ordering, B, B1 >: B](tree: Tree[A, B] | Null, k: A, v: B1, overwrite: Boolean): Tree[A, B1] | Null = blacken(upd(tree, k, v, overwrite))
   def delete[A: Ordering, B](tree: Tree[A, B] | Null, k: A): Tree[A, B] | Null = blacken(del(tree, k))
   def rangeImpl[A: Ordering, B](tree: Tree[A, B] | Null, from: Option[A], until: Option[A]): Tree[A, B] | Null = (from, until) match {
@@ -347,7 +347,7 @@ private[collection] object RedBlackTree {
     else tree
   }
 
-  def isBlack(tree: Tree[?, ?] | Null) = (tree eq null) || tree.isBlack
+  @`inline` def isBlack(tree: Tree[?, ?] | Null) = (tree eq null) || tree.isBlack
 
   @`inline` private def isRedTree(tree: Tree[?, ?] | Null) = (tree ne null) && tree.isRed
   @`inline` private def isBlackTree(tree: Tree[?, ?] | Null) = (tree ne null) && tree.isBlack
