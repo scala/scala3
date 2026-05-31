@@ -1890,10 +1890,10 @@ private final class HashCollisionMapNode[K, +V ](
   releaseFence()
 
   private[immutable] def indexOf(key: Any): Int = {
-    val iter = content.iterator
+    val len = content.length
     var i = 0
-    while (iter.hasNext) {
-      if (iter.next()._1 == key) return i
+    while (i < len) {
+      if (content(i)._1 == key) return i
       i += 1
     }
     -1
