@@ -70,10 +70,8 @@ class BitSet(protected[collection] final var elems: Array[Long])
 
   def addOne(elem: Int): this.type = {
     require(elem >= 0)
-    if (!contains(elem)) {
-      val idx = elem >> LogWL
-      updateWord(idx, word(idx) | (1L << elem))
-    }
+    val idx = elem >> LogWL
+    updateWord(idx, word(idx) | (1L << elem))
     this
   }
 
