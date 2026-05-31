@@ -408,6 +408,7 @@ object Capabilities:
       case ReadOnly(ref1) => ref1.classifier
       case Maybe(ref1) => ref1.classifier
       case self: LocalCap => self.hiddenSet.classifier
+      case self: ResultCap => self.origin.classifier
       case _ => NoSymbol
 
     /** Is this a reach reference of the form `x*` or a readOnly or maybe variant
@@ -1024,7 +1025,7 @@ object Capabilities:
     case TypeArg(tp: Type)
     case UnsafeAssumePure
     case Formal(pref: ParamRef, app: tpd.Apply)
-    case ResultInstance(methType: Type, tree: Tree)
+    case ResultInstance(result: ResultCap, methType: Type, tree: Tree = EmptyTree)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
     case NewInstance(tp: Type, fields: List[Symbol])
@@ -1060,7 +1061,7 @@ object Capabilities:
         if meth.exists
         then i" when checking argument to parameter ${pref.paramName} of $meth"
         else ""
-      case ResultInstance(mt, tree) =>
+      case ResultInstance(rc, mt, tree) =>
         def methDescr(tree: Tree): String = tree match
           case app: GenericApply =>
             methDescr(app.fun)
@@ -1221,7 +1222,7 @@ object Capabilities:
   end Internalize
 
   /** Map top-level free ResultCaps one-to-one to LocalCap instances */
-  def resultToAny(tp: Type, origin: Origin)(using Context): Type =
+  def resultToAny(tp: Type, mkOrigin: ResultCap => Origin)(using Context): Type =
     val subst = new TypeMap:
       val seen = EqHashMap[ResultCap, LocalCap | GlobalCap]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
@@ -1245,9 +1246,9 @@ object Capabilities:
           else
             // Create a LocalCap skolem that does not subsume anything
             def localCapSkolem =
-              val c = LocalCap(origin)
-              c.hiddenSet.markSolved(provisional = false)
-              c
+              val lc = LocalCap(mkOrigin(c))
+              lc.hiddenSet.markSolved(provisional = false)
+              lc
             seen.getOrElseUpdate(c, localCapSkolem) // map free references to LocalCap
         case _ => super.mapCapability(c, deep)
     end subst

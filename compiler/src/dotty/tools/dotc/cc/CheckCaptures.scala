@@ -721,7 +721,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def mapResultRoots(tp: Type, tree: Tree)(using Context): Type =
       tp.widenSingleton match
         case tp: ExprType if tree.symbol.is(Method) =>
-          resultToAny(tp, Origin.ResultInstance(tp, tree))
+          resultToAny(tp, Origin.ResultInstance(_, tp, tree))
         case _ =>
           tp
 
@@ -956,7 +956,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           argTypes1
         else argTypes
       val resultType = super.recheckApplication(tree, qualType, funType, instArgs)
-      val appType = resultToAny(resultType, Origin.ResultInstance(funType, tree))
+      val appType = resultToAny(resultType, Origin.ResultInstance(_, funType, tree))
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
@@ -1094,7 +1094,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       markFreeTypeArgs(tree.fun, meth, tree.args)
 
       val funType = super.recheckTypeApply(tree, pt)
-      val res = resultToAny(funType, Origin.ResultInstance(funType, tree))
+      val res = resultToAny(funType, Origin.ResultInstance(_, funType, tree))
       includeCallCaptures(tree.symbol, res, tree)
       checkContains(tree)
       res
