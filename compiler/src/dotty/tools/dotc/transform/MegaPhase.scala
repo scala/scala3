@@ -291,8 +291,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: DefDef =>
         if noHooks(nxDefDefPrepPhase, nxDefDefTransPhase) then
           def mapDefDef(using Context) = {
-            val paramss = tree.paramss.mapConserve(transformNonSplicingSpecificTrees(_, start))
-              .asInstanceOf[List[ParamClause]]
+            val paramss = transformNonSplicingParamss(tree.paramss, start)
             val tpt = transformTree(tree.tpt, start)
             val rhs = transformTree(tree.rhs, start)
             cpy.DefDef(tree)(tree.name, paramss, tpt, rhs)
@@ -301,8 +300,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         else
           inContext(prepDefDef(tree, start)(using outerCtx)) {
             def mapDefDef(using Context) = {
-              val paramss = tree.paramss.mapConserve(transformNonSplicingSpecificTrees(_, start))
-                .asInstanceOf[List[ParamClause]]
+              val paramss = transformNonSplicingParamss(tree.paramss, start)
               val tpt = transformTree(tree.tpt, start)
               val rhs = transformTree(tree.rhs, start)
               cpy.DefDef(tree)(tree.name, paramss, tpt, rhs)
@@ -752,6 +750,42 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   def transformNonSplicingSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformNonSplicingTrees(trees, start).asInstanceOf[List[T]]
+
+  private inline def transformNonSplicingParamClause(params: ParamClause, start: Int)(using Context): ParamClause =
+    transformNonSplicingTrees(params.asInstanceOf[List[Tree]], start).asInstanceOf[ParamClause]
+
+  private inline def transformNonSplicingParamss(paramss: List[ParamClause], start: Int)(using Context): List[ParamClause] =
+    paramss match
+      case Nil => Nil
+      case params0 :: Nil =>
+        val params1 = transformNonSplicingParamClause(params0, start)
+        if params1 eq params0 then paramss else params1 :: Nil
+      case params0 :: params1 :: Nil =>
+        val nparams0 = transformNonSplicingParamClause(params0, start)
+        val nparams1 = transformNonSplicingParamClause(params1, start)
+        if (nparams0 eq params0) && (nparams1 eq params1) then paramss
+        else nparams0 :: nparams1 :: Nil
+      case _ =>
+        var mapped: mutable.ListBuffer[ParamClause] | Null = null
+        var unchanged = paramss
+        var pending = paramss
+        while pending.nonEmpty do
+          val params0 = pending.head
+          val params1 = transformNonSplicingParamClause(params0, start)
+          if params1 eq params0 then pending = pending.tail
+          else
+            val buf = if mapped == null then new mutable.ListBuffer[ParamClause] else mapped
+            var xc = unchanged
+            while xc ne pending do
+              buf += xc.head
+              xc = xc.tail
+            buf += params1
+            val tail0 = pending.tail
+            mapped = buf
+            unchanged = tail0
+            pending = tail0
+        if mapped == null then unchanged
+        else mapped.prependToList(unchanged)
 
   protected def run(using Context): Unit =
     ctx.compilationUnit.tpdTree =
