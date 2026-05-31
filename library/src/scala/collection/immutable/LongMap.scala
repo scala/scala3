@@ -262,11 +262,11 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   override def isEmpty = this eq LongMap.Nil
   override def knownSize: Int = if (isEmpty) 0 else super.knownSize
   override def filter(f: ((Long, T)) => Boolean): LongMap[T] = this match {
-    case LongMap.Bin(prefix, mask, left, right) => {
-      val (newleft, newright) = (left.filter(f), right.filter(f))
+    case LongMap.Bin(prefix, mask, left, right) =>
+      val newleft = left.filter(f)
+      val newright = right.filter(f)
       if ((left eq newleft) && (right eq newright)) this
       else bin(prefix, mask, newleft, newright)
-    }
     case LongMap.Tip(key, value) =>
       if (f((key, value))) this
       else LongMap.Nil
