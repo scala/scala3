@@ -906,7 +906,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       return Array(s)
 
     var end = s.length
-    while (end > 0 && s(end - 1) == separator)
+    while (end > first && s(end - 1) == separator)
       end -= 1
     if (end == 0)
       return Array.empty
