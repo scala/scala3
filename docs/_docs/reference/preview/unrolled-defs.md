@@ -1,8 +1,11 @@
 ---
 layout: doc-page
 title: "Automatic Parameter Unrolling"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/unrolled-defs.html
+redirectFrom: /experimental/unrolled-defs.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/unrolled-defs.html
 ---
+
+This feature is available under `-preview` since Scala 3.10.0.
 
 Parameter unrolling enables new parameters to be added to methods and classes,
 while still preserving backwards binary compatibility. An `@unroll` annotation, on a parameter with default value, will generate backwards compatible forwarders to a method or constructor.

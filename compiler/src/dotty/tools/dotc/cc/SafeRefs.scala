@@ -7,13 +7,15 @@ import Symbols.*
 import Annotations.*
 import util.Spans.NoSpan
 import util.{Property, SrcPos}
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Constants.Constant
 import Decorators.*
 import ast.tpd.*
 import SymDenotations.*
 import Flags.*
 import Types.*
+import Names.Name
+import NameOps.isReplWrapperName
 import config.Printers.capt
 
 /** Check whether references from safe mode should be allowed */
@@ -171,6 +173,10 @@ object SafeRefs {
     rejectSafe("scala.runtime.LazyDouble")
     rejectSafe("scala.runtime.LazyUnit")
   }
+
+  /** Allow name in safe mode even though it contains `$` characters */
+  def allowDollarIn(name: Name)(using Context): Boolean =
+    name.isReplWrapperName && ctx.mode.is(Mode.Interactive)
 
   private def fail(sym: Symbol, reason: String, pos: SrcPos)(using Context) =
     report.error(em"Cannot refer to ${sym.sanitizedDescription}${sym.showExtendedLocation} from safe code since $reason", pos)
