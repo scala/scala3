@@ -35,6 +35,15 @@ class Driver {
         run.compile(files)
         finish(compiler, run)
       catch
+        case ro: RecursionOverflow =>
+          report.error(ro.toMessage, ro.pos)(using ro.ctx)
+        case so: StackOverflowError =>
+          // This should be the ONLY point in the compiler where we catch stack overflows.
+          // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.
+          // This is a pure best-effort attempt at helping the user.
+          report.error("Stack overflow in the compiler.\n"
+            + "See https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html\n"
+            + s"Stack trace:\n${so.getStackTrace.mkString("\n  ")}")
         case ex: FatalError =>
           report.error(ex.getMessage) // signals that we should fail compilation.
         case ex: Exception if ctx.usedBestEffortTasty =>
@@ -202,23 +211,10 @@ class Driver {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
-    try
-      setup(args, rootCtx) match
-        case Some((files, compileCtx)) =>
-          doCompile(newCompiler(using compileCtx), files)(using compileCtx)
-        case None =>
-          rootCtx.reporter
-    catch
-      case ro: RecursionOverflow =>
-        report.error(ro.toMessage, ro.pos)(using ro.ctx)
-        rootCtx.reporter
-      case so: StackOverflowError =>
-        // This should be the ONLY point in the compiler where we catch stack overflows.
-        // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.
-        // This is a pure best-effort attempt at helping the user.
-        report.error("Stack overflow in the compiler.\n"
-          + "See https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html\n"
-          + s"Stack trace:\n${so.getStackTrace.mkString("\n  ")}")(using rootCtx)
+    setup(args, rootCtx) match
+      case Some((files, compileCtx)) =>
+        doCompile(newCompiler(using compileCtx), files)(using compileCtx)
+      case None =>
         rootCtx.reporter
   }
 
