@@ -243,8 +243,8 @@ def g(x: C) = ()
 f(1)      // ok
 g(1)      // error
 ```
-The call `f("abc")` type-checks since `f`'s parameter type `T` is `into`.
-But the call `g("abc")` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.
+The call `f(1)` type-checks since `f`'s parameter type `T` is `into`.
+But the call `g(1)` does not type-check since `g`'s parameter type `C` is not `into`. It does not matter that `C` extends a trait `T` that is `into`.
 
 
 ## Why Two Different Schemes?
