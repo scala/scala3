@@ -218,7 +218,7 @@ Type parameters that are not fully instantiated do not count as valid conversion
 ```scala
   trait Token
   class Keyword(str: String)
-  given Conversion[String, Keyword] = KeyWord(_)
+  given Conversion[String, Keyword] = Keyword(_)
 
   List[into[Keyword]]("if", "then", "else")
 ```
