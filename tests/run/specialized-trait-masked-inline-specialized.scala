@@ -5,8 +5,8 @@ inline trait A[T: Specialized]:
 
 inline def myMethod1 = new A[Int]() {}
 inline def myMethod2 = myMethod1
-inline def MyMethod3 = myMethod2
+inline def myMethod3 = myMethod2
 
 @main def Test = 
-    val v = myMethod1
+    val v = myMethod3
     v.foo()
