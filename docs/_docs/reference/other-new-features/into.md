@@ -154,7 +154,7 @@ as they are seen in a method body. Here is an example:
   def ++ (elems: into[IterableOnce[A]]): List[A] =
     val buf = ListBuffer[A]()
     for elem <- elems.iterator do // no `.underlying` needed here
-      buf += elems
+      buf += elem
     buf.toList
 ```
 Inside the `++` method, the `elems` parameter is of type `IterableOnce[A]`, not `into[IterableOnce[A]]`. Hence, we can simply write `elems.iterator` to get at the `iterator` method of the `IterableOnce` class.
