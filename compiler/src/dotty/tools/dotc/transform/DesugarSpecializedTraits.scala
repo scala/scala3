@@ -164,6 +164,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       specialization.traitSymbol.compilationUnitInfo
     )
 
+    specialization.traitSymbol.addAnnotation(Annotation.Child(newImplementationClassSymbol, newImplementationClassSymbol.span.startPos))
+
     buildTypeParameters(newImplementationClassSymbol, specialization)
 
     newImplementationClassSymbol.entered

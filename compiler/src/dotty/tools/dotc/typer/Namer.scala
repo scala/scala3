@@ -1021,7 +1021,7 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
-        if (parentCls.is(Sealed))
+        if (parentCls.is(Sealed) && !(child.isAnonymousClass && parentCls.isSpecializedTrait))
           if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(parentCls, parentCls)
           else if (!parentCls.is(ChildrenQueried))
