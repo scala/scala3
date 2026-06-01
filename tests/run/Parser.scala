@@ -1,4 +1,3 @@
-//> using options -preview
 import Conversion.into
 
 type Input = List[String]
