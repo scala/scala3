@@ -194,7 +194,7 @@ object GenericSignatures {
         jsig(finalType)
     }
 
-    def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+    def classSig(sym: ClassSymbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
       def argSig(tp: Type): Unit =
         tp.dealias match {
           case bounds: TypeBounds =>
@@ -233,12 +233,11 @@ object GenericSignatures {
               // Hence the widenNullaryMethod.
         }
 
-      assert(sym.isClass, s"Not a class: $sym")
       pre.widen match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
         case RefOrAppliedType(preSym, prePre, preArgs) if preArgs.nonEmpty =>
-          classSig(preSym, prePre, preArgs)
+          classSig(preSym.asClass, prePre, preArgs)
           builder.replace(builder.length() - 1, builder.length(), ".") // instead of ending the outer name with ';', we add an inner name
           builder.append(sanitizeName(sym.targetName))
         // For the rest, we time-travel so we get the full name after inner classes have been lifted to package scope
@@ -330,10 +329,14 @@ object GenericSignatures {
                 if (vcBoxing == ValueClassBoxing.Box) jsig(defn.ObjectType)
                 else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
                 else builder.append(defn.typeTag(sym.info))
-              else if (sym.isDerivedValueClass) {
-                if (vcBoxing == ValueClassBoxing.Unbox) {
-                  val underlying = ValueClasses.underlyingOfValueClass(sym.asClass)
-                  val seenUnderlying = underlying.asSeenFrom(tp, sym)
+              else if defn.isSyntheticFunctionClass(sym) then
+                defn.functionTypeErasure(sym).classSymbol match
+                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Nil else args)
+                  case NoSymbol => throw new AssertionError(s"No class symbol for erased function type $sym")
+              else sym match
+                case classSym: ClassSymbol if classSym.isDerivedValueClass && vcBoxing == ValueClassBoxing.Unbox =>
+                  val underlying = ValueClasses.underlyingOfValueClass(classSym)
+                  val seenUnderlying = underlying.asSeenFrom(tp, classSym)
                   // For binary compatibility with Scala 2, as documented in TypeErasure,
                   // we need to special cases for polymorphic value classes:
                   // `Foo[X]` erases to `X` except that primitives use their boxed type,
@@ -345,16 +348,8 @@ object GenericSignatures {
                     else if underlying.derivesFrom(defn.ArrayClass) then erasure(underlying)
                     else seenUnderlying
                   jsig(compatibleUnderlying, toplevel = toplevel)
-                } else classSig(sym, pre, args)
-              }
-              else if (defn.isSyntheticFunctionClass(sym)) {
-                val erasedSym = defn.functionTypeErasure(sym).typeSymbol
-                classSig(erasedSym, pre, if (erasedSym.typeParams.isEmpty) Nil else args)
-              }
-              else if sym.isClass then
-                classSig(sym, pre, args)
-              else
-                jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
+                case classSym: ClassSymbol => classSig(classSym, pre, args)
+                case _ => jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
 
         case ExprType(restpe) =>
           if toplevel then
