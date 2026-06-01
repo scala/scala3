@@ -1021,7 +1021,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else tp match
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym eq defn.UnitClass) sym.typeRef
+        if (tp.isRef(defn.UnitClass)) defn.UnitType
         else apply(tp)
       case tp: AppliedType =>
         val sym = tp.tycon.typeSymbol
