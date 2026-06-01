@@ -279,4 +279,4 @@ of the original `Modifier` trait has changed. In summary, upgrading Laminar to u
 LocalModifier     ::=  ...  |  ‘into’
 ```
 
-`into` is a soft modifier. It is only allowed classes, traits, and opaque type aliases.
+`into` is a soft modifier. It is only allowed on classes, traits, and opaque type aliases.
