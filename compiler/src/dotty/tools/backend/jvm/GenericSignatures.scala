@@ -187,6 +187,8 @@ object GenericSignatures {
 
     def methodResultSig(restpe: Type): Unit = {
       val finalType = restpe.finalResultType
+      if (sym0.hasAnnotation(defn.NonNullAnnot))
+        builder.append(ClassfileConstants.BANG)
       val sym = finalType.typeSymbol
       if (sym == defn.UnitClass || sym == defn.BoxedUnitModule || sym0.isConstructor)
         builder.append(ClassfileConstants.VOID_TAG)
@@ -231,6 +233,8 @@ object GenericSignatures {
               // Hence the widenNullaryMethod.
         }
 
+      if (sym.hasAnnotation(defn.NonNullAnnot))
+        builder.append(ClassfileConstants.BANG)
       pre.widenDealias match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)

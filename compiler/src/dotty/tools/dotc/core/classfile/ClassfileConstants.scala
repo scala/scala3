@@ -97,6 +97,7 @@ object ClassfileConstants {
   inline val ANNOTATION_TAG = '@'
   inline val SCALA_NOTHING = "scala.runtime.Nothing$"
   inline val SCALA_NULL = "scala.runtime.Null$"
+  inline val BANG = '!'
 
 
   // tags describing the type of newarray

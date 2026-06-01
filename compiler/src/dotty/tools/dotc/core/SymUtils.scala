@@ -344,6 +344,11 @@ class SymUtils:
       self
     }
 
+    def withAnnotationsRemovedOnCond(cond: Boolean, toRemove: Symbol)(using Context): self.type = {
+      if(cond) then self.removeAnnotation(toRemove)
+      self
+    }
+
     def isEnum(using Context): Boolean = self.is(Enum, butNot = JavaDefined)
     def isEnumClass(using Context): Boolean = isEnum && !self.is(Case)
 

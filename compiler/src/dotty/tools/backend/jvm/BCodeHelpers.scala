@@ -371,7 +371,6 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
           else genSig.toString
       }
     }
-
   } // end of trait BCJGenSigGen
 
   trait BCForwardersGen extends BCAnnotGen with BCJGenSigGen {
