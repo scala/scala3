@@ -859,7 +859,7 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       (ch >= '0' && ch <= '9')) ch.toString
   else "\\" + ch
 
-  /** Splits this string around the separator character, equivalent to calling <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html#split(java.lang.String)">String.split(regex: String)</a> with separator escaped.
+  /** Splits this string around the separator character, equivalent to calling <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html#split(java.lang.String)">String.split(regex: String)</a> with the separator escaped.
    *
    *  If this string is the empty string, returns an array of strings
    *  that contains a single empty string.
