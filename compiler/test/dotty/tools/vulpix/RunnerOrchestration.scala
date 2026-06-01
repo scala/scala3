@@ -63,7 +63,7 @@ trait RunnerOrchestration:
   def cleanup() = monitor.killAll()
 
   private val monitor = new RunnerMonitor
-  export monitor.{debugMain/*, runMain*/}
+  export monitor.debugMain
   def runMain(classPath: String, toolArgs: ToolArgs)(using SummaryReporting): Status =
     monitor.runMain(classPath, toolArgs) // scala-js overrides and requires toolArgs
 
@@ -180,7 +180,7 @@ trait RunnerOrchestration:
       val url = classOf[ChildJVMMain.type].getProtectionDomain.getCodeSource.getLocation
       val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
-      val args = Seq("-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp) ++
+      val args = Seq("-ea", "-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp) ++
         (if debugMode then Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,quiet=n") else Seq.empty)
       val command = (javaBin +: args) :+ "dotty.tools.vulpix.ChildJVMMain"
       val process = new ProcessBuilder(command*)
