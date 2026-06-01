@@ -233,11 +233,11 @@ object GenericSignatures {
               // Hence the widenNullaryMethod.
         }
 
-      pre.widen match {
+      pre.widenDealias match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
-        case RefOrAppliedType(preSym, prePre, preArgs) if preArgs.nonEmpty =>
-          classSig(preSym.asClass, prePre, preArgs)
+        case RefOrAppliedType(preSym: ClassSymbol, prePre, preArgs) if preArgs.nonEmpty =>
+          classSig(preSym, prePre, preArgs)
           builder.replace(builder.length() - 1, builder.length(), ".") // instead of ending the outer name with ';', we add an inner name
           builder.append(sanitizeName(sym.targetName))
         // For the rest, we time-travel so we get the full name after inner classes have been lifted to package scope
