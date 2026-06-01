@@ -88,7 +88,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
       parents,
       tm(specialization.traitSymbol.asClass.classInfo.selfType),
       specialization.traitSymbol.privateWithin,
-      spanCoord(specialization.span),
+      spanCoord(specialization.span), // TODO: Show errors where they actually show up in the inline trait and not at the type of the user which is very confusing. Need to use inline stack
       specialization.traitSymbol.compilationUnitInfo
     )
 
