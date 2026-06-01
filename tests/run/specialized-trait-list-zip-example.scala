@@ -1,5 +1,4 @@
-//> using options -language:experimental.specializedTraits -Werror -Vprint:erasure
-//> using scala 3.10.0-RC1-bin-SNAPSHOT-nonbootstrapped
+//> using options -language:experimental.specializedTraits
 
 import scala.annotation.nowarn
 
