@@ -97,7 +97,7 @@ cannot take `Specialized[T]` parameters.
 
 The _erasure_ of `Vec[Tp]` where `SpecType(Tp) = C` is:
 
- - If `C` is one of the top classes `Any` or `AnyRef` or `AnyVal`, the usual erased trait `Vec`.
+ - If `C` is one of the top classes `Any` or `AnyRef` or `AnyVal`, or if `C` is `Nothing` the usual erased trait `Vec`.
  - If `C` is some other class, a new specialized instance trait with a name of the form `Vec$sp$TN`,
    where `$sp$` is a fixed specialization marker and `TN` is an encoding of the fully qualified name of `C`.
 
@@ -105,7 +105,8 @@ If there is more than one specialized type parameter, the specialized instance t
 
 An anonymous class instance creation like `new Vec[T](elems) {}` expands to
 an instance creation `new Vec$impl$TN(elems)` of a new _specialized instance class_
-named `Vec$impl$TN`. The class name derives from the trait name by replacing `$sp` with `$impl$`.
+named `Vec$impl$TN`. The class name derives from the trait name by replacing `$sp` with `$impl$`. The only exception is if the corresponding `$sp$` trait is simply the original trait
+(because all Specialized arguments were specialized to top classes or `Nothing`). In this case, the specialized instance class will be named `Vec$impl`.
 
 The specialized instance traits are created on demand the first time they are mentioned in a type. For example, here is the definition of the specialized instance `Vec$sp$Int` for `Vec[Int]`:
 
@@ -494,7 +495,83 @@ To avoid redundant repeated code generation of the same traits and classes, spec
 on the class path. Each artifact will contain in an annotation a hash of the  contents of the trait from which the instance was derived. Before creating a new specialized instance, the compiler will consult this directory to see whether an instance with the given name exists and whether its hash matches. In that case, the artifacts can be re-used. -->
 
 
+// NEED TO PUT THIS WITH THE CLASS BAR EXTENDS FOO PARENTS -> Explain that it's due to pattern match exhaustivity checking for sealed specialized traits
+invariant is that if we extend the $sp$ trait we must also extend the original trait.
 
+## `sealed` Specialized traits
+Like other traits, specialized traits may be sealed, but this requires some thought. In particular, the generated $sp$ traits and $impl$ classes extend the sealed specialized trait potentially from another file without the user's consent. We want to allow for example:
+
+```scala
+// A.scala
+sealed inline trait Foo[T: Specialized]
+
+// B.scala
+def foo(x: Foo[String])
+```
+because this would be allowed with ordinary traits, but the desugaring creates `Foo$sp$String` which is arguably an illegal child of the sealed `Foo[String]` as it's produced only when compiling B.scala.
+
+We are also faced with the question of whether we should allow the following:
+```scala
+// A.scala
+sealed inline trait Foo[T: Specialized]
+val x = new Foo[Int]() {} // Forces creation of Foo$sp$Int and Foo$impl$Int
+
+// B.scala
+val y = new Foo[Int]() {}
+```
+In the bytecode x and y may or may not point to the same `Foo$impl$Int` depending on if we share the generated specialized classes, but in 
+the source code `y` extends `Foo[Int]` illegally.
+
+In both cases we essentially opt for the "source code" interpretation as this seems clearest for users. In particular we allow example (1) but not example (2). This happens automatically because `sealed` trait inheritance checking is done before specialized trait desugaring / erasure, so it is unaware of the `$sp$` traits and `$impl$` classes. 
+
+It is tempting to think that since the `$impl$` classes do not exist in source we may be able to allow the second example, but this is dangerous for exhaustivity checking:
+
+```scala
+// A.scala
+sealed inline trait Foo[T: Specialized]
+inline trait Bar[T: Specialized] extends Foo[T]
+
+def foo(x: Foo[Int]) = x match {
+    case y: Bar[Int] => println("All good!")
+}
+
+// B.scala
+val y = new Foo[Int]() {} // Bad; A.scala compiled with no warnings as exhaustivity checker assumed this was impossible
+foo(y)
+val z = new Bar[Int]() {} // Ok: We do allow this as well because Bar is not sealed so the exhaustivity checking in A.scala was correct. 
+foo(z)
+
+```
+
+In terms of exhaustivity checking, we also want this to work within a single file. Consider:
+```scala
+sealed inline trait List[+T: Specialized]
+sealed inline trait Nill[T: Specialized] extends List[T]:
+sealed inline trait :+:[T: Specialized](h: T, t: List[T]) extends List[T]
+
+val xs: List[Double] = new Nill[Double]() {}
+
+def foo(x: List[Double]): Unit = x match {
+  case xs: :+:[_] => f(xs.head); xs.tail.foreach(f)
+  case _: Nill[_] => 
+  // warning: non-exhaustive pattern match, missing case _: List[Double]
+}
+```
+
+Without any changes, the anonymous class `Nill[Double]` also extends the `List[Double]` interface (because anonymous class instances mixin all ancestor traits), so pattern match exhaustivity checking on `List[Double]` requires `_: List[Double]` because the List trait has anonymous class children. This occurs because we don't do the `$impl$` class replacements until erasure. For that reason we exempt anonymous classes extending specialized traits from being treated as children for pattern match exhaustivity checking, but we do treat the `$impl$` classes as children (the fact that they are defined even if unused suffices for them to be taken into account). This is correct because the anonymous classes will not exist at runtime when the pattern matches run.
+
+Furthermore, the generated `List$sp$Double` trait also interferes. After we fix this issue:
+
+```scala
+def foo(x: List[Double]): Unit = x match {
+  case xs: :+:[_] => f(xs.head); xs.tail.foreach(f)
+  case _: Nill[_] => 
+  // warning: non-exhaustive pattern match, missing case _: List[Double] & List$sp$Double
+}
+```
+There are two potential solutions to this:
+- make `$sp$` traits inherit `sealed` if the original specialized trait is, but this may make future sharing of specializations challenging if we want to extend the specialized traits from another file.
+- don't register the `$sp$` traits as children of the original specialized trait for exhaustivity checking. This is safe because these traits are synthetic and we have the invariant that `T <:< Foo[Int] <=> T <:< Foo$sp$Int`, so users cannot match on `Foo$sp$Int` or `Foo[Int] minus Foo$sp$Int` (the latter being empty)
 
 <!-- TODO :The dollar signs at the end should probably be correct -->
 
