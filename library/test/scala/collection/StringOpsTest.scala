@@ -113,12 +113,14 @@ class StringOpsTest {
     assertThrows[UnsupportedOperationException]("".tail)
   }
 
+  // Test that String.split(Char) matches String.split(String) in all cases
   @Test def splitByChar: Unit = {
     val separators =
       val lowSurrogate = 0xDF62.toChar
       val highSurrogate = 0xD852.toChar
       Array('D', lowSurrogate, highSurrogate)
 
+    // add in charaters that won't be used for splitting
     val alphabet =
       separators.flatMap(ch => Seq(ch, (ch + 1).toChar))
 
@@ -133,16 +135,8 @@ class StringOpsTest {
     for
       len <- 0 to 5
       s <- allStringsOfLength(len)
-      ch <- separators
+      separator <- separators
     do
-      assertSameElements(s.split(s"$ch"), s.split(ch))
-  }
-
-  @Test def `split assertions`: Unit = {
-    def check(s: String, c: Char) = assertSameElements(s.split(c.toString), s.split(c))
-    check(":::", ':') // Array()
-    check(":::xy", ':') // Array("", "", "", xy)
-    check(":::x:y:::", ':') // Array("", "", "", x, y)
-    check("xy:::", ':') // Array(xy)
+      assertSameElements(s.split(separator), s.split(s"$separator"))
   }
 }
