@@ -83,12 +83,13 @@ object PickledQuotes {
 
   /** Unpickle the tree contained in the TastyExpr */
   def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    withMode(Mode.ReadPositions)(unpickle(pickled, isType = false)) match
-      case tree @ Inlined(call, Nil, expansion) =>
-        val inlineCtx = inlineContext(tree)
-        val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
-        val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
-        cpy.Inlined(tree)(call, Nil, expansion2)
+    ctx.handleRecursive("unpickling term", () => pickled match { case s: String => s; case ls: List[String] => ls.mkString("[", ", ", "]")}):
+      withMode(Mode.ReadPositions)(unpickle(pickled, isType = false)) match
+        case tree @ Inlined(call, Nil, expansion) =>
+          val inlineCtx = inlineContext(tree)
+          val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
+          val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
+          cpy.Inlined(tree)(call, Nil, expansion2)
   }
 
 
@@ -151,7 +152,9 @@ object PickledQuotes {
     }
     val tree1 = termHole match
       case ExprHole.V2(null) => tree
-      case _ => evaluateHoles.transform(tree)
+      case _ =>
+        ctx.handleRecursive("splicing terms for", tree, tree.srcPos):
+          evaluateHoles.transform(tree)
     quotePickling.println(i"**** evaluated quote\n$tree1")
     tree1
   }
