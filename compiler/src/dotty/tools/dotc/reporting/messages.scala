@@ -3996,7 +3996,7 @@ final class VarianceInSpecializedTraitsLimitation(using Context)
 
     If you accept this limitation you can silence this warning with @nowarn. For example:
     
-    @nowarn("id=E234")
+    @nowarn("id=E${VarianceInSpecializedTraitsLimitationID.errorNumber}")
     inline trait Foo[-T: Specialized]:
  
     Otherwise, remove Specialized, or remove the variance.
