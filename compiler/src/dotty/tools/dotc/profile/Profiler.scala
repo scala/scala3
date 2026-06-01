@@ -19,6 +19,7 @@ import dotty.tools.io.AbstractFile
 import annotation.internal.sharable
 import dotty.tools.dotc.core.Periods.InitialRunId
 import scala.collection.mutable.UnrolledBuffer
+import scala.jdk.CollectionConverters.*
 
 object Profiler {
   def apply()(using Context): Profiler =
@@ -35,18 +36,18 @@ object Profiler {
   private[profile] val emptySnap: ProfileSnap = ProfileSnap(0, "", 0, 0, 0, 0, 0, 0, 0, 0)
 }
 
-case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, durationMillis: Long, name:String, action:String, cause:String, threads:Long){
-  val endNanos = System.nanoTime()
+private [profile] case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, durationMillis: Long, name:String, action:String, cause:String, threads:Long){
+  val endNanos: Long = System.nanoTime()
 }
 
-case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
+private [profile] case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
                        idleTimeNanos:Long, cpuTimeNanos: Long, userTimeNanos: Long,
                        allocatedBytes:Long, heapBytes:Long,
                        totalClassesLoaded: Long, totalJITCompilationTime: Long) {
   def updateHeap(heapBytes:Long): ProfileSnap =
     copy(heapBytes = heapBytes)
 }
-case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpose:String, taskCount:Int, thread:Thread) {
+private [profile] case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpose:String, taskCount:Int, thread:Thread) {
   def allocatedBytes: Long = end.allocatedBytes - start.allocatedBytes
 
   def userNs: Long = end.userTimeNanos - start.userTimeNanos
@@ -134,19 +135,17 @@ private [profile] object NoOpProfiler extends Profiler {
 }
 
 private [profile] object RealProfiler {
-  import scala.jdk.CollectionConverters.*
-  val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
-  val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
-  val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
-  val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
-  val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
-  val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy
+  private val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
+  private val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
+  private val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
+  private val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
+  private val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
+  private val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy
   if (threadMx.isThreadCpuTimeSupported) threadMx.setThreadCpuTimeEnabled(true)
   private val idGen = new AtomicInteger()
 
   @nowarn("cat=deprecation")
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
-    import RealProfiler.*
     val current = Thread.currentThread()
 
     ProfileSnap(
@@ -174,7 +173,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   private final val GcThreadId = "GC"
 
   enum Category:
-    def name: String = this.toString().toLowerCase()
+    def name: String = this.toString.toLowerCase()
     case Run, Phase, File, TypeCheck, Implicit, Inline, Completion
   private [profile] val chromeTrace =
     if ctx.settings.YprofileTrace.isDefault
@@ -295,7 +294,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       traceThreadSnapshotCounters()
   }
 
-  private def traceThreadSnapshotCounters(initialSnap: => ProfileSnap = RealProfiler.snapThread(0)) =
+  private def traceThreadSnapshotCounters(initialSnap: => ProfileSnap = RealProfiler.snapThread(0)): Unit =
     if chromeTrace != null && System.nanoTime() > nextAfterUnitSnap then {
       val snap = initialSnap
       chromeTrace.traceCounterEvent("allocBytes", "allocBytes", snap.allocatedBytes, processWide = false)
@@ -362,7 +361,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       s"${enclosing.javaBinaryName}::${root.name}"
 }
 
-enum EventType(name: String):
+private [profile] enum EventType(name: String):
   // main thread with other tasks
   case MAIN extends EventType("main")
   // other task ( background thread)
@@ -370,7 +369,7 @@ enum EventType(name: String):
   // total for compile
   case GC extends EventType("GC")
 
-sealed trait ProfileReporter {
+private [profile] sealed trait ProfileReporter {
   def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit
   def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit
 
@@ -380,8 +379,8 @@ sealed trait ProfileReporter {
   def close(profiler: RealProfiler) :Unit
 }
 
-object ConsoleProfileReporter extends ProfileReporter {
-  @sharable var totalAlloc = 0L
+private [profile] object ConsoleProfileReporter extends ProfileReporter {
+  @sharable private var totalAlloc = 0L
 
   override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
     reportCommon(EventType.BACKGROUND, profiler, threadRange)
@@ -401,7 +400,7 @@ object ConsoleProfileReporter extends ProfileReporter {
     println(s"Profiler GC reported ${data.gcEndMillis - data.gcStartMillis}ms")
 }
 
-class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
+private [profile] class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
   override def header(profiler: RealProfiler): Unit = {
     out.println(s"info, ${profiler.id}, version, 2, output, ${profiler.outDir}")
     out.println(s"header(main/background),startNs,endNs,runId,phaseId,phaseName,purpose,task-count,threadId,threadName,runNs,idleNs,cpuTimeNs,userTimeNs,allocatedByte,heapSize")

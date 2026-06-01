@@ -78,11 +78,17 @@ class JSPositions()(using Context) {
     private def convert(dotcSource: SourceFile): ir.Position.SourceFile = {
       dotcSource.file.file match {
         case null =>
-          new java.net.URI(
-              "virtualfile",        // Pseudo-Scheme
-              dotcSource.file.path, // Scheme specific part
-              null                  // Fragment
-          )
+          dotcSource.file.path match {
+            case "" =>
+              // creating a virtualfile: URI with an empty scheme-specific part is not allowed
+              ir.Position.NoPosition.source
+            case path =>
+              new java.net.URI(
+                "virtualfile", // Pseudo-Scheme
+                path, // Scheme-specific part
+                null // Fragment
+              )
+          }
         case file =>
           val srcURI = file.toURI
           sourceURIMaps.collectFirst {

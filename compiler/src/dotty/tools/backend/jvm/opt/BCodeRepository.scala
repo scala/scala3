@@ -15,11 +15,11 @@ package dotty.tools.backend.jvm.opt
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.opt.*
-import dotty.tools.backend.jvm.{BackendUtils, ClassNode1, CoreBTypes, PostProcessorFrontendAccess}
-import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.util.NoSourcePosition
+import dotty.tools.backend.jvm.{BackendUtils, ClassNode1}
+import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
+import dotty.tools.io
+import dotty.tools.io.ClassPath
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
@@ -31,7 +31,7 @@ import scala.tools.asm.{Attribute, ClassReader, Type}
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils: BackendUtils, ts: CoreBTypes) {
+class BCodeRepository(classPath: ClassPath, backendUtils: BackendUtils) {
 
   type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
@@ -39,7 +39,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
    * the current compilation run.
    */
-  val compilingClasses: Lazy[concurrent.Map[InternalName, (ClassAndModuleNodes, String)]] = frontendAccess.perRunLazy(concurrent.TrieMap.empty)
+  val compilingClasses: concurrent.Map[InternalName, (ClassAndModuleNodes, String)] = concurrent.TrieMap.empty
 
   /**
   * Prevent the code repository from growing too large. Profiling reveals that the average size
@@ -54,16 +54,16 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
    * Note - although this is typed a mutable.Map, individual simple get and put operations are threadsafe as the
    * underlying data structure is synchronized.
    */
-  private val parsedClasses: Lazy[mutable.Map[InternalName, Either[ClassNotFound, ClassAndModuleNodes]]] =
-    frontendAccess.perRunLazy(FifoCache[InternalName, Either[ClassNotFound, ClassAndModuleNodes]](maxCacheSize, threadsafe = true))
+  private val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassAndModuleNodes]] =
+    FifoCache[InternalName, Either[ClassNotFound, ClassAndModuleNodes]](maxCacheSize, threadsafe = true)
 
   def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
-    case Some(path) if path != "<no file>" => compilingClasses.get(classNode.name) = ((classNode, None), path)
-    case _                                 => parsedClasses.get(classNode.name) = Right(classNode, None)
+    case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = ((classNode, None), path)
+    case _                                 => parsedClasses(classNode.name) = Right(classNode, None)
   }
 
   private def parsedClassNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
-    parsedClasses.get.getOrElseUpdate(internalName, parseClass(internalName))
+    parsedClasses.getOrElseUpdate(internalName, parseClass(internalName))
   }
 
   /**
@@ -71,7 +71,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
    * the class node is not yet available, it is parsed from the classfile on the compile classpath.
    */
   def classNodeAndSourceFilePath(internalName: InternalName): Either[ClassNotFound, (ClassAndModuleNodes, Option[String])] = {
-    compilingClasses.get.get(internalName) match {
+    compilingClasses.get(internalName) match {
       case Some((c, p)) => Right((c, Some(p)))
       case _            => parsedClassNode(internalName).map((_, None))
     }
@@ -82,7 +82,7 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
    * the classfile on the compile classpath.
    */
   def classNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
-    compilingClasses.get.get(internalName) match {
+    compilingClasses.get(internalName) match {
       case Some((c, _)) => Right(c)
       case None         => parsedClassNode(internalName)
     }
@@ -158,11 +158,12 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
     // https://docs.oracle.com/javase/specs/jvms/se11/html/jvms-2.html#jvms-2.9.3
     def findSignaturePolymorphic(owner: ClassNode): Option[MethodNode] = {
       def hasObjectArrayParam(m: MethodNode) = Type.getArgumentTypes(m.desc) match {
-        case Array(pt) => pt.getDimensions == 1 && pt.getElementType.getInternalName == ts.ObjectRef.internalName
+        case Array(pt) => pt.getDimensions == 1 && pt.getElementType.getInternalName == "java/lang/Object"
         case _ => false
       }
-      // Don't try to build a BType for `VarHandle`, it doesn't exist on JDK 8
-      if (owner.name == ts.jliMethodHandleRef.internalName || owner.name == "java/lang/invoke/VarHandle")
+      // We don't need to explicitly load the BTypes of MethodHandle or VarHandle for later use here,
+      // because if we've reached this point, `owner` has been loaded already.
+      if (owner.name == "java/lang/invoke/MethodHandle" || owner.name == "java/lang/invoke/VarHandle")
         owner.methods.asScala.find(m =>
           m.name == name &&
             isNativeMethod(m) &&
@@ -282,44 +283,50 @@ class BCodeRepository(frontendAccess: PostProcessorFrontendAccess, backendUtils:
     }
   }
 
-  private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
-    val fullName = internalName.replace('/', '.')
-    frontendAccess.findClassFileAndModuleFile(fullName).flatMap { (classFile, moduleFile) =>
-      val classNode = new ClassNode1
-      val classReader = new ClassReader(classFile.toByteArray)
-
-      try {
-        // Passing the InlineInfoAttributePrototype makes the ClassReader invoke the specific `read`
-        // method of the InlineInfoAttribute class, instead of putting the byte array into a generic
-        // Attribute.
-        // We don't need frames when inlining, but we want to keep the local variable table, so we
-        // don't use SKIP_DEBUG.
-        classReader.accept(classNode, Array[Attribute](InlineInfoAttributePrototype), ClassReader.SKIP_FRAMES)
-        // SKIP_FRAMES leaves line number nodes. Remove them because they are not correct after
-        // inlining.
-        // TODO: we need to remove them also for classes that are not parsed from classfiles, why not simplify and do it once when inlining?
-        // OR: instead of skipping line numbers for inlined code, use write a SourceDebugExtension
-        // attribute that contains JSR-45 data that encodes debugging info.
-        //   https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.11
-        //   https://jcp.org/aboutJava/communityprocess/final/jsr045/index.html
-        removeLineNumbersAndAddLMFImplMethods(classNode)
-
-        val moduleNode = moduleFile.map(f =>
-          val node = new ClassNode1
-          val moduleReader = new ClassReader(f.toByteArray)
-          moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)
-          node.module
-        )
-
-        Some(classNode, moduleNode)
-      } catch {
-        case ex: Exception =>
-          frontendAccess.optimizerWarning(em"Error while reading InlineInfoAttribute: ${ex.getMessage}", fullName, NoSourcePosition)
-          None
+  /* Create a class path for the backend, based on the given class path.
+   * Used to make classes available to the inliner's bytecode repository.
+   * In particular, if ct.sym is used for compilation, replace it with jrt.
+   */
+  private lazy val optimizerClassPath = classPath match {
+    case cp@AggregateClassPath(entries) if entries.head.isInstanceOf[CtSymClassPath] =>
+      JrtClassPath(release = None) match {
+        case Some(jrt) => AggregateClassPath(entries.drop(1).prepended(jrt))
+        case _ => cp
       }
-    } match {
-      case Some(nodes) => Right(nodes)
-      case None        => Left(ClassNotFound(internalName))
-    }
+    case cp => cp
+  }
+
+  private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
+    try
+      val fullName = internalName.replace('/', '.')
+      optimizerClassPath.findClassFileAndModuleFile(fullName) match
+        case Some(classFile, moduleFile) =>
+          val classNode = new ClassNode1
+          val classReader = new ClassReader(classFile.toByteArray)
+          // Passing the InlineInfoAttributePrototype makes the ClassReader invoke the specific `read`
+          // method of the InlineInfoAttribute class, instead of putting the byte array into a generic
+          // Attribute.
+          // We don't need frames when inlining, but we want to keep the local variable table, so we
+          // don't use SKIP_DEBUG.
+          classReader.accept(classNode, Array[Attribute](InlineInfoAttributePrototype), ClassReader.SKIP_FRAMES)
+          // SKIP_FRAMES leaves line number nodes. Remove them because they are not correct after
+          // inlining.
+          // TODO: we need to remove them also for classes that are not parsed from classfiles, why not simplify and do it once when inlining?
+          // OR: instead of skipping line numbers for inlined code, use write a SourceDebugExtension
+          // attribute that contains JSR-45 data that encodes debugging info.
+          //   https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.11
+          //   https://jcp.org/aboutJava/communityprocess/final/jsr045/index.html
+          removeLineNumbersAndAddLMFImplMethods(classNode)
+          val moduleNode = moduleFile.map(f =>
+            val node = new ClassNode1
+            val moduleReader = new ClassReader(f.toByteArray)
+            moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)
+            node.module
+          )
+          Right(classNode, moduleNode)
+        case None =>
+          Left(ClassNotFound(internalName))
+    catch
+      case _: Exception => Left(ClassNotFound(internalName))
   }
 }

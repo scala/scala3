@@ -85,6 +85,7 @@ abstract class AccessProxies {
       val sym = newSymbol(owner, name, Synthetic | Method, info, coord = accessed.span).entered
       if accessed.is(Private) then sym.setFlag(Final)
       else if sym.allOverriddenSymbols.exists(!_.is(Deferred)) then sym.setFlag(Override)
+      if accessed.is(Erased) then sym.setFlag(Erased)
       ExperimentalAnnotation.copy(accessed).foreach(sym.addAnnotation)
       sym
     }
@@ -173,8 +174,8 @@ object AccessProxies {
   def hostForAccessorOf(accessed: Symbol)(using Context): Symbol = {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
-      else if cls.derivesFrom(accessed.owner)
-              || cls.companionModule.moduleClass == accessed.owner
+      else if ((cls.derivesFrom(accessed.owner) && !(accessed.is(Private) && (cls ne accessed.owner)))
+              || cls.companionModule.moduleClass == accessed.owner)
       then cls
       else recur(cls.owner)
     recur(ctx.owner)

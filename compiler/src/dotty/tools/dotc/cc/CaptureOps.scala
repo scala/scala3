@@ -570,26 +570,34 @@ extension (cls: ClassSymbol) {
    *  @return  the implied capture set, and the list of fields contributing to it
    */
   def capturesImpliedByFields(core: Type)(using Context): (refs: CaptureSet, fields: List[Symbol]) = {
-    var infos: List[String] = Nil
-    def pushInfo(msg: => String) =
-      if ctx.settings.YccVerbose.value then infos = msg :: infos
-
     def knownFields(cls: ClassSymbol) =
       ccState.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
         .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
 
-    /** The classifiers of the LocalCaps in the span capture sets of all fields
-     *  in the given class `cls`.
+    def commonAncestor(clss: List[ClassSymbol]): Symbol =
+      if clss.isEmpty then NoSymbol
+      else clss.reduce(greatestClassifier)
+
+    /** The implied classifier of the LocalCap of the class instance, derived from
+     *    - the clasifiers of the LocalCaps in the span capture sets of all fields
+     *    - the implied classifiers of the parent classes
+     *    - if `cls` is a stateful class, the classifier of `cls` itself
+     *  @return The implied classidier, or NoSymbol is there is no LocalCap
+     *          to be generated for the instance.
      */
-    def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
+    def impliedClassifier(cls: Symbol): Symbol = cls match
       case cls: ClassSymbol =>
-        var fieldClassifiers = knownFields(cls).flatMap(classifiersOfLocalCapsInType)
+        val fieldClassifiers =
+          knownFields(cls).flatMap(classifiersOfLocalCapsInType)
         val parentClassifiers =
-          cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
-        if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
-        then Nil
-        else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
-      case _ => Nil
+          cls.parentSyms.map(impliedClassifier).collect:
+            case cl: ClassSymbol => cl
+        val stateClassifiers =
+          if cls.typeRef.isStatefulType(varsOnly = true)
+          then cls.classifier :: Nil
+          else Nil
+        commonAncestor(fieldClassifiers ++ parentClassifiers ++ stateClassifiers)
+      case _ => NoSymbol
 
     def contributingFields(cls: Symbol): List[Symbol] = cls match
       case cls: ClassSymbol =>
@@ -606,20 +614,17 @@ extension (cls: ClassSymbol) {
     def localCap(fields: List[Symbol]) =
       LocalCap(Origin.NewInstance(core, fields))
 
-    var implied = impliedClassifiers(cls)
-    if cls.typeRef.isStatefulType(varsOnly = true) then
-      implied = dominators(cls.classifier :: Nil, implied)
-    val fields = contributingFields(cls)
-    val impliedSet = ccState.localCapClassifiersAndFieldsCache.getOrElseUpdate(cls, (implied, fields)) match
-      case (Nil, _) =>
+    val impliedClr = impliedClassifier(cls)
+    val contributing = contributingFields(cls)
+    val impliedSet = impliedClr match
+      case impliedClr: ClassSymbol =>
+        val result = localCap(contributing)
+        if impliedClr != defn.AnyClass then
+          result.hiddenSet.adoptClassifier(impliedClr)
+        maybeRO(result, contributing).singletonCaptureSet
+      case _ =>
         CaptureSet.empty
-      case (cl :: Nil, fields) =>
-        val result = localCap(fields)
-        result.hiddenSet.adoptClassifier(cl)
-        maybeRO(result, fields).singletonCaptureSet
-      case (_, fields) =>
-        maybeRO(localCap(fields), fields).singletonCaptureSet
-    (impliedSet, fields)
+    (impliedSet, contributing)
   }
 
   def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =

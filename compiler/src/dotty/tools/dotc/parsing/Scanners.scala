@@ -19,6 +19,7 @@ import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
 import reporting.*
+import cc.SafeRefs
 
 import java.util.Objects
 import dotty.tools.dotc.reporting.Message.rewriteNotice
@@ -146,8 +147,11 @@ object Scanners {
      *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
     def finishNamedToken(idtoken: Token, target: TokenData): Unit =
-      target.name = termName(litBuf.chars, 0, litBuf.length)
+      val name = termName(litBuf.chars, 0, litBuf.length)
+      target.name = name
       litBuf.clear()
+      if name.contains('$') && Feature.safeEnabled && !SafeRefs.allowDollarIn(name) then
+        report.error(em"Identifier may not contain '$$' in safe mode", sourcePos())
       target.token = idtoken
       if idtoken == IDENTIFIER then
         val converted = toToken(target.name.nn)

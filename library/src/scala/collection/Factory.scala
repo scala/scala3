@@ -31,7 +31,7 @@ import scala.reflect.ClassTag
  *  @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
  *  @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
  */
-trait Factory[-A, +C] extends Any { self =>
+trait Factory[-A, +C] extends Any { self: Factory[A, C] =>
 
   /**
    *  @param it the source of elements to include in the collection
@@ -409,7 +409,7 @@ trait SpecificIterableFactory[-A, +C] extends Factory[A, C] {
  *
  *  @tparam CC Collection type constructor for the map (e.g. `Map`, `HashMap`)
  */
-trait MapFactory[+CC[_, _]] extends Serializable { self =>
+trait MapFactory[+CC[_, _]] extends Serializable { self: MapFactory[CC] =>
 
   /** An empty Map.
    *

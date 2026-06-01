@@ -10,6 +10,7 @@ import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
 import dotty.tools.io.File
+import dotty.tools.dotc.interactive.LogicalPackage
 
 object PathResolver {
 
@@ -169,10 +170,10 @@ object PathResolver {
 
 import PathResolver.{Defaults, ppcp}
 
-class PathResolver(using c: Context) {
+class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(using c: Context) {
   import c.base.settings
 
-  private val classPathFactory = new ClassPathFactory
+  private val classPathFactory = new ClassPathFactory(precomputedSourcePackages)
 
   private def cmdLineOrElse(name: String, alt: String) =
     commandLineFor(name) match {

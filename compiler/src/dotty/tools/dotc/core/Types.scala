@@ -183,8 +183,6 @@ object Types extends TypeUtils {
         // https://www.scala-lang.org/files/archive/spec/2.11/11-annotations.html#scala-compiler-annotations
         tp.annot.symbol == defn.UncheckedStableAnnot || tp.parent.isStable
       case tp: AndType =>
-        // TODO: fix And type check when tp contains type parames for explicit-nulls flow-typing
-        // see: tests/explicit-nulls/pos/flow-stable.scala.disabled
         tp.tp1.isStable && (realizability(tp.tp2) eq Realizable) ||
         tp.tp2.isStable && (realizability(tp.tp1) eq Realizable)
       case tp: AppliedType => tp.cachedIsStable

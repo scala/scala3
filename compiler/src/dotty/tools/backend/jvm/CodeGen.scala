@@ -1,15 +1,11 @@
 package dotty.tools.backend.jvm
 
 
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-import dotty.tools.dotc.interfaces
-import dotty.tools.dotc.report
-
-import java.util.Optional
+import dotty.tools.dotc.{CompilationUnit, interfaces, report, util}
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.core.*
 import Contexts.*
@@ -22,18 +18,18 @@ import dotty.tools.dotc.core.tasty.TastyUnpickler
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.util
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.util.NoSourcePosition
 import SymbolUtils.given
 import dotty.tools.backend.ScalaPrimitives
+import dotty.tools.dotc.interfaces.CompilerCallback
 import opt.CallGraph
 
-class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess, val callGraph: CallGraph, val ts: CoreBTypes)(using Context) {
-  private class Impl(using Context) extends BCodeHelpers(backendUtils), BCodeSkelBuilder, BCodeBodyBuilder(primitives), BCodeSyncAndTry {
-    val ts: CoreBTypes = CodeGen.this.ts
-
-    def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null): Unit =
+class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
+              val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
+              val generatedClassHandler: GeneratedClassHandler) {
+  private class Impl extends BCodeHelpers(bTypeLoader, bTypes), BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+    def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
       callGraph.callsitePositions.get(m) = pos match {
         case p: Positioned => p.sourcePos
         case null => NoSourcePosition
@@ -43,28 +39,22 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
-  private def genBCode(using Context) = Phases.genBCodePhase.asInstanceOf[GenBCode]
-  private def postProcessor(using Context) = genBCode.postProcessor
-  private def generatedClassHandler(using Context) = genBCode.generatedClassHandler
-
   /**
-   * Generate ASM ClassNodes for classes found in a compilation unit. The resulting classes are
-   * passed to the `GenBCode.generatedClassHandler`.
+   * Generate ASM ClassNodes for classes found in the context's compilation unit. The resulting classes are
+   * passed to the `generatedClassHandler`.
    */
-  def genUnit(unit: CompilationUnit)(using ctx: Context): Unit = {
+  def genUnit()(using ctx: Context): Unit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
 
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
-        val sourceFile = unit.source.file
-
-
-        val mainClassNode = genClass(cd, unit)
+        val sourceFile = ctx.compilationUnit.source.file
+        val mainClassNode = genClass(cd)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
-          else if sym.companionClass == NoSymbol then genMirrorClass(sym, unit)
+          else if sym.companionClass == NoSymbol then mirrorCodeGen.genMirrorClass(sym)
           else
             report.log(s"No mirror class for module with linked class: ${sym.fullName}", NoSourcePosition)
             null
@@ -79,18 +69,17 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
               sourceClassName = sym.javaClassName,
               position = sym.srcPos.sourcePos,
               isArtifact = isArtifact,
-              onFileCreated = onFileCreated(classNode, sym, unit.source)
+              onFileCreated = onFileCreated(classNode, sym, ctx.compilationUnit.source)
             )
 
         registerGeneratedClass(mainClassNode, isArtifact = false)
         registerGeneratedClass(mirrorClassNode, isArtifact = true)
       catch
         case ex: TypeError =>
-          report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", cd.sourcePos)
-
+          report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
-      for (binary <- unit.pickled.get(claszSymbol.asClass)) {
+      for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
         generatedTasty += GeneratedTasty(store, binary)
         val tasty =
           val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
@@ -113,12 +102,12 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
         case EmptyTree => ()
         case PackageDef(_, stats) => stats.foreach(genClassDefs)
         case ValDef(_, _, _) => () // module val not emitted
-        case td: TypeDef => frontendAccess.frontendSynch(genClassDef(td))
+        case td: TypeDef => genClassDef(td)
       }
 
-    genClassDefs(unit.tpdTree)
+    genClassDefs(ctx.compilationUnit.tpdTree)
     generatedClassHandler.process(
-      GeneratedCompilationUnit(unit.source.file, generatedClasses.toList, generatedTasty.toList)
+      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
     )
   }
 
@@ -129,8 +118,9 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
     }
     clsFile => {
       val className = cls.name.replace('/', '.')
-      if (ctx.compilerCallback ne null)
-        ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
+      ctx.compilerCallback match
+        case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
+        case null => ()
 
       ctx.withIncCallback: cb =>
         if isLocal then
@@ -144,24 +134,10 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
     }
   }
 
-  /** Convert a `dotty.tools.io.AbstractFile` into a
-   *  `dotty.tools.dotc.interfaces.AbstractFile`.
-   */
-  private def convertAbstractFile(absfile: dotty.tools.io.AbstractFile): interfaces.AbstractFile =
-    new interfaces.AbstractFile {
-      override def name = absfile.name
-      override def path = absfile.path
-      override def jfile: Optional[java.io.File] = Optional.ofNullable(absfile.file)
-    }
-
-  private def genClass(cd: TypeDef, unit: CompilationUnit): ClassNode = {
-    val b = new impl.SyncAndTryBuilder(unit)
+  private def genClass(cd: TypeDef)(using Context): ClassNode = {
+    val b = new impl.SyncAndTryBuilder
     b.genPlainClass(cd)
     b.cnode
-  }
-
-  private def genMirrorClass(classSym: Symbol, unit: CompilationUnit): ClassNode = {
-    mirrorCodeGen.genMirrorClass(classSym, unit)
   }
 
 }

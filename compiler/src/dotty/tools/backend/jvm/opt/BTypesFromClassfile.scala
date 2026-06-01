@@ -13,7 +13,6 @@
 package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.opt.{BCodeRepository, ClassNotFound, NoClassBTypeInfo, OptimizerWarning}
 import dotty.tools.backend.jvm.*
 import dotty.tools.dotc.core.StdNames.nme
@@ -24,7 +23,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
 
-class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) extends InlineInfoLoader {
+class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTypeLoader) extends InlineInfoLoader {
 
   /**
    * Obtain the BType for a type descriptor or internal name. For class descriptors, the ClassBType
@@ -63,10 +62,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    * be found in the `byteCodeRepository`, the `info` of the resulting ClassBType is undefined.
    */
   def classBTypeFromParsedClassfile(internalName: InternalName): Either[OptimizerWarning, ClassBType] = {
-    // JLS §4.1 "There is also a special null type, the type of the expression null [...]
-    //           In practice, the programmer can ignore the null type and just pretend that null is merely a special literal that can be of any reference type."
-    if internalName == "null" then Right(ts.ObjectRef)
-    else ts.classBType(internalName) { _ =>
+    bTypeLoader.classBType(internalName) { _ =>
       byteCodeRepository.classNode(internalName) match {
         case Left(msg) => Left(NoClassBTypeInfo(msg))
         case Right(c, m) => computeClassInfoFromClassNode(c, m)
@@ -78,7 +74,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    * Construct the [[BTypes.ClassBType]] for a parsed classfile.
    */
   def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassBType] = {
-    ts.classBType(classNode.name) { _ =>
+    bTypeLoader.classBType(classNode.name) { _ =>
       computeClassInfoFromClassNode(classNode, moduleNode)
     }
   }
@@ -86,7 +82,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
   private def computeClassInfoFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassInfo] = {
     val superClass = classNode.superName match {
       case null =>
-        assert(classNode.name == ts.ObjectRef.internalName, s"class with missing super type: ${classNode.name}")
+        assert(classNode.name == "java/lang/Object", s"class with missing super type: ${classNode.name}")
         Right(None)
       case superName =>
         classBTypeFromParsedClassfile(superName).map(Some.apply)

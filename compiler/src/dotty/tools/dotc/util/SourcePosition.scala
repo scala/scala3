@@ -120,3 +120,4 @@ trait SrcPos:
   def endPos(using ctx: Context): SourcePosition = sourcePos.endPos
   def focus(using ctx: Context): SourcePosition = sourcePos.focus
   def line(using ctx: Context): Int = sourcePos.line
+  def orElse(other: SrcPos): SrcPos = if span.exists then this else other

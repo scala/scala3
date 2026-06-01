@@ -48,7 +48,8 @@ class TreeChecker extends Phase with SymTransformer {
   def testDuplicate(sym: Symbol, registry: mutable.Map[String, Symbol], typ: String)(using Context): Unit = {
     val name = sym.javaClassName
     val isDuplicate = this.flatClasses && registry.contains(name)
-    assert(!isDuplicate, s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
+    // Allow users to define a class "java" even on the JVM
+    assert(!isDuplicate || name == "java", s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
     registry(name) = sym
   }
 
@@ -598,8 +599,7 @@ object TreeChecker {
 
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
-        !x.name.is(DocArtifactName) &&
-        !(ctx.phase.id >= genBCodePhase.id && x.name == str.MODULE_INSTANCE_FIELD.toTermName)
+        !x.name.is(DocArtifactName)
 
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)

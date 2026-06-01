@@ -3,7 +3,6 @@ package dotty.tools.pc.completions
 import scala.collection.mutable.ListBuffer
 import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.internal.pc.InterpolationSplice
-import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
 import scala.meta.pc.reports.ReportContext
 
@@ -30,7 +29,6 @@ object InterpolatorCompletions:
       completions: Completions,
       snippetsEnabled: Boolean,
       search: SymbolSearch,
-      config: PresentationCompilerConfig,
       buildTargetIdentifier: String
   )(using Context, ReportContext) =
     InterpolationSplice(completionPos.queryEnd, text.toCharArray().nn, text) match
@@ -70,7 +68,7 @@ object InterpolatorCompletions:
       lit: Literal,
       parent: Tree
   ): PartialFunction[Tree, Option[Ident | Select]] =
-    case tree @ Apply(
+    case Apply(
           _,
           List(Typed(expr: SeqLiteral, _))
         ) if expr.elems.exists {

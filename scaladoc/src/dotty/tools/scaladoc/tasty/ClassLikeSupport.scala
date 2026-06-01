@@ -198,7 +198,7 @@ trait ClassLikeSupport:
       // First one doesn't always work because .tpe in some cases causes type lambda reductions, eg:
       //   def foo[T : ([X] =>> String)]
       // after desugaring:
-      //   def foo[T](implicit ecidence$1 : ([X] =>> String)[T])
+      //   def foo[T](implicit evidence$1 : ([X] =>> String)[T])
       // tree for this evidence looks like: ([X] =>> String)[T]
       // but type repr looks like: String
       // (see scaladoc-testcases/src/tests/contextBounds.scala)

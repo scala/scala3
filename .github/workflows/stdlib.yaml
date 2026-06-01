@@ -167,9 +167,16 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
+
       - uses: sbt/setup-sbt@v1
+
       - name: Test `scala3-compiler-nonbootstrapped`
         run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
+
+      - name: Cmd Tests
+        run: |
+          ./project/scripts/sbt scala3-nonbootstrapped/publishLocal
+          ./project/scripts/cmdTests
 
   test-scala3-compiler-bootstrapped:
     runs-on: ubuntu-latest
@@ -183,9 +190,16 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
+
       - uses: sbt/setup-sbt@v1
+
       - name: Test `scala3-compiler-bootstrapped`
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
+
+      - name: Cmd Tests
+        run: |
+          ./project/scripts/sbt scala3-bootstrapped/publishLocal
+          ./project/scripts/bootstrappedOnlyCmdTests
 
   test-scala3-bootstrapped-compilation-coverage:
     runs-on: ubuntu-latest

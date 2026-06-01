@@ -320,8 +320,6 @@ object Settings:
       if matches then
         given ArgsSummary = state0
         deprecation match
-        case Some(Deprecation(msg, _)) if ignoreInvalidArgs => // a special case for Xlint
-          state.warn(s"Option $name is deprecated: $msg", args)
         case _ =>
           prefix match
           case Some(prefix) =>
@@ -344,6 +342,7 @@ object Settings:
   object Setting:
     extension [T](setting: Setting[T])
       def value(using Context): T = setting.valueIn(ctx.settingsState)
+      def valueSetByUser(using Context): Option[T] = Option(setting.value).filter(_ != setting.default)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
 

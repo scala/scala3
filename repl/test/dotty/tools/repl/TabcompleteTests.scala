@@ -260,4 +260,14 @@ class TabcompleteTests extends ReplTest {
       val comp = tabComplete("x.toStr")
       assertEquals(List("toString"), comp.distinct)
     }
+
+  @Test def tabCompleteForNamedTuple =
+    initially {
+      val src = "val t = (a = 1, b = 2)"
+      run(src)
+    } andThen {
+      val comp = tabComplete("t.")
+      assertTrue(s"should contain 'a' but was: ${comp.mkString(", ")}", comp.contains("a"))
+      assertTrue(s"should contain 'b' but was: ${comp.mkString(", ")}", comp.contains("b"))
+    }
 }
