@@ -894,7 +894,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
                 if cls.isSpecializedTraitInterface then // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
                   val (obj :: originalTrait :: inheritedParents) = parents : @unchecked
                   eraseParent(obj) :: apply(originalTrait)(using disallowSpecializedCtx) :: inheritedParents.mapConserve(eraseParent(_)(using allowSpecializedCtx))
-                else if cls.isSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
+                else if cls.isSpecializedTraitImplementationClass && !cls.isRawSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
                   val (objectParent :: traitSpParent :: originalTraitSpecializedParent :: Nil) = parents : @unchecked
                   eraseParent(objectParent) :: eraseParent(traitSpParent)(using allowSpecializedCtx) :: apply(originalTraitSpecializedParent)(using disallowSpecializedCtx) :: Nil
                 else

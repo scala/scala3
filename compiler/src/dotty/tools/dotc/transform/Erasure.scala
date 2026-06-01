@@ -810,7 +810,7 @@ object Erasure {
         inContext(preErasureCtx) {
           Specialization.unapply(anon.typeTree.tpe, anon.typeTree.span).flatMap(spec => {
             anon.parentCalls match {
-              case (obj :: parentsOfSpecTrait) if spec.isSpecialized && (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.baseClasses.exists(p => p == x.symbol.owner))) =>
+              case (obj :: parentsOfSpecTrait) if (spec.isSpecialized || spec.isFullySpecializedToTopClassesOrNothing) && (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.baseClasses.exists(p => p == x.symbol.owner))) =>
                 val app: Tree = parentsOfSpecTrait.find(p => p.symbol.owner == spec.traitSymbol).get
                 assert(app.isInstanceOf[Apply]) // At the very least we pass the Specialized instance.
                 val targetImplName = DesugarSpecializedTraits.newImplementationClassName(spec)
@@ -1070,7 +1070,7 @@ object Erasure {
           if cls.isSpecializedTraitInterface then // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
             val (obj :: originalTrait :: inheritedParents) = oldParents : @unchecked
             obj :: typedType(originalTrait)(using superCtxNoSpec) :: inheritedParents
-          else if cls.isSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
+          else if cls.isSpecializedTraitImplementationClass && !cls.isRawSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
             val (objectParent :: traitSpParent :: originalTraitSpecializedParent :: Nil) = oldParents : @unchecked
             val newParent = originalTraitSpecializedParent match {
               case _: untpd.Apply => typedExpr(originalTraitSpecializedParent)(using superCtxNoSpec)

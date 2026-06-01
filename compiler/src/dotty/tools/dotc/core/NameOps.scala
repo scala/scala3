@@ -79,6 +79,7 @@ object NameOps {
     def isRightAssocOperatorName: Boolean = name.lastPart.last == ':'
     def isSpecializedTraitInterfaceName: Boolean = name.toString.contains(str.SPECIALIZED_TRAIT_SUFFIX)
     def isSpecializedTraitImplementationName: Boolean = name.toString.contains(str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
+    def isRawSpecializedTraitImplementationName: Boolean = name.toString.endsWith(str.SPECIALIZED_TRAIT_IMPL_SUFFIX)
 
     /** Does this name match `[{letter | digit} '_'] op`?
       *

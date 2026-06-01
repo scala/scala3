@@ -655,6 +655,12 @@ object SymDenotations {
     final def isSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
+    /** Is this symbol a specialized trait implementation class that 
+     * was generated from a specialization using only top classes / Nothing
+     * and is therefore not subject to a specialized interface */ 
+    final def isRawSpecializedTraitImplementationClass(using Context): Boolean =
+      isClass && name.isSpecializedTraitImplementationName
+
     final def isAnonymousFunction(using Context): Boolean =
       this.symbol.is(Method) && initial.name.isAnonymousFunctionName
 
