@@ -2,10 +2,7 @@ name: Language reference documentation
 
 on:
   push:
-    branches:
-      - 'language-reference-stable'
-  pull_request:
-    branches:
+    tags:
       - 'language-reference-stable'
   workflow_dispatch:
 

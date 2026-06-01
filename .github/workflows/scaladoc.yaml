@@ -3,11 +3,10 @@ name: scaladoc
 on:
   push:
     branches-ignore:
-      - 'language-reference-stable'
       - 'gh-readonly-queue/**'
-  pull_request:
-    branches-ignore:
+    tags-ignore:
       - 'language-reference-stable'
+  pull_request:
   merge_group:
 permissions:
   contents: read
