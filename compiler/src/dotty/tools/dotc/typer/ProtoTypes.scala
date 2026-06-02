@@ -929,7 +929,24 @@ object ProtoTypes {
     Stats.record("normalize")
     tp.widenSingleton match {
       case poly: PolyType =>
-        normalize(instantiateWithTypeVars(poly), pt)
+        // Under Mode.TypevarsMissContext (set by `candidateKind` in implicit
+        // search, see Implicits.scala:258), the fresh TypeVars produced by
+        // `instantiateWithTypeVars` are throwaway: the explore-context resets
+        // the typer state and constraint before the result is consumed.
+        // Substitute paramRefs with bounded `WildcardType` instead, so the
+        // result is deterministic per-poly and `AppliedUniques` hits on the
+        // second-and-subsequent candidate of the same poly. This mirrors the
+        // existing wildcard treatment in `viewCandidateKind`
+        // (Implicits.scala:156) and `resultTypeApprox` (line 903 below).
+        if ctx.mode.is(Mode.TypevarsMissContext) then
+          val body =
+            if poly.isResultDependent then
+              val wildArgs = poly.paramInfos.map(b => WildcardType(b))
+              poly.resType.substParams(poly, wildArgs)
+            else poly.resType
+          normalize(body, pt)
+        else
+          normalize(instantiateWithTypeVars(poly), pt)
       case mt: MethodType =>
         if (mt.isImplicitMethod) normalize(resultTypeApprox(mt, wildcardOnly = true), pt)
         else if (mt.isResultDependent) tp
