@@ -4706,6 +4706,14 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
+    // Memoizes `toNestedPairs` for tuple-shaped AppliedTypes. The result
+    // `*:[args(0), *:[args(1), ..., EmptyTuple]]` is a pure function of `args`
+    // and a couple of defn refs that change only per run, so RunId-keyed
+    // invalidation is sufficient. Hot path: TypeComparer.compareAppliedType2
+    // tuple-vs-tuple subtyping rebuilds the *: chain on every check.
+    private var myNestedPairsRunId: RunId = NoRunId
+    private var myNestedPairs: Type = uninitialized
+
     private var validUnderlyingNormalizable: Period = Nowhere
     private var cachedUnderlyingNormalizable: Type = uninitialized
 
@@ -4809,6 +4817,18 @@ object Types extends TypeUtils {
         if !isProvisional then
           myEvalRunId = ctx.runId
           myEvalued = res
+        res
+
+    /** Cached `toNestedPairs` for tuple-shaped AppliedTypes. Callers that have
+     *  already verified `defn.isTupleNType(this)` should use this entry point;
+     *  the non-tuple branch retains the `tupleElementTypes` slow path. */
+    def cachedToNestedPairs(using Context): Type =
+      if myNestedPairsRunId == ctx.runId then myNestedPairs
+      else
+        val res = TypeOps.nestedPairs(args)
+        if !isProvisional then
+          myNestedPairsRunId = ctx.runId
+          myNestedPairs = res
         res
 
     def lowerBound(using Context): Type = tycon.stripTypeVar match {
