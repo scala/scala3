@@ -300,7 +300,7 @@ def f(b: Foo[Int]) = 37 + b.foo
     f(x)
 ```
 
-In this code the call to `b.foo` will refer to the version of `foo` typed `foo: T` which becomes `foo: Object` during erasure, becasue we accessed `foo` on
+In this code the call to `b.foo` will refer to the version of `foo` typed `foo: T` which becomes `foo: Object` during erasure, because we accessed `foo` on
 an object of declared type `Foo` (even though `b`'s actual runtime type is `Bar`). This will in turn call a bridge method which means the `foo: Int` method will be called, but unnecessary boxing and unboxing will be added:
 
 ```scala
