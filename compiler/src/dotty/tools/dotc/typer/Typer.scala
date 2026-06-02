@@ -3963,7 +3963,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             errorTree(xtree, ex, xtree.srcPos.focus)
 
         try
-          val ifpt = defn.asContextFunctionType(pt)
+          // `asContextFunctionType` strips + dealiases `pt` (the #1 external `dealias`
+          // caller); its result `ifpt` is only ever consulted on the `!ctx.isAfterTyper`
+          // branch below (the arity-0 error fires exactly when `!afterTyper && ifpt.exists`,
+          // and `makeContextualFunction` is gated by the same `!afterTyper`). On this
+          // workload 76.6% of these calls are `ctx.isAfterTyper` (Inlining / MegaPhase /
+          // Erasure re-typing), where the result is unused — so compute `ifpt` only when
+          // `!ctx.isAfterTyper`. Behaviour-identical: the boolean below is unchanged because
+          // every use of `ifpt` is already guarded by `!ctx.isAfterTyper`.
+          val ifpt = if ctx.isAfterTyper then NoType else defn.asContextFunctionType(pt)
           val result =
             if ifpt.exists
               && !ctx.isAfterTyper

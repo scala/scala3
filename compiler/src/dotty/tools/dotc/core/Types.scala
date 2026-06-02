@@ -1731,7 +1731,12 @@ object Types extends TypeUtils {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(using Context): Type = dealias match {
+    final def dropDependentRefinement(using Context): Type = dropDependentRefinementOf(dealias)
+
+    /** Like `dropDependentRefinement`, but takes the already-dealiased `this` to avoid a
+     *  redundant leading `dealias`. `dealiased` must be `this.dealias`; since `dealias` is
+     *  idempotent this is behaviour-preserving. */
+    final def dropDependentRefinementOf(dealiased: Type)(using Context): Type = dealiased match {
       case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
       case tp => tp
     }

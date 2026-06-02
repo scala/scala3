@@ -592,7 +592,16 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
    *  Handles poly functions gracefully.
    */
-  final def functionArgInfos(using Context): List[Type] = self.dealias match
+  final def functionArgInfos(using Context): List[Type] = functionArgInfosOf(self.dealias)
+
+  /** Like `functionArgInfos`, but takes the already-dealiased `self` to avoid a
+   *  redundant leading `dealias` when the caller has dealiased already. Behaviour
+   *  is identical: `dealiased` is `self.dealias`, and `self.dropDependentRefinement`
+   *  dealiases `self` to exactly this same value, so we reuse it for the dependent
+   *  refinement drop while KEEPING the post-drop `dealias` (it operates on the
+   *  refinement parent, a different type). `dealias` is idempotent, so this is
+   *  behaviour-preserving. */
+  final def functionArgInfosOf(dealiased: Type)(using Context): List[Type] = dealiased match
     case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
     case RefinedType(parent, nme.apply, _) if defn.isNonRefinedFunction(parent) => parent.dealias.argInfos
     case tp => tp.argInfos
