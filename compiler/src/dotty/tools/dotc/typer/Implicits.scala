@@ -236,6 +236,9 @@ object Implicits:
 
         if (ckind == Candidate.None)
           record("discarded eligible")
+        else if quickIncompatible(ref, pt) then
+          Stats.record("eligible quick-incompatible")
+          ckind = Candidate.None
         else {
           val ptNorm = normalize(pt, pt) // `pt` could be implicit function types, check i2749
           val refAdjusted =
@@ -248,6 +251,46 @@ object Implicits:
         }
         ckind
       }
+
+      /** Cheap O(1) class-hierarchy prefilter: when both `pt` and the poly
+       *  result type of `ref.widen` reduce to distinct, unrelated class
+       *  symbols, the candidate cannot match — no need to allocate fresh
+       *  TypeVars and run `substParams`. Conservative: any uncertainty
+       *  (ProtoType, refinement, MatchAlias, NotGiven, abstract result
+       *  type, Conversion/<:<) falls through to the slow path.
+       */
+      def quickIncompatible(ref: TermRef, pt: Type)(using Context): Boolean =
+        if pt.isInstanceOf[ProtoType] then false
+        else
+          val ptd = pt.dealias
+          if ptd.isInstanceOf[RefinedType] || ptd.isInstanceOf[ProtoType]
+             || ptd.isMatchAlias
+          then false
+          else
+            val ptCls = ptd.classSymbol
+            if !ptCls.isClass
+               || (ptCls eq defn.NotGivenClass)
+               || (ptCls eq defn.ConversionClass)
+               || (ptCls eq defn.SubTypeClass)
+            then false
+            else ref.widen match
+              case poly: PolyType =>
+                // Only filter on plain `PolyType[..] => ValueType` shape.
+                // If `poly.resType` is a MethodType, the candidate can
+                // eta-expand to a Function type and the class check on
+                // `finalResultType` is unsound.
+                val rt = poly.resType
+                if rt.isInstanceOf[MethodOrPoly] || rt.isInstanceOf[RefinedType]
+                   || defn.isContextFunctionType(rt)
+                then false
+                else
+                  val refCls = rt.classSymbol
+                  refCls.isClass
+                    && !refCls.derivesFrom(ptCls)
+                    && !ptCls.derivesFrom(refCls)
+                    && !refCls.derivesFrom(defn.ConversionClass)
+                    && !refCls.derivesFrom(defn.SubTypeClass)
+              case _ => false
 
 
       if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
