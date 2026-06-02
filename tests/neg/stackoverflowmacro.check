@@ -1,4 +1,0 @@
--- Error: tests/neg/stackoverflowmacro/Use_2.scala:2:13 ----------------------------------------------------------------
-2 |  def Test = scala.compiletime.testing.typeCheckErrors("stackOverflowMacro") // error
-  |             ^
-  |             String constant is too long for the JVM
