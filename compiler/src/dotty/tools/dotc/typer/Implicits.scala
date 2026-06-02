@@ -34,6 +34,7 @@ import reporting.*
 import Message.Note
 import transform.Splicer
 import annotation.tailrec
+import NullOpsDecorator.stripNull
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -1684,14 +1685,14 @@ trait Implicits:
     def isUnderSpecifiedArgument(tp: Type): Boolean =
       tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
 
-    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar match
+    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar.stripNull() match
       case tp: WildcardType =>
         !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)
       case tp: ViewProto =>
         isUnderspecified(tp.resType)
         || tp.resType.isRef(defn.UnitClass)
         || isUnderSpecifiedArgument(tp.argType.widen)
-      case _ =>
+      case tp =>
         tp.isAny || tp.isAnyRef
 
     /** Search implicit in context `ctxImplicits` or else in implicit scope
