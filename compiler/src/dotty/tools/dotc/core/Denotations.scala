@@ -826,35 +826,39 @@ object Denotations {
         else
           //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
           // not found, cur points to highest existing variant
-          val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
-          if currentPeriod.lastPhaseId <= nextTransformerId then
-            cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
-          else
-            var startPid = nextTransformerId + 1
-            val transformer = ctx.base.denotTransformers(nextTransformerId)
-            //println(s"transforming $this with $transformer")
-            val savedPeriod = ctx.period
-            val mutCtx = ctx.asInstanceOf[FreshContext]
-            try
-              mutCtx.setPhase(transformer)
-              next = transformer.transform(cur)
-                // We temporarily update the context with the new phase instead of creating a
-                // new one. This is done for performance. We cut down on about 30% of context
-                // creations that way, and also avoid phase caches in contexts to get large.
-                // To work correctly, we need to demand that the context with the new phase
-                // is not retained in the result.
-            finally
-              mutCtx.setPeriod(savedPeriod)
-            if next eq cur then
-              startPid = cur.validFor.firstPhaseId
+          var done = false
+          while !done do
+            val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
+            if currentPeriod.lastPhaseId <= nextTransformerId then
+              cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
+              done = true
             else
-              assertNotPackage(next, transformer)
-              next.insertAfter(cur)
-              cur = next
-            cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
-            //printPeriods(cur)
-            //println(s"new denot: $cur, valid for ${cur.validFor}")
-          cur.current // multiple transformations could be required
+              var startPid = nextTransformerId + 1
+              val transformer = ctx.base.denotTransformers(nextTransformerId)
+              //println(s"transforming $this with $transformer")
+              val savedPeriod = ctx.period
+              val mutCtx = ctx.asInstanceOf[FreshContext]
+              try
+                mutCtx.setPhase(transformer)
+                next = transformer.transform(cur)
+                  // We temporarily update the context with the new phase instead of creating a
+                  // new one. This is done for performance. We cut down on about 30% of context
+                  // creations that way, and also avoid phase caches in contexts to get large.
+                  // To work correctly, we need to demand that the context with the new phase
+                  // is not retained in the result.
+              finally
+                mutCtx.setPeriod(savedPeriod)
+              if next eq cur then
+                startPid = cur.validFor.firstPhaseId
+              else
+                assertNotPackage(next, transformer)
+                next.insertAfter(cur)
+                cur = next
+              cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
+              //printPeriods(cur)
+              //println(s"new denot: $cur, valid for ${cur.validFor}")
+              // Loop instead of calling cur.current recursively (multiple transformations may be required)
+          cur
       end goForward
 
       def goBack: SingleDenotation =
