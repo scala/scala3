@@ -82,6 +82,6 @@ object RecursionOverflow:
             rawOverflowTitle: String,
             rawOverflowDetails: RecursiveOperationDetails,
             rawOverflowPosition: SrcPos | Null,
-            rawOverflowWeight: Int)(using Context): RecursionOverflow =
+            rawOverflowWeight: Int)(using Context): Error =
     val ops = RecursiveOperation(rawOverflowTitle, rawOverflowDetails, rawOverflowPosition, rawOverflowWeight) :: rawOps.map(_.copy()).reverse.toList
     new RecursionOverflow(ops)

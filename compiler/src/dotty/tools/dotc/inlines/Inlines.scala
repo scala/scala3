@@ -378,7 +378,7 @@ object Inlines:
 
       // Let's reconstruct necessary transform MegaPhases, without anything
       // that could cause problems here (like `CrossVersionChecks`).
-      // The individiual lists here should line up with Compiler.scala, i.e
+      // The individual lists here should line up with Compiler.scala, i.e
       // separate chunks there should also be kept separate here.
       // For now we create a single MegaPhase, since there does not seem to
       // be any important checks later (e.g. ForwardDepChecks could be applicable here,

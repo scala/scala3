@@ -38,6 +38,7 @@ import TastyBuffer.*
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import config.Printers.pickling
 
 import dotty.tools.tasty.TastyFormat.*
@@ -156,7 +157,6 @@ class TreeUnpickler(reader: TastyReader,
       def where =
         val f = denot.symbol.associatedFile
         if f == null then "" else s" in $f"
-      def fail(ex: Throwable) = throw UnpicklingError(denot, where, ex)
       treeAtAddr(currentAddr) =
         CyclicReference.trace(i"read the definition of ${denot.symbol}$where"):
           try
@@ -165,8 +165,7 @@ class TreeUnpickler(reader: TastyReader,
                 using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           catch
             case ex: CyclicReference => throw ex
-            case ex: AssertionError => fail(ex)
-            case ex: Exception => fail(ex)
+            case NonFatal(ex) => throw UnpicklingError(denot, where, ex)
           finally
             cleanup()
   }
