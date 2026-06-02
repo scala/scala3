@@ -1130,7 +1130,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  block containing the anonymous function and the Closure node.
      */
     override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
-      val cs = tree.meth.symbol.useSet
+      val cs = tree.meth.symbol.useSet ++ tree.meth.symbol.info.impliedLambdaCaptures
       capt.println(i"typing closure $tree with cvs $cs")
       super.recheckClosure(tree, pt, forceDependent).capturing(cs)
         .showing(i"rechecked closure $tree / $pt = $result", capt)
@@ -1468,7 +1468,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           then
             todoAtPostCheck += { () =>
               val cls = sym.owner.asClass
-              val fieldClassifiers = sym.classifiersOfLocalCapsInType
+              val fieldClassifiers = sym.classifiersOfLocalCapsInInfo
               val classCapset = cls.creationCapset()
               if !covers(classCapset, fieldClassifiers) then
                 report.error(
