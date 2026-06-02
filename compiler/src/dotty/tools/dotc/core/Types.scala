@@ -206,9 +206,16 @@ object Types extends TypeUtils {
       case this1: RefinedOrRecType if skipRefined =>
         this1.parent.isRef(sym, skipRefined)
       case this1: AppliedType =>
-        val this2 = this1.dealias
-        if (this2 ne this1) this2.isRef(sym, skipRefined)
-        else this1.underlying.isRef(sym, skipRefined)
+        // Fast path: `AppliedType(classRef, args)` is its own dealias (a class tycon
+        // never dealiases), so the round-trip below always falls to `underlying`.
+        // Skip it directly; opaque/match-alias tycons (symbol not a class) still dealias.
+        this1.tycon match
+          case tycon: TypeRef if tycon.symbol.isClass =>
+            this1.underlying.isRef(sym, skipRefined)
+          case _ =>
+            val this2 = this1.dealias
+            if (this2 ne this1) this2.isRef(sym, skipRefined)
+            else this1.underlying.isRef(sym, skipRefined)
       case this1: TypeVar =>
         this1.instanceOpt.isRef(sym, skipRefined)
       case this1: AnnotatedType =>
@@ -1659,7 +1666,12 @@ object Types extends TypeUtils {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(using Context): Type = dealias match {
+    final def dropDependentRefinement(using Context): Type = dropDependentRefinementOf(dealias)
+
+    /** Like `dropDependentRefinement`, but takes the already-dealiased `this` to avoid a
+     *  redundant leading `dealias`. `dealiased` must be `this.dealias`; since `dealias` is
+     *  idempotent this is behaviour-preserving. */
+    final def dropDependentRefinementOf(dealiased: Type)(using Context): Type = dealiased match {
       case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
       case tp => tp
     }
