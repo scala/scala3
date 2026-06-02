@@ -511,7 +511,7 @@ object Contexts {
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
     def freshOver(outer: Context): FreshContext =
-      FreshContext(base).init(outer, this).setTyperState(this.typerState)
+      FreshContext(base).init(outer, this, this.typerState)
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
@@ -616,17 +616,20 @@ object Contexts {
     private var _store: Store = uninitialized
     final def store: Store = _store
 
-   /** Initialize all context fields, except typerState, which has to be set separately
-     *  @param  outer   The outer context
-     *  @param  origin  The context from which fields are copied
+   /** Initialize all context fields.
+     *  @param  outer       The outer context
+     *  @param  origin      The context from which fields are copied
+     *  @param  typerState  The typer state to install (folded in here to save a
+     *                      separate `setTyperState` call on the hot `freshOver` path)
      */
-    private[Contexts] def init(outer: Context, origin: Context): this.type = {
+    private[Contexts] def init(outer: Context, origin: Context, typerState: TyperState): this.type = {
       _outer = outer
       _period = origin.period
       _mode = origin.mode
       _owner = origin.owner
       _tree = origin.tree
       _scope = origin.scope
+      _typerState = typerState
       _gadtState = origin.gadtState
       _searchHistory = origin.searchHistory
       _source = origin.source
@@ -637,7 +640,8 @@ object Contexts {
 
     def reuseIn(outer: Context): this.type =
       resetCaches()
-      init(outer, outer)
+      // Keep the existing typerState (this one is set explicitly by the pool if needed).
+      init(outer, outer, _typerState)
 
     def setPeriod(period: Period): this.type =
       util.Stats.record("Context.setPeriod")
@@ -957,7 +961,7 @@ object Contexts {
 
   class ContextPool:
     protected def fresh()(using Context): FreshContext =
-      FreshContext(ctx.base).init(ctx, ctx)
+      FreshContext(ctx.base).init(ctx, ctx, ctx.typerState)
 
     private var inUse: Int = 0
     private var pool = new mutable.ArrayBuffer[FreshContext]
