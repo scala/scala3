@@ -34,6 +34,20 @@ abstract class MacroTransform extends Phase {
       ctx.fresh.setTree(tree).setOwner(localOwner(tree))
 
     override def transform(tree: Tree)(using Context): Tree =
+      // iter-2: syntactic leaf-tree shortcut. Ident/Literal/This/TypeTree are
+      // childless leaves that fall through this match to `super.transform`
+      // (the base TreeMap.transform), whose body for these shapes is just
+      // `tree`. When transformCtx would return ctx unchanged and skipTransform
+      // is false (its default here), skip the try/match + super dispatch.
+      // MacroTransform.Transformer is the largest caller of the transform spine.
+      if ((tree.isInstanceOf[Ident @unchecked]
+            || tree.isInstanceOf[Literal @unchecked]
+            || tree.isInstanceOf[This @unchecked]
+            || tree.isInstanceOf[TypeTree @unchecked])
+          && ((tree.source `eq` ctx.source) || !tree.source.exists)
+          && !skipTransform(tree))
+        tree
+      else
       try
         tree match {
           case EmptyValDef =>
