@@ -40,3 +40,10 @@ def main =
 
     throwAwayAnInteger(myAnyBin) // error: This use of contravariance is not compatible with specialized traits.
 
+    val myAnyRefBin = new Bin[AnyRef]() {}
+    val myAnyValBin = new Bin[AnyVal]() {}
+    
+    throwAwayTheNewspaper(myAnyRefBin) // error: This use of contravariance is not compatible with specialized traits
+    throwAwayAnInteger(myAnyValBin) // error: This use of contravariance is not compatible with specialized traits
+
+

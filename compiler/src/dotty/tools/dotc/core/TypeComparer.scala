@@ -1942,7 +1942,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   if tp1.classSymbol.isSpecializedTrait
                      && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
                      && isValidSubtype
-                     && !(DesugarSpecializedTraits.specType(arg1) eq DesugarSpecializedTraits.specType(arg2))
+                     && !(DesugarSpecializedTraits.isSameErasureBucket(arg1, arg2))
                   then // using contravariance in a way which specialized trait erasure cannot support
                     addErrorNote(IllegalVarianceInSpecializedTraitsNote())
                     false

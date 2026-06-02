@@ -30,6 +30,14 @@ def throwAwayAnInteger(bin: Bin[Int]) =
     val integer = 100
     bin.throwAway(integer)
 
+def throwAwayAnObject(bin: Bin[Object]) = 
+    val obj = "good morning"
+    bin.throwAway(obj)
+
+def throwAwayAnAnyVal(bin: Bin[AnyVal]) = 
+    val bc: AnyVal = 400
+    bin.throwAway(bc)
+
 @main def Test =
     val myDogs: MyList[Dog] = new MyList(List(Dog(), Dog(), Dog())) {}
     sound(myDogs) // MyList[Dog] can be interpreted as MyList[Animal] due to covariance
@@ -37,3 +45,9 @@ def throwAwayAnInteger(bin: Bin[Int]) =
     val myWastepaperBasket = new Bin[Paper]() {}
     throwAwayTheNewspaper(myWastepaperBasket) // Bin[Paper] can be interpreted as Bin[Newspaper] due to contravariance
 
+    // Fine; same erasure bucket
+    val myAnyBin = new Bin[Any] {}
+    val myAnyRefBin = new Bin[Any] {}
+    throwAwayAnObject(myAnyBin)
+    throwAwayAnObject(myAnyRefBin)
+    throwAwayAnAnyVal(myAnyBin)

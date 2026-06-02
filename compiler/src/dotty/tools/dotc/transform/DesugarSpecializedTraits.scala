@@ -499,6 +499,11 @@ object DesugarSpecializedTraits:
       isSimpleClassType(c) && (isTopClassOrNothing(c) || isTopClassOrNothing(c.asClass.superClass))
     ).map(_.typeRef).get
 
+  def isSameErasureBucket(tp1: Type, tp2: Type)(using Context) =
+    val sp1 = specType(tp1)
+    val sp2 = specType(tp2)
+    (sp1 eq sp2) || isTopClassOrNothing(tp1.classSymbol) && isTopClassOrNothing(tp2.classSymbol)
+
 end DesugarSpecializedTraits
 
 /*
