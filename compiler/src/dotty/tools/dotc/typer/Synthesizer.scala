@@ -681,8 +681,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedMirror: SpecialHandler = (formal, span) =>
     orElse(synthesizedProductMirror(formal, span), synthesizedSumMirror(formal, span))
 
-  val synthesizedSpecialized: SpecialHandler = (formal, span) => formal match { // TODO: Is this exhaustive?
-    case AppliedType(tycon, arg :: Nil) =>  withNoErrors(TypeApply(ref(defn.SpecializedModule_apply), TypeTree(arg) :: Nil))
+  val synthesizedSpecialized: SpecialHandler = (formal, span) => formal match {
+    case AppliedType(tycon, arg :: Nil) if tycon =:= defn.SpecializedClass.typeRef => 
+      withNoErrors(TypeApply(ref(defn.SpecializedModule_apply), TypeTree(arg) :: Nil))
+    case _ => EmptyTreeNoError
   }
 
   private def escapeJavaArray(tp: Type)(using Context): Type = tp match
