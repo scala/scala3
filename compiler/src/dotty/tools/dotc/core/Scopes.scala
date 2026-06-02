@@ -220,6 +220,31 @@ object Scopes {
 
     private[dotc] var lastEntry: ScopeEntry | Null = initElems
 
+    /** A 64-bit Bloom filter over the name hashes of the entries stored in this
+     *  scope. A bit is set whenever a name is entered; a clear bit therefore
+     *  proves that no entry with that name exists (no false negatives), which
+     *  lets `lookupEntry` skip the chain/hash probe for absent names. The vast
+     *  majority of probed scopes are empty or do not contain the queried name.
+     */
+    private var membersBloom: Long = 0L
+
+    private inline def addToBloom(name: Name): Unit =
+      membersBloom |= 1L << (name.hashCode & 63)
+
+    /** Fold the name hashes of `e` and all its predecessors into the Bloom
+     *  filter. Used when entries are shared from a base scope without going
+     *  through `newScopeEntry`.
+     */
+    private def addAllToBloom(e: ScopeEntry | Null): Unit = {
+      var entry = e
+      while (entry != null) {
+        addToBloom(entry.name)
+        entry = entry.prev
+      }
+    }
+
+    addAllToBloom(initElems)
+
     /** The size of the scope */
     private var _size = initSize
 
@@ -267,6 +292,7 @@ object Scopes {
       e.prev = lastEntry
       lastEntry = e
       if (hashTable != null) enterInHash(e)
+      addToBloom(name)
       size += 1
       elemsCache = null
       e
@@ -378,16 +404,21 @@ object Scopes {
      */
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = {
       var e: ScopeEntry | Null = null
-      val ht = hashTable
-      if (ht != null) {
-        e = ht(name.hashCode & (ht.length - 1))
-        while ((e != null) && (e.name ne name))
-          e = e.tail
-      }
-      else {
-        e = lastEntry
-        while ((e != null) && (e.name ne name))
-          e = e.prev
+      // A clear Bloom bit proves the name is absent from the stored entries,
+      // so we can skip the chain/hash probe entirely and only consult the
+      // synthesizer below. Bits are set-only, hence there are no false negatives.
+      if ((membersBloom & (1L << (name.hashCode & 63))) != 0L) {
+        val ht = hashTable
+        if (ht != null) {
+          e = ht(name.hashCode & (ht.length - 1))
+          while ((e != null) && (e.name ne name))
+            e = e.tail
+        }
+        else {
+          e = lastEntry
+          while ((e != null) && (e.name ne name))
+            e = e.prev
+        }
       }
       if e != null then e
       else synthesize match
