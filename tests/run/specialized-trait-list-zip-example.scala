@@ -8,12 +8,12 @@ sealed inline trait List[+T: Specialized]:
         def zip(xxs: List[T], yys: List[S]): List[(T, S)] = (xxs, yys) match {
             case (_: Nill[_], _) => Nill()
             case (_, _: Nill[_]) => Nill()
-            case (xxs: :+:[T @unchecked], yys: :+:[S @unchecked]) =>  :+:((xxs.head, yys.head), zip(xxs.tail, yys.tail))  // : (
+            case (xxs: :+:[T @unchecked], yys: :+:[S @unchecked]) =>  :+:((xxs.head, yys.head), zip(xxs.tail, yys.tail)) 
         }
         zip(this, other)
     
-    def foreach[S](f: T => Unit): Unit = (this: List[T]) match { // : (
-        case xs: :+:[T @unchecked] => f(xs.head); xs.tail.foreach(f)  // : (
+    def foreach[S](f: T => Unit): Unit = (this: List[T]) match { // TODO: Can we avoid the need to cast this to List[T] here? Should it not already be of that type?
+        case xs: :+:[T @unchecked] => f(xs.head); xs.tail.foreach(f)
         case _: Nill[_] => 
     }
 
@@ -35,7 +35,7 @@ object List:
         values.foldRight[List[T]](Nill())(:+:.apply)
 
 @main def Test =
-    val xs: List[Double] = :+:(9.1, :+:(68.52, :+:(18.4, :+:(83.5, Nill[Double]())))) // <- : (
+    val xs: List[Double] = :+:(9.1, :+:(68.52, :+:(18.4, :+:(83.5, Nill[Double]())))) // TODO : Can we prevent the need for an explicit type here or at least make it clearer
     val ys = List("Switzerland", "France", "The Netherlands", "Germany")
     val zs = List("Bern", "Paris", "Berlin", "The Hague")
 
