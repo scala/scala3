@@ -54,6 +54,15 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   protected var table = new Array[Entry[A] | Null](computeCapacity)
 
   /**
+   * cached `table.length - 1`, used by `index` to map a hashcode to a bucket.
+   * Kept in sync wherever `table` is reassigned (`resize`, `clear`); avoids an
+   * array-field load + `.length` fetch on every probe and every re-bucketed
+   * entry in the resize loop (the table length is always a power of two, so this
+   * is the bucket mask).
+   */
+  private var mask = table.length - 1
+
+  /**
    * the limit at which we'll increase the size of the hash table
    */
   protected var threshold = computeThreshold
@@ -64,7 +73,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   protected def isEqual(x: A, y: A): Boolean = x.equals(y)
 
   /** Turn hashcode `x` into a table index */
-  protected def index(x: Int): Int = x & (table.length - 1)
+  protected def index(x: Int): Int = x & mask
 
   /**
    * remove a single entry from a linked list in a given bucket
@@ -118,6 +127,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     Stats.record(statsItem("resize"))
     val oldTable = table
     table = new Array[Entry[A] | Null](nextCapacity(oldTable.size))
+    mask = table.length - 1
     threshold = computeThreshold
 
     @tailrec
@@ -211,6 +221,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     if (count == 0) drainQueue()
     else {
       table = new Array[Entry[A] | Null](table.size)
+      mask = table.length - 1
       threshold = computeThreshold
       count = 0
 
