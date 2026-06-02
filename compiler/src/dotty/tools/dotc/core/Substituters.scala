@@ -165,6 +165,11 @@ object Substituters:
 
   final class SubstBindingMap[BT <: BindingType](val from: BT, val to: BT)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
+
+    inline def applyFromRoot(tp: Type): Type =
+      variance = 1
+      subst(tp, from, to, this)(using mapCtx)
+
     override def mapCapability(c: Capability, deep: Boolean = false) = c match
       case c @ ResultCap(binder) if binder eq from =>
         c.derivedResult(to.asInstanceOf[MethodicType])
