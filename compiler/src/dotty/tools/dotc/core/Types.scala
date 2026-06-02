@@ -3972,6 +3972,45 @@ object Types extends TypeUtils {
           x => substParams(paramInfos, getMap(x)),
           x => getMap(x).applyFromRoot(resType))
 
+    /** Rebuild this lambda as if mapped by an outer `BiTypeMap` whose binder
+     *  substitutions are `(outerFrom -> outerTo)`, fusing that outer map with the
+     *  fresh `this -> x` binder-rename into a SINGLE structural pass over the
+     *  ORIGINAL `paramInfos`/`resType` (rather than mapping them once for the
+     *  outer map in `mapOverLambda` and a second time for the rename here).
+     *
+     *  Returns `this` unchanged exactly when the two-pass outer walk would leave
+     *  the bodies `eq` (no outer substitution fired AND no unconditional `LazyRef`
+     *  reallocation — both tracked by `FusedRebindMap.outerFired`), matching
+     *  `derivedLambdaType`'s identity shortcut; otherwise returns the rebuilt
+     *  lambda. The result is identity-identical to the two-pass output.
+     */
+    def newLikeThisFused(outerFrom: Array[BindingType], outerTo: Array[BindingType])(using Context): This =
+      val n = outerFrom.length
+      val srcParamInfos = this.paramInfos
+      val srcResType = this.resType
+      val self = this
+      var sharedMap: Substituters.FusedRebindMap | Null = null
+      def getMap(x: This): Substituters.FusedRebindMap =
+        val m = sharedMap
+        if m != null then m
+        else
+          val from = new Array[BindingType](n + 1)
+          val to = new Array[BindingType](n + 1)
+          System.arraycopy(outerFrom, 0, from, 0, n)
+          System.arraycopy(outerTo, 0, to, 0, n)
+          from(n) = self
+          to(n) = x
+          val m1 = new Substituters.FusedRebindMap(from, to)
+          sharedMap = m1
+          m1
+      val rebuilt = companion(paramNames)(
+          x => { val m = getMap(x); srcParamInfos.mapConserve(pinfo => m(pinfo).asInstanceOf[PInfo]) },
+          x => getMap(x)(srcResType))
+      // If the outer map never touched the bodies, the only change was the
+      // identity rename `this -> x`; preserve `derivedLambdaType`'s sharing.
+      val m = sharedMap
+      if m != null && !m.outerFired then this else rebuilt
+
     protected def prefixString: String
     override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
@@ -4505,6 +4544,32 @@ object Types extends TypeUtils {
             val substMap = getMap(x)
             paramInfos.mapConserve(pinfo => substMap.applyFromRoot(pinfo).asInstanceOf[PInfo]),
           x => getMap(x).applyFromRoot(resType))
+
+    override def newLikeThisFused(outerFrom: Array[BindingType], outerTo: Array[BindingType])(using Context): This =
+      val n = outerFrom.length
+      val srcParamInfos = this.paramInfos
+      val srcResType = this.resType
+      val self = this
+      val variances = declaredVariances
+      var sharedMap: Substituters.FusedRebindMap | Null = null
+      def getMap(x: This): Substituters.FusedRebindMap =
+        val m = sharedMap
+        if m != null then m
+        else
+          val from = new Array[BindingType](n + 1)
+          val to = new Array[BindingType](n + 1)
+          System.arraycopy(outerFrom, 0, from, 0, n)
+          System.arraycopy(outerTo, 0, to, 0, n)
+          from(n) = self
+          to(n) = x
+          val m1 = new Substituters.FusedRebindMap(from, to)
+          sharedMap = m1
+          m1
+      val rebuilt = HKTypeLambda(paramNames, variances)(
+          x => { val m = getMap(x); srcParamInfos.mapConserve(pinfo => m(pinfo).asInstanceOf[PInfo]) },
+          x => getMap(x)(srcResType))
+      val m = sharedMap
+      if m != null && !m.outerFired then this else rebuilt
 
     def withVariances(variances: List[Variance])(using Context): This =
       newLikeThis(paramNames, variances, paramInfos, resType)
@@ -6369,7 +6434,18 @@ object Types extends TypeUtils {
       case nil =>
         nil
 
-    protected def mapOverLambda(tp: LambdaType) =
+    protected def mapOverLambda(tp: LambdaType): Type =
+      if Config.fuseMapOverLambdaRebind then
+        // Fuse the outer binder substitution with this lambda's `newLikeThis`
+        // rename into a single structural pass (see `newLikeThisFused`). Only the
+        // `SubstBinding(s)Map` family is fusable; all other maps fall through to
+        // the two-pass code below.
+        this match
+          case m: Substituters.SubstBindingMap[?] =>
+            return tp.newLikeThisFused(Array(m.from), Array(m.to))
+          case m: Substituters.SubstBindingsMap =>
+            return tp.newLikeThisFused(m.from, m.to)
+          case _ =>
       val restpe = tp.resultType
       val saved = variance
       variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance

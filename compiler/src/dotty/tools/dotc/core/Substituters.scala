@@ -216,6 +216,68 @@ object Substituters:
     def inverse = SubstBindingsMap(to, from)
   }
 
+  /** A parallel binder substitution used to fuse a `BiTypeMap` (the "outer" map)
+   *  with the `newLikeThis` binder-rename `tp -> x` of a lambda being rebuilt.
+   *
+   *  Entries `from(0 until from.length - 1) -> to(...)` are the outer map's binder
+   *  substitutions; the final entry `from.last -> to.last` is the rename. Applying
+   *  this in one structural pass over the lambda's ORIGINAL `paramInfos`/`resType`
+   *  is equal to applying the outer map and then the rename in two passes, because
+   *  the rename's old binder and the outer map's fresh target binders are distinct
+   *  and neither substitution reintroduces the other's source (so sequential equals
+   *  parallel). `outerFired` records whether any non-rename entry actually changed
+   *  something, which lets the caller preserve `derivedLambdaType`'s identity
+   *  shortcut: if the outer map was a no-op, the original lambda is returned.
+   */
+  final class FusedRebindMap(val from: Array[BindingType], val to: Array[BindingType])(using Context) extends DeepTypeMap {
+    private val lastIdx = from.length - 1
+    /** Set when the OUTER map (any non-rename entry) would change the body, OR
+     *  when a node is encountered that the outer two-pass walk reallocates
+     *  unconditionally (`LazyRef`), independent of the rename. This precisely
+     *  mirrors the condition under which the two-pass `mapOverLambda` rebuilds
+     *  (its `mapConserve`/`this(restpe)` returns `ne`): only then is the rename's
+     *  fresh binder observable, so only then must we return the rebuilt lambda. */
+    var outerFired: Boolean = false
+
+    // Mirrors `subst`'s uniform structural recursion (NOT SubstBindingsMap's
+    // `mapOver`, whose variance-aware `mapArgs` only walks args aligned with the
+    // tycon's type params), so the fused result is byte-identical to applying the
+    // outer SubstBinding(s)Map and then the rename, both of which use `subst`.
+    def apply(tp: Type): Type = tp match
+      case tp: BoundType =>
+        var i = 0
+        while i < from.length && (from(i) ne tp.binder) do i += 1
+        if i < from.length then
+          if i != lastIdx then outerFired = true
+          tp.copyBoundType(to(i).asInstanceOf[tp.BT])
+        else tp
+      case tp: NamedType =>
+        if tp.prefix `eq` NoPrefix then tp
+        else tp.derivedSelect(apply(tp.prefix))
+      case _: ThisType =>
+        tp
+      case tp: AppliedType =>
+        tp.map(apply(_))
+      case _: LazyRef =>
+        // `mapOver` always allocates a fresh LazyRef, so the two-pass outer walk
+        // would treat the body as changed even with no binder substitution.
+        outerFired = true
+        mapOver(tp)
+      case _ =>
+        mapOver(tp)
+
+    override def mapCapability(c: Capability, deep: Boolean = false) = c match
+      case c @ ResultCap(binder: MethodType) =>
+        var i = 0
+        while i < from.length && (from(i) ne binder) do i += 1
+        if i < from.length then
+          if i != lastIdx then outerFired = true
+          c.derivedResult(to(i).asInstanceOf[MethodType])
+        else c
+      case _ =>
+        super.mapCapability(c, deep)
+  }
+
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = subst1(tp, from, to, this)(using mapCtx)
   }
