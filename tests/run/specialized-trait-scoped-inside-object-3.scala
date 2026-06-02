@@ -5,8 +5,8 @@ object MySpecializedStuff:
         def bar = "Bar"
 
 object MySpecializedStuff2:
-    class Bar extends Foo[Char]
-    def foo(x: Foo[Char]) = x.bar
+    class Bar extends MySpecializedStuff.Foo[Char]
+    def foo(x: MySpecializedStuff.Foo[Char]) = x.bar
 
 @main def Test = 
     val x = new MySpecializedStuff2.Bar()
