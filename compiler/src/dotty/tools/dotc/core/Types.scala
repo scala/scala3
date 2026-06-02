@@ -3135,13 +3135,22 @@ object Types extends TypeUtils {
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
     }
 
+    private var myUnderlying: Type | Null = null
+    private var myUnderlyingPeriod: Period = Nowhere
+
     override def underlying(using Context): Type =
       if (ctx.erasedTypes) tref
+      else if myUnderlyingPeriod == ctx.period then myUnderlying.nn
       else cls.info match {
-        case cinfo: ClassInfo => cinfo.selfType
+        case cinfo: ClassInfo =>
+          val st = cinfo.selfType
+          myUnderlying = st
+          myUnderlyingPeriod = ctx.period
+          st
         case _: ErrorType | NoType
           if ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort => cls.info
-          // can happen in IDE if `cls` is stale
+          // Skip caching this IDE/best-effort fallback since the answer can shift mid-run;
+          // can happen in IDE if `cls` is stale.
       }
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
