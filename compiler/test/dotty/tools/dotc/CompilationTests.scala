@@ -236,26 +236,13 @@ class CompilationTests {
     ))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
 
-    // The regression test for i25722 has some atypical classpath requirements.
-    // The test consists of (a) one Java nullability annotation, (b) one Java user of the annotation, and (c) two Scala files,
-    // which must be compiled separately. In addition:
-    //   - the output from (a) must be on the classpath while compiling (b)
-    //   - the output from (b) must be on the classpath while compiling (c)
-    //   - the output from (a) _must not_ be on the classpath while compiling (c)
-    locally {
-      val i25722Group = TestGroup("tests/explicit-nulls/special/i25722")
-      val i25722Options = explicitNullsOptions.and("-Yforce-sbt-phases")
-      val outDir1 = Paths.get(defaultOutputDir.getAbsolutePath, i25722Group.name, "Nullable", "annotations", "Nullable/").toString
-      val outDir2 = Paths.get(defaultOutputDir.getAbsolutePath, i25722Group.name, "Foo", "lib", "Foo").toString
-      val tests = List(
-        withCoverage(compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/org/jetbrains/annotations/Nullable.java", i25722Options)(using i25722Group).keepOutput),
-        withCoverage(compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/lib/Foo.java", i25722Options.withClasspath(outDir1))(using i25722Group).keepOutput),
-        withCoverage(compileDir("tests/explicit-nulls/special/25722/scala", i25722Options.withClasspath(outDir2))(using i25722Group).keepOutput)
-      )
-      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos"))
-      tests.foreach(_.delete())
-    }
-
+    special(
+      explicitNullsOptions.and("-Yforce-sbt-phases"),
+      "tests/explicit-nulls/special/i25722",
+      o => compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/org/jetbrains/annotations/Nullable.java", o),
+      ("Nullable/annotations/Nullable/", o => compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/lib/Foo.java", o)),
+      ("Foo/lib/Foo", o => compileDir("tests/explicit-nulls/special/25722/scala", o))
+    )
     // locally {
     //   val tests = List(
     //     compileFile("tests/explicit-nulls/flexible-unpickle/pos/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
@@ -321,26 +308,13 @@ class CompilationTests {
     runWithCoverageOrFallback[PosTestWithCoverage](initPosTest, "Pos")
     val initCrashTest = withCoverage(compileFilesInDir("tests/init/crash", options.without("-Werror")))
     runWithCoverageOrFallback[PosTestWithCoverage](initCrashTest, "Pos")
-    // The regression test for i12128 has some atypical classpath requirements.
-    // The test consists of three files: (a) Reflect_1  (b) Macro_2  (c) Test_3
-    // which must be compiled separately. In addition:
-    //   - the output from (a) must be on the classpath while compiling (b)
-    //   - the output from (b) must be on the classpath while compiling (c)
-    //   - the output from (a) _must not_ be on the classpath while compiling (c)
-    locally {
-      val i12128Group = TestGroup("checkInit/i12128")
-      val i12128Options = options.without("-Werror")
-      val outDir1 = Paths.get(defaultOutputDir.getAbsolutePath, i12128Group.name, "Reflect_1", "i12128", "Reflect_1").toString
-      val outDir2 = Paths.get(defaultOutputDir.getAbsolutePath, i12128Group.name, "Macro_2", "i12128", "Macro_2").toString
-
-      val tests = List(
-        withCoverage(compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(using i12128Group).keepOutput),
-        withCoverage(compileFile("tests/init/special/i12128/Macro_2.scala", i12128Options.withClasspath(outDir1))(using i12128Group).keepOutput),
-        withCoverage(compileFile("tests/init/special/i12128/Test_3.scala", options.withClasspath(outDir2))(using i12128Group).keepOutput)
-      )
-      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos"))
-      tests.foreach(_.delete())
-    }
+    special(
+      options.without("-Werror"),
+      "checkInit/i12128",
+      o => compileFile("tests/init/special/i12128/Reflect_1.scala", o),
+      ("Reflect_1/i12128/Reflect_1", o => compileFile("tests/init/special/i12128/Macro_2.scala", o)),
+      ("Macro_2/i12128/Macro_2", o => compileFile("tests/init/special/i12128/Test_3.scala", o))
+    )
 
     /* This tests for errors in the program's TASTy trees.
      * The test consists of three files: (a) v1/A, (b) v1/B, and (c) v0/A. (a) and (b) are
@@ -423,6 +397,38 @@ class CompilationTests {
       parCompileDir("tests/run/generic")
     ).checkRuns()
 
+  }
+
+  /**
+   * Runs a "special" test for test cases that need files compiled such that file N is on the classpath for file N+1 but not for file N+2.
+   * For instance, with three files (a), (b), and (c):
+   * - the output from (a) must be on the classpath while compiling (b)
+   * - the output from (b) must be on the classpath while compiling (c)
+   * - the output from (a) _must not_ be on the classpath while compiling (c)
+   *
+   * @param options Test options to use
+   * @param groupName Group name to use
+   * @param first Function of the form o => compileFile("...some path...", o)
+   * @param rest Same as first, but also with the output dir for the previous item
+   */
+  private def special(options: TestFlags, groupName: String,
+                      first: TestFlags => TestGroup ?=> CompilationTest,
+                      rest: (String, TestFlags => TestGroup ?=> CompilationTest)*): Unit = {
+    var allTests = List[CompilationTest]()
+    def run(t: CompilationTest): Unit =
+      runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos")
+      allTests ::= t
+
+    val thisGroup = TestGroup(groupName)
+    val firstTest = withCoverage(first(options)(using thisGroup).keepOutput)
+    run(firstTest)
+
+    for (path, func) <- rest do
+      val outDir = Paths.get(defaultOutputDir.getAbsolutePath, groupName, path).toString
+      val test = withCoverage(func(options.withClasspath(outDir))(using thisGroup).keepOutput)
+      run(test)
+
+    allTests.foreach(_.delete())
   }
 }
 
