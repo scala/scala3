@@ -2317,10 +2317,27 @@ object SymDenotations {
 
     private[core] def computeMembersNamed(name: Name)(using Context): PreDenotation =
       Stats.record("computeMembersNamed")
-      val ownDenots = info.decls.denotsNamed(name)
-      if debugTrace then
-        println(s"$this.member($name), ownDenots = $ownDenots")
-      addInherited(name, ownDenots)
+      // Negative-name oracle: `memberNames(takeAllFilter)` is the cached set of
+      // all own+inherited non-constructor member names (a superset of every name
+      // computeMembersNamed could resolve). If `name` is provably absent from it
+      // we skip the own-scope probe AND the full recursive parent collect, which
+      // for ~57% of misses walks the whole hierarchy only to return NoDenotation.
+      // Constructor names are excluded by takeAllFilter (and resolved directly by
+      // addInherited), and package classes don't cache member names, so both
+      // bypass the oracle. The synthetic constructor-proxy `apply` is kept in
+      // sync by invalidateMemberCaches in NamerOps.addConstructorApplies.doAdd.
+      if Config.cacheMemberNames && !name.isConstructorName && !this.is(PackageClass)
+         && !memberNames(takeAllFilter).contains(name)
+      then
+        if Config.checkCacheMembersNamed then
+          val denots1 = addInherited(name, info.decls.denotsNamed(name))
+          assert(!denots1.exists, s"negative-name oracle inconsistency: computed $denots1, name = $name, owner = $this")
+        NoDenotation
+      else
+        val ownDenots = info.decls.denotsNamed(name)
+        if debugTrace then
+          println(s"$this.member($name), ownDenots = $ownDenots")
+        addInherited(name, ownDenots)
 
     private def addInherited(name: Name, ownDenots: PreDenotation,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
