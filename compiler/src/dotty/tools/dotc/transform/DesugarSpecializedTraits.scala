@@ -208,13 +208,18 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     /* Build class def tree */
     val newParamss = paramAccessorss.nestedMap(ref(_))
     val newParams1 = if (newParamss.length == 1) then newParamss ++ List(List()) else newParamss
+    
+    // Re-expand varargs parameters from Seq[T] to *T for passing into parent constructor
+    val newParams2 = newParams1.nestedMap( param =>
+      if param.symbol.info.hasAnnotation(defn.RepeatedAnnot) then ctx.typer.seqToRepeated(param) else param 
+    )
 
     val opTree = New(objectParent, objectParent.classSymbol.primaryConstructor.asTerm, Nil)
     val tspTree = traitSpParent.map(tsp => New(tsp, tsp.classSymbol.primaryConstructor.asTerm, Nil))
     val opSpTree = New(originalTraitSpecializedParent.typeConstructor)
-          .select(TermRef(originalTraitSpecializedParent.typeConstructor, specialization.traitSymbol.primaryConstructor.asTerm)) // TODO: Check for other constructors
+          .select(TermRef(originalTraitSpecializedParent.typeConstructor, specialization.traitSymbol.primaryConstructor.asTerm))
           .appliedToTypes(originalTraitSpecializedParent.argTypes)
-          .appliedToArgss(newParams1)
+          .appliedToArgss(newParams2)
 
     // TODO: Clean and robust
     ClassDefWithParents(
