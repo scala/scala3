@@ -6561,7 +6561,7 @@ object Types extends TypeUtils {
       val ctx = this.mapCtx // optimization for performance
       given Context = ctx
       tp match {
-        case tp: TermRef if tp.symbol.isImport =>
+        case tp: TermRef if (tp.name eq nme.IMPORT) && tp.symbol.isImport =>
           // see tests/pos/i19493.scala for examples requiring mapping over imports
           val ImportType(e) = tp.info: @unchecked
           val e1 = singleton(apply(e.tpe))
@@ -6570,11 +6570,18 @@ object Types extends TypeUtils {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
-            derivedSelect(tp, prefix1)
+            // see comment of TypeAccumulator's applyToPrefix
+            val saved = variance
+            variance = saved max 0
+            val prefix1 = this(tp.prefix)
+            variance = saved
+            if (prefix1 eq tp.prefix) then tp else derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
+          val tycon1 = this(tp.tycon)
+          val args1 = mapArgs(tp.args, tyconTypeParams(tp))
+          if (tycon1 eq tp.tycon) && (args1 eq tp.args) then tp
+          else derivedAppliedType(tp, tycon1, args1)
 
         case tp: LambdaType =>
           mapOverLambda(tp)
@@ -6981,7 +6988,8 @@ object Types extends TypeUtils {
       tp.derivedWildcardType(rangeToBounds(bounds))
 
     override protected def derivedMatchType(tp: MatchType, bound: Type, scrutinee: Type, cases: List[Type]): Type =
-      bound match
+      if (bound eq tp.bound) && (scrutinee eq tp.scrutinee) && (cases eq tp.cases) then tp
+      else bound match
         case Range(lo, hi) =>
           range(derivedMatchType(tp, lo, scrutinee, cases), derivedMatchType(tp, hi, scrutinee, cases))
         case _ =>
@@ -7011,7 +7019,8 @@ object Types extends TypeUtils {
     }
 
     override protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
-      restpe match {
+      if (formals eq tp.paramInfos) && (restpe eq tp.resType) then tp
+      else restpe match {
         case Range(lo, hi) =>
           range(derivedLambdaType(tp)(formals, lo), derivedLambdaType(tp)(formals, hi))
         case _ =>
