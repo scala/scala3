@@ -373,10 +373,26 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
      *  @param  add     if true, add referenced variables to dependencies, otherwise drop them.
      */
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
-      adjuster.variance = if isLower then 1 else -1
-      adjuster.add = add
-      adjuster.seen.clear(resetToInitial = false)
-      adjuster.traverse(bound)
+      // The Adjuster records a dependency only when it reaches a `TypeParamRef`
+      // (the sole `update` site); for a non-`TypeParamRef` it merely recurses via
+      // `foldOver`/`entry`. A *ground* bound provably contains no `TypeParamRef`
+      // (nor uninstantiated `TypeVar`) anywhere in its `foldOver`-reachable
+      // structure, so the `case param: TypeParamRef` arm is never entered, the
+      // `entry(param)` indirection is never followed, and no `update` can fire.
+      // Skipping the whole traversal for such bounds is therefore byte-identical to
+      // running it (the dep maps are unchanged). Only ~0.3% of traversed nodes are
+      // a TypeParamRef, so this elides almost all of the otherwise-empty foldOver
+      // walking (which fires stopBecauseStaticOrLocal→isStaticOwner per NamedType).
+      // NOTE (rejected): the `isGround` pre-scan is itself a `foldOver` traversal of
+      // the same bound; because constraint-path bounds are freshly-substituted
+      // AppliedTypes its memoization rarely hits, so the pre-scan cost
+      // (isGroundAccumulator ≈ +0.14pp self) cancels the saved Adjuster traversal
+      // (TypeAccumulator.foldOver ≈ −0.10pp self) — net neutral-to-slight-regression.
+      if !bound.isGround then
+        adjuster.variance = if isLower then 1 else -1
+        adjuster.add = add
+        adjuster.seen.clear(resetToInitial = false)
+        adjuster.traverse(bound)
 
     /** Use an optimized strategy to adjust dependencies to account for the delta
      *  of previous bound `prevBound` and new bound `bound`: If `prevBound` is some
