@@ -28,6 +28,18 @@ import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
 
 object SymDenotations {
+  /** Process-global epoch keying the per-denotation `isStatic`/`isStaticOwner`/
+   *  `seesOpaques` caches. Bumped whenever a static-relevant flag changes on ANY
+   *  denotation (see `invalidateStaticCaches`), which conservatively invalidates the
+   *  owner-chain-dependent `seesOpaques`/`isStatic`/`isStaticOwner` results for every
+   *  denotation at once. `info_=` deliberately does NOT bump it: those three predicates
+   *  read only FromStartFlags and the constructor-fixed owner chain, never `info`.
+   */
+  private var ownerChainCacheEpoch: Int = 1
+
+  private def bumpOwnerChainCacheEpoch(): Unit =
+    ownerChainCacheEpoch += 1
+    if ownerChainCacheEpoch == 0 then ownerChainCacheEpoch = 1
 
   /** A sym-denotation represents the contents of a definition
    *  during a period.
@@ -58,6 +70,40 @@ object SymDenotations {
     private var myAnnotations: List[Annotation] = Nil
     private var myParamss: List[List[Symbol]] = Nil
 
+    // RunId+epoch-keyed scalar caches for the static-property predicates
+    // (isStatic / isStaticOwner / seesOpaques). All three depend only on stable
+    // FromStartFlags (JavaStatic, Module/ModuleClass, Package/PackageClass, Opaque)
+    // and the constructor-fixed owner chain, so within one run their result is fixed
+    // unless a relevant flag changes. The shared `ownerChainCacheEpoch` is bumped on
+    // any flag mutation (invalidateStaticCaches), which is what lets the owner-chain
+    // walks of `isStatic`/`seesOpaques` trust their cached children.
+    private var myIsStaticRunId: RunId = NoRunId
+    private var myIsStaticEpoch: Int = 0
+    private var myIsStaticCached: Boolean = false
+
+    private var myStaticOwnerRunId: RunId = NoRunId
+    private var myStaticOwnerEpoch: Int = 0
+    private var myStaticOwnerCached: Boolean = false
+
+    private var mySeesOpaquesRunId: RunId = NoRunId
+    private var mySeesOpaquesEpoch: Int = 0
+    private var mySeesOpaquesCached: Boolean = false
+
+    /** Invalidate the per-denotation static-property caches and bump the shared
+     *  owner-chain epoch so that owner-chain-dependent results on OTHER denotations
+     *  are recomputed too. Called from the flag mutators and `markAbsent`.
+     */
+    private def invalidateStaticCaches(): Unit =
+      myIsStaticRunId = NoRunId
+      myStaticOwnerRunId = NoRunId
+      mySeesOpaquesRunId = NoRunId
+      bumpOwnerChainCacheEpoch()
+
+    /** Invalidate caches whose result depends on `isAbsent` / base-class data.
+     *  Overridden in ClassDenotation to reset the per-runId derivesFrom cache.
+     */
+    protected def invalidateAbsentSensitiveCaches(): Unit = ()
+
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
 
@@ -77,12 +123,13 @@ object SymDenotations {
     /** Update the flag set */
     final def flags_=(flags: FlagSet): Unit =
       myFlags = adaptFlags(flags)
+      invalidateStaticCaches()
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags; invalidateStaticCaches() }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags; invalidateStaticCaches() }
 
     /** Set applicable flags in {NoInits, PureInterface}
      *  @param  parentFlags  The flags that match the class or trait's parents
@@ -187,6 +234,14 @@ object SymDenotations {
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
       myInfo = tp
+      // Deliberately NO `invalidateStaticCaches()` here: `isStatic`/`isStaticOwner`/
+      // `seesOpaques` read only FromStartFlags (JavaStatic, Module/ModuleClass,
+      // Package/PackageClass, Opaque) and the constructor-fixed `maybeOwner` chain —
+      // never `info`. Installing a (completed) info cannot change any of those
+      // predicates, so it must not bump the shared `ownerChainCacheEpoch` (doing so
+      // thrashed the static caches process-wide and capped their hit rate ~41%).
+      // Relevant flag changes still go through `flags_=`/`setFlag`/`resetFlag`, which
+      // invalidate, and `markAbsent` is unchanged.
     }
 
     /** The name, except
@@ -609,6 +664,8 @@ object SymDenotations {
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+      invalidateStaticCaches()
+      invalidateAbsentSensitiveCaches()
     }
 
     /** Is symbol known to not exist?
@@ -707,8 +764,17 @@ object SymDenotations {
     def containsOpaques(using Context): Boolean = is(Opaque) && isClass
 
     def seesOpaques(using Context): Boolean =
-      containsOpaques ||
-      is(Module, butNot = Package) && owner.seesOpaques
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if mySeesOpaquesRunId == rid && mySeesOpaquesEpoch == epoch then mySeesOpaquesCached
+      else
+        val res =
+          containsOpaques ||
+          is(Module, butNot = Package) && owner.seesOpaques
+        mySeesOpaquesCached = res
+        mySeesOpaquesEpoch = epoch
+        mySeesOpaquesRunId = rid
+        res
 
     def isProvisional(using Context): Boolean =
       flagsUNSAFE.is(Provisional) // do not force the info to check the flag
@@ -751,12 +817,29 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(using Context): Boolean =
-      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
-        myFlags.is(JavaStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myIsStaticRunId == rid && myIsStaticEpoch == epoch then myIsStaticCached
+      else
+        val res =
+          (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
+            myFlags.is(JavaStatic)
+        myIsStaticCached = res
+        myIsStaticEpoch = epoch
+        myIsStaticRunId = rid
+        res
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(using Context): Boolean =
-      myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myStaticOwnerRunId == rid && myStaticOwnerEpoch == epoch then myStaticOwnerCached
+      else
+        val res = myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+        myStaticOwnerCached = res
+        myStaticOwnerEpoch = epoch
+        myStaticOwnerRunId = rid
+        res
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
