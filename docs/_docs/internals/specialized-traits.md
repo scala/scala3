@@ -222,7 +222,10 @@ Therefore we have the following issues:
 - `RecyclingBin[Any]`, `RecyclingBin[Object / AnyRef]` may not be passed to RecyclingBin[Paper] whereas normally they would.
 
 So we impose an additional restriction on contravariance with specialized parameters:
-- If `A[F1]` is to be interpreted as `A[F2]` under `A[-T: Specialized]`,we require that `SpecType(F1) = SpecType(F2)`. Given that we also require `F1 >:> F2`, and looking at the definition of SpecType this is roughly equivalent to saying F1 may not be any of the top classes `Any`, `AnyVal`, `AnyRef` unless F2 is also.
+- If `A[F1]` is to be interpreted as `A[F2]` under `A[-T: Specialized]`,we require that `SpecType(F1) = SpecType(F2)`. Given that we also require `F1 >:> F2`, and looking at the definition of SpecType this means:
+  - RecylcingBin[Any], RecylcingBin[AnyVal] may not be passed to RecylcingBin[Int] whereas normally they would
+  - RecylcingBin[Any], RecylcingBin[Object / AnyRef] may not be passed to RecylcingBin[Paper] whereas normally they would.
+  - RecylcingBin[Any] may be passed to RecylcingBin[Object], RecylcingBin[AnyRef], RecylcingBin[AnyVal] as these all erase to RecylcingBin
 
 Covariance has a similar problem:
  - In general it works fine because it corresponds to interpreting `A[F1]` as `A[F2]` where `F1 <:< F2`. Either`A[F1]` and `A[F2]` both erase to the same type (`A$sp$SpecType(F2)` or `A` if `F1` and `F2` are both top classes), or `A[F1]` erases to `A$sp$F1` and `A[F2]` erases to `A`. But `A$sp$F1` is a subtype of `A` by definition so the upcast will succeed (and upcasts are generally cheap compared to downcasts on the JVM so this is acceptable from a performance perspective).  
@@ -572,6 +575,8 @@ def foo(x: List[Double]): Unit = x match {
 There are two potential solutions to this:
 - make `$sp$` traits inherit `sealed` if the original specialized trait is, but this may make future sharing of specializations challenging if we want to extend the specialized traits from another file.
 - don't register the `$sp$` traits as children of the original specialized trait for exhaustivity checking. This is safe because these traits are synthetic and we have the invariant that `T <:< Foo[Int] <=> T <:< Foo$sp$Int`, so users cannot match on `Foo$sp$Int` or `Foo[Int] minus Foo$sp$Int` (the latter being empty)
+
+We opt for the latter.
 
 <!-- TODO :The dollar signs at the end should probably be correct -->
 
