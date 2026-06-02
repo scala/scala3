@@ -389,6 +389,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
             grouped.getOrElse(defn.EmptyPackageClass, List()) :::
             grouped.toList.filter((pk, stmts) => pk != defn.RootClass && pk != defn.EmptyPackageClass).map((pkg, stmts) => tpd.PackageDef(Ident(pkg.sourceModule.namedType), stmts))
           )
+        case t => t
       }
 
   private def collectReferencedSpecializations(stats: List[Tree], specializations: SpecializedTraitCache)(using Context): SpecializedTraitCache =
