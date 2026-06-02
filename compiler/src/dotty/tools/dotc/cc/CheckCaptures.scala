@@ -1395,6 +1395,16 @@ class CheckCaptures extends Recheck, SymTransformer:
             // Anonymous functions propagate their type to the enclosing environment
             // so it is not in general sound to interpolate their types.
             interpolateIfInferred(tree.tpt, sym)
+          else if sym.info.hasCapInResult then
+            // If the info has an `any` in its result, this would be propagated
+            // into the function type tp ensure monotonicity. We should do this
+            // only if the _body_ of the lambda has an `any` in its type, not
+            // if the `any` just came from the expected type. So if there is an `any`
+            // in the expected type we sharpen the declared type to be the body's type.
+            // Why not sharpen unconditionally? This would also overwrite `fresh`
+            // with the body's type, and thereby make it impossible to define lambdas
+            // that return fresh results.
+            tree.tpt.updNuType(tree.rhs.nuType)
           curEnv = saved
       }
 

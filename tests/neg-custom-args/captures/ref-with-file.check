@@ -4,12 +4,13 @@
    |Capability `f` outlives its scope: it leaks into outer capture set 's1 which is owned by method Test.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: File^) ->'s2 Ref[File^{f}]^²
-   |Required: (f: File^) => Ref[File^'s1]^'s3
+   |Found:    (f: File^) => Ref[File^{f}]^²
+   |Required: (f: File^) =>² Ref[File^'s1]^'s2
    |
-   |where:    => refers to a root capability created in method Test when checking argument to parameter op of method withFile
-   |          ^  refers to the root capability caps.any
-   |          ^² refers to a root capability classified as Unscoped in the type of value r
+   |where:    =>  refers to a root capability classified as Unscoped created in method Test when constructing instance (f: File^): Ref[File^{f}]^²
+   |          =>² refers to a root capability created in method Test when checking argument to parameter op of method withFile
+   |          ^   refers to the root capability caps.any
+   |          ^²  refers to a root capability classified as Unscoped in the type of value r
    |
 19 |    val r = Ref(f)
 20 |    r
@@ -18,11 +19,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:25:18 --------------------------------
 25 |  withFileAndRef: (f, r: Ref[String]^) => // error
    |                  ^
-   |Capability `any` outlives its scope: it leaks into outer capture set 's4 which is owned by method Test.
+   |Capability `any` outlives its scope: it leaks into outer capture set 's3 which is owned by method Test.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (f: File^{any}, r: Ref[String]^{any}) ->'s5 Ref[String]^{any}
-   |Required: (f: File^{any}, r: Ref[String]^{any}) => Ref[String]^'s4
+   |Found:    (f: File^{any}, r: Ref[String]^{any}) ->'s4 Ref[String]^{any}
+   |Required: (f: File^{any}, r: Ref[String]^{any}) => Ref[String]^'s3
    |
    |where:    =>  refers to a root capability created in method Test when checking argument to parameter op of method withFileAndRef
    |          any is the root capability caps.any

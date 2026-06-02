@@ -99,6 +99,15 @@
    |               ^^^^^^^^^^^^^
    |               Separation failure: value self4's type () => Ref[T]^ hides non-local this of class class Ref.
    |               The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/mutvars.scala:17:18 -----------------------------------------------------------
+17 |    def self5() = this // error
+   |                  ^^^^
+   |                  Separation failure: Illegal access to {Ref.this} which is hidden by the previous definition
+   |                  of value self4 with type () => Ref[T]^.
+   |                  This type hides capabilities  {Ref.this.rd, Ref.this}
+   |
+   |                  where:    => refers to a root capability in the type of value self4
+   |                            ^  refers to a root capability classified as Unscoped in the type of value self4
 -- Error: tests/neg-custom-args/captures/mutvars.scala:19:17 -----------------------------------------------------------
 19 |    def self6(): Ref[T]^ = this // error // error separation
    |                 ^^^^^^^

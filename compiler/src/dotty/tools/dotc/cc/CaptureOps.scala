@@ -528,9 +528,25 @@ extension (tp: Type)
     case _ =>
       CaptureSet.empty
 
+  /** Does this (methodic) type have `any` in the span capture set of its
+   *  result type?
+   */
+  def hasCapInResult(using Context): Boolean = tp match
+    case tp: PolyType => tp.resType.hasCapInResult
+    case tp: MethodicType =>
+      tp.resType.spanCaptureSet.elems.exists: elem =>
+        elem.core match
+          case _: LocalCap => true
+          case GlobalAny => true
+          case _ => false
+
+  /** The implied captures of a lambda that come from its result type.
+   *  This is the set that needs to be added to a lambda type to ensure
+   *  monotonicity of function types.
+   */
   def impliedLambdaCaptures(using Context): CaptureSet = tp match
     case tp: PolyType => tp.resType.impliedLambdaCaptures
-    case tp: MethodicType if ccConfig.newScheme =>
+    case tp: MethodicType =>
       val localCaps = tp.resType.embeddedLocalCaps
       val impliedClr = localCaps
         .map(_.classifier)
