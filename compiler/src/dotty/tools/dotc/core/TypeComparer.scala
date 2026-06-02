@@ -1815,6 +1815,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
   def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
+    // Identity short-circuit: if both argument lists are the same cons-cells,
+    // every per-element comparison would return true via recur's `tp1 eq tp2`
+    // fast path. AppliedType hash-consing makes this case common when
+    // tycons differ but argument lists are structurally identical.
+    if args1 eq args2 then return true
 
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
