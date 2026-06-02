@@ -22,11 +22,11 @@ abstract class methods:
 
 @main def Test =
     val expectedParamErasure = Map(
-        "bar1"  -> "A$sp$scala$Int",
-        "bar2"  -> "A$sp$java$lang$String",
-        "bar3"  -> "A$sp$Animal",
-        "bar4"  -> "A$sp$Animal",
-        "bar5"  -> "A$sp$Animal",
+        "bar1"  -> "A$$sp$scala$Int",
+        "bar2"  -> "A$$sp$java$lang$String",
+        "bar3"  -> "A$$sp$Animal",
+        "bar4"  -> "A$$sp$Animal",
+        "bar5"  -> "A$$sp$Animal",
         "bar6"  -> "A",
         "bar7"  -> "A",
         "bar8"  -> "A",

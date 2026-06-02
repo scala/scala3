@@ -13,7 +13,7 @@ class Bar2 extends Foo(10):
     val x = Bar()
     val traits = classOf[Bar].getInterfaces()
     
-    assert(traits.exists(cl => cl.getName() == "Foo$sp$scala$Int"))
+    assert(traits.exists(cl => cl.getName() == "Foo$$sp$scala$Int"))
 
     val traits2 = classOf[Bar2].getInterfaces()
-    assert(traits2.exists(cl => cl.getName() == "Foo$sp$scala$Int"))
+    assert(traits2.exists(cl => cl.getName() == "Foo$$sp$scala$Int"))

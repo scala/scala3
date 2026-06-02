@@ -10,4 +10,4 @@ class B extends A[Binturong]
 
 @main def Test =
     val traits = classOf[B].getInterfaces()    
-    assert(traits.exists(cl => cl.getName() == "A$sp$Animal"))
+    assert(traits.exists(cl => cl.getName() == "A$$sp$Animal"))
