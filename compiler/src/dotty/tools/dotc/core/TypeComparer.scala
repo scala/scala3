@@ -55,6 +55,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     errorNotes = Nil
     undoLog.clear()
     frozenConstraint = false
+    canNarrowGadtBoundsByMode = c.mode.is(Mode.GadtConstraintInference)
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -175,6 +176,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false
+  private var canNarrowGadtBoundsByMode = initctx.mode.is(Mode.GadtConstraintInference)
+
+  private inline def canNarrowGadtBounds: Boolean =
+    canNarrowGadtBoundsByMode && !frozenGadt && !frozenConstraint
+
+  private inline def canNarrowGadtBounds(approx: ApproxState): Boolean =
+    canNarrowGadtBounds && !approx.high && !approx.low
+
   private inline def inFrozenGadt[T](inline op: T): T =
     inFrozenGadtIf(true)(op)
 
@@ -1674,11 +1683,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if tp1 eq tp2 then true
     else
       val savedCstr = constraint
-      val savedGadt = ctx.gadt
+      val savedGadt: GadtConstraint | Null =
+        if canNarrowGadtBounds then ctx.gadt else null
       val savedLogSize = undoLog.size
       inline def restore() =
         state.constraint = savedCstr
-        ctx.gadtState.restore(savedGadt)
+        if savedGadt != null then
+          ctx.gadtState.restore(savedGadt)
         if undoLog.size != savedLogSize then
           //println(i"ROLLBACK $tp1 <:< $tp2")
           rollBack(savedLogSize)
@@ -2425,8 +2436,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Test that the resulting bounds are still satisfiable.
    */
   private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
-    val boundImprecise = approx.high || approx.low
-    ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
+    canNarrowGadtBounds(approx) && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
