@@ -63,7 +63,9 @@ class TreeTypeMap(
       case _ :: from1 => mapPrefix(from1, to.tail, tp)
     }
     def apply(tp: Type): Type = tp match {
-      case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
+      case tp: NamedType =>
+        val prefix1 = mapPrefix(oldOwners, newOwners, tp.prefix)
+        if prefix1 eq tp.prefix then tp else tp.derivedSelect(prefix1)
       case _ => mapOver(tp)
     }
   }
