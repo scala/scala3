@@ -667,7 +667,7 @@ object Capabilities:
             if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
             else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
-          classifiersValid == currentId
+          classifiersValid = currentId
       myClassifiers
     end transClassifiers
 
