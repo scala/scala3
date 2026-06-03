@@ -255,14 +255,8 @@ class SnippetCompilerTest {
   @Test
   def multilineInlineExpectationsAreChecked: Unit = {
     val snippet =
-      """|import language.experimental.captureChecking
-         |import caps.*
-         |
-         |trait File extends SharedCapability
-         |def withFile[T](path: String)(block: File^ => T): T = ???
-         |
-         |withFile[() => File^]("test.txt"): f =>
-         |  () => f  // error // error // error
+      """|def f(a: Int, b: Int, c: Int): Int = a + b + c
+         |f(undefinedA, undefinedB, undefinedC) // error // error // error
          |""".stripMargin
 
     assertSuccessfulCompilation(runTest(snippet, SnippetCompilerArg(SCFlags.Fail, verifyDiagnostics = true)))
