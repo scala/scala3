@@ -1682,40 +1682,48 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if tp2 eq NoType then false
     else if tp1 eq tp2 then true
     else
-      val savedCstr = constraint
       val savedGadt: GadtConstraint | Null =
         if canNarrowGadtBounds then ctx.gadt else null
-      val savedLogSize = undoLog.size
-      inline def restore() =
-        state.constraint = savedCstr
+      inline def restoreGadt(): Unit =
         if savedGadt != null then
           ctx.gadtState.restore(savedGadt)
-        if undoLog.size != savedLogSize then
-          //println(i"ROLLBACK $tp1 <:< $tp2")
-          rollBack(savedLogSize)
       val savedSuccessCount = successCount
-      try
-        val result = inNestedLevel:
-          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
-          if monitored then monitoredIsSubType else firstTry
-        if !result then restore()
-        else if recCount == 0 && needsGc then
-          state.gc()
-          needsGc = false
-        if (Stats.monitored) recordStatistics(result, savedSuccessCount)
-        result
-      catch
-        case ex: AssertionError =>
-          showGoal(tp1, tp2)
-          recCount -= 1
-          restore()
-          successCount = savedSuccessCount
-          throw ex
-        case ex: Exception =>
-          recCount -= 1
-          restore()
-          successCount = savedSuccessCount
-          throw ex
+      inline def runWithRestore(inline restore: Unit): Boolean =
+        try
+          val result = inNestedLevel:
+            if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+            if monitored then monitoredIsSubType else firstTry
+          if !result then restore
+          else if recCount == 0 && needsGc then
+            state.gc()
+            needsGc = false
+          if (Stats.monitored) recordStatistics(result, savedSuccessCount)
+          result
+        catch
+          case ex: AssertionError =>
+            showGoal(tp1, tp2)
+            recCount -= 1
+            restore
+            successCount = savedSuccessCount
+            throw ex
+          case ex: Exception =>
+            recCount -= 1
+            restore
+            successCount = savedSuccessCount
+            throw ex
+
+      if frozenConstraint && !caseLambda.exists && !isCaptureCheckingOrSetup then
+        runWithRestore:
+          restoreGadt()
+      else
+        val savedCstr = constraint
+        val savedLogSize = undoLog.size
+        runWithRestore:
+          state.constraint = savedCstr
+          restoreGadt()
+          if undoLog.size != savedLogSize then
+            //println(i"ROLLBACK $tp1 <:< $tp2")
+            rollBack(savedLogSize)
   }
 
   /** Undo all actions in undoLog following prevSize */
