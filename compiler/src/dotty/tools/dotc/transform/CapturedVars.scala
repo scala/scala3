@@ -123,6 +123,9 @@ object CapturedVars:
           if sym.enclosingMethod != enclMeth then
             report.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
             captured += sym
+      case _: Literal =>
+      case _: This =>
+      case TypeTree() =>
       case _ =>
         traverseChildren(tree)
 end CapturedVars
