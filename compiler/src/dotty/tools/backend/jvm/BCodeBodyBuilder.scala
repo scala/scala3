@@ -34,6 +34,8 @@ import dotty.tools.dotc.util.SrcPos
  *
  */
 trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
+  protected def backendUtils: BackendUtils
+
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -1871,6 +1873,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           bTypes.jliLambdaMetaFactoryMetafactoryHandle
 
       bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs*)
+      if isSerializable then
+        backendUtils.addSerializableIndyLambdaImplMethod(thisName, mnode, mnode.instructions.getLast.asInstanceOf[asm.tree.InvokeDynamicInsnNode], targetHandle)
 
       generatedType
     }

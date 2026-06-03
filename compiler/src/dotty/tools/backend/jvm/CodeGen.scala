@@ -33,6 +33,8 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
               val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
               val generatedClassHandler: GeneratedClassHandler) {
   private class Impl extends BCodeHelpers(bTypeLoader, bTypes), BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+    protected def backendUtils: BackendUtils = CodeGen.this.backendUtils
+
     def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
       callGraph.callsitePositions.get(m) = pos match {
         case p: Positioned => p.sourcePos
