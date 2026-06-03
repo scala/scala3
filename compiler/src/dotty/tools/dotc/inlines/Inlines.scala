@@ -3,6 +3,7 @@ package dotc
 package inlines
 
 import ast.*, core.*
+import core.Annotations.Annotation
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.{tpnme, nme}
 import NameOps.*
@@ -38,21 +39,31 @@ object Inlines:
   /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(using Context): Boolean =
-    sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
+    bodyAnnotation(sym) != null
+
+  private def bodyAnnotation(sym: SymDenotation)(using Context): Annotation | Null =
+    if !sym.isInlineMethod then null
+    else
+      def loop(annots: List[Annotation]): Annotation | Null = annots match
+        case annot :: rest =>
+          if annot.matches(defn.BodyAnnot) then annot else loop(rest)
+        case Nil => null
+      loop(sym.annotations)
 
   /** The body to inline for method `sym`, or `EmptyTree` if none exists.
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(using Context): Tree =
-    if hasBodyToInline(sym) then
-      sym.getAnnotation(defn.BodyAnnot).get.tree
+    bodyAnnotation(sym) match
+      case annot: Annotation =>
+        annot.tree
         .tap: body =>
           for annot <- sym.getAnnotation(defn.NowarnAnnot) do
             val argPos = annot.argument(0).getOrElse(annot.tree).sourcePos
             val conf = annot.argumentConstantString(0).getOrElse("")
             ctx.run.nn.suppressions.registerNowarn(annot.tree.sourcePos, body.span)(conf, argPos)
-    else
-      EmptyTree
+      case null =>
+        EmptyTree
 
   /** Are we in an inline method body? */
   def inInlineMethod(using Context): Boolean =
