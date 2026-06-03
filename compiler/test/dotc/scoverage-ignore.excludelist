@@ -21,5 +21,7 @@ lazyVals_c3.0.0.scala
 lazyVals_c3.1.0.scala
 mt-scrutinee-widen3.scala
 spurious-overload.scala
+sub-cases-exhaustivity.scala
+sub-cases-reachability.scala
 tailrec.scala
 traitParams.scala
