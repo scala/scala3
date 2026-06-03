@@ -2,16 +2,13 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
 import java.util.concurrent.ConcurrentHashMap
 import scala.tools.asm
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.OptimizerWarning
-import dotty.tools.dotc.core.Symbols.ClassSymbol
 
 import scala.collection.SortedMap
 import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.{ClassNode, ModuleNode}
 
 
 /**
@@ -592,7 +589,7 @@ case class NestedInfo(enclosingClass: ClassBType,
  * @param innerName The simple name of the inner class, may be null.
  * @param flags     The flags for this class in the InnerClass entry.
  */
-case class InnerClassEntry(name: String, outerName: String, innerName: String, flags: Int)
+case class InnerClassEntry(name: String, outerName: String | Null, innerName: String | Null, flags: Int)
 
 
 /**
