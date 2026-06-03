@@ -35,8 +35,7 @@ object File {
  *
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
-  override val creationCodec: io.Codec = constructorCodec
+class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) {
   override def toAbsolute: File = if (isAbsolute) this else super.toAbsolute.toFile
   override def toDirectory: Directory = new Directory(jpath)
   override def toFile: File = this
@@ -64,7 +63,7 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
   /** Wraps a BufferedWriter around the result of writer().
    */
   def bufferedWriter(): BufferedWriter = bufferedWriter(append = false)
-  def bufferedWriter(append: Boolean): BufferedWriter = bufferedWriter(append, creationCodec)
+  def bufferedWriter(append: Boolean): BufferedWriter = bufferedWriter(append, constructorCodec)
   def bufferedWriter(append: Boolean, codec: Codec): BufferedWriter =
     new BufferedWriter(writer(append, codec))
 
@@ -89,10 +88,6 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
     try strings.foreach(out.println(_))
     finally out.close()
   }
-
-  def safeSlurp(): Option[String] =
-    try Some(slurp())
-    catch { case _: IOException => None }
 
   /** Reflection since we're into the java 6+ API.
    */

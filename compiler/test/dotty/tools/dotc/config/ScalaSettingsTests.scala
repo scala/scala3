@@ -97,23 +97,9 @@ class ScalaSettingsTests:
       s"${oldSetting.name}$value" -> newSetting
 
     val settings = ScalaSettings
-    List(
-      createTestCase(settings.YtermConflict         , settings.XtermConflict, ":package"),
-      createTestCase(settings.YnoGenericSig         , settings.XnoGenericSig),
-      createTestCase(settings.Ydumpclasses          , settings.Xdumpclasses,":./"),
-      createTestCase(settings.YjarCompressionLevel  , settings.XjarCompressionLevel,":0"),
-      createTestCase(settings.YkindProjector        , settings.XkindProjector, ":underscores"),
-      createTestCase(settings.YdropComments         , settings.XdropComments),
-      createTestCase(settings.YcookComments         , settings.XcookComments),
-      createTestCase(settings.YreadComments         , settings.XreadComments),
-      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
-      // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
-      // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
-      // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      createTestCase(settings.YcheckInit            , settings.WsafeInit),
-      // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
+    List[(String, Setting[?])](
+      // Fill this with newly-deprecated options, optionally with a value:
+      createTestCase(settings.YkindProjector         , settings.XkindProjector, ":underscores"),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
@@ -126,60 +112,21 @@ class ScalaSettingsTests:
       s"${oldSetting.name}:$value" -> newSetting
 
     val settings = ScalaSettings
-    List(
-      createTestCase(settings.YtermConflict         , settings.XtermConflict),
-      createTestCase(settings.YnoGenericSig         , settings.XnoGenericSig),
-      createTestCase(settings.Ydumpclasses          , settings.Xdumpclasses, ""),
-      createTestCase(settings.YjarCompressionLevel  , settings.XjarCompressionLevel),
-      createTestCase(settings.YkindProjector        , settings.XkindProjector),
-      createTestCase(settings.YdropComments         , settings.XdropComments),
-      createTestCase(settings.YcookComments         , settings.XcookComments),
-      createTestCase(settings.YreadComments         , settings.XreadComments),
-      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
-      // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
-      // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput),
-      // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      createTestCase(settings.YcheckInit            , settings.WsafeInit),
-      createTestCase(settings.Xlint                 , settings.Wshadow),
+    List[(String, Setting[?])](
+      // Fill this with newly-deprecated options:
+      createTestCase(settings.YkindProjector         , settings.XkindProjector),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
       val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
       assert(newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was forwarded to ${newSetting.name}, when it should be ignored because first option was erroreus")
 
-  // -Xlint was handled in a special way when it was added, making in hard to deprecate it.
-  // For now on we will retain old behavior, in next version we will emit deprecation warning.
-  // It is also scheduled for removal in future versions.
-  @Test def `Make Xlint to ignore invalid args`: Unit =
-    val settings = ScalaSettings
-    val args = List("-Xlint:-unused,_")
-    val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-    val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
-    assert(conf.warnings.contains("Option -Xlint is deprecated: Use -Wshadow to enable shadowing lints. Scheduled for removal."))
-    assert(conf.errors.isEmpty)
-
   @nowarn("cat=deprecation")
   @Test def `Aliases of deprecated options are correctly mapped to their replacements`: Unit =
     val settings = ScalaSettings
-    val tests = List(
-      settings.YtermConflict          -> settings.XtermConflict :* "package",
-      settings.YnoGenericSig          -> settings.XnoGenericSig,
-      settings.Ydumpclasses           -> settings.Xdumpclasses :* "./",
-      settings.YjarCompressionLevel   -> settings.XjarCompressionLevel :* "0",
-      settings.YkindProjector         -> settings.XkindProjector :* "underscores",
-      settings.YdropComments          -> settings.XdropComments,
-      settings.YcookComments          -> settings.XcookComments,
-      settings.YreadComments          -> settings.XreadComments,
-      settings.YnoDecodeStacktraces   -> settings.XnoEnrichErrorMessages,
-      settings.YnoEnrichErrorMessages -> settings.XnoEnrichErrorMessages,
-      settings.YdebugMacros           -> settings.XdebugMacros,
-      settings.YcheckInit             -> settings.WsafeInit,
-      // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
-      // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
-      // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
+    val tests = List[Setting[?] *: Setting[?] *: Tuple](
+      // Fill this with newly-deprecated options, optionally with a value:
+      settings.YkindProjector          -> settings.XkindProjector :* ":underscores",
     )
     for
       test <- tests

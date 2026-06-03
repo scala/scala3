@@ -42,6 +42,7 @@ class CodeSnippets:
       div(cls := "snippet-showhide-container")(
         label(cls := "snippet-showhide-button")(
           input("type" := "checkbox", cls := "snippet-showhide").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
+          span(cls := "snippet-showhide-text"),
         ),
       )
     }
@@ -119,9 +120,17 @@ class CodeSnippets:
           }))
         )
 
-        def handler: Event => Unit = (e: Event) => {
+        // We do NOT remove the stylesheets Scastie injects (its <link> and
+        // adoptedStyleSheets) on close. Removing them caused Scastie's second
+        // initialization to render an empty editor with displaced line
+        // numbers. The leak from those stylesheets is neutralized via
+        // !important on scaladoc's own .hljs-* rules, and Scastie's other
+        // selectors are already scoped under `.scastie` so they don't escape
+        // the popup. See scala/scala3#25414.
+        lazy val handler: Event => Unit = (e: Event) => {
           if js.isUndefined(e.asInstanceOf[js.Dynamic].fromPopup) then {
             document.body.removeChild(popup)
+            document.body.removeEventListener("click", handler)
           }
         }
 

@@ -14,10 +14,7 @@ import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.io.AbstractFile;
 import dotty.tools.io.PlainFile;
 import dotty.tools.io.Path;
-import dotty.tools.io.Streamable;
 import scala.collection.mutable.ListBuffer;
-import scala.jdk.javaapi.CollectionConverters;
-import scala.io.Codec;
 import xsbti.Problem;
 import xsbti.*;
 import xsbti.compile.Output;
@@ -181,13 +178,7 @@ public class CompilerBridgeDriver extends Driver {
     try {
       dotty.tools.io.VirtualFile file = new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id());
       try (java.io.OutputStream output = file.output(); java.io.InputStream input = virtualFile.input()) {
-        Streamable.Bytes bytes = new Streamable.Bytes() {
-          @Override
-          public InputStream inputStream() {
-            return input;
-          }
-        };
-        output.write(bytes.toByteArray());
+        input.transferTo(output);
       }
       return file;
     } catch (IOException e) {

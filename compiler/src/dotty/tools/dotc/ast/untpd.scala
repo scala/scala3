@@ -83,6 +83,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       assert(args.length == erasedParams.length)
 
       def hasErasedParams = erasedParams.contains(true)
+      override def toString = s"FunctionWithMods($args, $body, $mods, $erasedParams)"
     }
 
   /** A polymorphic function type */

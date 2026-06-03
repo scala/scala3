@@ -358,10 +358,9 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
 
               // there might be a getter created after erasure by the mixin phase,
               // and if so we must use the information that the mixin phase stored for it.
-              // However, we can't do this if the result is a primitive, since field generic signatures can only be reference types (JVMS §4.7.9.1)
               val mixinGetter = atPhase(mixinPhase.next) { sym.getter }
               if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
-                case Some(ExprType(genericInfo)) if !genericInfo.isPrimitiveValueType => return genericInfo // since we're looking for the getter, we get an ExprType
+                case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
                 case _ => ()
 
           owner.denot.thisType.memberInfo(sym)

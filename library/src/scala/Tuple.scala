@@ -106,7 +106,7 @@ sealed trait Tuple extends Product {
    *
    *  @tparam F the type constructor applied to each element type
    */
-  inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
+  inline def map[F[_]](f: [t] -> t -> F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting

@@ -46,8 +46,7 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
   private type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  @annotation.nowarn("cat=deprecation")
-  def sendToDisk(clazz: GeneratedClass): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
+  def sendToDisk(clazz: GeneratedClass): Unit = {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =
@@ -59,9 +58,6 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
         setInnerClasses(classNode)
         serializeClass(classNode)
       catch
-        case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.contains("too large!") =>
-          report.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
-          null
         case ex: Exception =>
           if ctx.debug then ex.printStackTrace()
           report.error(em"Error while emitting $internalName\n${ex.getMessage}")

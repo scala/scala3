@@ -49,7 +49,7 @@ object GenericSignatures {
     else mayNeedSignature(info)
   }
 
-  private def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder = {
+  private def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder | Null = {
     // This works as long as mangled names are always valid Java identifiers (see git history of this method).
     def sanitizeName(name: Name): String = name.mangledString
 
@@ -194,7 +194,7 @@ object GenericSignatures {
         jsig(finalType)
     }
 
-    def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+    def classSig(sym: ClassSymbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
       def argSig(tp: Type): Unit =
         tp.dealias match {
           case bounds: TypeBounds =>
@@ -233,11 +233,10 @@ object GenericSignatures {
               // Hence the widenNullaryMethod.
         }
 
-      assert(sym.isClass)
-      pre.widen match {
+      pre.widenDealias match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
-        case RefOrAppliedType(preSym, prePre, preArgs) if preArgs.nonEmpty =>
+        case RefOrAppliedType(preSym: ClassSymbol, prePre, preArgs) if preArgs.nonEmpty =>
           classSig(preSym, prePre, preArgs)
           builder.replace(builder.length() - 1, builder.length(), ".") // instead of ending the outer name with ';', we add an inner name
           builder.append(sanitizeName(sym.targetName))
@@ -310,7 +309,7 @@ object GenericSignatures {
 
         case RefOrAppliedType(sym, pre, args) =>
           if isTypeParameterInSig(sym, sym0) then
-            assert(!sym.isAliasType || sym.info.isLambdaSub, "Unexpected alias type: " + sym)
+            assert(!sym.isAliasType || sym.info.isLambdaSub, s"Unexpected alias type: $sym")
             typeParamSig(sym.targetName.lastPart)
           else defn.specialErasure.get(sym) match
             case Some(special) =>
@@ -329,11 +328,16 @@ object GenericSignatures {
                 // replace the next 2 lines with: if (vcBoxing == ValueClassBoxing.Box || sym == defn.UnitClass) jsig(defn.boxedClass(sym).typeRef)
                 if (vcBoxing == ValueClassBoxing.Box) jsig(defn.ObjectType)
                 else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
+                else if (builder.length == 0 && sym0.isField) () // field generic signatures can only be reference types (JVMS §4.7.9.1)
                 else builder.append(defn.typeTag(sym.info))
-              else if (sym.isDerivedValueClass) {
-                if (vcBoxing == ValueClassBoxing.Unbox) {
-                  val underlying = ValueClasses.underlyingOfValueClass(sym.asClass)
-                  val seenUnderlying = underlying.asSeenFrom(tp, sym)
+              else if defn.isSyntheticFunctionClass(sym) then
+                defn.functionTypeErasure(sym).classSymbol match
+                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Nil else args)
+                  case NoSymbol => throw new AssertionError(s"No class symbol for erased function type $sym")
+              else sym match
+                case classSym: ClassSymbol if classSym.isDerivedValueClass && vcBoxing == ValueClassBoxing.Unbox =>
+                  val underlying = ValueClasses.underlyingOfValueClass(classSym)
+                  val seenUnderlying = underlying.asSeenFrom(tp, classSym)
                   // For binary compatibility with Scala 2, as documented in TypeErasure,
                   // we need to special cases for polymorphic value classes:
                   // `Foo[X]` erases to `X` except that primitives use their boxed type,
@@ -345,16 +349,8 @@ object GenericSignatures {
                     else if underlying.derivesFrom(defn.ArrayClass) then erasure(underlying)
                     else seenUnderlying
                   jsig(compatibleUnderlying, toplevel = toplevel)
-                } else classSig(sym, pre, args)
-              }
-              else if (defn.isSyntheticFunctionClass(sym)) {
-                val erasedSym = defn.functionTypeErasure(sym).typeSymbol
-                classSig(erasedSym, pre, if (erasedSym.typeParams.isEmpty) Nil else args)
-              }
-              else if sym.isClass then
-                classSig(sym, pre, args)
-              else
-                jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
+                case classSym: ClassSymbol => classSig(classSym, pre, args)
+                case _ => jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
 
         case ExprType(restpe) =>
           if toplevel then
@@ -437,7 +433,10 @@ object GenericSignatures {
           builder.append('^')
           jsig(e, toplevel = true)
         case _ => ()
-    builder
+
+    if builder.length == 0
+    then null
+    else builder
   }
 
   /* Drop redundant types (ones which are implemented by some other parent) from the immediate parents.

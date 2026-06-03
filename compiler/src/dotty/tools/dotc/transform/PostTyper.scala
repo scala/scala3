@@ -96,6 +96,19 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
 
+  override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+    if Feature.ccEnabledSomewhere then
+      SafeRefs.init()(using ctx.withPhase(thisPhase))
+    super.runOn(units)
+
+  override def run(using Context): Unit =
+    val unit = ctx.compilationUnit
+    if Feature.safeEnabled then
+      // Check safe refs before PostTyper's run since that way Inline calls have not
+      // yet been replaced with InlineCallTraces.
+      SafeRefs.checker.traverse(unit.tpdTree)
+    super.run
+
   /**
    * Used to check that `changesParents` is called after `initContext`.
    *
