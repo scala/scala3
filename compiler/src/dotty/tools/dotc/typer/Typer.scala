@@ -4084,6 +4084,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
     var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.empty
+    var needsFinalize = false
+    def addStat(stat: Tree)(using Context): Unit =
+      stat match {
+        case stat: TypeDef if stat.symbol.is(Module) =>
+          needsFinalize = needsFinalize
+            || stat.hasAttachment(AttachedDeriver)
+            || (enumContexts(stat.symbol.linkedClass) != null)
+          buf += stat
+        case _ =>
+          buf += stat
+      }
     val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
     @tailrec def traverse(stats: List[untpd.Tree])(using Context): (List[Tree], Context) = stats match {
@@ -4101,16 +4112,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             typed(mdef)(using newCtx) match {
               case mdef1: DefDef
               if mdef1.symbol.is(Inline, butNot = Deferred) && !Inlines.bodyToInline(mdef1.symbol).isEmpty =>
-                buf ++= inlineExpansion(mdef1)
+                inlineExpansion(mdef1).foreach(addStat)
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
               case mdef1: TypeDef if mdef1.symbol.is(Enum, butNot = Case) =>
                 enumContexts = enumContexts.updated(mdef1.symbol, ctx)
+                needsFinalize = true
                 buf += mdef1
               case EmptyTree =>
                 // clashing synthetic case methods are converted to empty trees, drop them here
+              case mdef1: TypeDef if mdef1.symbol.is(Module) =>
+                addStat(mdef1)
               case mdef1 =>
-                buf += mdef1
+                addStat(mdef1)
             }
             traverse(rest)
         }
@@ -4118,7 +4132,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         traverse(stats ::: rest)
       case (stat: untpd.Export) :: rest =>
         buf +=  typed(stat)
-        buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
+        stat.attachmentOrElse(ExportForwarders, Nil).foreach(addStat)
           // no attachment can happen in case of cyclic references
         traverse(rest)
       case (stat: untpd.ExtMethods) :: rest =>
@@ -4128,7 +4142,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
         if !Linter.warnOnInterestingResultInStatement(stat1) then
           checkStatementPurity(stat1)(stat, exprOwner, isUnitExpr = false)
-        buf += stat1
+        addStat(stat1)
         traverse(rest)(using stat1.nullableContext)
       case nil =>
         (buf.toList, ctx)
@@ -4146,7 +4160,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         stat
     }
     val (stats0, finalCtx) = traverse(stats)
-    val stats1 = stats0.mapConserve(finalize)
+    val stats1 = if needsFinalize then stats0.mapConserve(finalize) else stats0
     if ctx.owner == exprOwner then checkNoTargetNameConflict(stats1)
     (stats1, finalCtx)
   }
