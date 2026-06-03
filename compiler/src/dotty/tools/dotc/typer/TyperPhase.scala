@@ -77,10 +77,13 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
           newCtx
 
     val unitContexts0 = runSubPhase(Indexing) {
-      for
-        unitContext <- unitContexts
-        if enterSyms(using unitContext)
-      yield unitContext
+      val builder = List.newBuilder[Context]
+      var remainingContexts = unitContexts
+      while remainingContexts.nonEmpty do
+        val unitContext = remainingContexts.head
+        remainingContexts = remainingContexts.tail
+        if enterSyms(using unitContext) then builder += unitContext
+      builder.result()
     }
 
     ctx.base.parserPhase match {
@@ -94,19 +97,25 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     }
 
     val unitContexts1 = runSubPhase(Typechecking) {
-      for
-        unitContext <- unitContexts0
-        if typeCheck(using unitContext)
-      yield unitContext
+      val builder = List.newBuilder[Context]
+      var remainingContexts = unitContexts0
+      while remainingContexts.nonEmpty do
+        val unitContext = remainingContexts.head
+        remainingContexts = remainingContexts.tail
+        if typeCheck(using unitContext) then builder += unitContext
+      builder.result()
     }
 
     record("total trees after typer", ast.Trees.ntrees)
 
     val unitContexts2 = runSubPhase(CheckingJava) {
-      for
-        unitContext <- unitContexts1
-        if javaCheck(using unitContext) // after typechecking to avoid cycles
-      yield unitContext
+      val builder = List.newBuilder[Context]
+      var remainingContexts = unitContexts1
+      while remainingContexts.nonEmpty do
+        val unitContext = remainingContexts.head
+        remainingContexts = remainingContexts.tail
+        if javaCheck(using unitContext) then builder += unitContext // after typechecking to avoid cycles
+      builder.result()
     }
     val newUnits = unitContexts2.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)
