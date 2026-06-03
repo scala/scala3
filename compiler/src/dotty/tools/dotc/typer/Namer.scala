@@ -1264,7 +1264,9 @@ class Namer { typer: Typer =>
                it suffices to check if symbol is the same class. */
             cls == id.symbol
           case _ => false
-        if !sym.isAccessibleFrom(pathType) then
+        if mbr.info.isInstanceOf[ErrorType] then
+          No("already has an error")
+        else if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(PhantomSymbol) || sym.isAllOf(JavaModule) then
           Skip
