@@ -184,9 +184,9 @@ class TreeUnpickler(reader: TastyReader,
     def skipParentTree(): Unit = skipParentTree(readByte())
     def skipTree(tag: Int): Unit = {
       if (tag >= firstLengthTreeTag) goto(readEnd())
-      else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
+      else if (tag >= firstNatASTTreeTag) { skipNat(); skipTree() }
       else if (tag >= firstASTTreeTag) skipTree()
-      else if (tag >= firstNatTreeTag) readLongInt()
+      else if (tag >= firstNatTreeTag) skipLongInt()
     }
     def skipTree(): Unit = skipTree(readByte())
 
@@ -208,7 +208,7 @@ class TreeUnpickler(reader: TastyReader,
       tag match {
         case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | TEMPLATE =>
           val end = readEnd()
-          for (i <- 0 until numRefs(tag)) readNat()
+          for (i <- 0 until numRefs(tag)) skipNat()
           if (tag == TEMPLATE) {
             // Read all member definitions now, whereas non-members are children of
             // template's owner tree.
@@ -229,7 +229,7 @@ class TreeUnpickler(reader: TastyReader,
               goto(end)
             }
             else {
-              for (i <- 0 until nrefs) readNat()
+              for (i <- 0 until nrefs) skipNat()
               if (tag == BIND)
                 // a Bind is never the owner of anything, so we set `end = start`
                 buf += new OwnerTree(start, tag, fork, end = start)
@@ -237,9 +237,9 @@ class TreeUnpickler(reader: TastyReader,
               scanTrees(buf, end)
             }
           }
-          else if (tag >= firstNatASTTreeTag) { readNat(); scanTree(buf) }
+          else if (tag >= firstNatASTTreeTag) { skipNat(); scanTree(buf) }
           else if (tag >= firstASTTreeTag) scanTree(buf)
-          else if (tag >= firstNatTreeTag) readLongInt()
+          else if (tag >= firstNatTreeTag) skipLongInt()
       }
     }
 

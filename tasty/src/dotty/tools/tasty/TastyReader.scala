@@ -93,6 +93,34 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     l.toInt
   }
 
+  /** Skip a 31-bit natural (nonnegative) integer number in big endian format. */
+  def skipNat(): Unit = {
+    val ogBp = bp
+    var b = 0
+    while ({
+      b = bytes(bp)
+      bp += 1
+      (b & 0x80) == 0
+    }) ()
+    val byteCount = bp - ogBp
+    if (byteCount > 9) {
+      throw new UnpickleException(s"Expected a long nat, but read too many bytes ($byteCount)")
+    }
+    if (byteCount >= 5) {
+      // Preserve readNat's Int range check without charging the common short encodings.
+      var x = 0L
+      var i = ogBp
+      while (i < bp) {
+        b = bytes(i)
+        x = (x << 7) | (b & 0x7f)
+        i += 1
+      }
+      if (x > Int.MaxValue) {
+        throw new UnpickleException(s"Expected a 31-bit nat, got: $x")
+      }
+    }
+  }
+
   /** Read a 32-bit integer number in 2's complement big endian format, base 128, each digit being a byte.
    *  All bytes except the last one have bit 0x80 unset.
    */
@@ -147,6 +175,20 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     }
     assert(x >= 0, "We read <= 9 groups of 7 bits so x must be nonnegative here")
     x
+  }
+
+  /** Skip a 64-bit long integer number in 2's complement big endian format. */
+  def skipLongInt(): Unit = {
+    val ogBp = bp
+    var b = 0
+    while ({
+      b = bytes(bp)
+      bp += 1
+      (b & 0x80) == 0
+    }) ()
+    if (bp - ogBp > 10) {
+      throw new UnpickleException(s"Expected a long int, but read too many bytes (${bp - ogBp})")
+    }
   }
 
   /** Read a 64-bit long integer number in 2's complement big endian format, base 128, each digit being a byte.
