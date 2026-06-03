@@ -64,8 +64,8 @@ def attack2 =
     f1
 
 def attack3 =
-  val id: (x: File^) -> File^{fresh} = x => x // was error, now OK
-  val id2: File^ -> File^{fresh} = x => x // now also OK
+  val id: (x: File^) -> File^{fresh} = x => x // error
+  val id2: File^ -> File^{fresh} = x => x // error
 
   val leaked = usingFile[File^{id*}]: f =>
     val f1: File^{id*} = id(f)   // error
