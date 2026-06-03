@@ -208,7 +208,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val acquiredStack = if needStackStash then stack.acquireFullStack() else null
       val stashLocals =
         if acquiredStack == null then null
-        else acquiredStack.uncheckedNN.filter(_ != UNIT).map(btpe => locals.makeTempLocal(btpe))
+        else acquiredStack.filter(_ != UNIT).map(btpe => locals.makeTempLocal(btpe))
 
       val hasFinally   = finalizer != tpd.EmptyTree
 
@@ -235,9 +235,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        */
 
       if stashLocals != null then
-        val stashLocalsNN = stashLocals.uncheckedNN // why is this necessary?
-        for i <- (stashLocalsNN.length - 1) to 0 by -1 do
-          val local = stashLocalsNN(i)
+        for i <- (stashLocals.length - 1) to 0 by -1 do
+          val local = stashLocals(i)
           bc.store(local.idx, local.tk)
 
       /* ------ (1) try-block, protected by:
@@ -393,8 +392,6 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        */
 
       if stashLocals != null then
-        val stashLocalsNN = stashLocals.uncheckedNN // why is this necessary?
-
         val resultLoc =
           if kind == UNIT then null
           else if tmp != null then locals(tmp) // reuse the same local
@@ -402,8 +399,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         if resultLoc != null then
           bc.store(resultLoc.idx, kind)
 
-        for i <- 0 until stashLocalsNN.size do
-          val local = stashLocalsNN(i)
+        for i <- 0 until stashLocals.size do
+          val local = stashLocals(i)
           bc.load(local.idx, local.tk)
           if local.tk.isRef then
             bc.emit(asm.Opcodes.ACONST_NULL)
