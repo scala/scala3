@@ -133,10 +133,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     tableLoop(0)
   }
 
-  // TODO: remove the `case null` when we can enable explicit nulls in regular compiling,
-  // since the type `A <: AnyRef` of `elem` can ensure the value is not null.
-  def lookup(elem: A): A | Null = (elem: A | Null) match {
-    case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
+  def lookup(elem: A): A | Null = elem match {
     case _ =>
       Stats.record(statsItem("lookup"))
       removeStaleEntries()
@@ -162,10 +159,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     elem
   }
 
-  // TODO: remove the `case null` when we can enable explicit nulls in regular compiling,
-  // since the type `A <: AnyRef` of `elem` can ensure the value is not null.
-  def put(elem: A): A = (elem: A | Null) match {
-    case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
+  def put(elem: A): A = elem match {
     case _    =>
       Stats.record(statsItem("put"))
       removeStaleEntries()
