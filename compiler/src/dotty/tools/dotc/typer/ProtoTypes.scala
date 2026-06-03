@@ -950,11 +950,10 @@ object ProtoTypes {
       case mt: MethodType =>
         if (mt.isImplicitMethod) normalize(resultTypeApprox(mt, wildcardOnly = true), pt)
         else if (mt.isResultDependent) tp
+        else if pt.isInstanceOf[IgnoredProto] then tp
         else {
           val rt = normalize(mt.resultType, pt)
           pt match {
-            case pt: IgnoredProto  =>
-              tp
             case pt: ApplyingProto =>
               if (rt eq mt.resultType) tp
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
