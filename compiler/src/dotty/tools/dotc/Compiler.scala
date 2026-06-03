@@ -71,8 +71,7 @@ class Compiler {
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new DropForMap,             // Drop unused trailing map calls in for comprehensions
-         new PruneSpecializedMethods) :: // Remove right-hand side of definitions in inline traits
+         new DropForMap) ::          // Drop unused trailing map calls in for comprehensions
     List(new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members
@@ -85,6 +84,7 @@ class Compiler {
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
+         new PruneSpecializedMethods,// Remove specialized methods which have already been inlined
          new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
     List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
     List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
