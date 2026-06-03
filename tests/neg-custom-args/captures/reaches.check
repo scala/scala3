@@ -84,6 +84,16 @@
    |              ^^^^^^^^^^
    |              Separation failure: value next's type () => Unit hides parameter xs.
    |              The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/reaches.scala:67:40 -----------------------------------------------------------
+67 |  val id: (x: File^) -> File^{fresh} = x => x // error
+   |                                        ^
+   |Separation failure: anonymous function of type (x: File^): File^{fresh}'s inferred result type File^ hides parameter x.
+   |The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/reaches.scala:68:36 -----------------------------------------------------------
+68 |  val id2: File^ -> File^{fresh} = x => x // error
+   |                                    ^
+   |Separation failure: anonymous function of type (x: File^): File^{fresh}'s inferred result type File^ hides parameter x.
+   |The parameter needs to be annotated with consume to allow this.
 -- Error: tests/neg-custom-args/captures/reaches.scala:88:28 -----------------------------------------------------------
 88 |  ps.map((x, y) => compose1(x, y)) // error // error // error
    |                            ^
