@@ -222,6 +222,9 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       currentTrace = after
     }
 
+    var lineNumberCleanupNeeded = OptimizerUtils.isDceDone(method)
+    var labelReachabilityCleanupNeeded = false
+
     /*
      * Runs the optimizations that depend on each other in a loop until reaching a fixpoint. See
      * comment in class [[LocalOpt]].
@@ -256,6 +259,8 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       val runDCE = (settings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
         settings.optBoxUnbox ||
         settings.optCopyPropagation
+      if (runDCE && !method.tryCatchBlocks.isEmpty)
+        labelReachabilityCleanupNeeded = true
       val dceResult =
         if (runDCE) {
           val result = LocalOptImpls.removeUnreachableCodeImplResult(method, ownerClassName, callGraph, optimizerUtils)
@@ -337,7 +342,14 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
         storeLoadRemoved ||
         removeHandlersResult.handlerRemoved
 
-      val codeChanged = nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged || storesRemoved || intrinsicRewrittenByStaleStores || callInlinedByStaleStores || typeInsnChanged || intrinsicRewrittenByCasts || pushPopRemoved || storeLoadRemoved || removeHandlersResult.handlerRemoved || jumpsChanged
+      val removedOrRewrittenInstructions =
+        nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged || storesRemoved ||
+        intrinsicRewrittenByStaleStores || callInlinedByStaleStores || typeInsnChanged ||
+        intrinsicRewrittenByCasts || pushPopRemoved || storeLoadRemoved || jumpsChanged
+      if (removedOrRewrittenInstructions)
+        lineNumberCleanupNeeded = true
+
+      val codeChanged = removedOrRewrittenInstructions || removeHandlersResult.handlerRemoved
       (codeChanged, requireEliminateUnusedLocals)
     }
 
@@ -364,8 +376,10 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
     // The asm.MethodWriter writes redundant line numbers 1:1 to the classfile, so we filter them out.
     val lineNumbersRemoved =
-      if (dceCheckedLineNumbers && !hasLineNumbers) false
-      else removeEmptyLineNumbers(method)
+      if (lineNumberCleanupNeeded && (!dceCheckedLineNumbers || hasLineNumbers)) removeEmptyLineNumbers(method)
+      else
+        if (labelReachabilityCleanupNeeded) clearLabelReachableFlags(method)
+        false
     traceIfChanged("lineNumbers")
 
     // assert that local variable annotations are empty (we don't emit them) - otherwise we'd have
@@ -1023,6 +1037,16 @@ object LocalOptImpls {
         case _ =>
       }
       true
+    }
+  }
+
+  def clearLabelReachableFlags(method: MethodNode): Unit = {
+    val iterator = method.instructions.iterator
+    while (iterator.hasNext) {
+      iterator.next match {
+        case label: LabelNode => OptimizerUtils.clearLabelReachable(label)
+        case _ =>
+      }
     }
   }
 
