@@ -2,7 +2,6 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
 import scala.tools.asm
 import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
@@ -205,7 +204,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
     }
 
     private def emitArgument(av:   AnnotationVisitor,
-                             name: String,
+                             name: String | Null,
                              arg:  Tree)(using Context): Unit = {
       val narg = normalizeArgument(arg)
       // Transformation phases are not run on annotation trees, so we need to run
@@ -648,7 +647,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
       if (erasedMemberType =:= sym.denot.info)
         val gensig = getGenericSignatureHelper(sym, moduleClass, memberTpe)
-        if gensig == null || descriptor.contentEquals(gensig) then null
+        if gensig == null || (descriptor != null && descriptor.contentEquals(gensig)) then null
         else gensig.toString
       else null
     else null
