@@ -1067,7 +1067,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         val relatively = relativize(srcpos.source.file.toString)
         if srcpos.exists then
           val key = s"${relatively}:${srcpos.line + 1}"
-          if !seenAt(key) && !seenAt("nopos") then unexpected += key
+          if !seenAt(key) then unexpected += key
         else
           if !seenAt("nopos") then unpositioned += relatively
 

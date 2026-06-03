@@ -41,7 +41,7 @@ class VulpixUnitTests:
     compileFile("tests/vulpix-tests/unit/negNoPositionAnnots.scala", defaultOptions)
       .suppressAllOutput
       .expectFailure
-      .checkCompile()
+      .checkExpectedErrors()
 
   @test def negAnyPositionAnnot: Unit =
     compileFile("tests/vulpix-tests/unit/negAnyPositionAnnots.scala", defaultOptions)
