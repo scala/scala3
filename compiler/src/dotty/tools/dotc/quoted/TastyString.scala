@@ -11,7 +11,7 @@ object TastyString {
 
   /** Encode TASTY bytes into a List of String */
   def pickle(bytes: Array[Byte]): List[String] = {
-    val str = new String(Base64.getEncoder().encode(bytes), UTF_8)
+    val str = Base64.getEncoder().encodeToString(bytes)
     if str.isEmpty then Nil
     else if str.length <= maxStringSize then str :: Nil
     else
