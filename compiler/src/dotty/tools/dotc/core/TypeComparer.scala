@@ -35,6 +35,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   Stats.record("TypeComparer")
 
   private var myContext: Context = initctx
+  private var comparerErasedTypes = initctx.erasedTypes
+  private var comparerAfterElimByName = initctx.phaseId > elimByNamePhase.id
+  private var comparerIsCaptureChecking = initctx.phaseId == Phases.checkCapturesPhaseId
+  private var comparerIsCaptureSetup = initctx.phaseId == Phases.checkCapturesPhaseId - 1
+
+  private inline def comparerIsCaptureCheckingOrSetup: Boolean =
+    comparerIsCaptureChecking || comparerIsCaptureSetup && ccState.iterationId > 0
+
+  private inline def comparerInByNameCompensationPhase: Boolean =
+    comparerAfterElimByName && !comparerErasedTypes
+
   def comparerContext: Context = myContext
 
   protected given [DummySoItsADef]: Context = myContext
@@ -45,6 +56,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   def init(c: Context): Unit =
     myContext = c
+    comparerErasedTypes = c.erasedTypes
+    val phaseId = c.phaseId
+    comparerAfterElimByName = phaseId > elimByNamePhase.id
+    comparerIsCaptureChecking = phaseId == Phases.checkCapturesPhaseId
+    comparerIsCaptureSetup = phaseId == Phases.checkCapturesPhaseId - 1
     state = c.typerState
     monitored = false
     GADTused = false
@@ -385,7 +401,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // This is safe because X$ self-type is X.type
                 sym1 = sym1.companionModule
               if (sym1 ne NoSymbol) && (sym1 eq sym2) then
-                ctx.erasedTypes
+                comparerErasedTypes
                 || sym1.isStaticOwner
                 || isSubPrefix(tp1.prefix, tp2.prefix)
                 || thirdTryNamed(tp2, info2)
@@ -401,7 +417,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               secondTry
         end compareNamed
         // See the documentation of `FromJavaObjectSymbol`
-        if !ctx.erasedTypes && tp2.isFromJavaObject then
+        if !comparerErasedTypes && tp2.isFromJavaObject then
           recur(tp1, defn.AnyType)
         else
           compareNamed(tp1, tp2)
@@ -725,7 +741,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareRefined: Boolean =
           val tp1w = tp1.widen
 
-          if isCaptureCheckingOrSetup then
+          if comparerIsCaptureCheckingOrSetup then
 
             // A relaxed version of subtyping for dependent functions where method types
             // are treated as contravariant.
@@ -1013,7 +1029,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
-          && !(isCaptureCheckingOrSetup
+          && !(comparerIsCaptureCheckingOrSetup
                && tp1.isSingleton
                && defn.isRefinedFunction(tp1.widen.stripCapturing))
               // If tp1 is a refined function, `base` is the parent function, but that type
@@ -1109,10 +1125,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
-          if isCaptureCheckingOrSetup then
+          if comparerIsCaptureCheckingOrSetup then
             tp1
               .match
-                case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
+                case tp1: Capability if tp1.isTracked =>
                   CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
                 case _ =>
                   tp1w
@@ -1121,7 +1137,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
-        if isCaptureCheckingOrSetup && defn.isRefinedFunction(tp2.stripCapturing) then
+        if comparerIsCaptureCheckingOrSetup && defn.isRefinedFunction(tp2.stripCapturing) then
           return false
         isNewSubType(tp1.parent)
       case tp1: RecType =>
@@ -1732,7 +1748,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def isCaptureVarComparison: Boolean =
-      isCaptureCheckingOrSetup
+      comparerIsCaptureCheckingOrSetup
       && tp1.derivesFromCapSet
       && tp2.derivesFromCapSet
 
@@ -2047,7 +2063,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
             arg2.contains(arg1norm)
           case ExprType(arg2res)
-          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+          if comparerInByNameCompensationPhase
                && defn.isByNameFunction(arg1.dealias) =>
             // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
             // embedded `=> T` arguments alone. This clause needs to compensate for that.
@@ -2064,7 +2080,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing)
                 || compareCaptured(arg1, arg2)
               case ExprType(arg1res)
-              if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+              if comparerInByNameCompensationPhase
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
@@ -2559,7 +2575,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val paramsMatch =
               if precise then
                 isSameTypeWhenFrozen(formal1, formal2a)
-              else if isCaptureCheckingOrSetup then
+              else if comparerIsCaptureCheckingOrSetup then
                 // allow to constrain capture set variables
                 isSubType(formal2a, formal1)
               else
@@ -2707,7 +2723,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   end glb
 
   def widenInUnions(using Context): Boolean =
-    migrateTo3 || ctx.erasedTypes
+    migrateTo3 || comparerErasedTypes
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -3204,7 +3220,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             else if cls.typeParams.nonEmpty then tp.etaExpand
             else tp
           case sym =>
-            if !ctx.erasedTypes && sym == defn.FromJavaObjectSymbol then defn.AnyType
+            if !comparerErasedTypes && sym == defn.FromJavaObjectSymbol then defn.AnyType
             else
               val optGadtBounds = gadtBounds(sym)
               if optGadtBounds != null then disjointnessBoundary(optGadtBounds.hi)
