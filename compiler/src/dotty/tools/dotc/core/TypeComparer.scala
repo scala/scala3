@@ -300,7 +300,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
           val ctx = comparerContext
           given Context = ctx // optimization for performance
-          val info2 = tp2.info
 
           /** Does `tp2` have a stable prefix?
            *  If that's not the case, following an alias via asSeenFrom could be lossy
@@ -310,6 +309,50 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           def hasStablePrefix(tp: NamedType) =
             tp.prefix.isStable
 
+          /** Compare a RHS whose symbol is a class without forcing `tp2.info`.
+           *  For a class-symbol `tp2` the info is always a `ClassInfo` (never a
+           *  `TypeAlias`/`TypeBounds`), so the alias/bounds branches of the info-based
+           *  path are dead. Forcing `tp2.info` would revalidate the RHS denotation
+           *  (`Denotation.info` is the #1 total cost center); reading the class symbol
+           *  flag instead lets the dominant class-RHS path skip that force entirely.
+           */
+          def compareKnownClass(sym2: Symbol): Boolean = tp1 match
+            case tp1: NamedType =>
+              tp1.info match {
+                case info1: TypeAlias =>
+                  if recur(info1.alias, tp2) then return true
+                  if tp1.asInstanceOf[TypeRef].canDropAlias && hasStablePrefix(tp2) then
+                    return false
+                case _ =>
+              }
+              var sym1 = tp1.symbol
+              if (sym1.is(ModuleClass) && sym2.is(ModuleVal))
+                // For convenience we want X$ <:< X.type
+                // This is safe because X$ self-type is X.type
+                sym1 = sym1.companionModule
+              if (sym1 ne NoSymbol) && (sym1 eq sym2) then
+                ctx.erasedTypes
+                || sym1.isStaticOwner
+                || isSubPrefix(tp1.prefix, tp2.prefix)
+                || thirdTryKnownClass(tp2, sym2)
+              else
+                (tp1.name eq tp2.name)
+                && !sym1.is(Private)
+                && tp2.isPrefixDependentMemberRef
+                && isSubPrefix(tp1.prefix, tp2.prefix)
+                && tp1.signature == tp2.signature
+                && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
+                || thirdTryKnownClass(tp2, sym2)
+            case _ =>
+              secondTry
+
+          tp2 match
+            case tp2: TypeRef =>
+              val sym2 = tp2.symbol
+              if sym2.isClass then return compareKnownClass(sym2)
+            case _ => ()
+
+          val info2 = tp2.info
           info2 match
             case info2: TypeAlias =>
               if recur(tp1, info2.alias) then return true
@@ -604,26 +647,35 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case _ =>
         val cls2 = tp2.symbol
         if (cls2.isClass)
-          if (cls2.typeParams.isEmpty) {
-            if (cls2 eq AnyKindClass) return true
-            if (isBottom(tp1)) return true
-            if (tp1.isLambdaSub) return false
-              // Note: We would like to replace this by `if (tp1.hasHigherKind)`
-              // but right now we cannot since some parts of the standard library rely on the
-              // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
-            if cls2 eq AnyClass then return true
-            if cls2 == defn.SingletonClass && tp1.isStable then return true
-            return tryBaseType(cls2)
-          }
-          else if (cls2.is(JavaDefined)) {
-            // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
-            val base = nonExprBaseType(tp1, cls2)
-            if (base.typeSymbol == cls2) return true
-          }
-          else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
-            return recur(tp1, tp2.etaExpand)
+          return thirdTryKnownClass(tp2, cls2)
         fourthTry
     }
+
+    /** The class-symbol arm of `thirdTryNamed`, split out so it can be reached
+     *  from `compareNamed`'s `compareKnownClass` fast lane without forcing `tp2.info`
+     *  (the caller already established `cls2.isClass`).
+     *  Aliases, bounds, FromJavaObject, and non-class refs keep the info-based path.
+     */
+    def thirdTryKnownClass(tp2: NamedType, cls2: Symbol): Boolean =
+      if (cls2.typeParams.isEmpty) {
+        if (cls2 eq AnyKindClass) return true
+        if (isBottom(tp1)) return true
+        if (tp1.isLambdaSub) return false
+          // Note: We would like to replace this by `if (tp1.hasHigherKind)`
+          // but right now we cannot since some parts of the standard library rely on the
+          // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
+        if cls2 eq AnyClass then return true
+        if cls2 == defn.SingletonClass && tp1.isStable then return true
+        return tryBaseType(cls2)
+      }
+      else if (cls2.is(JavaDefined)) {
+        // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
+        val base = nonExprBaseType(tp1, cls2)
+        if (base.typeSymbol == cls2) return true
+      }
+      else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
+        return recur(tp1, tp2.etaExpand)
+      fourthTry
 
     def compareTypeParamRef(tp2: TypeParamRef): Boolean =
       assumedTrue(tp2)
