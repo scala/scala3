@@ -12,7 +12,16 @@ object TastyString {
   /** Encode TASTY bytes into a List of String */
   def pickle(bytes: Array[Byte]): List[String] = {
     val str = new String(Base64.getEncoder().encode(bytes), UTF_8)
-    str.toSeq.sliding(maxStringSize, maxStringSize).map(_.unwrap).toList
+    if str.isEmpty then Nil
+    else if str.length <= maxStringSize then str :: Nil
+    else
+      var chunks: List[String] = Nil
+      var start = 0
+      while start < str.length do
+        val end = Math.min(start + maxStringSize, str.length)
+        chunks = str.substring(start, end) :: chunks
+        start = end
+      chunks.reverse
   }
 
   /** Decode the List of Strings into TASTY bytes */
