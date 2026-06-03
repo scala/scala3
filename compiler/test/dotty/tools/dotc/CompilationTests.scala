@@ -165,6 +165,16 @@ class CompilationTests {
     compileFilesInDir("tests/fuzzy", defaultOptions).checkNoCrash()
   }
 
+  @Test def negSpecial: Unit =
+    special(
+      defaultOptions,
+      "tests/neg-special/22459",
+      expectError = true,
+      o => compileFile("tests/neg-special/22459/A.scala", o),
+      ("A/22459/A/", o => compileFile("tests/neg-special/22459/B.scala", o)),
+      ("B/22459/B/", o => compileFile("tests/neg-special/22459/C.scala", o))
+    )
+
   // Run tests -----------------------------------------------------------------
 
   @Test def runAll: Unit = {
@@ -239,6 +249,7 @@ class CompilationTests {
     special(
       explicitNullsOptions.and("-Yforce-sbt-phases"),
       "tests/explicit-nulls/special/i25722",
+      expectError = false,
       o => compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/org/jetbrains/annotations/Nullable.java", o),
       ("Nullable/annotations/Nullable/", o => compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/lib/Foo.java", o)),
       ("Foo/lib/Foo", o => compileDir("tests/explicit-nulls/special/25722/scala", o))
@@ -311,6 +322,7 @@ class CompilationTests {
     special(
       options.without("-Werror"),
       "checkInit/i12128",
+      expectError = false,
       o => compileFile("tests/init/special/i12128/Reflect_1.scala", o),
       ("Reflect_1/i12128/Reflect_1", o => compileFile("tests/init/special/i12128/Macro_2.scala", o)),
       ("Macro_2/i12128/Macro_2", o => compileFile("tests/init/special/i12128/Test_3.scala", o))
@@ -412,23 +424,29 @@ class CompilationTests {
    * @param rest Same as first, but also with the output dir for the previous item
    */
   private def special(options: TestFlags, groupName: String,
+                      expectError: Boolean,
                       first: TestFlags => TestGroup ?=> CompilationTest,
                       rest: (String, TestFlags => TestGroup ?=> CompilationTest)*): Unit = {
     var allTests = List[CompilationTest]()
-    def run(t: CompilationTest): Unit =
-      runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos")
+    def run(t: CompilationTest, expectError: Boolean): Unit = {
+      if expectError then
+        t.checkExpectedErrors()
+      else
+        runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos")
       allTests ::= t
-
-    val thisGroup = TestGroup(groupName)
-    val firstTest = withCoverage(first(options)(using thisGroup).keepOutput)
-    run(firstTest)
-
-    for (path, func) <- rest do
-      val outDir = Paths.get(defaultOutputDir.getAbsolutePath, groupName, path).toString
-      val test = withCoverage(func(options.withClasspath(outDir))(using thisGroup).keepOutput)
-      run(test)
-
-    allTests.foreach(_.delete())
+    }
+    try
+      val thisGroup = TestGroup(groupName)
+      val firstTest = withCoverage(first(options)(using thisGroup).keepOutput)
+      run(firstTest, false)
+      var i = 0
+      for (path, func) <- rest do
+        i += 1
+        val outDir = Paths.get(defaultOutputDir.getAbsolutePath, groupName, path)
+        val test = withCoverage(func(options.withClasspath(outDir.toString))(using thisGroup).keepOutput)
+        run(test, expectError && i == rest.length)
+    finally
+      allTests.foreach(_.delete())
   }
 }
 
