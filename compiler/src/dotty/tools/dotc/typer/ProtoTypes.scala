@@ -259,15 +259,17 @@ object ProtoTypes {
       || hasUnknownMembers(tp1)
       || {
         try
-          val mbr = if privateOK then tp1.member(name) else tp1.nonPrivateMember(name)
-          def qualifies(m: SingleDenotation) =
-            val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
-            isAccessible
-            && (memberProto.isRef(defn.UnitClass)
-              || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
-                // Note: can't use `m.info` here because if `m` is a method, `m.info`
-                //       loses knowledge about `m`'s default arguments.
-          mbr.hasAltWithInline(qualifies)
+          val isUnitMemberProto = memberProto.isRef(defn.UnitClass)
+          if !isUnitMemberProto && !tp1.isValueType then false
+          else
+            val mbr = if privateOK then tp1.member(name) else tp1.nonPrivateMember(name)
+            def qualifies(m: SingleDenotation) =
+              val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
+              isAccessible
+              && (isUnitMemberProto || compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
+                  // Note: can't use `m.info` here because if `m` is a method, `m.info`
+                  //       loses knowledge about `m`'s default arguments.
+            mbr.hasAltWithInline(qualifies)
         catch case ex: TypeError =>
           // A scenario where this can happen is in pos/15673.scala:
           // We have a type `CC[A]#C` where `CC`'s upper bound is `[X] => Any`, but
