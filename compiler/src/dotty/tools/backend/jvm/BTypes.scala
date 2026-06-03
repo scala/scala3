@@ -28,7 +28,16 @@ import scala.tools.asm.tree.{ClassNode, ModuleNode}
  * referring to BTypes.
  */
 sealed trait BType {
-  final override def toString: String = this match {
+  final override def toString: String = descriptor
+
+  /**
+   * @return The Java descriptor of this type. Examples:
+   *  - int: I
+   *  - java.lang.String: Ljava/lang/String;
+   *  - int[]: [I
+   *  - Object m(String s, double d): (Ljava/lang/String;D)Ljava/lang/Object;
+   */
+  final def descriptor: String = this match {
     case UNIT   => "V"
     case BOOL   => "Z"
     case CHAR   => "C"
@@ -38,19 +47,10 @@ sealed trait BType {
     case FLOAT  => "F"
     case LONG   => "J"
     case DOUBLE => "D"
-    case c: ClassBType            => "L" + c.internalName + ";"
-    case ArrayBType(component)    => "[" + component
-    case MethodBType(args, res)   => args.mkString("(", "", ")" + res)
+    case c: ClassBType  => c.descriptorString
+    case a: ArrayBType  => a.descriptorString
+    case m: MethodBType => m.descriptorString
   }
-
-  /**
-   * @return The Java descriptor of this type. Examples:
-   *  - int: I
-   *  - java.lang.String: Ljava/lang/String;
-   *  - int[]: [I
-   *  - Object m(String s, double d): (Ljava/lang/String;D)Ljava/lang/Object;
-   */
-  final def descriptor: String = toString
 
   /**
    * @return 0 for void, 2 for long and double, 1 otherwise
@@ -206,9 +206,9 @@ sealed trait BType {
     case FLOAT  => asm.Type.FLOAT_TYPE
     case LONG   => asm.Type.LONG_TYPE
     case DOUBLE => asm.Type.DOUBLE_TYPE
-    case c: ClassBType  => asm.Type.getObjectType(c.internalName) // see (*) above
-    case a: ArrayBType  => asm.Type.getObjectType(a.descriptor)
-    case m: MethodBType => asm.Type.getMethodType(m.descriptor)
+    case c: ClassBType  => c.asmType // see (*) above
+    case a: ArrayBType  => a.asmType
+    case m: MethodBType => m.asmType
   }
 
   def asRefBType       : RefBType       = this.asInstanceOf[RefBType]
@@ -647,6 +647,9 @@ final case class MethodInlineInfo(effectivelyFinal: Boolean = false,
  * A ClassBType represents a class or interface type.
  */
 case class ClassBType private(internalName: String) extends RefBType {
+  private[jvm] lazy val descriptorString: String = "L" + internalName + ";"
+  private[jvm] lazy val asmType: asm.Type = asm.Type.getObjectType(internalName)
+
   /**
    * Write-once variable allows initializing a cyclic graph of infos. This is required for
    * nested classes. Example: for the definition `class A { class B }` we have
@@ -861,6 +864,9 @@ object ClassBType {
 }
 
 case class ArrayBType(componentType: BType) extends RefBType {
+  private[jvm] lazy val descriptorString: String = "[" + componentType.descriptor
+  private[jvm] lazy val asmType: asm.Type = asm.Type.getObjectType(descriptorString)
+
   def dimension: Int = componentType match {
     case a: ArrayBType => 1 + a.dimension
     case _ => 1
@@ -872,7 +878,10 @@ case class ArrayBType(componentType: BType) extends RefBType {
   }
 }
 
-case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType
+case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType {
+  private[jvm] lazy val descriptorString: String = argumentTypes.mkString("(", "", ")" + returnType.descriptor)
+  private[jvm] lazy val asmType: asm.Type = asm.Type.getMethodType(descriptorString)
+}
 
 object BTypes {
   /**
