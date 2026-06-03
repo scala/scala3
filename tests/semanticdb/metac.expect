@@ -5059,8 +5059,8 @@ _empty_/Txn# => trait Txn [typeparam T  <: Txn[T]] extends Object { self: Txn[T]
 _empty_/Txn#[T] => typeparam T  <: Txn[T]
 _empty_/Txn#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Txn[T]
 local0 => val local out: Repr[Out]
-local1 => val local inObj: Obj[In] & Repr[In]
-local2 => val local outObj: Obj[Out] & Repr[Out]
+local1 => val local inObj: Obj[In]
+local2 => val local outObj: Obj[Out]
 
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#

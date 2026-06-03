@@ -1718,7 +1718,19 @@ trait Applications extends Compatibility {
   def typedUnApply(tree: untpd.Apply, selType0: Type)(using Context): Tree = {
     record("typedUnApply")
     val Apply(qual, unadaptedArgs) = tree
-    val selType = selType0.stripNamedTuple
+    // If the selector type is a tuple, then try using the element types from the tree if it's itself a tuple,
+    // e.g., if `(a: Any, b: Any)` is matched with `x @ (_, y: Int)` then `x` should be of type `(Any, Int)`
+    val selType = selType0 match
+      case AppliedType(selCon, selArgs) if defn.isTupleClass(selCon.typeSymbol) && unadaptedArgs.length == selArgs.length =>
+        val newSelArgs = unadaptedArgs.zip(selArgs).map:
+          case (Typed(_, tpt: AppliedTypeTree), t) =>
+            // However, we can't do that if the args changed, e.g., if the args were patterns
+            typed(tpt) match
+              case tpt2: AppliedTypeTree if tpt.args == tpt2.args => tpt2.tpe
+              case _ => t
+          case (_, t) => t
+        AppliedType(selCon, newSelArgs)
+      case st => st.stripNamedTuple
 
     def notAnExtractor(tree: Tree): Tree =
       // prefer inner errors
