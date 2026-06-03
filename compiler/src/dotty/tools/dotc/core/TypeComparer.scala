@@ -1539,18 +1539,27 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case tycon2: TypeRef =>
           isMatchingApply(tp1)
           || byGadtBounds
-          || defn.isCompiletimeAppliedType(tycon2.symbol)
-              && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
-          || tycon2.info.match
-                case info2: TypeBounds =>
-                  compareLower(info2, tyconIsTypeRef = true)
-                case info2: ClassInfo =>
+          || {
+            val tycon2sym = tycon2.symbol
+            defn.isCompiletimeAppliedType(tycon2sym)
+            && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
+            || (if tycon2sym.isClass then
                   tycon2.name.startsWith("Tuple")
                   && defn.isTupleNType(tp2)
                   && recur(tp1, tp2.toNestedPairs)
-                  || tryBaseType(info2.cls)
-                case _ =>
-                  fourthTry
+                  || tryBaseType(tycon2sym)
+                else
+                  tycon2.info.match
+                    case info2: TypeBounds =>
+                      compareLower(info2, tyconIsTypeRef = true)
+                    case info2: ClassInfo =>
+                      tycon2.name.startsWith("Tuple")
+                      && defn.isTupleNType(tp2)
+                      && recur(tp1, tp2.toNestedPairs)
+                      || tryBaseType(info2.cls)
+                    case _ =>
+                      fourthTry)
+          }
           || tryLiftedToThis2
 
         case tv: TypeVar =>
