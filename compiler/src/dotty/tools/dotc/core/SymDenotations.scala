@@ -2837,6 +2837,15 @@ object SymDenotations {
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
+    /** Disambiguate `andThen` inherited from both `Function1[Symbol, LazyType]` and
+     *  `Function2[TermSymbol, ClassSymbol, LazyType]` so subclasses don't see a clash
+     *  between the two trait-default implementations. `LazyType` is only ever passed
+     *  to symbol-creation APIs as a function value, so composition via `andThen` is
+     *  not meaningful and is reported as unsupported.
+     */
+    override def andThen[A](g: LazyType => A): ((TermSymbol, ClassSymbol) => A) & (Symbol => A) =
+      throw new UnsupportedOperationException("LazyType.andThen is not supported")
+
     private var myDecls: Scope = EmptyScope
     private var mySourceModule: Symbol | Null = null
     private var myModuleClass: Symbol | Null = null

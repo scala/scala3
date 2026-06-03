@@ -206,12 +206,83 @@ object ScalaLibraryPlugin extends AutoPlugin {
       if (targetDir.exists)
         IO.delete(targetDir)
       IO.createDirectory(targetDir)
-      IO.unzip(
+      val unpacked = IO.unzip(
         from = scalaLibSourcesJar,
         toDirectory = targetDir,
         filter = new SimpleFilter(path => !excludedSourceFiles.contains(path.replace(File.separatorChar, '/')))
       )
+      // Patch Scala 2's `Function2..Function22` sources to add `andThen`,
+      // mirroring scala/scala#11121. The Scala 2 backport lands in a separate PR;
+      // until then we inject the method here so that `Function{N}.class` produced
+      // by the `scala2-library` project (which replaces our compiled output for
+      // specialized synthetics) carries the new method.
+      patchScala2FunctionSourcesForAndThen(targetDir, log)
+      // Patch Scala 2's `HashMap.scala` to drop the `Function1[(K, V1), Unit]`
+      // mixin from its private `accum` class — once `Function2` carries `andThen`,
+      // mixing in both `Function1` and `Function2` causes a conflicting
+      // implementations clash (same fix as in our Scala 3 `HashMap.scala`).
+      patchScala2HashMapForAndThen(targetDir, log)
+      unpacked
     }(Set(scalaLibSourcesJar))
     targetDir
+  }
+
+  private def patchScala2FunctionSourcesForAndThen(targetDir: File, log: Logger): Unit = {
+    for (n <- 2 to 22) {
+      val file = targetDir / "scala" / s"Function$n.scala"
+      if (file.isFile) {
+        val content = IO.read(file)
+        if (!content.contains("def andThen[")) {
+          val tParams = (1 to n).map(i => s"T$i").mkString(", ")
+          val tParamsDecl = (1 to n).map(i => s"v$i: T$i").mkString(", ")
+          val vArgs = (1 to n).map(i => s"v$i").mkString(", ")
+          val andThen =
+            s"""  /** Composes two instances of `Function$n` in a new `Function$n`, with this function applied first.
+               | *
+               | *  @tparam A the result type of function `g`
+               | *  @param  g a function R => A
+               | *  @return a new function `f` such that `f(x1, ..., x$n) == g(apply(x1, ..., x$n))`
+               | */
+               |  @annotation.unspecialized def andThen[A](g: R => A): ($tParams) => A = { ($tParamsDecl) => g(apply($vArgs)) }
+               |""".stripMargin
+          // Inject before the existing `curried` definition, which is present in every Function2..22.
+          val curriedMarker = "  @annotation.unspecialized def curried"
+          val idx = content.indexOf(curriedMarker)
+          if (idx < 0) {
+            log.warn(s"Could not locate `curried` in $file to inject `andThen`; leaving file untouched.")
+          } else {
+            val patched = content.substring(0, idx) + andThen + content.substring(idx)
+            IO.write(file, patched)
+            log.debug(s"Patched $file to add `andThen`.")
+          }
+        }
+      }
+    }
+  }
+
+  private def patchScala2HashMapForAndThen(targetDir: File, log: Logger): Unit = {
+    val file = targetDir / "scala" / "collection" / "immutable" / "HashMap.scala"
+    if (!file.isFile) return
+    val content = IO.read(file)
+    val classDecl = "class accum extends AbstractFunction2[K, V1, Unit] with Function1[(K, V1), Unit] {"
+    val applyKv = "        def apply(kv: (K, V1)) = apply(kv._1, kv._2)"
+    val foreachAccum = "            it.foreach(accum)"
+    if (!content.contains(classDecl)) return // already patched or layout changed
+    val patched = content
+      .replace(classDecl, "class accum extends AbstractFunction2[K, V1, Unit] {")
+      .replace(applyKv + "\n", "")
+      .replace(
+        foreachAccum,
+        """            while (it.hasNext) {
+          |              val (k, v) = it.next()
+          |              accum(k, v)
+          |            }""".stripMargin
+      )
+    if (patched != content) {
+      IO.write(file, patched)
+      log.debug(s"Patched $file to drop `Function1` mixin from class accum.")
+    } else {
+      log.warn(s"Failed to patch $file for `accum` dual-inheritance fix; layout may have changed.")
+    }
   }
 }

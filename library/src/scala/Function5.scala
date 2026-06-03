@@ -34,6 +34,13 @@ trait Function5[-T1, -T2, -T3, -T4, -T5, +R] extends AnyRef {
    *  @return   the result of function application.
    */
   def apply(v1: T1, v2: T2, v3: T3, v4: T4, v5: T5): R
+  /** Composes a `Function1` with this in a new `Function5`, with this function applied first.
+   *
+   *  @tparam   A   the result type of function `g`
+   *  @param    g   a function R => A
+   *  @return       a new function `f` such that `f(v1, v2, v3, v4, v5) == g(apply(v1, v2, v3, v4, v5))`
+   */
+  @annotation.unspecialized def andThen[A](g: R => A): (T1, T2, T3, T4, T5) => A = { (v1: T1, v2: T2, v3: T3, v4: T4, v5: T5) => g(apply(v1, v2, v3, v4, v5)) }
   /** Creates a curried version of this function.
    *
    *  @return   a function `f` such that `f(x1)(x2)(x3)(x4)(x5) == apply(x1, x2, x3, x4, x5)`
