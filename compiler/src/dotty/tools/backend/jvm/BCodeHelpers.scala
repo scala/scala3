@@ -215,9 +215,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         case Literal(const @ Constant(_)) =>
           const.tag match {
             case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
-            case StringTag =>
-              assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
-              av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
+            case StringTag => av.visit(name, const.stringValue)
             case ClazzTag => av.visit(name, bTypeLoader.bTypeFromType(TypeErasure.erasure(const.typeValue)).toASMType)
           }
         case Ident(nme.WILDCARD) =>

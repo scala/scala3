@@ -582,9 +582,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         case UnitTag    => ()
 
         case StringTag  =>
-          assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
           if BCodeUtils.checkConstantStringLength(const.stringValue) then
-            mnode.visitLdcInsn(const.stringValue) // `stringValue` special-cases null, but not for a const with StringTag
+            mnode.visitLdcInsn(const.stringValue)
           else
             // Emit a fake constant anyway so the resulting bytecode is valid, even if wrong (e.g., if the optimizer consumes it)
             mnode.visitLdcInsn("<string too long>")
