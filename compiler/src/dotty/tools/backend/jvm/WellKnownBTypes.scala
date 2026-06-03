@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
 
-import scala.tools.asm.{Handle, Opcodes}
+import org.objectweb.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.Symbols
 import BTypes.*
 import dotty.tools.dotc.core.Contexts.Context

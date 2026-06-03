@@ -164,7 +164,9 @@ jobs:
               "
       - name: Test error code snippets
         shell: bash
-        run: scala-cli test -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
+        # the `--server=false` is needed here, for now, probably because bloop-core hardcodes
+        # the name "scala-asm" and isn't expecting plain "asm" JARs; see scala/scala3#25989
+        run: scala-cli test --server=false -S ${{ env.SCALA_VERSION }} --with-compiler project/scripts/checkErrorCodeSnippets.test.scala -- +l +a +c
 
       - name: "[On failure] Print reproduction/fix steps"
         if: failure()

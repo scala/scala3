@@ -2,7 +2,7 @@ package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BackendUtils
 
-import scala.tools.asm.tree.MethodNode
+import org.objectweb.asm.tree.MethodNode
 
 /**
  * See the doc comment on package object `analysis` for a discussion on performance.

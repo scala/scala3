@@ -23,7 +23,7 @@ class ClassfileParserTest {
       "CONSTANT_NAME_AND_TYPE" -> "CONSTANT_NAMEANDTYPE",
     ).withDefault(x => x)
 
-    val asmConsts = constNames(Class.forName("scala.tools.asm.Symbol").getDeclaredFields.toList)
+    val asmConsts = constNames(Class.forName("org.objectweb.asm.Symbol").getDeclaredFields.toList)
       .map(_.stripSuffix("_TAG"))
       .map(toDotc)
       .::("CONSTANT_UNICODE")

@@ -536,14 +536,16 @@ object Build {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
           val args1 = args.filter(_ != "-with-compiler")
-          val asm = findArtifactPath(externalDeps, "scala-asm")
           val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
           val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
           val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
           val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
           val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
+          val asm =
+            Seq("asm", "asm-util", "asm-commons", "asm-analysis", "asm-tree")
+              .map(name => findArtifactPath(externalDeps, name))
+          run(insertClasspathInArgs(args1, (List(dottyCompiler, dottyInterfaces, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface) ++ asm).mkString(File.pathSeparator)))
         } else run(args)
       },
       // TODO: scala3-repl depends on the bootstrapped compiler, making this slower
@@ -670,9 +672,11 @@ object Build {
           val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
           val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
           val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-          val asm = findArtifactPath(externalDeps, "scala-asm")
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
+          val asm =
+            Seq("asm", "asm-util", "asm-commons", "asm-analysis", "asm-tree")
+              .map(name => findArtifactPath(externalDeps, name))
+          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface) ++ asm
           args.filter(_ != "-with-compiler")
         } else args
 
@@ -695,14 +699,16 @@ object Build {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
           val args1 = args.filter(_ != "-with-compiler")
-          val asm = findArtifactPath(externalDeps, "scala-asm")
           val dottyCompiler = (`scala3-compiler-bootstrapped` / Compile / packageBin).value.getAbsolutePath
           val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
           val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
           val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
           val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
+          val asm =
+            Seq("asm", "asm-util", "asm-commons", "asm-analysis", "asm-tree")
+              .map(name => findArtifactPath(externalDeps, name))
+          run(insertClasspathInArgs(args1, (List(dottyCompiler, dottyInterfaces, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface) ++ asm).mkString(File.pathSeparator)))
         } else run(args)
       },
       testCompilation := Def.inputTaskDyn {
@@ -925,7 +931,7 @@ object Build {
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.scalaJSScalalib=${(`scala-library-sjs` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tests.classes.jlineTerminal=${findArtifactPath(externalDeps, "jline-terminal")}",
           s"-Ddotty.tests.classes.jlineReader=${findArtifactPath(externalDeps, "jline-reader")}",
           s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging") / Compile / packageBin).value}",
@@ -1404,7 +1410,8 @@ object Build {
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
+        "org.ow2.asm" % "asm-util" % "9.9.1",
+        "org.ow2.asm" % "asm-commons" % "9.9.1",
         Dependencies.compilerInterface,
         ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
       ),
@@ -1511,7 +1518,7 @@ object Build {
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
@@ -1539,7 +1546,8 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
+        "org.ow2.asm" % "asm-util" % "9.9.1",
+        "org.ow2.asm" % "asm-commons" % "9.9.1",
         Dependencies.compilerInterface,
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
         ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
@@ -1636,7 +1644,7 @@ object Build {
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.scalaJSScalalib=${(`scala-library-sjs` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging") / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyTastyInspector=${(LocalProject("scala3-tasty-inspector") / Compile / packageBin).value}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
@@ -2317,7 +2325,7 @@ object Build {
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
           "-Ddotty.tests.classes.scalaJSScalalib=" + (`scala-library-sjs` / Compile / packageBin).value,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),

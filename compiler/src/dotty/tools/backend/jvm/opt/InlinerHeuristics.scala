@@ -18,8 +18,8 @@ import java.util.regex.Pattern
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Type
-import scala.tools.asm.tree.MethodNode
+import org.objectweb.asm.Type
+import org.objectweb.asm.tree.MethodNode
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.BackendUtils

@@ -15,9 +15,9 @@ import scala.annotation.switch
 import scala.collection.{BitSet, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-import scala.tools.asm
-import scala.tools.asm.tree.*
-import scala.tools.asm.{Handle, Opcodes, Type}
+import org.objectweb.asm
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.{Handle, Opcodes, Type}
 
 /**
  * This component hosts tools and utilities used in the backend that require access to a `CoreBTypes`
@@ -102,7 +102,7 @@ class BackendUtils(val ts: WellKnownBTypes) {
     val groups: Array[Array[Handle]] = implMethodsArray.grouped(targetMethodGroupLimit).toArray
     val numGroups = groups.length
 
-    import scala.tools.asm.Label
+    import org.objectweb.asm.Label
     val initialLabels = Array.fill(numGroups - 1)(new Label())
     val terminalLabel = new Label
     def nextLabel(i: Int) = if (i == numGroups - 2) terminalLabel else initialLabels(i + 1)

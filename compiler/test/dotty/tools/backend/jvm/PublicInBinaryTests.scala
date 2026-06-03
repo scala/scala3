@@ -6,10 +6,10 @@ import scala.language.unsafeNulls
 import org.junit.Assert.*
 import org.junit.Test
 
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.Opcodes.*
 import scala.jdk.CollectionConverters.*
 
 class PublicInBinaryTests extends DottyBytecodeTest {

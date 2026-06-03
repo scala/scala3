@@ -17,9 +17,9 @@ package analysis
 import java.util
 
 import scala.annotation.switch
-import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.tree.*
-import scala.tools.asm.{Opcodes, Type}
+import org.objectweb.asm.tree.analysis.*
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.{Opcodes, Type}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 import dotty.tools.backend.jvm.BackendUtils.isModuleLoad
 

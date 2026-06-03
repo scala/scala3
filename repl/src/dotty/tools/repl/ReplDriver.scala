@@ -45,7 +45,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.ClassReader
+import org.objectweb.asm.ClassReader
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have

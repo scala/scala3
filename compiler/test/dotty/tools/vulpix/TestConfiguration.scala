@@ -36,9 +36,8 @@ object TestConfiguration {
 
   val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
 
-  val withCompilerClasspath = mkClasspath(List(
+  val withCompilerClasspath = mkClasspath(Properties.asmAll ++ List(
     Properties.scalaLibrary,
-    Properties.scalaAsm,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
     Properties.tastyCore,
@@ -71,7 +70,7 @@ object TestConfiguration {
   lazy val replWithStagingClasspath = 
     replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
-  def mkClasspath(classpaths: List[String]): String =
+  def mkClasspath(classpaths: Seq[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
       assert(file.exists, s"File $p couldn't be found.")

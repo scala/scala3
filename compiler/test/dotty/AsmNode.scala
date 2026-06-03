@@ -3,9 +3,9 @@ package dotty
 import java.lang.reflect.Modifier
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
 
 sealed trait AsmNode[+T] {
   def node: T

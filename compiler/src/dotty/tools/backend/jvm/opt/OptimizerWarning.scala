@@ -4,7 +4,7 @@ import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.dotc.util.SourcePosition
 
-import scala.tools.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.AbstractInsnNode
 
 
 sealed trait OptimizerWarning {

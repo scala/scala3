@@ -4,14 +4,14 @@ package jvm
 
 import scala.language.unsafeNulls
 import java.util.concurrent.ConcurrentHashMap
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.OptimizerWarning
 import dotty.tools.dotc.core.Symbols.ClassSymbol
 
 import scala.collection.SortedMap
-import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.{ClassNode, ModuleNode}
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.{ClassNode, ModuleNode}
 
 
 /**

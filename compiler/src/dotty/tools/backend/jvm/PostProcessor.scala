@@ -7,14 +7,14 @@ import dotty.tools.io.FileWriters
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
 
-import scala.tools.asm.ClassWriter
-import scala.tools.asm.tree.ClassNode
+import org.objectweb.asm
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.dotc.report
 import dotty.tools.io.PlainFile.toPlainFile
 
 import java.nio.file.{Files, Paths}
-import scala.tools.asm
 import scala.util.chaining.scalaUtilChainingOps
 
 /**

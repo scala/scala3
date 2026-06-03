@@ -5,8 +5,8 @@ package jvm
 import scala.language.unsafeNulls
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.SortedMap
-import scala.tools.asm
-import scala.tools.asm.{Handle, Opcodes}
+import org.objectweb.asm
+import org.objectweb.asm.{Handle, Opcodes}
 import BCodeHelpers.InvokeStyle
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.*

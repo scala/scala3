@@ -3,9 +3,9 @@ package repl
 
 import scala.language.unsafeNulls
 
-import scala.tools.asm.*
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.tree.*
+import org.objectweb.asm.*
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.tree.*
 import scala.jdk.CollectionConverters.*
 import java.util.concurrent.atomic.AtomicBoolean
 
