@@ -229,12 +229,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def bounds(param: TypeParamRef)(using Context): TypeBounds = {
     val e = entry(param)
     if (e.exists) e.bounds
-    else {
-      // TODO: should we change the type of paramInfos to nullable?
-      val pinfos: List[param.binder.PInfo] | Null = param.binder.paramInfos
-      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
-      else TypeBounds.empty
-    }
+    else param.binder.paramInfos(param.paramNum)
   }
 
 // ---------- Info related to TypeParamRefs -------------------------------------------
