@@ -1531,6 +1531,51 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ => false
         } && recordGadtUsageIf(true)
 
+      def compareTupleNAsNestedPairs: Boolean =
+        def hasProvisional(args: List[Type]): Boolean = args match
+          case arg :: rest => arg.isProvisional || hasProvisional(rest)
+          case Nil => false
+
+        def canStreamCovariantArg(arg1: Type, arg2: Type): Boolean =
+          !arg1.isProvisional
+          && !arg2.isProvisional
+          && !arg1.isInstanceOf[TypeBounds]
+          && !arg2.isInstanceOf[TypeBounds]
+          && !arg1.stripped.isInstanceOf[AndType]
+          && !arg2.stripped.isInstanceOf[OrType]
+
+        def compareArgs(args1: List[Type], args2: List[Type]): Boolean = args1 match
+          case arg1 :: rest1 =>
+            args2 match
+              case arg2 :: rest2 =>
+                canStreamCovariantArg(arg1, arg2)
+                && recur(arg1, arg2)
+                && compareArgs(rest1, rest2)
+              case Nil => false
+          case Nil =>
+            args2.isEmpty
+
+        def stream(tp: Type, args: List[Type]): Boolean =
+          if tp.isProvisional then false
+          else args match
+            case arg :: rest =>
+              val tpw = tp.widen
+              !tpw.isProvisional && {
+                tpw match
+                  case AppliedType(tycon, hd :: tl :: Nil)
+                  if tycon.isRef(defn.PairClass) && canStreamCovariantArg(hd, arg) =>
+                    recur(hd, arg) && stream(tl, rest)
+                  case tpw: AppliedType if defn.isDirectTupleNType(tpw) =>
+                    compareArgs(tpw.args, args)
+                  case _ =>
+                    false
+              }
+            case Nil =>
+              recur(tp, defn.EmptyTupleModule.termRef)
+
+        !hasProvisional(args2) && rollbackConstraintsUnless(stream(tp1, args2))
+        || recur(tp1, tp2.toNestedPairs)
+
       tycon2 match {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
@@ -1546,7 +1591,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || (if tycon2sym.isClass then
                   tycon2.name.startsWith("Tuple")
                   && defn.isTupleNType(tp2)
-                  && recur(tp1, tp2.toNestedPairs)
+                  && compareTupleNAsNestedPairs
                   || tryBaseType(tycon2sym)
                 else
                   tycon2.info.match
@@ -1555,7 +1600,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     case info2: ClassInfo =>
                       tycon2.name.startsWith("Tuple")
                       && defn.isTupleNType(tp2)
-                      && recur(tp1, tp2.toNestedPairs)
+                      && compareTupleNAsNestedPairs
                       || tryBaseType(info2.cls)
                     case _ =>
                       fourthTry)
