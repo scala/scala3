@@ -1265,7 +1265,7 @@ object Capabilities:
       case _ =>
         super.mapOver(t)
 
-  class ToResult(localResType: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context) extends CapMap:
+  class ToResult(mt: MethodicType, sym: Symbol)(using Context) extends CapMap:
 
     def apply(t: Type) = mapOver(t)
 
@@ -1314,6 +1314,6 @@ object Capabilities:
   /** Replace all occurrences of `caps.any` or LocalCap in parts of this type by an existentially bound
    *  variable bound by `mt`. Stop at function or method types since these have been mapped before.
    */
-  def toResult(tp: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context): Type =
-    ToResult(tp, mt, sym, fail)(tp)
+  def toResult(tp: Type, mt: MethodicType, sym: Symbol)(using Context): Type =
+    ToResult(mt, sym)(tp)
 end Capabilities
