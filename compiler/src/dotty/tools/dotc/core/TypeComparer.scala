@@ -63,6 +63,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     lastBottomConstraint = null
     lastGadt = null
     lastFrozenSubTypeConstraint = null
+    lastTypeVarInstanceVar = null
+    lastTypeVarInstanceConstraint = null
+    lastTypeVarInstanceOrigin = null
+    lastTypeVarInstance = NoType
     atomCacheActive = false
     if Config.checkTypeComparerReset then checkReset()
 
@@ -126,6 +130,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     assert(approx == ApproxState.Fresh)
     assert(leftRoot == null)
     assert(frozenGadt == false)
+    assert(lastTypeVarInstanceVar == null)
+    assert(lastTypeVarInstanceConstraint == null)
+    assert(lastTypeVarInstanceOrigin == null)
+    assert(lastTypeVarInstance eq NoType)
     assert(atomCacheActive == false)
 
   /** Record that GADT bounds of `sym` were used in a subtype check.
@@ -190,7 +198,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     !cachedGadtIsEmpty(g) && g.isLess(sym1, sym2)
   protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadtState.addBound(sym, b, isUpper)
 
-  // 1-slot typeVarInstance cache: keyed on (TypeVar, Constraint) *identity*.
+  // 1-slot typeVarInstance cache: keyed on (TypeVar, Constraint, origin) identity.
   // The hot firstTry/secondTry TypeVar cases call `typeVarInstance` (i.e.
   // `tvar.underlying`) which dispatches into OrderingConstraint.instType when
   // the variable is uninstantiated; each call walks the constraint's bounds
@@ -198,23 +206,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   // computed type when the same tvar is probed against the same constraint
   // instance. Any constraint mutation (add/replace/remove/swapKey/withHard)
   // returns a fresh OrderingConstraint, so the `eq` test on `constraint`
-  // automatically invalidates the slot. A permanent instantiation of the
-  // tvar happens through `instantiateWith`, which also calls
-  // `constraint.replace`, so the constraint-identity check covers that path.
-  private var lastTypeVar: TypeVar | Null = null
-  private var lastTypeVarConstraint: Constraint | Null = null
+  // automatically invalidates the slot. Permanent instantiations are not cached.
+  private var lastTypeVarInstanceVar: TypeVar | Null = null
+  private var lastTypeVarInstanceConstraint: Constraint | Null = null
+  private var lastTypeVarInstanceOrigin: TypeParamRef | Null = null
   private var lastTypeVarInstance: Type = NoType
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type =
-    val c = constraint
-    if (tvar eq lastTypeVar) && (c eq lastTypeVarConstraint) then
+    val constr = constraint
+    val origin = tvar.origin
+    if (tvar eq lastTypeVarInstanceVar) && (constr eq lastTypeVarInstanceConstraint) && (origin eq lastTypeVarInstanceOrigin) then
       lastTypeVarInstance
     else
-      val res = tvar.underlying
-      lastTypeVar = tvar
-      lastTypeVarConstraint = c
-      lastTypeVarInstance = res
-      res
+      val inst = tvar.underlying
+      if !tvar.isPermanentlyInstantiated then
+        lastTypeVarInstanceVar = tvar
+        lastTypeVarInstanceConstraint = constr
+        lastTypeVarInstanceOrigin = origin
+        lastTypeVarInstance = inst
+      inst
 
   // 1-slot cache for the RHS-TypeParamRef frozen retry in `recur`.
   // The retry runs `tp1 <:< tp2` again with constraints frozen before the
