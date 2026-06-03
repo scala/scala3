@@ -1410,6 +1410,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case tycon2: TypeRef =>
                   val tycon1sym = tycon1.symbol
                   val tycon2sym = tycon2.symbol
+                  val sameTyconSymbolWithSubPrefix =
+                    tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
+                  if sameTyconSymbolWithSubPrefix && tycon1sym.isClass then
+                    return isSubArgs(args1, args2, tp1, tparams)
 
                   var touchedGADTs = false
                   var gadtIsInstantiated = false
@@ -1426,7 +1430,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     && ctx.gadt.isLess(tycon1sym, tycon2sym)
 
                   val res = (
-                    tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
+                    sameTyconSymbolWithSubPrefix
                     || tycon1sym.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
                     || tycon2sym.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
                     || byGadtOrdering
