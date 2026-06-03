@@ -31,7 +31,6 @@ import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 
 import scala.collection.mutable, mutable.ListBuffer
-import scala.util.control.NonFatal
 import scala.io.Codec
 
 import Run.Progress
@@ -319,11 +318,14 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    */
   var ccEnabledSomewhere = Feature.ccEnabledBySetting(using ictx)
 
+  /** If -explain-cycles is set, a trace of cyclic reference dependencies, otherwise null */
+  var cyclicReferenceTrace: CyclicReference.Trace | Null = null
+
   private var myEnrichedErrorMessage = false
 
   def compile(files: List[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
-    catch case NonFatal(ex) if !this.enrichedErrorMessage =>
+    catch case ex: Exception if !this.enrichedErrorMessage =>
       val files1 = if units.isEmpty then files else units.map(_.source.file)
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
@@ -376,7 +378,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
+      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases, runCtx)
 
     if ctx.settings.YnoDoubleBindings.value then
@@ -391,7 +393,16 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
         if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
         else None
 
-      for phase <- allPhases do
+      def matchesStopAfter(p: Phase): Boolean = p match
+        case mp: dotty.tools.dotc.transform.MegaPhase =>
+          mp.miniPhases.exists(sub => stopAfter.contains(sub.phaseName))
+        case _ =>
+          stopAfter.contains(p.phaseName)
+
+      var stopped = false
+      var i = 0
+      while i < allPhases.length && !stopped do
+        val phase = allPhases(i)
         doEnterPhase(phase)
         val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then
@@ -424,13 +435,15 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
           end if
         end if
         doAdvancePhase(phase, wasRan = phaseWillRun)
-      end for
+        if matchesStopAfter(phase) then stopped = true
+        i += 1
+      end while
       profiler.finished()
     }
 
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
-      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
+      cyclicReferenceTrace = new CyclicReference.Trace()
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     val cancelAsyncTasty: () => Unit =

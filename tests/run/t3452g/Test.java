@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 public class Test {
 	public static void main(String[] args) {
 		// To get better types here, we would need to

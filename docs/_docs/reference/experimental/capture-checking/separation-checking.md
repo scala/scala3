@@ -39,8 +39,8 @@ Separation checking is an extension of capture checking that enforces unique, un
 import language.experimental.separationChecking
 ```
 (or the corresponding setting `-language:experimental.separationChecking`).
-The import has to be given in addition to the `language.experimental.captureChecking` import that enables capture checking.
-The reason for the second language import is that separation checking is less mature than capture checking proper, so we are less sure
+
+The reason for this separate language import is that separation checking is less mature than capture checking proper, so we are less sure
 we got the balance of safety and expressivity right for it at the present time.
 
 In capture checking, each occurrence of [`any`](scoped-capabilities.md), and therefore each use of `^`, has a context-dependent meaning that is tied to the lifetime of capabilities. Separation checking refines that model. It keeps track of the capabilities hidden by each `any` and enforces that these hidden sets are either separated or overlap only where the types permit it.

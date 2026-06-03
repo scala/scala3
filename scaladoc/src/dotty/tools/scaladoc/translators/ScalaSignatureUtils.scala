@@ -1,7 +1,10 @@
 package dotty.tools.scaladoc
 package translators
 
+import dotty.tools.dotc.util.chaining.*
+
 case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtils:
+  assert(content != null)
   def plain(str: String): SignatureBuilder = copy(content = content :+ Plain(str))
   def name(str: String, dri: DRI, isCaptureVar: Boolean = false/*under CC*/): SignatureBuilder =
     val suffix = if isCaptureVar then List(Keyword("^")) else Nil
@@ -24,7 +27,10 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
   ): SignatureBuilder = elements match {
     case Nil => if forcePrefixAndSuffix then signature(prefix).signature(suffix) else this
     case head :: tail =>
-      tail.foldLeft(elemOp(signature(prefix), head))((b, e) => elemOp(b.signature(separator), e)).signature(suffix)
+      tail.foldLeft(elemOp(signature(prefix), head)): (b, e) =>
+        val sepped = b.signature(separator)
+        elemOp(sepped, e)
+      .signature(suffix)
   }
 
   def annotationsBlock(d: Member): SignatureBuilder =
@@ -92,9 +98,13 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
 
   def termParamList(params: TermParameterList) =
     this.list(params.parameters, prefix = List(Plain("("), Keyword(params.modifiers)), suffix = List(Plain(")")), forcePrefixAndSuffix = true) { (bld, p) =>
-      val annotationsAndModifiers = bld.annotationsInline(p)
-        .keyword(p.modifiers)
-      val name = p.name.fold(annotationsAndModifiers)(annotationsAndModifiers.name(_, p.dri).plain(": "))
+      val annotationsAndModifiers =
+        bld.annotationsInline(p)
+          .keyword(p.modifiers)
+      val name = p.name match {
+        case Some(name) => annotationsAndModifiers.name(name, p.dri).plain(": ")
+        case none => annotationsAndModifiers
+      }
       name.signature(p.signature)
     }
 

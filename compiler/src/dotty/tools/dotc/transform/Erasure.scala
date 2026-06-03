@@ -702,13 +702,10 @@ object Erasure {
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
-        case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe: @unchecked
-          if (sym.owner.is(Flags.Trait))
-            cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
-              .withType(SuperType(thisType, sym.owner.typeRef))
-          else
-            qual.withType(SuperType(thisType, thisType.firstParent.typeConstructor))
+        case Super(thisQual, untpd.EmptyTypeIdent) if sym.owner.is(Flags.Trait) =>
+          val SuperType(thisType, _) = qual.tpe: @unchecked
+          cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
+            .withType(SuperType(thisType, sym.owner.typeRef))
         case _ =>
           qual
       }
@@ -804,8 +801,9 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams =>
+        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
           args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
             if isErased then
               checkPureErased(arg, isArgument = true,

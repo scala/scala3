@@ -14,7 +14,6 @@ import PlainFile.toPlainFile
 
 import scala.jdk.CollectionConverters.*
 import scala.collection.immutable.ArraySeq
-import scala.util.control.NonFatal
 
 /**
  * A trait allowing to look for classpath entries in directories. It provides common logic for
@@ -134,7 +133,7 @@ object JrtClassPath {
           val ctSym = Paths.get(Properties.javaHome).resolve("lib").resolve("ct.sym")
           if (Files.notExists(ctSym)) None
           else Some(new CtSymClassPath(ctSym, v.toInt))
-        catch case NonFatal(_) => None
+        catch case _: Exception => None
       case _ =>
         try Some(new JrtClassPath(FileSystems.getFileSystem(URI.create("jrt:/"))))
         catch case _: ProviderNotFoundException | _: FileSystemNotFoundException => None
@@ -282,7 +281,7 @@ case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFi
   def asSourcePathString: String = asClassPathString
 
   protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
-  protected def isMatchingFile(f: JFile): Boolean = endsScalaOrJava(f.getName)
+  protected def isMatchingFile(f: JFile): Boolean = endsSourceExtension(f.getName)
 
   private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = files(inPackage)
 }

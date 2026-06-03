@@ -44,7 +44,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         .plainText
     try
       if value != null && forcedToStringClasses(value.getClass.getName) then return value.toString
-      // normally, if we used vanilla JDK and layered classloaders, we wouldnt need reflection.
+      // normally, if we used vanilla JDK and layered classloaders, we wouldn't need reflection.
       // however PPrint works by runtime type testing to deconstruct values. This is
       // sensitive to which classloader instantiates the object under test, i.e.
       // `value` is constructed inside the repl classloader. Testing for
@@ -52,7 +52,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       // because repl classloader has two layers where it can redefine `scala.Product`:
       // - `new URLClassLoader` constructed with contents of the `-classpath` setting
       // - `AbstractFileClassLoader` also might instrument the library code to support interrupt.
-      // Due the possible interruption instrumentation, it is unlikely that we can get
+      // Due to the possible interruption instrumentation, it is unlikely that we can get
       // rid of reflection here.
       val cl = classLoader()
       val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)

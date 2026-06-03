@@ -48,7 +48,7 @@ final class PcSemanticTokensProvider(
    */
   private def isDefinition(tree: Tree | EndMarker) = tree match
     case _: EndMarker => true
-    case df: Bind => true
+    case _: Bind => true
     case df: ValOrDefDef =>
       !df.rhs.isEmpty && !df.symbol.isAllOf(Flags.EnumCase)
     case df: TypeDef =>

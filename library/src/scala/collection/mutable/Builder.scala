@@ -22,6 +22,9 @@ import language.experimental.captureChecking
  *  Builder, in which case `result()` simply returns `this`.
  *
  *  @see [[scala.collection.mutable.ReusableBuilder]] for Builders which can be reused after calling `result()`
+ *
+ *  @tparam A the type of elements that can be added to this builder
+ *  @tparam To the type of collection produced by this builder
  */
 trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
 
@@ -50,9 +53,14 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
    *  to have the same size as the given collection, plus some delta.
    *
    *  This method provides a hint only if the collection has a known size,
-   *  as specified by the following pseudocode:
+   *  as specified by the following code:
    *
+   *  ```scala sc-name:builder-sizehint-context sc-hidden
+   *    val coll: scala.collection.IterableOnce[?] = ???
+   *    val delta: Int = 0
+   *    def sizeHint(size: Int): Unit = ()
    *  ```
+   *  ```scala sc-compile-with:builder-sizehint-context
    *    if (coll.knownSize != -1)
    *      if (coll.knownSize + delta <= 0) sizeHint(0)
    *      else sizeHint(coll.knownSize + delta)
@@ -94,7 +102,11 @@ trait Builder[-A, +To] extends Growable[A] { self: Builder[A, To]^ =>
     }
   }
 
-  /** A builder resulting from this builder by mapping the result using `f`. */
+  /** A builder resulting from this builder by mapping the result using `f`.
+   *
+   *  @tparam NewTo the type of collection produced by the returned builder
+   *  @param f the function to apply to this builder's result
+   */
   def mapResult[NewTo](f: To => NewTo): Builder[A, NewTo]^{this, f} = new Builder[A, NewTo] {
     def addOne(x: A): this.type = { self += x; this }
     def clear(): Unit = self.clear()

@@ -1118,7 +1118,7 @@ object PatternMatcher {
         def typesInCases(cdefs: List[CaseDef]): List[Type] =
           cdefs.flatMap(cdef => typesInPattern(cdef.pat))
         def numTypes(cdefs: List[CaseDef]): Int =
-          typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
+          typesInCases(cdefs).toSet.size
         val numTypesInOriginal = numTypes(original.cases)
         if numTypesInOriginal >= caseThreshold && numTypes(resultCases) < numTypesInOriginal then
           patmatch.println(i"switch warning for ${ctx.compilationUnit}")

@@ -7,4 +7,4 @@ assignees: ''
 
 ---
 
-Please create a feature request in the [Dotty Discussions](https://github.com/scala/scala3/discussions/new?category=feature-requests).
+Please create a feature request in the [Scala 3 Discussions](https://github.com/scala/scala3/discussions/new?category=feature-requests).

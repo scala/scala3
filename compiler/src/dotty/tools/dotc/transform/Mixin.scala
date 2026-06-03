@@ -6,7 +6,6 @@ import core.*
 import MegaPhase.*
 import Contexts.*
 import Flags.*
-
 import Symbols.*
 import SymDenotations.*
 import Types.*
@@ -18,7 +17,6 @@ import NameKinds.*
 import NameOps.*
 import Phases.erasurePhase
 import ast.Trees.*
-
 import dotty.tools.dotc.transform.sjs.JSSymUtils.isJSType
 
 object Mixin {
@@ -166,6 +164,8 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           val setter = makeTraitSetter(decl.asTerm)
           setter.validFor = thisPhase.validFor // validity of setter = next phase up to next transformer afterwards
           decls1.enter(setter)
+          // Re-create the setter from the unerased getter so we can have its unerased form for generic signatures
+          mixinGenericInfos(setter) = atPhase(erasurePhase) { makeTraitSetter(decl.asTerm).info }
           modified = true
       if modified then
         sym.copySymDenotation(
@@ -297,8 +297,11 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
           val forwarder = mkForwarderSym(getter.asTerm)
-          val erased = atPhase(erasurePhase) { cls.thisType.memberInfo(getter) }
-          mixinGenericInfos(forwarder) = erased
+          // Store the unerased form for generic signature use later,
+          // but only if it's not private (which we must check at erasure time, as here we've removed that flag already),
+          // since otherwise it might refer to private classes
+          if atPhase(erasurePhase) { !getter.is(Private) } then
+            mixinGenericInfos(forwarder) = atPhase(erasurePhase) { cls.thisType.memberInfo(getter) }
           transformFollowing(DefDef(forwarder, rhs))
         }
         else if wasOneOf(getter, ParamAccessor) then
@@ -311,8 +314,13 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       val mixinSetters = mixin.info.decls.filter { sym =>
         sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName))
       }
-      for (setter <- mixinSetters)
-      yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
+      mixinSetters.map(setter => {
+        val copied = transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
+        mixinGenericInfos.get(setter) match
+          case Some(gi) => mixinGenericInfos(copied.symbol) = gi
+          case None => ()
+        copied
+      })
 
     def mixinForwarders(mixin: ClassSymbol): List[Tree] =
       for meth <- mixin.info.decls.filter(d => needsMixinForwarder(mixin, d))
@@ -333,7 +341,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         // not give the same erased type. If it doesn't, we'll just give a completely
         // incorrect Java signature. (This could be improved by generating dedicated
         // bridges, but we don't go that far; scalac doesn't either.)
-        if TypeErasure.transformInfo(target, infoBeforeErasure) =:= sym.info then
+        if ElimErasedValueType.elimEVT(TypeErasure.transformInfo(target, infoBeforeErasure)) =:= sym.info then
           mixinGenericInfos(sym) = infoBeforeErasure
       sym
 

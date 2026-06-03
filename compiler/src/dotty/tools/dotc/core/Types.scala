@@ -183,8 +183,6 @@ object Types extends TypeUtils {
         // https://www.scala-lang.org/files/archive/spec/2.11/11-annotations.html#scala-compiler-annotations
         tp.annot.symbol == defn.UncheckedStableAnnot || tp.parent.isStable
       case tp: AndType =>
-        // TODO: fix And type check when tp contains type parames for explicit-nulls flow-typing
-        // see: tests/explicit-nulls/pos/flow-stable.scala.disabled
         tp.tp1.isStable && (realizability(tp.tp2) eq Realizable) ||
         tp.tp2.isStable && (realizability(tp.tp1) eq Realizable)
       case tp: AppliedType => tp.cachedIsStable
@@ -626,10 +624,11 @@ object Types extends TypeUtils {
      *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
-    final def classSymbol(using Context): Symbol = this match
+    final def classSymbol(using Context): ClassSymbol | NoSymbol.type = this match
       case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol
+        tp.symbol match
+          case classSym: ClassSymbol => classSym
+          case _ => tp.superType.classSymbol
       case tp: TypeProxy =>
         tp.superType.classSymbol
       case tp: ClassInfo =>
@@ -736,8 +735,7 @@ object Types extends TypeUtils {
           case tp: WildcardType =>
             tp.effectiveBounds.hi.baseClasses
           case _ => Nil
-      catch case ex: Throwable =>
-        handleRecursive("base classes of", this.show, ex)
+      catch case ex: Throwable => handleRecursive("base classes of", this.show, ex)
 
 // ----- Member access -------------------------------------------------
 
@@ -4967,10 +4965,7 @@ object Types extends TypeUtils {
     }
 
     override def toString: String =
-      try s"RecThis(${binder.hashCode})"
-      catch {
-        case ex: NullPointerException => s"RecThis(<under construction>)"
-      }
+      s"RecThis(${binder.hashCode})"
   }
 
   private final class RecThisImpl(binder: RecType) extends RecThis(binder)

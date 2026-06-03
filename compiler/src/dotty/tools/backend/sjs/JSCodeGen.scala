@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import scala.language.unsafeNulls
-
 import scala.annotation.switch
 import scala.collection.mutable
 
@@ -90,14 +88,14 @@ class JSCodeGen()(using genCtx: Context) {
   /** Resets all of the scoped state in the context of `body`. */
   private def resetAllScopedVars[T](body: => T): T = {
     withScopedVars(
-        currentClassSym := null,
-        delambdafyTargetDefDefs := null,
-        methodsAllowingJSAwait := null,
-        currentMethodSym := null,
-        localNames := null,
-        thisLocalVarName := null,
-        isModuleInitialized := null,
-        undefinedDefaultParams := null
+        currentClassSym.unset,
+        delambdafyTargetDefDefs.unset,
+        methodsAllowingJSAwait.unset,
+        currentMethodSym.unset,
+        localNames.unset,
+        thisLocalVarName.unset,
+        isModuleInitialized.unset,
+        undefinedDefaultParams.unset
     ) {
       body
     }

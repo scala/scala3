@@ -3,8 +3,6 @@ package dotc
 package core
 package classfile
 
-import scala.language.unsafeNulls
-
 import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler, UnpickleException }
 
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
@@ -22,7 +20,6 @@ import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
-import scala.util.control.NonFatal
 import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
 
 import scala.compiletime.uninitialized
@@ -96,7 +93,7 @@ object ClassfileParser {
   abstract class AbstractConstantPool(using in: DataReader) {
     protected val len = in.nextChar
     protected val starts = new Array[Int](len)
-    protected val values = new Array[AnyRef](len)
+    protected val values = new Array[AnyRef | Null](len)
     protected val internalized = new Array[NameOrString](len)
 
     { var i = 1
@@ -129,7 +126,7 @@ object ClassfileParser {
       if (index <= 0 || len <= index)
         errorBadIndex(index)
 
-      values(index) match {
+      values(index).runtimeChecked match {
         case name: NameOrString => name
         case null   =>
           val start = starts(index)
@@ -199,7 +196,7 @@ object ClassfileParser {
         }
         values(index) = value
       }
-      value match {
+      value.runtimeChecked match {
         case ct: Constant  => ct
         case cls: Symbol   => Constant(cls.typeRef)
         case arr: Type     => Constant(arr)
@@ -258,10 +255,10 @@ object ClassfileParser {
   }
 
   protected class NameOrString(val value: String) {
-    private var _name: SimpleName = null
+    private var _name: SimpleName | Null = null
     def name: SimpleName = {
-      if (_name eq null) _name = termName(value)
-      _name
+      if (_name == null) _name = termName(value)
+      _name.nn
     }
   }
 }
@@ -300,7 +297,7 @@ class ClassfileParser(
     classfileVersion = parseHeader(classfile)
     this.pool = new ConstantPool
     val res = parseClass()
-    this.pool =  null
+    this.pool = null.asInstanceOf[ConstantPool] // deinit for GC
     res
   }
   catch {
@@ -466,9 +463,12 @@ class ClassfileParser(
   }
 
   class MemberCompleter(name: SimpleName, jflags: Int, sig: String) extends LazyType {
-    var attrCompleter: AttributeCompleter = null
+    var attrCompleter: AttributeCompleter | Null = null
 
     def complete(denot: SymDenotation)(using Context): Unit = {
+      val attrCompleter = this.attrCompleter
+      assert(attrCompleter != null, "complete was called but attrCompleter was not set")
+
       val sym = denot.symbol
       val isEnum = (jflags & JAVA_ACC_ENUM) != 0
       val isNative = (jflags & JAVA_ACC_NATIVE) != 0
@@ -562,10 +562,12 @@ class ClassfileParser(
     if (pt eq defn.BooleanType) && ct.tag == IntTag then
       Constant(ct.value != 0)
     else
-      ct.convertTo(pt)
+      val cst = ct.convertTo(pt)
+      assert(cst != null, i"Cannot convert constant $ct to type $pt")
+      cst
   }
 
-  private def sigToType(sig: String, owner: Symbol = null, isVarargs: Boolean = false)(using Context): Type = {
+  private def sigToType(sig: String, owner: Symbol | Null = null, isVarargs: Boolean = false)(using Context): Type = {
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {
@@ -619,7 +621,7 @@ class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (skiptvs) tp else AppliedType(tp, argsBuf.toList)
+                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toList)
               }
               else tp
             case tp =>
@@ -825,10 +827,10 @@ class ClassfileParser(
         case (name, tag: EnumTag)     => untpd.NamedArg(name.name, tag.toTree).withSpan(NoSpan)
       }
 
-    protected var mySym: Symbol | (Context ?=> Symbol) =
+    protected var mySym: Symbol | (Context ?=> Symbol) | Null =
       (ctx: Context) ?=> annotType.classSymbol
 
-    protected var myTree: Tree | (Context ?=> Tree) =
+    protected var myTree: Tree | (Context ?=> Tree) | Null =
       (ctx: Context) ?=> untpd.resolveConstructor(annotType, args)
 
     def untpdTree(using Context): untpd.Tree =
@@ -865,7 +867,7 @@ class ClassfileParser(
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
-    case NonFatal(ex) =>
+    case ex: Exception =>
       // We want to be robust when annotations are unavailable, so the very least
       // we can do is warn the user about the exception
       // There was a reference to ticket 1135, but that is outdated: a reference to a class not on
@@ -887,13 +889,15 @@ class ClassfileParser(
    *  lazily.
    */
   class AttributeCompleter(sym: Symbol) {
-    var sig: String = null
-    var constant: Constant = null
+    var sig: String | Null = null
+    var constant: Constant | Null = null
     var exceptions: List[NameOrString] = Nil
     var annotations: List[Annotation] = Nil
     var namedParams: Map[Int, TermName] = Map.empty
+    var permittedSubclasses: List[NameOrString] = Nil
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
+        val sig = this.sig
         if sig == null then tp
         else {
           val newType = sigToType(sig, sym, isVarargs)
@@ -903,8 +907,9 @@ class ClassfileParser(
         }
 
       val newType =
-        if this.constant != null then
-          val ct = convertTo(this.constant, updatedType)
+        val constant = this.constant
+        if constant != null then
+          val ct = convertTo(constant, updatedType)
           if ct != null then ConstantType(ct) else updatedType
         else updatedType
 
@@ -914,6 +919,14 @@ class ClassfileParser(
         val cls = getClassSymbol(ex.name)
         sym.addAnnotation(ThrowsAnnotation(cls.asClass))
       }
+
+      permittedSubclasses.foreach { child =>
+        val cls = getClassSymbol(child.name)
+        sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
+          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
+          .withSpan(NoSpan)
+          ))
+        }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
@@ -990,6 +1003,14 @@ class ClassfileParser(
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
             report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
+          }
+
+        case tpnme.PermittedSubclassesATTR =>
+          sym.setFlag(Flags.Sealed)
+          val numberOfClasses = in.nextChar
+          for (n <- 0 until numberOfClasses) {
+            val childName = pool.getClassName(in.nextChar.toInt)
+            res.permittedSubclasses ::= childName
           }
 
         case _ =>
@@ -1338,26 +1359,26 @@ class ClassfileParser(
     def getClassOrArrayType(index: Int)(using ctx: Context, in: DataReader): Type = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       val value = values(index)
-      var c: Type = null
       if (value eq null) {
         val start = starts(index)
         if (in.getByte(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
         if (name.value.charAt(0) == ARRAY_TAG) {
-          c = sigToType(name.value)
+          val c = sigToType(name.value)
           values(index) = c
+          c
         }
         else {
           val sym = classNameToSymbol(name.name)
           values(index) = sym
-          c = sym.typeRef
+          sym.typeRef
         }
       }
-      else c = value match {
+      else
+        value.runtimeChecked match {
           case tp: Type => tp
           case cls: Symbol => cls.typeRef
-      }
-      c
+        }
     }
 
     def getType(index: Int, isVarargs: Boolean = false)(using Context, DataReader): Type =

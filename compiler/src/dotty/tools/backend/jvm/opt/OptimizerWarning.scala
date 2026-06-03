@@ -2,14 +2,13 @@ package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.CompilerSettings
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.tools.asm.tree.AbstractInsnNode
 
 
 sealed trait OptimizerWarning {
-  def emitWarning(settings: CompilerSettings): Boolean
+  def emitWarning(settings: OptimizerSettings): Boolean
 }
 
 sealed trait MissingBytecodeWarning extends OptimizerWarning {
@@ -29,7 +28,7 @@ sealed trait MissingBytecodeWarning extends OptimizerWarning {
         missingClass.map(c => s" Reason:\n$c").getOrElse("")
   }
 
-  def emitWarning(settings: CompilerSettings): Boolean = this match {
+  def emitWarning(settings: OptimizerSettings): Boolean = this match {
     case ClassNotFound(_) =>
       settings.optWarningNoInlineMissingBytecode
 
@@ -54,7 +53,7 @@ final case class NoClassBTypeInfo(cause: MissingBytecodeWarning) extends Optimiz
   override def toString: String =
     cause.toString
 
-  def emitWarning(settings: CompilerSettings): Boolean =
+  def emitWarning(settings: OptimizerSettings): Boolean =
     cause.emitWarning(settings)
 }
 
@@ -82,7 +81,7 @@ sealed trait CalleeInfoWarning extends OptimizerWarning {
       s"Error while computing the inline information for method $warningMessageSignature:\n" + cause
   }
 
-  def emitWarning(settings: CompilerSettings): Boolean = this match {
+  def emitWarning(settings: OptimizerSettings): Boolean = this match {
     case MethodInlineInfoIncomplete(_, _, _, cause) => cause.emitWarning(settings)
 
     case MethodInlineInfoMissing(_, _, _, Some(cause)) => cause.emitWarning(settings)
@@ -150,7 +149,7 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
     warning + reason
   }
 
-  def emitWarning(settings: CompilerSettings): Boolean = {
+  def emitWarning(settings: OptimizerSettings): Boolean = {
     settings.optWarningEmitAnyInlineFailed ||
       annotatedInline && settings.optWarningEmitAtInlineFailed
   }
@@ -182,7 +181,7 @@ case class ResultingMethodTooLarge(calleeDeclarationClass: InternalName, name: S
 case object UnknownInvokeDynamicInstruction extends OptimizerWarning {
   override def toString = "The callee contains an InvokeDynamic instruction with an unknown bootstrap method (not a LambdaMetaFactory)."
 
-  def emitWarning(settings: CompilerSettings): Boolean = settings.optWarningEmitAnyInlineFailed
+  def emitWarning(settings: OptimizerSettings): Boolean = settings.optWarningEmitAnyInlineFailed
 }
 
 /**
@@ -192,7 +191,7 @@ case object UnknownInvokeDynamicInstruction extends OptimizerWarning {
 sealed trait RewriteClosureApplyToClosureBodyFailed extends OptimizerWarning {
   def pos: SourcePosition
 
-  override def emitWarning(settings: CompilerSettings): Boolean = this match {
+  override def emitWarning(settings: OptimizerSettings): Boolean = this match {
     case RewriteClosureAccessCheckFailed(_, cause) => cause.emitWarning(settings)
     case RewriteClosureIllegalAccess(_, _) => settings.optWarningEmitAnyInlineFailed
   }
@@ -224,7 +223,7 @@ sealed trait ClassInlineInfoWarning extends OptimizerWarning {
       s"Cannot read ScalaInlineInfo version $version in classfile $internalName. Use a more recent compiler."
   }
 
-  def emitWarning(settings: CompilerSettings): Boolean = this match {
+  def emitWarning(settings: OptimizerSettings): Boolean = this match {
     case NoInlineInfoAttribute(_) => settings.optWarningNoInlineMissingScalaInlineInfoAttr
     case ClassNotFoundWhenBuildingInlineInfoFromSymbol(cause) => cause.emitWarning(settings)
     case UnknownScalaInlineInfoVersion(_, _) => settings.optWarningNoInlineMissingScalaInlineInfoAttr

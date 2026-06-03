@@ -79,9 +79,10 @@ trait Arrows:
   def polyContextImpure3[A](f: A ?->{a,b,c} Int => Int): Int //expected: def polyContextImpure3[A](f: A ?->{a, b, c} Int => Int): Int
 
   val polyPureV: [A] => A -> Int //expected: val polyPureV: [A] => A => Int
-  val polyPureV2: [A] => Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] => Int => A ->{a, b, c} Int
-  val polyImpureV: [A] -> A => Int //expected: val polyImpureV: [A] => A => Int
-  val polyImpureV2: [A] -> A => Int //expected: val polyImpureV2: [A] => A => Int
+  // Disallowed by implementation restriction: polymorphic function types cannot wrap impure function types.
+  // val polyPureV2: [A] => Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] => Int => A ->{a, b, c} Int
+  // val polyImpureV: [A] -> A => Int //expected: val polyImpureV: [A] => A => Int
+  // val polyImpureV2: [A] -> A => Int //expected: val polyImpureV2: [A] => A => Int
 
 trait SelfTypeCaptures[+A]:
   self: SelfTypeCaptures[A]^ =>

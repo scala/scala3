@@ -13,21 +13,8 @@ import java.nio.file.Files
   */
 class CaretTest extends BaseHtmlTest:
 
-  private def docHtml(cls: String, syntax: String = "markdown"): String =
-    val dest = Files.createTempDirectory("test-doc").toFile
-    try
-      val args = Scaladoc.Args(
-        name = projectName,
-        tastyFiles = tastyFiles("i25517"),
-        output = dest,
-        projectVersion = Some(projectVersion),
-        defaultSyntax = List(syntax),
-      )
-      Scaladoc.run(args)(using testContext)
-      val path = dest.toPath.resolve(s"tests/i25517/$cls.html")
-      val doc = org.jsoup.Jsoup.parse(dotty.tools.scaladoc.util.IO.read(path))
-      doc.select(".doc").html()
-    finally dotty.tools.scaladoc.util.IO.delete(dest)
+  private def docHtml(cls: String, syntax: String): String =
+    super.docHtml("i25517", cls, syntax)
 
   @Test def supTagsInMarkdown(): Unit =
     val html = docHtml("SupDefault", "markdown")

@@ -12,7 +12,6 @@ import reporting.TestReporter
 
 import java.io.*
 import java.nio.file.{Path => JPath}
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.charset.StandardCharsets
 
 import interfaces.Diagnostic.INFO
@@ -46,6 +45,7 @@ class PrintingTest {
       case e: Throwable =>
         println(s"Compile $path exception:")
         e.printStackTrace()
+        throw e
     }
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
@@ -54,7 +54,7 @@ class PrintingTest {
 
   def testIn(testsDir: String, phase: String) =
     val res = Directory(testsDir).list.toList
-      .filter(_.ext.isScalaOrJava)
+      .filter(_.ext.isSourceExtension)
       .map(f => compileFile(f.jpath, phase))
 
     val failed = res.filter(!_)

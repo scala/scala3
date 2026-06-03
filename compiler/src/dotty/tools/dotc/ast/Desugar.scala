@@ -274,7 +274,7 @@ object desugar {
    *                       of the same method.
    *  @param evidenceFlags The flags to use for evidence definitions
    *  @param freshName     A function to generate fresh names for evidence definitions
-   *  @param allParamss    If `tdef` is a type paramter, all parameters of the owning method,
+   *  @param allParamss    If `tdef` is a type parameter, all parameters of the owning method,
    *                       otherwise the empty list.
    */
   private def desugarContextBounds(
@@ -356,7 +356,7 @@ object desugar {
         val newParamss = paramssNoContextBounds(paramss)
         rhs match
           case MacroTree(call) =>
-            cpy.DefDef(meth)(rhs = call).withMods(meth.mods | Macro | Erased)
+            cpy.DefDef(meth)(rhs = call, paramss = newParamss).withMods(meth.mods | Macro | Erased)
           case _ =>
             addEvidenceParams(
               cpy.DefDef(meth)(
@@ -795,17 +795,7 @@ object desugar {
         case PatDef(_, ids: List[Ident] @ unchecked, _, _) => ids
       }
 
-      val stats0 = impl.body.map(expandConstructor)
-      val stats =
-        if (ctx.owner eq defn.ScalaPackageClass) && defn.hasProblematicGetClass(className) then
-          stats0.filterConserve {
-            case ddef: DefDef =>
-              ddef.name ne nme.getClass_
-            case _ =>
-              true
-          }
-        else
-          stats0
+      val stats = impl.body.map(expandConstructor)
 
       if (isEnum) {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
@@ -2444,7 +2434,7 @@ object desugar {
     desugared.withSpan(tree.span)
   }
 
-  /** Turn a fucntion value `handlerFun` into a catch case for a try.
+  /** Turn a function value `handlerFun` into a catch case for a try.
    *  If `handlerFun` is a partial function, translate to
    *
    *    case ex =>

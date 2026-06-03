@@ -7,7 +7,7 @@ import java.nio.file._
 import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
 import java.util.function.Function
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import _root_.tools.jackson.databind.json.JsonMapper
 
 import org.eclipse.lsp4j
 
@@ -32,7 +32,8 @@ import config.Printers.interactiv
 
 import languageserver.config.ProjectConfig
 import languageserver.worksheet.{Worksheet, WorksheetService}
-import languageserver.decompiler.{TastyDecompilerService}
+import languageserver.decompiler.TastyDecompilerService
+import org.eclipse.lsp4j.jsonrpc.messages.Either
 
 import lsp4j.services._
 
@@ -68,7 +69,8 @@ class DottyLanguageServer extends LanguageServer
     if myDrivers == null then
       assert(rootUri != null, "`drivers` cannot be called before `initialize`")
       val configFile = new File(new URI(rootUri + '/' + IDE_CONFIG_FILE))
-      val configs: List[ProjectConfig] = (new ObjectMapper).readValue(configFile, classOf[Array[ProjectConfig]]).toList
+      val configs: List[ProjectConfig] =
+        JsonMapper.builder().build().readValue(configFile, classOf[Array[ProjectConfig]]).toList
 
       val defaultFlags = List("-color:never" /*, "-Yplain-printer","-Yprint-pos"*/)
 
@@ -250,7 +252,7 @@ class DottyLanguageServer extends LanguageServer
 
     client.publishDiagnostics(new PublishDiagnosticsParams(
       document.getUri,
-      diags.flatMap(diagnostic).asJava))
+      diags.flatMap(DottyLanguageServer.diagnostic).asJava))
   }
 
   override def didChange(params: DidChangeTextDocumentParams): Unit = {
@@ -277,7 +279,7 @@ class DottyLanguageServer extends LanguageServer
 
       client.publishDiagnostics(new PublishDiagnosticsParams(
         document.getUri,
-        diags.flatMap(diagnostic).asJava))
+        diags.flatMap(DottyLanguageServer.diagnostic).asJava))
     }
   }
 
@@ -320,7 +322,7 @@ class DottyLanguageServer extends LanguageServer
    *  If cursor is on a definition, show this definition together with all overridden
    *  and overriding definitions.
    */
-  override def definition(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+  override def definition(params: DefinitionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -329,7 +331,7 @@ class DottyLanguageServer extends LanguageServer
     val path = Interactive.pathTo(driver.openedTrees(uri), pos)
 
     val definitions = Interactive.findDefinitions(path, pos, driver).toList
-    definitions.flatMap(d => location(d.namePos)).asJava
+    Either.forLeft(definitions.flatMap(d => location(d.namePos)).asJava)
   }
 
   override def references(params: ReferenceParams) = computeAsync { cancelToken =>
@@ -438,7 +440,7 @@ class DottyLanguageServer extends LanguageServer
     new WorkspaceEdit(changes.asJava)
   }
 
-  override def documentHighlight(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+  override def documentHighlight(params: DocumentHighlightParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -458,7 +460,7 @@ class DottyLanguageServer extends LanguageServer
     }.distinct.asJava
   }
 
-  override def hover(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+  override def hover(params: HoverParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit def ctx: Context = driver.currentCtx
@@ -509,16 +511,16 @@ class DottyLanguageServer extends LanguageServer
   override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
     val query = params.getQuery
 
-    drivers.values.toList.flatMap { driver =>
+    Either.forLeft(drivers.values.toList.flatMap { driver =>
       implicit def ctx: Context = driver.currentCtx
 
       val trees = driver.sourceTreesContaining(query)
       val defs = Interactive.namedTrees(trees, Include.empty, _.name.toString.contains(query))
       defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos))
-    }.asJava
+    }.asJava)
   }
 
-  override def implementation(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+  override def implementation(params: ImplementationParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
 
@@ -544,12 +546,12 @@ class DottyLanguageServer extends LanguageServer
         val matches = Interactive.namedTrees(trees, Include.local, predicate)(using ctx)
         matches.map(tree => location(tree.namePos(using ctx)))
       }
-    }.toList
+    }
 
-    implementations.flatten.asJava
+    Either.forLeft(implementations.flatten.asJava)
   }
 
-  override def signatureHelp(params: TextDocumentPositionParams) = computeAsync { canceltoken =>
+  override def signatureHelp(params: SignatureHelpParams) = computeAsync { canceltoken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
 

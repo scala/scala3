@@ -21,8 +21,14 @@ import scala.language.`2.13`
  *
  * For instance in the following class definition
  *
+ * ```scala sc-hidden sc-name:bean-imports
+ * import scala.beans.BeanProperty
+ * import scala.annotation.Annotation
+ * import scala.annotation.meta.beanGetter
  * ```
- * class C(@myAnnot @BeanProperty var c: Int)
+ * ```scala sc-compile-with:bean-imports
+ * class myAnnotation extends Annotation
+ * class C(@myAnnotation @BeanProperty var c: Int)
  * ```
  *
  * there are six entities which can carry the annotation `@myAnnot`: the
@@ -41,12 +47,12 @@ import scala.language.`2.13`
  *
  * The target meta-annotations can be put on the annotation type when
  * instantiating the annotation. In the following example, the annotation
- * `@Id` will be added only to the bean getter `getX`.
+ * `@MyId` will be added only to the bean getter `getX`.
  *
- * ```
- * import javax.persistence.Id
+ * ```scala sc-compile-with:bean-imports
+ * class MyId extends Annotation
  * class A {
- *   @(Id @beanGetter) @BeanProperty val x = 0
+ *   @(MyId @beanGetter) @BeanProperty val x = 0
  * }
  * ```
  *
@@ -55,11 +61,12 @@ import scala.language.`2.13`
  *
  * The syntax can be improved using a type alias:
  *
- * ```
- * object ScalaJPA {
- *   type Id = javax.persistence.Id @beanGetter
+ * ```scala sc-compile-with:bean-imports
+ * class MyId extends Annotation
+ * object ScalaAnnotation {
+ *   type Id = MyId @beanGetter
  * }
- * import ScalaJPA.Id
+ * import ScalaAnnotation.Id
  * class A {
  *   @Id @BeanProperty val x = 0
  * }
@@ -70,7 +77,11 @@ import scala.language.`2.13`
  * For annotations defined in Scala, a default target can be specified
  * in the annotation class itself, for example
  *
+ * ```scala sc-hidden sc-name:getter-imports
+ * import scala.annotation.Annotation
+ * import scala.annotation.meta.getter
  * ```
+ * ```scala sc-compile-with:getter-imports
  * @getter
  * class myAnnotation extends Annotation
  * ```

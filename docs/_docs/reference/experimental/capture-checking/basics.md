@@ -85,7 +85,7 @@ trait LzyList[+A]:
 object LzyList:
   def apply[T](xs: T*): LzyList[T] = ???
 //}
-val xs = usingLogFile { f =>
+val xs = usingLogFile { f => // error // error
   LzyList(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```
@@ -372,7 +372,7 @@ like this:
 ```scala sc:fail sc-compile-with:logfile-checked
 var loophole: () => Unit = () => ()
 usingLogFile { f =>
-  loophole = () => f.write(0)
+  loophole = () => f.write(0) // error
 }
 loophole()
 ```

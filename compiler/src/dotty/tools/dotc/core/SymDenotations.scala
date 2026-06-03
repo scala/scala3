@@ -19,7 +19,6 @@ import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
-import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
@@ -853,6 +852,10 @@ object SymDenotations {
     /** Does this symbol denote the primary constructor of its enclosing class? */
     final def isPrimaryConstructor(using Context): Boolean =
       isConstructor && owner.primaryConstructor == symbol
+
+    /** Does this symbol denote a secondary constructor for its enclosing class? */
+    def isSecondaryConstructor(using Context): Boolean =
+      isConstructor && owner.primaryConstructor != symbol
 
     /** Does this symbol denote the static constructor of its enclosing class? */
     final def isStaticConstructor(using Context): Boolean =
@@ -2061,7 +2064,25 @@ object SymDenotations {
         case p :: parents1 =>
           p.classSymbol match {
             case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
-            case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort, s"$this has non-class parent: $p")
+            case _ =>
+              // The parent type couldn't be resolved to a class, e.g.
+              // because a transitive dependency was removed from the
+              // classpath. Report a `BadSymbolicReference` (mirroring the
+              // pattern used by `StubInfo.complete` above) rather than
+              // crashing with an internal assertion. See scala/scala3#20010.
+              def ignoreBadParent =
+                isRefinementClass || p.isError
+                  || ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort
+              p match
+                case p: TypeRef if p.symbol == NoSymbol && !ignoreBadParent =>
+                  val stubOwner =
+                    p.prefix.classSymbol
+                      .orElse(p.prefix.termSymbol.moduleClass)
+                      .orElse(defn.RootClass)
+                  val stub = newStubSymbol(stubOwner, p.name, CompilationUnitInfo(symbol.associatedFile))
+                  report.error(BadSymbolicReference(stub.denot), symbol.srcPos)
+                case _ =>
+                  assert(ignoreBadParent, s"$this has non-class parent: $p")
           }
           traverse(parents1)
         case nil =>
@@ -2388,7 +2409,7 @@ object SymDenotations {
         }
       }
       catch {
-        case ex: Throwable =>
+        case ex: Exception =>
           tp match
             case tp: CachedType => btrCache.remove(tp)
             case _ =>
@@ -2419,6 +2440,11 @@ object SymDenotations {
             case pcls: ClassSymbol =>
               for name <- pcls.memberNames(keepOnly) do
                 maybeAdd(name)
+            case _ =>
+              // Parent failed to resolve to a class (the missing
+              // reference has been reported by computeBaseData).
+              // Skip here to avoid a secondary MatchError.
+              // See scala/scala3#20010.
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
@@ -2429,8 +2455,7 @@ object SymDenotations {
         names
       }
       catch {
-        case ex: Throwable =>
-          handleRecursive("member names", i"of $this", ex)
+        case ex: Throwable => handleRecursive("member names", i"of $this", ex)
       }
     }
 
@@ -2618,7 +2643,7 @@ object SymDenotations {
             // since the older file might have been loaded from a jar earlier in the
             // classpath.
             def sameContainer(f: AbstractFile): Boolean =
-              try f.container == chosen.container catch case NonFatal(ex) => true
+              try f.container == chosen.container catch case ex: Exception => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
                 report.warning(em"""${ambiguousFilesMsg(conflicting)}

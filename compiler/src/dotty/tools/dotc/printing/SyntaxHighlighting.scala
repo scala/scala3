@@ -75,10 +75,10 @@ object SyntaxHighlighting {
           case _ if alphaKeywords.contains(token) || isSoftModifier =>
             highlightRange(start, end, KeywordColor)
 
-          case IDENTIFIER if name == nme.??? =>
+          case IDENTIFIER if name.nn == nme.??? =>
             highlightRange(start, end, Console.RED_B)
 
-          case IDENTIFIER if name.head.isUpper && name.exists(!_.isUpper) =>
+          case IDENTIFIER if name.nn.head.isUpper && name.nn.exists(!_.isUpper) =>
             highlightRange(start, end, KeywordColor)
 
           case _ =>

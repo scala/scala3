@@ -1,0 +1,28 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25464.scala:15:6 ----------------------------------------
+15 |  f(c.cf1) // error
+   |    ^^^^^
+   |    Found:    (c.cf1 : CF1)
+   |    Required: Object^{any.only[CF2]}
+   |
+   |    Note that capability `c.cf1` cannot flow into capture set {any.only[CF2]}.
+   |
+   |    where:    any is a root capability created in method test when checking argument to parameter x of method f
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25464.scala:17:12 ---------------------------------------
+17 |  f(c.cf2.a.cf1) // error
+   |    ^^^^^^^^^^^
+   |    Found:    (c.cf2.a.cf1 : CF1)
+   |    Required: Object^{any.only[CF2]}
+   |
+   |    Note that capability `c.cf2.a.cf1` cannot flow into capture set {any.only[CF2]}.
+   |
+   |    where:    any is a root capability created in method test when checking argument to parameter x of method f
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/i25464.scala:8:17 -------------------------------------------------------------
+8 |  class Impl(val a: C^{C.this}) extends CF2 // error
+  |                 ^
+  |                 value a's type C^{C.this} captures C.this which is unclassified,
+  |                 but it is a field of class Impl which is classied as CF2.
+  |                 Field classifiers have to conform to the classifier of the containing class.

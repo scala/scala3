@@ -35,6 +35,7 @@ class CompilationTests {
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
       compileDir("tests/pos-special/i24547", defaultOptions.without("-Ycheck:all")),
+      compileDir("tests/pos-special/i24719", defaultOptions.without("-Ycheck:all")),
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -84,6 +85,8 @@ class CompilationTests {
       compileFile("tests/rewrites/i24103.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24103b.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24213.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
+      compileFile("tests/rewrites/i18234.scala", defaultOptions.and("-rewrite", "-source:3.8-migration")),
+      compileFile("tests/rewrites/unary-minus.scala", defaultOptions.and("-rewrite")),
     )).checkRewrites()
   }
 
@@ -232,6 +235,26 @@ class CompilationTests {
       compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions `and` "-language:unsafeNulls" `and` "-Yno-flexible-types"),
     ))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
+
+    // The regression test for i25722 has some atypical classpath requirements.
+    // The test consists of (a) one Java nullability annotation, (b) one Java user of the annotation, and (c) two Scala files,
+    // which must be compiled separately. In addition:
+    //   - the output from (a) must be on the classpath while compiling (b)
+    //   - the output from (b) must be on the classpath while compiling (c)
+    //   - the output from (a) _must not_ be on the classpath while compiling (c)
+    locally {
+      val i25722Group = TestGroup("tests/explicit-nulls/special/i25722")
+      val i25722Options = explicitNullsOptions.and("-Yforce-sbt-phases")
+      val outDir1 = Paths.get(defaultOutputDir.getAbsolutePath, i25722Group.name, "Nullable", "annotations", "Nullable/").toString
+      val outDir2 = Paths.get(defaultOutputDir.getAbsolutePath, i25722Group.name, "Foo", "lib", "Foo").toString
+      val tests = List(
+        withCoverage(compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/org/jetbrains/annotations/Nullable.java", i25722Options)(using i25722Group).keepOutput),
+        withCoverage(compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/lib/Foo.java", i25722Options.withClasspath(outDir1))(using i25722Group).keepOutput),
+        withCoverage(compileDir("tests/explicit-nulls/special/25722/scala", i25722Options.withClasspath(outDir2))(using i25722Group).keepOutput)
+      )
+      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos"))
+      tests.foreach(_.delete())
+    }
 
     // locally {
     //   val tests = List(

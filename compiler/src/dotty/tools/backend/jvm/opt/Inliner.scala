@@ -30,8 +30,9 @@ import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
 class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
-              callGraph: CallGraph, coreBTypes: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer) {
+              callGraph: CallGraph, bTypeLoader: BTypeLoader, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
+              settings: OptimizerSettings) {
 
   // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
   // inlined in a later inlining round.
@@ -63,7 +64,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
   }
 
   def runInlinerAndClosureOptimizer(): Unit = {
-    val runClosureOptimizer = ppa.compilerSettings.optClosureInvocations
+    val runClosureOptimizer = settings.optClosureInvocations
     var round = 0
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
 
@@ -139,7 +140,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
       // rolled back. This avoids cloning the illegal instructions in case `m` itself gets inlined.
       if (requests.nonEmpty && !changedMethodHasIllegalAccess) {
         val (method, rs) = requests.dequeue()
-        val state = inlinerState.getOrElseUpdate(method, new MethodInlinerState(ppa.compilerSettings.optLogInline))
+        val state = inlinerState.getOrElseUpdate(method, new MethodInlinerState(settings.optLogInline))
         var changed = false
 
         def doInline(r: InlineRequest, aliasFrame: AliasingFrame[Value], w: Option[IllegalAccessInstructions]): Map[AbstractInsnNode, AbstractInsnNode] = {
@@ -206,14 +207,14 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
               state.rootInlinedCallsiteWithWarning(r.callsite.callsiteInstruction, returnForwarderIfNoOther = false) match {
                 case Some(inlinedCallsite) =>
                   val rw = inlinedCallsite.warning.get
-                  if (rw.emitWarning(ppa.compilerSettings)) {
+                  if (rw.emitWarning(settings)) {
                     ppa.optimizerWarning(
                       em"${rw.toString + inlineChainSuffix(r.callsite, state.inlineChain(inlinedCallsite.eliminatedCallsite.callsiteInstruction, skipForwarders = true))}",
                       BackendUtils.siteString(inlinedCallsite.eliminatedCallsite.callsiteClass.internalName, inlinedCallsite.eliminatedCallsite.callsiteMethod.name),
                       inlinedCallsite.eliminatedCallsite.callsitePosition)
                   }
                 case _ =>
-                  if (w.emitWarning(ppa.compilerSettings))
+                  if (w.emitWarning(settings))
                     ppa.optimizerWarning(
                       em"${w.toString + inlineChainSuffix(r.callsite, state.inlineChain(r.callsite.callsiteInstruction, skipForwarders = true))}",
                       BackendUtils.siteString(r.callsite.callsiteClass.internalName, r.callsite.callsiteMethod.name),
@@ -236,7 +237,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
         // look at all callsites in a methods again, also those that were previously not selected for
         // inlining. after inlining, types might get more precise and make a callsite inlineable.
         val method = changedMethods.dequeue()
-        val state = inlinerState.getOrElseUpdate(method, new MethodInlinerState(ppa.compilerSettings.optLogInline))
+        val state = inlinerState.getOrElseUpdate(method, new MethodInlinerState(settings.optLogInline))
 
         def isLoop(call: MethodInsnNode, callee: Callee): Boolean =
           callee.callee == method || {
@@ -267,7 +268,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
                 val callsite = inlinedCallsite.eliminatedCallsite
                 val w = inlinedCallsite.warning.get
                 state.inlineLog.logRollback(callsite, s"Instruction ${LogUtils.textify(notInlinedIllegalInsn)} would cause an IllegalAccessError, and is not selected for (or failed) inlining", state.outerCallsite(notInlinedIllegalInsn))
-                if (w.emitWarning(ppa.compilerSettings))
+                if (w.emitWarning(settings))
                   ppa.optimizerWarning(
                     em"${w.toString + inlineChainSuffix(callsite, state.inlineChain(callsite.callsiteInstruction, skipForwarders = true))}",
                     BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name),
@@ -422,7 +423,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
     // New labels for the cloned instructions
     val labelsMap = cloneLabels(callee)
     val sameSourceFile = sourceFilePath match {
-      case Some(calleeSource) => byteCodeRepository.compilingClasses.get.get(callsite.callsiteClass.internalName) match {
+      case Some(calleeSource) => byteCodeRepository.compilingClasses.get(callsite.callsiteClass.internalName) match {
         case Some((_, `calleeSource`)) => true
         case _ => false
       }
@@ -794,7 +795,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
   private val isInternalCache = mutable.Map.empty[String, Either[OptimizerWarning, Boolean]]
   private def isInternal(name: String): Either[OptimizerWarning, Boolean] = {
     isInternalCache.getOrElseUpdate(name,
-      coreBTypes.classBTypeFromInternalName(name) match
+      bTypeLoader.previouslyConstructedClassBType(name) match
         case Some(ct) => Right(!ct.info.inlineInfo.isAccessible)
         case None => bTypesFromClassfile.classBTypeFromParsedClassfile(name) match
           case Left(l) => Left(l)

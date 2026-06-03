@@ -5059,8 +5059,8 @@ _empty_/Txn# => trait Txn [typeparam T  <: Txn[T]] extends Object { self: Txn[T]
 _empty_/Txn#[T] => typeparam T  <: Txn[T]
 _empty_/Txn#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Txn[T]
 local0 => val local out: Repr[Out]
-local1 => val local inObj: Obj[In] & Repr[In]
-local2 => val local outObj: Obj[Out] & Repr[Out]
+local1 => val local inObj: Obj[In]
+local2 => val local outObj: Obj[Out]
 
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#
@@ -5304,8 +5304,8 @@ local1 => val local p: N$1
 local2 => type N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
-local5 => val local Nat_this: Succ[Zero.type]
-local6 => val local Nat_this: Succ[_] forSome { type _  <: Succ[Zero.type] }
+local5 => val local Nat_this: Succ[Nat_this.type]
+local6 => val local Nat_this: Succ[Nat_this.type]
 recursion/Nats. => final object Nats extends Object { self: Nats.type => +9 decls }
 recursion/Nats.Nat# => sealed trait Nat extends Object { self: Nat => +3 decls }
 recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]

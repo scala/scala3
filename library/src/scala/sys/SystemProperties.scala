@@ -67,6 +67,9 @@ extends mutable.AbstractMap[String, String | Null] {
 object SystemProperties {
   /** An unenforceable, advisory only place to do some synchronization when
    *  mutating system properties.
+   *
+   *  @tparam T the return type of the body expression
+   *  @param body the code to execute while holding the lock
    */
   def exclusively[T](body: => T): T = this.synchronized:
     body

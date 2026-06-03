@@ -11,6 +11,8 @@ import language.experimental.captureChecking
  *    - This expression must be some kind of data structure (`Some`, `List`, `Either`, ...)
  *    - Calls to `new X` or `X.apply` can be lifted into its value
  *    - Arguments of constructors can be recursively unlifted
+ *
+ *  @tparam T the type of the value that can be extracted from the quoted expression
  */
 trait FromExpr[T] {
 
@@ -18,6 +20,9 @@ trait FromExpr[T] {
    *
    *  Returns `None` if the expression does not represent a value or possibly contains side effects.
    *  Otherwise returns the `Some` of the value.
+   *
+   *  @param x the quoted expression to extract a value from
+   *  @return `Some(value)` if the expression contains an extractable value, `None` otherwise
    */
   def unapply(x: Expr[T])(using Quotes): Option[T]
 
@@ -81,7 +86,10 @@ object FromExpr {
    */
   given StringFromExpr[T <: String]: FromExpr[T] = new PrimitiveFromExpr
 
-  /** Lift a quoted primitive value `'{ x }` into `x`. */
+  /** Lift a quoted primitive value `'{ x }` into `x`.
+   *
+   *  @tparam T the primitive or `String` type to extract from the quoted literal
+   */
   private class PrimitiveFromExpr[T <: Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends FromExpr[T] {
     def unapply(expr: Expr[T])(using Quotes) =
       import quotes.reflect.*

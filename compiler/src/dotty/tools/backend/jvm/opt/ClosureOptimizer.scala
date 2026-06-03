@@ -30,7 +30,8 @@ import BCodeUtils.*
 
 class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
-                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
+                       ts: WellKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+                       settings: OptimizerSettings) {
 
   import ClosureOptimizer.*
 
@@ -142,7 +143,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
       if (closureInit.ownerMethod != previousMethod) {
         previousMethod = closureInit.ownerMethod
         changedMethods += previousMethod.nn
-        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState(ppa.compilerSettings.optLogInline))
+        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState(settings.optLogInline))
         state.inlineLog.logClosureRewrite(closureInit, invocations, invocations.headOption.flatMap(p => state.outerCallsite(p._1)))
       }
     }
@@ -409,7 +410,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // the method node is needed for building the call graph entry
     val bodyMethod = byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc)
-    val sourceFilePath = byteCodeRepository.compilingClasses.get.get(lambdaBodyHandle.getOwner).map(_._2)
+    val sourceFilePath = byteCodeRepository.compilingClasses.get(lambdaBodyHandle.getOwner).map(_._2)
     val callee = bodyMethod.flatMap({
       case (bodyMethodNode, bodyMethodDeclClass) =>
         bTypesFromClassfile.classBTypeFromParsedClassfile(bodyMethodDeclClass).flatMap(bodyDeclClassType =>

@@ -17,7 +17,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
   }
 
   private def getClass(dir: AbstractFile, name: String) =
-    loadClassNode(dir.lookupName(name + ".class", directory = false).input)
+    loadClassNode(dir.lookupName(name + ".class", directory = false).nn.input)
 
   private def checkForwarder(clazz: ClassNode, target: String) = {
     val f = getMethod(clazz, "f")
@@ -36,7 +36,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(code) { dir =>
-      val clsIn = dir.lookupName("AbstractSet2.class", directory = false).input
+      val clsIn = dir.lookupName("AbstractSet2.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
       assertEquals(clsNode.methods.asScala.map(_.name).toList, List("<init>")) // no bridge for apply (there's already one in AbstractSet)
     }
@@ -95,7 +95,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
 
     checkBCode(code) { dir =>
       val noForwarder = List("C1", "C2", "C3", "C4", "C10", "C11", "C12", "C13", "C16", "C17")
-      val noForwarderClasses = noForwarder.map(cn => loadClassNode(dir.lookupName(cn + ".class", directory = false).input))
+      val noForwarderClasses = noForwarder.map(cn => loadClassNode(dir.lookupName(cn + ".class", directory = false).nn.input))
       for cn <- noForwarderClasses do
         val meth = cn.methods.asScala.find(_.name == "f")
         assert(meth.isEmpty, s"failed for ${cn.name}")
@@ -304,7 +304,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
 
 class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
   private def getClass(dir: AbstractFile, name: String) =
-    loadClassNode(dir.lookupName(name + ".class", directory = false).input)
+    loadClassNode(dir.lookupName(name + ".class", directory = false).nn.input)
 
   @Test
   def sd224(): Unit = {

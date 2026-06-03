@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package semanticdb
 
-import scala.language.unsafeNulls
-
 import core.*
 import Phases.*
 import ast.tpd.*
@@ -151,7 +149,7 @@ private[semanticdb] object ExtractSemanticDB:
 
   /** Output directory for SemanticDB files */
   private def semanticdbOutDir(using Context): Path =
-    semanticdbTarget.getOrElse(outputDirectory.jpath)
+    semanticdbTarget.getOrElse(outputDirectory.jpath.nn)
 
   private def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
 

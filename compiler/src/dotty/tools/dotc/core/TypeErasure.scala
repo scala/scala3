@@ -482,7 +482,7 @@ object TypeErasure:
     if compareErasedGlb(tp1, tp2) <= 0 then tp1 else tp2
 
   /** Overload of `erasedGlb` to compare more than two types at once. */
-  def erasedGlb(tps: List[Type])(using Context): Type =
+  def erasedGlb(tps: Iterable[Type])(using Context): Type =
     tps.min(using (a,b) => compareErasedGlb(a, b))
 
   /** A comparison function that induces a total order on erased types,
@@ -933,8 +933,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       try erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
         case _: WildcardType => WildcardType
         case elem => JavaArrayType(elem)
-      catch case ex: Throwable =>
-        handleRecursive("erase array type", tp.show, ex)
+      catch case ex: Throwable => handleRecursive("erase array type", tp.show, ex)
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
@@ -946,7 +945,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   }
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
-   *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
+   *  `PolyType`s are treated. `eraseInfo` maps them to method types, whereas `apply` maps them
    *  to the underlying type.
    */
   def eraseInfo(tp: Type, sym: Symbol)(using Context): Type =
@@ -992,7 +991,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       //   erased like `Array[A]` as seen from its definition site, no matter
       //   the `X` (same if `A` is bounded).
       //
-      // The binary compatibility is checked by sbt-test/scala2-compat/i8001
+      // The binary compatibility is checked by tests/run/i8001
       val erasedValueClass =
         if erasedUnderlying.isPrimitiveValueType && !genericUnderlying.isPrimitiveValueType then
           defn.boxedType(erasedUnderlying)
@@ -1022,7 +1021,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else tp match
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym eq defn.UnitClass) sym.typeRef
+        if (tp.isRef(defn.UnitClass)) defn.UnitType
         else apply(tp)
       case tp: AppliedType =>
         val sym = tp.tycon.typeSymbol

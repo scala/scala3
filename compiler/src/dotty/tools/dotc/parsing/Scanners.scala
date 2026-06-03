@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.language.unsafeNulls
-
 import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
 import core.StdNames.*, core.Comments.*
 import util.SourceFile
@@ -20,7 +18,8 @@ import config.Feature
 import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
-import reporting.{NoProfile, Profile, Message}
+import reporting.*
+import cc.SafeRefs
 
 import java.util.Objects
 import dotty.tools.dotc.reporting.Message.rewriteNotice
@@ -55,10 +54,10 @@ object Scanners {
     var lineOffset: Offset = -1
 
     /** the name of an identifier */
-    var name: SimpleName = null
+    var name: SimpleName | Null = null
 
     /** the string value of a literal */
-    var strVal: String = null
+    var strVal: String | Null = null
 
     /** the base of a number */
     var base: Int = 0
@@ -76,7 +75,7 @@ object Scanners {
     def isNewLine = token == NEWLINE || token == NEWLINES
     def isStatSep = isNewLine || token == SEMI
     def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
-    def isIdent(name: Name) = token == IDENTIFIER && this.name == name
+    def isIdent(name: Name) = token == IDENTIFIER && (this.name: Name | Null) == (name: Name | Null)
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
@@ -89,7 +88,7 @@ object Scanners {
 
     def isOperator =
       token == BACKQUOTED_IDENT
-      || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+      || token == IDENTIFIER && isOperatorPart(name.nn(name.nn.length - 1))
 
     def isArrow =
       token == ARROW || token == CTXARROW
@@ -148,11 +147,14 @@ object Scanners {
      *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
     def finishNamedToken(idtoken: Token, target: TokenData): Unit =
-      target.name = termName(litBuf.chars, 0, litBuf.length)
+      val name = termName(litBuf.chars, 0, litBuf.length)
+      target.name = name
       litBuf.clear()
+      if name.contains('$') && Feature.safeEnabled && !SafeRefs.allowDollarIn(name) then
+        report.error(em"Identifier may not contain '$$' in safe mode", sourcePos())
       target.token = idtoken
       if idtoken == IDENTIFIER then
-        val converted = toToken(target.name)
+        val converted = toToken(target.name.nn)
         if converted != END || (target eq this) then target.token = converted
 
     /** The token for given `name`. Either IDENTIFIER or a keyword. */
@@ -163,9 +165,9 @@ object Scanners {
       strVal = litBuf.toString
       litBuf.clear()
 
-    @inline def isNumberSeparator(c: Char): Boolean = c == '_'
+    inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
-    @inline def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
+    def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
@@ -283,7 +285,8 @@ object Scanners {
 
     private def lastKnownIndentWidth: IndentWidth =
       def recur(r: Region): IndentWidth =
-        if r.knownWidth == null then recur(r.enclosing) else r.knownWidth
+        val knownWidth = r.knownWidth
+        if knownWidth == null then recur(r.enclosing) else knownWidth
       recur(currentRegion)
 
     private var skipping = false
@@ -604,7 +607,7 @@ object Scanners {
         case r =>
           indentIsSignificant = indentSyntax
           r.proposeKnownWidth(nextWidth, lastToken)
-          lastWidth = r.knownWidth
+          lastWidth = r.indentWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
       // can emit OUTDENT if line is not non-empty blank line at EOF
@@ -656,7 +659,7 @@ object Scanners {
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
                     insert(OUTDENT, offset)
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
-                  report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
+                  report.warning(IndentationWarning(isLeft = true, missing = RBRACE), sourcePos())
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
@@ -724,7 +727,7 @@ object Scanners {
       case r: Indented
       if !r.isOutermost
           && (acceptOutdentTokens.contains(token)
-              || token == COMMA && r.outer.commasExpectedInEnclosing)
+              || token == COMMA && r.outer.nn.commasExpectedInEnclosing) // nn ok, we are not the outermost region
           && next.token == EMPTY
         =>
           insert(OUTDENT, offset)
@@ -747,7 +750,7 @@ object Scanners {
      *         SEMI + ELSE => ELSE, COLON following id/)/] => COLONfollow
      *  - Insert missing OUTDENTs at EOF
      */
-    def postProcessToken(lastToken: Token, lastName: SimpleName): Unit = {
+    def postProcessToken(lastToken: Token, lastName: SimpleName | Null): Unit = {
       def fuse(tok: Int) = {
         token = tok
         offset = prev.offset
@@ -918,21 +921,7 @@ object Scanners {
             putChar('/')
             getOperatorRest()
           }
-        case '0' =>
-          def fetchLeadingZero(): Unit = {
-            nextChar()
-            ch match {
-              case 'x' | 'X' => base = 16 ; nextChar()
-              case 'b' | 'B' => base = 2  ; nextChar()
-              case _         => base = 10 ; putChar('0')
-            }
-            if (base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0)
-              error(em"invalid literal number")
-          }
-          fetchLeadingZero()
-          getNumber()
-        case '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
-          base = 10
+        case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
           getNumber()
         case '`' =>
           getBackquotedIdent()
@@ -1163,9 +1152,9 @@ object Scanners {
       if (ch == '`') {
         nextChar()
         finishNamedToken(BACKQUOTED_IDENT, target = this)
-        if (name.length == 0)
+        if (name.nn.length == 0)
           error(em"empty quoted identifier")
-        else if (name == nme.WILDCARD)
+        else if (name.nn == nme.WILDCARD)
           error(em"wildcard invalid as backquoted identifier")
       }
       else error(em"unclosed quoted identifier")
@@ -1227,11 +1216,14 @@ object Scanners {
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
-      && (softModifierNames.contains(name)
-        || name == nme.erased && erasedEnabled
-        || name == nme.tracked && trackedEnabled
-        || name == nme.update && Feature.ccEnabled
-        || name == nme.consume && Feature.ccEnabled)
+      && {
+        val name = this.name.nn
+        (softModifierNames.contains(name)
+          || name == nme.erased && erasedEnabled
+          || name == nme.tracked && trackedEnabled
+          || name == nme.update && Feature.ccEnabled
+          || name == nme.consume && Feature.ccEnabled)
+      }
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
@@ -1502,9 +1494,21 @@ object Scanners {
       if (isIdentifierPart(ch) && ch >= ' ')
         error(em"Invalid literal number")
 
-    /** Read a number into strVal and set base
-    */
-    protected def getNumber(): Unit = {
+    /** Read a number into strVal and set base and token.
+     */
+    def getNumber(): Unit = {
+      def checkNumberChar() =
+        if !isNumberSeparator(ch) && digit2int(ch, base) < 0 then
+          error(em"invalid literal number")
+      if ch == '0' then
+        nextChar()
+        ch match
+          case 'x' | 'X' => base = 16; nextChar(); checkNumberChar()
+          case 'b' | 'B' => base =  2; nextChar(); checkNumberChar()
+          case _         => base = 10; putChar('0')
+      else
+        base = 10
+
       while (isNumberSeparator(ch) || digit2int(ch, base) >= 0) {
         putChar(ch)
         nextChar()
@@ -1527,9 +1531,7 @@ object Scanners {
           token = LONGLIT
         case _ =>
       }
-
       checkNoTrailingSeparator()
-
       setStrVal()
     }
 
@@ -1619,7 +1621,8 @@ object Scanners {
 
     /** The indentation width, Zero if not known */
     final def indentWidth: IndentWidth =
-      if knownWidth == null then IndentWidth.Zero else knownWidth
+      val known = knownWidth
+      if known == null then IndentWidth.Zero else known
 
     def proposeKnownWidth(width: IndentWidth, lastToken: Token) =
       if knownWidth == null then
@@ -1663,10 +1666,11 @@ object Scanners {
 
     def commasExpectedInEnclosing: Boolean =
       commasExpected || this.match
-        case r: Indented => r.outer.commasExpectedInEnclosing
+        case r: Indented => !r.isOutermost && r.outer.nn.commasExpectedInEnclosing
         case _ => false
 
     def toList: List[Region] =
+      val outer = this.outer
       this :: (if outer == null then Nil else outer.toList)
 
     private def delimiter = this match

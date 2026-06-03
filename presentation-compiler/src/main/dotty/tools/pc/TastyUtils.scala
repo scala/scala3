@@ -25,7 +25,7 @@ object TastyUtils:
 
   private def htmlTasty(
       tastyURI: URI,
-      headElems: List[String] = Nil,
+      headElems: List[String],
       bodyAttributes: String = ""
   ): String =
     val title = tastyHtmlPageTitle(tastyURI)

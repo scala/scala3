@@ -22,10 +22,17 @@ import scala.language.`2.13`
  *  Note that [[scala.util.control.ControlThrowable]], an internal Throwable, is not matched by
  *  `NonFatal` (and would therefore be thrown).
  *
- *  For example, all harmless Throwables can be caught by:
+ *  ```scala sc-hidden sc-name:nonfatal-log
+ *  object log {
+ *    def error(e: Throwable, msg: String): Unit = println(s"$msg: $e")
+ *  }
  *  ```
+ *
+ *  For example, all harmless Throwables can be caught by:
+ *  ```scala sc:compile sc-compile-with:nonfatal-log
  *   try {
- *     // dangerous stuff
+ *     // dangerous stuff goes here, we throw an exception for demonstration purposes
+ *     throw new RuntimeException("test")
  *   } catch {
  *     case NonFatal(e) => log.error(e, "Something not that bad.")
  *    // or
@@ -41,6 +48,9 @@ object NonFatal {
     case _: VirtualMachineError | _: ThreadDeath | _: InterruptedException | _: LinkageError | _: ControlThrowable => false
     case _ => true
   }
-  /** Returns `Some`(t) if `NonFatal`(t) == true, otherwise `None` */
+  /** Returns `Some`(t) if `NonFatal`(t) == true, otherwise `None`
+   *
+   *  @param t the `Throwable` to test for being non-fatal
+   */
   def unapply(t: Throwable): Option[Throwable] = if (apply(t)) Some(t) else None
 }
