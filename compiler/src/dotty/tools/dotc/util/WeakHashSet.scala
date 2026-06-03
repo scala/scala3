@@ -133,23 +133,21 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     tableLoop(0)
   }
 
-  def lookup(elem: A): A | Null = elem match {
-    case _ =>
-      Stats.record(statsItem("lookup"))
-      removeStaleEntries()
-      val bucket = index(hash(elem))
+  def lookup(elem: A): A | Null =
+    Stats.record(statsItem("lookup"))
+    removeStaleEntries()
+    val bucket = index(hash(elem))
 
-      @tailrec
-      def linkedListLoop(entry: Entry[A] | Null): A | Null = entry match {
-        case null                    => null
-        case _                       =>
-          val entryElem = entry.get
-          if entryElem != null && isEqual(elem, entryElem) then entryElem
-          else linkedListLoop(entry.tail)
-      }
+    @tailrec
+    def linkedListLoop(entry: Entry[A] | Null): A | Null = entry match {
+      case null                    => null
+      case _                       =>
+        val entryElem = entry.get
+        if entryElem != null && isEqual(elem, entryElem) then entryElem
+        else linkedListLoop(entry.tail)
+    }
 
-      linkedListLoop(table(bucket))
-  }
+    linkedListLoop(table(bucket))
 
   protected def addEntryAt(bucket: Int, elem: A, elemHash: Int, oldHead: Entry[A] | Null): A = {
     Stats.record(statsItem("addEntryAt"))
@@ -159,44 +157,39 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     elem
   }
 
-  def put(elem: A): A = elem match {
-    case _    =>
-      Stats.record(statsItem("put"))
-      removeStaleEntries()
-      val h = hash(elem)
-      val bucket = index(h)
-      val oldHead = table(bucket)
+  def put(elem: A): A =
+    Stats.record(statsItem("put"))
+    removeStaleEntries()
+    val h = hash(elem)
+    val bucket = index(h)
+    val oldHead = table(bucket)
 
-      @tailrec
-      def linkedListLoop(entry: Entry[A] | Null): A = entry match {
-        case null                    => addEntryAt(bucket, elem, h, oldHead)
-        case _                       =>
-          val entryElem = entry.get
-          if entryElem != null && isEqual(elem, entryElem) then entryElem.uncheckedNN
-          else linkedListLoop(entry.tail)
-      }
+    @tailrec
+    def linkedListLoop(entry: Entry[A] | Null): A = entry match {
+      case null                    => addEntryAt(bucket, elem, h, oldHead)
+      case _                       =>
+        val entryElem = entry.get
+        if entryElem != null && isEqual(elem, entryElem) then entryElem.uncheckedNN
+        else linkedListLoop(entry.tail)
+    }
 
-      linkedListLoop(oldHead)
-  }
+    linkedListLoop(oldHead)
 
   def +=(elem: A): Unit = put(elem)
 
-  def -=(elem: A): Unit = (elem: A | Null) match {
-    case null =>
-    case _ =>
-      Stats.record(statsItem("-="))
-      removeStaleEntries()
-      val bucket = index(hash(elem))
+  def -=(elem: A): Unit =
+    Stats.record(statsItem("-="))
+    removeStaleEntries()
+    val bucket = index(hash(elem))
 
-      @tailrec
-      def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
-        if entry != null then
-          val entryElem = entry.get
-          if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
-          else linkedListLoop(entry, entry.tail)
+    @tailrec
+    def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
+      if entry != null then
+        val entryElem = entry.get
+        if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
+        else linkedListLoop(entry, entry.tail)
 
-      linkedListLoop(null, table(bucket))
-  }
+    linkedListLoop(null, table(bucket))
 
   def clear(resetToInitial: Boolean): Unit = {
     table = new Array[Entry[A] | Null](table.size)
