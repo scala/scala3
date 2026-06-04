@@ -81,7 +81,10 @@ class GenBCode extends Phase { self =>
   private var _knownBTypes: KnownBTypes | Null = null
   def knownBTypes(using Context): KnownBTypes = {
     if _knownBTypes eq null then
-      _knownBTypes = KnownBTypes(bTypeLoader)(using ctx)
+      if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
+        _knownBTypes = optimizerKnownBTypes // avoid creating two separate instances of this
+      else
+        _knownBTypes = KnownBTypes(bTypeLoader)(using ctx)
     _knownBTypes.nn
   }
 
