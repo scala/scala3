@@ -12,9 +12,11 @@ import dotty.tools.dotc.core.Types.{CachedProxyType, SingletonType, Type}
  *  - [[ENodeVar.OpenedParam]]: free variable introduced when "opening" a
  *    lambda during implication checking (akin to the opening operation in a
  *    locally-nameless representation). Scoped to a single `implies` call.
- *  - [[ENodeVar.Skolem]]: an argument-reference skolem, allocated by
- *    [[QualifiedTypes.substParamInQualifiers]] / [[QualifiedTypes.avoidRefs]]
- *    and persisted across re-type-checks (typer / posttyper / Ycheck).
+ *  - [[ENodeVar.Skolem]]: a skolem standing for an opaque value — the
+ *    unstable argument of a dependent function (allocated by
+ *    [[QualifiedTypes.substParamInQualifiers]] and persisted across
+ *    re-type-checks), or a `SkolemType` / non-singleton demoted by
+ *    [[ENode.singleton]].
  *
  *  Identity (and hash) is determined by the case class and `index`; the
  *  `underlying` type is an informational hint that may be transformed by
@@ -60,10 +62,12 @@ object ENodeVar:
     def derivedENodeVar(underlying: Type): ENodeVar =
       if underlying eq _underlying then this else OpenedParam(index)(underlying)
 
-  /** A skolem for an argument reference, allocated by
-   *  [[QualifiedTypes.substParamInQualifiers]] / [[QualifiedTypes.avoidRefs]]
-   *  and persisted in a sticky attachment on the argument tree so its
-   *  identity is preserved across re-type-checks.
+  /** A skolem for the unstable argument of a dependent function, allocated
+   *  by [[QualifiedTypes.substParamInQualifiers]] and persisted via a
+   *  `@QualifierSkolemIndex` annotation on the argument tree (or the
+   *  EtaExpansion-lifted symbol) so its identity is preserved across
+   *  re-type-checks. Also used by [[ENode.singleton]] to demote a
+   *  `SkolemType` or non-singleton type to an opaque atom.
    *
    *  Identity is `(owner, index)`: each owner symbol has its own per-owner
    *  index space, so two skolems with the same `index` but different
