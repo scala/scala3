@@ -504,8 +504,9 @@ object TypeOps:
             localParamRefs ++= tl.paramRefs
             mapOver(tl)
           case QualifiedType(parent, qualifier) =>
-            // Don't traverse into qualifier bodies: avoidRefsInQualifiers handles
-            // them after widening, replacing forbidden TermRefs with ENodeVar skolems.
+            // Don't traverse into qualifier bodies: `QualifiedTypes.avoidRefs`
+            // handles them after widening, approximating predicates that
+            // mention a forbidden TermRef to true/false.
             val parent1 = apply(parent)
             if parent1 eq parent then tp
             else QualifiedType(parent1, qualifier)

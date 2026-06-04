@@ -12,10 +12,10 @@ package example {
       {
         val c: Int with boundArg(0) == skolem(1,test) =
           example.id(example.impure():Int @QualifierSkolemIndex(1))
-        val d: Int with boundArg(0) == skolem(4,test) =
+        val d: Int =
           {
-            @QualifierSkolemIndex(4) val u: Int = example.impure()
-            example.id(u):Int with (boundArg(0) == skolem(4,test))
+            val u: Int = example.impure()
+            example.id(u):Int
           }
         def inferred(): Int =
           example.id(example.impure():Int @QualifierSkolemIndex(1))
