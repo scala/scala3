@@ -62,3 +62,4 @@ scala-cli format compiler/src/dotty/tools/dotc/qualified_types
 - Add LLM as co-author only if it made significant design decisions (e.g.
   "investigate #12345 and fix it"), not for mechanical work (e.g. "use a type
   accumulator in `containsQualifier`"). When in doubt, include it.
+- Keep the implementation self-contained in the `qualified_types` package. Outside of it, add only minimal _hooks_ that delegate to the package, and avoid comments.
