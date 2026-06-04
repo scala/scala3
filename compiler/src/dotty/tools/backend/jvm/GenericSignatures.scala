@@ -86,8 +86,8 @@ object GenericSignatures {
 
       // a signature should always start with a class
       validParents.headOption match
-        case None => boxedSig(defn.ObjectType)
-        case Some(head) if isInterfaceOrTrait(head.typeSymbol) => boxedSig(defn.ObjectType)
+        case None => jsig(defn.ObjectType)
+        case Some(head) if isInterfaceOrTrait(head.typeSymbol) => jsig(defn.ObjectType)
         case _ => ()
       validParents.foreach(boxedSig)
     }
@@ -222,11 +222,9 @@ object GenericSignatures {
                 else
                   // For bounded arguments, we can't translate it cleanly so emit an erased type
                   jsig(erasure(a.tycon))
-              case res if res.isPrimitiveValueType =>
-                // value classes cannot appear as generic arguments
-                jsig(defn.boxedType(res))
               case res =>
-                jsig(res)
+                // value classes cannot appear as generic arguments
+                jsig(res, vcBoxing = ValueClassBoxing.Box)
           case _ =>
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
@@ -324,10 +322,7 @@ object GenericSignatures {
               else if (sym == defn.NullClass)
                 builder.append("Lscala/runtime/Null$;")
               else if (sym.isPrimitiveValueClass)
-                // TODO, but a few tests need fixing / disabling until a newer scalac is ingested,
-                // replace the next 2 lines with: if (vcBoxing == ValueClassBoxing.Box || sym == defn.UnitClass) jsig(defn.boxedClass(sym).typeRef)
-                if (vcBoxing == ValueClassBoxing.Box) jsig(defn.ObjectType)
-                else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
+                if (vcBoxing == ValueClassBoxing.Box) jsig(defn.boxedClass(sym).typeRef)
                 else if (builder.length == 0 && sym0.isField) () // field generic signatures can only be reference types (JVMS §4.7.9.1)
                 else builder.append(defn.typeTag(sym.info))
               else if defn.isSyntheticFunctionClass(sym) then
