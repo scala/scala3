@@ -2711,7 +2711,7 @@ object Parsers {
      *        case x2 => "b"
      *     }
      * This issue is avoided by dropping the `InCase` region when parsing match clause,
-     * since `Indetented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
+     * since `Indented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
      * Note that this _could_ break previous code which relied on matches within guards
      * being considered as a separate region without explicit indentation.
      */

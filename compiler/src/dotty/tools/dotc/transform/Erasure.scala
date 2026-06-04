@@ -970,7 +970,7 @@ object Erasure {
      *  to parameters of f$retainedBody are changed to references of
      *  corresponding parameters in f.
      *
-     *  `f$retainedBody` is subseqently mapped to the empty tree in `typedDefDef`
+     *  `f$retainedBody` is subsequently mapped to the empty tree in `typedDefDef`
      *  which is then dropped in `typedStats`.
      */
     private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =
