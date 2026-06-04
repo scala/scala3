@@ -29,6 +29,7 @@ import dotty.tools.dotc.core.Types.{
   NamedType,
   NoPrefix,
   ParamRef,
+  PolyType,
   Range,
   SingletonType,
   SkolemType,
@@ -826,6 +827,10 @@ object ENode:
       case Select(Atom(qualTp), member) =>
         qualTp.member(member.name).info
       case Select(_, member) => member.info
+      case TypeApply(fn, args) =>
+        resolvedInfo(fn) match
+          case pt: PolyType => pt.instantiate(args)
+          case info => info
       case _ => NoPrefix
 
   private def isValidEqualClass(tp: Type)(using Context): Boolean =
@@ -917,22 +922,23 @@ object ENode:
    *  Only handles simple (non-curried, non-generic) methods.
    */
   private def resultTypeAssumptions(applyNode: Apply)(using Context): List[ENode] =
-    resolvedInfo(applyNode.fn) match
-      case mt: MethodType =>
-        mt.resultType match
-          case QualifiedType(_, qualifier) =>
-            val args = applyNode.args
-            if args.length != mt.paramInfos.length then return Nil
-            def substBody(node: ENode): ENode =
-              node match
-                case Atom(tp: TermParamRef) if tp.binder eq mt =>
-                  args(tp.paramNum)
-                case Atom(ENodeVar.BoundParam(0)) =>
-                  applyNode
-                case node => node.mapChildren(substBody)
-            List(substBody(qualifier.body))
-          case _ => Nil
-      case _ => Nil
+    trace(i"resultTypeAssumptions($applyNode)", Printers.qualifiedTypes):
+      resolvedInfo(applyNode.fn) match
+        case mt: MethodType =>
+          mt.resultType match
+            case QualifiedType(_, qualifier) =>
+              val args = applyNode.args
+              def substBody(node: ENode): ENode =
+                node match
+                  case Atom(tp: TermParamRef) if tp.binder eq mt =>
+                    args(tp.paramNum)
+                  case Atom(ENodeVar.BoundParam(0)) =>
+                    applyNode
+                  case node => node.mapChildren(substBody)
+              if args.length != mt.paramInfos.length then Nil
+              else List(substBody(qualifier.body))
+            case _ => Nil
+        case _ => Nil
 
   // -----------------------------------
   // Utils
