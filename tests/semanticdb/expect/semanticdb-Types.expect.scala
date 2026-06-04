@@ -70,8 +70,8 @@ object Test/*<-types::Test.*/ {
     val annType2/*<-types::Test.C#annType2.*/: T/*->types::T#*/ @ann1/*->types::ann1#*/ @ann2/*->types::ann2#*/ = ???/*->scala::Predef.`???`().*/
 
     val existentialType2/*<-types::Test.C#existentialType2.*/: List/*->scala::package.List#*/[_] = ???/*->scala::Predef.`???`().*/
-    val existentialType3/*<-types::Test.C#existentialType3.*/ = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
-    val existentialType4/*<-types::Test.C#existentialType4.*/ = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
+    val existentialType3/*<-types::Test.C#existentialType3.*/: Class/*->scala::Predef.Class#*/[?] = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
+    val existentialType4/*<-types::Test.C#existentialType4.*/: Class/*->scala::Predef.Class#*/[?] = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
 
     def typeLambda1/*<-types::Test.C#typeLambda1().*/[M/*<-types::Test.C#typeLambda1().[M]*/[_]] = ???/*->scala::Predef.`???`().*/
     typeLambda1/*->types::Test.C#typeLambda1().*/[({ type L/*<-local11*/[T/*<-local10*/] = List/*->scala::package.List#*/[T/*->local10*/] })#L]

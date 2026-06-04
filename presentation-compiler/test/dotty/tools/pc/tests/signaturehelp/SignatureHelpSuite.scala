@@ -77,9 +77,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new ProcessBuilder(@@)
         |}
       """.stripMargin,
-      """|ProcessBuilder(x$0: String*)
-         |               ^^^^^^^^^^^^
-         |ProcessBuilder(x$0: java.util.List[String])
+      """|ProcessBuilder(x$0: ((String)?*)?)
+         |               ^^^^^^^^^^^^^^^^^^
+         |ProcessBuilder(x$0: (java.util.List[String])?)
          |""".stripMargin
     )
 
@@ -103,11 +103,11 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new File(@@)
         |}
       """.stripMargin,
-      """|File(x$0: URI)
-         |     ^^^^^^^^
-         |File(x$0: File, x$1: String)
-         |File(x$0: String, x$1: String)
-         |File(x$0: String)
+      """|File(x$0: (URI)?)
+         |     ^^^^^^^^^^^
+         |File(x$0: (File)?, x$1: (String)?)
+         |File(x$0: (String)?, x$1: (String)?)
+         |File(x$0: (String)?)
          |""".stripMargin
     )
 
@@ -118,11 +118,11 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new java.io.File(@@)
         |}
                  """.stripMargin,
-      """|File(x$0: URI)
-         |     ^^^^^^^^
-         |File(x$0: File, x$1: String)
-         |File(x$0: String, x$1: String)
-         |File(x$0: String)
+      """|File(x$0: (URI)?)
+         |     ^^^^^^^^^^^
+         |File(x$0: (File)?, x$1: (String)?)
+         |File(x$0: (String)?, x$1: (String)?)
+         |File(x$0: (String)?)
          |""".stripMargin
     )
 
@@ -554,8 +554,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       // This is the correct result, as there is a conflict at Function: scala.Function and java.util.function.Function
-      """|computeIfAbsent(x$0: String, x$1: java.util.function.Function[? >: String, ? <: Int]): Int
-         |                ^^^^^^^^^^^
+      """|computeIfAbsent(x$0: (String)?, x$1: (java.util.function.Function[? >: String, ? <: Int])?): (Int)?
+         |                ^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
