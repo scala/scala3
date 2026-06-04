@@ -98,8 +98,8 @@ val v = Vec$impl$Int(Array(1, 2, 3, 4, 5))
 
 This provides a number of potential efficiency gains:
  - Avoid boxing in the API for values like the result of `scalarProduct` (as we will access the method on the specialized version).
- - Specialize on the concrete `Numeric` class instance for `T`, so that calls to `num`'s methods have static targets and can be inlined, and to avoid boxing for internal values like `result` (if we define Numeric to be Specialized). <!-- We could do RHS->LHS type copying for immutable variables to get this for the old Numeric as well if we prefer. (See https://github.com/scala/scala3/pull/26156/changes/931b61e48879927b7396cfc952244ff7a8ba97e0 - I reverted this for now) -->
- - Use an array `elems` specialized to the actual element instead of a fully generic array that has to be accessed via reflection <!-- (I think this is not implemented yet unless we expect this to happen automatically? I assume by this we mean using IntArray)-->.
+ - Specialize on the concrete `Numeric` class instance for `T`, so that calls to `num`'s methods have static targets and can be inlined, and avoid boxing for internal values like `result` (if we use define and use a specialized version of Numeric).
+ - Use an array `elems` specialized to the actual element instead of a fully generic array that has to be accessed via reflection. (The rest of the compiler already generates `int[]` when the source references `Array[Int]` so this comes for free through inline trait specialization).
 
 ## Creating Specialized Trait Instances
 Creation of an object with specialized behaviour can occur in one of two ways:
