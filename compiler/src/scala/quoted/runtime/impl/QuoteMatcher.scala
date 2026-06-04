@@ -14,9 +14,6 @@ import dotty.tools.dotc.ast.TreeTypeMap
 
 import scala.util.boundary
 
-/** Return type that indicates that the method returns a T or aborts to the enclosing boundary with a `None` */
-type optional[T] = boundary.Label[None.type] ?=> T
-
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
  *
@@ -118,6 +115,9 @@ class QuoteMatcher(debug: Boolean) {
    *  These expressions are part of the scrutinee and will be bound to the quote pattern term splices.
    */
   private type MatchingExprs = Seq[MatchResult]
+
+  /** Return type that indicates that the method returns a T or aborts to the enclosing boundary with a `None` */
+  private type optional[T] = boundary.Label[None.type] ?=> T
 
   /** TODO-18271: update
    *  A map relating equivalent symbols from the scrutinee and the pattern
