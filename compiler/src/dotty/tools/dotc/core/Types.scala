@@ -3875,6 +3875,34 @@ object Types extends TypeUtils {
     private var myParamRefsArr: Array[ParamRef] | Null = null
     private var myParamRefs: List[ParamRefType] | Null = null
 
+    /** Tri-state memo of whether any `paramInfo` of this lambda transitively
+     *  contains a `WildcardType` (under `StopAt.Static`, matching the cutoff
+     *  used by `AvoidWildcardsMap`): 0 = not yet computed, 1 = no wildcard
+     *  bounds, 2 = has wildcard bounds. Used by `OrderingConstraint.init` to
+     *  skip the otherwise-no-op `AvoidWildcardsMap` traversal: if no paramInfo
+     *  contains a wildcard, then `AvoidWildcardsMap(bound) eq bound` for every
+     *  bound (the map only rewrites `WildcardType` nodes), so the pass is
+     *  provably an identity. The memo is computed lazily and only ever flips
+     *  from 0 to a definite answer, which is stable because `paramInfos` is
+     *  fixed for the lifetime of the (cached) lambda. */
+    private var myWildcardBoundsKnown: Byte = 0
+
+    /** True iff no `paramInfo` of this lambda transitively contains a
+     *  `WildcardType`; see `myWildcardBoundsKnown`. Eq-safe to gate skipping
+     *  `AvoidWildcardsMap`: only returns true when the map is provably an
+     *  identity on every bound. */
+    final def hasNoWildcardBounds(using Context): Boolean =
+      val known = myWildcardBoundsKnown
+      if known != 0 then known == 1
+      else
+        var infos = paramInfos
+        var anyWildcard = false
+        while infos.nonEmpty && !anyWildcard do
+          if infos.head.containsWildcardTypes then anyWildcard = true
+          infos = infos.tail
+        myWildcardBoundsKnown = if anyWildcard then 2 else 1
+        !anyWildcard
+
     private def ensureParamRefsArr(): Array[ParamRef] = {
       val arr = myParamRefsArr
       if arr != null then arr

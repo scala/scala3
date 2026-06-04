@@ -744,7 +744,7 @@ class OrderingConstraint(private var boundsMap: ParamBounds,
       current1
   end StripParamTodos
 
-  private final class StripParamsMap(todos: StripParamTodos)(using Context) extends AvoidWildcardsMap:
+  private final class StripParamsMap(todos: StripParamTodos, avoidWildcards: Boolean)(using Context) extends AvoidWildcardsMap:
     private var myMapped: Type = NoType
 
     private def stripMapped(tp: Type, isUpper: Boolean)(using Context): Type = tp match
@@ -840,7 +840,7 @@ class OrderingConstraint(private var boundsMap: ParamBounds,
             stripFallback(mapped, isUpper, mark)
 
       case _ =>
-        val mapped = apply(tp)
+        val mapped = if avoidWildcards then apply(tp) else tp
         myMapped = mapped
         stripMapped(mapped, isUpper)
   end StripParamsMap
@@ -884,10 +884,12 @@ class OrderingConstraint(private var boundsMap: ParamBounds,
   private def init(poly: TypeLambda)(using Context): This = {
     var current = this
     val todos = StripParamTodos()
-    val stripParams = StripParamsMap(todos)
+    val stripParams = StripParamsMap(todos, avoidWildcards = !poly.hasNoWildcardBounds)
     // Iterate `paramRefs` directly: the previous `while (i < paramNames.length)`
     // form recomputed `paramNames.length` (O(n) on a List) and `paramRefs(i)`
     // (O(i)) every iteration, making the loop O(n^2).
+    // Most lambdas are wildcard-free; in that case the fused strip map skips
+    // the otherwise-no-op `AvoidWildcardsMap` traversal.
     var refs = poly.paramRefs
     while refs ne Nil do
       val param = refs.head
