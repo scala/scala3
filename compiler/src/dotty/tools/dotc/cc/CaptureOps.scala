@@ -531,14 +531,9 @@ extension (tp: Type)
   /** Does this (methodic) type have `any` in the span capture set of its
    *  result type?
    */
-  def hasCapInResult(using Context): Boolean = tp match
-    case tp: PolyType => tp.resType.hasCapInResult
-    case tp: MethodicType =>
-      tp.resType.spanCaptureSet.elems.exists: elem =>
-        elem.core match
-          case _: LocalCap => true
-          case GlobalAny => true
-          case _ => false
+  def hasCapInResult(using Context): Boolean =
+    val (mt: MethodicType) = tp.stripPoly.runtimeChecked
+    mt.resType.spanCaptureSet.containsGlobalOrLocalCap
 
   /** The implied captures of a lambda that come from its result type.
    *  This is the set that needs to be added to a lambda type to ensure

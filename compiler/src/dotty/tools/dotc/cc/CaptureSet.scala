@@ -136,10 +136,9 @@ sealed abstract class CaptureSet extends Showable:
    *  does not contain a ResultCap?
    */
   final def containsGlobalOrLocalCap(using Context) =
-    !containsResultCapability
-    && elems.exists: elem =>
+    elems.exists: elem =>
       elem.core match
-        case _: GlobalCap => true
+        case GlobalAny => true
         case _: LocalCap => true
         case _ => false
 

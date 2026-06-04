@@ -1,16 +1,17 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:20:29 -------------------------------
 20 |  val a: () => Ref^{fresh} = () => f1  // error
    |                             ^^^^^^^^
-   |Found:    () ->{f1.rd} Ref^{any}
+   |Found:    () ->{f1.rd, any} Ref^{any²}
    |Required: () => Ref^{fresh}
    |
-   |Note that capability `any` cannot flow into capture set {fresh²}
-   |because `fresh²`, which is existentially bound in Ref^{fresh³}, cannot subsume `any`.
+   |Note that capability `any²` cannot flow into capture set {fresh²}
+   |because `fresh²`, which is existentially bound in Ref^{fresh³}, cannot subsume `any²`.
    |
    |where:    =>     refers to a root capability in the type of value a
-   |          any    is a root capability classified as Unscoped created in anonymous function of type (): Ref^{any} when instantiating expected result type Ref^{fresh} of function literal
+   |          any    is a root capability classified as Unscoped created in value a when constructing instance (): Ref^{any²}
+   |          any²   is a root capability classified as Unscoped created in anonymous function of type (): Ref^{any²} when instantiating expected result type Ref^{fresh} of function literal
    |          fresh  is a root capability associated with the result type of (): Ref^{fresh}
-   |          fresh² is a root capability associated with the result type of (): Ref^{any}
+   |          fresh² is a root capability associated with the result type of (): Ref^{any²}
    |          fresh³ is the root capability caps.fresh
    |
    | longer explanation available when compiling with `-explain`
