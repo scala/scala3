@@ -35,7 +35,6 @@ import dotty.tools.dotc.core.Types.{
   MethodType,
   OrType,
   ParamRef,
-  SkolemType,
   TermRef,
   Type,
   TypeMap,
@@ -155,31 +154,10 @@ object QualifiedTypes:
           val annotated = AnnotatedType(arg.tpe.widen, annot)
           tpd.Typed(arg, tpd.TypeTree(annotated, inferred = true))
 
-  /** Read or allocate the skolem index for `sym`. The annotation on the
-   *  symbol is the source of truth; if absent we allocate a fresh index
-   *  against the walked `skolemOwner(sym.owner)` and stamp the annotation
-   *  so subsequent lookups (including post-TASTy) return the same `idx`.
-   */
-  def symbolSkolemIndex(sym: Symbol)(using Context): (Symbol, Int) =
-    trace(i"symbolSkolemIndex(${sym.show})", Printers.qualifiedTypes):
-      val owner = skolemOwner(sym.owner)
-      val idx = sym.getAnnotation(defn.QualifierSkolemIndexAnnot) match
-        case Some(annot) =>
-          val tpd.Literal(Constant(i: Int)) :: Nil = annot.arguments: @unchecked
-          i
-        case None =>
-          val fresh = ctx.base.freshSkolemIndex(owner)
-          sym.addAnnotation(
-            Annotation(defn.QualifierSkolemIndexAnnot, tpd.Literal(Constant(fresh)), sym.span)
-          )
-          fresh
-      (owner, idx)
-
-  /** Like `symbolSkolemIndex` but read-only: returns `None` if `sym`
-   *  doesn't already have a `@QualifierSkolemIndex` annotation. Used by
-   *  `termAssumptions` to decide whether to add an equality assumption
-   *  binding a `TermRef` to its skolem — we don't want to allocate one
-   *  here.
+  /** The `(owner, idx)` skolem identity stamped on `sym`, or `None` if it
+   *  carries no `@QualifierSkolemIndex` annotation. Read-only — used by
+   *  `termAssumptions` to bind an EtaExpansion-lifted val to its argument
+   *  skolem without allocating a fresh index.
    */
   def symbolSkolemIndexOpt(sym: Symbol)(using Context): Option[(Symbol, Int)] =
     sym.getAnnotation(defn.QualifierSkolemIndexAnnot).map: annot =>
@@ -218,24 +196,18 @@ object QualifiedTypes:
         case _ => mapOver(t)
     replaceMap(tp)
 
+  /** Weaken qualifiers inside `tp` so they no longer mention any symbol in
+   *  `localSyms` — term references about to leave their scope. Boolean
+   *  sub-expressions referring to such a symbol are approximated to `true`
+   *  or `false` depending on polarity, exactly as [[avoidQualifierVars]]
+   *  does for free `ENodeVar`s.
+   */
   def avoidRefs(tp: Type, localSyms: List[Symbol])(using Context): Type =
-    if !Feature.qualifiedTypesEnabled then return tp
-    val avoidMap = new TypeMap:
-      def apply(t: Type): Type = t match
-        case QualifiedType(parent, qualifier) =>
-          val parent1 = apply(parent)
-          val qualifier1 =
-            val innerMap = new TypeMap:
-              def apply(t2: Type): Type = t2 match
-                case ref: TermRef if localSyms.contains(ref.symbol) =>
-                  val (skolemOwner, skolemIdx) = symbolSkolemIndex(ref.symbol)
-                  ENodeVar.Skolem(skolemOwner, skolemIdx)(SkolemType(mapOver(ref.underlying)))
-                case _ => mapOver(t2)
-            qualifier.mapTypes(innerMap).asInstanceOf[ENode.Lambda]
-          if (parent1 eq parent) && (qualifier1 eq qualifier) then t
-          else QualifiedType(parent1, qualifier1)
-        case _ => mapOver(t)
-    avoidMap(tp)
+    if !Feature.qualifiedTypesEnabled || localSyms.isEmpty then return tp
+    val avoided = localSyms.toSet
+    avoidInQualifiers(tp):
+      case ref: TermRef => avoided.contains(ref.symbol)
+      case _ => false
 
   /** Builds the appropriate qualified type.
    *
@@ -268,43 +240,57 @@ object QualifiedTypes:
    */
   def avoidQualifierVars(tp: Type)(using Context): Type =
     if !Feature.qualifiedTypesEnabled then return tp
+    avoidInQualifiers(tp):
+      case v: ENodeVar => v.isFree
+      case _ => false
+
+  /** Weaken qualifiers inside `tp` by approximating every Boolean
+   *  sub-expression that mentions a type leaf matching `avoid` to the
+   *  polarity-appropriate constant (`true` in positive position, `false`
+   *  in negative) so the rewritten qualifier is *weaker* than the original.
+   *
+   *  Variance-aware: the weaker approximation is a supertype (sound at
+   *  variance > 0), the stronger one a subtype (sound at variance < 0). At
+   *  variance 0 we hand a `Range` to the `ApproximatingTypeMap` framework,
+   *  which propagates it outward and lets an enclosing variant constructor
+   *  pick the appropriate bound. If `avoid` leaves cannot be eliminated
+   *  (they appear outside any Boolean connective), the whole body collapses
+   *  to a constant and the qualifier is dropped, falling back to the parent.
+   */
+  private def avoidInQualifiers(tp: Type)(avoid: Type => Boolean)(using Context): Type =
     val avoidMap = new ApproximatingTypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
-          // Compute weaker (supertype, sound at variance > 0) and stronger
-          // (subtype-shaped, sound at variance < 0) approximations.
-          // Weakening replaces free-var leaves with `true` (drops constraints);
-          // strengthening replaces them with `false` (forces unsatisfiability).
-          // At variance 0 we hand a Range to the ApproximatingTypeMap framework,
-          // which propagates it outward and lets an enclosing variant constructor
-          // pick the appropriate bound.
           val parent1 = apply(parent)
           if variance > 0 then
-            makeQualifiedType(parent1, qualifier, avoidVarsInBody(qualifier.body, positive = true))
+            makeQualifiedType(parent1, qualifier, avoidInBody(qualifier.body, positive = true, avoid))
           else if variance < 0 then
-            makeQualifiedType(parent1, qualifier, avoidVarsInBody(qualifier.body, positive = false))
+            makeQualifiedType(parent1, qualifier, avoidInBody(qualifier.body, positive = false, avoid))
           else
-            val hi = makeQualifiedType(parent1, qualifier, avoidVarsInBody(qualifier.body, positive = true))
-            val lo = makeQualifiedType(parent1, qualifier, avoidVarsInBody(qualifier.body, positive = false))
+            val hi = makeQualifiedType(parent1, qualifier, avoidInBody(qualifier.body, positive = true, avoid))
+            val lo = makeQualifiedType(parent1, qualifier, avoidInBody(qualifier.body, positive = false, avoid))
             if lo eq hi then lo else range(lo, hi)
         case _ => mapOver(t)
     avoidMap(tp)
 
-  /** Recurse through Boolean connectives, replacing sub-expressions that
-   *  contain a free `ENodeVar` with the polarity-appropriate constant
-   *  (`true` in positive position, `false` in negative position).
+  /** Recurse through Boolean connectives, replacing each sub-expression that
+   *  contains a leaf matching `avoid` with the polarity-appropriate constant
+   *  (`true` in positive position, `false` in negative). Identity-preserving
+   *  when nothing is rewritten.
    */
-  private def avoidVarsInBody(node: ENode, positive: Boolean)(using Context): ENode =
+  private def avoidInBody(node: ENode, positive: Boolean, avoid: Type => Boolean)(using Context): ENode =
     node match
       case ENode.OpApply(ENode.Op.And, args) =>
-        ENode.OpApply(ENode.Op.And, args.map(avoidVarsInBody(_, positive)))
+        val args1 = args.mapConserve(avoidInBody(_, positive, avoid))
+        if args1 eq args then node else ENode.OpApply(ENode.Op.And, args1)
       case ENode.OpApply(ENode.Op.Or, args) =>
-        ENode.OpApply(ENode.Op.Or, args.map(avoidVarsInBody(_, positive)))
+        val args1 = args.mapConserve(avoidInBody(_, positive, avoid))
+        if args1 eq args then node else ENode.OpApply(ENode.Op.Or, args1)
       case ENode.OpApply(ENode.Op.Not, List(arg)) =>
-        ENode.OpApply(ENode.Op.Not, List(avoidVarsInBody(arg, !positive)))
+        val arg1 = avoidInBody(arg, !positive, avoid)
+        if arg1 eq arg then node else ENode.OpApply(ENode.Op.Not, List(arg1))
       case _ =>
-        if containsFreeVar(node) then constantAtom(positive)
-        else node
+        if containsMatching(node, avoid) then constantAtom(positive) else node
 
   private def constantAtom(value: Boolean)(using Context): ENode =
     ENode.Atom(ConstantType(Constant(value)))
@@ -317,12 +303,11 @@ object QualifiedTypes:
     case ENode.Atom(ConstantType(Constant(false))) => true
     case _ => false
 
-  private def containsFreeVar(node: ENode)(using Context): Boolean =
+  /** True iff any type leaf reachable from `node` satisfies `pred`. */
+  private def containsMatching(node: ENode, pred: Type => Boolean)(using Context): Boolean =
     var found = false
     node.foreachType: tp =>
-      tp.foreachPart:
-        case tp: ENodeVar if tp.isFree => found = true
-        case _ =>
+      tp.foreachPart(p => if pred(p) then found = true)
     found
 
   /** Does the type `tp1` imply the qualifier `qualifier2`?
