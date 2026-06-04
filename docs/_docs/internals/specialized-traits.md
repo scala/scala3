@@ -5,7 +5,7 @@ As mentioned in the accompanying document on inline traits, inline traits have o
 
 ```scala
 inline trait Foo[T](x: T):
-    def foo = x
+    def foo: T = x
 
 class Bar extends Foo[Int](42)
 
@@ -31,24 +31,15 @@ class Bar extends Foo[Int](42):
 def f(b: Foo): Int = 37 + Int.unbox(b.foo#1()) // virtual call to foo#1 resolves to bridge method foo#3, which in turn calls actual method foo#2, adding boxing. 
 ```
 
-// TODO: I think we can rewrite this to talk about boxing maybe. Give a bit more background
+We introduce the typeclass `Specialized` that can be used as a context bound on type parameters of inline traits and inline methods.
 
+The `Specialized` annotation indicates that we want to create specialized versions of the inline trait where the type parameter is instantiated to the type argument, and replace (in erasure) uses of the inline trait with the corresponding specialized version so that member accesses pass through the specialized interface. 
 
-Specialized traits seek to resolve this problem. We also want to avoid pro-actively generating all specializations (as in Scala 2 `@specialized`; code bloat), or monomorphising the whole program
-(as in C++ templates; this leads to code bloat and long compile times, and is a problematic choice for binary APIs.)
-
-Specialized traits are an approach sitting between these two options. As in Scala 2, specialized type parameters are tagged explicitly (but with a context bound rather than an annotation). 
-However, as for monomorphization, specializations are only generated if a specialized type is referenced in the program. 
-
-To make this work efficiently, we introduce a type class `Specialized` that is used as a context bound on a type parameter of some class. This allows us to transport information about 
-possible specialization types through generic code (full monomorphization does not need that since it eliminates all generic code).
-
-The `Specialized` annotation indicates that we want to create specialized versions of that class where the type parameter is instantiated to the type argument.
-The specialized versions offer optimization opportunities compared to the generic class.
+A `Specialized` annotation on an inline method allows it to call other specialized methods or instantiate specialized traits using the specialized type variable (any code may instantiate specialized traits with concrete types). This allows us to transport information about possible specialization types through multiple layers of generic code (inline methods).
 
 ## Example
 
-As a first example, consider a `Vec` trait for vectors over a numeric type.
+To give a flavour of what specialization does, consider a `Vec` trait for vectors over a numeric type:
 ```scala
 import scala.math.Numeric
 
@@ -66,82 +57,27 @@ inline trait Vec[T: {Specialized, Numeric}](elems: Array[T]):
       result = num.plus(result, num.times(this(i), other(i)))
     result
 
-object Vec: <!-- TODO: We don't support the inline def functions yet-->
+def printVector(v: Vec[Int]) = println(v)
+
+object Vec:
   inline def apply[T: Specialized](elems: Array[T]) = new Vec[T](elems) {}
 end Vec
-```
-The idea is that we want to specialize vectors on the type parameter `T` in order to get important efficiency gains, including the following:
 
- - Use an array `arr` specialized to the actual element instead of a fully generic array that has to be accessed via reflection
- - Avoid boxing for internal values like `result`
- - Avoid boxing in the API for values like the result of `scalarProduct`
- - Specialize on the concrete `Numeric` class instance for `T`, so that calls to `num`'s methods have static targets and can be inlined.
-
-In practice this means we create specialized instance traits of the form `inline trait Vec$sp$Int(elems: Array[Int])` and replace uses of `Vec[Int]` with `Vec$sp$Int`. This replacement happens as part of erasure. How this process works in detail is described below.
-
-## Expansion of Specialized Traits
-
-A _specialized trait_ is an inline trait that has at least one `Specialized` context bound. A specialized context bound (or its expansion to a context parameter) is only allowed for
-type parameters of inline methods and inline traits. Regular methods or traits or classes
-cannot take `Specialized[T]` parameters. 
-
-**Definition**: A _simple class type_ is a reference to a static class that does not have type parameters. References to traits and references containing non-static prefixes or refinements are excluded. // TODO: This excludes List[_].
-
-**Definition**: A _top class_ is one of `Any`, `AnyVal`, or `Object`.
-
-**Definition**: The _specializing supertype_ `SpecType(Tp)` of a type `Tp` is defined as follows:
-- `SpecType(Nothing) = Nothing`
- - `SpecType(Tp) =` the smallest (in the sense of smallest set of values that the type contains) simple class type `C` such that:
-    - `C` is a supertype of `Tp` 
-    - The superclass of `C` is a top class, or `C` itself is a top class.
-
-The _erasure_ of `Vec[Tp]` where `SpecType(Tp) = C` is:
-
- - If `C` is one of the top classes `Any` or `AnyRef` or `AnyVal`, or if `C` is `Nothing` the usual erased trait `Vec`.
- - If `C` is some other class, a new specialized instance trait with a name of the form `Vec$sp$TN`,
-   where `$sp$` is a fixed specialization marker and `TN` is an encoding of the fully qualified name of `C`.
-
-If there is more than one specialized type parameter, the specialized instance trait will reflect in its name all specializing supertypes of such type parameters in sequence.
-
-An anonymous class instance creation like `new Vec[T](elems) {}` expands to
-an instance creation `new Vec$impl$TN(elems)` of a new _specialized instance class_
-named `Vec$impl$TN`. The class name derives from the trait name by replacing `$sp` with `$impl$`. The only exception is if the corresponding `$sp$` trait is simply the original trait
-(because all Specialized arguments were specialized to top classes or `Nothing`). In this case, the specialized instance class will be named `Vec$impl`.
-
-The specialized instance traits are created on demand the first time they are mentioned in a type. For example, here is the definition of the specialized instance `Vec$sp$Int` for `Vec[Int]`:
-
-```scala
-inline trait Vec$sp$Int extends Vec[Int]
+val v = Vec[Int](Array(1, 2, 3, 4, 5))
 ```
 
-In general a specialized interface trait that specializes an inline trait `A[T]` with a specialization type `S`:
-
- - drops all `Specialized` trait parameters of `A` <!-- TODO: (which have been specialized to a type argument)-->
- - adds `A[S]` as first parent trait
- - _also_ adds all parents of `A` *in their specialized forms*,
- - contains declarations from the body of `A` specialized to the type(s) in question (after inlining)
- - Is an `inline trait`. This is for consistency; see [1].
- - Maintains type parameters for type params not marked with `Specialized` in the original trait, and also for specializations where the type *argument* is`T: Specialized', in the case of partial specializations. <!-- TODO: Maybe we want an example for this -->
- - Does not take value parameters (including evidence parameters)
-
-A specialized instance class for an inline trait `A` at specialized argument `S`
-
- - repeats the value parameters of inline trait `A`,
- - extends `A[S]` with these parameters
- - extends the corresponding `$sp$` trait
-
-For example, here is the specialized instance class for `Vec` at `Int`:
-
+Specialization will generate:
 ```scala
-class Vec$impl$Int(elems: Array[T]) extends Vec[Int](elems), Vec$sp$Int
-```
+inline trait Vec$sp$Int extends Vec[Int]:
+  def length: Int
+  def apply(i: Int): Int
+  def scalarProduct(other: Vec$sp$Int): Int
 
-After inlining `Vec[Int]` the expanded class looks like this:
-```scala
 class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec[Int](elems), Vec$sp$Int:
-  private val Vec$$num: Numeric.IntIsIntegral
+  private val Vec$$num = summon[Numeric[Int]]
 
-  def length: Int = elems.length
+  def length = elems.length
+
   def apply(i: Int): Int = elems(i)
 
   def scalarProduct(other: Vec$sp$Int): Int =
@@ -150,32 +86,36 @@ class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec[Int](elems
     for i <- 0 until length do
       result = Vec$$num.plus(result, Vec$$num.times(this(i), other(i)))
     result
+
+def printVector(v: Vec$sp$Int) = println(v)
+
+object Vec:
+  inline def apply[T: Specialized](elems: Array[T]) = new Vec[T](elems) {}
+end Vec
+
+val v = Vec$impl$Int(Array(1, 2, 3, 4, 5))
 ```
 
-After inlining and pruning of inlined definitions, the `$sp$` trait becomes the following:
-```scala
-inline trait Vec$sp$Int extends Vec[Int]:
-  def length: Int
-  def apply(x: Int): Int
-  def scalarProduct(other: Vec$sp$Int): Int
-```
-
+This provides a number of potential efficiency gains:
+ - Avoid boxing in the API for values like the result of `scalarProduct` (as we will access the method on the specialized version).
+ - Specialize on the concrete `Numeric` class instance for `T`, so that calls to `num`'s methods have static targets and can be inlined, and to avoid boxing for internal values like `result` (if we define Numeric to be Specialized). <!-- We could do RHS->LHS type copying for immutable variables to get this for the old Numeric as well if we prefer. (See https://github.com/scala/scala3/pull/26156/changes/931b61e48879927b7396cfc952244ff7a8ba97e0 - I reverted this for now) -->
+ - Use an array `elems` specialized to the actual element instead of a fully generic array that has to be accessed via reflection <!-- (I think this is not implemented yet unless we expect this to happen automatically? I assume by this we mean using IntArray)-->.
 
 ## Creating Specialized Trait Instances
 Creation of an object with specialized behaviour can occur in one of two ways:
- - Instantiating a `class` or using an `object` which extends the specialized trait, specializing its type parameters. E.g.:
+ - Instantiating a `class` or using an `object` [1, 2] which extends the specialized trait, specializing its type parameters. E.g.:
 ```scala
 inline trait Foo[T: Specialized](x: T):
   def foo: T = x
 
-class Bar extends Foo[Int](10):           // Type parameter does of course not need to be specified explicitly here (it can be inferred from the value type of 10)
+class Bar extends Foo[Int](10): // Type parameter does of course not need to be specified explicitly here (it can be inferred from the value type of 10)
     def myMethod = "Hello I am a method"
 
-// Both Baz and myBar will have specialized instances of foo.
+// Both Baz and myBar will have specialized versions of foo.
 object Baz extends Foo(12)
 val myBar = Bar()
 ```
- - Instantiation of an anonymous class instance directly from the Specialized trait: `new A[Ts](ps1)...(psN) {}`  where `A` is a specialized trait and the type parameters `Ts` and term parameters `ps1, ,,, psN` can also be absent. This has a special meaning, as it desugars to instantiating a _specialized instance class_ (see Expansion of Specialized Traits). This comes with the twin advantages that:
+ - Instantiation of an anonymous class instance directly from the Specialized trait: `new A[Ts](ps1)...(psN) {}`  where `A` is a specialized trait and the type parameters `Ts` and term parameters `ps1, ,,, psN` can also be absent. This has a special meaning, as it desugars to instantiating a _specialized instance class_ (`$impl$` class, see Expansion of Specialized Traits). This comes with the twin advantages that:
     - there is no need for the boilerplate of manually defining an object/class to extend the specialized trait
     - this specialized instance class is reused every time such an instance is created (there is no proliferation of anonymous classes).
   
@@ -186,82 +126,166 @@ val myBar = Bar()
     
     Should these restrictions be undesirable, the user can always create their own named `object` or `class` extending from a specialized trait (i.e. the first case for creation of a specialized object just above), which does not induce these restrictions.
 
-[0] Note that of course an anonymous class instance such as `new Foo[Int] {}` where `Foo` extends some other trait `Bar` desugars in the compiler to `new Bar[Int] with Foo[Int] {}`, which means we can't distinguish these two cases. Therefore we begrudgingly allow 
-`new Bar[Int] with Foo[Int] {}` although there is really no reason to use this in source code because it's exactly the same as writing `new Foo[Int] {}`. We disallow `new Foo[Int] with Bar[Int] {}` however.
+[0] Note that because the specialized traits take evidence parameters for the `Specialized` typeclass, `new Foo[Int] {}` where `Foo` extends some other specialized trait `Bar` desugars in the compiler to `new Bar[Int] with Foo[Int] {}`, which means we can't distinguish these two cases. Therefore we allow 
+e.g. `new Bar[Int] with Foo[Int] {}` although there is no reason to use this in source code because it's exactly the same as writing `new Foo[Int] {}`.
 
-Note: This demonstrates that 'class extends specialized trait' and 'object extends specialized trait' are allowed. However, 'trait extends specialized trait' is not. This is due to the restriction on extending inline traits with parameters by ordinary traits, as discussed in `inline-traits.md`. 'inline trait extends specialized trait' is allowed as it is not subject to this restriction.
+[1] Note that 'class extends specialized trait' and 'object extends specialized trait' are allowed. However, 'trait extends specialized trait' is not. This is due to the restriction on extending inline traits with parameters by ordinary traits, as discussed in `inline-traits.md`. 'inline trait extends specialized trait' is allowed as it is not subject to this restriction.
 
-## Variance and Specialized Traits
+[2] As explained in detail in _Specialized Traits Expansion Specification_, specialized instance traits and implementation classes have a special erasure. Classes/objects extending a specialized trait also have special erasure behaviour which adds both the specialized parents and ordinary parents:
+
+```scala
+class Bar extends Foo[Int](10) with Baz[Int](10)
+class Bar extends Object, Foo(10), Bar(10), Foo$sp$Int, Bar$sp$Int
+```
+This is necessary so that Bar can be treated as a `Bar$sp$Int` or `Foo$sp$Int` (in general we may not have `Bar$sp$Int` extends `Foo$sp$Int` so we add both) and to pass arguments to `Foo` and `Bar`.
+
+## Specialized Traits Expansion Specification
+The following is a technical specification for the expansion of specialized traits.
+ 
+### Expansion of Specialized Traits
+**Definition**: A _specialized trait_ is an inline trait that has at least one `Specialized` context bound. A specialized context bound (or its expansion to a context parameter) is only allowed for
+type parameters of inline methods and inline traits. Regular methods or traits or classes
+cannot take `Specialized[T]` parameters. 
+
+**Definition**: A _simple class type_ is a reference to a static class that does not have type parameters. References to traits and references containing non-static prefixes or refinements are excluded.
+
+**Definition**: A _top class_ is one of `Any`, `AnyVal`, or `Object` (also `AnyRef` which is a synonym of `Object`).
+
+**Definition**: The _specializing supertype_ `SpecType(Tp)` of a type `Tp` is defined as follows:
+ - `SpecType(Tp) =` the smallest simple class type `C` such that:
+    - `C` is a supertype of `Tp` 
+    - The superclass of `C` is a top class, or `C` is itself a top class.
+- `SpecType(Nothing) = Nothing`
+
+> By smallest simple class type we mean in the sense of smallest set of values that the type contains, i.e. the closest to the leaves of the class hierarchy. This simply means we may have a choice between `Foo` and `Any`, with `Foo <:< Any` and we will select `Foo`.
+
+**Definition** A _specialization_ `SpecTrait[T1, T2, T3, ...]` is a reference to a specialized trait with concrete type arguments.
+
+The presence of a specialization `SpecTrait[T1, T2, T3, ...]` in the program <!-- TODO: where exactly? In the source or in the types... --> implies the creation of a _specialized interface trait_. This trait will be named `SpecTrait$sp$C1$C2$C3`, where `$sp$` is a fixed specialization marker and `Cn` is an encoding of the fully qualified name of `SpecType(Tn)`. This means that the name of the specialized interface trait reflects in its name all specializing supertypes of the type arguments passed to specialized type parameters in sequence. Arguments passed to non-specialized type parameters are ignored.
+
+The presence of an anonymous class instance creation like `new Vec[T](elems) {}` in the program implies the creation of both a specialized interface trait and a _specialized instance class_, named `Vec$impl$TN`. The class name derives from the trait name by replacing `$sp$` with `$impl$`. 
+
+Should the `SpecType` of all of the concrete type arguments to a specialization be a top class or `Nothing`, a specialized interface trait is not produced. However, should such a specialization require an instance class, an instance class will be created and will be named `SpecTrait$impl`. This is advantageous as it means that anonymous class instances extending specialized traits are _always_ replaced by an instance class.
+
+Replacement of specializations with their corresponding specialized interface traits and anonymous specialized instances with their corresponding specialized instance classes happens via erasure. The _erasure_ of `SpecTrait[T1, T2, T3, ...]` where `SpecType(Tn) = Cn` is:
+
+ - If, for all n, `Cn` is one of the top classes `Any`/`AnyRef`/`AnyVal`/`Object`, or `Cn` is `Nothing`, the usual erased trait `Vec`.
+ - If for at least one n, `Cn` is some other class, the corresponding specialized interface trait `SpecTrait$sp$C1$C2$C3`.
+
+We also erase `new SpecTrait[T1, T2, T3, ....]` to:
+ - `SpecTrait$impl()` if all type arguments are top classes or nothing.
+ - `SpecTrait$impl$C1$C2$C3()` otherwise.
+
+The specialized interface traits and implementation classes are created on demand the first time the corresponding specialization or anonymous class is mentioned in the program.
+
+### Specialized interface traits definition
+
+A specialized interface trait takes the form:
+
+```scala
+inline trait Vec[T: Specialized] extends Seq[T]
+inline trait Vec$sp$Int extends Vec[Int], Seq$sp$Int
+```
+
+In general a specialized interface trait that specializes an inline trait `A[T]` with type argument `S`:
+ - drops all `Specialized` trait parameters of `A`
+ - adds `A[S]` as first parent trait
+ - _also_ adds all parents of `A` *in their specialized forms*,
+ - contains declarations from the body of `A` specialized to the type(s) in question (via inline trait inlining)
+ - is also an `inline trait`. This is for consistency; see [1].
+ - does not take value parameters (including evidence parameters)
+
+We also allow 2 variants of "partial specialization":
+```scala
+inline trait Vec[T: Specialized, S] // Specialized traits defined with some non-specialized parameters
+val x = new Vec[Int, String]() {}
+
+inline trait Foo[T: Specialized, S: Specialized] 
+inline trait Bar[T: Specialized] extends Foo[T, Int] // Specialized to a specialized type variable.
+class Baz extends Bar[Boolean]
+```
+In the first of these cases, the generated specialized interface traits will get type parameters:
+```scala
+inline trait Vec$sp$scala$Int[S]() extends Vec[Int, S]
+val x = new Vec$impl$scala$Int()
+```
+
+In the other case, specialization waits until all the types are known, except for `Bar` which gets an additional `Foo$sp$Any$Int` parent. <!-- I think the Foo$sp$Any$Int is not strictly necessary because it shouldn't be possible to generate an interface with that type, so maybe we can get rid of it. It may be the case that we can change the condition for specialization from "at least one type is known" to "all types are known". -->
+```scala
+inline trait Bar[T: Specialized] extends Foo[T, Int], Foo$sp$Any$Int
+inline trait Foo$sp$Any$Int extends Foo[Any, Int]
+inline trait Foo$sp$Boolean$Int extends Foo[Boolean, Int]
+inline trait Bar$sp$Boolean extends Bar[String], Foo$sp$Boolean$Int
+class Baz extends Foo, Bar, Foo$sp$Boolean$Int, Bar$sp$Boolean
+```
+
+### Specialized instance class traits definition
+
+A specialized instance class for an inline trait `A` at specialized argument `S`
+ - repeats the value parameters of inline trait `A`
+ - extends `A[S]` with these parameters
+ - extends the corresponding `$sp$` trait
+
+For example, here is the specialized instance class for `Vec` at `Int`:
+
+```scala
+class Vec$impl$Int(elems: Array[T]) extends Vec$sp$Int, Vec[Int](elems)
+```
+The bodies of the interface traits and instance classes are completed by inlining from the inline traits that they extend.
+
+## Relationship to other language features 
+
+### Variance and Specialized Traits
 Specialized traits may define variance parameters e.g.:
 ```scala
 inline trait MyFunction1[-T1: Specialized, +R: Specialized]
 ```
+However, variance works in Scala because type parameters are erased, and so we can freely cast e.g. List[Lion] to List[Animal] at runtime. Because specialized traits have a special erasure (and necessarily, because this is how we get the specialization), a couple of variance patterns that are possible with standard traits are not possible with specialized traits. This concerns the top classes and `Nothing`.
 
-This would run into a problem in the contravariance case:
+In the contravariance case:
 ```scala
 inline trait RecyclingBin[-T: Specialized]:
     def recycle(x: T) = println(s"Recycling ${x}")
 
-def recycleAnInteger(bin: RecyclingBin[Int]) = 
-    bin.recycle(100)
+def recycleAnInteger(rbin: RecyclingBin[Int]) = 
+    rbin.recycle(100)
 
-recycleAnInteger(new RecyclingBin[Anyval]() {}) // RecyclingBin[AnyVal] can be interpreted as RecyclingBin[Int] due to contravariance
 recycleAnInteger(new RecyclingBin[Any]() {})    // RecyclingBin[Any] can be interpreted as RecyclingBin[Int] due to contravariance
+recycleAnInteger(new RecyclingBin[AnyVal]() {}) // RecyclingBin[AnyVal] can be interpreted as RecyclingBin[Int] due to contravariance
 
 // Yet, this erases to:
+def recycleAnInteger(rbin: RecyclingBin$sp$Int) = 
+    rbin.recycle(100)
 
-def recycleAnInteger(bin: RecyclingBin$sp$Int) = 
-    bin.recycle(100)
-recycleAnInteger(new RecyclingBin() {}.asInstanceOf[RecyclingBin$sp$Int]) // RecyclingBin cannot be cast to RecyclingBin$sp$Int
-recycleAnInteger(new RecyclingBin() {}.asInstanceOf[RecyclingBin$sp$Int]) // RecyclingBin cannot be cast to RecyclingBin$sp$Int
-
-// This will fail at runtime. We would rather catch it at compile time.
+recycleAnInteger(RecyclingBin$impl().asInstanceOf[RecyclingBin$sp$Int]) // RecyclingBin$impl cannot be cast to RecyclingBin$sp$Int; Any and Int live in different erasure "buckets" so their erased types are unrelated
+recycleAnInteger(RecyclingBin$impl{}.asInstanceOf[RecyclingBin$sp$Int]) // RecyclingBin$impl cannot be cast to RecyclingBin$sp$Int
 ```
 Therefore we have the following issues:
 - `RecyclingBin[Any]`, `RecyclingBin[AnyVal]` may not be passed to `RecyclingBin[Int]` whereas normally they would be able to be passed
-- `RecyclingBin[Any]`, `RecyclingBin[Object / AnyRef]` may not be passed to RecyclingBin[Paper] whereas normally they would.
+- `RecyclingBin[Any]`, `RecyclingBin[Object / AnyRef]` may not be passed to `RecyclingBin[Paper]` whereas normally they would.
 
-So we impose an additional restriction on contravariance with specialized parameters:
-- If `A[F1]` is to be interpreted as `A[F2]` under `A[-T: Specialized]`,we require that `SpecType(F1) = SpecType(F2)`. Given that we also require `F1 >:> F2`, and looking at the definition of SpecType this means:
-  - RecylcingBin[Any], RecylcingBin[AnyVal] may not be passed to RecylcingBin[Int] whereas normally they would
-  - RecylcingBin[Any], RecylcingBin[Object / AnyRef] may not be passed to RecylcingBin[Paper] whereas normally they would.
-  - RecylcingBin[Any] may be passed to RecylcingBin[Object], RecylcingBin[AnyRef], RecylcingBin[AnyVal] as these all erase to RecylcingBin
+These uses of contravariance can never succeed. Rather than allowing them to always fail at runtime, we reject them at compilation time. We impose an additional restriction on contravariance with specialized parameters:
+- If (when `F1 >:> F2`) `A[F1]` is to be interpreted as `A[F2]` under `A[-T: Specialized]`, we require that `SpecType(F1) = SpecType(F2)`. Given `F1 >:> F2` and looking at the definition of `SpecType` this means concretely:
+  - `RecyclingBin[Any]`, `RecyclingBin[AnyVal]` may not be passed to `RecyclingBin[Int]` whereas normally they would
+  - `RecyclingBin[Any]`, `RecyclingBin[Object / AnyRef]` may not be passed to `RecyclingBin[Paper]` whereas normally they would.
+  - `RecyclingBin[Any]` may be passed to `RecyclingBin[Object]`, `RecyclingBin[AnyRef]`, `RecyclingBin[AnyVal]` as these all erase to `RecyclingBin`.
 
 Covariance has a similar problem:
- - In general it works fine because it corresponds to interpreting `A[F1]` as `A[F2]` where `F1 <:< F2`. Either`A[F1]` and `A[F2]` both erase to the same type (`A$sp$SpecType(F2)` or `A` if `F1` and `F2` are both top classes), or `A[F1]` erases to `A$sp$F1` and `A[F2]` erases to `A`. But `A$sp$F1` is a subtype of `A` by definition so the upcast will succeed (and upcasts are generally cheap compared to downcasts on the JVM so this is acceptable from a performance perspective).  
- - The only exception is with `Nothing`, because we want to interpret `A[Nothing]` as e.g. `A[Int]`, but we erase `A[Nothing]` to `A`. `A >:> A$sp$Int` so this doesn't work and we also have to ban it. This makes the code less ergonomic in some cases. For example `case object Nil extends List[Nothing]` has to become `inline trait NilC[T: Specialized] extends List[T]` and `inline def Nil[T: Specialized] = new NilC[T] () {}`, but we don't lose too much expressivity.
+ - In general covariance works fine because it corresponds to interpreting `A[F1]` as `A[F2]` where `F1 <:< F2`. Either`A[F1]` and `A[F2]` both erase to the same type (`A$sp$SpecType(F2)`, or `A` if `F1` and `F2` are both top classes), or `A[F1]` erases to `A$sp$F1` and `A[F2]` erases to `A` (`F2` is a top class while `F1` is not). But `A$sp$F1` is a subtype of `A` by definition so the upcast will succeed (and upcasts are generally cheap compared to downcasts on the JVM so this is acceptable from a performance perspective).  
+ - The only exception is with `Nothing`, because we want to interpret `A[Nothing]` as e.g. `A[Int]`, but we erase `A[Nothing]` to `A`. `A >:> A$sp$Int` so this doesn't work and so we also have to reject covariance using `Nothing`. To implement this correctly would require a specialization `A$sp$Nothing` which extends every single specialization in the program, and this was deemed infeasible. The lack of covariance with `Nothing` makes the code less ergonomic in some cases. For example `case object Nil extends List[Nothing]` has to become `inline trait Nil[T: Specialized] extends List[T]` and `inline def apply[T: Specialized] = new Nil[T] () {}`, but we don't lose too much expressivity.
 
-<!-- TODO: The restrictions ensure that each time we create an instance of a specialized trait we know statically the classes of all `Specialized` type arguments Except if T \in Ts is defined in the enclosing scope e.g. as a class type parameter. Notion of material specialisation -->
-<!-- TODO: Do we also allow extensions? -->
-<!-- TODO: Do we definitely need all of these restrictions? -->
+### Other implementation restrictions on specialized traits
+These could be lifted with additional work.
+
+| Behaviour                | Limitation | Chance of fixing / limited by |
+|--------------------------|-----------------------------------------------|---|
+| Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits. | It was thought that this would be challenging because it would require bridge methods that "despecialize" to ensure that `A$sp$Int` implements `A`'s interface. In the end these bridge methods have been implements, so it should be very possible to lift this restriction as future work.|
+| Defining specialized traits inside traits/classes/objects | May define specialized traits inside `object`s. May not define them inside `class`es or `trait`s. | Limited by the way we flatten the owners of generated `$impl$` classes and `$sp$` traits. We really want to build the `Foo$impl$` class directly next to `Foo`. For a single CU this would be possible if we walked the entire tree and found where these belong; for multiple CUs it is more complicated as the tree may not exist in the current CU. The case of path dependent specialized traits was deemed niche enough to not be high priority, and for multiple CUs seems very tricky. |
+
+// GOT TO HERE
 
 
-<!-- The unspecialized parent types (`Vec[Int]`) are then removed after inlining. This is necessary to avoid interface conflicts with the specialized
-members. In particular, in the above example `def scalarProduct(other: Vec$sp$Int)` does not implement `def scalarProduct(other: Vec[T])` as defined
-in `Vec[T]`. This is not a problem because all instances of `Vec[Int]` are replaced by `Vec$sp$Int` in the whole program, and `Vec[?]` is banned. Therefore,
-there are no situations where a `Vec$sp$Int` may be passed as an argument to a parameter of type `Vec[Int]`. This gives the final result:
 
-```scala
-inline trait Vec$sp$Int extends Vec[Int]:
-  def length: Int
-  def apply(x: Int): Int
-  def scalarProduct(other: Vec$sp$Int): Int
-```
-The same transformation is applied to the `$impl$` classes for the same reason:
-```scala
-class Vec$impl$Int(elems: Array[Int])(using Numeric[Int]) extends Vec$sp$Int:
-  private val Vec$$num: Numeric.IntIsIntegral
-
-  def length: Int = elems.length
-  def apply(i: Int): Int = elems(i)
-
-  def scalarProduct(other: Vec$sp$Int): Int =
-    require(this.length == other.length)
-    var result = Vec$$num.fromInt(0)
-    for i <- 0 until length do
-      result = Vec$$num.plus(result, Vec$$num.times(this(i), other(i)))
-    result
-``` -->
 
 
 ## A Larger Case Study
@@ -290,7 +314,7 @@ inline trait Seq[T: Specialized](elems: Array[T]) extends Iterable[T]:
   def iterator: Iterator[T] = new ArrayIterator[T](elems) {}
 ```
 
-This generates the following instance traits (after inlining, conversion to pure interfaces and erasure): <!--and parent removal -->
+This generates the following interface traits (after inlining, conversion to pure interfaces and erasure): <!--and parent removal -->
 
 // TODO: Check that this matches what is actually generated
 ```scala
@@ -333,15 +357,6 @@ class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int, Seq(elems):
   override def length: Int = elems.length
   override def apply(i: Int): Int = elems(i)
 ```
-
-## Summary of implementation restrictions on specialized traits
-These could be lifted with additional work.
-
-| Behaviour                | Limitation | Chance of fixing / limited by |
-|--------------------------|-----------------------------------------------|---|
-| Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits.  | Fixable by adding bridge methods. We ban them because with if `class A extends I[Int]` implements method `def foo(x: Foo[Int])` which belongs to interface `I[T]` as `def foo(x: Foo[T])` then specializing A's `foo` means it no longer implements the interface correctly. Note that this can only occur when I is itself a specialized trait (otherwise the type signature `Foo[T]` is not valid in `I`) so in practice this reduces to `inline trait I$sp$Int extends I[Int]`. This means we can solve the problem by having `I$sp$Int` not extend `I[Int]` in the final generated code. This imposes that `I[?]` be banned as `I[Int]` in source (`I$sp$Int` after erasure) does not extend `I[?]` / `I` . Adding bridge methods seemed quite challenging because there are a large number of cases to deal with. |
-| Defining specialized traits inside traits/classes/objects | May define specialized traits inside `object`s. May not define them inside `class`es or `trait`s. | Limited by the way we flatten the owners of generated `$impl$` classes and `$sp$` traits. We really need to build the `Foo$impl$` class directly next to Foo. For a single CU this would be possible if we walked the entire tree and found where these belong; for multiple CUs it is more complicated as the tree may not exist in the current CU. The case of path dependent specialized traits was deemed niche enough to not be high priority. |
-<!-- | Inheriting from specialized traits | In inline traits or anonymous class instances (for instance creation) only | -->
 
 ## Transportation of Specialized through generic code
 <!-- TODO: At the moment we generate this for everything including type variables -->
