@@ -1,20 +1,3 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:20:29 -------------------------------
-20 |  val a: () => Ref^{fresh} = () => f1  // error
-   |                             ^^^^^^^^
-   |Found:    () ->{f1.rd, any} Ref^{any²}
-   |Required: () => Ref^{fresh}
-   |
-   |Note that capability `any²` cannot flow into capture set {fresh²}
-   |because `fresh²`, which is existentially bound in Ref^{fresh³}, cannot subsume `any²`.
-   |
-   |where:    =>     refers to a root capability in the type of value a
-   |          any    is a root capability classified as Unscoped created in value a when constructing instance (): Ref^{any²}
-   |          any²   is a root capability classified as Unscoped created in anonymous function of type (): Ref^{any²} when instantiating expected result type Ref^{fresh} of function literal
-   |          fresh  is a root capability associated with the result type of (): Ref^{fresh}
-   |          fresh² is a root capability associated with the result type of (): Ref^{any²}
-   |          fresh³ is the root capability caps.fresh
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:12:36 ----------------------------------------------------
 12 |  val a: () => File^{fresh} = () => f1  // error
    |                                    ^
@@ -23,6 +6,10 @@
 14 |  def g(): File^ = f3  // error
    |           ^^^^^
    |           Separation failure: method g's result type File^ hides non-local value f3
+-- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:20:35 ----------------------------------------------------
+20 |  val a: () => Ref^{fresh} = () => f1  // error
+   |                                   ^
+   |Separation failure: anonymous function of type (): Ref^{fresh}'s inferred result type Ref^ hides non-local value f1
 -- Error: tests/neg-custom-args/captures/lambda-fresh-2.scala:22:11 ----------------------------------------------------
 22 |  def g(): Ref^ = f3  // error
    |           ^^^^

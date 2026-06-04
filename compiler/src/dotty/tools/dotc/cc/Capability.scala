@@ -1272,9 +1272,7 @@ object Capabilities:
     override def mapCapability(c: Capability, deep: Boolean) = c match
       case c: LocalCap =>
         if variance >= 0 then
-          if sym.isAnonymousFunction && c.classifier.derivesFrom(defn.Caps_Unscoped) then
-            c
-          else if sym.exists && !c.ccOwner.isContainedIn(sym) then
+          if sym.exists && !c.ccOwner.isContainedIn(sym) then
             //println(i"not mapping $c with ${c.ccOwner} in $sym")
             c
           else
@@ -1310,6 +1308,18 @@ object Capabilities:
       override def toString = "toVar.inverse"
     end inverse
   end ToResult
+
+  /** Map all ResultCaps that have the same primaryResultCap as one of the elements
+   *  of `rcs` to their LocalCap origins.
+   */
+  class RetractResult(rcs: SimpleIdentitySet[ResultCap])(using Context) extends TypeMap:
+    def apply(t: Type) = mapOver(t)
+    override def mapCapability(c: Capability, deep: Boolean) = c match
+      case c: ResultCap if rcs.exists(_.primaryResultCap == c.primaryResultCap) =>
+        c.primaryResultCap.origin match
+          case origin: LocalCap => origin
+          case _ => c
+      case _ => super.mapCapability(c, deep)
 
   /** Replace all occurrences of `caps.any` or LocalCap in parts of this type by an existentially bound
    *  variable bound by `mt`. Stop at function or method types since these have been mapped before.

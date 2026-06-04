@@ -1818,6 +1818,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       def tryCurrentType: Boolean =
         isCompatible(actualBoxed, expected1)
 
+      def tryAltType(actual1: Type) =
+        actual1.exists && {
+          val actualBoxed1 = adapt(actual1, expected1, tree)
+          isCompatible(actualBoxed1, expected1)
+        }
+
       /** When the actual type is a named type, and the previous attempt failed, try to widen the named type
        * and try another time.
        *
@@ -1831,13 +1837,47 @@ class CheckCaptures extends Recheck, SymTransformer:
        * In those cases, we widen such types and try box adaptation another time.
        */
       def tryWidenNamed: Boolean =
-        val actual1 = findImpureUpperBound(actual)
-        actual1.exists && {
-          val actualBoxed1 = adapt(actual1, expected1, tree)
-          isCompatible(actualBoxed1, expected1)
-        }
+        tryAltType(findImpureUpperBound(actual))
 
-      TypeComparer.compareResult(tryCurrentType || tryWidenNamed) match
+      def nestedLambdas(mdef: DefDef): List[Symbol] =
+        mdef.symbol :: mdef.rhs.match
+          case closureDef(mdef1) => nestedLambdas(mdef1)
+          case _ => Nil
+
+      /** Try to convert ResultCaps that are classified as Unscoped
+       *  back to local caps, if they were generated as parts of the types
+       *  of closures. I.e. a closure such as
+       *
+       *      () => Ref()
+       *
+       *  is initially given type `() -> Ref^{fresh}`. This means it could not
+       *  be passed to a method `withFile` declared as `withFile[T](op: File^ => T)`.
+       *  By adapting its type to `() => Ref^` we make it fit. Test cases are in
+       *  ref-with-file.scala and lambda-fresh.scala.
+       */
+      def tryExistentialWiden(notes: List[Note]): Boolean = tree match
+        case closureDef(mdef) =>
+          val mappable =
+            for
+              case IncludeFailure(cs, rc: ResultCap, true) <- notes
+              if rc.classifier.derivesFrom(defn.Caps_Unscoped)
+                && nestedLambdas(mdef).contains(rc.primaryResultCap.origin.ccOwner.enclosingMethod)
+            yield rc
+          !mappable.isEmpty
+          && tryAltType:
+            RetractResult(SimpleIdentitySet(mappable*))(actual)
+              .showing(i"try existential widen $actual to $result", capt)
+        case _ => false
+
+      def recoverWithExistentialWiden(cmp: TypeComparer.CompareResult): TypeComparer.CompareResult =
+        cmp match
+        case TypeComparer.CompareResult.Fail(cmpNotes) =>
+          TypeComparer.compareResult(tryExistentialWiden(cmpNotes)) match
+            case TypeComparer.CompareResult.Fail(_) => cmp
+            case cmp1 => cmp1
+        case _ => cmp
+
+      recoverWithExistentialWiden(TypeComparer.compareResult(tryCurrentType || tryWidenNamed)) match
         case TypeComparer.CompareResult.Fail(cmpNotes) =>
           capt.println(i"conforms failed for ${tree}: $actual vs $expected")
           if falseDeps then expected1 = unalignFunction(expected1)
