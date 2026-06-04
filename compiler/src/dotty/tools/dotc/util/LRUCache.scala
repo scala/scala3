@@ -16,10 +16,10 @@ import annotation.tailrec
  *  get promoted to be first in the queue. Elements are evicted
  *  at the `last` position.
  */
-class LRUCache[Key >: Null <: AnyRef | Null : ClassTag, Value >: Null: ClassTag] {
+class LRUCache[Key <: AnyRef | Null, Value](using ClassTag[Key | Null], ClassTag[Value | Null]) {
   import LRUCache.*
-  val keys: Array[Key] = new Array[Key](Retained)
-  val values: Array[Value] = new Array(Retained)
+  val keys: Array[Key | Null] = new Array(Retained)
+  val values: Array[Value | Null] = new Array(Retained)
   var next: SixteenNibbles = new SixteenNibbles(initialRing.bits)
   var last: Int = Retained - 1 // value is arbitrary
   var lastButOne: Int = last - 1
@@ -30,9 +30,9 @@ class LRUCache[Key >: Null <: AnyRef | Null : ClassTag, Value >: Null: ClassTag]
    *  As a side effect, sets `lastButOne` to the element before `last`
    *  if key was not found.
    */
-  def lookup(key: Key): Value = {
+  def lookup(key: Key): Value | Null = {
     @tailrec
-    def lookupNext(prev: Int, current: Int, nx: SixteenNibbles): Value = {
+    def lookupNext(prev: Int, current: Int, nx: SixteenNibbles): Value | Null = {
       val follow = nx(current)
       if (keys(current) eq key) {
         // arrange so that found element is at position `first`.
@@ -79,7 +79,7 @@ class LRUCache[Key >: Null <: AnyRef | Null : ClassTag, Value >: Null: ClassTag]
   def indices: Iterator[Int] = Iterator.iterate(first)(next.apply)
 
   def keysIterator: Iterator[Key] =
-    indices take Retained map keys filter (_ != null)
+    indices.take(Retained).map(keys).filter(k => k != null).asInstanceOf[Iterator[Key]]
 
   override def toString: String = {
     val assocs = keysIterator

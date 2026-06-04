@@ -112,7 +112,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     else if label == NoAddr then
       pickleForwardSymRef(sym)
     else
-      writeRef(label.uncheckedNN) // !!! Dotty problem: Not clear why nn or uncheckedNN is needed here
+      writeRef(label)
 
   private def pickleForwardSymRef(sym: Symbol)(using Context) = {
     val ref = reserveRef(relative = false)
@@ -178,7 +178,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       }
       else {
         writeByte(SHAREDtype)
-        writeRef(prev.uncheckedNN)
+        writeRef(prev)
       }
     }
     catch {
@@ -254,7 +254,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       writeByte(RECthis)
       val binderAddr: Addr | Null = pickledTypes.lookup(tpe.binder)
       assert(binderAddr != null, tpe.binder)
-      writeRef(binderAddr.uncheckedNN)
+      writeRef(binderAddr)
     case tpe: SkolemType =>
       pickleType(tpe.info)
     case tpe: RefinedType =>
@@ -341,12 +341,13 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
 
   def pickleParamRef(tpe: ParamRef)(using Context): Boolean = {
     val binder: Addr | Null = pickledTypes.lookup(tpe.binder)
-    val pickled = binder != null
-    if (pickled) {
+    if (binder != null) {
       writeByte(PARAMtype)
-      withLength { writeRef(binder.uncheckedNN); writeNat(tpe.paramNum) }
+      withLength { writeRef(binder); writeNat(tpe.paramNum) }
+      true
+    } else {
+      false
     }
-    pickled
   }
 
   def pickleErrorType(): Unit = {

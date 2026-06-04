@@ -873,7 +873,7 @@ object Types extends TypeUtils {
           NoDenotation
       }
       def goRec(tp: RecType) =
-        // TODO: change tp.parent to nullable or other values
+        // this can be called while we're initializing `tp.parent`, at which point it's null
         if ((tp.parent: Type | Null) == null) NoDenotation
         else if (tp eq pre) go(tp.parent)
         else
@@ -4881,9 +4881,9 @@ object Types extends TypeUtils {
     def paramInfo: binder.PInfo    = binder.paramInfos(paramNum)
 
     override def underlying(using Context): Type = {
-      // TODO: update paramInfos's type to nullable
+      // This can be called while we're initializing `binder.paramInfos`, at which point it's null
       val infos: List[Type] | Null = binder.paramInfos
-      if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
+      if (infos == null) NoType
       else infos(paramNum)
     }
 
