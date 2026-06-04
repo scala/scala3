@@ -30,6 +30,8 @@ class CompilationTests {
       compileFilesInDir("tests/pos-scala2", defaultOptions.and("-source", "3.0-migration")),
       compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking")),
       compileFilesInDir("tests/pos-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes")),
+      // Same suite with skolem ANF lifting enabled, to check the phase on all qualified-types shapes.
+      compileFilesInDir("tests/pos-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf")),
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
@@ -188,6 +190,7 @@ class CompilationTests {
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       compileFilesInDir("tests/run-custom-args/qualified-types", defaultOptions.and("-language:experimental.qualifiedTypes")),
+      compileFilesInDir("tests/run-custom-args/qualified-types-anf", defaultOptions.and("-language:experimental.qualifiedTypes", "-Yqualified-types-anf")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ))
