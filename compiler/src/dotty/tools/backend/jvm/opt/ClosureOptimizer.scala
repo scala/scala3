@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
-class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
+class ClosureOptimizer(optimizerUtils: OptimizerUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
                        ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                        settings: OptimizerSettings) {
@@ -85,7 +85,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimiz
    *                instantiations.
    * @return The changed methods. The order of the resulting sequence is deterministic.
    */
-  def rewriteClosureApplyInvocations(methods: Option[Iterable[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState]): mutable.LinkedHashSet[MethodNode] = {
+  def rewriteClosureApplyInvocations(methods: Option[Iterable[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState], issueSink: OptimizerIssue => Unit): mutable.LinkedHashSet[MethodNode] = {
 
     // sort all closure invocations to rewrite to ensure bytecode stability
     given Ordering[ClosureInstantiation] = closureInitOrdering
@@ -117,7 +117,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimiz
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                ppa.optimizerWarning(em"${warning.toString}", OptimizerUtils.siteString(ownerClass, method.name), warning.pos)
+                issueSink(OptimizerIssue(em"${warning.toString}", OptimizerUtils.siteString(ownerClass, method.name), warning.pos))
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)

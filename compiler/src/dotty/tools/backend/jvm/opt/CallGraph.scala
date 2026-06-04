@@ -28,8 +28,7 @@ import BCodeUtils.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.ast.Positioned
 
-class CallGraph(frontendAccess: PostProcessorFrontendAccess,
-                byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
+class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
 
   /**
    * The call graph contains the callsites in the program being compiled.

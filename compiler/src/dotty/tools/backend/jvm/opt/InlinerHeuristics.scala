@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMetho
 import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.report
 
-class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
+class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
                         callGraph: CallGraph, ts: OptimizerKnownBTypes,
                         settings: OptimizerSettings) {
 
@@ -42,7 +42,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimi
    * Select callsites from the call graph that should be inlined, grouped by the containing method.
    * Cyclic inlining requests are allowed, the inliner will eliminate requests to break cycles.
    */
-  def selectCallsitesForInlining: Map[MethodNode, Set[InlineRequest]] = {
+  def selectCallsitesForInlining(issueSink: OptimizerIssue => Unit): Map[MethodNode, Set[InlineRequest]] = {
     // We should only create inlining requests for callsites being compiled (not for callsites in
     // classes on the classpath). The call graph may contain callsites of classes parsed from the
     // classpath. In order to get only the callsites being compiled, we start at the map of
@@ -61,18 +61,18 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimi
 
             case Some(Left(w)) =>
               if (w.emitWarning(settings)) {
-                ppa.optimizerWarning(em"${w.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
+                issueSink(OptimizerIssue(em"${w.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition))
               }
 
             case None =>
               if (callsiteWarning.exists(_.emitWarning(settings))) {
-                ppa.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
+                issueSink(OptimizerIssue(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos))
               }
           }
 
         case callsite @ UnknownCallsite(ins, meth, clas, pos, _, warning) =>
           if (warning.emitWarning(settings)) {
-            ppa.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", OptimizerUtils.siteString(clas.internalName, meth.name), pos)
+            issueSink(OptimizerIssue(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", OptimizerUtils.siteString(clas.internalName, meth.name), pos))
           }
       }
       (methodNode, requests)

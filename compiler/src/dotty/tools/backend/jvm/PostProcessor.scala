@@ -261,14 +261,13 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
   }
 }
 
-final class PostProcessorWithOptimizations(frontendAccess: PostProcessorFrontendAccess,
-                                           byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
+final class PostProcessorWithOptimizations(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
                                            callGraph: CallGraph, optimizerUtils: OptimizerUtils,
                                            bTypeLoader: BTypeLoader, bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(bTypeLoader, bTypes) {
   private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new Inliner(frontendAccess, optimizerUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val closureOptimizer    = new ClosureOptimizer(optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
+  private val inliner             = new Inliner(optimizerUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
   private val localOpt            = new LocalOpt(optimizerUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
@@ -283,7 +282,7 @@ final class PostProcessorWithOptimizations(frontendAccess: PostProcessorFrontend
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
-    inliner.runInlinerAndClosureOptimizer()
+    inliner.runInlinerAndClosureOptimizer(i => report.optimizerWarning(i.msg, i.site, i.pos))
   }
 
   protected override def runLocalOptimizations(classNode: ClassNode): Unit =

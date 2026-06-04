@@ -28,7 +28,7 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
+class Inliner(optimizerUtils: OptimizerUtils,
               callGraph: CallGraph, bTypeLoader: BTypeLoader, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
               settings: OptimizerSettings) {
@@ -62,7 +62,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
     })
   }
 
-  def runInlinerAndClosureOptimizer(): Unit = {
+  def runInlinerAndClosureOptimizer(issueSink: OptimizerIssue => Unit): Unit = {
     var round = 0
     var changedByInliner = Iterable.empty[MethodNode]
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
@@ -75,12 +75,12 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
     while (round < 10 && (round == 0 || (changedByClosureOptimizer.nonEmpty && settings.optInlinerEnabled))) {
       if (settings.optInlinerEnabled) {
         val specificMethodsForInlining = if (round == 0) None else Some(changedByClosureOptimizer)
-        changedByInliner = runInliner(specificMethodsForInlining, inlinerState, failedToInline)
+        changedByInliner = runInliner(specificMethodsForInlining, inlinerState, failedToInline, issueSink)
       }
 
       if (settings.optClosureInvocations) {
         val specificMethodsForClosureRewriting = if (round == 0) None else Some(changedByInliner)
-        changedByClosureOptimizer = closureOptimizer.rewriteClosureApplyInvocations(specificMethodsForClosureRewriting, inlinerState)
+        changedByClosureOptimizer = closureOptimizer.rewriteClosureApplyInvocations(specificMethodsForClosureRewriting, inlinerState, issueSink)
       }
 
       var logs = List.empty[(MethodNode, InlineLog)]
@@ -102,11 +102,11 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
    * @param methods The methods to check for callsites to inline. If not defined, check all methods.
    * @return The set of changed methods, in no deterministic order.
    */
-  private def runInliner(methods: Option[mutable.LinkedHashSet[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState], failed: mutable.Set[MethodInsnNode]): Iterable[MethodNode] = {
+  private def runInliner(methods: Option[mutable.LinkedHashSet[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState], failed: mutable.Set[MethodInsnNode], issueSink: OptimizerIssue => Unit): Iterable[MethodNode] = {
     // Inline requests are grouped by method for performance: we only update the call graph (which
     // runs analyzers) once all callsites are inlined.
     val requests: mutable.Queue[(MethodNode, List[InlineRequest])] =
-      if (methods.isEmpty) collectAndOrderInlineRequests
+      if (methods.isEmpty) collectAndOrderInlineRequests(issueSink)
       else mutable.Queue.empty
 
     // Methods that were changed (inlined into), they will be checked for more callsites to inline
@@ -209,17 +209,17 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
                 case Some(inlinedCallsite) =>
                   val rw = inlinedCallsite.warning.get
                   if (rw.emitWarning(settings)) {
-                    ppa.optimizerWarning(
+                    issueSink(OptimizerIssue(
                       em"${rw.toString + inlineChainSuffix(r.callsite, state.inlineChain(inlinedCallsite.eliminatedCallsite.callsiteInstruction, skipForwarders = true))}",
                       OptimizerUtils.siteString(inlinedCallsite.eliminatedCallsite.callsiteClass.internalName, inlinedCallsite.eliminatedCallsite.callsiteMethod.name),
-                      inlinedCallsite.eliminatedCallsite.callsitePosition)
+                      inlinedCallsite.eliminatedCallsite.callsitePosition))
                   }
                 case _ =>
                   if (w.emitWarning(settings))
-                    ppa.optimizerWarning(
+                    issueSink(OptimizerIssue(
                       em"${w.toString + inlineChainSuffix(r.callsite, state.inlineChain(r.callsite.callsiteInstruction, skipForwarders = true))}",
                       OptimizerUtils.siteString(r.callsite.callsiteClass.internalName, r.callsite.callsiteMethod.name),
-                      r.callsite.callsitePosition)
+                      r.callsite.callsitePosition))
               }
           }
         }
@@ -270,10 +270,10 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
                 val w = inlinedCallsite.warning.get
                 state.inlineLog.logRollback(callsite, s"Instruction ${LogUtils.textify(notInlinedIllegalInsn)} would cause an IllegalAccessError, and is not selected for (or failed) inlining", state.outerCallsite(notInlinedIllegalInsn))
                 if (w.emitWarning(settings))
-                  ppa.optimizerWarning(
+                  issueSink(OptimizerIssue(
                     em"${w.toString + inlineChainSuffix(callsite, state.inlineChain(callsite.callsiteInstruction, skipForwarders = true))}",
                     OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name),
-                    callsite.callsitePosition)
+                    callsite.callsitePosition))
               case _ =>
                 // TODO: replace by dev warning after testing
                 assert(false, "should not happen")
@@ -297,8 +297,8 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
    * The resulting list is sorted such that the leaves of the inline request graph are on the left.
    * Once these leaves are inlined, the successive elements will be leaves, etc.
    */
-  private def collectAndOrderInlineRequests: mutable.Queue[(MethodNode, List[InlineRequest])] = {
-    val requestsByMethod = heuristics.selectCallsitesForInlining.withDefaultValue(Set.empty)
+  private def collectAndOrderInlineRequests(issueSink: OptimizerIssue => Unit): mutable.Queue[(MethodNode, List[InlineRequest])] = {
+    val requestsByMethod = heuristics.selectCallsitesForInlining(issueSink).withDefaultValue(Set.empty)
 
     val elided = mutable.Set.empty[InlineRequest]
 
