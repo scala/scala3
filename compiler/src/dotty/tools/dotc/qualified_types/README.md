@@ -39,7 +39,8 @@ Test files: `tests/printing/qualified-types*.scala`.
 sbtn "scala3-compiler-nonbootstrapped/testOnly *Printing*"
 ```
 
-To update checkfiles: append `-- -Ddotty.tests.updateCheckfiles=TRUE`
+To update checkfiles: append `-- -Ddotty.tests.updateCheckfiles=TRUE`.
+Note checkfiles must be created manually for new tests.
 
 ### Unit tests
 

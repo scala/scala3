@@ -496,6 +496,7 @@ private sealed trait YSettings:
   val Ycheck: Setting[List[String]] = PhasesSetting(ForkSetting, "Ycheck", "Check the tree at the end of")
   val YcheckMods: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-mods", "Check that symbols and their defining trees have modifiers in sync.")
   val YcheckQualifiedTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-qualified-types", "Enable internal consistency checks in the qualified types e-graph.")
+  val YqualifiedTypesAnf: Setting[Boolean] = BooleanSetting(ForkSetting, "Yqualified-types-anf", "ANF-lift qualifier argument skolems into real val bindings (for external tools).")
   val Ydebug: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug", "Increase the quantity of debugging output.")
   val YdebugTrace: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-trace", "Trace core operations.")
   val YdebugFlags: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-flags", "Print all flags of definitions.")
