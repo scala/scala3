@@ -11,6 +11,9 @@ def asNonEmpty[A](l: List[A]): {b: Boolean with b == true && l != Nil} =
   res
 
 @main def Test =
+  //                            |- asNonEmpty(l)
+  // asNonEmpty(l) && l != Nil  |- asNonEmpty(l)
+  // asNonEmpty(l) && l != Nil  |- true
   val l = Nil: {l: List[Int] with asNonEmpty(l)}
   try println(l.head)
   catch case _: NoSuchElementException => println("threw NoSuchElementException")
