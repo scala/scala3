@@ -518,11 +518,11 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimiz
   /**
    * A list of local variables. Each local stores information about its type, see class [[Local]].
    */
-  case class LocalsList(locals: List[Local]) {
+  private case class LocalsList(locals: List[Local]) {
     val size = locals.iterator.map(_.size).sum
   }
 
-  object LocalsList {
+  private object LocalsList {
     /**
      * A list of local variables starting at `firstLocal` that can hold values of the types in the
      * `types` parameter.
@@ -552,7 +552,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimiz
    * The xLOAD / xSTORE opcodes are in the following sequence: I, L, F, D, A, so the offset for
    * a local variable holding a reference (`A`) is 4. See also method `getOpcode` in [[scala.tools.asm.Type]].
    */
-  case class Local(local: Int, opcodeOffset: Int) {
+  private case class Local(local: Int, opcodeOffset: Int) {
     def size = if (loadOpcode == LLOAD || loadOpcode == DLOAD) 2  else 1
 
     def loadOpcode = ILOAD + opcodeOffset
@@ -561,6 +561,6 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimiz
 }
 
 object ClosureOptimizer {
-  val primitives = "BSIJCFDZV"
-  val specializationSuffix = s"(\\$$mc[$primitives]+\\$$sp)".r
+  private val primitives = "BSIJCFDZV"
+  private val specializationSuffix = s"(\\$$mc[$primitives]+\\$$sp)".r
 }

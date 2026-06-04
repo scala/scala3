@@ -283,10 +283,7 @@ final class PostProcessorWithOptimizations(frontendAccess: PostProcessorFrontend
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
-    if ctx.settings.optInlineEnabled then
-      inliner.runInlinerAndClosureOptimizer()
-    else // we're only called if either optInlineEnabled or ctx.settings.optClosureInvocations
-      closureOptimizer.rewriteClosureApplyInvocations(None, scala.collection.mutable.Map.empty)
+    inliner.runInlinerAndClosureOptimizer()
   }
 
   protected override def runLocalOptimizations(classNode: ClassNode): Unit =

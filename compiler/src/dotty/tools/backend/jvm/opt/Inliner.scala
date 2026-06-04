@@ -63,8 +63,8 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
   }
 
   def runInlinerAndClosureOptimizer(): Unit = {
-    val runClosureOptimizer = settings.optClosureInvocations
     var round = 0
+    var changedByInliner = Iterable.empty[MethodNode]
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
 
     val inlinerState = mutable.Map.empty[MethodNode, MethodInlinerState]
@@ -72,11 +72,13 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
     // Don't try again to inline failed callsites
     val failedToInline = mutable.Set.empty[MethodInsnNode]
 
-    while (round < 10 && (round == 0 || changedByClosureOptimizer.nonEmpty)) {
-      val specificMethodsForInlining = if (round == 0) None else Some(changedByClosureOptimizer)
-      val changedByInliner = runInliner(specificMethodsForInlining, inlinerState, failedToInline)
+    while (round < 10 && (round == 0 || (changedByClosureOptimizer.nonEmpty && settings.optInlinerEnabled))) {
+      if (settings.optInlinerEnabled) {
+        val specificMethodsForInlining = if (round == 0) None else Some(changedByClosureOptimizer)
+        changedByInliner = runInliner(specificMethodsForInlining, inlinerState, failedToInline)
+      }
 
-      if (runClosureOptimizer) {
+      if (settings.optClosureInvocations) {
         val specificMethodsForClosureRewriting = if (round == 0) None else Some(changedByInliner)
         changedByClosureOptimizer = closureOptimizer.rewriteClosureApplyInvocations(specificMethodsForClosureRewriting, inlinerState)
       }
