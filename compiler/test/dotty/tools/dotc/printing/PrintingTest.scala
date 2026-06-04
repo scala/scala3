@@ -73,4 +73,7 @@ class PrintingTest {
 
   @Test
   def tryCatchPatterns: Unit = testIn("tests/printing/tryCatchPatterns", "tryCatchPatterns")
+
+  @Test
+  def qualifiedTypesAnf: Unit = testIn("tests/printing/qualified-types-anf", "qualifiedTypesANF")
 }
