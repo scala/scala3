@@ -939,8 +939,8 @@ object Contexts {
      *  local to the owner (a function symbol or class symbol). The
      *  allocated index is stamped onto the bearer (the argument tree's
      *  type via `@QualifierSkolemIndex(n)`, or the symbol's annotations
-     *  for lifted/local vals) so it stays stable across re-type-checks
-     *  and TASTy round-trips. Cleared per run in `initialize()`.
+     *  for EtaExpansion-lifted vals) so it stays stable across
+     *  re-type-checks and TASTy round-trips. Cleared per run in `initialize()`.
      */
     val qualifierSkolemIndexCounterByOwner: collection.mutable.HashMap[Symbols.Symbol, qualified_types.QualifierSkolemIndexCounter] =
       collection.mutable.HashMap()
