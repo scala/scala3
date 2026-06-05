@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(optimizerUtils: OptimizerUtils,
+class Inliner(indyTracker: IndyLambdaImplTracker,
               callGraph: CallGraph, bTypeLoader: BTypeLoader, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
               settings: OptimizerSettings) {
@@ -178,7 +178,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
 
             case Some(w: IllegalAccessInstructions) if maybeInlinedLater(r.callsite, w.instructions) =>
               if (state.undoLog.isEmpty) {
-                val undo = new UndoLog(optimizerUtils, callGraph)
+                val undo = new UndoLog(indyTracker, callGraph)
                 val currentState = state.clone()
                 // undo actions for the method and global state
                 undo.saveMethodState(r.callsite.callsiteClass, method)
@@ -415,7 +415,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
     //   def g = f; println() // println is unreachable after inlining f
     // If we have an inline request for a call to g, and f has been already inlined into g, we
     // need to run DCE on g's body before inlining g.
-    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph, optimizerUtils)
+    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph, indyTracker)
 
     // If the callsite was eliminated by DCE, do nothing.
     if (!callGraph.containsCallsite(callsite)) return Map.empty
@@ -696,8 +696,8 @@ class Inliner(optimizerUtils: OptimizerUtils,
 
     callsite.callsiteMethod.maxStack = math.max(MethodMax.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
 
-    lazy val callsiteLambdaBodyMethods = optimizerUtils.indyLambdaBodyMethods(callsite.callsiteClass.internalName, callsite.callsiteMethod)
-    optimizerUtils.indyLambdaBodyMethods(calleeDeclarationClass.internalName, callee).foreach {
+    lazy val callsiteLambdaBodyMethods = indyTracker.get(callsite.callsiteClass.internalName, callsite.callsiteMethod)
+    indyTracker.get(calleeDeclarationClass.internalName, callee).foreach {
       case (indy, handle) => instructionMap.get(indy) match {
         case Some(clonedIndy: InvokeDynamicInsnNode) =>
           callsiteLambdaBodyMethods(clonedIndy) = handle
@@ -1056,7 +1056,7 @@ object Inliner {
   }
 }
 
-class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
+class UndoLog(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph) {
 
   import java.util.{ArrayList => JArrayList}
 
@@ -1073,7 +1073,7 @@ class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
     val currentMaxLocals = methodNode.maxLocals
     val currentMaxStack = methodNode.maxStack
 
-    val currentIndyLambdaBodyMethods = optimizerUtils.indyLambdaBodyMethods(ownerClass.internalName, methodNode)
+    val currentIndyLambdaBodyMethods = indyTracker.get(ownerClass.internalName, methodNode)
 
     // Instead of saving / restoring the CallGraph's callsites / closureInstantiations, we call
     // callGraph.refresh on rollback. The call graph might not be up to date at the point where
@@ -1105,7 +1105,7 @@ class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
       OptimizerUtils.clearDceDone(methodNode)
       callGraph.refresh(methodNode, ownerClass)
 
-      optimizerUtils.resetIndyLambdaImplMethods(ownerClass.internalName, methodNode, currentIndyLambdaBodyMethods)
+      indyTracker.reset(ownerClass.internalName, methodNode, currentIndyLambdaBodyMethods)
     }
   }
 }

@@ -258,13 +258,14 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
 }
 
 final class PostProcessorWithOptimizations(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                                           callGraph: CallGraph, optimizerUtils: OptimizerUtils,
+                                           callGraph: CallGraph, indyTracker: IndyLambdaImplTracker,
                                            bTypeLoader: BTypeLoader, bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(bTypeLoader, bTypes) {
   private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val optimizerUtils      = new OptimizerUtils(bTypes)
+  private val closureOptimizer    = new ClosureOptimizer(optimizerUtils, indyTracker, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
   private val heuristics          = new InlinerHeuristics(optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new Inliner(optimizerUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(optimizerUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+  private val inliner             = new Inliner(indyTracker, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOpt(optimizerUtils, indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
     // add classes to the bytecode repo before building the call graph: the latter needs to

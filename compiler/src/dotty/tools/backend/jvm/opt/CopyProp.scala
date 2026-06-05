@@ -26,7 +26,7 @@ import BCodeUtils.*
 
 import scala.tools.asm
 
-class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
+class CopyProp(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
 
   private val modulesAllowSkipInitialization =
     if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
@@ -431,7 +431,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       def handleClosureInst(indy: InvokeDynamicInsnNode): Unit = {
         toRemove += indy
         callGraph.removeClosureInstantiation(indy, method)
-        optimizerUtils.removeIndyLambdaImplMethod(owner, method, indy)
+        indyTracker.remove(owner, method, indy)
         handleInputs(indy, Type.getArgumentTypes(indy.desc).length)
       }
 
