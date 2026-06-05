@@ -154,9 +154,7 @@ object Inliner:
       if tree.inlinedFromOuterScope then
         tree.expansion match
           case expansion: TypeTree => expansion
-        // TODO: Check if this is a problem; previously tree. We do this because of Inlined(Inlined(EmptyTree, Select)) blocks conversion of the Select
-        // and this causes a problem when we have inline methods inlined into inline traits (e.g. summon in tests/run/specialized-trait-vector-dot-product.scala)
-          case _ => super.transformInlined(tree) 
+          case _ => tree
       else super.transformInlined(tree)
   end InlinerMap
 

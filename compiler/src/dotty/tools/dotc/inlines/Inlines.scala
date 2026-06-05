@@ -115,7 +115,10 @@ object Inlines:
             case Apply(fn, _) => rec(fn)
             case _ => false
           tree.symbol.name.isUnapplyName && rec(tree)
-        isInlineable(tree.symbol) && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] && isInlineableInCtx && !ctx.mode.is(Mode.NoInline) && !isUnapplyExpressionWithDummy
+        // We don't inline inline calls into inline traits because we can inline them into the children and this gets around the issue of
+        // needing to apply the symbol replacement map to those calls (which is tricky because we don't apply any inline maps beyond Inlined() calls)
+        // See tests/pos/i11866.scala and tests/run/specialized-trait-vector-dot-product.scala
+        isInlineable(tree.symbol) && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] && isInlineableInCtx && !(ctx.owner.ownersIterator.exists(_.isInlineTrait)) && !ctx.mode.is(Mode.NoInline) && !isUnapplyExpressionWithDummy
 
   private[dotc] def symbolFromParent(parent: Tree)(using Context): Symbol =
     if parent.symbol.isConstructor then parent.symbol.owner else parent.tpe.typeSymbol
@@ -1079,7 +1082,7 @@ object Inlines:
         
         // In case of nested inline trait inlines, because BodyAnnotation is out of date,
         // body inlined misses nested expansion, but we have the symbols for the items that should be there
-        // Remove them so that they can be inlined prperly later.
+        // Remove them so that they can be inlined properly later.
         val ttmap = TreeTypeMap(treeMap = {
           case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) => 
             val newSym = tree.symbol.copy(coord = spanCoord(tree.span))               // Coord should correspond to original location because we will inline from there.
