@@ -6,15 +6,11 @@ package example {
   final module class anf$package() extends Object() {
     this: example.anf$package.type =>
     private def writeReplace(): AnyRef =
-      {
-        new scala.runtime.ModuleSerializationProxy(
-          classOf[example.anf$package.type])
-      }
+      new scala.runtime.ModuleSerializationProxy(
+        classOf[example.anf$package.type])
     @experimental("Added by -language:experimental.experimental.qualifiedTypes")
        def id(x: Int): Int @qualified[Int]((r: Int) => r == x) =
-      {
-        x:(x : Int) @RuntimeChecked:x.type @RuntimeChecked
-      }
+      x:(x : Int) @RuntimeChecked:x.type @RuntimeChecked
     @experimental("Added by -language:experimental.experimental.qualifiedTypes")
        def add(x: Int, y: Int): Int @qualified[Int]((r: Int) => r == x + y) =
       {
@@ -29,15 +25,9 @@ package example {
           throw new IllegalArgumentException()
       }
     @experimental("Added by -language:experimental.experimental.qualifiedTypes")
-       def a(): Int =
-      {
-        1
-      }
+       def a(): Int = 1
     @experimental("Added by -language:experimental.experimental.qualifiedTypes")
-       def impure(): Int =
-      {
-        42
-      }
+       def impure(): Int = 42
     @experimental("Added by -language:experimental.experimental.qualifiedTypes")
        def test(): Int =
       {
