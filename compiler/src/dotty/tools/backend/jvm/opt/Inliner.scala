@@ -696,14 +696,14 @@ class Inliner(optimizerUtils: OptimizerUtils,
 
     callsite.callsiteMethod.maxStack = math.max(MethodMax.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
 
-    lazy val callsiteLambdaBodyMethods = optimizerUtils.onIndyLambdaImplMethod(callsite.callsiteClass.internalName)(_.getOrElseUpdate(callsite.callsiteMethod, mutable.Map.empty))
-    optimizerUtils.onIndyLambdaImplMethodIfPresent(calleeDeclarationClass.internalName)(methods => methods.getOrElse(callee, Nil) foreach {
+    lazy val callsiteLambdaBodyMethods = optimizerUtils.indyLambdaBodyMethods(callsite.callsiteClass.internalName, callsite.callsiteMethod)
+    optimizerUtils.indyLambdaBodyMethods(calleeDeclarationClass.internalName, callee).foreach {
       case (indy, handle) => instructionMap.get(indy) match {
         case Some(clonedIndy: InvokeDynamicInsnNode) =>
           callsiteLambdaBodyMethods(clonedIndy) = handle
         case _ =>
       }
-    })
+    }
 
     // Don't remove the inlined instruction from callsitePositions, inlineAnnotatedCallsites so that
     // the information is still there in case the method is rolled back (UndoLog).
@@ -1105,9 +1105,7 @@ class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
       OptimizerUtils.clearDceDone(methodNode)
       callGraph.refresh(methodNode, ownerClass)
 
-      optimizerUtils.onIndyLambdaImplMethodIfPresent(ownerClass.internalName)(_.subtractOne(methodNode))
-      if (currentIndyLambdaBodyMethods.nonEmpty)
-        optimizerUtils.onIndyLambdaImplMethod(ownerClass.internalName)(ms => ms(methodNode) = mutable.Map.empty ++= currentIndyLambdaBodyMethods)
+      optimizerUtils.resetIndyLambdaImplMethods(ownerClass.internalName, methodNode, currentIndyLambdaBodyMethods)
     }
   }
 }
