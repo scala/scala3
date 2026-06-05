@@ -180,6 +180,18 @@ object QualifiedTypes:
     case AnnotatedType(parent, _) => readSkolemIndexAnnotType(parent)
     case _ => None
 
+  /** `tp` with any top-level `@QualifierSkolemIndex` annotations removed. The
+   *  marker is metadata (a stable index carrier), not part of the type, so it
+   *  must not leak into, e.g., an `ENodeVar.Skolem`'s underlying type — otherwise
+   *  the type would differ depending on whether the marker is already present.
+   */
+  def dropSkolemIndexAnnot(tp: Type)(using Context): Type = tp match
+    case AnnotatedType(parent, annot) if annot.symbol == defn.QualifierSkolemIndexAnnot =>
+      dropSkolemIndexAnnot(parent)
+    case at @ AnnotatedType(parent, annot) =>
+      at.derivedAnnotatedType(dropSkolemIndexAnnot(parent), annot)
+    case _ => tp
+
   /** Wrap an argument tree as `Typed(arg, TypeTree(arg.tpe @QualifierSkolemIndex(n)))`
    *  so the per-arg skolem identity survives TASTy round-trips. No-op if
    *  the tree is already wrapped or qualified types are disabled.
