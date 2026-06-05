@@ -52,6 +52,15 @@ object QualifiedTypes:
    */
   val QualifiedTypeCast: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Side-channel from `TypeAssigner.selectionType` to `Typer.typedSelectWithAdapt`:
+   *  the skolem index minted for an unstable selection prefix (a dependent method's
+   *  receiver). `typedSelectWithAdapt` reads it to mark the receiver tree with
+   *  `@QualifierSkolemIndex`, so [[ANF]] lifts it like any other argument. Ephemeral
+   *  (consumed within the same selection); stability across re-typing comes from
+   *  `ENode.skolemFor` reading the index back off the marked receiver's type.
+   */
+  val ReceiverSkolemIndex: Property.Key[Int] = Property.Key()
+
   /** The symbol that scopes a skolem index: the closest enclosing method
    *  or class on the owner chain starting from `s`. Walks via
    *  `flagsUNSAFE` / `lastKnownDenotation` so it never forces a symbol's
@@ -123,18 +132,22 @@ object QualifiedTypes:
    *  `Typed`/`NamedArg` wrappers.
    */
   def readSkolemIndexAnnot(tree: Tree)(using Context): Option[Int] =
-    def fromType(tp: Type): Option[Int] = tp match
-      case AnnotatedType(parent, annot) if annot.symbol == defn.QualifierSkolemIndexAnnot =>
-        annot.argument(0) match
-          case Some(tpd.Literal(Constant(idx: Int))) => Some(idx)
-          case _ => fromType(parent)
-      case AnnotatedType(parent, _) => fromType(parent)
-      case _ => None
     def loop(t: Tree): Option[Int] = t match
-      case tpd.Typed(expr, _) => fromType(t.tpe).orElse(loop(expr))
+      case tpd.Typed(expr, _) => readSkolemIndexAnnotType(t.tpe).orElse(loop(expr))
       case tpd.NamedArg(_, expr) => loop(expr)
-      case _ => fromType(t.tpe)
+      case _ => readSkolemIndexAnnotType(t.tpe)
     loop(tree)
+
+  /** The skolem index carried by a `@QualifierSkolemIndex` annotation on the
+   *  type `tp` (looking through other annotations), or `None`.
+   */
+  def readSkolemIndexAnnotType(tp: Type)(using Context): Option[Int] = tp match
+    case AnnotatedType(parent, annot) if annot.symbol == defn.QualifierSkolemIndexAnnot =>
+      annot.argument(0) match
+        case Some(tpd.Literal(Constant(idx: Int))) => Some(idx)
+        case _ => readSkolemIndexAnnotType(parent)
+    case AnnotatedType(parent, _) => readSkolemIndexAnnotType(parent)
+    case _ => None
 
   /** Wrap an argument tree as `Typed(arg, TypeTree(arg.tpe @QualifierSkolemIndex(n)))`
    *  so the per-arg skolem identity survives TASTy round-trips. No-op if
@@ -146,14 +159,18 @@ object QualifiedTypes:
    */
   def wrapWithSkolemIndex(arg: Tree)(using Context): Tree =
     if !Feature.qualifiedTypesEnabled then arg
+    else wrapWithSkolemIndex(arg, treeSkolemIndex(arg, skolemOwner)._2)
+
+  /** Like [[wrapWithSkolemIndex]], but with a caller-supplied index `idx` (used
+   *  for receivers, whose skolem index is minted by `ENode.skolemFor` rather than
+   *  allocated from the tree). No-op if already wrapped or qualified types off.
+   */
+  def wrapWithSkolemIndex(arg: Tree, idx: Int)(using Context): Tree =
+    if !Feature.qualifiedTypesEnabled || readSkolemIndexAnnot(arg).isDefined then arg
     else
-      readSkolemIndexAnnot(arg) match
-        case Some(_) => arg
-        case None =>
-          val (_, idx) = treeSkolemIndex(arg, skolemOwner)
-          val annot = Annotation(defn.QualifierSkolemIndexAnnot, tpd.Literal(Constant(idx)), arg.span)
-          val annotated = AnnotatedType(arg.tpe.widen, annot)
-          tpd.Typed(arg, tpd.TypeTree(annotated, inferred = true))
+      val annot = Annotation(defn.QualifierSkolemIndexAnnot, tpd.Literal(Constant(idx)), arg.span)
+      val annotated = AnnotatedType(arg.tpe.widen, annot)
+      tpd.Typed(arg, tpd.TypeTree(annotated, inferred = true))
 
   /** The `(owner, idx)` skolem identity stamped on `sym`, or `None` if it
    *  carries no `@QualifierSkolemIndex` annotation. Read-only — used by
