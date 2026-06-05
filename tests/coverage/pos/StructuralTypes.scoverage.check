@@ -110,40 +110,6 @@ StructuralTypes
 Object
 covtest.StructuralTypes
 test
-277
-293
-13
-->
-Apply
-false
-0
-false
-"name" -> "Emma"
-
-6
-StructuralTypes.scala
-covtest
-StructuralTypes
-Object
-covtest.StructuralTypes
-test
-295
-306
-13
-->
-Apply
-false
-0
-false
-"age" -> 42
-
-7
-StructuralTypes.scala
-covtest
-StructuralTypes
-Object
-covtest.StructuralTypes
-test
 333
 344
 14
@@ -154,7 +120,7 @@ false
 false
 person.name
 
-8
+6
 StructuralTypes.scala
 covtest
 StructuralTypes
