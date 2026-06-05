@@ -16,7 +16,10 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.safe"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$")
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.StringContext.s"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.StringContext.raw"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.StringContext.f")
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
