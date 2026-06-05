@@ -3,15 +3,16 @@ package transform
 
 import core._
 import Contexts._
-import DenotTransformers.SymTransformer
+import DenotTransformers.InfoTransformer
 import Flags._
 import SymDenotations._
 import Symbols._
 import MegaPhase.MiniPhase
 import ast.tpd
 import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.core.Types._
 
-class PruneSpecializedMethods extends MiniPhase with SymTransformer { thisTransform =>
+class PruneSpecializedMethods extends MiniPhase with InfoTransformer { thisTransform =>
   import tpd._
   import PruneSpecializedMethods._
 
@@ -19,14 +20,13 @@ class PruneSpecializedMethods extends MiniPhase with SymTransformer { thisTransf
 
   override def description: String = PruneSpecializedMethods.description
 
-  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if sym.isClass && !sym.is(Package) && sym.info.exists then
-      val clsInfo = sym.asClass.classInfo
-      val clsInfo2 = clsInfo.derivedClassInfo(decls = 
+  override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match {
+    case clsInfo: ClassInfo if sym.isClass && !sym.is(Package) => 
+      clsInfo.derivedClassInfo(decls =
           clsInfo.decls.filteredScope(!isDeletable(_))
       )
-      sym.copySymDenotation(info = clsInfo2)
-    else sym
+    case _ => tp
+  }
 
   override def transformTemplate(tree: Template)(using Context): Tree = 
     cpy.Template(tree)(body = tree.body.flatMap({
