@@ -48,3 +48,4 @@ package example {
   }
 }
 
+[[syntax trees at end of    qualifiedTypesANFCheck]] // tests/printing/qualified-types-anf/anf.scala: unchanged since qualifiedTypesANF
