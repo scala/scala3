@@ -344,8 +344,8 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
           val grouped = stats1.groupBy(tree => tree.symbol.enclosingPackageClass)
           
           cpy.PackageDef(pkg)(Ident(defn.EmptyPackageVal.namedType), // We need to copy the existing package so we don't lose any attachments (e.g. attachments used to calculate Wunused)
-            grouped.getOrElse(defn.RootClass, List()) :::
             grouped.getOrElse(defn.EmptyPackageClass, List()) :::
+            grouped.getOrElse(defn.RootClass, List()) :::
             grouped.toList.filter((pk, stmts) => pk != defn.RootClass && pk != defn.EmptyPackageClass).map((pkg, stmts) => tpd.PackageDef(Ident(pkg.sourceModule.namedType), stmts))
           ).withType(defn.EmptyPackageVal.namedType)
         case t => t
