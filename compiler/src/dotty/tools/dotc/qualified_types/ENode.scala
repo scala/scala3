@@ -576,7 +576,12 @@ object ENode:
     val (owner, idx) = ctx.base.qualifierSkolemForSkolemType.getOrElseUpdate(
       sk, {
         val owner = QualifiedTypes.skolemOwner
-        (owner, ctx.base.freshSkolemIndex(owner))
+        // If the prefix was already marked with `@QualifierSkolemIndex` (a receiver
+        // wrapped by `typedSelectWithAdapt`), reuse that index so the skolem identity
+        // is stable across re-typing (e.g. -Ycheck). Otherwise allocate fresh.
+        val idx = QualifiedTypes.readSkolemIndexAnnotType(sk.info)
+          .getOrElse(ctx.base.freshSkolemIndex(owner))
+        (owner, idx)
       }
     )
     ENodeVar.Skolem(owner, idx)(sk.info)
