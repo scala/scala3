@@ -28,7 +28,7 @@ import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
 class Inliner(indyTracker: IndyLambdaImplTracker,
-              callGraph: CallGraph, bTypeLoader: BTypeLoader, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+              callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
               settings: OptimizerSettings) {
 
@@ -795,7 +795,7 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
   private val isInternalCache = mutable.Map.empty[String, Either[OptimizerWarning, Boolean]]
   private def isInternal(name: String): Either[OptimizerWarning, Boolean] = {
     isInternalCache.getOrElseUpdate(name,
-      bTypeLoader.previouslyConstructedClassBType(name) match
+      classBTypeCache.previouslyConstructedClassBType(name) match
         case Some(ct) => Right(!ct.info.inlineInfo.isAccessible)
         case None => bTypesFromClassfile.classBTypeFromParsedClassfile(name) match
           case Left(l) => Left(l)
