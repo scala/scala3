@@ -1791,7 +1791,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       case _ => NoType
 
     inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: List[Note])
-        (fail: (Tree, Type, List[Note]) => Unit)(using Context): Type =
+        (fail: (Tree, Type, List[Note]) => Unit)(using Context): Type = {
 
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val falseDeps = expected1 ne expected
@@ -1815,30 +1815,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
 
-      def tryCurrentType: Boolean =
-        isCompatible(actualBoxed, expected1)
-
-      def tryAltType(actual1: Type) =
-        actual1.exists && {
-          val actualBoxed1 = adapt(actual1, expected1, tree)
-          isCompatible(actualBoxed1, expected1)
-        }
-
-      /** When the actual type is a named type, and the previous attempt failed, try to widen the named type
-       * and try another time.
-       *
-       * This is useful for cases like:
-       *
-       *   def id[X <: box IO^{a}](x: X): IO^{a} = x
-       *
-       * When typechecking the body, we need to show that `(x: X)` can be typed at `IO^{a}`.
-       * In the first attempt, since `X` is simply a parameter reference, we treat it as non-boxed and perform
-       * no box adptation. But its upper bound is in fact boxed, and adaptation is needed for typechecking the body.
-       * In those cases, we widen such types and try box adaptation another time.
-       */
-      def tryWidenNamed: Boolean =
-        tryAltType(findImpureUpperBound(actual))
-
       def nestedLambdas(mdef: DefDef): List[Symbol] =
         mdef.symbol :: mdef.rhs.match
           case closureDef(mdef1) => nestedLambdas(mdef1)
@@ -1855,45 +1831,61 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  By adapting its type to `() => Ref^` we make it fit. Test cases are in
        *  ref-with-file.scala and lambda-fresh.scala.
        */
-      def tryExistentialWiden(notes: List[Note]): Boolean = tree match
+      def existentialWiden(notes: List[Note]): Type =
+        tree match
         case closureDef(mdef) =>
           val mappable =
             for
-              case IncludeFailure(cs, rc: ResultCap, true) <- notes
+              case IncludeFailure(cs, rc: ResultCap, _) <- notes
               if rc.classifier.derivesFrom(defn.Caps_Unscoped)
                 && nestedLambdas(mdef).contains(rc.primaryResultCap.origin.ccOwner.enclosingMethod)
             yield rc
-          !mappable.isEmpty
-          && tryAltType:
+          if mappable.isEmpty then NoType
+          else
             RetractResult(SimpleIdentitySet(mappable*))(actual)
               .showing(i"try existential widen $actual to $result", capt)
-        case _ => false
+        case _ => NoType
 
-      def recoverWithExistentialWiden(cmp: TypeComparer.CompareResult): TypeComparer.CompareResult =
-        cmp match
-        case TypeComparer.CompareResult.Fail(cmpNotes) =>
-          TypeComparer.compareResult(tryExistentialWiden(cmpNotes)) match
-            case TypeComparer.CompareResult.Fail(_) => cmp
-            case cmp1 => cmp1
-        case _ => cmp
+      def tryType(actualBoxed: Type)(alt: List[Note] => Type): Type = {
+        TypeComparer.compareResult(isCompatible(actualBoxed, expected1)) match
+          case TypeComparer.CompareResult.Fail(cmpNotes) => alt(cmpNotes)
+          case _ =>
+            if debugSuccesses then tree match
+              case Ident(_) =>
+                println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
+              case _ =>
+            actualBoxed
+      }
 
-      recoverWithExistentialWiden(TypeComparer.compareResult(tryCurrentType || tryWidenNamed)) match
-        case TypeComparer.CompareResult.Fail(cmpNotes) =>
-          capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-          if falseDeps then expected1 = unalignFunction(expected1)
-          val toAdd0 = notes ++ cmpNotes
-          val toAdd1 = addApproxAddenda(toAdd0, expected1)
-          val failTree =
-            if definedSym(tree).exists then tree else tree.withType(actualBoxed)
-          fail(failTree, expected1, toAdd1)
-          actual
-        case /*OK*/ _ =>
-          if debugSuccesses then tree match
-            case Ident(_) =>
-              println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
-            case _ =>
-          actualBoxed
-    end testAdapted
+      def tryAltType(altActual: Type)(alt: => Type): Type =
+        if altActual.exists && (altActual ne actual)
+        then
+          val altActualBoxed = adapt(altActual, expected1, tree)
+          tryType(altActualBoxed)(_ => alt)
+        else alt
+
+      tryType(actualBoxed): cmpNotes =>
+        // When the actual type is a named type, and the previous attempt failed, try to widen the named type
+        // and try another time. This is useful for cases like:
+        //
+        //    def id[X <: box IO^{a}](x: X): IO^{a} = x
+        //
+        // When typechecking the body, we need to show that `(x: X)` can be typed at `IO^{a}`.
+        // In the first attempt, since `X` is simply a parameter reference, we treat it as non-boxed and perform
+        // no box adptation. But its upper bound is in fact boxed, and adaptation is needed for typechecking the body.
+        // In those cases, we widen such types and try box adaptation another time.
+        tryAltType(findImpureUpperBound(actual)):
+          tryAltType(existentialWiden(cmpNotes)):
+            capt.println(i"conforms failed for ${tree}: $actual vs $expected")
+            if falseDeps then expected1 = unalignFunction(expected1)
+            val toAdd0 = notes ++ cmpNotes
+            val toAdd1 = addApproxAddenda(toAdd0, expected1)
+            val failTree =
+              if definedSym(tree).exists then tree
+              else tree.withType(actualBoxed)
+            fail(failTree, expected1, toAdd1)
+            actual
+    }
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
