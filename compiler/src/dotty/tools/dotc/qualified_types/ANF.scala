@@ -65,14 +65,25 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
         cpy.Annotated(tree)(transform(arg), tree.annot)
       case blk: Block =>
         anfBlock(super.transform(blk).asInstanceOf[Block])
-      case dd: DefDef if !dd.rhs.isEmpty && !dd.rhs.isInstanceOf[Block] && hasSkolemArg(dd.rhs) =>
+      case dd: DefDef if isBareBodyWithSkolem(dd.rhs) =>
         // A bare (lazily-evaluated) body: wrap it into a block so its skolem args
         // lift there, under the def's own owner, rather than hoisting to the
         // def's siblings.
         val dd1 = super.transform(dd).asInstanceOf[DefDef]
         cpy.DefDef(dd1)(rhs = anfBlock(Block(Nil, dd1.rhs))(using ctx.withOwner(dd.symbol)))
+      case vd: ValDef if vd.symbol.owner.isClass && isBareBodyWithSkolem(vd.rhs) =>
+        // A class field / top-level val: wrap its rhs in a block so its skolem
+        // args lift into the field initializer rather than hoisting to sibling
+        // fields (which would require re-typing class members). The qualifier on
+        // the field's own type is dropped by block avoidance — fine, it's a
+        // private construction detail.
+        val vd1 = super.transform(vd).asInstanceOf[ValDef]
+        cpy.ValDef(vd1)(rhs = anfBlock(Block(Nil, vd1.rhs))(using ctx.withOwner(vd.symbol)))
       case _ =>
         super.transform(tree)
+
+  private def isBareBodyWithSkolem(rhs: Tree)(using Context): Boolean =
+    !rhs.isEmpty && !rhs.isInstanceOf[Block] && hasSkolemArg(rhs)
 
   /** Lift every `@QualifierSkolemIndex` argument in the block into a real `val`,
    *  then rewrite `Skolem -> liftedVal.termRef` and drop the markers.
@@ -84,29 +95,40 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
    */
   private def anfBlock(blk: Block)(using Context): Tree =
     if !hasSkolemArg(blk) then return blk
+    val (stats, _) = liftStats(blk.stats)
+    val (exprDefs, expr1) = hoist(blk.expr, ctx.owner)
+    finish(cpy.Block(blk)(stats ++ exprDefs, expr1))
+
+  /** Hoist each statement's skolem args into preceding sibling `val`s. */
+  private def liftStats(stats: List[Tree])(using Context): (List[Tree], Boolean) =
     val newStats = ListBuffer[Tree]()
-    for stat <- blk.stats do
+    var lifted = false
+    for stat <- stats do
       stat match
         case vd: ValDef if !vd.rhs.isEmpty && hasSkolemArg(vd.rhs) =>
           val (defs, rhs1) = hoist(vd.rhs, vd.symbol)
           newStats ++= defs
           newStats += cpy.ValDef(vd)(rhs = rhs1)
+          lifted = true
         case _ if !stat.isInstanceOf[MemberDef] && hasSkolemArg(stat) =>
           val (defs, stat1) = hoist(stat, ctx.owner)
           newStats ++= defs
           newStats += stat1
+          lifted = true
         case _ =>
           newStats += stat
-    val (exprDefs, expr1) = hoist(blk.expr, ctx.owner)
-    newStats ++= exprDefs
-    val rebuilt = cpy.Block(blk)(newStats.toList, expr1)
-    // Each lifted val's symbol carries the `@QualifierSkolemIndex` transferred by
-    // `Lifter.lift`; map it to its `TermRef`, then drop the markers.
-    val map = collectSkolemMap(rebuilt)
-    rebuilt.foreachSubTree:
+    (newStats.toList, lifted)
+
+  /** Rewrite `Skolem -> liftedVal.termRef` over `tree` and drop the now-redundant
+   *  `@QualifierSkolemIndex` markers. Each lifted val's symbol carries the marker
+   *  transferred by `Lifter.lift`, mapping it to its `TermRef`.
+   */
+  private def finish(tree: Tree)(using Context): Tree =
+    val map = collectSkolemMap(tree)
+    tree.foreachSubTree:
       case vd: ValDef => vd.symbol.removeAnnotation(defn.QualifierSkolemIndexAnnot)
       case _ => ()
-    val result = TreeTypeMap(typeMap = skolemSubst(map)).transform(rebuilt)
+    val result = TreeTypeMap(typeMap = skolemSubst(map)).transform(tree)
     // `TreeTypeMap` recreates the symbols whose info changed and drops their
     // `defTree`. The qualifier solver reads `defTree` (in `termAssumptions`) to
     // recover a val's rhs assumptions, so restore them.
