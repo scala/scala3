@@ -58,7 +58,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.2"
+  val referenceVersion = "3.8.3"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -69,7 +69,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.8.3"
+  val developedVersion = "3.8.4"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -136,9 +136,9 @@ object Build {
   val mimaPreviousDottyVersion = "3.8.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.12.4"
+  val scalaCliLauncherVersion = "1.14.0"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M23"
+  val coursierJarVersion = "2.1.25-M25"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -473,8 +473,7 @@ object Build {
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
-    // To enable support of scaladoc and language-server projects you need to change this to true
-    bspEnabled := false,
+    bspEnabled := enableBspAllProjects,
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
@@ -1037,6 +1036,7 @@ object Build {
           (Compile / sourceManaged).value
         }
         val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
+        val testExternalDeps = (ThisProject / Test / externalDependencyClasspath).value
         Seq(
           s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
           s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
@@ -1054,6 +1054,7 @@ object Build {
           s"-Ddotty.tests.classes.pprint=${findArtifactPath(externalDeps, "pprint_3")}",
           s"-Ddotty.tests.classes.fansi=${findArtifactPath(externalDeps, "fansi_3")}",
           s"-Ddotty.tests.classes.sourcecode=${findArtifactPath(externalDeps, "sourcecode_3")}",
+          s"-Ddotty.tests.classes.scalaXml=${findArtifactPath(testExternalDeps, "scala-xml_2.13")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
@@ -1118,8 +1119,9 @@ object Build {
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib
       // Add the source directories for the stdlib (non-boostrapped)
-      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
-      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
+      Compile / unmanagedSourceDirectories   := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-non-bootstrapped",
+      Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
@@ -1138,6 +1140,22 @@ object Build {
       // Generate library.properties, used by scala.util.Properties
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       Compile / mainClass := None,
+
+      Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
+      ),
+      // We do not want to list any dependency for the stdlib
+      pomPostProcess := { (node: XmlNode) =>
+        new RuleTransformer(new RewriteRule {
+          override def transform(node: XmlNode): XmlNodeSeq = node match {
+            case e: Elem if e.label == "dependencies" => XmlNodeSeq.Empty
+            case _ => node
+          }
+        }).transform(node).head
+      },
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -1185,8 +1203,9 @@ object Build {
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
       autoScalaLibrary     := false, // DO NOT DEPEND ON THE STDLIB, IT IS THE STDLIB
       // Add the source directories for the stdlib (non-boostrapped)
-      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
-      Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
+      Compile / unmanagedSourceDirectories   := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-bootstrapped",
+      Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
         /* TODO: enable for Scala 3.9: "-opt", "-opt-inline:**,!java.**", */
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
@@ -1209,6 +1228,21 @@ object Build {
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
       bspEnabled := enableBspAllProjects,
       Compile / mainClass := None,
+      Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
+      libraryDependencies ++= Seq(
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
+      ),
+      // We do not want to list any dependency for the stdlib
+      pomPostProcess := { (node: XmlNode) =>
+        new RuleTransformer(new RewriteRule {
+          override def transform(node: XmlNode): XmlNodeSeq = node match {
+            case e: Elem if e.label == "dependencies" => XmlNodeSeq.Empty
+            case _ => node
+          }
+        }).transform(node).head
+      },
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1317,6 +1351,9 @@ object Build {
       autoScalaLibrary := false,
       // Configure the nonbootstrapped compiler
       bootstrappedScalaInstanceSettings,
+      // Disable documentation generation for this project, it results in errors when compiling code snippets
+      // It was also empty before, see https://repo1.maven.org/maven2/org/scala-js/scalajs-scalalib_2.13/2.13.18+1.20.2/ javadoc artifacts
+      Compile / doc / sources := Seq.empty,
       // See https://stackoverflow.com/a/51416386
       pomPostProcess := { (node: XmlNode) =>
         new RuleTransformer(new RewriteRule {
@@ -1967,10 +2004,9 @@ object Build {
             )))
             .add(GenerateAPI(false))
             .add(SnippetCompiler(List(
-              s"$ccDocs=compile|-language:experimental.captureChecking",
-              s"$ccDocs/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-              s"$ccDocs/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-              s"$ccDocs/safe=compile|-language:experimental.safe",
+              s"${docs.getAbsolutePath}/_docs/reference/new-types=compile",
+              s"${docs.getAbsolutePath}/_docs/reference/enums=compile",
+              s"$ccDocs=compile",
             )))
         }
 
@@ -1992,7 +2028,7 @@ object Build {
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
     .settings(commonBootstrappedSettings)
-    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases` % "test->test")
+    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test", `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases` % "test->test")
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
 
@@ -2005,7 +2041,6 @@ object Build {
       },
       ideTestsScalaJSClasspath := {
         val externalJSCommonDeps = (`scaladoc-js-common`  / Compile / externalDependencyClasspath).value
-        println(externalJSCommonDeps)
         val scalaJSCommonDom = findArtifact(externalJSCommonDeps, "scalajs-dom_sjs1_3")
         val externalJSDeps = (`scala-library-sjs` / Compile / externalDependencyClasspath).value
         val scalaJSLibrary = findArtifact(externalJSDeps, "scalajs-library_2.13")
@@ -2022,7 +2057,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.6.3"
+    val mtagsVersion = "1.6.7"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -2259,10 +2294,15 @@ object Build {
 
         val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
+        val b = List.newBuilder[File]
+
         if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler && !isWebAssembly)
-          Seq(baseDirectory.value / "test-require-multi-modules")
-        else
-          Nil
+          b += baseDirectory.value / "test-require-multi-modules"
+
+        if (linkerConfig.esFeatures.esVersion >= ESVersion.ES2017)
+          b += baseDirectory.value / "test-require-async-await"
+
+        b.result()
       },
 
       (Compile / managedSources) ++= {
@@ -2894,6 +2934,13 @@ object ScaladocConfigs {
       .withTargets(tastyRoots)
   }
 
+  def snippetCompilerTargets(dottyLibSrc:String) = List(
+    s"$dottyLibSrc/scala=compile",
+    s"$dottyLibSrc/scala/quoted=compile",
+    s"$dottyLibSrc/scala/compiletime=compile",
+    s"$dottyLibSrc/scala/util=compile",
+    s"$dottyLibSrc/scala/util/control=compile",
+  )
   lazy val Scala3 = Def.task {
     val stdlib = { // relative path to the stdlib directory ('library/')
       val projectRoot = (ThisBuild/baseDirectory).value.toPath
@@ -2906,28 +2953,22 @@ object ScaladocConfigs {
       .add(OutputDir(file("scaladoc/output/scala3").getAbsoluteFile.getAbsolutePath))
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
-      .add(DocRootContent((stdlib / "src" / "rootdoc.txt").toString))
+      .add(DocRootContent((stdlib / "resources" / "rootdoc.txt").toString))
       .add(CommentSyntax(List(
         // Markdown syntax is used by default for all sources
         "markdown"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
-      .add(SnippetCompiler(List(
-        s"$stdlib/src/scala/compiletime=compile",
-        s"$stdlib/src/scala/quoted=compile",
-        s"$stdlib/src/scala/util/control=compile",
-        s"$stdlib/src/scala/util=compile",
-        s"$stdlib/src/scala=compile",
-        "docs/_docs/reference/experimental/capture-checking=compile|-language:experimental.captureChecking",
-        "docs/_docs/reference/experimental/capture-checking/separation-checking=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-        "docs/_docs/reference/experimental/capture-checking/mutability=compile|-language:experimental.captureChecking|-language:experimental.separationChecking",
-        "docs/_docs/reference/experimental/capture-checking/safe=compile|-language:experimental.safe",
+      .add(SnippetCompiler(
+        snippetCompilerTargets(s"$stdlib/src") ++ List(
+        "docs/_docs/reference/new-types=compile",
+        "docs/_docs/reference/enums=compile",
+        "docs/_docs/reference/experimental/capture-checking=compile",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
       .withTargets((`scala-library-bootstrapped` / Compile / products).value.map(_.getAbsolutePath))
   }
-
 
 }

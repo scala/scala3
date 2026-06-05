@@ -10,3 +10,5 @@ class SnippetE2eTestcase2 extends SnippetsE2eTest("snippetTestcase2", SCFlags.Co
 class SnippetE2eTestcase3 extends SnippetsE2eTest("snippetTestcase3", SCFlags.Compile)
 
 class SnippetE2eTestcaseMacro extends SnippetsE2eTest("snippetTestcaseMacro", SCFlags.Compile)
+
+class SnippetE2eTestcaseHidden extends SnippetsE2eTest("snippetTestcaseHidden", SCFlags.Compile)

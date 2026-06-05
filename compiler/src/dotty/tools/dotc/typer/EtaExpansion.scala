@@ -33,6 +33,13 @@ abstract class Lifter {
   /** The corresponding lifter for pass-by-name arguments */
   protected def exprLifter: Lifter = NoLift
 
+  private def lifterFor(paramType: Type): Lifter =
+    if paramType.isInstanceOf[ExprType] then exprLifter else this
+
+  /** Returns true if the argument would be lifted for the given parameter type. */
+  def wouldLift(arg: tpd.Tree, paramType: Type)(using Context): Boolean =
+    !paramType.hasAnnotation(defn.InlineParamAnnot) && !lifterFor(paramType).noLift(arg)
+
   /** The flags of a lifted definition */
   protected def liftedFlags: FlagSet = EmptyFlags
 
@@ -41,12 +48,16 @@ abstract class Lifter {
     // Mark the type of lifted definitions as inferred
     ValDef(sym, rhs, inferred = true)
 
+  /** Type assigned to a lifted temporary symbol. */
+  protected def liftedExprType(expr: Tree)(using Context): Type =
+    expr.tpe.widen.deskolemized
+
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
-      var liftedType = expr.tpe.widen.deskolemized
+      var liftedType = liftedExprType(expr)
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span),
         // Lifted definitions will be added to a local block, so they need to be
@@ -92,8 +103,7 @@ abstract class Lifter {
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map: (arg, name, tp) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
-            val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
-            lifter.liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
+            lifterFor(tp).liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }
@@ -174,7 +184,6 @@ object LiftImpure extends LiftImpure
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
-  override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
 
@@ -208,17 +217,21 @@ object LiftCoverage extends LiftImpure {
   override def noLift(expr: tpd.Tree)(using Context) =
     if liftingArgs then noLiftArg(expr) else super.noLift(expr)
 
+  /** Preserve singleton precision for lifted coverage temps when the underlying value is a
+   *  compile-time constant (same notion ConstFold uses), so constant re-folding after lifting
+   *  still matches the original inferred singleton type. Everything else uses the base widen.
+   */
+  override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
+    val dealiased = expr.tpe.dealias.deskolemized
+    dealiased.widenTermRefExpr.normalized.simplified match
+      case _: ConstantType => dealiased
+      case _ => super.liftedExprType(expr)
+
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
     val liftedFun = liftApp(defs, tree.fun)
     val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
     tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
   }
-}
-
-/** Lift all impure or complex arguments to `def`s */
-object LiftToDefs extends LiftComplex {
-  override def liftedFlags: FlagSet = Method
-  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.DefDef = tpd.DefDef(sym, rhs)
 }
 
 /** Lifter for eta expansion */

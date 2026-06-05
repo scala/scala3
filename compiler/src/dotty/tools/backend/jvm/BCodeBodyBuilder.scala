@@ -1462,14 +1462,16 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
       import InvokeStyle.*
       if (style == Super) {
         val ownerBType = ts.toTypeKind(method.owner.info)
-        if (isInterface) {
-          superCallTargets.add(ownerBType.asClassBType)
-        }
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = BackendUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
+          if (isInterface) {
+            superCallTargets.add(ownerBType.asClassBType)
+          }
+          // invokespecial on non-interfaces is only allowed for the direct superclass,
+          // so we must keep track of the fact we emitted this to ensure the class is a direct superclass
           bc.invokespecial(receiverName, jname, mdescr, isInterface, pos)
         }
       } else {
@@ -1731,27 +1733,12 @@ trait BCodeBodyBuilder(val primitives: DottyPrimitives)(using ctx: Context) exte
           genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         } else {
-          // l == r -> if (l eq null) r eq null else l.equals(r)
-          val eqEqTempLocal = locals.makeLocal(ts.ObjectRef, nme.EQEQ_LOCAL_VAR.mangledString, defn.ObjectType, r.span)
-          val lNull    = new asm.Label
-          val lNonNull = new asm.Label
-
+          // l == r -> Objects.equals(l, r)
           genLoad(l, ts.ObjectRef)
           stack.push(ts.ObjectRef)
           genLoad(r, ts.ObjectRef)
           stack.pop()
-          locals.store(eqEqTempLocal)
-          bc.dup(ts.ObjectRef)
-          genCZJUMP(lNull, lNonNull, Primitives.EQ, ts.ObjectRef, targetIfNoJump = lNull)
-
-          markProgramPoint(lNull)
-          bc.drop(ts.ObjectRef)
-          locals.load(eqEqTempLocal)
-          genCZJUMP(success, failure, Primitives.EQ, ts.ObjectRef, targetIfNoJump = lNonNull)
-
-          markProgramPoint(lNonNull)
-          locals.load(eqEqTempLocal)
-          genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
+          genCallMethod(defn.Objects_equals, InvokeStyle.Static)
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         }
       }

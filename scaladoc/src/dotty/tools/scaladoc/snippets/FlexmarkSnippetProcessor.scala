@@ -40,6 +40,8 @@ object FlexmarkSnippetProcessor:
           .filter(_.startsWith("sc-opts:"))
           .flatMap(_.stripPrefix("sc-opts:").split(",").map(_.trim).toSeq)
 
+        val isHidden = info.contains("sc-hidden")
+
         val argOverride: Option[SnippetCompilerArg] =
           (flagOverride, scalacOptions) match {
             case (None, Seq()) => None
@@ -88,8 +90,13 @@ object FlexmarkSnippetProcessor:
             result
         }
 
-        node.insertBefore(ExtendedFencedCodeBlock(id, node, snippetCompilationResult))
+        if isHidden && id.isEmpty then
+          report.warning("Snippet with sc-hidden should also have sc-name: to be useful as a preamble for other snippets")
+
+        val extendedNode = ExtendedFencedCodeBlock(id, node, snippetCompilationResult)
+        if !isHidden then node.insertBefore(extendedNode)
         node.unlink()
+
         id.fold(snippetMap)(id =>
           val snippetAsImport = s"""|//{i:$id
                                     |$snippet

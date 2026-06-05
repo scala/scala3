@@ -1,0 +1,15 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i23820.scala:8:9 ---------------------------------------
+8 |    x => b.get(x) // error
+  |         ^
+  |         Reference `b` is not included in the allowed capture set {a}
+  |         of an enclosing function literal with expected type Int ->{a} Int.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i23820.scala:12:9 --------------------------------------
+12 |    x => c.get(x) // error
+   |         ^
+   |         Reference `c` is not included in the allowed capture set {a, b}
+   |         of an enclosing function literal with expected type Int ->{a, b} Int.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i23820.scala:17:6 --------------------------------------
+17 |      b.get(x) // error
+   |      ^
+   |      Reference `b` is not included in the allowed capture set {a}
+   |      of an enclosing function literal with expected type Int ->{a} Int.

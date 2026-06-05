@@ -13,13 +13,9 @@
    |      Reference `test.Console` is not included in the allowed capture set {}
    |      of the enclosing object N in package test.
    |
-   |      Note that `test.Console` is a capability because it contains a field out: test.Stream^.
-   |
    |      External uses should be declared explicitly with a uses clause in object N:
    |
    |          uses test.Console
-   |
-   |      where:    ^ refers to a root capability classified as SharedCapability in the type of value out
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:22:6 -------------------------------
 22 |      Console2.println() // error
    |      ^^^^^^^^
@@ -46,13 +42,9 @@
    |    Reference `test.Console` is not included in the allowed capture set {}
    |    of the enclosing constructor N in object N.
    |
-   |    Note that `test.Console` is a capability because it contains a field out: test.Stream^.
-   |
    |    External uses should be declared explicitly with a uses_init clause in object N:
    |
    |        uses_init test.Console
-   |
-   |    where:    ^ refers to a root capability classified as SharedCapability in the type of value out
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:26:4 -------------------------------
 26 |    Console2.println()   // error
    |    ^^^^^^^^
@@ -79,13 +71,9 @@
    |  Reference `test.Console` is not included in the allowed capture set {}
    |  of the enclosing constructor N in object N.
    |
-   |  Note that `test.Console` is a capability because it contains a field out: test.Stream^.
-   |
    |  External uses should be declared explicitly with a uses_init clause in object N:
    |
    |      uses_init test.Console
-   |
-   |  where:    ^ refers to a root capability classified as SharedCapability in the type of value out
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUses1.scala:32:4 -------------------------------
 32 |  M.c.println()          // error
    |  ^^^
@@ -101,10 +89,6 @@
    |  Reference `test.Console` is not included in the allowed capture set {}
    |  of the enclosing top-level definitions in package test.
    |
-   |  Note that `test.Console` is a capability because it contains a field out: test.Stream^.
-   |
    |  The top-level definitions should be wrapped in an object with a uses clause:
    |
    |      uses test.Console
-   |
-   |  where:    ^ refers to a root capability classified as SharedCapability in the type of value out

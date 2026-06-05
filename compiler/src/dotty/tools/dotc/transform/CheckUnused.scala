@@ -1074,7 +1074,11 @@ object CheckUnused:
       sym.canMatchInheritedSymbols && { // inline allOverriddenSymbols using owner.info or thisType
         val owner = sym.owner.asClass
         val base = if owner.classInfo.selfInfo != NoType then owner.thisType else owner.info
-        base.baseClasses.drop(1).iterator.exists(sym.overriddenSymbol(_).exists)
+        base.baseClasses.drop(1).iterator.exists: bc =>
+          if bc == defn.PolyFunctionClass then
+            sym.name == nme.apply
+          else
+            sym.overriddenSymbol(inClass = bc, siteClass = owner).exists
       }
     // pick the symbol the user wrote for purposes of tracking
     inline def userSymbol: Symbol=

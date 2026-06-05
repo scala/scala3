@@ -69,6 +69,11 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
         val extendPart = keyword(" extends ").signature(extendType.signature)
         withTypes.foldLeft(extendPart)((bdr2, tpe) => bdr2.keyword(", ").signature(tpe.signature))
 
+  def usesClauses(member: Member): SignatureBuilder =
+    member.usesClauses.foldLeft(this) { (bdr, clause) =>
+      bdr.keyword(s" ${clause.keyword} ").signature(clause.signature)
+    }
+
   def modifiersAndVisibility(t: Member) =
     val (prefixMods, suffixMods) = t.modifiers.partition(_.prefix)
     val all = prefixMods.map(_.name) ++ Seq(t.visibility.asSignature) ++ suffixMods.map(_.name)
@@ -99,6 +104,21 @@ case class SignatureBuilder(content: Signature = Nil) extends ScalaSignatureUtil
 
   def functionTermParameters(paramss: Seq[TermParameterList]) =
     this.list(paramss, separator = List(Plain(""))) { (bld, pList) => bld.termParamList(pList) }
+
+  def givenFunctionParameters(paramss: Seq[ Either[TermParameterList,TypeParameterList] ]) =
+    list(paramss, separator = List(Plain(" => "))) {
+        case (bld, Right(params)) => bld.typeParamList(params)
+        case (bld, Left(params))  =>
+          val (prefix, suffix) =
+            if params.parameters.length != 1 then
+              (List(Plain("(")), List(Plain(")")))
+            else
+              (List(Plain("")), List(Plain("")))
+
+          bld.list(params.parameters, prefix, suffix, forcePrefixAndSuffix = true) {
+            (bld, p) => bld.signature(p.signature)
+          }
+    }
 
 trait ScalaSignatureUtils:
   extension (tokens: Seq[String]) def toSignatureString(): String =

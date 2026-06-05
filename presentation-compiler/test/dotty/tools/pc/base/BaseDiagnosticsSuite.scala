@@ -36,6 +36,13 @@ class BaseDiagnosticsSuite extends PcAssertions:
     override def shouldReturnDiagnostics: Boolean = true
     override def token: CancelToken = EmptyCancelToken
 
+  def diagnosticMessageAsString(d: Diagnostic): String = {
+    val msg = d.getMessage()
+    if msg == null then ""
+    else if msg.isLeft then msg.getLeft
+    else msg.getRight.getValue
+  }
+
   def check(
       text: String,
       expected: List[TestDiagnostic],
@@ -51,7 +58,7 @@ class BaseDiagnosticsSuite extends PcAssertions:
       TestDiagnostic(
         d.getRange().getStart().getOffset(text),
         d.getRange().getEnd().getOffset(text),
-        d.getMessage(),
+        diagnosticMessageAsString(d),
         d.getSeverity()
       )
     )

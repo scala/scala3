@@ -280,3 +280,46 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
         """>>region>>object `Foo Bar Baz` extends SomeTrait<<region<<"""
       )
     )
+
+  @Test def `def-lhs` =
+    check(
+      "object Main extends App { def `foo ba@@r` = ??? }",
+      List(
+        """object Main extends App { def `>>region>>foo bar<<region<<` = ??? }""",
+        """object Main extends App { >>region>>def `foo bar` = ???<<region<< }"""
+      )
+    )
+
+  @Test def `expr-apply` =
+    check(
+      "object Main extends App { def foo = bar.baz(1, math.floor(p@@i), 2) }",
+      List(
+        """object Main extends App { def foo = bar.baz(1, math.floor(>>region>>pi<<region<<), 2) }""",
+        """object Main extends App { def foo = bar.baz(1, >>region>>math.floor(pi)<<region<<, 2) }""",
+        """object Main extends App { def foo = bar.baz(>>region>>1, math.floor(pi), 2<<region<<) }""",
+        """object Main extends App { def foo = >>region>>bar.baz(1, math.floor(pi), 2)<<region<< }""",
+        """object Main extends App { >>region>>def foo = bar.baz(1, math.floor(pi), 2)<<region<< }"""
+      )
+    )
+
+  @Test def `expr-backticked` =
+    check(
+      "object Main extends App { def foo = `foo ba@@r` + 1 }",
+      List(
+        """object Main extends App { def foo = >>region>>`foo bar`<<region<< + 1 }""",
+        """object Main extends App { def foo = >>region>>`foo bar` + 1<<region<< }""",
+        """object Main extends App { >>region>>def foo = `foo bar` + 1<<region<< }"""
+      )
+    )
+
+  @Test def `type-apply-nested` =
+    check(
+      "object Main extends App { def foo: Tuple3[Int, List[In@@t], Double] = ??? }",
+      List(
+        """object Main extends App { def foo: Tuple3[Int, List[>>region>>Int<<region<<], Double] = ??? }""",
+        """object Main extends App { def foo: Tuple3[Int, >>region>>List[Int]<<region<<, Double] = ??? }""",
+        """object Main extends App { def foo: Tuple3[>>region>>Int, List[Int], Double<<region<<] = ??? }""",
+        """object Main extends App { def foo: >>region>>Tuple3[Int, List[Int], Double]<<region<< = ??? }""",
+        """object Main extends App { >>region>>def foo: Tuple3[Int, List[Int], Double] = ???<<region<< }"""
+      )
+    )

@@ -4,13 +4,15 @@ title: "Capture Checking Basics"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/basics.html
 ---
 
-```scala sc:nocompile sc-name:preamble
-```
-
 ## Introduction
 
+```scala sc-hidden sc-name:cc-context
+import language.experimental.captureChecking
+import caps.*
+```
+
 Capture checking can be enabled by the language import
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 import language.experimental.captureChecking
 ```
 At present, capture checking is still highly experimental and unstable, and it evolves quickly.
@@ -33,7 +35,7 @@ operation's result is returned. This is a typical _try-with-resources_ pattern, 
 The problem is that `usingLogFile`'s implementation is not entirely safe. One can
 undermine it by passing an operation that performs the logging at some later point
 after it has terminated. For instance:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 val later = usingLogFile { file => () => file.write(0) }
 later() // crash
 ```
@@ -42,12 +44,21 @@ results in an uncaught `IOException`.
 
 Capture checking gives us the mechanism to prevent such errors _statically_. To
 prevent unsafe usages of `usingLogFile`, we can declare it like this:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 def usingLogFile[T](op: FileOutputStream^ => T): T =
   // same body as before
 ```
 The only thing that's changed is that the `FileOutputStream` parameter of `op` is now
 followed by `^`. We'll see that this turns the parameter into a _capability_ whose lifetime is tracked.
+
+```scala sc-hidden sc-compile-with:cc-context sc-name:logfile-checked
+import java.io.FileOutputStream
+def usingLogFile[T](op: FileOutputStream^ => T): T =
+  val logFile = FileOutputStream("log")
+  val result = op(logFile)
+  logFile.close()
+  result
+```
 
 If we now try to define the problematic value `later`, we get a static error:
 ```
@@ -60,13 +71,20 @@ If we now try to define the problematic value `later`, we get a static error:
 ```
 In this case, it was easy to see that the `logFile` capability escapes in the closure passed to `usingLogFile`. But capture checking also works for more complex cases.
 For instance, capture checking is able to distinguish between the following safe code:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc-compile-with:logfile-checked
 val xs = usingLogFile { f =>
   List(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```
 and the following unsafe one:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc-compile-with:logfile-checked sc:fail
+//{
+trait LzyList[+A]:
+  def map[B](f: A => B): LzyList[B]^{this, f}
+
+object LzyList:
+  def apply[T](xs: T*): LzyList[T] = ???
+//}
 val xs = usingLogFile { f =>
   LzyList(1, 2, 3).map { x => f.write(x); x * x }
 }
@@ -106,7 +124,7 @@ capability gets its authority from some other, more sweeping capability which it
 If `T` is a type, then `T^` is a shorthand for `T^{any}`, meaning `T` can capture arbitrary capabilities.
 
 Here is an example:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 class FileSystem
 
 class Logger(fs: FileSystem^):
@@ -161,20 +179,20 @@ capabilities in a method are instead counted in the capture set of the enclosing
 ## By-Name Parameter Types
 
 A convention analogous to function types also extends to by-name parameters. In
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 def f(x: => Int): Int
 ```
 the actual argument can refer to arbitrary capabilities. So the following would be OK:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 f(if p(y) then throw Ex() else 1)
 ```
 On the other hand, if `f` was defined like this
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 def f(x: -> Int): Int
 ```
 the actual argument to `f` could not refer to any capabilities, so the call above would be rejected.
 One can also allow specific capabilities like this:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 def f(x: ->{c} Int): Int
 ```
 Here, the actual argument to `f` is allowed to use the `c` capability but no others.
@@ -190,7 +208,7 @@ Lazy vals receive special treatment under capture checking, similar to parameter
 
 When a lazy val is declared, its initializer is checked in its own environment (like a method body). The initializer can capture capabilities, and these are tracked separately:
 
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 def example(console: Console^) =
   lazy val x: () -> String =
     console.println("Computing x")  // console captured by initializer
@@ -208,7 +226,7 @@ The type system tracks that accessing `x` requires the `console` capability, eve
 
 When accessing a lazy val member through a qualifier, the qualifier is charged to the current capture set, just like calling a parameterless method:
 
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 trait Container:
   lazy val lazyMember: String
 
@@ -223,7 +241,7 @@ Accessing `c.lazyMember` can trigger initialization, which may use capabilities 
 
 For capture checking purposes, lazy vals behave identically to parameterless methods:
 
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 trait T:
   def methodMember: String
   lazy val lazyMember: String
@@ -256,7 +274,7 @@ A subcapturing relation `C₁ <: C₂` holds if `C₂` _accounts for_ every elem
 
 
 **Example 1.** Given
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 fs: FileSystem^
 ct: CanThrow[Exception]^
 l : Logger^{fs}
@@ -289,7 +307,7 @@ A type extending `SharedCapability` always comes with a capture set. If no captu
 
 This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
 
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 import caps.SharedCapability
 
 class FileSystem extends SharedCapability
@@ -313,7 +331,7 @@ can contain only capabilities that are visible at the point where the set is def
 
 We now reconstruct how this principle produced the error in the introductory example, where
 `usingLogFile` was declared like this:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 def usingLogFile[T](op: FileOutputStream^ => T): T = ...
 ```
 The error message was:
@@ -343,7 +361,7 @@ An analogous restriction applies to the type of a mutable variable.
 Another way one could try to undermine capture checking would be to
 assign a closure with a local capability to a global variable. Maybe
 like this:
-```scala sc:nocompile sc-compile-with:preamble
+```scala sc:nocompile
 var loophole: () => Unit = () => ()
 usingLogFile { f =>
   loophole = () => f.write(0)

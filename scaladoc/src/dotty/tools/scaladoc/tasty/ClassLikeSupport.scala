@@ -73,6 +73,20 @@ trait ClassLikeSupport:
     else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum(typeArgs, args)
     else Kind.Class(typeArgs, args)
 
+  private def usesClausesFor(classDef: ClassDef): List[UsesClause] =
+    def clauseFrom(symbol: Symbol, keyword: String): Option[UsesClause] =
+      for
+        annot <- symbol.annotations.find(_.tpe.typeSymbol.isRetains)
+        refs <- retainedCaptureRefs(annot)
+        if refs.nonEmpty
+      yield UsesClause(keyword, emitCaptureRefsSignature(using qctx)(refs)(using classDef, classDef.symbol))
+
+    if !ccEnabled then Nil
+    else
+      val uses = clauseFrom(classDef.symbol, "uses")
+      val usesInit = clauseFrom(classDef.constructor.symbol, "uses_init")
+      List(uses, usesInit).flatten
+
   def mkClass(classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,
     name: String = classDef.symbol.normalizedName,
@@ -127,7 +141,7 @@ trait ClassLikeSupport:
       getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
     )
 
-    val kind = if intrinsicClassDefs.contains(classDef.symbol) then Kind.Class(Nil, Nil) else kindForClasslike(classDef)
+    val kind = if intrinsicClassDefs.contains(classDef.symbol) then bareClasslikeKind(classDef.symbol) else kindForClasslike(classDef)
 
     val baseMember = mkMember(classDef.symbol, kind, selfSignature)(
       modifiers = modifiers,
@@ -137,6 +151,7 @@ trait ClassLikeSupport:
     ).copy(
       directParents = classDef.getParentsAsLinkToTypes,
       parents = supertypes,
+      usesClauses = usesClausesFor(classDef)
     )
 
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
@@ -297,7 +312,7 @@ trait ClassLikeSupport:
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner
           case tree => tree.symbol
-        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass && !parentSymbol.isHiddenByVisibility
+        if parentSymbol != defn.ObjectClass && !parentSymbol.isHiddenByVisibility
       yield (parentTree, parentSymbol)
 
     def getConstructors: List[Symbol] = c.membersToDocument.collect {
@@ -554,6 +569,7 @@ trait ClassLikeSupport:
     visibility = symbol.getVisibility(),
     modifiers = modifiers,
     annotations = symbol.getAnnotations(),
+    usesClauses = Nil,
     signature = signature,
     sources = symbol.source,
     origin = origin,

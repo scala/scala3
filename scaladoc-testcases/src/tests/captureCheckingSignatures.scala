@@ -98,7 +98,7 @@ trait MutableThisCapture extends Mutable:
 
 // --- Mutation tracking ---
 
-import caps.{Mutable, Stateful, Separate, SharedCapability, Classifier}
+import caps.{Mutable, Stateful, SharedCapability, Classifier}
 
 class Ref[T](init: T) extends Mutable:
   private var x: T = init //unexpected
@@ -110,7 +110,7 @@ class MyStateful extends Stateful:
   def value: Int = count //expected: def value: Int
   update def incr(): Unit = count += 1 //expected: update def incr(): Unit
 
-class MySeparate(consume val inner: Ref[Int]^) extends Separate
+class MySeparate(consume val inner: Ref[Int]^) extends ExclusiveCapability
 
 // Read-only captures (.rd)
 trait ReadOnlyExamples:

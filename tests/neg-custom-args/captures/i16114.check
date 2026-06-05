@@ -1,29 +1,21 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16114.scala:17:32 ---------------------------------------
-17 |    val op1: Unit ->{io} Unit = (x: Unit) => // error
-   |                                ^
-   |                                Found:    (x: Unit) ->{io, fs} Unit
-   |                                Required: Unit ->{io} Unit
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i16114.scala:18:19 -------------------------------------
+18 |      expect[Cap^] { // error
+   |      ^
+   |      Reference `fs` is not included in the allowed capture set {io}
+   |      of an enclosing function literal with expected type Unit ->{io} Unit.
    |
-   |                                Note that capability `fs` cannot flow into capture set {io}.
-   |
-18 |      expect[Cap^] {
-19 |...
+19 |        io.use()
+20 |        fs
 21 |      }
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i16114.scala:24:19 -------------------------------------
+24 |      expect[Cap^] { // error
+   |      ^
+   |      Reference `io` is not included in the allowed capture set {fs}
+   |      of an enclosing function literal with expected type Unit ->{fs} Unit.
    |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16114.scala:23:32 ---------------------------------------
-23 |    val op2: Unit ->{fs} Unit = (x: Unit) => // error
-   |                                ^
-   |                                Found:    (x: Unit) ->{fs, io} Unit
-   |                                Required: Unit ->{fs} Unit
-   |
-   |                                Note that capability `io` cannot flow into capture set {fs}.
-   |
-24 |      expect[Cap^] {
-25 |...
+25 |        fs.use()
+26 |        io
 27 |      }
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i16114.scala:35:30 ---------------------------------------
 35 |    val op4: Unit ->{} Unit = (x: Unit) =>  // error
    |                              ^

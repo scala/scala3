@@ -5,6 +5,7 @@ import Contexts.*
 import Symbols.*
 
 import dotty.tools.backend.sjs.JSDefinitions
+import dotty.tools.dotc.interactive.LogicalPackage
 
 object SJSPlatform {
   /** The `SJSPlatform` for the current context. */
@@ -12,7 +13,7 @@ object SJSPlatform {
     ctx.platform.asInstanceOf[SJSPlatform]
 }
 
-class SJSPlatform extends JavaPlatform {
+class SJSPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) extends JavaPlatform(precomputedSourcePackages) {
 
   /** Scala.js-specific definitions. */
   val jsDefinitions: JSDefinitions = new JSDefinitions()
@@ -35,4 +36,10 @@ class SJSPlatform extends JavaPlatform {
    */
   override def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     !sym.isSubClass(jsDefinitions.JSAnyClass)
+
+  override def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean =
+    // because we deal with primitive types, we also have to deal with the boxed version,
+    // otherwise the compiler will error with, e.g., "cannot test if scala.Double is a subtype of java.lang.Integer"
+    (defn.ScalaNumericValueClasses()(c) || defn.ScalaNumericBoxedClasses()(c)) &&
+      (defn.ScalaNumericValueClasses()(potentialSuperClass) || defn.ScalaNumericBoxedClasses()(potentialSuperClass))
 }

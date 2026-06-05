@@ -1,0 +1,51 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/implied-capsets.scala:14:17 ------------------------------
+14 |  val _: C2^{} = c2 // error
+   |                 ^^
+   |                 Found:    C2^{c2.rd}
+   |                 Required: C2
+   |
+   |                 Note that capability `c2.rd` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/implied-capsets.scala:17:17 ------------------------------
+17 |  val _: C3^{} = c3 // error
+   |                 ^^
+   |                 Found:    C3^{c3.rd}
+   |                 Required: C3^{}
+   |
+   |                 Note that capability `c3.rd` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/implied-capsets.scala:20:17 ------------------------------
+20 |  val _: C4^{} = c4 // error
+   |                 ^^
+   |                 Found:    C4^{c4.rd}
+   |                 Required: C4^{}
+   |
+   |                 Note that capability `c4.rd` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/implied-capsets.scala:24:17 ------------------------------
+24 |    val _: C3^ = z // error
+   |                 ^
+   |                 Found:    (z : C3)
+   |                 Required: C3^{any}
+   |
+   |                 Note that {any} is an exclusive capture set of the stateful type C3^{any},
+   |                 it cannot subsume a read-only capture set of the stateful type (z : C3).
+   |
+   |                 Note that capability `any².rd` cannot flow into capture set {any}.
+   |
+   |                 where:    any  is a root capability in the type of value _$10
+   |                           any² is a root capability in the type of parameter z
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/implied-capsets.scala:28:6 -------------------------------
+28 |      c2, // error
+   |      ^^
+   |      Found:    C2^{c2.rd}
+   |      Required: C2
+   |
+   |      Note that capability `c2.rd` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

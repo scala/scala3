@@ -316,7 +316,7 @@ trait BCodeHelpers(val backendUtils: BackendUtils)(using ctx: Context) extends B
       atPhase(erasurePhase) {
         def computeMemberTpe(): Type =
           if (sym.is(Method)) sym.denot.info
-          else if sym.denot.validFor.phaseId > erasurePhase.id && sym.isField && sym.getter.exists then
+          else if sym.denot.validFor.firstPhaseId > erasurePhase.id && sym.isField && sym.getter.exists then
             // Memoization field of getter entered after erasure, see run/i17069 for an example
             sym.getter.denot.info.resultType
           else owner.denot.thisType.memberInfo(sym)
