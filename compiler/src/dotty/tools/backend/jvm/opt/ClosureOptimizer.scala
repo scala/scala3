@@ -26,7 +26,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
-class ClosureOptimizer(optimizerUtils: OptimizerUtils,
+class ClosureOptimizer(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
                        ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                        settings: OptimizerSettings) {
@@ -107,7 +107,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, indyTracker)
 
         if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
           case Some(closureInits) =>

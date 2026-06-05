@@ -31,7 +31,7 @@ import scala.tools.asm.{Attribute, ClassReader, Type}
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
+class BCodeRepository(classPath: ClassPath, indyTracker: IndyLambdaImplTracker) {
 
   type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
@@ -273,7 +273,7 @@ class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
             iter.remove()
           case AbstractInsnNode.INVOKE_DYNAMIC_INSN => insn match {
             case LambdaMetaFactoryCall(indy, _, implMethod, _, _) =>
-              optimizerUtils.addIndyLambdaImplMethod(classNode.name, m, indy, implMethod)
+              indyTracker.add(classNode.name, m, indy, implMethod)
             case _ =>
           }
           case _ =>

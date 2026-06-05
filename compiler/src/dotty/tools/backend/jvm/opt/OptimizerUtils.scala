@@ -18,38 +18,6 @@ import scala.tools.asm.{Handle, Opcodes, Type}
  */
 class OptimizerUtils(val ts: OptimizerKnownBTypes) {
 
-  private val indyLambdaImplMethods =
-    new ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]]
-
-  private def onIndyLambdaImplMethods[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): T = {
-    val methods = indyLambdaImplMethods.computeIfAbsent(hostClass, _ => mutable.Map.empty)
-    methods.synchronized(action(methods))
-  }
-
-  def addIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode, handle: asm.Handle): Unit = {
-    onIndyLambdaImplMethods(hostClass)(_.getOrElseUpdate(method, mutable.Map.empty)(indy) = handle)
-  }
-
-  def removeIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode): Unit = {
-    onIndyLambdaImplMethods(hostClass)(_.get(method).foreach(_.remove(indy)))
-  }
-
-  def resetIndyLambdaImplMethods(hostClass: InternalName, method: MethodNode, values: mutable.Map[InvokeDynamicInsnNode, Handle]): Unit = {
-    onIndyLambdaImplMethods(hostClass)(ms => {
-      if values.isEmpty then
-        ms.remove(method)
-      else
-        ms(method) = values
-    })
-  }
-
-  /**
-   * The methods used as lambda bodies for IndyLambda instructions within `method` of `hostClass`.
-   */
-  def indyLambdaBodyMethods(hostClass: InternalName, method: MethodNode): mutable.Map[InvokeDynamicInsnNode, Handle] = {
-    onIndyLambdaImplMethods(hostClass)(ms => ms.getOrElseUpdate(method, mutable.Map.empty))
-  }
-  
   def isPredefLoad(insn: AbstractInsnNode): Boolean = AnalysisUtils.isModuleLoad(insn, _ == ts.PredefRef.internalName)
 
   // ==============================================================================================
