@@ -25,6 +25,7 @@ import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Decorators.{em, i}
+import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{defn, toDenot, NoSymbol, Symbol}
 import dotty.tools.dotc.core.Types.{
   AndType,
@@ -179,6 +180,12 @@ object QualifiedTypes:
    */
   def substParamInQualifiers(tp: Type, pref: ParamRef, argType: Type, argTree: tpd.Tree | Null)(using Context): Type =
     if argTree == null || !Feature.qualifiedTypesEnabled then return tp
+    // A dependent call appearing *inside a qualifier predicate* (an annotation):
+    // the predicate's `ENode` is built structurally from the tree, so this call's
+    // own result qualifier is unused, and skolemizing its unstable argument would
+    // only leak a skolem that nothing downstream can lift. Weaken the qualifier so
+    // it no longer mentions `pref` instead. See [[ANF]].
+    if ctx.mode.is(Mode.InAnnotation) then return dropParamInQualifiers(tp, pref)
     val (skolemOwnerSym, skolemIdx) = treeSkolemIndex(argTree, skolemOwner)
     val replacement = ENodeVar.Skolem(skolemOwnerSym, skolemIdx)(argType)
     val replaceMap = new TypeMap:
@@ -195,6 +202,18 @@ object QualifiedTypes:
           else QualifiedType(parent1, qualifier1)
         case _ => mapOver(t)
     replaceMap(tp)
+
+  /** Weaken qualifiers inside `tp` so they no longer mention the parameter
+   *  reference `pref`. Used in place of [[substParamInQualifiers]] when a
+   *  dependent call appears *inside a qualifier predicate* (an annotation):
+   *  there the predicate's `ENode` is built structurally from the tree, so the
+   *  call's own result qualifier is unused, and skolemizing its unstable
+   *  argument would only leak a skolem that nothing can later lift.
+   */
+  def dropParamInQualifiers(tp: Type, pref: ParamRef)(using Context): Type =
+    if !Feature.qualifiedTypesEnabled then return tp
+    avoidInQualifiers(tp):
+      case t => t eq pref
 
   /** Weaken qualifiers inside `tp` so they no longer mention any symbol in
    *  `localSyms` — term references about to leave their scope. Boolean
