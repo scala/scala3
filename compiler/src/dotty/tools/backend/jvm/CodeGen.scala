@@ -23,30 +23,25 @@ import dotty.tools.dotc.util.NoSourcePosition
 import SymbolUtils.given
 import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
-import opt.{OptimizerUtils, CallGraph}
+import opt.CallGraph
 
 class CodeGen(primitives: ScalaPrimitives,
-              callGraph: Option[CallGraph], bTypeLoader: BTypeLoader, knownBTypes: KnownBTypes,
-              val postProcessor: PostProcessor,
-              val generatedClassHandler: GeneratedClassHandler) {
+              callGraph: Option[CallGraph], bTypeLoader: BTypeLoader, knownBTypes: KnownBTypes) {
   private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
   private val impl = new Impl()
   private val builder = new impl.SyncAndTryBuilder()
-
-  private lazy val mirrorCodeGen = impl.JMirrorBuilder()
+  private val mirrorCodeGen = new impl.JMirrorBuilder()
 
   /**
-   * Generate ASM ClassNodes for classes found in the context's compilation unit. The resulting classes are
-   * passed to the `generatedClassHandler`.
+   * Generate ASM ClassNodes for classes found in the context's compilation unit.
    */
-  def genUnit()(using ctx: Context): Unit = {
+  def genUnit()(using ctx: Context): GeneratedCompilationUnit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
 
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
-        val sourceFile = ctx.compilationUnit.source.file
         val mainClassNode = builder.genPlainClass(cd, topLevel = true)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
@@ -102,9 +97,7 @@ class CodeGen(primitives: ScalaPrimitives,
       }
 
     genClassDefs(ctx.compilationUnit.tpdTree)
-    generatedClassHandler.process(
-      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
-    )
+    GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
   }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file

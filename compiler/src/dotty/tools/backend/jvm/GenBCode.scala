@@ -7,12 +7,13 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, IndyLambdaImplTracker, OptimizerKnownBTypes, OptimizerUtils}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, IndyLambdaImplTracker, OptimizerKnownBTypes}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
 import scala.annotation.stableNull
 import scala.collection.mutable
+import scala.compiletime.uninitialized
 
 /**
  * GenBCode has 3 parts:
@@ -31,45 +32,47 @@ class GenBCode extends Phase { self =>
   override def description: String = GenBCode.description
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  @stableNull
-  private var _codeGen: CodeGen | Null = null
+  private var _initialized: Boolean = false
+  private var _codeGen: CodeGen = uninitialized
+  private var _postProcessor: PostProcessor = uninitialized
+  private var _generatedClassHandler: GeneratedClassHandler = uninitialized
 
-  private def ensureInit()(using Context): CodeGen = _codeGen match
-    case c: CodeGen => c
-    case null =>
-      def createClassHandler(postProcessor: PostProcessor) = ctx.settings.YbackendParallelism.value match {
-        case 1 => GeneratedClassHandler.serial(postProcessor)
-        case maxThreads =>
-          // The thread pool queue is limited in size. When it's full, the `CallerRunsPolicy` causes
-          // a new task to be executed on the main thread, which provides back-pressure.
-          // The queue size is large enough to ensure that running a task on the main thread does
-          // not take longer than to exhaust the queue for the backend workers.
-          val queueSize = ctx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(maxThreads * 2)
-          GeneratedClassHandler.parallel(postProcessor, maxThreads, queueSize, this, ctx.profiler)
-      }
-      val primitives = new ScalaPrimitives()
-      val classBTypeCache = new ClassBType.Cache()
-      _codeGen =
-        if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
-          val indyTracker = new IndyLambdaImplTracker()
-          val byteCodeRepository = new BCodeRepository(ctx.platform.classPath, indyTracker)
-          val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, classBTypeCache)
-          val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, Some(bTypesFromClassfile))
-          val knownBTypes = new OptimizerKnownBTypes(bTypeLoader)
-          val callGraph = new CallGraph(byteCodeRepository, bTypesFromClassfile)
-          val postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, knownBTypes)
-          val classHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(postProcessor))
-          new CodeGen(primitives, Some(callGraph), bTypeLoader, knownBTypes, postProcessor, classHandler)
-        else
-          val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
-          val knownBTypes = new KnownBTypes(bTypeLoader)
-          val postProcessor = new PostProcessor(classBTypeCache, knownBTypes)
-          val classHandler = createClassHandler(postProcessor)
-          new CodeGen(primitives, None, bTypeLoader, knownBTypes, postProcessor, classHandler)
-      _codeGen
+  private def ensureInit()(using Context): Unit =
+    if _initialized then
+      return
+    def createClassHandler(postProcessor: PostProcessor) = ctx.settings.YbackendParallelism.value match {
+      case 1 => GeneratedClassHandler.serial(postProcessor)
+      case maxThreads =>
+        // The thread pool queue is limited in size. When it's full, the `CallerRunsPolicy` causes
+        // a new task to be executed on the main thread, which provides back-pressure.
+        // The queue size is large enough to ensure that running a task on the main thread does
+        // not take longer than to exhaust the queue for the backend workers.
+        val queueSize = ctx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(maxThreads * 2)
+        GeneratedClassHandler.parallel(postProcessor, maxThreads, queueSize, this, ctx.profiler)
+    }
+    val primitives = new ScalaPrimitives()
+    val classBTypeCache = new ClassBType.Cache()
+    if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
+      val indyTracker = new IndyLambdaImplTracker()
+      val byteCodeRepository = new BCodeRepository(ctx.platform.classPath, indyTracker)
+      val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, classBTypeCache)
+      val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, Some(bTypesFromClassfile))
+      val knownBTypes = new OptimizerKnownBTypes(bTypeLoader)
+      val callGraph = new CallGraph(byteCodeRepository, bTypesFromClassfile)
+      _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, knownBTypes)
+      _generatedClassHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(_postProcessor))
+      _codeGen = new CodeGen(primitives, Some(callGraph), bTypeLoader, knownBTypes)
+    else
+      val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
+      val knownBTypes = new KnownBTypes(bTypeLoader)
+      _postProcessor = new PostProcessor(classBTypeCache, knownBTypes)
+      _generatedClassHandler = createClassHandler(_postProcessor)
+      _codeGen = new CodeGen(primitives, None, bTypeLoader, knownBTypes)
+    _initialized = true
 
   protected def run(using Context): Unit =
-    ensureInit().genUnit()
+    ensureInit()
+    _generatedClassHandler.process(_codeGen.genUnit())
     ctx.compilerCallback match
       case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
       case null => ()
@@ -77,8 +80,8 @@ class GenBCode extends Phase { self =>
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     try
       val result = super.runOn(units)
-      if _codeGen ne null then
-        for (exn, f) <- _codeGen.generatedClassHandler.complete() do
+      if _initialized then
+        for (exn, f) <- _generatedClassHandler.complete() do
           report.error(em"unable to write $f $exn")
           exn.printStackTrace()
       result
@@ -91,9 +94,9 @@ class GenBCode extends Phase { self =>
             report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
           jar.close()
         case _ => ()
-      if _codeGen ne null then
-        _codeGen.postProcessor.close()
-        _codeGen.generatedClassHandler.close()
+      if _initialized then
+        _postProcessor.close()
+        _generatedClassHandler.close()
   }
 }
 
