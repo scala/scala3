@@ -243,8 +243,6 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
    *  It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
    */
   private final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags) {
-    private val objectRef = bTypeLoader.classBTypeFromSymbol(defn.ObjectClass)
-
     /**
      * This method is used by asm when computing stack map frames.
      */
@@ -253,7 +251,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
       // i.e., have been loaded either from symbols or from class files.
       val a = bTypeLoader.previouslyConstructedClassBType(inameA).get
       val b = bTypeLoader.previouslyConstructedClassBType(inameB).get
-      val lub = a.jvmWiseLUB(b, objectRef)
+      val lub = a.jvmWiseLUB(b, bTypes.ObjectRef)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
