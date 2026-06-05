@@ -165,17 +165,7 @@ trait TypeAssigner {
           else
             qualType.findMember(name, pre)
 
-        // If the prefix was skolemized for a qualifier that depends on it (an
-        // unstable receiver of a dependent method), `findMember` has just minted
-        // an `ENodeVar.Skolem` for `pre`. Side-channel its index onto `qual1` so
-        // `typedSelectWithAdapt` can mark the receiver for ANF lifting. The cache
-        // is only populated by qualified-type skolemization, so this is a no-op
-        // for ordinary unstable selections.
-        pre match
-          case qsk: QualSkolemType =>
-            ctx.base.qualifierSkolemForSkolemType.get(qsk).foreach: (_, idx) =>
-              qual1.putAttachment(QualifiedTypes.ReceiverSkolemIndex, idx)
-          case _ => ()
+        QualifiedTypes.recordReceiverSkolem(qual1, pre)
 
         if reallyExists(mbr) && NamedType.validPrefix(qualType) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType

@@ -36,6 +36,7 @@ import dotty.tools.dotc.core.Types.{
   MethodType,
   OrType,
   ParamRef,
+  QualSkolemType,
   TermRef,
   Type,
   TypeMap,
@@ -52,14 +53,44 @@ object QualifiedTypes:
    */
   val QualifiedTypeCast: Property.StickyKey[Unit] = Property.StickyKey()
 
-  /** Side-channel from `TypeAssigner.selectionType` to `Typer.typedSelectWithAdapt`:
-   *  the skolem index minted for an unstable selection prefix (a dependent method's
-   *  receiver). `typedSelectWithAdapt` reads it to mark the receiver tree with
-   *  `@QualifierSkolemIndex`, so [[ANF]] lifts it like any other argument. Ephemeral
-   *  (consumed within the same selection); stability across re-typing comes from
-   *  `ENode.skolemFor` reading the index back off the marked receiver's type.
+  /** Side-channel from [[recordReceiverSkolem]] (called in `selectionType`) to
+   *  [[wrapReceiverSkolem]] (called in `typedSelectWithAdapt`): the skolem index
+   *  minted for an unstable selection prefix. Ephemeral — consumed within the same
+   *  selection; stability across re-typing comes from `ENode.skolemFor` reading the
+   *  index back off the marked receiver's type.
    */
-  val ReceiverSkolemIndex: Property.Key[Int] = Property.Key()
+  private val ReceiverSkolemIndex: Property.Key[Int] = Property.Key()
+
+  /** Hook for `TypeAssigner.selectionType`. When selecting on an unstable receiver
+   *  (`pre` is a `QualSkolemType`) and the selected member's type depends on the
+   *  prefix through a qualifier, `findMember` has just minted an `ENodeVar.Skolem`
+   *  for `pre`. Stash its index on the receiver tree `qual`, so
+   *  [[wrapReceiverSkolem]] can mark the receiver for [[ANF]] to lift it like any
+   *  other dependent argument.
+   *
+   *  No-op when qualified types are off, the receiver is stable, or the member has
+   *  no `this`-dependent qualifier (the `qualifierSkolemForSkolemType` cache is only
+   *  populated by qualified-type skolemization, so `get` then returns `None`).
+   */
+  def recordReceiverSkolem(qual: Tree, pre: Type)(using Context): Unit =
+    if Feature.qualifiedTypesEnabled && ctx.settings.YqualifiedTypesAnf.value then
+      pre match
+        case qsk: QualSkolemType =>
+          ctx.base.qualifierSkolemForSkolemType.get(qsk).foreach: (_, idx) =>
+            qual.putAttachment(ReceiverSkolemIndex, idx)
+        case _ => ()
+
+  /** Hook for `Typer.typedSelectWithAdapt`, counterpart to [[recordReceiverSkolem]]:
+   *  if `qual` was stashed with a receiver-skolem index, wrap it with
+   *  `@QualifierSkolemIndex` (same index) so [[ANF]] lifts the receiver into a `val`.
+   *  Returns `qual` unchanged otherwise (qualified types off, or no stashed index).
+   */
+  def wrapReceiverSkolem(qual: Tree)(using Context): Tree =
+    if !Feature.qualifiedTypesEnabled then qual
+    else
+      qual.removeAttachment(ReceiverSkolemIndex) match
+        case Some(idx) => wrapWithSkolemIndex(qual, idx)
+        case None => qual
 
   /** The symbol that scopes a skolem index: the closest enclosing method
    *  or class on the owner chain starting from `s`. Walks via

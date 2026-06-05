@@ -825,12 +825,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual0: Tree)(using Context): Tree =
     val selName = tree0.name
     val rawType = selectionType(cpy.Select(tree0)(qual0, selName), qual0)
-    // If `selectionType` minted a skolem for an unstable dependent-method receiver,
-    // mark the receiver with `@QualifierSkolemIndex` (same index) so [[ANF]] lifts it
-    // into a `val` like any other argument. `rawType` already refers to that skolem.
-    val qual = qual0.removeAttachment(QualifiedTypes.ReceiverSkolemIndex) match
-      case Some(idx) => QualifiedTypes.wrapWithSkolemIndex(qual0, idx)
-      case None => qual0
+    val qual = QualifiedTypes.wrapReceiverSkolem(qual0)
     val tree = cpy.Select(tree0)(qual, selName)
     val superAccess = qual.isInstanceOf[Super]
 
