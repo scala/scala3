@@ -65,15 +65,19 @@ object QualifiedTypes:
    *  (`pre` is a `QualSkolemType`) and the selected member's type depends on the
    *  prefix through a qualifier, `findMember` has just minted an `ENodeVar.Skolem`
    *  for `pre`. Stash its index on the receiver tree `qual`, so
-   *  [[wrapReceiverSkolem]] can mark the receiver for [[ANF]] to lift it like any
-   *  other dependent argument.
+   *  [[wrapReceiverSkolem]] can mark the receiver with `@QualifierSkolemIndex`.
+   *
+   *  Recording the index makes the receiver skolem's identity stable across
+   *  re-typing (`skolemFor` reads it back off the marked prefix), so the type
+   *  round-trips through TASTy — exactly as arguments already do. It also lets
+   *  [[ANF]] lift the receiver like any other dependent argument.
    *
    *  No-op when qualified types are off, the receiver is stable, or the member has
    *  no `this`-dependent qualifier (the `qualifierSkolemForSkolemType` cache is only
    *  populated by qualified-type skolemization, so `get` then returns `None`).
    */
   def recordReceiverSkolem(qual: Tree, pre: Type)(using Context): Unit =
-    if Feature.qualifiedTypesEnabled && ctx.settings.YqualifiedTypesAnf.value then
+    if Feature.qualifiedTypesEnabled then
       pre match
         case qsk: QualSkolemType =>
           ctx.base.qualifierSkolemForSkolemType.get(qsk).foreach: (_, idx) =>
