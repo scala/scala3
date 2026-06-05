@@ -58,6 +58,24 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
+  /** Tracks the (tycon, other, fromBelow) tuples currently being compared by
+   *  `compareAppliedTypeParamRef` to guard against infinite recursion where
+   *  `canInstantiate` in `compareAppliedType1`/`compareAppliedType2` calls back
+   *  into `compareAppliedTypeParamRef` with the same parameters.
+   */
+  private val pendingAppliedTypeParamRefs =
+    mutable.Set.empty[(TypeParamRef, AppliedType, Boolean)]
+
+  /** Run `op` unless a `compareAppliedTypeParamRef` call with the same key is
+   *  already in progress, in which case return false to break the cycle.
+   */
+  private inline def guardAppliedTypeParamRef(
+      tycon: TypeParamRef, other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
+    val key = (tycon, other, fromBelow)
+    !pendingAppliedTypeParamRefs.contains(key) && {
+      pendingAppliedTypeParamRefs += key
+      try op finally pendingAppliedTypeParamRefs -= key
+    }
   private var recCount = 0
   private var monitored = false
 
@@ -109,6 +127,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   override def checkReset() =
     super.checkReset()
     assert(pendingSubTypes == null || pendingSubTypes.uncheckedNN.isEmpty)
+    assert(pendingAppliedTypeParamRefs.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
@@ -1275,9 +1294,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
-          rollbackConstraintsUnless:
-            (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
-              && directionalRecur(adaptedTycon.appliedTo(args), other)
+          // Guard against infinite recursion through `canInstantiate` in
+          // `compareAppliedType1`/`compareAppliedType2`, which calls back into
+          // `compareAppliedTypeParamRef` with the same (tycon, other, fromBelow),
+          // looping indefinitely when the constraint solver can't converge on a
+          // valid instantiation. See i24537.
+          guardAppliedTypeParamRef(tycon, other, fromBelow):
+            rollbackConstraintsUnless:
+              (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
+                && directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
     end compareAppliedTypeParamRef
