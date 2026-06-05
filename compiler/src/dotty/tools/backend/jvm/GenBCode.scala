@@ -47,6 +47,13 @@ class GenBCode extends Phase { self =>
     _primitives.nn
   }
 
+  private var _classBTypeCache: ClassBType.Cache | Null = null
+  def classBTypeCache(using Context): ClassBType.Cache = {
+    if _classBTypeCache eq null then
+      _classBTypeCache = ClassBType.Cache()
+    _classBTypeCache.nn
+  }
+
   private var _byteCodeRepository: BCodeRepository | Null = null
   def byteCodeRepository(using Context): BCodeRepository = {
     if _byteCodeRepository eq null then
@@ -57,7 +64,7 @@ class GenBCode extends Phase { self =>
   private var _bTypesFromClassfile: BTypesFromClassfile | Null = null
   def bTypesFromClassfile(using Context): BTypesFromClassfile = {
     if _bTypesFromClassfile eq null then
-      _bTypesFromClassfile = BTypesFromClassfile(byteCodeRepository, bTypeLoader)
+      _bTypesFromClassfile = BTypesFromClassfile(byteCodeRepository, classBTypeCache)
     _bTypesFromClassfile.nn
   }
 
@@ -66,7 +73,7 @@ class GenBCode extends Phase { self =>
     if _bTypeLoader eq null then
       // lazy load to break the circular dependency
       def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
-      _bTypeLoader = BTypeLoader(primitives, inlineInfoLoader)
+      _bTypeLoader = BTypeLoader(primitives, classBTypeCache, inlineInfoLoader)
     _bTypeLoader.nn
   }
 
@@ -98,9 +105,9 @@ class GenBCode extends Phase { self =>
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
       if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
-        _postProcessor = new PostProcessorWithOptimizations(byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, bTypeLoader, optimizerKnownBTypes)
+        _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, optimizerKnownBTypes)
       else
-        _postProcessor = new PostProcessor(bTypeLoader, knownBTypes)
+        _postProcessor = new PostProcessor(classBTypeCache, knownBTypes)
     _postProcessor.nn
   }
 
