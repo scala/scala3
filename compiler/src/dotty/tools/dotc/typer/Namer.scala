@@ -538,7 +538,7 @@ class Namer { typer: Typer =>
       ann.symbol == defn.ChildAnnot && !ann.isEvaluating
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(isReady) match {
-        case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
+        case Some(Annotation.NonStaleChild(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
