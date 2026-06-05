@@ -223,10 +223,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try
-        val annotCtx =
+        // Re-enter annotation mode, as `Typer` did when first typing the
+        // annotation. In particular, qualifier predicates (`@qualified`) must be
+        // transformed under `Mode.InAnnotation` so dependent calls inside them are
+        // not skolemized — their value is logical, not a runtime value to lift.
+        val annotCtx0 =
           if annot.hasAttachment(untpd.RetainsAnnot)
           then ctx.addMode(Mode.InCaptureSet)
           else ctx
+        val annotCtx = annotCtx0.addMode(Mode.InAnnotation)
         transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
