@@ -5,7 +5,6 @@ import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-import dotty.tools.dotc.{CompilationUnit, interfaces, report, util}
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.core.*
 import Contexts.*
@@ -18,19 +17,13 @@ import dotty.tools.dotc.core.tasty.TastyUnpickler
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.util.NoSourcePosition
-import SymbolUtils.given
-import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
-import opt.CallGraph
+import dotty.tools.dotc.report
+import dotty.tools.dotc.util.SourceFile
 
-class CodeGen(primitives: ScalaPrimitives,
-              callGraph: Option[CallGraph], bTypeLoader: BTypeLoader, knownBTypes: KnownBTypes) {
-  private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
-  private val impl = new Impl()
+class CodeGen(impl: BCodeSyncAndTry) {
   private val builder = new impl.SyncAndTryBuilder()
-  private val mirrorCodeGen = new impl.JMirrorBuilder()
+  private val mirrorBuilder = new impl.JMirrorBuilder()
 
   /**
    * Generate ASM ClassNodes for classes found in the context's compilation unit.
@@ -43,12 +36,7 @@ class CodeGen(primitives: ScalaPrimitives,
       try
         val sym = cd.symbol
         val mainClassNode = builder.genPlainClass(cd, topLevel = true)
-        val mirrorClassNode =
-          if !sym.isTopLevelModuleClass then null
-          else if sym.companionClass == NoSymbol then mirrorCodeGen.genMirrorClass(sym)
-          else
-            report.log(s"No mirror class for module with linked class: ${sym.fullName}", NoSourcePosition)
-            null
+        val mirrorClassNode = mirrorBuilder.genMirrorClassIfNeeded(sym)
 
         if sym.isClass then
           val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
@@ -101,12 +89,12 @@ class CodeGen(primitives: ScalaPrimitives,
   }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile)(using Context): AbstractFile => Unit = {
+  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: SourceFile)(using Context): AbstractFile => Unit = {
     val isLocal = atPhase(sbtExtractDependenciesPhase) {
       claszSymbol.isLocal
     }
+    val className = cls.name.replace('/', '.')
     clsFile => {
-      val className = cls.name.replace('/', '.')
       ctx.compilerCallback match
         case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
         case null => ()

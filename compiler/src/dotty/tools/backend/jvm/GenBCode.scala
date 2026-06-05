@@ -61,13 +61,15 @@ class GenBCode extends Phase { self =>
       val callGraph = new CallGraph(byteCodeRepository, bTypesFromClassfile)
       _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, knownBTypes)
       _generatedClassHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(_postProcessor))
-      _codeGen = new CodeGen(primitives, Some(callGraph), bTypeLoader, knownBTypes)
+      object impl extends BCodeIdiomatic(Some(callGraph)), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
+      _codeGen = new CodeGen(impl)
     else
       val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
       val knownBTypes = new KnownBTypes(bTypeLoader)
       _postProcessor = new PostProcessor(classBTypeCache, knownBTypes)
       _generatedClassHandler = createClassHandler(_postProcessor)
-      _codeGen = new CodeGen(primitives, None, bTypeLoader, knownBTypes)
+      object impl extends BCodeIdiomatic(None), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
+      _codeGen = new CodeGen(impl)
     _initialized = true
 
   protected def run(using Context): Unit =
