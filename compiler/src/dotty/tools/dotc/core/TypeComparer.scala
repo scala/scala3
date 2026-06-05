@@ -108,7 +108,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   override def checkReset() =
     super.checkReset()
-    assert(pendingSubTypes == null || pendingSubTypes.uncheckedNN.isEmpty)
+    pendingSubTypes match
+      case null => ()
+      case ps => assert(ps.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)

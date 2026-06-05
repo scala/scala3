@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import dotty.tools.uncheckedNN
-
 import scala.compiletime.uninitialized
 
 object GenericHashSet:
@@ -176,7 +174,11 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
       idx < table.length
     def next() =
       require(hasNext)
-      try entry(idx).uncheckedNN finally idx += 1
+      entry(idx) match
+        case null => throw new NoSuchElementException()
+        case e =>
+          idx += 1
+          e
 
   def iterator: Iterator[T] = new EntryIterator():
     def entry(idx: Int) = entryAt(idx)

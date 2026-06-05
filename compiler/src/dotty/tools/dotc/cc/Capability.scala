@@ -9,7 +9,6 @@ import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
 import Periods.{NoRunId, RunId, RunWidth}
-import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.{Refs, emptyRefs, VarState}
 import Annotations.Annotation
@@ -341,7 +340,7 @@ object Capabilities:
    */
   trait Capability extends Showable:
 
-    private var myCaptureSet: CaptureSet | Null = uninitialized
+    private var myCaptureSet: CaptureSet | Null = null
     private var captureSetValid: Validity = invalid
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
     private var myDerived: List[DerivedCapability] = Nil
@@ -602,9 +601,7 @@ object Capabilities:
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
-      if mySingletonCaptureSet == null then
-        mySingletonCaptureSet = CaptureSet(this)
-      mySingletonCaptureSet.uncheckedNN
+      initialize(mySingletonCaptureSet, mySingletonCaptureSet = _, CaptureSet(this))
 
     /** The capture set of the type underlying this reference */
     def captureSetOfInfo(using Context): CaptureSet =

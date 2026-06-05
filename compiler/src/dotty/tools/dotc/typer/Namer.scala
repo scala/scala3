@@ -600,7 +600,7 @@ class Namer { typer: Typer =>
         if (tree == modCls) {
           val fromTempl = fromCls.rhs.asInstanceOf[Template]
           val modTempl = modCls.rhs.asInstanceOf[Template]
-          res = cpy.TypeDef(modCls)(
+          val r = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
               derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
               body = fromTempl.body.filter {
@@ -611,10 +611,10 @@ class Namer { typer: Typer =>
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
-            // `res` is inside a closure, so the flow-typing doesn't work here.
-            res.uncheckedNN.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
+            r.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
           }
-          res.uncheckedNN
+          res = r
+          r
         }
         else tree
       }
@@ -936,8 +936,9 @@ class Namer { typer: Typer =>
       completedTypeParamSyms = tparams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if completedTypeParamSyms != null then completedTypeParamSyms.uncheckedNN
-      else Nil
+      completedTypeParamSyms match
+        case null => Nil
+        case cpts => cpts
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
@@ -1099,10 +1100,11 @@ class Namer { typer: Typer =>
       }
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if myTypeParams == null then
+      initialize(myTypeParams, myTypeParams = _, {
         //println(i"completing type params of $sym in ${sym.owner}")
-        nestedCtx = localContext(sym).setNewScope
-        given Context = nestedCtx.uncheckedNN
+        val newScope = localContext(sym).setNewScope
+        nestedCtx = newScope
+        given Context = newScope
 
         def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
           case TypeDef(_, original) =>
@@ -1114,10 +1116,11 @@ class Namer { typer: Typer =>
 
         val tparams = typeParamTrees(original)
         index(tparams)
-        myTypeParams = tparams.map(symbolOfTree(_).asType)
+        val res = tparams.map(symbolOfTree(_).asType)
+        myTypeParams = res
         for param <- tparams do typedAheadExpr(param)
-      end if
-      myTypeParams.uncheckedNN
+        res
+      })
     end completerTypeParams
 
     override final def typeSig(sym: Symbol): Type =
