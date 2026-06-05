@@ -536,34 +536,17 @@ class Namer { typer: Typer =>
     // to just prepending the new Child annotation.
     def isReady(ann: Annotation): Boolean =
       ann.symbol == defn.ChildAnnot && !ann.isEvaluating
-    // Forcing a Child annotation may throw `StaleSymbol` if it refers to a
-    // symbol from a previous run that is no longer valid. This happens when
-    // compilation was suspended and the child class is re-typechecked in the
-    // current run, leaving an outdated Child annotation on the parent (see
-    // tests/pos/i24414). Treat such annotations as stale and drop them.
-    def childOf(ann: Annotation): Option[Symbol] =
-      try Annotation.Child.unapply(ann)
-      catch case _: StaleSymbol => None
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(isReady) match {
-        case Some(ann) =>
-          childOf(ann) match {
-            case Some(other) if other.span.exists && childStart <= other.span.start =>
-              if (child == other)
-                annots // can happen if a class has several inaccessible children
-              else {
-                assert(childStart != other.span.start || child.source != other.source, i"duplicate child annotation $child / $other")
-                val (prefix, otherAnnot :: rest) = annots.span(a => (a ne ann)): @unchecked
-                prefix ::: otherAnnot :: insertInto(rest)
-              }
-            case None =>
-              // Drop the stale Child annotation and continue searching.
-              val (prefix, rest) = annots.span(a => (a ne ann))
-              prefix ::: insertInto(rest.tail)
-            case _ =>
-              Annotation.Child(child, cls.span.startPos) :: annots
+        case Some(Annotation.NonStaleChild(other)) if other.span.exists && childStart <= other.span.start =>
+          if (child == other)
+            annots // can happen if a class has several inaccessible children
+          else {
+            assert(childStart != other.span.start || child.source != other.source, i"duplicate child annotation $child / $other")
+            val (prefix, otherAnnot :: rest) = annots.span(ann => !isReady(ann)): @unchecked
+            prefix ::: otherAnnot :: insertInto(rest)
           }
-        case None =>
+        case _ =>
           Annotation.Child(child, cls.span.startPos) :: annots
       }
     cls.annotations = insertInto(cls.annotations)
