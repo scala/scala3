@@ -65,161 +65,130 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
         cpy.Annotated(tree)(transform(arg), tree.annot)
       case blk: Block =>
         anfBlock(super.transform(blk).asInstanceOf[Block])
-      case dd: DefDef if !dd.rhs.isEmpty && !dd.rhs.isInstanceOf[Block] =>
-        // A lazily-evaluated bare body: wrap into a block so any skolem args can
-        // be lifted there (the body is evaluated on call, so the vals must stay
-        // inside it, not hoist to the def's siblings). Lift under the def's own
-        // owner so the lifted vals belong to its body.
+      case dd: DefDef if !dd.rhs.isEmpty && !dd.rhs.isInstanceOf[Block] && hasSkolemArg(dd.rhs) =>
+        // A bare (lazily-evaluated) body: wrap it into a block so its skolem args
+        // lift there, under the def's own owner, rather than hoisting to the
+        // def's siblings.
         val dd1 = super.transform(dd).asInstanceOf[DefDef]
         cpy.DefDef(dd1)(rhs = anfBlock(Block(Nil, dd1.rhs))(using ctx.withOwner(dd.symbol)))
       case _ =>
         super.transform(tree)
 
-  /** Hoist each statement's skolem-producing argument(s) into preceding sibling
-   *  `val`s, then rewrite `Skolem -> liftedVal.termRef` over the whole block
-   *  and drop the now-redundant `@QualifierSkolemIndex` markers.
+  /** Lift every `@QualifierSkolemIndex` argument in the block into a real `val`,
+   *  then rewrite `Skolem -> liftedVal.termRef` and drop the markers.
    *
-   *  Only args whose skolem actually occurs in a qualifier type (`referenced`)
-   *  are lifted: an unstable arg to a dependent function whose result qualifier
-   *  doesn't mention it (e.g. `p(v)` over a stable param) needs no rewriting,
-   *  and lifting it would needlessly restructure the code (e.g. break tailrec).
+   *  Args in eager position (a statement, a val's rhs, the block's result) are
+   *  hoisted into preceding sibling vals; args in conditional/lazy position (an
+   *  `if`/`match` branch) are lifted into a fresh block at that branch, so
+   *  nothing is hoisted out of a branch and tail calls stay in tail position.
    */
   private def anfBlock(blk: Block)(using Context): Tree =
-    // When the enclosing owner declares a qualified result type, the block's
-    // result must *conform* to it, and its skolems are load-bearing for that
-    // check (e.g. a self-referential `fib` whose result qualifier mentions
-    // `fib(n - 1)`): the declared type refers to those terms via bound params,
-    // so lifting them to body-local vals would break conformance. Such skolems
-    // live in a logical predicate, not at a runtime point — leave them encoded.
-    if ctx.owner.isTerm && QualifiedTypes.containsQualifier(ctx.owner.info) then return blk
-    val referenced = referencedSkolemIds(blk)
-    if referenced.isEmpty then return blk
-    def needsLift(tree: Tree): Boolean =
-      val owner = QualifiedTypes.skolemOwner
-      tree.existsSubTree: t =>
-        QualifiedTypes.readSkolemIndexAnnot(t).exists(idx => referenced.contains((owner, idx)))
+    if !hasSkolemArg(blk) then return blk
     val newStats = ListBuffer[Tree]()
-    var lifted = false
-    // `fromOwner` is the symbol that currently owns the statement's nested
-    // definitions: the val/def symbol for a member, else the block owner. The
-    // lifted vals move under new sibling symbols, so their bodies must be
-    // reparented away from `fromOwner` (see `liftSkolemArgs`).
-    def liftInto(tree: Tree, fromOwner: Symbol): Tree =
-      val (defs, tree1) = liftSkolemArgs(tree, fromOwner, needsLift)
-      newStats ++= defs
-      lifted = true
-      tree1
     for stat <- blk.stats do
       stat match
-        case vd: ValDef if !vd.rhs.isEmpty && needsLift(vd.rhs) =>
-          newStats += cpy.ValDef(vd)(rhs = liftInto(vd.rhs, vd.symbol))
-        case _ if !stat.isInstanceOf[MemberDef] && needsLift(stat) =>
-          newStats += liftInto(stat, ctx.owner)
+        case vd: ValDef if !vd.rhs.isEmpty && hasSkolemArg(vd.rhs) =>
+          val (defs, rhs1) = hoist(vd.rhs, vd.symbol)
+          newStats ++= defs
+          newStats += cpy.ValDef(vd)(rhs = rhs1)
+        case _ if !stat.isInstanceOf[MemberDef] && hasSkolemArg(stat) =>
+          val (defs, stat1) = hoist(stat, ctx.owner)
+          newStats ++= defs
+          newStats += stat1
         case _ =>
           newStats += stat
-    val expr1 = if needsLift(blk.expr) then liftInto(blk.expr, ctx.owner) else blk.expr
-    if !lifted then blk
-    else
-      val stats = newStats.toList
-      val map = collectSkolemMap(stats)
-      // Bail if some referenced skolem has no lifted val to map onto (e.g. its
-      // producing arg was a pure path that `lift` left inline): substituting
-      // only part of the qualifier would leave a dangling skolem. Leave the
-      // whole block on its original encoding instead.
-      if !referenced.subsetOf(map.keySet) then return blk
-      // The index markers have served their purpose; drop them so the lifted
-      // vals look like ordinary bindings. (Read the map before stripping.)
-      stats.foreach:
-        case vd: ValDef => vd.symbol.removeAnnotation(defn.QualifierSkolemIndexAnnot)
-        case _ => ()
-      val rebuilt = cpy.Block(blk)(stats, expr1)
-      val result = TreeTypeMap(typeMap = skolemSubst(map)).transform(rebuilt)
-      // `TreeTypeMap` recreates the symbols whose info changed and drops their
-      // `defTree`. The qualifier solver reads `defTree` (in `termAssumptions`)
-      // to recover a val's rhs assumptions.
-      result.foreachSubTree:
-        case d: MemberDef => d.setDefTree
-        case _ => ()
-      result
+    val (exprDefs, expr1) = hoist(blk.expr, ctx.owner)
+    newStats ++= exprDefs
+    val rebuilt = cpy.Block(blk)(newStats.toList, expr1)
+    // Each lifted val's symbol carries the `@QualifierSkolemIndex` transferred by
+    // `Lifter.lift`; map it to its `TermRef`, then drop the markers.
+    val map = collectSkolemMap(rebuilt)
+    rebuilt.foreachSubTree:
+      case vd: ValDef => vd.symbol.removeAnnotation(defn.QualifierSkolemIndexAnnot)
+      case _ => ()
+    val result = TreeTypeMap(typeMap = skolemSubst(map)).transform(rebuilt)
+    // `TreeTypeMap` recreates the symbols whose info changed and drops their
+    // `defTree`. The qualifier solver reads `defTree` (in `termAssumptions`) to
+    // recover a val's rhs assumptions, so restore them.
+    result.foreachSubTree:
+      case d: MemberDef => d.setDefTree
+      case _ => ()
+    result
 
-  /** Lift the skolem-producing arguments of `expr` (recursively, preserving
-   *  evaluation order) into `val` bindings, returning the bindings and the
-   *  rewritten expression. Uses `LiftComplex` so every effectful subexpression
-   *  evaluated before a lifted arg is lifted too.
+  /** Eager position: returns the `val`s to place *before* `expr`, and the
+   *  rewritten `expr`. Recurses through `if`/`match`, lifting their condition or
+   *  selector eagerly but each branch into its own local block (`liftBranch`),
+   *  and through nested skolem arguments.
    *
-   *  `fromOwner` owns `expr`'s nested definitions; each lifted val's body is
-   *  reparented from it to the val's own symbol, since `lift` only reparents
-   *  definitions owned by the enclosing block, not by a sibling val/def.
+   *  `fromOwner` owns `expr`'s nested definitions; a lifted val's body is
+   *  reparented from it to the val's own symbol, since `Lifter.lift` only
+   *  reparents definitions owned by the enclosing block, not by a sibling.
    */
-  private def liftSkolemArgs(expr: Tree, fromOwner: Symbol, needsLift: Tree => Boolean)(using
-      Context): (List[Tree], Tree) =
-    val defs = ListBuffer[Tree]()
-    val rewritten = LiftComplex.liftApp(defs, expr)
-    // `liftApp` lifts an application's args as whole vals (their rhs typically
-    // wrapped in the `@QualifierSkolemIndex` `Typed`), but does not descend into
-    // a lifted arg's own sub-applications. So peel the wrapper and recurse into
-    // any lifted val whose value still holds a deeper skolem arg, to surface it
-    // as its own val.
-    val processed = defs.toList.flatMap:
-      case vd: ValDef =>
-        val reparented = vd.rhs.changeOwner(fromOwner, vd.symbol)
-        val inner = peelSkolemTyped(reparented)
-        if needsLift(inner) && isDecomposable(inner) then
-          val (innerDefs, rhs1) = liftSkolemArgs(inner, vd.symbol, needsLift)
-          innerDefs :+ cpy.ValDef(vd)(rhs = rhs1)
-        else
-          // Drop the `@QualifierSkolemIndex` `Typed` ascription on this lifted
-          // val so it reads as an ordinary binding; its underlying type is the
-          // plain arg type, so no conformance ascription is lost.
-          cpy.ValDef(vd)(rhs = inner) :: Nil
-      case d => d :: Nil
-    (processed, rewritten)
+  private def hoist(expr: Tree, fromOwner: Symbol)(using Context): (List[Tree], Tree) =
+    expr match
+      case If(cond, thenp, elsep) =>
+        val (defs, cond1) = hoist(cond, fromOwner)
+        (defs, cpy.If(expr)(cond1, liftBranch(thenp, fromOwner), liftBranch(elsep, fromOwner)))
+      case Match(sel, cases) =>
+        val (defs, sel1) = hoist(sel, fromOwner)
+        val cases1 = cases.mapConserve: cd =>
+          cpy.CaseDef(cd)(cd.pat, cd.guard, liftBranch(cd.body, fromOwner))
+        (defs, cpy.Match(expr)(sel1, cases1))
+      case Typed(e, tpt) =>
+        val (defs, e1) = hoist(e, fromOwner)
+        (defs, cpy.Typed(expr)(e1, tpt))
+      case _: Block =>
+        (Nil, expr) // already transformed by `super.transform`
+      case _ =>
+        val defs = ListBuffer[Tree]()
+        val rewritten = LiftSkolem.liftApp(defs, expr)
+        // `liftApp` lifts an application's args as whole vals (their rhs typically
+        // wrapped in the `@QualifierSkolemIndex` `Typed`) but does not descend into
+        // a lifted arg's own sub-applications; recurse to surface nested skolem
+        // args as their own vals.
+        val processed = defs.toList.flatMap:
+          case vd: ValDef =>
+            val inner = peelSkolemTyped(vd.rhs.changeOwner(fromOwner, vd.symbol))
+            if hasSkolemArg(inner) && isAnfable(inner) then
+              val (innerDefs, rhs1) = hoist(inner, vd.symbol)
+              innerDefs :+ cpy.ValDef(vd)(rhs = rhs1)
+            else cpy.ValDef(vd)(rhs = inner) :: Nil
+          case d => d :: Nil
+        (processed, rewritten)
 
-  /** Shapes whose arguments `liftApp` can extract; recursing into anything else
-   *  would re-lift it whole and loop. (`if`/`match` branches are not handled.)
+  /** Conditional/lazy position: lift `expr`'s skolem args into a fresh block, so
+   *  they are not hoisted out of the branch (which would change evaluation order
+   *  and move tail calls out of tail position).
    */
-  private def isDecomposable(tree: Tree): Boolean = tree match
-    case _: Apply | _: TypeApply => true
+  private def liftBranch(expr: Tree, fromOwner: Symbol)(using Context): Tree =
+    if !hasSkolemArg(expr) then expr
+    else
+      val (defs, e) = hoist(expr, fromOwner)
+      if defs.isEmpty then e else Block(defs, e)
+
+  /** Shapes `hoist` can descend into. Recursing into anything else (a leaf still
+   *  carrying a marker) would re-lift it whole and loop.
+   */
+  private def isAnfable(tree: Tree): Boolean = tree match
+    case _: Apply | _: TypeApply | _: If | _: Match => true
     case _ => false
 
-  /** The skolem identities `(owner, index)` occurring in a qualifier within
-   *  `tp`, added to `ids`.
-   */
-  private def scanSkolems(tp: Type, ids: scala.collection.mutable.Set[(Symbol, Int)])(using Context): Unit =
-    tp.foreachPart:
-      case QualifiedType(_, qualifier) =>
-        qualifier.foreachType:
-          case sk: ENodeVar.Skolem => ids += ((sk.owner, sk.index))
-          case _ => ()
-      case _ => ()
+  private def hasSkolemArg(tree: Tree)(using Context): Boolean =
+    tree.existsSubTree(t => QualifiedTypes.readSkolemIndexAnnot(t).isDefined)
 
-  /** The skolem identities `(owner, index)` that occur in a qualifier type
-   *  anywhere in `tree` (in tree types or member-symbol infos) — the skolems
-   *  this phase must eliminate.
-   */
-  private def referencedSkolemIds(tree: Tree)(using Context): Set[(Symbol, Int)] =
-    val ids = scala.collection.mutable.Set[(Symbol, Int)]()
-    tree.foreachSubTree: t =>
-      scanSkolems(t.tpe, ids)
-      t match
-        case d: MemberDef if d.symbol.exists => scanSkolems(d.symbol.info, ids)
-        case _ => ()
-    ids.toSet
-
-  /** Map each lifted skolem `val` (its symbol carries the `@QualifierSkolemIndex`
-   *  transferred by `Lifter.lift`) to its `TermRef`.
-   */
-  private def collectSkolemMap(stats: List[Tree])(using Context): Map[(Symbol, Int), TermRef] =
-    stats.flatMap:
+  /** Map each lifted skolem `val` reachable from `tree` to its `TermRef`. */
+  private def collectSkolemMap(tree: Tree)(using Context): Map[(Symbol, Int), TermRef] =
+    val m = scala.collection.mutable.Map[(Symbol, Int), TermRef]()
+    tree.foreachSubTree:
       case vd: ValDef =>
-        QualifiedTypes.symbolSkolemIndexOpt(vd.symbol).map(_ -> vd.symbol.termRef)
-      case _ => None
-    .toMap
+        QualifiedTypes.symbolSkolemIndexOpt(vd.symbol).foreach(k => m(k) = vd.symbol.termRef)
+      case _ => ()
+    m.toMap
 
-  /** A `TypeMap` replacing the specific `Skolem`s in `map` with their val's
-   *  `TermRef`, and dropping `@QualifierSkolemIndex` annotations. Inside a
-   *  qualifier, `AnnotatedType` mapping routes the ENode types through this
-   *  map, so the qualifier's skolem atoms are rewritten.
+  /** A `TypeMap` replacing the `Skolem`s in `map` with their val's `TermRef`, and
+   *  dropping `@QualifierSkolemIndex` annotations. Inside a qualifier,
+   *  `AnnotatedType` mapping routes the ENode types through this map, so the
+   *  qualifier's skolem atoms are rewritten.
    */
   private def skolemSubst(map: Map[(Symbol, Int), TermRef])(using Context): TypeMap =
     new TypeMap:
@@ -241,3 +210,11 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
 object ANF:
   val name: String = "qualifiedTypesANF"
   val description: String = "ANF-lift qualifier argument skolems into real val bindings"
+
+/** Like `LiftComplex`, but also lifts pure `@QualifierSkolemIndex` arguments:
+ *  every skolem-bearing arg must become a `val` (even a pure one like `1: Int`),
+ *  so its skolem can be substituted by a stable reference.
+ */
+private object LiftSkolem extends LiftComplex:
+  override def noLift(expr: Tree)(using Context): Boolean =
+    super.noLift(expr) && QualifiedTypes.readSkolemIndexAnnot(expr).isEmpty
