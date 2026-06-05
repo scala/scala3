@@ -9,7 +9,7 @@ def test() =
   val f1 = () => Ref()
   val _: () -> Ref^ = f1 // error
   val _: () => Ref^ = f1 // error
-  val _: () -> Ref^ = () => Ref() // ok, but should be error
+  val _: () -> Ref^ = () => Ref() // error, because any propagates to function
   val _: () => Ref^ = () => Ref() // ok
 
   val _: () -> Ref^{fresh} = () => Ref() // ok
@@ -17,6 +17,10 @@ def test() =
   def withFile[T](op: File^ => T): T = ???
   val _ = withFile(f => () => Ref()) // ok
   val _ = withFile(f => Ref())  // ok
+
+  def withPureFile[T](op: File^ -> T): T = ???
+  val _ = withPureFile(f => () => Ref()) // error, because any propagates to function
+  val _ = withPureFile(f => Ref())  // error, because any propagates to function
 
   val _: () => Ref^{fresh} = () => Ref() // ok
   val _: () => Ref^{fresh} = f1 // ok

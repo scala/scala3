@@ -6,7 +6,7 @@ class File
 
 def test() =
 
-  val _: () -> Ref^ = () => Ref() // ok
+  val _: () -> Ref^ = () => Ref() // error
   val _: () => Ref^ = () => Ref() // ok
 
   val f1 = () => Ref()

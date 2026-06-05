@@ -1130,7 +1130,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  block containing the anonymous function and the Closure node.
      */
     override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
-      val cs = tree.meth.symbol.useSet ++ tree.meth.symbol.info.impliedLambdaCaptures
+      val cs = tree.meth.symbol.useSet
       capt.println(i"typing closure $tree with cvs $cs")
       super.recheckClosure(tree, pt, forceDependent).capturing(cs)
         .showing(i"rechecked closure $tree / $pt = $result", capt)
@@ -1842,7 +1842,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             yield rc
           if mappable.isEmpty then NoType
           else
-            RetractResult(SimpleIdentitySet(mappable*))(actual)
+            val core = RetractResult(SimpleIdentitySet(mappable*))(actual)
+            core.capturing(core.impliedLambdaCaptures)
               .showing(i"try existential widen $actual to $result", capt)
         case _ => NoType
 

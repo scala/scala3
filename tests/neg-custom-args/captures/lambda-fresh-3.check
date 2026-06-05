@@ -1,0 +1,40 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-3.scala:9:22 --------------------------------
+9 |  val _: () -> Ref^ = () => Ref() // error
+  |                      ^^^^^^^^^^^
+  |                      Found:    () ->'s1 Ref^{fresh}
+  |                      Required: () -> Ref^{any}
+  |
+  |                      Note that capability `fresh` cannot flow into capture set {any}
+  |                      because fresh is not visible from any in value _$1.
+  |
+  |                      where:    any   is a root capability classified as Unscoped in the type of value _$1
+  |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-3.scala:14:22 -------------------------------
+14 |  val _: () -> Ref^ = f1 // error
+   |                      ^^
+   |                      Found:    (f1 : () -> Ref^{fresh})
+   |                      Required: () -> Ref^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$3.
+   |
+   |                      where:    any   is a root capability classified as Unscoped in the type of value _$3
+   |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-3.scala:15:22 -------------------------------
+15 |  val _: () => Ref^ = f1 // error
+   |                      ^^
+   |                      Found:    (f1 : () -> Ref^{fresh})
+   |                      Required: () => Ref^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$4.
+   |
+   |                      where:    =>    refers to a root capability in the type of value _$4
+   |                                any   is a root capability classified as Unscoped in the type of value _$4
+   |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
