@@ -286,7 +286,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     if (lazyState eq EmptyMarker) null else Uninitialized
 
   // when `_head eq Uninitialized`
-  //   - `lazySate: () => LazyListIterable[A]`
+  //   - `lazyState: () => LazyListIterable[A]`
   //   - MidEvaluation while evaluating lazyState
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
