@@ -167,6 +167,12 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
         // leaving the receiver skolem dangling; lift the marked receiver itself.
         val (defs, qual1) = liftApplication(qual, fromOwner)
         (defs, cpy.Select(expr)(qual1, name))
+      case Select(qual, name) if hasSkolemArg(qual) =>
+        // A bare selection whose receiver carries skolem args (e.g.
+        // `mk(arg).plain`). `liftApp` would lift the whole selection, leaving the
+        // receiver's skolem args unlifted; recurse into the receiver to lift them.
+        val (defs, qual1) = hoist(qual, fromOwner)
+        (defs, cpy.Select(expr)(qual1, name))
       case _ =>
         liftApplication(expr, fromOwner)
 
@@ -181,7 +187,7 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
     val processed = defs.toList.flatMap:
       case vd: ValDef =>
         val inner = peelSkolemTyped(vd.rhs.changeOwner(fromOwner, vd.symbol))
-        if hasSkolemArg(inner) && (isAnfable(inner) || isMarkedReceiverSelect(inner)) then
+        if hasSkolemArg(inner) && hoistDescends(inner) then
           val (innerDefs, rhs1) = hoist(inner, vd.symbol)
           innerDefs :+ cpy.ValDef(vd)(rhs = rhs1)
         else cpy.ValDef(vd)(rhs = inner) :: Nil
@@ -205,11 +211,14 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
       val (defs, e) = hoist(expr, fromOwner)
       if defs.isEmpty then e else Block(defs, e)
 
-  /** Shapes `hoist` can descend into. Recursing into anything else (a leaf still
-   *  carrying a marker) would re-lift it whole and loop.
+  /** Shapes `hoist` descends into (to lift nested skolem args), as opposed to a
+   *  leaf still carrying a marker, which it would re-lift whole and loop on. A
+   *  `Select` is descended into only when its receiver carries skolem args (a
+   *  marked receiver, or a receiver whose own args are skolem-bearing).
    */
-  private def isAnfable(tree: Tree): Boolean = tree match
+  private def hoistDescends(tree: Tree)(using Context): Boolean = tree match
     case _: Apply | _: TypeApply | _: If | _: Match => true
+    case Select(qual, _) => hasSkolemArg(qual)
     case _ => false
 
   private def hasSkolemArg(tree: Tree)(using Context): Boolean =

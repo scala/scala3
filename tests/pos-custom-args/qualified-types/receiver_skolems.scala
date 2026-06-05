@@ -31,6 +31,10 @@ def tests(): Unit =
   // Field selection with a `this`-dependent qualifier.
   mk(10).cap
 
+  // A dependent selection used as a dependent argument: the inner result is
+  // lifted into a `val`, then passed to the outer call.
+  mk(mk(10).positive).plain
+
   // Selections that do not depend on `this`: receiver untouched.
   mk(10).positive
   mk(10).plain
