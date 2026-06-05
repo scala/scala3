@@ -71,8 +71,7 @@ class GenBCode extends Phase { self =>
   private var _bTypeLoader: BTypeLoader | Null = null
   def bTypeLoader(using Context): BTypeLoader = {
     if _bTypeLoader eq null then
-      // lazy load to break the circular dependency
-      def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
+      val inlineInfoLoader = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
       _bTypeLoader = BTypeLoader(primitives, classBTypeCache, inlineInfoLoader)
     _bTypeLoader.nn
   }
