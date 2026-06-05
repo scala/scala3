@@ -213,12 +213,13 @@ object Capabilities:
     /** Is this LocalCap at the right level to be able to subsume `ref`?
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
-      if ccConfig.useLocalCapLevels && !CCState.collapseLocalCaps then
-        ccOwner.isContainedIn(ref.levelOwner.widenOwner(skipModules = true))
-        || classifier.derivesFrom(defn.Caps_Unscoped)
-      else ref.core match
+      ref.core match
         case ResultCap(_) | _: ParamRef => false
-        case _ => true
+        case _ =>
+          !ccConfig.useLocalCapLevels
+          || CCState.collapseLocalCaps
+          || ccOwner.isContainedIn(ref.levelOwner.widenOwner(skipModules = true))
+          || classifier.derivesFrom(defn.Caps_Unscoped)
 
     /** Classify this LocalCap as `cls`, provided `isClassified` is still false.
      *  @param  freeze  Determines future `isClassified` state.

@@ -7,8 +7,9 @@ class File
 def test() =
 
   val f1 = () => Ref()
-  val _: () -> Ref^ = f1 // ok
-  val _: () => Ref^ = f1 // ok
+  val _: () -> Ref^ = f1 // error
+  val _: () => Ref^ = f1 // error
+  val _: () -> Ref^ = () => Ref() // ok, but should be error
   val _: () => Ref^ = () => Ref() // ok
 
   val _: () -> Ref^{fresh} = () => Ref() // ok

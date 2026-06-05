@@ -1,3 +1,5 @@
+import caps.fresh
+
 class Ref[T](init: T) extends caps.Mutable:
   var x: T = init
   update def set(x: T) = this.x = x
@@ -7,7 +9,7 @@ class Ref2[T](init: T) extends caps.Mutable:
 
 def test =
   val r4 = () => Ref2(22)
-  val _: () => Ref2[Int]^ = r4
+  val _: () => Ref2[Int]^{fresh} = r4
   val rr4 = Ref2(22)
   val s4 = () => rr4
   val y = r4()
