@@ -161,22 +161,39 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
         (defs, cpy.Typed(expr)(e1, tpt))
       case _: Block =>
         (Nil, expr) // already transformed by `super.transform`
+      case Select(qual, name) if isMarkedReceiverSelect(expr) =>
+        // A dependent selection on an unstable receiver that is *not* applied (a
+        // nullary method or a field). `liftApp` would lift the whole selection,
+        // leaving the receiver skolem dangling; lift the marked receiver itself.
+        val (defs, qual1) = liftApplication(qual, fromOwner)
+        (defs, cpy.Select(expr)(qual1, name))
       case _ =>
-        val defs = ListBuffer[Tree]()
-        val rewritten = LiftSkolem.liftApp(defs, expr)
-        // `liftApp` lifts an application's args as whole vals (their rhs typically
-        // wrapped in the `@QualifierSkolemIndex` `Typed`) but does not descend into
-        // a lifted arg's own sub-applications; recurse to surface nested skolem
-        // args as their own vals.
-        val processed = defs.toList.flatMap:
-          case vd: ValDef =>
-            val inner = peelSkolemTyped(vd.rhs.changeOwner(fromOwner, vd.symbol))
-            if hasSkolemArg(inner) && isAnfable(inner) then
-              val (innerDefs, rhs1) = hoist(inner, vd.symbol)
-              innerDefs :+ cpy.ValDef(vd)(rhs = rhs1)
-            else cpy.ValDef(vd)(rhs = inner) :: Nil
-          case d => d :: Nil
-        (processed, rewritten)
+        liftApplication(expr, fromOwner)
+
+  /** Lift `expr`'s skolem subexpressions via `LiftSkolem.liftApp`, then recurse
+   *  into each lifted val to surface nested skolem args: `liftApp` lifts an
+   *  application's args (and a marked receiver) as whole vals, but does not
+   *  descend into their own sub-applications.
+   */
+  private def liftApplication(expr: Tree, fromOwner: Symbol)(using Context): (List[Tree], Tree) =
+    val defs = ListBuffer[Tree]()
+    val rewritten = LiftSkolem.liftApp(defs, expr)
+    val processed = defs.toList.flatMap:
+      case vd: ValDef =>
+        val inner = peelSkolemTyped(vd.rhs.changeOwner(fromOwner, vd.symbol))
+        if hasSkolemArg(inner) && (isAnfable(inner) || isMarkedReceiverSelect(inner)) then
+          val (innerDefs, rhs1) = hoist(inner, vd.symbol)
+          innerDefs :+ cpy.ValDef(vd)(rhs = rhs1)
+        else cpy.ValDef(vd)(rhs = inner) :: Nil
+      case d => d :: Nil
+    (processed, rewritten)
+
+  /** A `Select` whose receiver carries an `@QualifierSkolemIndex` marker (an
+   *  unstable receiver of a dependent member, marked in `typedSelectWithAdapt`).
+   */
+  private def isMarkedReceiverSelect(tree: Tree)(using Context): Boolean = tree match
+    case Select(qual, _) => QualifiedTypes.readSkolemIndexAnnot(qual).isDefined
+    case _ => false
 
   /** Conditional/lazy position: lift `expr`'s skolem args into a fresh block, so
    *  they are not hoisted out of the branch (which would change evaluation order
