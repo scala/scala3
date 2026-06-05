@@ -648,6 +648,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
 
     def thirdTry: Boolean = tp2 match {
+      case FlexibleType(hi2) =>
+        recur(tp1, OrNull(hi2))
       case tp2 @ AppliedType(tycon2, args2) =>
         compareAppliedType2(tp2, tycon2, args2)
       case tp2: NamedType =>
@@ -915,8 +917,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareClassInfo
-      case tp2: FlexibleType =>
-        recur(tp1, tp2.lo)
       case _ =>
         fourthTry
     }
@@ -977,6 +977,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       else fourthTry
 
     def fourthTry: Boolean = tp1 match {
+      case FlexibleType(hi1) =>
+        recur(hi1, tp2)
       case tp1: TypeRef =>
         tp1.info match {
           case info1 @ TypeBounds(lo1, hi1) =>
@@ -1129,8 +1131,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
-      case tp1: FlexibleType =>
-        recur(tp1.hi, tp2)
       case _ =>
         false
     }

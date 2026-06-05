@@ -189,6 +189,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   }
 
   private def pickleNewType(tpe: Type, richTypes: Boolean)(using Context): Unit = tpe match {
+    case FlexibleType(hi) =>
+      writeByte(FLEXIBLEtype)
+      withLength { pickleType(hi, richTypes) }
     case AppliedType(tycon, args) =>
       if tycon.typeSymbol == defn.MatchCaseClass then
         writeByte(MATCHCASEtype)
@@ -296,9 +299,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     case tpe: OrType =>
       writeByte(ORtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
-    case tpe: FlexibleType =>
-      writeByte(FLEXIBLEtype)
-      withLength { pickleType(tpe.underlying, richTypes)  }
     case tpe: ExprType =>
       writeByte(BYNAMEtype)
       pickleType(tpe.underlying)

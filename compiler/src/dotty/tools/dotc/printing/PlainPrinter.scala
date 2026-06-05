@@ -334,7 +334,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             toText(tpe)
           case _ =>
             toTextLocal(tpe) ~ " " ~ toText(annot)
-      case FlexibleType(_, tpe) =>
+      case FlexibleType(tpe) =>
         "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
         def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)

@@ -558,8 +558,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         if underlying1 ne tp.underlying then underlying1 else tp
       case CapturingType(parent, refs) =>
         tp.derivedCapturingType(recur(parent), refs)
-      case tp: FlexibleType =>
-        tp.derivedFlexibleType(recur(tp.hi))
+      case tp @ FlexibleType(hi) =>
+        FlexibleType.derivedFlexibleType(tp, recur(hi))
       case tp: AnnotatedType =>
         tp.derivedAnnotatedType(recur(tp.parent), tp.annot)
       case _ =>
@@ -755,7 +755,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case tp: TypeVar if contains(tp.origin) => withHard(tp)
     case tp: TypeParamRef if contains(tp)   => hardenTypeVars(typeVarOfParam(tp))
     case tp: AndOrType                      => hardenTypeVars(tp.tp1).hardenTypeVars(tp.tp2)
-    case tp: FlexibleType                   => hardenTypeVars(tp.hi)
+    case FlexibleType(hi)                   => hardenTypeVars(hi)
     case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {

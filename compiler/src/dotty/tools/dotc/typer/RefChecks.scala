@@ -1236,7 +1236,7 @@ object RefChecks {
         && !sym.owner.isAnonymousClass
         && !sym.isOneOf(JavaOrPrivateOrSynthetic | InlineProxy | Param | Exported) then
       val resTp = sym.info.finalResultType
-      if resTp.existsPart(_.isInstanceOf[FlexibleType], StopAt.Static) then
+      if resTp.existsPart(FlexibleType.isInstance(_), StopAt.Static) then
         report.warning(
           em"${sym.show} exposes a flexible type in its inferred result type ${resTp}. Consider annotating the type explicitly",
           sym.srcPos

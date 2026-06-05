@@ -1344,8 +1344,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (untpd.isWildcardStarArg(tree)) {
 
       def fromRepeated(pt: Type): Type = pt match
-        case pt: FlexibleType =>
-          pt.derivedFlexibleType(fromRepeated(pt.hi))
+        case pt @ FlexibleType(hi) =>
+          FlexibleType.derivedFlexibleType(pt, fromRepeated(hi))
         case _ =>
           if ctx.mode.isQuotedPattern then
             // FIXME(#8680): Quoted patterns do not support Array repeated arguments
@@ -1992,8 +1992,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val t1 = instantiatableTypeVar(tp.tp1)
         if t1.exists then t1
         else instantiatableTypeVar(tp.tp2)
-      case tp: FlexibleType =>
-        instantiatableTypeVar(tp.hi)
+      case FlexibleType(hi) =>
+        instantiatableTypeVar(hi)
       case tp: TypeVar if isConstrainedByFunctionType(tp) =>
         // Only instantiate if the type variable is constrained by function types
         tp
@@ -2008,8 +2008,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case SAMType(_, _) => true
         case tp: AndOrType =>
           containsFunctionType(tp.tp1) || containsFunctionType(tp.tp2)
-        case tp: FlexibleType =>
-          containsFunctionType(tp.hi)
+        case FlexibleType(hi) =>
+          containsFunctionType(hi)
         case _ => false
       containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
 
