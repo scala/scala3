@@ -22,7 +22,6 @@ import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
-import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
@@ -210,14 +209,14 @@ class Inliner(optimizerUtils: OptimizerUtils,
                   val rw = inlinedCallsite.warning.get
                   if (rw.emitWarning(settings)) {
                     issueSink(OptimizerIssue(
-                      em"${rw.toString + inlineChainSuffix(r.callsite, state.inlineChain(inlinedCallsite.eliminatedCallsite.callsiteInstruction, skipForwarders = true))}",
+                      s"${rw.toString + inlineChainSuffix(r.callsite, state.inlineChain(inlinedCallsite.eliminatedCallsite.callsiteInstruction, skipForwarders = true))}",
                       OptimizerUtils.siteString(inlinedCallsite.eliminatedCallsite.callsiteClass.internalName, inlinedCallsite.eliminatedCallsite.callsiteMethod.name),
                       inlinedCallsite.eliminatedCallsite.callsitePosition))
                   }
                 case _ =>
                   if (w.emitWarning(settings))
                     issueSink(OptimizerIssue(
-                      em"${w.toString + inlineChainSuffix(r.callsite, state.inlineChain(r.callsite.callsiteInstruction, skipForwarders = true))}",
+                      s"${w.toString + inlineChainSuffix(r.callsite, state.inlineChain(r.callsite.callsiteInstruction, skipForwarders = true))}",
                       OptimizerUtils.siteString(r.callsite.callsiteClass.internalName, r.callsite.callsiteMethod.name),
                       r.callsite.callsitePosition))
               }
@@ -271,7 +270,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
                 state.inlineLog.logRollback(callsite, s"Instruction ${LogUtils.textify(notInlinedIllegalInsn)} would cause an IllegalAccessError, and is not selected for (or failed) inlining", state.outerCallsite(notInlinedIllegalInsn))
                 if (w.emitWarning(settings))
                   issueSink(OptimizerIssue(
-                    em"${w.toString + inlineChainSuffix(callsite, state.inlineChain(callsite.callsiteInstruction, skipForwarders = true))}",
+                    s"${w.toString + inlineChainSuffix(callsite, state.inlineChain(callsite.callsiteInstruction, skipForwarders = true))}",
                     OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name),
                     callsite.callsitePosition))
               case _ =>

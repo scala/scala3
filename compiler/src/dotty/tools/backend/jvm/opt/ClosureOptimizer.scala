@@ -21,7 +21,6 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
-import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
@@ -117,7 +116,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                issueSink(OptimizerIssue(em"${warning.toString}", OptimizerUtils.siteString(ownerClass, method.name), warning.pos))
+                issueSink(OptimizerIssue(warning.toString, OptimizerUtils.siteString(ownerClass, method.name), warning.pos))
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)

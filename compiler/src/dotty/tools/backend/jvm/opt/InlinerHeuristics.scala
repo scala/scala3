@@ -20,7 +20,6 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.MethodNode
-import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
 import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
@@ -61,18 +60,18 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
 
             case Some(Left(w)) =>
               if (w.emitWarning(settings)) {
-                issueSink(OptimizerIssue(em"${w.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition))
+                issueSink(OptimizerIssue(w.toString, OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition))
               }
 
             case None =>
               if (callsiteWarning.exists(_.emitWarning(settings))) {
-                issueSink(OptimizerIssue(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos))
+                issueSink(OptimizerIssue(s"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos))
               }
           }
 
         case callsite @ UnknownCallsite(ins, meth, clas, pos, _, warning) =>
           if (warning.emitWarning(settings)) {
-            issueSink(OptimizerIssue(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", OptimizerUtils.siteString(clas.internalName, meth.name), pos))
+            issueSink(OptimizerIssue(s"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", OptimizerUtils.siteString(clas.internalName, meth.name), pos))
           }
       }
       (methodNode, requests)

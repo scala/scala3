@@ -1,13 +1,12 @@
 package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 
 import scala.tools.asm.tree.AbstractInsnNode
 
-final class OptimizerIssue(val msg: Context ?=> Message, val site: String, val pos: SrcPos)
+final class OptimizerIssue(val msg: String, val site: String, val pos: SrcPos)
 
 sealed trait OptimizerWarning {
   def emitWarning(settings: OptimizerSettings): Boolean
