@@ -125,7 +125,7 @@ public class CompilerBridgeDriver extends Driver {
         .setIncCallback(incCallback)
         .setProgressCallback(progressCallback);
 
-      Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
+      Contexts.Context context = setup(args, initialCtx).map(t -> t._2()).getOrElse(() -> initialCtx);
 
       if (ScalacCommand.isHelpFlag(context.settings(), context.settingsState())) {
         throw new InterfaceCompileFailed(args, new Problem[0], StopInfoError);

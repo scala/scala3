@@ -2,8 +2,11 @@ package sbt
 
 import java.nio.file.{ FileAlreadyExistsException, Files }
 
-import sbt.Keys._
+import sbt.given
+import sbt.Keys.*
 import sbt.internal.librarymanagement.IvyXml
+import sbtcompat.PluginCompat.{toFile, toFileRef}
+import xsbti.{FileConverter, HashedVirtualFileRef}
 
 /** This local plugin provides ways of publishing just the binary jar. */
 object PublishBinPlugin extends AutoPlugin {
@@ -15,51 +18,62 @@ object PublishBinPlugin extends AutoPlugin {
   }
   import autoImport._
 
-  private val dummyDoc = taskKey[File]("").withRank(Int.MaxValue)
+  private val dummyDoc = taskKey[HashedVirtualFileRef]("").withRank(Int.MaxValue)
   override val globalSettings = Seq(publishLocalBin := (()))
 
-  override val projectSettings: Seq[Def.Setting[_]] = Def settings (
+  override val projectSettings: Seq[Def.Setting[?]] = Def.settings(
     publishLocalBin := Classpaths.publishOrSkip(publishLocalBinConfig, publishLocal / skip).value,
-    publishLocalBinConfig := Classpaths.publishConfig(
-      false, // publishMavenStyle.value,
-      Classpaths.deliverPattern(crossTarget.value),
-      if (isSnapshot.value) "integration" else "release",
-      ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-      (publishLocalBin / packagedArtifacts).value.toVector,
-      (publishLocalBin / checksums).value.toVector,
-      logging = ivyLoggingLevel.value,
-      overwrite = isSnapshot.value
-    ),
-    publishLocalBinConfig := publishLocalBinConfig
+    publishLocalBinConfig := Def.uncached {
+      implicit val conv: FileConverter = fileConverter.value
+      Classpaths.publishConfig(
+        false, // publishMavenStyle.value,
+        Classpaths.deliverPattern(crossTarget.value),
+        if (isSnapshot.value) "integration" else "release",
+        ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+        (publishLocalBin / packagedArtifacts).value.toVector.map { case (a, f) => a -> toFile(f) },
+        (publishLocalBin / checksums).value.toVector,
+        logging = ivyLoggingLevel.value,
+        overwrite = isSnapshot.value
+      )
+    },
+    publishLocalBinConfig := Def.uncached(
+      publishLocalBinConfig
       .dependsOn(
-        // Copied from sbt.internal.
         Def.taskDyn {
-          val doGen = useCoursier.value
-          if (doGen)
-            Def.task {
-              val currentProject = {
-                val proj = csrProject.value
-                val publications = csrPublications.value
-                proj.withPublications(publications)
-              }
-              IvyXml.writeFiles(currentProject, None, ivySbt.value, streams.value.log)
-            } else
-            Def.task(())
+          Def.task {
+            val currentProject = {
+              val proj = csrProject.value
+              val publications = csrPublications.value
+              proj.withPublications(publications)
+            }
+            IvyXml.writeFiles(
+              currentProject,
+              None,
+              ivySbt.value,
+              streams.value.log,
+              update.value.allModules,
+            )
+          }
         }
       )
-      .value,
-    dummyDoc := {
+      .value
+    ),
+    dummyDoc := Def.uncached {
+      implicit val conv: FileConverter = fileConverter.value
       val dummyFile = streams.value.cacheDirectory / "doc.jar"
       try {
         Files.createDirectories(dummyFile.toPath.getParent)
         Files.createFile(dummyFile.toPath)
       } catch { case _: FileAlreadyExistsException => }
-      dummyFile
+      toFileRef(dummyFile)
     },
-    dummyDoc / packagedArtifact := (Compile / packageDoc / artifact).value -> dummyDoc.value,
-    publishLocalBin / packagedArtifacts :=
+    dummyDoc / packagedArtifact := Def.uncached(
+      (Compile / packageDoc / artifact).value -> dummyDoc.value
+    ),
+    publishLocalBin / packagedArtifacts := Def.uncached(
       Classpaths
         .packaged(Seq(Compile / packageBin, Compile / packageSrc, makePom, dummyDoc))
         .value
+    ),
   )
 }
