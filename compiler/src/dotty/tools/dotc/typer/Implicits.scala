@@ -1054,6 +1054,10 @@ trait Implicits:
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
       def apply(t: Type): Type = t match {
+        case FlexibleType(_) =>
+          // Keep flexible types as-is: they admit null, and lifting their
+          // abstract tycon to its upper bound would lose that information.
+          t
         case t: TypeRef =>
           t.info match {
             case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)

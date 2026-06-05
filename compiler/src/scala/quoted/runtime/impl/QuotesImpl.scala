@@ -1967,7 +1967,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.subst(from, to)
 
         def typeArgs: List[TypeRepr] = self match
-          case FlexibleType(underlying) => underlying.typeArgs
+          // `FlexibleType` is an `AppliedType` here (opaque alias is transparent in this
+          // scope), so check it via the dotc-level extractor to avoid `case AppliedType`.
+          case _ if Types.FlexibleType.isInstance(self) => Types.FlexibleType.unapply(self).get.typeArgs
           case AppliedType(_, args) => args
           case AnnotatedType(parent, _) => parent.typeArgs
           case _ => List.empty
@@ -2094,7 +2096,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AppliedTypeTypeTest extends TypeTest[TypeRepr, AppliedType]:
       def unapply(x: TypeRepr): Option[AppliedType & x.type] = x match
-        case tpe: (Types.AppliedType & x.type) if !tpe.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) => Some(tpe)
+        case tpe: (Types.AppliedType & x.type)
+        if !tpe.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) && !Types.FlexibleType.isInstance(tpe) => Some(tpe)
         case _ => None
     end AppliedTypeTypeTest
 
@@ -2459,7 +2462,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(x: NoPrefix): true = true
     end NoPrefix
 
-    type FlexibleType = dotc.core.Types.AppliedType
+    // A flexible type is represented as an `AppliedType` over the synthetic
+    // `<FlexibleType>` symbol. We use an opaque type so that `FlexibleType` is
+    // nominally distinct from `AppliedType`, otherwise the two `TypeTest`s would
+    // be indistinguishable and `case FlexibleType(_)` could match plain applied types.
+    opaque type FlexibleType <: TypeRepr = dotc.core.Types.AppliedType
 
     object FlexibleTypeTypeTest extends TypeTest[TypeRepr, FlexibleType]:
       def unapply(x: TypeRepr): Option[FlexibleType & x.type] = x match
