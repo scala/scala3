@@ -31,6 +31,7 @@ class CodeGen(primitives: ScalaPrimitives,
               val generatedClassHandler: GeneratedClassHandler) {
   private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
   private val impl = new Impl()
+  private val builder = new impl.SyncAndTryBuilder()
 
   private lazy val mirrorCodeGen = impl.JMirrorBuilder()
 
@@ -46,7 +47,7 @@ class CodeGen(primitives: ScalaPrimitives,
       try
         val sym = cd.symbol
         val sourceFile = ctx.compilationUnit.source.file
-        val mainClassNode = genClass(cd)
+        val mainClassNode = builder.genPlainClass(cd, topLevel = true)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
           else if sym.companionClass == NoSymbol then mirrorCodeGen.genMirrorClass(sym)
@@ -128,10 +129,4 @@ class CodeGen(primitives: ScalaPrimitives,
           cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
     }
   }
-
-  private def genClass(cd: TypeDef)(using Context): ClassNode = {
-    val b = new impl.SyncAndTryBuilder
-    b.genPlainClass(cd)
-  }
-
 }
