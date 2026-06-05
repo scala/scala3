@@ -61,7 +61,7 @@ class Checker extends Phase:
     units0
   end runOn
 
-  def run(using Context): Unit = unsupported("run")
+  override protected def run(using Context): Unit = unsupported("run")
 
   class InitTreeTraverser extends TreeTraverser:
     private val classes: mutable.ArrayBuffer[ClassSymbol] = new mutable.ArrayBuffer

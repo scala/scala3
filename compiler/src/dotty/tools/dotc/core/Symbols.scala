@@ -25,7 +25,7 @@ import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile}
 import scala.annotation.internal.sharable
 import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
@@ -105,7 +105,7 @@ object Symbols extends SymUtils {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      if checkedPeriod.code == ctx.period.code then lastDenot
+      if checkedPeriod == ctx.period then lastDenot
       else computeDenot(lastDenot)
     }
 
@@ -386,8 +386,8 @@ object Symbols extends SymUtils {
     final def span: Span = if (coord.isSpan) coord.toSpan else NoSpan
 
     final def sourcePos(using Context): SourcePosition = {
-      val src = source
-      (if (src.exists) src else ctx.source).atSpan(span)
+      val src = if source.exists then source else ctx.source
+      WrappedSourceFile.sourcePos(src, span)
     }
 
     /** This positioned item, widened to `SrcPos`. Used to make clear we only need the

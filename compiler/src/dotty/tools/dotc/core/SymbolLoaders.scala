@@ -153,7 +153,9 @@ object SymbolLoaders {
       def enterScanned(unit: CompilationUnit)(using Context) = {
 
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
-          val ok = filePath == path
+          // Ignore empty packages if necessary so we don't warn on top-level package objects
+          // (such as `package object scala` in the top-level "package.scala" of the standard library)
+          val ok = filePath == path || filePath == path.filter(_ != nme.EMPTY_PACKAGE)
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
@@ -334,8 +336,18 @@ object SymbolLoaders {
             if (packageName.isEmpty) fullName
             else fullName.substring(packageName.length + 1).nn
 
-          enterPackage(root.symbol, name.toTermName,
-            (module, modcls) => new PackageLoader(module, classPath))
+          // If the directory name conflicts with an existing class or object,
+          // verify it actually contains class/tasty files or sub-packages before
+          // treating it as a package. Spurious directories (e.g., created by a
+          // compiler plugin writing non-class files) should not shadow existing
+          // definitions. See #23043.
+          val hasConflict = currentDecls.lookup(name.toTermName) != NoSymbol
+          if !hasConflict
+            || classPath.list(fullName).classesAndSources.nonEmpty
+            || classPath.packages(fullName).nonEmpty
+          then
+            enterPackage(root.symbol, name.toTermName,
+              (module, modcls) => new PackageLoader(module, classPath))
         }
     }
   }

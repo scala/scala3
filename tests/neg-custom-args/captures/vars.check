@@ -16,24 +16,14 @@
    |                        Note that capability `x` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:8 ------------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/vars.scala:25:14 ---------------------------------------
 25 |    a = x => g(x)      // error
-   |        ^^^^^^^^^
-   |        Found:    (x: String) ->{cap3} String
-   |        Required: String ->{cap1} String
-   |
-   |        Note that capability `cap3` cannot flow into capture set {cap1} of variable a.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:26:8 ------------------------------------------
+   |             ^^^^
+   |             Reference `cap3` is not included in the allowed capture set {cap1} of variable a.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/vars.scala:26:8 ----------------------------------------
 26 |    a = g      // error
    |        ^
-   |        Found:    (x: String) ->{cap3} String
-   |        Required: String ->{cap1} String
-   |
-   |        Note that capability `cap3` cannot flow into capture set {cap1} of variable a.
-   |
-   | longer explanation available when compiling with `-explain`
+   |        Reference `cap3` is not included in the allowed capture set {cap1} of variable a.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:28:12 -----------------------------------------
 28 |    b = List(g) // error
    |        ^^^^^^^

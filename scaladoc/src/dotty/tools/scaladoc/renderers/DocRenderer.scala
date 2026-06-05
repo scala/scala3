@@ -83,8 +83,8 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
     case Underline(text) => span(cls:="underline")(renderElement(text))
     case Bold(text) => strong(renderElement(text))
     case Monospace(text) => code(renderElement(text))
-    case Superscript(text) => span(cls:="superscript")(renderElement(text))  // TODO implement style
-    case Subscript(text) => span(cls:="subscript")(renderElement(text))  // TODO implement style
+    case Superscript(text) => sup(renderElement(text))
+    case Subscript(text) => sub(renderElement(text))
     case Link(target, body) =>
       renderLink(target, default => body.fold[TagArg](default)(renderElement))
     case Text(text) => raw(text.escapeReservedTokens)

@@ -39,9 +39,9 @@ import scala.language.implicitConversions
  *  on a map that will no longer have elements removed but will be
  *  used heavily may save both time and storage space.
  *
- *  This map is not intended to contain more than 2^29^ entries (approximately
- *  500 million).  The maximum capacity is 2^30^, but performance will degrade
- *  rapidly as 2^30^ is approached.
+ *  This map is not intended to contain more than 2<sup>29</sup> entries (approximately
+ *  500 million).  The maximum capacity is 2<sup>30</sup>, but performance will degrade
+ *  rapidly as 2<sup>30</sup> is approached.
  */
 @(deprecated @companionClass)("Use `scala.collection.mutable.HashMap` instead for better performance.", since = "2.13.16")
 class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initialBufferSize: Int, initBlank: Boolean)

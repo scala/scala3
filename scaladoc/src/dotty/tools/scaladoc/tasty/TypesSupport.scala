@@ -550,6 +550,14 @@ trait TypesSupport:
       case ThisType(_)            => List(Keyword("this"))
       case t                      => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
 
+  protected def emitCaptureRefsSignature(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+    refs match
+      case Nil => Nil
+      case _ =>
+        refs
+          .map(emitCapability(_, skipThisTypePrefix))
+          .reduce((left, right) => left ++ (Plain(", ") :: right))
+
   private def emitCaptureSet(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean, omitCap: Boolean = true)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
     refs match

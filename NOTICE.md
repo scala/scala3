@@ -105,4 +105,4 @@ major authors were omitted by oversight.
 [3] https://github.com/sbt/sbt/tree/0.13/compile/interface/src/main/scala/xsbt
 [4] https://github.com/scoverage/scalac-scoverage-plugin
 [5] https://github.com/scalameta/metals
-[6] https://github.com/scala/scala3/pull/5783/files
+[6] https://github.com/scalapb/protobuf-scala-runtime

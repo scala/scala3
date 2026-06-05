@@ -97,7 +97,7 @@ public final class Statics {
    * to preserve equals/hashCode alignment without compromising
    * the hashCode distribution, so Floats are only guaranteed
    * to have the same hashCode for whole Floats in the range
-   * Short.MinValue to Short.MaxValue (2^16 total.)
+   * Short.MinValue to Short.MaxValue (2<sup>16</sup> total.)
    *
    * Double has its hashCode altered to match the entire Int range,
    * but is not guaranteed beyond that.  (But could/should it be?

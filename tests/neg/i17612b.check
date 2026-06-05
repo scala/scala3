@@ -1,33 +1,49 @@
--- Warning: tests/neg/i17612b/i17612b.scala:21:15 ----------------------------------------------------------------------
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:21:15 --------------------------------------------------------
 21 |	class Derived(x : Int, x3: Int, y: Int, z2: Int) extends BaseB, BaseC(x3), Base(x, y + 1, z2): // warn // warn / for x, y translated to private[this] x field & shadowing var Base.x, Base.y
    |	              ^
    |	              value x in class Derived shadows field x inherited from trait Base
--- Warning: tests/neg/i17612b/i17612b.scala:21:33 ----------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:21:33 --------------------------------------------------------
 21 |	class Derived(x : Int, x3: Int, y: Int, z2: Int) extends BaseB, BaseC(x3), Base(x, y + 1, z2): // warn // warn / for x, y translated to private[this] x field & shadowing var Base.x, Base.y
    |	                                ^
    |	                                value y in class Derived shadows field y inherited from trait Base
--- Warning: tests/neg/i17612b/i17612b.scala:23:2 -----------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:23:2 ---------------------------------------------------------
 23 |		private val shadowed2 = 2 + 2 // warn (In Scala 2 we cannot do that got the warning)
    |		^
    |		value shadowed2 in class Derived shadows field shadowed2 inherited from trait Base
--- Warning: tests/neg/i17612b/i17612b.scala:24:2 -----------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:24:2 ---------------------------------------------------------
 24 |		private[this] val shadowed3 = 3 + 3 // warn
    |		^
    |		value shadowed3 in class Derived shadows field shadowed3 inherited from trait Base
--- Warning: tests/neg/i17612b/i17612b.scala:26:2 -----------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:26:2 ---------------------------------------------------------
 26 |		private val shadowed5 = 5 + 5 // warn
    |		^
    |		value shadowed5 in class Derived shadows field shadowed5 inherited from trait Base
--- Warning: tests/neg/i17612b/i17612b.scala:41:20 ----------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:41:20 --------------------------------------------------------
 41 |	class UnderDerived(x: Int, y: Int, z: Int) extends Derived(x, 1, y, z) // warn // warn // warn
    |	                   ^
    |	                   value x in class UnderDerived shadows field x inherited from trait Base
--- Warning: tests/neg/i17612b/i17612b.scala:41:28 ----------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:41:28 --------------------------------------------------------
 41 |	class UnderDerived(x: Int, y: Int, z: Int) extends Derived(x, 1, y, z) // warn // warn // warn
    |	                           ^
    |	                           value y in class UnderDerived shadows field y inherited from trait Base
--- Warning: tests/neg/i17612b/i17612b.scala:41:36 ----------------------------------------------------------------------
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E227] Naming Warning: tests/neg/i17612b/i17612b.scala:41:36 --------------------------------------------------------
 41 |	class UnderDerived(x: Int, y: Int, z: Int) extends Derived(x, 1, y, z) // warn // warn // warn
    |	                                   ^
    |	                                   value z in class UnderDerived shadows field z inherited from trait Base
+   |
+   | longer explanation available when compiling with `-explain`
 No warnings can be incurred under -Werror

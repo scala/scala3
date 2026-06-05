@@ -110,6 +110,9 @@ object JavaParsers {
     def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
 
+    def classOf(tpt: Tree): Tree =
+      TypeApply(Select(scalaDot(nme.Predef), nme.classOf), List(tpt))
+
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def UnitTpt(): Tree = TypeTree(defn.UnitType)
 
@@ -373,18 +376,13 @@ object JavaParsers {
       * but instead we skip entire annotation silently.
       */
     def annotation(): Option[Tree] = {
-      def classOrId(): Tree =
-        val id = qualId()
+      def classOrId(tree: RefTree | TypedSplice): Tree =
         if in.token == DOT && in.lookaheadToken == CLASS then
-          accept(DOT)
-          accept(CLASS)
-          TypeApply(
-            Select(
-              scalaDot(nme.Predef),
-              nme.classOf),
-            convertToTypeId(id) :: Nil
-          )
-        else id
+          accept(DOT) ; accept(CLASS)
+          tree match
+            case id: RefTree => classOf(convertToTypeId(tree))
+            case tree: TypedSplice => classOf(tree)
+        else tree
 
       def array(): Option[Tree] =
         accept(LBRACE)
@@ -406,8 +404,24 @@ object JavaParsers {
             case AT =>
               in.nextToken()
               annotation()
-            case IDENTIFIER => Some(classOrId())
             case LBRACE => array()
+            case IDENTIFIER => Some(classOrId(qualId()))
+            case BYTE    =>
+              accept(BYTE); Some(classOrId(TypeTree(ByteType)))
+            case SHORT   =>
+              accept(SHORT); Some(classOrId(TypeTree(ShortType)))
+            case CHAR    =>
+              accept(CHAR); Some(classOrId(TypeTree(CharType)))
+            case INT     =>
+              accept(INT); Some(classOrId(TypeTree(IntType)))
+            case LONG    =>
+              accept(LONG); Some(classOrId(TypeTree(LongType)))
+            case FLOAT   =>
+              accept(FLOAT); Some(classOrId(TypeTree(FloatType)))
+            case DOUBLE  =>
+              accept(DOUBLE); Some(classOrId(TypeTree(DoubleType)))
+            case BOOLEAN =>
+              accept(BOOLEAN); Some(classOrId(TypeTree(BooleanType)))
             case _ => None
           }
         }
@@ -446,11 +460,11 @@ object JavaParsers {
       }
     }
 
-    def modifiers(inInterface: Boolean): Modifiers = {
+    def modifiers(inInterface: Boolean, annots0: List[Tree] = Nil): Modifiers = {
       var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
-      var annots = new ListBuffer[Tree]
+      var annots = ListBuffer.from[Tree](annots0)
       def addAnnot(tpt: Tree) =
         annots += atSpan(in.offset) {
           in.nextToken()
@@ -1090,19 +1104,23 @@ object JavaParsers {
       }
     }
 
-    /** CompilationUnit ::= [package QualId semi] TopStatSeq
+    /** CompilationUnit ::= {Annotation} [package QualId semi] {Import} {TypeDecl}
       */
     def compilationUnit(): Tree = {
-      val start = in.offset
+      val buf = ListBuffer.empty[Tree]
+      var start = in.offset
+      val leadingAnnots = if (in.token == AT) annotations() else Nil
       val pkg: RefTree =
-        if (in.token == AT || in.token == PACKAGE) {
-          annotations()
+        if in.token == PACKAGE then
+          if leadingAnnots.nonEmpty then
+            start = in.offset
           accept(PACKAGE)
           val pkg = qualId()
           accept(SEMI)
           pkg
-        }
         else
+          if leadingAnnots.nonEmpty then
+            buf ++= typeDecl(start, modifiers(inInterface = false, annots0 = leadingAnnots))
           Ident(nme.EMPTY_PACKAGE)
       thisPackageName = convertToTypeName(pkg) match {
         case Some(t)  => t.name.toTypeName
@@ -1115,9 +1133,9 @@ object JavaParsers {
           val ts = termDecl(start, mods, CLASS)
           if (ts.nonEmpty) compact = true
           Nil
-      val buf = new ListBuffer[Tree]
-      while (in.token == IMPORT)
-        buf ++= importDecl()
+      if buf.isEmpty then
+        while (in.token == IMPORT)
+          buf ++= importDecl()
       while (in.token != EOF && in.token != RBRACE) {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {

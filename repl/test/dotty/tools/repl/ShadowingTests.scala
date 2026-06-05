@@ -25,7 +25,7 @@ import vulpix.{TestConfiguration, TestFlags}
  *  and running scripted REPL tests with them on the claspath.
  */
 object ShadowingTests:
-  def classpath = TestConfiguration.basicClasspath + File.pathSeparator + shadowDir
+  def classpath = TestConfiguration.replClassPath + File.pathSeparator + shadowDir
   def options = ReplTest.commonOptions ++ Array("-classpath", classpath)
   def shadowDir = dir.toAbsolutePath.toString
 
@@ -99,13 +99,13 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |1 error found
          |
          |scala> new C(13).c
-         |val res0: Int = 13
+         |val res1: Int = 13
          |
          |scala> class C { val c = 42 }
          |// defined class C
          |
          |scala> new C().c
-         |val res1: Int = 42
+         |val res2: Int = 42
          |""".stripMargin
   )
 

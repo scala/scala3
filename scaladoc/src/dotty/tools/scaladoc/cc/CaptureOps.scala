@@ -227,6 +227,16 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
   if traverse(typ0) then Some(buffer.toList) else None
 end decomposeCaptureRefs
 
+def retainedCaptureRefs(using qctx: Quotes)(annot: qctx.reflect.Term): Option[List[qctx.reflect.TypeRepr]] =
+  import qctx.reflect._
+  if annot.tpe.typeSymbol == CaptureDefs.retainsCap then
+    Some(CaptureDefs.captureRoot.termRef :: Nil)
+  else if annot.tpe.typeSymbol.isRetains then
+    annot.tpe.typeArgs match
+      case CaptureSetType(refs) :: Nil => Some(refs)
+      case _ => None
+  else None
+
 object CaptureSetType:
   def unapply(using qctx: Quotes)(tt: qctx.reflect.TypeRepr): Option[List[qctx.reflect.TypeRepr]] = decomposeCaptureRefs(tt)
 end CaptureSetType

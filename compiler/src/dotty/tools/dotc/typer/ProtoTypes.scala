@@ -955,6 +955,13 @@ object ProtoTypes {
     }
   }
 
+  def containsTypeParamRef(tp: Type)(using Context): Boolean =
+    tp.stripped match {
+      case tr: TypeParamRef => true
+      case AppliedType(_, args) => args.exists(containsTypeParamRef)
+      case _ => false
+    }
+
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
@@ -962,7 +969,9 @@ object ProtoTypes {
     tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound
+      val isImplicitTermRef = tp.isInstanceOf[TermRef] && tp.symbol.maybeOwner.isAnonymousFunction && tp.symbol.isParamOrAccessor && tp.symbol.is(Flags.Given) && containsTypeParamRef(tp.superType)
       if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds)
+      else if (isImplicitTermRef) wildApprox(tp.underlying, theMap, seen, internal)
       else if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen, internal))
     case tp @ AppliedType(tycon, args) =>

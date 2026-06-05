@@ -79,7 +79,7 @@ class CrossVersionChecks extends MiniPhase:
     for parent <- parents
         psym = parent.tpe.classSymbol
         annot <- psym.getAnnotation(defn.DeprecatedInheritanceAnnot)
-        if !skipWarning(psym)
+        if !skipDeprecation(psym)
     do
       val msg = annot.argumentConstantString(0).map(msg => s": $msg").getOrElse("")
       val since = annot.argumentConstantString(1).map(version => s" (since: $version)").getOrElse("")
@@ -218,12 +218,12 @@ object CrossVersionChecks:
       val composed = em"${annotee.showLocated} is deprecated${since}${message}"
       report.deprecationWarning(composed, pos, origin = annotee.showFullName)
     sym.getAnnotation(defn.DeprecatedAnnot) match
-      case Some(annot) => if !skipWarning(sym) then warn(sym, annot)
+      case Some(annot) => if !skipDeprecation(sym) then warn(sym, annot)
       case _ =>
         if sym.isAllOf(SyntheticMethod) then
           val companion = sym.owner.companionClass
           if companion.is(CaseClass) then
-            for annot <- companion.getAnnotation(defn.DeprecatedAnnot) if !skipWarning(sym) do
+            for annot <- companion.getAnnotation(defn.DeprecatedAnnot) if !skipDeprecation(sym) do
               warn(companion, annot)
 
   /** Decide whether the deprecation of `sym` should be ignored in this context.
@@ -244,7 +244,7 @@ object CrossVersionChecks:
    *  class (or its companion) is either the deprecated case class
    *  or the case class of the deprecated element.
    */
-  private def skipWarning(sym: Symbol)(using Context): Boolean =
+  def skipDeprecation(sym: Symbol)(using Context): Boolean =
 
     // is the owner an enum or its companion and also the owner of sym
     def isEnumOwner(owner: Symbol)(using Context) =
@@ -272,4 +272,4 @@ object CrossVersionChecks:
       owner.is(Synthetic) && symIsCaseOrMember
 
     siteIsSyntheticCaseClassMember || siteIsEnclosedByDeprecatedElement
-  end skipWarning
+  end skipDeprecation

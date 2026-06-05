@@ -19,8 +19,9 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.BuildFrom
 import scala.collection.immutable.LazyList
 import scala.language.implicitConversions
+import language.experimental.captureChecking
 
-class Random(val self: java.util.Random) extends AnyRef with Serializable {
+class Random(val self: java.util.Random^) extends AnyRef with Serializable {
   /** Creates a new random number generator using a single long seed. */
   def this(seed: Long) = this(new java.util.Random(seed))
 
@@ -39,14 +40,14 @@ class Random(val self: java.util.Random) extends AnyRef with Serializable {
    *  array.
    */
   def nextBytes(bytes: Array[Byte]): Unit = { self.nextBytes(bytes) }
-  
+
   /** Generates `n` random bytes and returns them in a new array. */
   def nextBytes(n: Int): Array[Byte] = {
     val bytes = new Array[Byte](0 max n)
     self.nextBytes(bytes)
     bytes
   }
-  
+
   /** Returns the next pseudorandom, uniformly distributed double value
    *  between 0.0 and 1.0 from this random number generator's sequence.
    */

@@ -47,12 +47,13 @@ enum MessageFilter:
   case Origin(pattern: Regex)
 
 enum Action:
-  case Error, Warning, Verbose, Info, Silent
+  case Error, Warning, Verbose, Info, Silent, Default
 
 final case class WConf(confs: List[(List[MessageFilter], Action)]):
-  def action(message: Diagnostic): Action = confs.collectFirst {
-    case (filters, action) if filters.forall(_.matches(message)) => action
-  }.getOrElse(Action.Warning)
+  def action(message: Diagnostic): Action =
+    confs.collectFirst:
+      case (filters, action) if filters.forall(_.matches(message)) => action
+    .getOrElse(Action.Default)
 
 object WConf:
   import Action.*

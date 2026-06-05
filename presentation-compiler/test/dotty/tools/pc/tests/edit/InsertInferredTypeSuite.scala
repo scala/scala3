@@ -44,6 +44,17 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |}""".stripMargin
     )
 
+  @Test def `java-enum` =
+    checkEdit(
+      """|object A{
+         |  final val <<javaEnum>> = java.util.Locale.Category.DISPLAY
+         |}""".stripMargin,
+      """|import java.util.Locale.Category
+         |object A{
+         |  final val javaEnum: Category = java.util.Locale.Category.DISPLAY
+         |}""".stripMargin
+    )
+
   @Test def `wrong-val2` =
     checkEdit(
       """|object A{

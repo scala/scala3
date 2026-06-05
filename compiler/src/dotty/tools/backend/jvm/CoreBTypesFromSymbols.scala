@@ -208,7 +208,7 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess)(using val ct
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
         else {
           val original = innerClassSym.initial
-          Some(atPhase(original.validFor.phaseId)(innerClassSym.name).mangledString) // moduleSuffix for module classes
+          Some(atPhase(original.validFor.lastPhaseId)(innerClassSym.name).mangledString) // moduleSuffix for module classes
         }
       }
 

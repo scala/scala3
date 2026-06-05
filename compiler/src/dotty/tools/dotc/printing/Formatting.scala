@@ -6,7 +6,7 @@ import core.*
 import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*
 import reporting.Message
-import util.{DiffUtil, SimpleIdentitySet}
+import util.{Chars, DiffUtil, SimpleIdentitySet}
 import Highlighting.*
 
 object Formatting {
@@ -182,7 +182,8 @@ object Formatting {
     }
 
     def assemble(args: Seq[Shown])(using Context): String = {
-      def isLineBreak(c: Char) = c == '\n' || c == '\f' // compatible with StringLike#isLineBreak
+      // compatible with CharArrayReader (not StringOps)
+      inline def isLineBreak(c: Char) = c == Chars.LF || c == Chars.FF
       def stripTrailingPart(s: String) = {
         val (pre, post) = s.span(c => !isLineBreak(c))
         pre ++ post.stripMargin

@@ -23,7 +23,7 @@ object RecMap {
   def main(args: Array[String]) =
     import Record._
 
-    val foo: Any = Rec.empty.fetch("foo") // TODO
+    val foo: Any = Rec.empty.fetch("foo") // warn
     //                            ^
     // Match type reduction failed since selector  EmptyTuple.type
     // matches none of the cases

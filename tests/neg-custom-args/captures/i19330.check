@@ -12,6 +12,20 @@
    |    Note that capability `t` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:22:22 ---------------------------------------
+22 |  val bad: bar.T = foo(bar) // error
+   |                   ^^^^^^^^
+   |                   Found:    bar.T
+   |                   Required: () ->{any} Logger^
+   |
+   |                   Note that capability `any²` cannot flow into capture set {any}
+   |                   because any² in class Bar is not visible from any in value bad.
+   |
+   |                   where:    ^    refers to a root capability in the type of value bad
+   |                             any  is a root capability in the type of value bad
+   |                             any² is a root capability in the type of type T
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------
 16 |    val t: () => Logger^ = () => l // error
    |           ^^^^^^^^^^^^^

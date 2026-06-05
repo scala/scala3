@@ -142,7 +142,8 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends Inspector:
     )
     "scala" -> aM.copy(
       kind = Kind.Class(Nil, Nil),
-      members = objectMembers
+      members = objectMembers,
+      modifiers = defn.ObjectClass.getExtraModifiers()
     )
 
 object ScaladocTastyInspector:
@@ -199,7 +200,6 @@ case class TastyParser(
     defn.AnyClass,
     defn.MatchableClass,
     defn.ScalaPackage.typeMember("AnyKind"),
-    defn.AnyValClass,
     defn.NullClass,
     defn.NothingClass,
     defn.ScalaPackage.typeMember("Singleton"),

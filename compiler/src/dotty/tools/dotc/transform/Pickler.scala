@@ -261,7 +261,7 @@ class Pickler extends Phase {
     if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX)
     else cls.binaryClassName
 
-  override def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     val isBestEffort = ctx.reporter.errorsReported || ctx.usedBestEffortTasty
     pickling.println(i"unpickling in run ${ctx.runId}")

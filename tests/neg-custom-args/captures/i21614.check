@@ -13,12 +13,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
 15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |Capability `_$1` outlives its scope: it leaks into outer capture set 's1 which is owned by method mkLoggers2.
+   |Capability `fresh` outlives its scope: it leaks into outer capture set 's1 which is owned by method mkLoggers2.
    |The leakage occurred when trying to match the following types:
    |
-   |Found:    (_$1: File^{C}) ->{C} Logger{val f: File^{_$1}}^{_$1}
+   |Found:    (_$1: File^{C}) ->{C} Logger{val f: File^{_$1}}^{fresh², _$1}
    |Required: File^{C} => Logger{val f: File^'s2}^'s1
    |
-   |where:    => refers to a root capability created in method mkLoggers2 when checking argument to parameter f of method map
+   |where:    =>     refers to a root capability created in method mkLoggers2 when checking argument to parameter f of method map
+   |          fresh  is a root capability associated with the result type of (_$1: File^{C}): Logger{val f: File^'s2}^'s1
+   |          fresh² is a root capability associated with the result type of (_$1: File^{C}): Logger{val f: File^{_$1}}^{fresh², _$1}
    |
    | longer explanation available when compiling with `-explain`

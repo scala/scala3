@@ -1,5 +1,5 @@
 trait Foo
-trait Bar extends Foo, caps.Stateful
+trait Bar extends Foo, caps.Mutable
 
 def Test =
 

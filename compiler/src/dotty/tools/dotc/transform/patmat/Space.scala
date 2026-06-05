@@ -48,10 +48,14 @@ import SpaceEngine.*
  *
  */
 
+/** A key to be used in a context property that caches the results of isSubspace checks */
+private val IsSubspaceCacheKey = new Property.Key[mutable.HashMap[(Space, Space), Boolean]]
+
+/** A key to track which case classes are currently being expanded in simplify, to prevent infinite recursion */
+private val ExpandingCaseClassesKey = new Property.Key[mutable.Set[Symbol]]
+
 /** space definition */
 sealed trait Space extends Showable:
-
-  @sharable private val isSubspaceCache = mutable.HashMap.empty[Space, Boolean]
 
   def isSubspace(b: Space)(using Context): Boolean =
     val a = this
@@ -60,7 +64,8 @@ sealed trait Space extends Showable:
     if (a ne a2) || (b ne b2) then a2.isSubspace(b2)
     else if a == Empty then true
     else if b == Empty then false
-    else isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(a, b))
+    else
+      ctx.property(IsSubspaceCacheKey).get.getOrElseUpdate((a, b), computeIsSubspace(a, b))
 
   @sharable private var mySimplified: Space | Null = null
 
@@ -132,9 +137,38 @@ object SpaceEngine {
       else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case typ: Typ =>
       if decompose(typ).isEmpty then Empty
-      else space
+      else
+        val cls = typ.tp.classSymbol
+        ctx.property(ExpandingCaseClassesKey) match
+          case Some(expanding)
+            if cls.is(CaseClass) && !cls.isOneOf(AbstractOrTrait) && !expanding.contains(cls) =>
+            expanding += cls
+            try
+              expandCaseClass(typ.tp) match
+                case null => space
+                case prod => if prod.simplify == Empty then Empty else space
+            finally expanding -= cls
+          case _ => space
     case _ => space
   })
+
+  /** Try to expand a case class type into a Prod space with its field types.
+   *  Returns null if the expansion is not possible (no companion, custom unapply, etc). */
+  private def expandCaseClass(tp: Type)(using Context): Prod | Null =
+    val cls = tp.classSymbol
+    val companion = cls.companionModule
+    if !companion.exists then return null
+    val companionRef = companion.termRef
+    val unapplyDenot = companionRef.member(nme.unapply)
+    if !unapplyDenot.exists
+      || unapplyDenot.hasAltWith(!_.symbol.is(Synthetic))
+      || companionRef.member(nme.unapplySeq).exists
+    then return null
+    val fun = TermRef(companionRef, nme.unapply, unapplyDenot)
+    val arity = productArity(tp)
+    if arity <= 0 then return null
+    val sig = signature(fun, tp, arity)
+    Prod(tp, fun, sig.map(Typ(_, false)))
 
   /** Remove a space if it's a subspace of remaining spaces
    *
@@ -684,7 +718,7 @@ object SpaceEngine {
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
               List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
-            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
+            else if child.is(Sealed) && child.isOneOf(AbstractOrTrait) then getChildren(child)
             else List(child)
           }
         val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol))
@@ -859,7 +893,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) ||
+      classSym.is(Case) || tpw.isNamedTupleType ||
       (tpw.isInstanceOf[TypeRef] && {
         val tref = tpw.asInstanceOf[TypeRef]
         tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
@@ -950,8 +984,8 @@ object SpaceEngine {
           if prev == Empty && covered == Empty then // defer until a case is reachable
             recur(rest, prevs, pat :: deferred)
           else
-            for pat <- deferred.reverseIterator
-            do report.warning(MatchCaseUnreachable(), pat.srcPos)
+            for deferral <- deferred.reverseIterator
+            do report.warning(MatchCaseUnreachable(), deferral.srcPos)
 
             if pat != EmptyTree // rethrow case of catch uses EmptyTree
                 && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
@@ -977,6 +1011,11 @@ object SpaceEngine {
   end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
-    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
-    if reachabilityCheckable(m.selector) then checkReachability(m)
+    inContext(ctx.withProperty(IsSubspaceCacheKey, Some(mutable.HashMap.empty))) {
+      if exhaustivityCheckable(m.selector) then
+        inContext(ctx.withProperty(ExpandingCaseClassesKey, Some(mutable.Set.empty))) {
+          checkExhaustivity(m)
+        }
+      if reachabilityCheckable(m.selector) then checkReachability(m)
+    }
 }

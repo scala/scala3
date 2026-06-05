@@ -1,5 +1,7 @@
 // scalajs: --skip
 
+import scala.util.Properties.isJavaAtLeast
+
 class ValueClass(val i: Integer) extends AnyVal
 class SomeClass
 
@@ -38,7 +40,10 @@ object Test {
     println("\nFunctions:")
     // FunctionN.getClass.toString has form of "class Test$$$Lambda$N/1349414238",
     // but "N/1349414238" depends on environment
-    println(f1.getClass.toString.take("class Test$$$Lambda$".length))
-    println(f2.getClass.toString.take("class Test$$$Lambda$".length))
+    val lambda = if isJavaAtLeast(21) then "class Test$$$Lambda/" else "class Test$$$Lambda$"
+    assert(f1.getClass.toString.take("class Test$$$Lambda$".length) == lambda)
+    assert(f2.getClass.toString.take("class Test$$$Lambda$".length) == lambda)
+    println("class Test$$$Lambda$")
+    println("class Test$$$Lambda$")
   }
 }

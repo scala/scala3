@@ -46,7 +46,7 @@ object any extends Capability
 @experimental
 object fresh extends Capability
 
-@experimental // TODO: Drop once we bootstrap with 3.8.2
+@experimental // TODO: Drop once we bootstrap with 3.8.4 (is still being used by non-bootstrap compiler)
 @deprecated
 object cap extends Capability
 
@@ -90,20 +90,20 @@ trait Control extends SharedCapability, Classifier
  *  These  classes typically contain mutable variables and/or update methods.
  */
 @experimental
-trait Stateful extends ExclusiveCapability
+trait Stateful
 
 /** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
  *  extending Separate is created, a fresh `any` is automatically added to the value's capture set.
  */
-@experimental
-trait Separate extends Stateful
+@experimental @deprecated
+trait Separate extends Stateful, ExclusiveCapability
 
 /** Marker trait for classes that are not subject to scoping restrictions of captured capabilities. */
 @experimental
-trait Unscoped extends Stateful, Classifier
+trait Unscoped extends ExclusiveCapability, Classifier
 
 @experimental
-trait Mutable extends Stateful, Separate, Unscoped
+trait Mutable extends Stateful, Unscoped
 
 /** Marker trait for classes with reader methods, typically extended by Mutable classes. */
 @experimental

@@ -6,7 +6,7 @@ import core.*
 import Symbols.*
 import Annotations.*
 import util.Spans.NoSpan
-import util.SrcPos
+import util.{Property, SrcPos}
 import Contexts.Context
 import Constants.Constant
 import Decorators.*
@@ -15,10 +15,18 @@ import SymDenotations.*
 import Flags.*
 import Types.*
 import config.Feature
+import config.Printers.capt
 import typer.ProtoTypes.SelectionProto
 
 /** Check whether references from safe mode should be allowed */
 object SafeRefs {
+  
+  val SkipAnnotsInType: Property.Key[Unit] = Property.Key()
+
+  val assumedSafePackages = List(
+    "scala", "scala.runtime", "scala.collection.immutable", "scala.compiletime.ops",
+    "scala.math", "scala.util", "java.math", "java.time",
+  )
 
   private def rejectSafe(sym: Symbol)(using Context): Unit =
     if !sym.infoOrCompleter.isInstanceOf[StubInfo] then
@@ -51,10 +59,13 @@ object SafeRefs {
    */
   def init()(using Context): Unit =
     assumeSafe("scala.Predef", except = List("print", "println", "printf"))
+    assumeSafe("scala.runtime.coverage.Invoker")
+    assumeSafe("scala.util.Properties", except = List("setProp", "clearProp", "main"))
     assumeSafe("java.lang.Object")
     assumeSafe("java.lang.Boolean")
     assumeSafe("java.lang.Byte")
     assumeSafe("java.lang.Char")
+    assumeSafe("java.lang.Character")
     assumeSafe("java.lang.Short")
     assumeSafe("java.lang.Integer")
     assumeSafe("java.lang.Long")
@@ -67,6 +78,9 @@ object SafeRefs {
     assumeSafe("java.lang.String")
     assumeSafe("java.lang.Throwable")
     assumeSafe("java.lang.Void")
+    assumeSafe("java.lang.Exception")
+    assumeSafe("java.lang.CharSequence")
+    assumeSafe("java.lang.Comparable")
     assumeSafe("java.lang.Class", except = List(
       "accessFlags", "asSubclass", "cast", "describeConstable",
       "descriptorString", "desiredAssertionStatus", "forName", "forPrimitiveName", "getAnnotatedInterfaces",
@@ -79,25 +93,62 @@ object SafeRefs {
       "getPackage", "getPackageName", "getPermittedSubclasses", "getProtectionDomain", "getRecordComponents",
       "getResource", "getResourceAsStream", "getSigners", "getTypeParameters", "getTypeName",
       "newInstance", "cast", "toGenericString"))
+    assumeSafe("java.util.Locale", except = List("setDefault"))
+    assumeSafe("java.util.TimeZone", except = List("setDefault", "setID", "setRawOffset"))
+    assumeSafe("java.util.UUID", except = List("randomUIID"))
+    assumeSafe("java.util.Objects")
+    assumeSafe("java.util.Optional")
+    assumeSafe("java.util.OptionalInt")
+    assumeSafe("java.util.OptionalLong")
+    assumeSafe("java.util.OptionalDouble")
+    assumeSafe("scala.reflect.ClassTag")
+
     rejectSafe("scala.Console")
     rejectSafe("scala.unchecked")
-    rejectSafe("scala.annoation.unchecked.uncheckedOverride")
+    rejectSafe("scala.annotation.unchecked.uncheckedOverride")
     rejectSafe("scala.annotation.unchecked.uncheckedStable")
     rejectSafe("scala.annotation.unchecked.uncheckedVariance")
     rejectSafe("scala.annotation.unchecked.uncheckedCaptures")
+    rejectSafe("scala.util.DynamicVariable")
+    rejectSafe("scala.util.Using") // todo capture check Using
 
-  def isAssumedSafe(sym: Symbol)(using Context): Boolean =
-    sym.hasAnnotation(defn.AssumeSafeAnnot)
-    || sym.topLevelClass.maybeOwner == defn.ScalaPackageClass
-    || sym.isContainedIn(defn.ScalaCollectionImmutablePackageClas)
-    || sym.isContainedIn(defn.ScalaRuntimePackageClass)
+    // Reject mutable classes in scala.runtime
+    rejectSafe("scala.runtime.BooleanRef")
+    rejectSafe("scala.runtime.ByteRef")
+    rejectSafe("scala.runtime.CharRef")
+    rejectSafe("scala.runtime.DoubleRef")
+    rejectSafe("scala.runtime.FloatRef")
+    rejectSafe("scala.runtime.IntRef")
+    rejectSafe("scala.runtime.LongRef")
+    rejectSafe("scala.runtime.ShortRef")
+    rejectSafe("scala.runtime.ObjectRef")
+    rejectSafe("scala.runtime.VolatileBooleanRef")
+    rejectSafe("scala.runtime.VolatileByteRef")
+    rejectSafe("scala.runtime.VolatileCharRef")
+    rejectSafe("scala.runtime.VolatileDoubleRef")
+    rejectSafe("scala.runtime.VolatileFloatRef")
+    rejectSafe("scala.runtime.VolatileIntRef")
+    rejectSafe("scala.runtime.VolatileLongRef")
+    rejectSafe("scala.runtime.VolatileShortRef")
+    rejectSafe("scala.runtime.VolatileObjectRef")
+    rejectSafe("scala.runtime.LazyRef")
+    rejectSafe("scala.runtime.LazyBoolean")
+    rejectSafe("scala.runtime.LazyByte")
+    rejectSafe("scala.runtime.LazyChar")
+    rejectSafe("scala.runtime.LazyShort")
+    rejectSafe("scala.runtime.LazyInt")
+    rejectSafe("scala.runtime.LazyLong")
+    rejectSafe("scala.runtime.LazyFloat")
+    rejectSafe("scala.runtime.LazyDouble")
+    rejectSafe("scala.runtime.LazyUnit")
 
   private def fail(sym: Symbol, reason: String, pos: SrcPos)(using Context) =
-    report.error(em"Cannot refer to ${sym.sanitizedDescription} from safe code since $reason", pos)
+    report.error(em"Cannot refer to ${sym.sanitizedDescription}${sym.showExtendedLocation} from safe code since $reason", pos)
     false
 
   private def checkNotRejected(sym: Symbol, pos: SrcPos)(using Context): Boolean =
-    sym.getAnnotation(defn.RejectSafeAnnot) match
+    if !sym.exists then true
+    else sym.getAnnotation(defn.RejectSafeAnnot) match
       case Some(annot) =>
         val message = annot.argumentConstantString(0).getOrElse("")
           fail(sym, if message.nonEmpty then message else i"it is tagged @rejectSafe", pos)
@@ -107,16 +158,27 @@ object SafeRefs {
   def checkSafe(tree: Tree, pt: Type)(using Context): Unit = {
 
     def isSafe(sym: Symbol): Boolean =
-      !sym.is(Package)
-      && (
-        isAssumedSafe(sym)
-        || isSafe(if sym.is(ModuleVal) then sym.moduleClass else sym.owner))
+      if !sym.exists then false
+      else if sym.is(Package) then
+        defn.assumedSafePackages.contains(sym)
+      else
+        sym.hasAnnotation(defn.AssumeSafeAnnot)
+        || isSafe(if sym.is(ModuleVal) then sym.moduleClass else sym.owner)
 
     val (sym, checkLater) = tree match
-      case tree: New => (tree.tpt.symbol, false)
-      case tree: RefTree => (tree.symbol, !tree.symbol.is(Method) && pt.isInstanceOf[SelectionProto])
+      case tree: New =>
+        (tree.tpt.tpe.classSymbol, false)
+      case tree: RefTree =>
+        val checkLater =
+          !tree.symbol.is(Method)
+          && pt.match
+            case pt: PathSelectionProto => pt.selector.isStatic
+            case _: SelectionProto => true
+            case _ => false
+        (tree.symbol, checkLater)
 
     if Feature.safeEnabled
+        && sym.exists
         && checkNotRejected(sym, tree.srcPos)
         && !checkLater
         && sym.isStatic // if it's not static it is local, a parameter, or comes from another symbol,
@@ -125,6 +187,8 @@ object SafeRefs {
         && !isSafe(sym)
     then
       fail(sym, "it is neither compiled in safe mode nor tagged with @assumedSafe", tree.srcPos)
+    else
+      capt.println(i"checked safe $tree, $sym, $checkLater")
   }
 
   private def checkSafeAnnot(ann: Annotation, pos: SrcPos)(using Context): Unit =
@@ -133,7 +197,7 @@ object SafeRefs {
     checkNotRejected(ann.symbol, errpos)
 
   def checkSafeAnnots(sym: Symbol)(using Context): Unit =
-    if Feature.safeEnabled then
+    if Feature.safeEnabled && !sym.is(Synthetic) then
       for ann <- sym.annotations do
         checkSafeAnnot(ann, sym.srcPos)
 
@@ -141,6 +205,6 @@ object SafeRefs {
     def checkAnnotatedType(tp: Type) = tp match
       case AnnotatedType(tp, ann) => checkSafeAnnot(ann, tree.srcPos)
       case _ =>
-    if Feature.safeEnabled then
+    if Feature.safeEnabled && !tree.hasAttachment(SkipAnnotsInType) then
       tree.tpe.foreachPart(checkAnnotatedType(_))
 }

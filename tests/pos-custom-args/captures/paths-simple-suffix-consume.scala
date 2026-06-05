@@ -6,7 +6,7 @@ import caps.*
 class D
 class C(val d: D^)
 class B(val c: C^)
-class A(consume val b: B^) extends Separate
+class A(consume val b: B^) extends Stateful, ExclusiveCapability
 
 // Test 1: Simple suffix paths after consume
 def test1 =

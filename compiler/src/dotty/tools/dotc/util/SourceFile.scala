@@ -12,7 +12,6 @@ import core.Decorators.*
 import scala.io.Codec
 import Chars.*
 import scala.annotation.internal.sharable
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.util.chaining.*
@@ -67,29 +66,38 @@ object WrappedSourceFile:
     case NoHeader
   import MagicHeaderInfo.*
 
-  private val cache: mutable.HashMap[SourceFile, MagicHeaderInfo] = mutable.HashMap.empty
+  /** Convert a (source, span) pair into a SourcePosition, remapping through the
+   *  magic offset header if applicable. */
+  def sourcePos(sourceFile: SourceFile, span: Span)(using Context): SourcePosition =
+    lookupMagicHeader(sourceFile) match
+      case HasHeader(offset, originalFile) if span.exists && span.start >= offset =>
+        originalFile.atSpan(span.shift(-offset))
+      case _ => sourceFile.atSpan(span)
 
-  def locateMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
-    def findOffset: MagicHeaderInfo =
-      val magicHeader = ctx.settings.YmagicOffsetHeader.value
-      if magicHeader.isEmpty then NoHeader
-      else
-        val text = new String(sourceFile.content)
-        val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
-        val regex = s"(?m)^$headerQuoted:(.+)$$".r
-        regex.findFirstMatchIn(text) match
-          case Some(m) =>
-            val markerOffset = m.start
-            val sourceStartOffset = sourceFile.nextLine(markerOffset)
-            val file = ctx.getFile(m.group(1))
-            if file.exists then
-              HasHeader(sourceStartOffset, ctx.getSource(file))
-            else
-              report.warning(em"original source file not found: ${file.path}")
-              NoHeader
-          case None => NoHeader
-    val result = cache.getOrElseUpdate(sourceFile, findOffset)
-    result
+  private def lookupMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
+    val cache = ctx.base.magicHeaderCache
+    cache.lookup(sourceFile) match
+      case null =>
+        val magicHeader = ctx.settings.YmagicOffsetHeader.value
+        val result =
+          if magicHeader.isEmpty then NoHeader
+          else
+            val text = new String(sourceFile.content)
+            val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+            val regex = s"(?m)^$headerQuoted:(.+)$$".r
+            regex.findFirstMatchIn(text) match
+              case Some(m) =>
+                val sourceStartOffset = sourceFile.nextLine(m.start)
+                val file = ctx.getFile(m.group(1))
+                if file.exists then
+                  HasHeader(sourceStartOffset, ctx.getSource(file))
+                else
+                  report.warning(em"original source file not found: ${file.path}")
+                  NoHeader
+              case None => NoHeader
+        cache(sourceFile) = result
+        result
+      case result => result
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile.*

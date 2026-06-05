@@ -3170,6 +3170,10 @@ class JSCodeGen()(using genCtx: Context) {
     val target = targetDefDef.symbol
     val isTargetStatic = isMethodStaticInIR(target)
 
+    // #25342 If we can use js.await, then so can the forcefully inlined target
+    if (methodsAllowingJSAwait.contains(currentMethodSym))
+      methodsAllowingJSAwait += target
+
     // Gen the receiver and arguments
     val genReceiver =
       if isTargetStatic then None

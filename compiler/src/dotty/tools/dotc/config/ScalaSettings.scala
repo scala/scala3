@@ -358,7 +358,7 @@ private sealed trait OptimizerSettings:
   def optAllowSkipCoreModuleInit(using Context): Boolean = optEnabled("allow-skip-core-module-init")
   def optAssumeModulesNonNull(using Context): Boolean = optEnabled("assume-modules-non-null")
   def optAllowSkipClassLoading(using Context): Boolean = optEnabled("allow-skip-class-loading")
-  
+
   val inlineHelp =
     """Inlining requires a list of patterns defining where code can be inlined from: `-opt-inline:p1,p2`. (Use `-opt-inline:help` for more details)
       |
@@ -438,6 +438,7 @@ private sealed trait XSettings:
   val XprintSuspension: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprint-suspension", "Show when code is suspended until macros are compiled.")
   val Xprompt: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xprompt", "Display a prompt after each error (debugging option).")
   val XreplDisableDisplay: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xrepl-disable-display", "Do not display definitions in REPL.")
+  val XreplPrintHeight: Setting[Int] = IntSetting(AdvancedSetting, "Xrepl-print-height", "Set the row height for pretty-printing in the REPL.", 50)
   val XreplInterruptInstrumentation: Setting[String] = StringSetting(
     AdvancedSetting,
     "Xrepl-interrupt-instrumentation",
@@ -529,6 +530,7 @@ private sealed trait YSettings:
   val YstopAfter: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after", aliases = List("-stop")) // backward compat
   val YstopBefore: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
+  val YlogicalPackageLoading: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylogical-package-loading", "Enable logical package loading. This will load the logical package structure by preparsing the source files to discover the package structure. To be used together with -sourcepath option.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydetailed-stats", "Show detailed internal compiler stats (needs Stats.enabled to be set to true).")
   val YprintPos: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprint-pos", "Show tree positions.")
   val YprintPosSyms: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprint-pos-syms", "Show symbol definitions positions.")

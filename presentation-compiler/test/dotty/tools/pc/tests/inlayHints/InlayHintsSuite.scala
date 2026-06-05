@@ -1218,7 +1218,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |
          |object Main:
          |  val a/*: A<<(1:11)>>[Int<<scala/Int#>>, String<<scala/Predef.String#>>]*/ = A[Int, String](/*dummy = */0, /*name = */"foo")
-         |  val res/*: Int<<scala/Int#>>*/ = a ++/*[Int<<scala/Int#>>, String<<java/lang/String#>>]*/ a
+         |  val res/*: Int<<scala/Int#>>*/ = a ++ a
          |""".stripMargin
     )
 

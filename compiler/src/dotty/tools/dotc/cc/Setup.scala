@@ -20,7 +20,8 @@ import collection.mutable
 import CCState.*
 import CheckCaptures.CheckerAPI
 import NamerOps.methodType
-import NameKinds.{CanThrowEvidenceName, TryOwnerName}
+import NameOps.isSelectorName
+import NameKinds.{CanThrowEvidenceName, TryOwnerName, DefaultGetterName}
 import Capabilities.*
 
 /** Operations accessed from CheckCaptures */
@@ -39,14 +40,6 @@ trait SetupAPI:
 
   /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
-
-  /** A map from currently compiled class symbols to those of their fields
-   *  that have an explicit type given. Used in `captureSetImpliedByFields`
-   *  to avoid forcing fields with inferred types prematurely. The test file
-   *  where this matters is i24335.scala. The precise failure scenario which
-   *  this avoids is described in #24335.
-   */
-  def fieldsWithExplicitTypes: collection.Map[ClassSymbol, List[Symbol]]
 
   /** Used for error reporting:
    *  Maps mutable variables to the symbols that capture them (in the
@@ -172,12 +165,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           cinfo.derivedClassInfo(
             declaredParents = cinfo.declaredParents :+ defn.Caps_Mutable.typeRef)
         else
-          transformExplicitType(symd.info, sym)
+          val symCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
+          toResultInReturnType(sym, msg => throw TypeError(msg)):
+            transformExplicitType(symd.info, sym)(using symCtx)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
+      else if sym.isClass && !sym.is(CaptureChecked) then
+        val newInfo = fluidify(sym.info)
+        if newInfo ne sym.info then symd.copySymDenotation(info = newInfo)
+        else symd
       else if isPreCC(sym) then
         symd.copySymDenotation(info = fluidify(sym.info))
-      else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
+      else if symd.owner.isTerm
+        || symd.is(CaptureChecked)
+        || symd.owner.is(CaptureChecked)
+        || symd.is(ModuleVal) && symd.moduleClass.is(CaptureChecked)
+      then
         val newFlags = newFlagsFor(symd)
         val newInfo = mappedInfo
         if sym.isClass then
@@ -192,16 +195,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Apply toResult to the return types of def methods, so that local `any` capabilties
    *  are mapped to `fresh` in the return type of the resulting methodic types.
    */
-  def toResultInReturnType(sym: Symbol, fail: Message => Unit)(tp: Type)(using Context): Type = tp match
-    case tp: ExprType if sym.is(Method, butNot = Accessor) =>
-      // Map the result of parameterless `def` methods.
-      tp.derivedExprType(toResult(tp.resType, tp, sym, fail))
-    case tp: MethodOrPoly =>
-      tp.derivedLambdaType(resType =
-        if tp.marksExistentialScope
-        then toResult(tp.resType, tp, sym, fail)
-        else toResultInReturnType(sym, fail)(tp.resType))
-    case _ => tp
+  def toResultInReturnType(sym: Symbol, fail: Message => Unit)(tp: Type)(using Context): Type =
+    val needsConversion =
+      sym.is(Method, butNot = Accessor)
+      && !sym.name.is(DefaultGetterName)
+      && !sym.name.isSelectorName
+    if needsConversion then
+      tp match
+      case tp: ExprType =>
+        // Map the result of parameterless `def` methods.
+        tp.derivedExprType(toResult(tp.resType, tp, sym, fail))
+      case tp: MethodOrPoly =>
+        tp.derivedLambdaType(resType =
+          if tp.marksExistentialScope
+          then toResult(tp.resType, tp, sym, fail)
+          else toResultInReturnType(sym, fail)(tp.resType))
+      case _ => tp
+    else tp
 
   private trait SetupTypeMap extends FollowAliasesMap:
     private var isTopLevel = true
@@ -292,7 +302,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def transformInferredType(tp: Type)(using Context): Type =
+  private def transformInferredType(tp: Type, typeArgFormal: Type = NoType)(using Context): Type =
     def mapInferred(inCaptureRefinement: Boolean): TypeMap = new TypeMap with SetupTypeMap:
       override def toString = "map inferred"
 
@@ -316,7 +326,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias
                   RefinedType.precise(core, getter.name,
                       CapturingType(getterType,
-                        CaptureSet.ProperVar(ctx.owner, isRefining = true)))
+                        CaptureSet.VarInTypeTree(ctx.owner, isRefining = true)))
                     .showing(i"add capture refinement $tp --> $result", capt)
                 else
                   core
@@ -344,7 +354,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         addVar(
           addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
           ctx.owner,
-          isRefining = inCaptureRefinement)
+          isRefining = inCaptureRefinement,
+          typeArgFormal = typeArgFormal)
     end mapInferred
 
     try
@@ -484,15 +495,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               makeUnchecked(this(parent))
             else if ann.symbol == defn.InferredAnnot then
               transformInferredType(parent)
+                // typeArgFormal is NoType here since we are inferring inside an argument, not at the toplevel
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
-          case t: MethodType if variance > 0 && t.marksExistentialScope =>
-            val t1 = mapOver(t).asInstanceOf[MethodType]
-            if t1.resType.containsGlobalFreshDirectly then
-              t1.derivedLambdaType(resType = mappedDealias(toResult(t1.resType, t1, sym, fail)))
-            else t1
+          case t: MethodType if t.marksExistentialScope =>
+            FreshCapToResult()(mapOver(t)).asInstanceOf[MethodType]
           case t: (LazyRef | TypeVar) =>
             mapConserveSuper(t)
           case t =>
@@ -531,8 +540,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  val fieldsWithExplicitTypes: mutable.HashMap[ClassSymbol, List[Symbol]] = mutable.HashMap()
-
   val capturedBy: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
 
   val anonFunCallee: mutable.HashMap[Symbol, Symbol] = mutable.HashMap()
@@ -544,11 +551,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Transform type of tree, and remember the transformed type as the type of the tree
      *  @pre !(boxed && sym.exists)
      */
-    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
+    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean, typeArgFormal: Type = NoType)(using Context): Unit =
       if !tree.hasNuType then
         var transformed =
           if tree.isInferred || sym.is(ModuleVal)
-          then transformInferredType(tree.tpe)
+          then transformInferredType(tree.tpe, typeArgFormal)
           else transformExplicitType(tree.tpe, sym, tptToCheck = tree)
         if boxed then transformed = transformed.boxDeeply
         tree.setNuType(
@@ -611,12 +618,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
-          for case arg: TypeTree <- args do
+          val formals = fn.tpe.widen match
+            case tl: TypeLambda => tl.paramInfos
+            case _ => args.map(_ => NoType)
+          for case (arg: TypeTree, formal) <- args.lazyZip(formals) do
             if defn.isTypeTestOrCast(fn.symbol) then
               arg.setNuType(
                 globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
-            else
-              transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
+              else
+                transformTT(arg, NoSymbol, boxed = true, typeArgFormal = formal) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
@@ -712,9 +722,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             if signatureChanges then
               val paramSymss = sym.paramSymss
               def newInfo(using Context) = // will be run in this or next phase
-                def fail(msg: Message) = report.error(msg, tree.srcPos)
                 if sym.is(Method) then
-                  toResultInReturnType(sym, fail):
+                  toResultInReturnType(sym, report.error(_, tree.srcPos)):
                     inContext(ctx.withOwner(sym)):
                       paramsToCap(paramSymss, methodType(paramSymss, localReturnType))
                 else tree.tpt.nuType
@@ -745,7 +754,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree @ TypeDef(_, impl: Template) =>
         val cls: ClassSymbol = tree.symbol.asClass
 
-        fieldsWithExplicitTypes(cls) =
+        ccState.fieldsWithExplicitTypes(cls) =
           for
             case vd @ ValDef(_, tpt: TypeTree, _) <- impl.body
             if !tpt.isInferred && vd.symbol.exists && !vd.symbol.is(NonMember)
@@ -771,7 +780,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             // Infer the self type for the rest, which is all classes without explicit
             // self types (to which we also add nested module classes), provided they are
             // neither pure, nor are publicily extensible with an unconstrained self type.
-            val cs = CaptureSet.ProperVar(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
+            val cs = CaptureSet.VarInTypeTree(cls, CaptureSet.emptyRefs, nestedOK = false, isRefining = false)
 
             if cls.derivesFrom(defn.Caps_Capability) then
               // If cls is a capability class, we need to add a LocalCap capability to ensure
@@ -871,7 +880,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   - If type is a capturing type that has already a capture set variable or has
    *     the universal capture set, it does not need a variable.
    */
-  def needsVariable(tp: Type)(using Context): Boolean = {
+  def needsVariable(tp: Type)(using Context): Boolean =
     tp.typeParams.isEmpty && tp.match
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
@@ -895,7 +904,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(parent)
       case _ =>
         false
-  }.showing(i"can have inferred capture $tp = $result", captDebug)
 
   /** Add a capture set variable or <fluid> set to `tp` if necessary.
    *  Dealias `tp` (but keep annotations and opaque types) if doing
@@ -903,13 +911,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  @param tp     the type to add a capture set to
    *  @param added  A function producing the added capture set from a set of initial elements.
    */
-  def decorate(tp: Type, added: CaptureSet.Refs => CaptureSet)(using Context): Type =
+  def decorate(tp: Type, added: CaptureSet.Refs => CaptureSet, typeArgFormal: Type = NoType)(using Context): Type = {
     if tp.typeSymbol == defn.FromJavaObjectSymbol then
       // For capture checking, we assume Object from Java is the same as Any
       tp
     else
+      def formalIsPure = typeArgFormal match
+        case bounds: TypeBounds =>
+          val ub = bounds.hi
+          !ub.isAny && ub.captureSet.isAlwaysEmpty
+        case _ => false
       def maybeAdd(target: Type, fallback: Type) =
-        if needsVariable(target) then
+        if needsVariable(target) && !formalIsPure then
           target match
             case CapturingType(_, CaptureSet.Fluid) =>
               target
@@ -920,13 +933,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fallback
       val dealiased = tp.dealiasKeepAnnotsAndOpaques
       if dealiased ne tp then
-        val transformed = transformInferredType(dealiased)
+        val transformed = transformInferredType(dealiased, typeArgFormal)
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)
       else maybeAdd(tp, tp)
+  }
 
   /** Add a capture set variable to `tp` if necessary. */
-  private def addVar(tp: Type, owner: Symbol, isRefining: Boolean)(using Context): Type =
-    decorate(tp, CaptureSet.ProperVar(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining))
+  private def addVar(tp: Type, owner: Symbol, isRefining: Boolean, typeArgFormal: Type = NoType)(using Context): Type =
+    decorate(tp, CaptureSet.VarInTypeTree(owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining), typeArgFormal)
 
   /** A map that adds <fluid> capture sets at all contra- and invariant positions
    *  in a type where a capture set would be needed. This is used to make types
@@ -936,6 +950,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   private def fluidify(using Context) = new TypeMap:
     def apply(t: Type): Type = t match
+      case cinfo: ClassInfo =>
+        val selfInfo1 =
+          inContext(ctx.withOwner(cinfo.cls)):
+            atVariance(0):
+              this(cinfo.cls.givenSelfType)
+        cinfo.derivedClassInfo(selfInfo = selfInfo1)
       case t: MethodType =>
         mapOver(t)
       case t: TypeLambda =>
@@ -978,8 +998,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         recur(cs1)
       case Nil =>
     recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
-    if cls.derivesFrom(defn.Caps_SharedCapability) && cls.derivesFrom(defn.Caps_Stateful) then
-      report.error(em"$cls cannot inherit from both SharedCapability and Stateful", cls.srcPos)
 
   // ------ Checks to run after main capture checking --------------------------
 

@@ -1,6 +1,7 @@
 package dotty.tools.pc
 
 import java.nio.file.Paths
+import java.util.Optional
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
@@ -108,7 +109,8 @@ final class AutoImportsProvider(
         yield (
           AutoImportsResultImpl(
             sym.owner.showFullName,
-            edits.asJava
+            edits.asJava,
+            Optional.of(SemanticdbSymbols.symbolName(sym))
           ),
           sym
         )

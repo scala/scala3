@@ -10,7 +10,7 @@ class Logger(f: File):
   def log(msg: String): Unit = ???
 
 val in = File("in")
-val reader: Reader^{in.rd} = Reader(in)
+val reader: Reader^{in} = Reader(in)
 
 val file = File("~/last.log")
 val logger: Logger^{file} = Logger(file)
