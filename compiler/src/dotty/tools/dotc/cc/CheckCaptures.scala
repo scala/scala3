@@ -1993,8 +1993,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
 
         actual match
-          case actual: FlexibleType =>
-            return actual.derivedFlexibleType(recur(actual.hi, expected, covariant))
+          case actual @ FlexibleType(hi) =>
+            return FlexibleType.derivedFlexibleType(actual, recur(hi, expected, covariant))
           case _ =>
 
         // Decompose the actual type into the inner shape type, the capture set and the box status

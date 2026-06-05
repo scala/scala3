@@ -332,7 +332,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             toText(tpe)
           case _ =>
             toTextLocal(tpe) ~ " " ~ toText(annot)
-      case FlexibleType(_, tpe) =>
+      case FlexibleType(tpe) =>
         if (ctx.settings.YhideFlexibleTypes.value) then
           toText(tpe)
         else

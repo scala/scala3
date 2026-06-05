@@ -214,6 +214,8 @@ object Extractors {
         this += "TypeRef(" += qual += ", \"" += name += "\")"
       case Refinement(parent, name, info) =>
         this += "Refinement(" += parent += ", \"" += name += "\", " += info += ")"
+      case FlexibleType(tp) =>
+        this += "FlexibleType(" += tp += ")"
       case AppliedType(tycon, args) =>
         this += "AppliedType(" += tycon += ", " ++= args += ")"
       case AnnotatedType(underlying, annot) =>
@@ -253,8 +255,6 @@ object Extractors {
         this += "NoPrefix()"
       case MatchCase(pat, rhs) =>
         this += "MatchCase(" += pat += ", " += rhs += ")"
-      case FlexibleType(tp) =>
-        this += "FlexibleType(" += tp += ")"
       case tp =>
         this += s"<Internal compiler type $tp does not have a corresponding reflect extractor>"
     }
