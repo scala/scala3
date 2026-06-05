@@ -1,6 +1,6 @@
 package dotty.tools.sbtplugin
 
-import sbt.*
+import sbt.{ given, * }
 import sbt.Keys.*
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
@@ -55,7 +55,7 @@ object DottyJSPlugin extends AutoPlugin {
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
 
     // Maybe configure WebAssembly
-    scalaJSLinkerConfig := {
+    scalaJSLinkerConfig := Def.uncached {
       val prev = scalaJSLinkerConfig.value
       if (enableWebAssembly.value) {
         prev
@@ -66,7 +66,7 @@ object DottyJSPlugin extends AutoPlugin {
         prev
       }
     },
-    jsEnv := {
+    jsEnv := Def.uncached {
       val baseConfig = NodeJSEnv.Config()
       val config = if (enableWebAssembly.value) {
         baseConfig.withArgs(List(
@@ -80,10 +80,14 @@ object DottyJSPlugin extends AutoPlugin {
       new NodeJSEnv(config)
     },
 
-    Compile / jsEnvInput := (Compile / jsEnvInput).dependsOn(writePackageJSON).value,
-    Test / jsEnvInput := (Test / jsEnvInput).dependsOn(writePackageJSON).value,
+    Compile / jsEnvInput := Def.uncached(
+      (Compile / jsEnvInput).dependsOn(writePackageJSON).value
+    ),
+    Test / jsEnvInput := Def.uncached(
+      (Test / jsEnvInput).dependsOn(writePackageJSON).value
+    ),
 
-    writePackageJSON := {
+    writePackageJSON := Def.uncached {
       val packageType = scalaJSLinkerConfig.value.moduleKind match {
         case ModuleKind.NoModule       => "commonjs"
         case ModuleKind.CommonJSModule => "commonjs"
