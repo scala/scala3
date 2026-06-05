@@ -25,8 +25,9 @@ import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
 import opt.{OptimizerUtils, CallGraph}
 
-class CodeGen(val primitives: ScalaPrimitives,
-              val callGraph: Option[CallGraph], val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes,
+class CodeGen(primitives: ScalaPrimitives,
+              callGraph: Option[CallGraph], bTypeLoader: BTypeLoader, knownBTypes: KnownBTypes,
+              val postProcessor: PostProcessor,
               val generatedClassHandler: GeneratedClassHandler) {
   private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
   private val impl = new Impl()
