@@ -3,7 +3,6 @@ import compiletime.ops.boolean.*
 import collection.immutable.{SeqMap, ListMap}
 
 import language.experimental.captureChecking
-import scala.annotation.experimental
 import scala.annotation.unused
 
 object NamedTuple:
@@ -20,7 +19,6 @@ object NamedTuple:
 
   // Alternatively we could restrict `N` to be identical on both sides, but this provides less
   // useful error messages
-  @experimental
   given namedTupleCanEqual: [N1 <: Tuple, N2 <: Tuple, V1 <: Tuple, V2 <: Tuple]
     => (@unused eqN: N1 =:= N2)
     => (@unused eqV: CanEqual[V1, V2])
