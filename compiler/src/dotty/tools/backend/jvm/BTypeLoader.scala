@@ -20,10 +20,7 @@ import scala.annotation.tailrec
 import org.objectweb.asm
 import org.objectweb.asm.tree.ClassNode
 
-final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader]) {
-  // Concurrent map because stack map frames are computed when in the class writer, which
-  // might run on multiple classes concurrently.
-  private val classBTypeCache = new ConcurrentHashMap[InternalName, ClassBType]
+final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, inlineInfoLoader: () => Option[InlineInfoLoader]) {
 
   // Cache only for `classBTypeFromSymbol`, since it is heavily called.
   // Its values are all also values of the main cache.
@@ -35,19 +32,6 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   // It's OK to cache this because all Contexts that go through here share their defns.
   // No locking, it's OK if this map gets initialized twice (though a little inefficient).
   private var specialBTypes: Map[Symbol, BType] | Null = null
-
-
-  /** See doc of ClassBType.apply. This is where to use that method from. */
-  def classBType[T](internalName: InternalName)(init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] =
-    ClassBType(internalName, classBTypeCache)(init)
-
-  /** See doc of ClassBType.apply. This is where to use that method from. Version that cannot fail. */
-  def classBType(internalName: InternalName)(init: ClassBType => ClassInfo): ClassBType =
-    ClassBType(internalName, classBTypeCache)(ct => Right(init(ct))).fold(_ => assert(false), identity)
-
-  /** Obtain a previously constructed ClassBType for a given internal name, or None if no such ClassBType was constructed. */
-  def previouslyConstructedClassBType(internalName: InternalName): Option[ClassBType] =
-    Option(classBTypeCache.get(internalName))
 
   def bTypeFromSymbol(sym: Symbol)(using Context): BType = {
     if specialBTypes eq null then
@@ -88,7 +72,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       assert(classSym != defn.ArrayClass || compilingArray, s"Found $classSym while compiling ${ctx.compilationUnit.source.name}")
       assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.name}")
 
-      val result = classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
+      val result = cache(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
       classBTypeCacheBySymbol.update(classSym0, result)
       result
   }
@@ -96,7 +80,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol)(using Context): ClassBType = {
     assert(moduleClassSym.isTopLevelModuleClass, s"not a top-level module class: $moduleClassSym")
     val internalName = moduleClassSym.javaBinaryName.stripSuffix(StdNames.str.MODULE_SUFFIX)
-    classBType(internalName)(_ =>
+    cache(internalName)(_ =>
       ClassInfo(
         superClass = Some(classBTypeFromSymbol(defn.ObjectClass)),
         interfaces = Nil,
@@ -135,25 +119,6 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       case Types.ClassInfo(_, sym, _, _, _) => bTypeFromSymbol(sym) // We get here, for example, for genCallMethod, which invokes bTypeFromType(method.owner.info)
       case tp =>
         throw new AssertionError(s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp.")
-  }
-
-  /**
-   * Visit the class node and collect all referenced nested classes.
-   */
-  def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
-    val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
-      def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
-        previouslyConstructedClassBType(internalName).get.info.nestedClasses
-
-      def getClassIfNested(internalName: InternalName): Option[ClassBType] =
-        // A missing ClassBType here means we did something wrong!
-        previouslyConstructedClassBType(internalName) match
-          case Some(c) => if c.isNestedClass then Some(c) else None
-          case None =>
-            throw new AssertionError("Unknown name while collecting nested classes: " + internalName)
-    }
-    c.visit(classNode)
-    (c.declaredInnerClasses, c.referredInnerClasses)
   }
 
   private def createClassInfo(classBType: ClassBType, classSym: Symbol)(using Context): ClassInfo = {
