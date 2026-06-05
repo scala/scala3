@@ -51,7 +51,6 @@ class Compiler {
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new Inlining) ::           // Inline and execute macros
     List(new PostInlining) ::       // Add mirror support for inlined code
-    List(qualified_types.ANF()) ::  // ANF-lift qualifier skolems (opt-in, for external tools)
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
@@ -59,6 +58,8 @@ class Compiler {
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
   protected def transformPhases: List[List[Phase]] =
+    List(qualified_types.ANF()) ::      // ANF-lift qualifier skolems (opt-in, for external tools)
+    List(qualified_types.ANFCheck()) :: // Check no skolem encoding remains (opt-in)
     List(new InstrumentCoverage) ::  // Perform instrumentation for code coverage (if -coverage-out is set)
     List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
          new FirstTransform,         // Some transformations to put trees into a canonical form
