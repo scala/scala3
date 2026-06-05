@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, OptimizerKnownBTypes, OptimizerUtils}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, IndyLambdaImplTracker, OptimizerKnownBTypes, OptimizerUtils}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
@@ -33,12 +33,11 @@ class GenBCode extends Phase { self =>
 
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-
-  private var _optimizerUtils: OptimizerUtils | Null = null
-  def optimizerUtils(using Context): OptimizerUtils = {
-    if _optimizerUtils eq null then
-      _optimizerUtils = OptimizerUtils(optimizerKnownBTypes)
-    _optimizerUtils.nn
+  private var _indyTracker: IndyLambdaImplTracker | Null = null
+  def indyTracker(using Context): IndyLambdaImplTracker = {
+    if _indyTracker eq null then
+      _indyTracker = IndyLambdaImplTracker()
+    _indyTracker.nn
   }
 
   private var _primitives: ScalaPrimitives | Null = null
@@ -51,7 +50,7 @@ class GenBCode extends Phase { self =>
   private var _byteCodeRepository: BCodeRepository | Null = null
   def byteCodeRepository(using Context): BCodeRepository = {
     if _byteCodeRepository eq null then
-      _byteCodeRepository = BCodeRepository(ctx.platform.classPath, optimizerUtils)
+      _byteCodeRepository = BCodeRepository(ctx.platform.classPath, indyTracker)
     _byteCodeRepository.nn
   }
 
@@ -99,7 +98,7 @@ class GenBCode extends Phase { self =>
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
       if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
-        _postProcessor = new PostProcessorWithOptimizations(byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, optimizerKnownBTypes)
+        _postProcessor = new PostProcessorWithOptimizations(byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, bTypeLoader, optimizerKnownBTypes)
       else
         _postProcessor = new PostProcessor(bTypeLoader, knownBTypes)
     _postProcessor.nn
