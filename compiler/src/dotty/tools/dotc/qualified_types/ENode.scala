@@ -584,7 +584,7 @@ object ENode:
         (owner, idx)
       }
     )
-    ENodeVar.Skolem(owner, idx)(sk.info)
+    ENodeVar.Skolem(owner, idx)(QualifiedTypes.dropSkolemIndexAnnot(sk.info))
 
   /** A fresh `ENodeVar.Skolem` standing for an unknown of type
    *  `underlying`. Used by `singleton` for non-singleton types — those
