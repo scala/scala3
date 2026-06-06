@@ -1,4 +1,4 @@
-import caps.{use, CapSet}
+import caps.CapSet
 
 def f[C^](xs: List[Object^{C}]): Unit = ???
 

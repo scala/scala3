@@ -46,10 +46,6 @@ object any extends Capability
 @experimental
 object fresh extends Capability
 
-@experimental // TODO: Drop once we bootstrap with 3.8.4 (is still being used by non-bootstrap compiler)
-@deprecated
-object cap extends Capability
-
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
  *
  *  [[SharedCapability]] has a formal meaning when
@@ -92,24 +88,12 @@ trait Control extends SharedCapability, Classifier
 @experimental
 trait Stateful
 
-/** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
- *  extending Separate is created, a fresh `any` is automatically added to the value's capture set.
- */
-@experimental @deprecated
-trait Separate extends Stateful, ExclusiveCapability
-
 /** Marker trait for classes that are not subject to scoping restrictions of captured capabilities. */
 @experimental
 trait Unscoped extends ExclusiveCapability, Classifier
 
 @experimental
 trait Mutable extends Stateful, Unscoped
-
-/** Marker trait for classes with reader methods, typically extended by Mutable classes. */
-@experimental
-@deprecated
-trait Read extends Mutable
-
 
 /** Carrier trait for capture set type parameters. */
 @experimental
@@ -155,23 +139,6 @@ final class rejectSafe(message: String = "") extends scala.annotation.ConstantAn
 @getter @setter @beanGetter @beanSetter @field
 final class assumeSafe extends scala.annotation.ConstantAnnotation
 
-/** Allowed only for source versions up to 3.7:
- *  An annotation on parameters `x` stating that the method's body makes
- *  use of the reach capability `x*`. Consequently, when calling the method
- *  we need to charge the deep capture set of the actual argiment to the
- *  environment.
- */
-@experimental
-@deprecated(since = "3.8.0")
-final class use extends annotation.StaticAnnotation
-
-/** A trait that used to allow expressing existential types. Replaced by
- *  root.Result instances.
- */
-@experimental
-@deprecated
-sealed trait Exists extends Capability
-
 @experimental
 object internal:
 
@@ -192,14 +159,6 @@ object internal:
    *  explicit, even if the closure type as a whole is inferred.
    */
   final class declared extends annotation.StaticAnnotation
-
-  /** An internal annotation placed on a refinement created by capture checking.
-   *  Refinements with this annotation unconditionally override any
-   *  info from the parent type, so no intersection needs to be formed.
-   *  This could be useful for tracked parameters as well.
-   */
-  @deprecated
-  final class refineOverride extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a parameter of a secondary constructor
    *  that gets forwarded indirectly or directly to a parameter of the

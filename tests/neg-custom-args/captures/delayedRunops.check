@@ -18,7 +18,7 @@
    |
    |    Note that capability `c` cannot flow into capture set {}.
    |
-19 |      val ops1: List[() ->{ops*} Unit] = ops
+19 |      val ops1: List[() ->{c} Unit] = ops
 20 |      runOps(ops1)
    |
    | longer explanation available when compiling with `-explain`
