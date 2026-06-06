@@ -578,7 +578,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol == defn.SpecializedModule && ctx.owner ne defn.SpecializedModule.moduleClass then
+            if tree.symbol == defn.SpecializedModule && (ctx.owner ne defn.SpecializedModule.moduleClass) then
               report.error(IllegalUseOfSpecialized(), tree.srcPos)
             registerNeedsInlining(tree)
             val tree1 = checkUsableAsValue(tree)
