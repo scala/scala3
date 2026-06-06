@@ -578,7 +578,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol == defn.SpecializedModule then
+            if tree.symbol == defn.SpecializedModule && ctx.owner ne defn.SpecializedModule.moduleClass then
               report.error(IllegalUseOfSpecialized(), tree.srcPos)
             registerNeedsInlining(tree)
             val tree1 = checkUsableAsValue(tree)
@@ -684,7 +684,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: TypeDef =>
           if tree.symbol.isInlineTrait then
             ctx.compilationUnit.needsInlining = true  // Transform inner classes to traits
-          if tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) then
+          if tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) && (tree.symbol ne defn.SpecializedClass) then
             report.error(IllegalUseOfSpecialized(), tree.srcPos)
           registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
@@ -758,7 +758,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else if (tree.tpt.symbol == defn.orType)
             () // nothing to do
           else
-            if tree.tpt.symbol == defn.SpecializedClass && !ctx.owner.name.is(ContextBoundParamName) then
+            if tree.tpt.symbol == defn.SpecializedClass && !(ctx.owner.name.is(ContextBoundParamName) || ctx.owner.ownersIterator.contains(defn.SpecializedModule_apply)) then
               report.error(IllegalUseOfSpecialized(), tree.srcPos)
             Checking.checkAppliedType(tree)
           super.transform(tree)
