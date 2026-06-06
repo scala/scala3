@@ -824,9 +824,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual0: Tree)(using Context): Tree =
     val selName = tree0.name
-    val rawType = selectionType(cpy.Select(tree0)(qual0, selName), qual0)
+    val rawType0 = selectionType(cpy.Select(tree0)(qual0, selName), qual0)
     val qual = QualifiedTypes.wrapReceiverSkolem(qual0)
     val tree = cpy.Select(tree0)(qual, selName)
+    // If the receiver was just marked with a skolem index, recompute the selection
+    // type against the marked prefix so the member's skolem matches the marker —
+    // deterministic per call site, not shared across same-typed receivers.
+    val rawType = if qual ne qual0 then selectionType(tree, qual) else rawType0
     val superAccess = qual.isInstanceOf[Super]
 
     def tryType(tree: untpd.Select, qual: Tree, rawType: Type) =
