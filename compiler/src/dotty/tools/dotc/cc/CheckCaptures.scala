@@ -968,9 +968,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             && !resultType.isBoxedCapturing
             && !tree.fun.symbol.isConstructor
             && !resultType.captureSet.containsResultCapability
-            && !resultType.captureSet.elems.exists(_.derivesFromCapTrait(defn.Caps_Unscoped))
+
             && qualCaptures.mightSubcapture(refs)
-            && argCaptures.forall(_.mightSubcapture(refs)) =>
+            && argCaptures.forall(_.mightSubcapture(refs))
+            // No longer needed since we now ensure monotonicity of closure types
+            // && !resultType.captureSet.elems.exists(_.derivesFromCapTrait(defn.Caps_Unscoped))
+        =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
           appType.derivedCapturingType(appType1, callCaptures)
             .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)

@@ -23,8 +23,8 @@
 -- Error: tests/neg-custom-args/captures/mutvars.scala:13:16 -----------------------------------------------------------
 13 |    self3().fld = x  // error
    |    ^^^^^^^^^^^^^^^
-   |    Cannot assign to field fld of Ref[T^{}]^{Ref.this.rd}
-   |    since its capture set {Ref.this.rd} of value self3 is read-only.
+   |    Cannot assign to field fld of Ref[T^{}]^{self3}
+   |    since its capture set {self3} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutvars.scala:14:37 --------------------------------------
 14 |    val self4: () => Ref[T]^ = () => this // error // error separation
    |                                     ^^^^
