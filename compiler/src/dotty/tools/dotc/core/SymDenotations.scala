@@ -450,8 +450,6 @@ object SymDenotations {
             case TypeAlias(lzy: LazyRef) if name == this.name =>
               if !lzy.completed then
                 lzy.update(tp)
-              else
-                throw CyclicReference(this)
             case _ =>
               recur(parent)
         recur(owner.asClass.givenSelfType)

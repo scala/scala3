@@ -6,7 +6,7 @@ object O2 {
   opaque type X = X // error
 }
 
-object O3 { // error
+object O3 {
   opaque type R[X] = T[X] // error
-  opaque type T[X] = R[X] // error
+  opaque type T[X] = R[X]
 }
