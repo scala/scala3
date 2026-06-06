@@ -622,7 +622,7 @@ extension (cls: ClassSymbol) {
         .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
 
     /** The implied classifier of the LocalCap of the class instance, derived from
-     *    - the clasifiers of the LocalCaps in the span capture sets of all fields
+     *    - the classifiers of the LocalCaps in the span capture sets of all fields
      *    - the implied classifiers of the parent classes
      *    - if `cls` is a stateful class, the classifier of `cls` itself
      *  @return The implied classidier, or NoSymbol is there is no LocalCap
