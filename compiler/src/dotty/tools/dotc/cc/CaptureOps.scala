@@ -540,8 +540,6 @@ extension (tp: Type)
    *  monotonicity of function types.
    */
   def impliedLambdaCaptures(using Context): CaptureSet = tp match
-    case RefinedType(_, rname, rinfo) if rname == nme.apply =>
-      rinfo.impliedLambdaCaptures
     case tp: PolyType =>
       tp.resType.impliedLambdaCaptures
     case tp: MethodicType =>
@@ -553,6 +551,8 @@ extension (tp: Type)
         .commonAncestor
       tp.impliedCaptures(impliedClr, Nil, localCaps.forall(_.isReadOnly))
         .showing(i"implied lambda captures of $tp = $result", capt)
+    case RefinedType(_, rname, rinfo) if rname == nme.apply =>
+      rinfo.impliedLambdaCaptures
     case CapturingType(parent, _) =>
       parent.impliedLambdaCaptures
     case _ =>
