@@ -33,8 +33,8 @@ def twoRefsBad(): Pair[Ref^, Ref^] =
 
 def test(io: Object^): Unit =
   val two = twoRefs()
-  val fst: Ref^{two.fst*} = two.fst
-  val snd: Ref^{two.snd*} = two.snd
+  val fst/*: Ref^{two.fst*}*/ = two.fst
+  val snd/*: Ref^{two.snd*}*/ = two.snd
   val twoCopy: Pair[Ref^, Ref^] = Pair(fst, snd) // ok
 
   val same = twoRefs2()

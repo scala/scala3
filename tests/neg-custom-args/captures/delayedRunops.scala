@@ -16,5 +16,5 @@ import language.experimental.captureChecking
   // unsound: impure operation pretended pure
   def delayedRunOps3(ops: List[() => Unit]): () ->{} Unit =
     () => // error
-      val ops1: List[() ->{ops*} Unit] = ops
+      val ops1: List[() ->{c} Unit] = ops
       runOps(ops1)

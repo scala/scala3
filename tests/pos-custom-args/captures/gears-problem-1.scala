@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 trait Future[+T]:
   def await: T
@@ -7,8 +6,8 @@ trait Future[+T]:
 trait Channel[+T]:
   def read(): Ok[T]
 
-class Collector[T](val futures: Seq[Future[T]^]):
-  val results: Channel[Future[T]^{futures*}] = ???
+class Collector[T, c^](val futures: Seq[Future[T]^{c}]):
+  val results: Channel[Future[T]^{c}] = ???
 end Collector
 
 class Result[+T, +E]:

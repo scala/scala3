@@ -35,7 +35,6 @@ def test(io: Object^): Unit =
   val g2: A^ => B^ = ???
   val _: A^ => B^ = x =>
     val y = g2(x)  // now ok since g2(x): B^{g2*}
-    val _: B^{g2*} = y
     y
   val g3: A^ => B^ = ???
   val _: A^{io} => B^ = x => g3(x)  // now g3(x): B^{g3*}
