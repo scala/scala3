@@ -777,9 +777,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if (cls2 eq AnyKindClass) return true
         if (cachedIsBottomTp1(tp1)) return true
         if (tp1.isLambdaSub) return false
-          // Note: We would like to replace this by `if (tp1.hasHigherKind)`
-          // but right now we cannot since some parts of the standard library rely on the
-          // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
+        // Note: We would like to replace this by `if (tp1.hasHigherKind)`
+        // but right now we cannot since some parts of the standard library rely on the
+        // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
         if cls2 eq AnyClass then return true
         if cls2 == defn.SingletonClass && tp1.isStable then return true
         tp1 match
