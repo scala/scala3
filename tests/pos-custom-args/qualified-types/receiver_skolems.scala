@@ -43,3 +43,8 @@ def tests(): Unit =
   val c = Counter(5)
   c.peek
   c.step(0.runtimeChecked)
+
+// A second definition selecting on a receiver of the *same* qualified type as in
+// `tests` (`mk(10)`): each call site must get its own skolem identity, so the
+// member type does not leak across definitions and round-trips through TASTy.
+def more(): Int = mk(10).peek
