@@ -1845,8 +1845,13 @@ class Definitions {
    *  instance?
    */
   def isNonRefinedFunction(tp: Type)(using Context): Boolean = {
-    val arity = functionArity(tp)
-    val sym = tp.dealias.typeSymbol
+    // `tp` is dealiased three times in the original (functionArity → functionArgInfos,
+    // `tp.dealias.typeSymbol`, and isRef's AppliedType arm). `dealias` is idempotent,
+    // so we dealias once and reuse `d` for the arity and symbol; `isRef` keeps `tp`
+    // (its dealias of an already-dealiased AppliedType/TypeRef is a no-op).
+    val d = tp.dealias
+    val arity = d.functionArgInfosOf(d).length - 1
+    val sym = d.typeSymbol
 
     arity >= 0
     && isFunctionClass(sym)
@@ -1975,6 +1980,18 @@ class Definitions {
    *   - the upper bound of a TypeParamRef in the current constraint
    */
   def asContextFunctionType(tp: Type)(using Context): Type =
+    // Fast-reject: a class TypeRef / class-tycon AppliedType is unchanged by
+    // `stripTypeVar.dealias`, so `tp1` in the catch-all arm would be `tp` itself and
+    // the slow path tests `tp1.typeSymbol.name.isContextFunction`. When that class
+    // symbol's name is not a context function we can return NoType (the dominant case)
+    // without the strip+dealias. We never ACCEPT here, so the `isFunctionNType`
+    // confirmation on the accept path is preserved.
+    tp match
+      case tp1: TypeRef if tp1.symbol.isClass && !tp1.symbol.name.isContextFunction => NoType
+      case AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass && !tycon.symbol.name.isContextFunction => NoType
+      case _ => asContextFunctionTypeSlow(tp)
+
+  private def asContextFunctionTypeSlow(tp: Type)(using Context): Type =
     tp.stripTypeVar.dealias match
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)

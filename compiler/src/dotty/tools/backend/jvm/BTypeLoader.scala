@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 import BTypes.InternalName
 import dotty.tools.backend.jvm.BCodeUtils.isAnonymousOrLocalClass
 import dotty.tools.backend.jvm.SymbolUtils.symExtensions
-import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
+import dotty.tools.dotc.core.Symbols.{ClassSymbol, MutableSymbolMap, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Trait}
@@ -28,6 +28,8 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   // It's OK to cache this because all Contexts that go through here share their defns.
   // No locking, it's OK if this map gets initialized twice (though a little inefficient).
   private var specialBTypes: Map[Symbol, BType] | Null = null
+
+  private val methodBTypeCache = MutableSymbolMap[MethodBType](1024)
 
 
   /** See doc of ClassBType.apply. This is where to use that method from. */
@@ -102,10 +104,15 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    */
   def methodBTypeFromSymbol(msym: Symbol)(using Context): MethodBType = {
     assert(msym.is(Method), s"not a method-symbol: $msym")
-    val resT: BType =
-      if (msym.isClassConstructor || msym.isConstructor) UNIT
-      else bTypeFromType(msym.info.resultType)
-    MethodBType(msym.info.firstParamTypes.map(bTypeFromType), resT)
+    val cached = methodBTypeCache.lookup(msym)
+    if cached ne null then cached
+    else
+      val resT: BType =
+        if (msym.isClassConstructor || msym.isConstructor) UNIT
+        else bTypeFromType(msym.info.resultType)
+      val result = MethodBType(msym.info.firstParamTypes.map(bTypeFromType), resT)
+      methodBTypeCache(msym) = result
+      result
   }
 
   /**

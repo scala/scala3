@@ -259,15 +259,17 @@ object ProtoTypes {
       || hasUnknownMembers(tp1)
       || {
         try
-          val mbr = if privateOK then tp1.member(name) else tp1.nonPrivateMember(name)
-          def qualifies(m: SingleDenotation) =
-            val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
-            isAccessible
-            && (memberProto.isRef(defn.UnitClass)
-              || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
-                // Note: can't use `m.info` here because if `m` is a method, `m.info`
-                //       loses knowledge about `m`'s default arguments.
-          mbr.hasAltWithInline(qualifies)
+          val isUnitMemberProto = memberProto.isRef(defn.UnitClass)
+          if !isUnitMemberProto && !tp1.isValueType then false
+          else
+            val mbr = if privateOK then tp1.member(name) else tp1.nonPrivateMember(name)
+            def qualifies(m: SingleDenotation) =
+              val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
+              isAccessible
+              && (isUnitMemberProto || compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
+                  // Note: can't use `m.info` here because if `m` is a method, `m.info`
+                  //       loses knowledge about `m`'s default arguments.
+            mbr.hasAltWithInline(qualifies)
         catch case ex: TypeError =>
           // A scenario where this can happen is in pos/15673.scala:
           // We have a type `CC[A]#C` where `CC`'s upper bound is `[X] => Any`, but
@@ -929,15 +931,31 @@ object ProtoTypes {
     Stats.record("normalize")
     tp.widenSingleton match {
       case poly: PolyType =>
-        normalize(instantiateWithTypeVars(poly), pt)
+        // Under Mode.TypevarsMissContext (set by `candidateKind` in implicit
+        // search, see Implicits.scala:258), the fresh TypeVars produced by
+        // `instantiateWithTypeVars` are throwaway: the explore-context resets
+        // the typer state and constraint before the result is consumed.
+        // Substitute paramRefs with bounded `WildcardType` instead, so the
+        // result is deterministic per-poly and `AppliedUniques` hits on the
+        // second-and-subsequent candidate of the same poly. This mirrors the
+        // existing wildcard treatment in `viewCandidateKind`
+        // (Implicits.scala:156) and `resultTypeApprox` (line 903 below).
+        if ctx.mode.is(Mode.TypevarsMissContext) then
+          val body =
+            if poly.isResultDependent then
+              val wildArgs = poly.paramInfos.map(b => WildcardType(b))
+              poly.resType.substParams(poly, wildArgs)
+            else poly.resType
+          normalize(body, pt)
+        else
+          normalize(instantiateWithTypeVars(poly), pt)
       case mt: MethodType =>
         if (mt.isImplicitMethod) normalize(resultTypeApprox(mt, wildcardOnly = true), pt)
         else if (mt.isResultDependent) tp
+        else if pt.isInstanceOf[IgnoredProto] then tp
         else {
           val rt = normalize(mt.resultType, pt)
           pt match {
-            case pt: IgnoredProto  =>
-              tp
             case pt: ApplyingProto =>
               if (rt eq mt.resultType) tp
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)

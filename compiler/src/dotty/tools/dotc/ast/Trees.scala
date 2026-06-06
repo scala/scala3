@@ -1537,6 +1537,22 @@ object Trees {
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
       def transform(tree: Tree)(using Context): Tree = {
+        // iter-2: syntactic leaf-tree shortcut. For Ident/Literal/This/TypeTree
+        // the slow-path match body is just `tree` (these shapes are childless —
+        // no recursion), so when transformCtx would return ctx unchanged
+        // (tree.source eq ctx.source, or no source) and skipTransform is false
+        // (its default), we skip the inContext+transformCtx wrapper entirely.
+        // These four kinds are provably childless leaves: SingletonTypeTree /
+        // RefinedTypeTree do NOT extend TypeTree, so no node-with-children is
+        // skipped. Mirrors MegaPhase's leaf shortcut.
+        if ((tree.isInstanceOf[Ident @unchecked]
+              || tree.isInstanceOf[Literal @unchecked]
+              || tree.isInstanceOf[This @unchecked]
+              || tree.isInstanceOf[TypeTree @unchecked])
+            && ((tree.source `eq` ctx.source) || !tree.source.exists)
+            && !skipTransform(tree))
+          tree
+        else
         inContext(transformCtx(tree)) {
           Stats.record(s"TreeMap.transform/$getClass")
           if (skipTransform(tree)) tree

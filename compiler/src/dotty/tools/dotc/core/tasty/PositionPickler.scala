@@ -77,10 +77,35 @@ object PositionPickler:
         // specialization.
     }
 
+    var cachedSourceCount = 0
+    var cachedSources = new Array[SourceFile](4)
+    var cachedSourceNameRefIndices = new Array[Int](4)
+
+    def sourceNameRefIndex(source: SourceFile): Int = {
+      var i = 0
+      while i < cachedSourceCount do
+        if cachedSources(i).eq(source) then
+          return cachedSourceNameRefIndices(i)
+        i += 1
+
+      val relativePath = SourceFile.relativePath(source, relativePathReference)
+      val refIndex = pickler.nameBuffer.nameIndex(relativePath.toTermName).index
+      if cachedSourceCount == cachedSources.length then
+        val sources1 = new Array[SourceFile](cachedSourceCount * 2)
+        val indices1 = new Array[Int](cachedSourceCount * 2)
+        System.arraycopy(cachedSources, 0, sources1, 0, cachedSourceCount)
+        System.arraycopy(cachedSourceNameRefIndices, 0, indices1, 0, cachedSourceCount)
+        cachedSources = sources1
+        cachedSourceNameRefIndices = indices1
+      cachedSources(cachedSourceCount) = source
+      cachedSourceNameRefIndices(cachedSourceCount) = refIndex
+      cachedSourceCount += 1
+      refIndex
+    }
+
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      val relativePath = SourceFile.relativePath(source, relativePathReference)
-      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
+      buf.writeInt(sourceNameRefIndex(source))
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
@@ -142,4 +167,3 @@ object PositionPickler:
       traverse(annotTree, NoSource)
   end picklePositions
 end PositionPickler
-

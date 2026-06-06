@@ -12,10 +12,16 @@ import config.Printers.pickling
 import ast.untpd.Tree
 import java.util.Arrays
 
-class TreeBuffer extends TastyBuffer(50000) {
+object TreeBuffer:
+  private[tasty] inline val DefaultByteCapacity = 50000
+  private[tasty] inline val DefaultOffsetCapacity = 2048
 
-  private inline val ItemsOverOffsets = 2
-  private val initialOffsetSize = bytes.length / (AddrWidth * ItemsOverOffsets)
+class TreeBuffer(
+    initialByteCapacity: Int = TreeBuffer.DefaultByteCapacity,
+    initialOffsetCapacity: Int = TreeBuffer.DefaultOffsetCapacity)
+extends TastyBuffer(initialByteCapacity) {
+
+  private val initialOffsetSize = initialOffsetCapacity max 1
   private var offsets = new Array[Int](initialOffsetSize)
   private var isRelative = new Array[Boolean](initialOffsetSize)
   private var numOffsets = 0

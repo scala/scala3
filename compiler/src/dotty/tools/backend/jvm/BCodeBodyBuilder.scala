@@ -33,6 +33,8 @@ import dotty.tools.dotc.util.SrcPos
  *
  */
 trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
+  protected def backendUtils: BackendUtils
+
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -864,7 +866,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
             val savedStackSize = stack.recordSize()
             if invokeStyle.hasInstance then
               stack.push(genLoadQualifier(fun))
-            genLoadArguments(args, paramTKs(app))
+            val methodBType = bTypeLoader.methodBTypeFromSymbol(sym)
+            genLoadArguments(args, methodBType.argumentTypes)
             stack.restoreSize(savedStackSize)
 
             val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
@@ -884,7 +887,6 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
               // Example: `class C { override def clone(): Object = "hi" }`
               // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
               val target: String = tpeTK(qual).asRefBType.classOrArrayType
-              val methodBType = bTypeLoader.methodBTypeFromSymbol(sym)
               bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor, app)
               generatedType = methodBType.returnType
             } else {
@@ -901,7 +903,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
                   defn.ObjectClass
                 } else qualSym
               }
-              generatedType = genCallMethod(sym, invokeStyle, app, receiverClass)
+              generatedType = genCallMethod(sym, invokeStyle, app, receiverClass, methodBType)
             }
           }
       }
@@ -1433,7 +1435,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
      * invocation instruction, otherwise `method.owner`. A specific receiver class is needed to
      * prevent IllegalAccessError in some virtual and super calls (aladdin bug 455, i22628).
      */
-    private def genCallMethod(method: Symbol, style: InvokeStyle, pos: Positioned | Null = null, specificReceiver: Symbol | Null = null)(using Context): BType = {
+    private def genCallMethod(
+        method: Symbol,
+        style: InvokeStyle,
+        pos: Positioned | Null = null,
+        specificReceiver: Symbol | Null = null,
+        precomputedMethodBType: MethodBType | Null = null
+    )(using Context): BType = {
       val methodOwner = method.owner
 
       // the class used in the invocation's method descriptor in the classfile
@@ -1474,7 +1482,9 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       val receiverName = bTypeLoader.classBTypeFromSymbol(receiverClass).internalName
 
       val jname    = method.javaSimpleName
-      val bmType   = bTypeLoader.methodBTypeFromSymbol(method)
+      val bmType   =
+        if precomputedMethodBType == null then bTypeLoader.methodBTypeFromSymbol(method)
+        else precomputedMethodBType
       val mdescr   = bmType.descriptor
 
       val isInterface = isEmittedInterface(receiverClass)
@@ -1860,6 +1870,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           bTypes.jliLambdaMetaFactoryMetafactoryHandle
 
       bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs*)
+      if isSerializable then
+        backendUtils.addSerializableIndyLambdaImplMethod(thisName, mnode, mnode.instructions.getLast.asInstanceOf[asm.tree.InvokeDynamicInsnNode], targetHandle)
 
       generatedType
     }

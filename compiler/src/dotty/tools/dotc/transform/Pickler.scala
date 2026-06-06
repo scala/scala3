@@ -273,6 +273,9 @@ class Pickler extends Phase {
         runFromTasty(unit)
       return ()
 
+    val sourceRelativePathReference = ctx.settings.sourceroot.value
+    val sourceRelativePath = util.SourceFile.relativePath(unit.source, sourceRelativePathReference)
+
     for
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
       tree <- sliceTopLevel(unit.tpdTree, cls)
@@ -280,9 +283,6 @@ class Pickler extends Phase {
       if ctx.settings.YtestPickler.value then beforePickling(cls) =
         tree.show(using printerContext(unit.typedAsJava))
 
-      val sourceRelativePath =
-        val reference = ctx.settings.sourceroot.value
-        util.SourceFile.relativePath(unit.source, reference)
       val isJavaAttr = unit.isJava // we must always set JAVAattr when pickling Java sources
       if isJavaAttr then
         // assert that Java sources didn't reach Pickler without `-Xjava-tasty`.
@@ -319,9 +319,8 @@ class Pickler extends Phase {
         serialized.run { scratch =>
           treePkl.compactify(scratch)
           if tree.span.exists then
-            val reference = ctx.settings.sourceroot.value
             PositionPickler.picklePositions(
-                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
+                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, sourceRelativePathReference,
                 unit.source, tree :: Nil, positionWarnings,
                 scratch.positionBuffer, scratch.pickledIndices)
 

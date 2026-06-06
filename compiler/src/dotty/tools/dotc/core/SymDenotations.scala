@@ -28,6 +28,18 @@ import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
 
 object SymDenotations {
+  /** Process-global epoch keying the per-denotation `isStatic`/`isStaticOwner`/
+   *  `seesOpaques` caches. Bumped whenever a static-relevant flag changes on ANY
+   *  denotation (see `invalidateStaticCaches`), which conservatively invalidates the
+   *  owner-chain-dependent `seesOpaques`/`isStatic`/`isStaticOwner` results for every
+   *  denotation at once. `info_=` deliberately does NOT bump it: those three predicates
+   *  read only FromStartFlags and the constructor-fixed owner chain, never `info`.
+   */
+  private var ownerChainCacheEpoch: Int = 1
+
+  private def bumpOwnerChainCacheEpoch(): Unit =
+    ownerChainCacheEpoch += 1
+    if ownerChainCacheEpoch == 0 then ownerChainCacheEpoch = 1
 
   /** A sym-denotation represents the contents of a definition
    *  during a period.
@@ -58,6 +70,40 @@ object SymDenotations {
     private var myAnnotations: List[Annotation] = Nil
     private var myParamss: List[List[Symbol]] = Nil
 
+    // RunId+epoch-keyed scalar caches for the static-property predicates
+    // (isStatic / isStaticOwner / seesOpaques). All three depend only on stable
+    // FromStartFlags (JavaStatic, Module/ModuleClass, Package/PackageClass, Opaque)
+    // and the constructor-fixed owner chain, so within one run their result is fixed
+    // unless a relevant flag changes. The shared `ownerChainCacheEpoch` is bumped on
+    // any flag mutation (invalidateStaticCaches), which is what lets the owner-chain
+    // walks of `isStatic`/`seesOpaques` trust their cached children.
+    private var myIsStaticRunId: RunId = NoRunId
+    private var myIsStaticEpoch: Int = 0
+    private var myIsStaticCached: Boolean = false
+
+    private var myStaticOwnerRunId: RunId = NoRunId
+    private var myStaticOwnerEpoch: Int = 0
+    private var myStaticOwnerCached: Boolean = false
+
+    private var mySeesOpaquesRunId: RunId = NoRunId
+    private var mySeesOpaquesEpoch: Int = 0
+    private var mySeesOpaquesCached: Boolean = false
+
+    /** Invalidate the per-denotation static-property caches and bump the shared
+     *  owner-chain epoch so that owner-chain-dependent results on OTHER denotations
+     *  are recomputed too. Called from the flag mutators and `markAbsent`.
+     */
+    private def invalidateStaticCaches(): Unit =
+      myIsStaticRunId = NoRunId
+      myStaticOwnerRunId = NoRunId
+      mySeesOpaquesRunId = NoRunId
+      bumpOwnerChainCacheEpoch()
+
+    /** Invalidate caches whose result depends on `isAbsent` / base-class data.
+     *  Overridden in ClassDenotation to reset the per-runId derivesFrom cache.
+     */
+    protected def invalidateAbsentSensitiveCaches(): Unit = ()
+
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
 
@@ -77,12 +123,13 @@ object SymDenotations {
     /** Update the flag set */
     final def flags_=(flags: FlagSet): Unit =
       myFlags = adaptFlags(flags)
+      invalidateStaticCaches()
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags; invalidateStaticCaches() }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags; invalidateStaticCaches() }
 
     /** Set applicable flags in {NoInits, PureInterface}
      *  @param  parentFlags  The flags that match the class or trait's parents
@@ -187,6 +234,14 @@ object SymDenotations {
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
       myInfo = tp
+      // Deliberately NO `invalidateStaticCaches()` here: `isStatic`/`isStaticOwner`/
+      // `seesOpaques` read only FromStartFlags (JavaStatic, Module/ModuleClass,
+      // Package/PackageClass, Opaque) and the constructor-fixed `maybeOwner` chain —
+      // never `info`. Installing a (completed) info cannot change any of those
+      // predicates, so it must not bump the shared `ownerChainCacheEpoch` (doing so
+      // thrashed the static caches process-wide and capped their hit rate ~41%).
+      // Relevant flag changes still go through `flags_=`/`setFlag`/`resetFlag`, which
+      // invalidate, and `markAbsent` is unchanged.
     }
 
     /** The name, except
@@ -609,6 +664,8 @@ object SymDenotations {
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+      invalidateStaticCaches()
+      invalidateAbsentSensitiveCaches()
     }
 
     /** Is symbol known to not exist?
@@ -707,8 +764,17 @@ object SymDenotations {
     def containsOpaques(using Context): Boolean = is(Opaque) && isClass
 
     def seesOpaques(using Context): Boolean =
-      containsOpaques ||
-      is(Module, butNot = Package) && owner.seesOpaques
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if mySeesOpaquesRunId == rid && mySeesOpaquesEpoch == epoch then mySeesOpaquesCached
+      else
+        val res =
+          containsOpaques ||
+          is(Module, butNot = Package) && owner.seesOpaques
+        mySeesOpaquesCached = res
+        mySeesOpaquesEpoch = epoch
+        mySeesOpaquesRunId = rid
+        res
 
     def isProvisional(using Context): Boolean =
       flagsUNSAFE.is(Provisional) // do not force the info to check the flag
@@ -751,12 +817,29 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(using Context): Boolean =
-      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
-        myFlags.is(JavaStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myIsStaticRunId == rid && myIsStaticEpoch == epoch then myIsStaticCached
+      else
+        val res =
+          (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
+            myFlags.is(JavaStatic)
+        myIsStaticCached = res
+        myIsStaticEpoch = epoch
+        myIsStaticRunId = rid
+        res
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(using Context): Boolean =
-      myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myStaticOwnerRunId == rid && myStaticOwnerEpoch == epoch then myStaticOwnerCached
+      else
+        val res = myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+        myStaticOwnerCached = res
+        myStaticOwnerEpoch = epoch
+        myStaticOwnerRunId = rid
+        res
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
@@ -1874,6 +1957,23 @@ object SymDenotations {
     private var myMemberCache: EqHashMap[Name, PreDenotation] | Null = null
     private var myMemberCachePeriod: Period = Nowhere
 
+    // Period-keyed Name->PreDenotation front cache used as the first backing
+    // store for membersNamed. Classes that only query one distinct name in a
+    // period never allocate myMemberCache; the EqHashMap is promoted lazily when
+    // a second distinct name is queried. After promotion, slot 0 remains the
+    // hottest MRU fast path in front of the map, followed by three more recent
+    // names that can avoid residual map probes on recursive inherited lookups.
+    private var myMembersNamedPeriod: Period = Nowhere
+    private var myMembersNamedName: Name | Null = null
+    private var myMembersNamedDenots: PreDenotation | Null = null
+    private var myMembersNamedName1: Name | Null = null
+    private var myMembersNamedDenots1: PreDenotation | Null = null
+    private var myMembersNamedName2: Name | Null = null
+    private var myMembersNamedDenots2: PreDenotation | Null = null
+    private var myMembersNamedName3: Name | Null = null
+    private var myMembersNamedDenots3: PreDenotation | Null = null
+    private var myMemberCacheMutationId: Int = 0
+
     /** A cache from types T to baseType(T, C) */
     type BaseTypeMap = EqHashMap[CachedType, Type]
     private var myBaseTypeCache: BaseTypeMap | Null = null
@@ -1882,13 +1982,82 @@ object SymDenotations {
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
-    private def memberCache(using Context): EqHashMap[Name, PreDenotation] = {
-      if (myMemberCachePeriod != ctx.period) {
+    private def currentMemberCache(using Context): EqHashMap[Name, PreDenotation] | Null =
+      if myMemberCachePeriod == ctx.period then myMemberCache else null
+
+    private def promotedMemberCache(using Context): EqHashMap[Name, PreDenotation] = {
+      if myMemberCachePeriod != ctx.period || myMemberCache == null then
         myMemberCache = EqHashMap()
         myMemberCachePeriod = ctx.period
-      }
       myMemberCache.nn
     }
+
+    private def invalidateMembersNamedCache(): Unit =
+      myMembersNamedPeriod = Nowhere
+      myMemberCacheMutationId += 1
+
+    private def clearMembersNamedFront(): Unit =
+      myMembersNamedName = null
+      myMembersNamedDenots = null
+      myMembersNamedName1 = null
+      myMembersNamedDenots1 = null
+      myMembersNamedName2 = null
+      myMembersNamedDenots2 = null
+      myMembersNamedName3 = null
+      myMembersNamedDenots3 = null
+
+    private def addMemberFrontEntry(cache: EqHashMap[Name, PreDenotation], name: Name | Null, denots: PreDenotation | Null): Unit =
+      if name != null && denots != null then cache(name) = denots
+
+    private def addMembersNamedFrontEntries(cache: EqHashMap[Name, PreDenotation]): Unit =
+      addMemberFrontEntry(cache, myMembersNamedName, myMembersNamedDenots)
+      addMemberFrontEntry(cache, myMembersNamedName1, myMembersNamedDenots1)
+      addMemberFrontEntry(cache, myMembersNamedName2, myMembersNamedDenots2)
+      addMemberFrontEntry(cache, myMembersNamedName3, myMembersNamedDenots3)
+
+    private def rememberMembersNamed(period: Period, name: Name, denots: PreDenotation): Unit =
+      if myMembersNamedPeriod != period then clearMembersNamedFront()
+      myMembersNamedPeriod = period
+
+      val name0 = myMembersNamedName
+      val denots0 = myMembersNamedDenots
+      if name0 eq name then
+        myMembersNamedDenots = denots
+      else
+        val name1 = myMembersNamedName1
+        val denots1 = myMembersNamedDenots1
+        val name2 = myMembersNamedName2
+        val denots2 = myMembersNamedDenots2
+        if name1 eq name then
+          myMembersNamedName = name
+          myMembersNamedDenots = denots
+          myMembersNamedName1 = name0
+          myMembersNamedDenots1 = denots0
+        else if name2 eq name then
+          myMembersNamedName = name
+          myMembersNamedDenots = denots
+          myMembersNamedName1 = name0
+          myMembersNamedDenots1 = denots0
+          myMembersNamedName2 = name1
+          myMembersNamedDenots2 = denots1
+        else if myMembersNamedName3 eq name then
+          myMembersNamedName = name
+          myMembersNamedDenots = denots
+          myMembersNamedName1 = name0
+          myMembersNamedDenots1 = denots0
+          myMembersNamedName2 = name1
+          myMembersNamedDenots2 = denots1
+          myMembersNamedName3 = name2
+          myMembersNamedDenots3 = denots2
+        else
+          myMembersNamedName = name
+          myMembersNamedDenots = denots
+          myMembersNamedName1 = name0
+          myMembersNamedDenots1 = denots0
+          myMembersNamedName2 = name1
+          myMembersNamedDenots2 = denots1
+          myMembersNamedName3 = name2
+          myMembersNamedDenots3 = denots2
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
@@ -1914,15 +2083,19 @@ object SymDenotations {
 
     def invalidateMemberCaches()(using Context): Unit =
       myMemberCachePeriod = Nowhere
+      invalidateMembersNamedCache()
       invalidateMemberNamesCache()
 
     def invalidateMemberCachesFor(sym: Symbol)(using Context): Unit =
       if myMemberCache != null then myMemberCache.uncheckedNN.remove(sym.name)
+      invalidateMembersNamedCache()
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
         if sym.isWrappedToplevelDef then
-          val outerCache = sym.owner.owner.asClass.classDenot.myMemberCache
+          val outerClassDenot = sym.owner.owner.asClass.classDenot
+          val outerCache = outerClassDenot.myMemberCache
           if outerCache != null then outerCache.remove(sym.name)
+          outerClassDenot.invalidateMembersNamedCache()
 
     override def copyCaches(from: SymDenotation, phase: Phase)(using Context): this.type = {
       from match {
@@ -2166,6 +2339,7 @@ object SymDenotations {
     def replace(prev: Symbol, replacement: Symbol)(using Context): Unit = {
       unforcedDecls.openForMutations.replace(prev, replacement)
       if (myMemberCache != null) myMemberCache.uncheckedNN.remove(replacement.name)
+      invalidateMembersNamedCache()
     }
 
     /** Delete symbol from current scope.
@@ -2177,6 +2351,7 @@ object SymDenotations {
       scope.unlink(sym, sym.name)
       if sym.name != sym.originalName then scope.unlink(sym, sym.originalName)
       if (myMemberCache != null) myMemberCache.uncheckedNN.remove(sym.name)
+      invalidateMembersNamedCache()
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
@@ -2202,13 +2377,70 @@ object SymDenotations {
     final def membersNamed(name: Name)(using Context): PreDenotation =
       Stats.record("membersNamed")
       if Config.cacheMembersNamed then
-        var denots: PreDenotation | Null = memberCache.lookup(name)
-        if denots == null then
-          denots = computeMembersNamed(name)
-          memberCache(name) = denots
-        else if Config.checkCacheMembersNamed then
-          val denots1 = computeMembersNamed(name)
-          assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
+        val period = ctx.period
+        // Slot 0 stays the fastest path for repeated same-name calls.
+        if myMembersNamedPeriod == period && (myMembersNamedName eq name) then
+          val cached = myMembersNamedDenots
+          if cached != null then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
+            return cached
+        else if myMembersNamedPeriod == period then
+          var cached = myMembersNamedDenots1
+          if cached != null && (myMembersNamedName1 eq name) then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
+            rememberMembersNamed(period, name, cached)
+            return cached
+          cached = myMembersNamedDenots2
+          if cached != null && (myMembersNamedName2 eq name) then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
+            rememberMembersNamed(period, name, cached)
+            return cached
+          cached = myMembersNamedDenots3
+          if cached != null && (myMembersNamedName3 eq name) then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
+            rememberMembersNamed(period, name, cached)
+            return cached
+        var cache = currentMemberCache
+        if cache != null then
+          val cached = cache.lookup(name)
+          if cached != null then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
+            rememberMembersNamed(period, name, cached)
+            return cached
+        else if myMembersNamedPeriod == period then
+          cache = promotedMemberCache
+          addMembersNamedFrontEntries(cache)
+
+        val mutationId = myMemberCacheMutationId
+        if cache == null && myMembersNamedPeriod != period then
+          // Mark the first-name slot as in-progress. A reentrant distinct-name
+          // lookup will promote to the map and the outer computation will add
+          // this name when it completes.
+          myMembersNamedPeriod = period
+          myMembersNamedName = name
+          myMembersNamedDenots = null
+          myMembersNamedName1 = null
+          myMembersNamedDenots1 = null
+          myMembersNamedName2 = null
+          myMembersNamedDenots2 = null
+          myMembersNamedName3 = null
+          myMembersNamedDenots3 = null
+
+        val denots = computeMembersNamed(name)
+        if myMemberCacheMutationId == mutationId then
+          cache = currentMemberCache
+          if cache != null then cache(name) = denots
+          rememberMembersNamed(period, name, denots)
         denots
       else computeMembersNamed(name)
 
@@ -2234,10 +2466,27 @@ object SymDenotations {
 
     private[core] def computeMembersNamed(name: Name)(using Context): PreDenotation =
       Stats.record("computeMembersNamed")
-      val ownDenots = info.decls.denotsNamed(name)
-      if debugTrace then
-        println(s"$this.member($name), ownDenots = $ownDenots")
-      addInherited(name, ownDenots)
+      // Negative-name oracle: `memberNames(takeAllFilter)` is the cached set of
+      // all own+inherited non-constructor member names (a superset of every name
+      // computeMembersNamed could resolve). If `name` is provably absent from it
+      // we skip the own-scope probe AND the full recursive parent collect, which
+      // for ~57% of misses walks the whole hierarchy only to return NoDenotation.
+      // Constructor names are excluded by takeAllFilter (and resolved directly by
+      // addInherited), and package classes don't cache member names, so both
+      // bypass the oracle. The synthetic constructor-proxy `apply` is kept in
+      // sync by invalidateMemberCaches in NamerOps.addConstructorApplies.doAdd.
+      if Config.cacheMemberNames && !name.isConstructorName && !this.is(PackageClass)
+         && !memberNames(takeAllFilter).contains(name)
+      then
+        if Config.checkCacheMembersNamed then
+          val denots1 = addInherited(name, info.decls.denotsNamed(name))
+          assert(!denots1.exists, s"negative-name oracle inconsistency: computed $denots1, name = $name, owner = $this")
+        NoDenotation
+      else
+        val ownDenots = info.decls.denotsNamed(name)
+        if debugTrace then
+          println(s"$this.member($name), ownDenots = $ownDenots")
+        addInherited(name, ownDenots)
 
     private def addInherited(name: Name, ownDenots: PreDenotation,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =

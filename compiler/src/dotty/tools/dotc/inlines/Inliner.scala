@@ -665,7 +665,9 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     val inlineTyper = new InlineTyper(ctx.reporter.errorCount)
 
-    val inlineCtx = inlineContext(Inlined(call, Nil, ref(defn.Predef_undefined))).fresh.setTyper(inlineTyper).setNewScope
+    // `inlineContext` already returns a fresh FreshContext (one per inline expansion), so we
+    // mutate it in place via setTyper/setNewScope rather than allocating a second fresh context.
+    val inlineCtx = inlineContext(Inlined(call, Nil, ref(defn.Predef_undefined))).setTyper(inlineTyper).setNewScope
 
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
       Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)

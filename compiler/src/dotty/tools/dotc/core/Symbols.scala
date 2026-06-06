@@ -109,7 +109,7 @@ object Symbols extends SymUtils {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      if checkedPeriod == ctx.period then lastDenot
+      if checkedPeriod.contains(ctx.period) then lastDenot
       else computeDenot(lastDenot)
     }
 
@@ -118,8 +118,9 @@ object Symbols extends SymUtils {
       // the JIT (reputedly, cutoff is at 35 bytes)
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
-      checkedPeriod = now
-      if lastd.validFor.contains(now) then lastd else recomputeDenot(lastd)
+      val vf = lastd.validFor
+      if vf.contains(now) then { checkedPeriod = vf; lastd }
+      else { checkedPeriod = now; recomputeDenot(lastd) }
     }
 
     /** Overridden in NoSymbol */

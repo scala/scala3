@@ -1472,7 +1472,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
    *  We assume parameters are never nested inside parameters.
    */
-  override def inlineContext(tree: Inlined)(using Context): Context = {
+  override def inlineContext(tree: Inlined)(using Context): FreshContext = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldIC = enclosingInlineds
 

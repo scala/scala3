@@ -185,8 +185,18 @@ object NamerOps:
         ApplyProxyCompleter(constr),
         cls.privateWithin,
         constr.coord)
-    def doAdd() = for dcl <- cls.info.decls do
-      if dcl.isConstructor then scope.enter(proxy(dcl))
+    def doAdd() =
+      for dcl <- cls.info.decls do
+        if dcl.isConstructor then scope.enter(proxy(dcl))
+      // The synthetic `apply` proxies are entered via a raw `scope.enter`,
+      // bypassing ClassDenotation.enterNoReplace, so the module class's
+      // memberNames cache is not invalidated. computeMembersNamed uses that
+      // cache as a negative-name oracle (skipping the parent collect for
+      // provably-absent names), so a stale set would miss the proxies and
+      // wrongly report `apply` as absent. Invalidate here so it covers both
+      // the in-place `:264` mutation and the deferred `addCleanupAction` path
+      // taken when `cls.is(Touched)`.
+      modcls.classDenot.invalidateMemberCaches()
     cls.infoOrCompleter match
       case completer: CompleterWithCleanup if cls.is(Touched) =>
         // Taking the info would lead to a cyclic reference here - delay instead until cleanup of `cls`

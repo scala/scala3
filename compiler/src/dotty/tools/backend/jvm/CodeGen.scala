@@ -25,10 +25,16 @@ import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
 import opt.CallGraph
 
+object CodeGen {
+  private val noOpOnFileCreated: AbstractFile => Unit = _ => ()
+}
+
 class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, val frontendAccess: PostProcessorFrontendAccess,
               val callGraph: CallGraph, val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes,
               val generatedClassHandler: GeneratedClassHandler) {
   private class Impl extends BCodeHelpers(bTypeLoader, bTypes), BCodeBodyBuilder(primitives), BCodeSyncAndTry {
+    protected def backendUtils: BackendUtils = CodeGen.this.backendUtils
+
     def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
       callGraph.callsitePositions.get(m) = pos match {
         case p: Positioned => p.sourcePos
@@ -113,6 +119,8 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
   private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile)(using Context): AbstractFile => Unit = {
+    if ctx.compilerCallback == null && ctx.incCallback == null then return CodeGen.noOpOnFileCreated
+
     val isLocal = atPhase(sbtExtractDependenciesPhase) {
       claszSymbol.isLocal
     }

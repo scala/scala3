@@ -206,9 +206,16 @@ object Types extends TypeUtils {
       case this1: RefinedOrRecType if skipRefined =>
         this1.parent.isRef(sym, skipRefined)
       case this1: AppliedType =>
-        val this2 = this1.dealias
-        if (this2 ne this1) this2.isRef(sym, skipRefined)
-        else this1.underlying.isRef(sym, skipRefined)
+        // Fast path: `AppliedType(classRef, args)` is its own dealias (a class tycon
+        // never dealiases), so the round-trip below always falls to `underlying`.
+        // Skip it directly; opaque/match-alias tycons (symbol not a class) still dealias.
+        this1.tycon match
+          case tycon: TypeRef if tycon.symbol.isClass =>
+            this1.underlying.isRef(sym, skipRefined)
+          case _ =>
+            val this2 = this1.dealias
+            if (this2 ne this1) this2.isRef(sym, skipRefined)
+            else this1.underlying.isRef(sym, skipRefined)
       case this1: TypeVar =>
         this1.instanceOpt.isRef(sym, skipRefined)
       case this1: AnnotatedType =>
@@ -1660,7 +1667,12 @@ object Types extends TypeUtils {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(using Context): Type = dealias match {
+    final def dropDependentRefinement(using Context): Type = dropDependentRefinementOf(dealias)
+
+    /** Like `dropDependentRefinement`, but takes the already-dealiased `this` to avoid a
+     *  redundant leading `dealias`. `dealiased` must be `this.dealias`; since `dealias` is
+     *  idempotent this is behaviour-preserving. */
+    final def dropDependentRefinementOf(dealiased: Type)(using Context): Type = dealiased match {
       case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
       case tp => tp
     }
@@ -3136,13 +3148,22 @@ object Types extends TypeUtils {
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
     }
 
+    private var myUnderlying: Type | Null = null
+    private var myUnderlyingPeriod: Period = Nowhere
+
     override def underlying(using Context): Type =
       if (ctx.erasedTypes) tref
+      else if myUnderlyingPeriod == ctx.period then myUnderlying.nn
       else cls.info match {
-        case cinfo: ClassInfo => cinfo.selfType
+        case cinfo: ClassInfo =>
+          val st = cinfo.selfType
+          myUnderlying = st
+          myUnderlyingPeriod = ctx.period
+          st
         case _: ErrorType | NoType
           if ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort => cls.info
-          // can happen in IDE if `cls` is stale
+          // Skip caching this IDE/best-effort fallback since the answer can shift mid-run;
+          // can happen in IDE if `cls` is stale.
       }
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
@@ -3956,14 +3977,61 @@ object Types extends TypeUtils {
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
-      def substParams(pinfos: List[PInfo], to: This): List[PInfo] = pinfos match
+      def substParams(pinfos: List[PInfo], substMap: Substituters.SubstBindingMap[This]): List[PInfo] = pinfos match
         case pinfos @ (pinfo :: rest) =>
-          pinfos.derivedCons(pinfo.subst(this, to).asInstanceOf[PInfo], substParams(rest, to))
+          pinfos.derivedCons(substMap.applyFromRoot(pinfo).asInstanceOf[PInfo], substParams(rest, substMap))
         case nil =>
           nil
+      var sharedMap: Substituters.SubstBindingMap[This] | Null = null
+      def getMap(x: This): Substituters.SubstBindingMap[This] =
+        val m = sharedMap
+        if m != null then m
+        else
+          val m1 = new Substituters.SubstBindingMap[This](this, x)
+          sharedMap = m1
+          m1
       companion(paramNames)(
-          x => substParams(paramInfos, x),
-          x => resType.subst(this, x))
+          x => substParams(paramInfos, getMap(x)),
+          x => getMap(x).applyFromRoot(resType))
+
+    /** Rebuild this lambda as if mapped by an outer `BiTypeMap` whose binder
+     *  substitutions are `(outerFrom -> outerTo)`, fusing that outer map with the
+     *  fresh `this -> x` binder-rename into a SINGLE structural pass over the
+     *  ORIGINAL `paramInfos`/`resType` (rather than mapping them once for the
+     *  outer map in `mapOverLambda` and a second time for the rename here).
+     *
+     *  Returns `this` unchanged exactly when the two-pass outer walk would leave
+     *  the bodies `eq` (no outer substitution fired AND no unconditional `LazyRef`
+     *  reallocation — both tracked by `FusedRebindMap.outerFired`), matching
+     *  `derivedLambdaType`'s identity shortcut; otherwise returns the rebuilt
+     *  lambda. The result is identity-identical to the two-pass output.
+     */
+    def newLikeThisFused(outerFrom: Array[BindingType], outerTo: Array[BindingType])(using Context): This =
+      val n = outerFrom.length
+      val srcParamInfos = this.paramInfos
+      val srcResType = this.resType
+      val self = this
+      var sharedMap: Substituters.FusedRebindMap | Null = null
+      def getMap(x: This): Substituters.FusedRebindMap =
+        val m = sharedMap
+        if m != null then m
+        else
+          val from = new Array[BindingType](n + 1)
+          val to = new Array[BindingType](n + 1)
+          System.arraycopy(outerFrom, 0, from, 0, n)
+          System.arraycopy(outerTo, 0, to, 0, n)
+          from(n) = self
+          to(n) = x
+          val m1 = new Substituters.FusedRebindMap(from, to)
+          sharedMap = m1
+          m1
+      val rebuilt = companion(paramNames)(
+          x => { val m = getMap(x); srcParamInfos.mapConserve(pinfo => m(pinfo).asInstanceOf[PInfo]) },
+          x => getMap(x)(srcResType))
+      // If the outer map never touched the bodies, the only change was the
+      // identity rename `this -> x`; preserve `derivedLambdaType`'s sharing.
+      val m = sharedMap
+      if m != null && !m.outerFired then this else rebuilt
 
     protected def prefixString: String
     override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
@@ -4485,9 +4553,45 @@ object Types extends TypeUtils {
       newLikeThis(paramNames, declaredVariances, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], variances: List[Variance], paramInfos: List[PInfo], resType: Type)(using Context): This =
+      var sharedMap: Substituters.SubstBindingMap[This] | Null = null
+      def getMap(x: This): Substituters.SubstBindingMap[This] =
+        val m = sharedMap
+        if m != null then m
+        else
+          val m1 = new Substituters.SubstBindingMap[This](this, x)
+          sharedMap = m1
+          m1
       HKTypeLambda(paramNames, variances)(
-          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
-          x => resType.subst(this, x))
+          x =>
+            val substMap = getMap(x)
+            paramInfos.mapConserve(pinfo => substMap.applyFromRoot(pinfo).asInstanceOf[PInfo]),
+          x => getMap(x).applyFromRoot(resType))
+
+    override def newLikeThisFused(outerFrom: Array[BindingType], outerTo: Array[BindingType])(using Context): This =
+      val n = outerFrom.length
+      val srcParamInfos = this.paramInfos
+      val srcResType = this.resType
+      val self = this
+      val variances = declaredVariances
+      var sharedMap: Substituters.FusedRebindMap | Null = null
+      def getMap(x: This): Substituters.FusedRebindMap =
+        val m = sharedMap
+        if m != null then m
+        else
+          val from = new Array[BindingType](n + 1)
+          val to = new Array[BindingType](n + 1)
+          System.arraycopy(outerFrom, 0, from, 0, n)
+          System.arraycopy(outerTo, 0, to, 0, n)
+          from(n) = self
+          to(n) = x
+          val m1 = new Substituters.FusedRebindMap(from, to)
+          sharedMap = m1
+          m1
+      val rebuilt = HKTypeLambda(paramNames, variances)(
+          x => { val m = getMap(x); srcParamInfos.mapConserve(pinfo => m(pinfo).asInstanceOf[PInfo]) },
+          x => getMap(x)(srcResType))
+      val m = sharedMap
+      if m != null && !m.outerFired then this else rebuilt
 
     def withVariances(variances: List[Variance])(using Context): This =
       newLikeThis(paramNames, variances, paramInfos, resType)
@@ -4707,6 +4811,14 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
+    // Memoizes `toNestedPairs` for tuple-shaped AppliedTypes. The result
+    // `*:[args(0), *:[args(1), ..., EmptyTuple]]` is a pure function of `args`
+    // and a couple of defn refs that change only per run, so RunId-keyed
+    // invalidation is sufficient. Hot path: TypeComparer.compareAppliedType2
+    // tuple-vs-tuple subtyping rebuilds the *: chain on every check.
+    private var myNestedPairsRunId: RunId = NoRunId
+    private var myNestedPairs: Type = uninitialized
+
     private var validUnderlyingNormalizable: Period = Nowhere
     private var cachedUnderlyingNormalizable: Type = uninitialized
 
@@ -4810,6 +4922,18 @@ object Types extends TypeUtils {
         if !isProvisional then
           myEvalRunId = ctx.runId
           myEvalued = res
+        res
+
+    /** Cached `toNestedPairs` for tuple-shaped AppliedTypes. Callers that have
+     *  already verified `defn.isTupleNType(this)` should use this entry point;
+     *  the non-tuple branch retains the `tupleElementTypes` slow path. */
+    def cachedToNestedPairs(using Context): Type =
+      if myNestedPairsRunId == ctx.runId then myNestedPairs
+      else
+        val res = TypeOps.nestedPairs(args)
+        if !isProvisional then
+          myNestedPairsRunId = ctx.runId
+          myNestedPairs = res
         res
 
     def lowerBound(using Context): Type = tycon.stripTypeVar match {
@@ -6332,7 +6456,18 @@ object Types extends TypeUtils {
       case nil =>
         nil
 
-    protected def mapOverLambda(tp: LambdaType) =
+    protected def mapOverLambda(tp: LambdaType): Type =
+      if Config.fuseMapOverLambdaRebind then
+        // Fuse the outer binder substitution with this lambda's `newLikeThis`
+        // rename into a single structural pass (see `newLikeThisFused`). Only the
+        // `SubstBinding(s)Map` family is fusable; all other maps fall through to
+        // the two-pass code below.
+        this match
+          case m: Substituters.SubstBindingMap[?] =>
+            return tp.newLikeThisFused(Array(m.from), Array(m.to))
+          case m: Substituters.SubstBindingsMap =>
+            return tp.newLikeThisFused(m.from, m.to)
+          case _ =>
       val restpe = tp.resultType
       val saved = variance
       variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance
@@ -6427,7 +6562,7 @@ object Types extends TypeUtils {
       val ctx = this.mapCtx // optimization for performance
       given Context = ctx
       tp match {
-        case tp: TermRef if tp.symbol.isImport =>
+        case tp: TermRef if (tp.name eq nme.IMPORT) && tp.symbol.isImport =>
           // see tests/pos/i19493.scala for examples requiring mapping over imports
           val ImportType(e) = tp.info: @unchecked
           val e1 = singleton(apply(e.tpe))
@@ -6436,11 +6571,18 @@ object Types extends TypeUtils {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
-            derivedSelect(tp, prefix1)
+            // see comment of TypeAccumulator's applyToPrefix
+            val saved = variance
+            variance = saved max 0
+            val prefix1 = this(tp.prefix)
+            variance = saved
+            if (prefix1 eq tp.prefix) then tp else derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
+          val tycon1 = this(tp.tycon)
+          val args1 = mapArgs(tp.args, tyconTypeParams(tp))
+          if (tycon1 eq tp.tycon) && (args1 eq tp.args) then tp
+          else derivedAppliedType(tp, tycon1, args1)
 
         case tp: LambdaType =>
           mapOverLambda(tp)
@@ -6847,7 +6989,8 @@ object Types extends TypeUtils {
       tp.derivedWildcardType(rangeToBounds(bounds))
 
     override protected def derivedMatchType(tp: MatchType, bound: Type, scrutinee: Type, cases: List[Type]): Type =
-      bound match
+      if (bound eq tp.bound) && (scrutinee eq tp.scrutinee) && (cases eq tp.cases) then tp
+      else bound match
         case Range(lo, hi) =>
           range(derivedMatchType(tp, lo, scrutinee, cases), derivedMatchType(tp, hi, scrutinee, cases))
         case _ =>
@@ -6877,7 +7020,8 @@ object Types extends TypeUtils {
     }
 
     override protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
-      restpe match {
+      if (formals eq tp.paramInfos) && (restpe eq tp.resType) then tp
+      else restpe match {
         case Range(lo, hi) =>
           range(derivedLambdaType(tp)(formals, lo), derivedLambdaType(tp)(formals, hi))
         case _ =>

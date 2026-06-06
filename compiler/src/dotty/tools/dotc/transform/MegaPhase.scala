@@ -448,6 +448,32 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     // try
       if (tree.source != ctx.source && tree.source.exists)
         transformTree(tree, start)(using ctx.withSource(tree.source))
+      else if (tree.isInstanceOf[Ident]
+          && (nxIdentPrepPhase(start) eq null)
+          && (nxIdentTransPhase(start) eq null))
+        // leaf-tree shortcut when no mini-phase registers prep/trans for Ident
+        tree
+      else if (tree.isInstanceOf[TypeTree]
+          && (nxTypeTreePrepPhase(start) eq null)
+          && (nxTypeTreeTransPhase(start) eq null))
+        // leaf-tree shortcut when no mini-phase registers prep/trans for TypeTree
+        tree
+      else if (tree.isInstanceOf[Literal]
+          && (nxLiteralPrepPhase(start) eq null)
+          && (nxLiteralTransPhase(start) eq null))
+        // leaf-tree shortcut when no mini-phase registers prep/trans for Literal
+        tree
+      else if (tree.isInstanceOf[This]
+          && (nxThisPrepPhase(start) eq null)
+          && (nxThisTransPhase(start) eq null))
+        // leaf-tree shortcut when no mini-phase registers prep/trans for This
+        tree
+      else if (tree.isInstanceOf[Super]
+          && (nxSuperPrepPhase(start) eq null)
+          && (nxSuperTransPhase(start) eq null))
+        // leaf-tree shortcut: goSuper never recurses into Super.qual, so when
+        // no mini-phase registers prep/trans for Super this is recursion-free
+        tree
       else if (tree.isInstanceOf[NameTree])
         transformNamed(tree, start, ctx)
       else

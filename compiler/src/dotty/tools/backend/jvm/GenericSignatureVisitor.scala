@@ -257,16 +257,25 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
     !(ix == -1 || ix >= offset + length)
   }
 
-  def visitInternalName(internalName: String, offset: Int, length: Int): Unit = if (internalName != null && containsChar(internalName, offset, length, '$')) {
-    for (c <- getClassIfNested(internalName.substring(offset, length)))
+  private def recordIfNested(internalName: InternalName): Unit =
+    for (c <- getClassIfNested(internalName))
       if (!declaredInnerClasses.contains(c))
         referredInnerClasses += c
+
+  def visitInternalName(internalName: String, offset: Int, length: Int): Unit = if (internalName != null) {
+    if (offset == 0 && length == internalName.length) {
+      if (internalName.indexOf('$') >= 0)
+        recordIfNested(internalName)
+    }
+    else if (containsChar(internalName, offset, length, '$')) {
+      recordIfNested(internalName.substring(offset, length))
+    }
   }
 
   // either an internal/Name or [[Linternal/Name; -- there are certain references in classfiles
   // that are either an internal name (without the surrounding `L;`) or an array descriptor
   // `[Linternal/Name;`.
-  def visitInternalNameOrArrayReference(ref: String): Unit = if (ref != null) {
+  def visitInternalNameOrArrayReference(ref: String): Unit = if (ref != null && ref.indexOf('$') >= 0) {
     val bracket = ref.lastIndexOf('[')
     if (bracket == -1) visitInternalName(ref)
     else if (ref.charAt(bracket + 1) == 'L') visitInternalName(ref, bracket + 2, ref.length - 1)
@@ -320,4 +329,3 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
     visitDescriptor(handle.getDesc)
   }
 }
-

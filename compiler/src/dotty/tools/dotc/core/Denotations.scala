@@ -826,35 +826,39 @@ object Denotations {
         else
           //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
           // not found, cur points to highest existing variant
-          val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
-          if currentPeriod.lastPhaseId <= nextTransformerId then
-            cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
-          else
-            var startPid = nextTransformerId + 1
-            val transformer = ctx.base.denotTransformers(nextTransformerId)
-            //println(s"transforming $this with $transformer")
-            val savedPeriod = ctx.period
-            val mutCtx = ctx.asInstanceOf[FreshContext]
-            try
-              mutCtx.setPhase(transformer)
-              next = transformer.transform(cur)
-                // We temporarily update the context with the new phase instead of creating a
-                // new one. This is done for performance. We cut down on about 30% of context
-                // creations that way, and also avoid phase caches in contexts to get large.
-                // To work correctly, we need to demand that the context with the new phase
-                // is not retained in the result.
-            finally
-              mutCtx.setPeriod(savedPeriod)
-            if next eq cur then
-              startPid = cur.validFor.firstPhaseId
+          var done = false
+          while !done do
+            val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
+            if currentPeriod.lastPhaseId <= nextTransformerId then
+              cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
+              done = true
             else
-              assertNotPackage(next, transformer)
-              next.insertAfter(cur)
-              cur = next
-            cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
-            //printPeriods(cur)
-            //println(s"new denot: $cur, valid for ${cur.validFor}")
-          cur.current // multiple transformations could be required
+              var startPid = nextTransformerId + 1
+              val transformer = ctx.base.denotTransformers(nextTransformerId)
+              //println(s"transforming $this with $transformer")
+              val savedPeriod = ctx.period
+              val mutCtx = ctx.asInstanceOf[FreshContext]
+              try
+                mutCtx.setPhase(transformer)
+                next = transformer.transform(cur)
+                  // We temporarily update the context with the new phase instead of creating a
+                  // new one. This is done for performance. We cut down on about 30% of context
+                  // creations that way, and also avoid phase caches in contexts to get large.
+                  // To work correctly, we need to demand that the context with the new phase
+                  // is not retained in the result.
+              finally
+                mutCtx.setPeriod(savedPeriod)
+              if next eq cur then
+                startPid = cur.validFor.firstPhaseId
+              else
+                assertNotPackage(next, transformer)
+                next.insertAfter(cur)
+                cur = next
+              cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
+              //printPeriods(cur)
+              //println(s"new denot: $cur, valid for ${cur.validFor}")
+              // Loop instead of calling cur.current recursively (multiple transformations may be required)
+          cur
       end goForward
 
       def goBack: SingleDenotation =
@@ -1221,6 +1225,26 @@ object Denotations {
 
   // --- Overloaded denotations and predenotations -------------------------------------------------
 
+  private def filterWithCurrentFlags(denot: PreDenotation, required: FlagSet, realExcluded: FlagSet)(using Context): PreDenotation | Null =
+    denot match
+      case denot: MultiPreDenotation =>
+        val denot1 = filterWithCurrentFlags(denot.denot1, required, realExcluded)
+        if denot1 == null then null
+        else
+          val denot2 = filterWithCurrentFlags(denot.denot2, required, realExcluded)
+          if denot2 == null then null
+          else if (denot1 eq denot.denot1) && (denot2 eq denot.denot2) then denot
+          else denot1.union(denot2)
+      case denot: SymDenotation =>
+        if denot.isCurrent(required) && denot.isCurrent(realExcluded) then
+          val flags = denot.flagsUNSAFE
+          if !required.isEmpty && !flags.isAllOf(required)
+             || flags.isOneOf(realExcluded) then NoDenotation
+          else denot
+        else null
+      case _ =>
+        null
+
   trait MultiPreDenotation extends PreDenotation {
     def denot1: PreDenotation
     def denot2: PreDenotation
@@ -1237,7 +1261,12 @@ object Denotations {
     def filterDisjoint(denot: PreDenotation)(using Context): PreDenotation =
       derivedUnion(denot1.filterDisjoint(denot), denot2.filterDisjoint(denot))
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): PreDenotation =
-      derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+      val realExcluded =
+        if ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy) then excluded
+        else excluded | Invisible
+      filterWithCurrentFlags(this, required, realExcluded) match
+        case null => derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+        case denot => denot
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T =
       g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =

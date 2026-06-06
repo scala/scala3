@@ -8,6 +8,22 @@ object Config {
   inline val cacheImplicitScopes = true
   inline val cacheMatchReduced = true
 
+  /** When a `BiTypeMap` (e.g. a binder/parameter substitution) maps over a
+   *  nested lambda, fuse the outer map with the `newLikeThis` binder-rename into
+   *  a single structural pass over the lambda's `paramInfos`/`resType`, instead
+   *  of walking them once for the outer map and a second time for the rename
+   *  (see `TypeMap.mapOverLambda` / `LambdaType.newLikeThisFused`).
+   *
+   *  Only the `SubstBinding(s)Map` family is fused (the dominant case of the
+   *  PolyType-rebuild allocation storm); all other maps keep the two-pass path.
+   *  The fused output is identity-identical to the two-pass output: it returns
+   *  the original lambda exactly when the two-pass outer walk would (no binder
+   *  substitution fired AND no unconditional `LazyRef` reallocation), otherwise
+   *  it rebuilds with a fresh binder, applying the outer substitution and the
+   *  rename together so each `AppliedType` is re-uniqued once instead of twice.
+   */
+  inline val fuseMapOverLambdaRebind = true
+
   /** If true, the `runWithOwner` operation uses a re-usable context,
    *  similar to explore. This requires that the context does not escape
    *  the call. If false, `runWithOwner` runs its operation argument

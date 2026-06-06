@@ -17,6 +17,65 @@ class TastyHeaderUnpicklerTest {
   import TastyHeaderUnpicklerTest.*
 
   @Test
+  def readIntSizedOperands: Unit = {
+    for (n <- Array(0, 1, 127, 128, 16383, 16384, 0x0fffffff)) {
+      val reader = readerFrom(_.writeNat(n))
+      assertEquals(n, reader.readNat())
+      assertTrue(reader.isAtEnd)
+    }
+
+    val fiveByteNat = bufferFrom(_.writeNat(Int.MaxValue))
+    assertEquals(5, fiveByteNat.length)
+    val natReader = new TastyReader(fiveByteNat.bytes, 0, fiveByteNat.length)
+    assertEquals(Int.MaxValue, natReader.readNat())
+    assertTrue(natReader.isAtEnd)
+
+    for (i <- Array(0, 1, -1, 63, 64, -64, -65, 8191, -8192)) {
+      val reader = readerFrom(_.writeInt(i))
+      assertEquals(i, reader.readInt())
+      assertTrue(reader.isAtEnd)
+    }
+
+    for (i <- Array(Int.MaxValue, Int.MinValue)) {
+      val buffer = bufferFrom(_.writeInt(i))
+      assertEquals(5, buffer.length)
+      val reader = new TastyReader(buffer.bytes, 0, buffer.length)
+      assertEquals(i, reader.readInt())
+      assertTrue(reader.isAtEnd)
+    }
+  }
+
+  @Test
+  def readIntSizedOperandOverflow: Unit = {
+    expectUnpickleError(readerFrom(_.writeLongNat(Int.MaxValue.toLong + 1L)).readNat()) {
+      "Expected a 31-bit nat"
+    }
+    expectUnpickleError(readerFrom(_.writeLongInt(Int.MaxValue.toLong + 1L)).readInt()) {
+      "Expected a 32-bit int"
+    }
+    expectUnpickleError(readerFrom(_.writeLongInt(Int.MinValue.toLong - 1L)).readInt()) {
+      "Expected a 32-bit int"
+    }
+
+    val longNatReader = readerFrom(_.writeLongNat(Int.MaxValue.toLong + 1L))
+    assertEquals(Int.MaxValue.toLong + 1L, longNatReader.readLongNat())
+    assertTrue(longNatReader.isAtEnd)
+  }
+
+  @Test
+  def readIntSizedOperandWrappers: Unit = {
+    val buffer = bufferFrom { buf =>
+      buf.writeNat(42)
+      buf.writeNat(17)
+      buf.writeNat(3)
+    }
+    val reader = new TastyReader(buffer.bytes, 0, buffer.length)
+    assertEquals(42, reader.readNameRef().index)
+    assertEquals(17, reader.readAddr().index)
+    assertEquals(6, reader.readEnd().index)
+  }
+
+  @Test
   def okThisCompilerReadsItself: Unit = {
     val file = TastyVersion(MajorVersion, MinorVersion, ExperimentalVersion)
     val read = TastyVersion(MajorVersion, MinorVersion, ExperimentalVersion)
@@ -263,6 +322,17 @@ class TastyHeaderUnpicklerTest {
 }
 
 object TastyHeaderUnpicklerTest {
+
+  def bufferFrom(write: TastyBuffer => Unit): TastyBuffer = {
+    val buffer = new TastyBuffer(16)
+    write(buffer)
+    buffer
+  }
+
+  def readerFrom(write: TastyBuffer => Unit): TastyReader = {
+    val buffer = bufferFrom(write)
+    new TastyReader(buffer.bytes, 0, buffer.length)
+  }
 
   def fillHeader(maj: Int, min: Int, exp: Int, compiler: String): TastyBuffer = {
     val compilerBytes = compiler.getBytes(java.nio.charset.StandardCharsets.UTF_8)

@@ -122,8 +122,10 @@ class PostProcessor(frontendAccess: PostProcessorFrontendAccess,
   }
 
   private def setSerializableLambdas(classNode: ClassNode): Unit = {
-    import backendUtils.{collectSerializableLambdas, addLambdaDeserialize}
-    val serializableLambdas = collectSerializableLambdas(classNode)
+    import backendUtils.{addLambdaDeserialize, collectSerializableLambdas, recordedSerializableLambdas}
+    val serializableLambdas =
+      if ctx.settings.optInlineEnabled then collectSerializableLambdas(classNode)
+      else recordedSerializableLambdas(classNode.name)
     if serializableLambdas.nonEmpty then
       addLambdaDeserialize(classNode, serializableLambdas)
   }
@@ -181,4 +183,3 @@ case class GeneratedClass(
   onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
 case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
-

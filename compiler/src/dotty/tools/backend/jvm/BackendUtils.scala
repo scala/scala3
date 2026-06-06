@@ -34,6 +34,9 @@ class BackendUtils(val ts: WellKnownBTypes) {
   private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
     new ConcurrentHashMap
 
+  private val serializableIndyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
+    new ConcurrentHashMap
+
   def collectSerializableLambdas(classNode: ClassNode): Array[Handle] = {
     val indyLambdaBodyMethods = new mutable.ArrayBuffer[Handle]
     for (m <- classNode.methods.asScala) {
@@ -55,6 +58,15 @@ class BackendUtils(val ts: WellKnownBTypes) {
     }
     indyLambdaBodyMethods.toArray
   }
+
+  def recordedSerializableLambdas(hostClass: InternalName): Array[Handle] =
+    serializableIndyLambdaImplMethods.get(hostClass) match {
+      case null => Array.empty
+      case methods =>
+        methods.synchronized {
+          methods.valuesIterator.flatMap(_.valuesIterator).toArray
+        }
+    }
 
   /*
   * Add:
@@ -163,8 +175,17 @@ class BackendUtils(val ts: WellKnownBTypes) {
     onIndyLambdaImplMethod(hostClass)(_.getOrElseUpdate(method, mutable.Map.empty)(indy) = handle)
   }
 
+  def addSerializableIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode, handle: asm.Handle): Unit = {
+    val methods = serializableIndyLambdaImplMethods.computeIfAbsent(hostClass, _ => mutable.Map.empty)
+    methods.synchronized(methods.getOrElseUpdate(method, mutable.Map.empty)(indy) = handle)
+  }
+
   def removeIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode): Unit = {
     onIndyLambdaImplMethodIfPresent(hostClass)(_.get(method).foreach(_.remove(indy)))
+    serializableIndyLambdaImplMethods.get(hostClass) match {
+      case null =>
+      case methods => methods.synchronized(methods.get(method).foreach(_.remove(indy)))
+    }
   }
 
   /**
