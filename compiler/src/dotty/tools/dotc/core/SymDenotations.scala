@@ -2449,6 +2449,10 @@ object SymDenotations {
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
 
+    /** Does this class have `base` in its base-class linearization? */
+    final def hasBaseClass(base: ClassSymbol)(using BaseData, Context): Boolean =
+      (symbol eq base) || baseClassSet.contains(base)
+
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
