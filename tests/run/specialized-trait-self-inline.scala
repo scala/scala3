@@ -13,5 +13,5 @@ inline trait Foo[T: {Specialized, Numeric}]:
             foo(x - 1, y, w - summon[Numeric[T]].one, z)
 
 @main def Test =
-    val x = new Foo[Double] {}
+    val x = new Foo[Short] {}
     println(x.foo(10, 6, 5, "Lift Off!"))
