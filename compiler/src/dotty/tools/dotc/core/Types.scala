@@ -5118,6 +5118,16 @@ object Types extends TypeUtils {
       ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
     }
 
+    def apply(tycon: Type, arg: Type)(using Context): AppliedType = {
+      assertUnerased()
+      ctx.base.uniqueAppliedTypes.enterIfNew(tycon, arg)
+    }
+
+    def apply(tycon: Type, arg1: Type, arg2: Type)(using Context): AppliedType = {
+      assertUnerased()
+      ctx.base.uniqueAppliedTypes.enterIfNew(tycon, arg1, arg2)
+    }
+
   }
 
   // ----- BoundTypes: ParamRef, RecThis ----------------------------------------
