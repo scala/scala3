@@ -18,6 +18,8 @@ val internalsIgnored = Set[String](
   "internals/cc/alternatives-to-sealed.md",
   "internals/cc/handling-invariant-vars.md",
   "internals/exclusive-capabilities.md",
+  "internals/inline-traits.md",
+  "internals/specialized-traits.md",
 )
 
 @main def checkSidebarDocs(): Unit = {
