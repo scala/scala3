@@ -1051,6 +1051,7 @@ object Capabilities:
     def explanation(using Context): String = this match
       case InDecl(sym, fields) =>
         if sym.is(Method) then i" in the result type of $sym$contributingStr"
+        else if sym.isAbstractOrParamType then i" in the bound of $sym"
         else if sym.exists then i" in the type of $sym$contributingStr"
         else ""
       case TypeArg(tp: Type) =>

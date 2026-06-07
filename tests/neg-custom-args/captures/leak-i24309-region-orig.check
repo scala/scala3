@@ -1,5 +1,4 @@
 -- Error: tests/neg-custom-args/captures/leak-i24309-region-orig.scala:20:26 -------------------------------------------
 20 |      val c: Ref^{r1.R} = b // error, limitation
    |                          ^
-   |                          Local reach capability r2.R leaks into capture scope of an enclosing function.
-   |                          You could try to abstract the capabilities referred to by r2.R in a capset variable.
+   |                          Capture set parameter r2.R leaks into capture scope of an enclosing function.
