@@ -1694,7 +1694,16 @@ object Trees {
       def transformBlock(blk: Block)(using Context): Block =
         cpy.Block(blk)(transformStats(blk.stats, ctx.owner), transform(blk.expr))
       def transform(trees: List[Tree])(using Context): List[Tree] =
-        flatten(trees mapConserve (transform(_)))
+        trees match
+          case Nil =>
+            Nil
+          case tree :: Nil =>
+            val tree1 = transform(tree)
+            tree1 match
+              case Thicket(_) => flatten(tree1 :: Nil)
+              case _ => if (tree1 eq tree) trees else tree1 :: Nil
+          case _ =>
+            flatten(trees mapConserve (transform(_)))
       def transformSub[Tr <: Tree](tree: Tr)(using Context): Tr =
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
