@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (getName() reflection is not supported in ScalaJS)
+
 //> using options -language:experimental.specializedTraits
 inline trait Trait[T: Specialized]:
     def do_something() = println("Good morning")

@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (getInterfaces() reflection is not supported in ScalaJS)
+
 //> using options -language:experimental.specializedTraits
 
 class Animal

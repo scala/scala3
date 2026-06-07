@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (getInterfaces() reflection is not supported in ScalaJS)
+
 //> using options -language:experimental.specializedTraits
 inline trait Foo[T: Specialized](x: T):
     def foo = x
