@@ -1,33 +1,13 @@
 -- Error: tests/neg-custom-args/captures/leak-reaches.scala:18:31 ------------------------------------------------------
 18 |    val next: () => Unit = cur.head   // error
    |                           ^^^^^^^^
-   |                           Local reach capability xs* leaks into capture scope of method runAll2.
-   |                           You could try to abstract the capabilities referred to by xs* in a capset variable.
+   |                           Local any in the type of parameter xs leaks into capture scope of method runAll2.
+   |                           You could try to abstract the capability in a capset variable.
 -- Error: tests/neg-custom-args/captures/leak-reaches.scala:25:35 ------------------------------------------------------
-25 |    val next: () => Unit = cur.get.head // error // error
+25 |    val next: () => Unit = cur.get.head // error
    |                           ^^^^^^^^^^^^
-   |                           Local reach capability xs* leaks into capture scope of method runAll3.
-   |                           You could try to abstract the capabilities referred to by xs* in a capset variable.
--- Error: tests/neg-custom-args/captures/leak-reaches.scala:50:10 ------------------------------------------------------
-50 |  ps.map((x, y) => compose1(x, y)) // error // error // error
-   |          ^
-   |          Local reach capability ps* leaks into capture scope of method mapCompose.
-   |          You could try to abstract the capabilities referred to by ps* in a capset variable.
--- Error: tests/neg-custom-args/captures/leak-reaches.scala:50:13 ------------------------------------------------------
-50 |  ps.map((x, y) => compose1(x, y)) // error // error // error
-   |             ^
-   |             Local reach capability ps* leaks into capture scope of method mapCompose.
-   |             You could try to abstract the capabilities referred to by ps* in a capset variable.
--- Error: tests/neg-custom-args/captures/leak-reaches.scala:23:9 -------------------------------------------------------
-23 |  val cur = Ref[List[Proc]](xs) // error
-   |         ^
-   |         Separation failure: value cur's inferred type Ref[List[() => Unit]^{}]^ hides parameter xs.
-   |         The parameter needs to be annotated with consume to allow this.
--- Error: tests/neg-custom-args/captures/leak-reaches.scala:25:17 ------------------------------------------------------
-25 |    val next: () => Unit = cur.get.head // error // error
-   |              ^^^^^^^^^^
-   |              Separation failure: value next's type () => Unit hides parameter xs.
-   |              The parameter needs to be annotated with consume to allow this.
+   |                           Local any in the type of parameter xs leaks into capture scope of method runAll3.
+   |                           You could try to abstract the capability in a capset variable.
 -- Error: tests/neg-custom-args/captures/leak-reaches.scala:33:40 ------------------------------------------------------
 33 |  val id: (x: File^) -> File^{fresh} = x => x // error
    |                                        ^
@@ -39,27 +19,11 @@
    |Separation failure: anonymous function of type (x: File^): File^{fresh}'s inferred result type File^ hides parameter x.
    |The parameter needs to be annotated with consume to allow this.
 -- Error: tests/neg-custom-args/captures/leak-reaches.scala:50:28 ------------------------------------------------------
-50 |  ps.map((x, y) => compose1(x, y)) // error // error // error
+50 |  ps.map((x, y) => compose1(x, y)) // error
    |                            ^
    |Separation failure: argument of type  A ->{x} A
    |to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
    |corresponds to capture-polymorphic formal parameter f of type  A^'s1 => A^'s2
-   |and hides capabilities  {x}.
-   |Some of these overlap with the captures of the second argument with type  A ->{y} A.
-   |
-   |  Hidden set of current argument        : {x}
-   |  Hidden footprint of current argument  : {x, ps*}
-   |  Capture set of second argument        : {y}
-   |  Footprint set of second argument      : {y, ps*}
-   |  The two sets overlap at               : {ps*}
-   |
-   |where:    => refers to a root capability created in anonymous function of type (x$1: (A ->{ps*} A, A ->{ps*} A)): A^'s3 ->{ps*} A^'s4 when checking argument to parameter f of method compose1
--- Error: tests/neg-custom-args/captures/leak-reaches.scala:53:28 ------------------------------------------------------
-53 |  ps.map((x, y) => compose1(x, y)) // error
-   |                            ^
-   |Separation failure: argument of type  A ->{x} A
-   |to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |corresponds to capture-polymorphic formal parameter f of type  A^'s5 => A^'s6
    |and hides capabilities  {x}.
    |Some of these overlap with the captures of the second argument with type  A ->{y} A.
    |
@@ -69,4 +33,4 @@
    |  Footprint set of second argument      : {y, C}
    |  The two sets overlap at               : {C}
    |
-   |where:    => refers to a root capability created in anonymous function of type (x$1: (A ->{C} A, A ->{C} A)): A^'s7 ->{C} A^'s8 when checking argument to parameter f of method compose1
+   |where:    => refers to a root capability created in anonymous function of type (x$1: (A ->{C} A, A ->{C} A)): A^'s3 ->{C} A^'s4 when checking argument to parameter f of method compose1

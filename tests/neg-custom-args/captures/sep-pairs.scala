@@ -39,8 +39,8 @@ def test(io: Object^): Unit =
 
   val same = twoRefs2()
   val fstSame = same.fst
-  val sndSame = same.snd
-  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
+  val sndSame = same.snd // error after reach drop
+  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error // error after reach drop
 
 
 

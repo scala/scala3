@@ -25,7 +25,6 @@ def test(): Unit =
 
   val xs: Box[Async^] = ???
   val xsLambda = () => useBoxedAsync(xs) // was error now ok
-  val _: () ->{xs*} Unit = xsLambda
 
   val useBoxedAsync2 = (x: Box[Async^]) =>
     val t0 = x
@@ -33,7 +32,6 @@ def test(): Unit =
     t1.read()
 
   val xsLambda2 = () => useBoxedAsync2(xs)
-  val _: () ->{xs*} Unit = xsLambda2
   val _: () -> Unit = xsLambda2
 
   val f: Box[Async^] => Unit = (x:  Box[Async^]) => useBoxedAsync(x) // error

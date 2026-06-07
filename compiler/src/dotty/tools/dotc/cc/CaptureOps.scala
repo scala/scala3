@@ -422,37 +422,8 @@ extension (tp: Type)
   /** If `x` is a capability, replace all no-flip covariant occurrences of `any`
    *  in type `tp` with `x*`.
    */
-  def withReachCaptures(ref: Type)(using Context): Type = ref match
-    case ref: ObjectCapability if ref.isTrackableRef =>
-      object narrowCaps extends TypeMap:
-        var change = false
-        def apply(t: Type) =
-          if variance <= 0 then t
-          else t.dealias match
-            case t @ CapturingType(p, cs) if cs.containsGlobalOrLocalCap =>
-              val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
-              if reachRef.singletonCaptureSet.mightSubcapture(cs) then
-                change = true
-                t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
-              else
-                t
-            case t @ AnnotatedType(parent, ann) =>
-              // Don't map annotations, which includes capture sets
-              t.derivedAnnotatedType(this(parent), ann)
-            case t @ FunctionOrMethod(args, res) =>
-              t.derivedFunctionOrMethod(args, apply(res))
-            case _ =>
-              mapOver(t)
-      end narrowCaps
-      val tp1 = narrowCaps(tp)
-      if narrowCaps.change then
-        capt.println(i"narrow $tp of $ref to $tp1")
-        tp1
-      else
-        tp
-    case _ =>
-      tp
-  end withReachCaptures
+  def withReachCaptures(ref: Type)(using Context): Type =
+    tp
 
   private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
     val search = new TypeAccumulator[Boolean]:

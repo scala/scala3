@@ -1,10 +1,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/rand.scala:14:14 -----------------------------------------
 14 |val _: Rand = rand // error
    |              ^^^^
-   |              Found:    Rand{val self: JavaRand^{rand*}}^{rand}
+   |              Found:    (rand : Rand{val self: JavaRand^}^{any})
    |              Required: Rand
    |
-   |              Note that capability `rand` cannot flow into capture set {}.
+   |              Note that capability `any` cannot flow into capture set {}.
+   |
+   |              where:    ^   refers to a root capability in the type of value self
+   |                        any is a root capability in the type of value self
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/rand.scala:17:14 -----------------------------------------
