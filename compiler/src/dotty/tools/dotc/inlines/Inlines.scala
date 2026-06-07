@@ -35,6 +35,8 @@ import dotty.tools.dotc.reporting.OverrideError
 import dotty.tools.dotc.typer.RefChecks.OverridingPairsChecker
 import dotty.tools.dotc.typer.ErrorReporting.err
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
+import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.inlines.Inlines.InlineTraitState.InlineContext
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -92,8 +94,8 @@ object Inlines:
       && (
         ctx.phase == Phases.inliningPhase
         || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))
-        || (ctx.phase == Phases.specializeInlineTraitsPhase && !tree.symbol.is(Macro) && !(tree.symbol.isSpecializedTraitImplementationClass || tree.symbol.isSpecializedTraitInterface))
-        || (ctx.phase == Phases.desugarSpecializedTraitsPhase && !tree.symbol.is(Macro) && (tree.symbol.isSpecializedTraitImplementationClass || tree.symbol.isSpecializedTraitInterface) )
+        || (ctx.inlineTraitState.inlineTraitsPhase == InlineTraitState.InlineContext.InlineTraits && !tree.symbol.is(Macro) && !(tree.symbol.isSpecializedTraitImplementationClass || tree.symbol.isSpecializedTraitInterface))
+        || (ctx.inlineTraitState.inlineTraitsPhase == InlineTraitState.InlineContext.SpecializedTraits && !tree.symbol.is(Macro) && (tree.symbol.isSpecializedTraitImplementationClass || tree.symbol.isSpecializedTraitInterface) )
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
@@ -103,8 +105,7 @@ object Inlines:
       case Block(_, expr) =>
         needsInlining(expr)
       case tdef @ TypeDef(_, impl: Template) =>
-        // !tdef.symbol.isInlineTrait &&
-        impl.parents.map(symbolFromParent).exists(sym => sym.isInlineTrait) && isInlineableInCtx
+        impl.parents.map(symbolFromParent).exists(sym => sym.isInlineTrait) && isInlineableInCtx // We also allow inlining into inline traits for consistency when implementing specialized traits (see docs)
       case _ =>
         def isUnapplyExpressionWithDummy: Boolean =
           // The first step of typing an `unapply` consists in typing the call
@@ -1163,14 +1164,25 @@ object Inlines:
     end ParamAccessorsMapper
   end InlineParentTrait
 
-  class InlineTraitState:
+
+  object InlineTraitState:
+    enum InlineContext:
+      case InlineTraits, SpecializedTraits, None
+
+  class InlineTraitState(
     // For a class symbol created during inlining of an inline trait,
     // the chain of inlined traits which produced it. We don't actually care about the order. 
     // Used as a "seen list" for cycle checking. Persists across invocations of InlineParentTrait
-    val inlineOrigins = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty)
+    val inlineOrigins: mutable.Map[Symbol, Set[Symbol]] = mutable.HashMap[Symbol, Set[Symbol]]().withDefaultValue(Set.empty),
+    val inlineTraitsPhase: InlineTraitState.InlineContext = InlineTraitState.InlineContext.None
+  ):
 
     def registerInlineOrigin(newSym: Symbol, owner: Symbol, parentSym: Symbol): Unit =
       inlineOrigins(newSym) = inlineOrigins(owner) + parentSym
+
+    def copyInPhase(phase: InlineContext) =
+      InlineTraitState(inlineOrigins, phase)
+
   end InlineTraitState
 
 end Inlines
