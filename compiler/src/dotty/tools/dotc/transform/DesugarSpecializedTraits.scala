@@ -683,7 +683,12 @@ class AnonymousSpecializationInstance(
 object AnonymousSpecializationInstance:
   def unapply(tree: Tree)(using Context) = tree match {
     case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
-              Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass => 
+              Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass && (anon1.symbol eq an.symbol) => 
+      Some(AnonymousSpecializationInstance(an.srcPos, an.symbol, tmpl.body, parentCalls, ctor, t)) 
+
+    // Coverage testing creates this extra case
+    case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
+              Typed(Block(bindings, Apply(Select(New(anon1),ctor), _)), t: TypeTree)) if anon1.symbol.isAnonymousClass && (anon1.symbol eq an.symbol) => 
       Some(AnonymousSpecializationInstance(an.srcPos, an.symbol, tmpl.body, parentCalls, ctor, t)) 
     case _ => None
   }
