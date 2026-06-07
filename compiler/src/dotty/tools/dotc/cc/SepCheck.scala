@@ -863,20 +863,23 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           case _ =>
 
     /** If `tpe` appears as a (result-) type of a definition, treat its
-     *  hidden set minus its explicitly declared footprint as consumed.
-     *  If `tpe` appears as an argument to a consume parameter, treat
+     *  hidden set of locally owned LocalCaps minus its explicitly declared footprint
+     *  as consumed. If `tpe` appears as an argument to a consume parameter, treat
      *  its footprint as consumed.
      */
     def checkLegalRefs() = role match
       case TypeRole.Result(sym, _) =>
-        if !sym.isAnonymousFunction // we don't check return types of anonymous functions
-            && !sym.is(Case)        // We don't check so far binders in patterns since they
-                                    // have inferred universal types. TODO come back to this;
-                                    // either infer more precise types for such binders or
-                                    // "see through them" when we look at hidden sets.
+        if !sym.is(Case)  // We don't check so far binders in patterns since they
+                          // have inferred universal types. TODO come back to this;
+                          // either infer more precise types for such binders or
+                          // "see through them" when we look at hidden sets.
         then
-          val refs = tpe.deepCaptureSet.elems
-          val refsStar = refs.transHiddenSet
+          var refs = tpe.deepCaptureSet.elems
+          val refsCaps = refs.filter: elem =>
+            elem.core match
+              case core: LocalCap => core.ccOwner.isContainedIn(sym)
+              case _ => false
+          val refsStar = refsCaps.transHiddenSet
           val toCheck = refsStar.directFootprint.nonPeaks.deduct(refs.directFootprint.nonPeaks)
           def descr = i"${role.description} $tpe hides"
           checkConsumedRefs(toCheck, tpe, role, descr, pos)
@@ -1015,8 +1018,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
        && !isUnsafeAssumeSeparate(tree.rhs)
        && !isCoverageLiftedTemp(tree)
     then
+      capt.println(i"sep check def $sym: ${tree.tpt.nuType} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
       checkType(tree.tpt, sym)
-      capt.println(i"sep check def $sym: ${tree.tpt} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
       pushDef(tree, spanCaptures(tree.tpt).transHiddenSet.deductSymRefs(sym))
 
   def inSection[T](op: => T)(using Context): T =
