@@ -412,6 +412,18 @@ class TreeUnpickler(reader: TastyReader,
             tp.withVariances(vs)
           case _ => tp
 
+        def readAppliedType(end: Addr): Type = {
+          val tycon = readType()
+          if currentAddr.index >= end.index then tycon.appliedTo(Nil)
+          else
+            val arg1 = readType()
+            if currentAddr.index >= end.index then tycon.appliedTo(arg1)
+            else
+              val arg2 = readType()
+              if currentAddr.index >= end.index then tycon.appliedTo(arg1, arg2)
+              else tycon.appliedTo(arg1 :: arg2 :: until(end)(readType()))
+        }
+
         val result =
           (tag: @switch) match {
             case TERMREFin =>
@@ -441,7 +453,7 @@ class TreeUnpickler(reader: TastyReader,
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
-              readType().appliedTo(until(end)(readType()))
+              readAppliedType(end)
             case TYPEBOUNDS =>
               val lo = readType()
               if nothingButMods(end) then AliasingBounds(readVariances(lo))
