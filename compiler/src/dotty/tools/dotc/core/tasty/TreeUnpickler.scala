@@ -123,6 +123,32 @@ class TreeUnpickler(reader: TastyReader,
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
 
+  private final val EmptyOwnerTrees: Array[OwnerTree] = new Array[OwnerTree](0)
+
+  final class OwnerTreeBuilder {
+    private var elems: Array[OwnerTree] = EmptyOwnerTrees
+    private var len = 0
+
+    def +=(elem: OwnerTree): Unit = {
+      if (len == elems.length) {
+        val newElems = new Array[OwnerTree](if (len == 0) 1 else len * 2)
+        System.arraycopy(elems, 0, newElems, 0, len)
+        elems = newElems
+      }
+      elems(len) = elem
+      len += 1
+    }
+
+    def result(): Array[OwnerTree] =
+      if (len == 0) EmptyOwnerTrees
+      else if (len == elems.length) elems
+      else {
+        val result = new Array[OwnerTree](len)
+        System.arraycopy(elems, 0, result, 0, len)
+        result
+      }
+  }
+
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
@@ -202,7 +228,7 @@ class TreeUnpickler(reader: TastyReader,
      *  Template node, but need to be listed separately in the OwnerTree of the enclosing class
      *  in order not to confuse owner chains.
      */
-    def scanTree(buf: ListBuffer[OwnerTree], mode: MemberDefMode = AllDefs): Unit = {
+    def scanTree(buf: OwnerTreeBuilder, mode: MemberDefMode = AllDefs): Unit = {
       val start = currentAddr
       val tag = readByte()
       tag match {
@@ -246,7 +272,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Record all directly nested definitions and templates between current address and `end`
      *  as `OwnerTree`s in `buf`
      */
-    def scanTrees(buf: ListBuffer[OwnerTree], end: Addr, mode: MemberDefMode = AllDefs): Unit = {
+    def scanTrees(buf: OwnerTreeBuilder, end: Addr, mode: MemberDefMode = AllDefs): Unit = {
       while (currentAddr.index < end.index) scanTree(buf, mode)
       assert(currentAddr.index == end.index)
     }
@@ -1884,37 +1910,39 @@ class TreeUnpickler(reader: TastyReader,
    */
   class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
 
-    private var myChildren: List[OwnerTree] | Null = null
+    private var myChildren: Array[OwnerTree] | Null = null
 
     /** All definitions that have the definition at `addr` as closest enclosing definition */
-    def children: List[OwnerTree] = {
+    def children: Array[OwnerTree] = {
       if (myChildren == null) myChildren = {
-        val buf = new ListBuffer[OwnerTree]
+        val buf = new OwnerTreeBuilder
         reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
-        buf.toList
+        buf.result()
       }
       myChildren.nn
     }
 
     /** Find the owner of definition at `addr` */
     def findOwner(addr: Addr)(using Context): Symbol = {
-      def search(cs: List[OwnerTree], current: Symbol): Symbol =
-        try cs match {
-          case ot :: cs1 =>
+      def search(cs: Array[OwnerTree], current: Symbol): Symbol =
+        try {
+          var i = 0
+          while (i < cs.length) {
+            val ot = cs(i)
             if (ot.addr.index == addr.index) {
               assert(current.exists, i"no symbol at $addr")
-              current
+              return current
             }
             else if (ot.addr.index < addr.index && addr.index < ot.end.index)
-              search(ot.children, reader.symbolAt(ot.addr))
+              return search(ot.children, reader.symbolAt(ot.addr))
             else
-              search(cs1, current)
-          case Nil =>
-            throw new TreeWithoutOwner
+              i += 1
+          }
+          throw new TreeWithoutOwner
         }
         catch {
           case ex: TreeWithoutOwner =>
-            pickling.println(i"no owner for $addr among $cs%, %")
+            pickling.println(i"no owner for $addr among ${cs.iterator.mkString(", ")}")
             throw ex
         }
       try search(children, rootOwner)
