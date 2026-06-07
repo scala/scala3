@@ -1177,28 +1177,29 @@ class TreeUnpickler(reader: TastyReader,
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
-      if cls.isInlineTrait then
-        cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
-          val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
-          inContext(sourceChangeContext(Addr(0))(using ctx1)) {
-            // avoids space leaks by not capturing the current context
 
-            // TODO: Sometimes the annotated source files are wrong when inlining macros
-            // into inline traits. This seems to fix it as we reload the correct source 
-            // if not cached, but there ought to be a better way. 
-            treeAtAddr.filterInPlace { (addr, _) =>
-              addr.index < statsStart.index || addr.index >= end.index
-            }
-            val fork = forkAt(statsStart)
-            val stats = fork.readIndexedStats(localDummy, end)
-            val inlinedMembers = (tparams ++ vparams ++ stats).filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
-            Block(inlinedMembers, unitLiteral).withSpan(cls.span)
-          }
-        })
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
+      
+      // Because opaque types can appear in inline traits and these are only allowed to be completed once (otherwise cyclic reference error)
+      // we need to force the body stats now if we have an inline trait so that we don't complete them twice, once in the LazyBodyAnnot and once
+      // in the main code.
+      val strictOrLazyStats = 
+        if cls.isInlineTrait then
+          val strictStats = lazyStats.complete
+          cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
+            val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
+            inContext(sourceChangeContext(Addr(0))(using ctx1)) {
+              // avoids space leaks by not capturing the current context
+              val inlinedMembers = strictStats.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
+              Block(inlinedMembers, unitLiteral).withSpan(cls.span)
+            }
+          })
+          strictStats
+        else
+          lazyStats
       setSpan(start,
-        untpd.Template(constr, mappedParents, self, lazyStats)
+        untpd.Template(constr, mappedParents, self, strictOrLazyStats)
           .withType(localDummy.termRef))
     }
 

@@ -443,13 +443,14 @@ object SymDenotations {
      *
      */
     def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: List[TypeSymbol])(using Context): Type =
-
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
           case RefinedType(parent, name, rinfo) => rinfo match
             case TypeAlias(lzy: LazyRef) if name == this.name =>
               if !lzy.completed then
                 lzy.update(tp)
+              else
+                throw CyclicReference(this)
             case _ =>
               recur(parent)
         recur(owner.asClass.givenSelfType)
