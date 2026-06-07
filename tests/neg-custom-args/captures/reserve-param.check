@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/reserve-param.scala:3:70 ------------------------------------------------------
+3 |def runOps[@reserve C^](ops: List[() ->{C} Unit]): Unit = ops.foreach(_())  // error
+  |                                                                      ^^^
+  |                                                Capture set parameter C leaks into capture scope of method runOps.

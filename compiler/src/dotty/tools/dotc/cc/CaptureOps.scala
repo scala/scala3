@@ -773,13 +773,14 @@ extension (sym: Symbol) {
    *    @use-annotated term parameter that contains `sym` in its deep capture set.
    *  From 3.8:
    *    `sym` is a capset parameter without a `@reserve` annotation that
-   *      - belongs to a class in a class, or
+   *      - belongs to a class, or
    *      - belongs to a method where it appears in a the deep capture set of a following term parameter of the same method.
    */
   def isUseParam(using Context): Boolean =
     sym.hasAnnotation(defn.UseAnnot)
     || sym.info.hasAnnotation(defn.UseAnnot)
     || sym.is(TypeParam)
+        && !sym.hasAnnotation(defn.ReserveAnnot)
         && !sym.info.hasAnnotation(defn.ReserveAnnot)
         && (sym.owner.isClass
             || sym.owner.rawParamss.nestedExists: param =>
