@@ -806,7 +806,7 @@ object Erasure {
 
     /* Erase anonymous instances of specialized traits to $impl$ classes */
     override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = tree.asInstanceOf[Block] match 
-      case AnonymousSpecializationInstance(anon) =>
+      case AnonymousClassInstance(anon) =>
         inContext(preErasureCtx) {
           Specialization.unapply(anon.typeTree.tpe, anon.typeTree.span).flatMap(spec => {
             anon.parentCalls match {

@@ -297,7 +297,7 @@ class DesugarSpecializedTraits extends MacroTransform, IdentityDenotTransformer:
     tree.foreachSubTree { // TODO: This is not particularly efficient
       case d@DefDef(name, paramss, tpt, preRhs) if d.symbol.isConstructor && !d.symbol.owner.is(Flags.Inline) => d.paramss.flatten.foreach(p => checkType(p.tpe, d.srcPos))
       case d@DefDef(name, paramss, tpt, preRhs) if !d.symbol.isConstructor && !d.symbol.is(Flags.Inline) => d.paramss.flatten.foreach(p => checkType(p.tpe, d.srcPos))
-      case AnonymousSpecializationInstance(anon) =>
+      case AnonymousClassInstance(anon) =>
         def deandify(tp: Type): Iterator[Type] = tp match
           case AndType(l, r) => deandify(l) ++ deandify(r)
           case _ => Iterator.single(tp)
@@ -671,7 +671,7 @@ object MethodSpecialization:
   } 
 end MethodSpecialization
 
-class AnonymousSpecializationInstance(
+class AnonymousClassInstance(
   val srcPos: SrcPos,
   val symbol: Symbol,
   val body: List[Tree],
@@ -680,19 +680,19 @@ class AnonymousSpecializationInstance(
   val typeTree: TypeTree
 )
 
-object AnonymousSpecializationInstance:
+object AnonymousClassInstance:
   def unapply(tree: Tree)(using Context) = tree match {
     case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
               Typed(Apply(Select(New(anon1),ctor), _), t: TypeTree)) if anon1.symbol.isAnonymousClass && (anon1.symbol eq an.symbol) => 
-      Some(AnonymousSpecializationInstance(an.srcPos, an.symbol, tmpl.body, parentCalls, ctor, t)) 
+      Some(AnonymousClassInstance(an.srcPos, an.symbol, tmpl.body, parentCalls, ctor, t)) 
 
     // Coverage testing creates this extra case
     case Block(List(an@TypeDef(anon, tmpl@Template(_, parentCalls: List[Tree], _, _))),  
               Typed(Block(bindings, Apply(Select(New(anon1),ctor), _)), t: TypeTree)) if anon1.symbol.isAnonymousClass && (anon1.symbol eq an.symbol) => 
-      Some(AnonymousSpecializationInstance(an.srcPos, an.symbol, tmpl.body, parentCalls, ctor, t)) 
+      Some(AnonymousClassInstance(an.srcPos, an.symbol, tmpl.body, parentCalls, ctor, t)) 
     case _ => None
   }
-end AnonymousSpecializationInstance 
+end AnonymousClassInstance 
 
 class SpecializedTraitState:
   var specializedTraitCache: Option[SpecializedTraitCache] = None
