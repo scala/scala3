@@ -5059,8 +5059,8 @@ _empty_/Txn# => trait Txn [typeparam T  <: Txn[T]] extends Object { self: Txn[T]
 _empty_/Txn#[T] => typeparam T  <: Txn[T]
 _empty_/Txn#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Txn[T]
 local0 => val local out: Repr[Out]
-local1 => val local inObj: Obj[In] & Repr[In]
-local2 => val local outObj: Obj[Out] & Repr[Out]
+local1 => val local inObj: Obj[In]
+local2 => val local outObj: Obj[Out]
 
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#
@@ -5589,7 +5589,7 @@ Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
 Symbols => 143 entries
-Occurrences => 246 entries
+Occurrences => 248 entries
 Diagnostics => 4 entries
 Synthetics => 1 entries
 
@@ -5889,11 +5889,13 @@ Occurrences:
 [71:26..71:30): List -> scala/package.List#
 [71:36..71:39): ??? -> scala/Predef.`???`().
 [72:8..72:24): existentialType3 <- types/Test.C#existentialType3.
-[72:27..72:32): Class -> java/lang/Class#
-[72:33..72:40): forName -> java/lang/Class#forName().
+[72:26..72:31): Class -> scala/Predef.Class#
+[72:37..72:42): Class -> java/lang/Class#
+[72:43..72:50): forName -> java/lang/Class#forName().
 [73:8..73:24): existentialType4 <- types/Test.C#existentialType4.
-[73:27..73:32): Class -> java/lang/Class#
-[73:33..73:40): forName -> java/lang/Class#forName().
+[73:26..73:31): Class -> scala/Predef.Class#
+[73:37..73:42): Class -> java/lang/Class#
+[73:43..73:50): forName -> java/lang/Class#forName().
 [75:8..75:19): typeLambda1 <- types/Test.C#typeLambda1().
 [75:20..75:21): M <- types/Test.C#typeLambda1().[M]
 [75:28..75:31): ??? -> scala/Predef.`???`().

@@ -930,12 +930,118 @@ object SpaceEngine {
     case _                                          => tp
   })
 
+  /** Check if the SubMatch selector references the variable bound by the outer pattern.
+   *
+   *  case x @ _ if x match
+   *       ^ pat    ^ selector
+   *
+   */
+  private object SelectorBoundVar:
+    def unapply(args: (Tree, Tree))(using Context): Boolean =
+      val (selector, pat) = args
+      pat match
+        case b: Bind => selector.symbol == b.symbol
+        case _       => false
+
+  /** Find the index of the parameter in an outer UnApply pattern that directly binds the selector symbol.
+   *
+   *  case Wrapper(c) if c match
+   *               ^ returns Some(0)
+   *
+   */
+  private object SelectorParamIndex:
+    def unapply(args: (Tree, Tree))(using Context): Option[Int] =
+      val (selector, pat) = args
+      unbind(pat) match
+        case UnApply(_, _, pats) =>
+          val idx = pats.indexWhere {
+            case b: Bind => b.symbol == selector.symbol
+            case _ => false
+          }
+          Option.when(idx >= 0)(idx)
+        case _ => None
+
+  /** Find the constructor parameter index corresponding to a field access on the outer pattern's bound var.
+   *
+   *  case x if x.version match     -- returns Some(1) for Document(title, version)
+   *            ^^^^^^^^^ selector
+   *
+   */
+  private object SelectorFieldIndex:
+    def unapply(args: (Tree, Tree))(using Context): Option[Int] =
+      args match
+        case (Select(qual, fieldName), b: Bind) if b.symbol == qual.symbol =>
+          val cls = toUnderlying(qual.tpe).classSymbol
+          if cls.is(CaseClass) && !cls.isOneOf(AbstractOrTrait) then
+            val idx = cls.caseAccessors.indexWhere(_.name == fieldName)
+            Option.when(idx >= 0)(idx)
+          else None
+        case _ => None
+
+  private def narrowProdParam(patSpace: Space, idx: Int, subSpace: Space)(using Context): Option[Space] =
+    def narrow(prod: Prod): Option[Space] =
+      val Prod(tp, unappTp, params) = prod
+      if idx >= params.length then None
+      else
+        val narrowedParam = simplify(intersect(params(idx), subSpace))
+        Some(simplify(Prod(tp, unappTp, params.updated(idx, narrowedParam))))
+    patSpace match
+      case prod @ Prod(tp, unappTp1, _) =>
+        expandCaseClass(tp) match
+          case null => None
+          case Prod(_, unappTp2, _) if isSameUnapply(unappTp1, unappTp2) => narrow(prod)
+          case _ => None
+      case Typ(tp, _) =>
+        expandCaseClass(tp) match
+          case null    => None
+          case prod    => narrow(prod)
+      case _ => None
+
+  private def projectSubMatch(pat: Tree, sm: SubMatch)(using Context): Option[Space] =
+    val Match(selector, cases) = sm
+
+    val subSpace = Or(cases.map(projectCaseDef))
+    if simplify(subSpace) == Empty then return None  // all sub-cases are guarded or empty; treat outer case as partial
+    def selTyp = toUnderlying(selector.tpe)
+    def patSpace = project(pat)
+
+    (selector, pat) match
+      case SelectorBoundVar()      =>
+        Some(simplify(intersect(patSpace, subSpace)))
+      case SelectorParamIndex(idx) =>
+        narrowProdParam(patSpace, idx, subSpace)
+      case SelectorFieldIndex(idx) =>
+        narrowProdParam(patSpace, idx, subSpace)
+      case _ if simplify(minus(project(selTyp), subSpace)) == Empty =>
+        Some(patSpace)
+      case _ => None
+
+  /** Resolve the space covered by a case and whether it may be partial.
+   *  @return (space, maybePartial) where maybePartial is true when the case
+   *          may not fully cover its pattern space (due to a guard or unresolvable SubMatch).
+   */
+  private def resolveCaseDef(c: CaseDef, projectPat: Tree => Space)(using Context): (Space, Boolean) =
+    def patSpace = projectPat(c.pat)
+
+    if !c.guard.isEmpty then (patSpace, true)
+    else c.body match
+      case sm: SubMatch =>
+        projectSubMatch(c.pat, sm) match
+          case Some(space) => (space, false)
+          case None => (patSpace, true)
+      case _ => (patSpace, false)
+
+  /** Project a single CaseDef to the space it definitely covers */
+  private def projectCaseDef(c: CaseDef)(using Context): Space =
+    val (space, maybePartial) = resolveCaseDef(c, project)
+    if maybePartial then Empty else space
+
   def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
     val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
-      val space = if x.maybePartial then Empty else trace(i"project(${x.pat})")(project(x.pat))
+      val space = trace(i"projectCaseDef(${x.pat})")(projectCaseDef(x))
       space :: acc
     })
 
@@ -978,7 +1084,7 @@ object SpaceEngine {
       cases match
         case Nil =>
         case (c @ CaseDef(pat, _, _)) :: rest =>
-          val curr = trace(i"project($pat)")(projectPat(pat))
+          val (curr, maybePartial) = resolveCaseDef(c, projectPat)
           val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
           val prev = trace("prev")(simplify(Or(prevs)))
           if prev == Empty && covered == Empty then // defer until a case is reachable
@@ -1003,8 +1109,8 @@ object SpaceEngine {
                 hadNullOnly = true
                 report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
-            // in redundancy check, take guard as false (or potential sub cases as partial) for a sound approximation
-            val newPrev = if c.maybePartial then prevs else covered :: prevs
+            // in redundancy check, take guard as false for a sound approximation
+            val newPrev = if maybePartial then prevs else covered :: prevs
             recur(rest, newPrev, Nil)
 
     recur(m.cases, Nil, Nil)

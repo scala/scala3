@@ -107,6 +107,9 @@ val experimentalDefinitionInLibrary = Set(
   // Depends on erased traits
   "scala.specialize.Specialized",
   "scala.specialize.Specialized$",
+
+  // New API: Multiversal equality for Named Tuples
+  "scala.NamedTuple$.namedTupleCanEqual",
 )
 
 

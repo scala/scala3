@@ -17,7 +17,7 @@ import Symbols.*
 import Flags.Module
 import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
-import util.concurrent.{Executor, Future}
+import util.concurrent.Executor
 import compiletime.uninitialized
 import dotty.tools.io.{JarArchive, AbstractFile}
 import dotty.tools.dotc.printing.OutlinePrinter

@@ -538,7 +538,7 @@ class Namer { typer: Typer =>
       ann.symbol == defn.ChildAnnot && !ann.isEvaluating
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(isReady) match {
-        case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
+        case Some(Annotation.NonStaleChild(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
@@ -2276,7 +2276,7 @@ class Namer { typer: Typer =>
         // See i21558, the default argument new A(1.0) is of type A[?T]
         // With an uninterpolated, invariant ?T type variable.
         // So before we return the default getter parameter type (A[? <: Double])
-        // we want to force ?T to instantiate, so it's poly is removed from the constraint
+        // we want to force ?T to instantiate, so its poly is removed from the constraint
         isFullyDefined(tp, ForceDegree.all)
         // When possible, widen to the default getter parameter type to permit a
         // larger choice of overrides (see `default-getter.scala`).

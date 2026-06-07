@@ -59,7 +59,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   val sjsPlatform = dotty.tools.dotc.config.SJSPlatform.sjsPlatform
   val jsdefn = JSDefinitions.jsdefn
-  private val primitives = new JSPrimitives(genCtx)
+  private val primitives = new JSPrimitives()(using genCtx)
 
   val positionConversions = new JSPositions()(using genCtx)
   import positionConversions.*

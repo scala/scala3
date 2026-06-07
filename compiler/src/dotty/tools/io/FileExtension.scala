@@ -1,8 +1,5 @@
 package dotty.tools.io
 
-import dotty.tools.uncheckedNN
-import dotty.tools.dotc.util.EnumFlags.FlagSet
-
 enum FileExtension(val toLowerCase: String):
   case Tasty extends FileExtension("tasty")
   case Betasty extends FileExtension("betasty")
@@ -40,14 +37,11 @@ enum FileExtension(val toLowerCase: String):
   /** represents `".zip"` */
   def isZip: Boolean = this == Zip
   /** represents `".jar"` or `".zip"` */
-  def isJarOrZip: Boolean = FileExtension.JarOrZip.contains(this)
+  def isJarOrZip: Boolean = isJar || isZip
   /** represents `".scala"` or `".java"` */
-  def isSourceExtension: Boolean = FileExtension.SourceExtension.contains(this)
+  def isSourceExtension: Boolean = isScala || isJava
 
 object FileExtension:
-
-  private val JarOrZip: FlagSet[FileExtension] = FlagSet.empty | Zip | Jar
-  private val SourceExtension: FlagSet[FileExtension] = FlagSet.empty | Scala | Java
 
   // this will be optimised to a single hashcode + equality check, and then fallback to slowLookup,
   // keep in sync with slowLookup.

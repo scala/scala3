@@ -2,7 +2,6 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 import scala.tools.asm
@@ -22,6 +21,8 @@ import dotty.tools.dotc.report
 import SymbolUtils.given
 import dotty.tools.dotc.core.NameOps.isStaticConstructorName
 import tpd.*
+
+import scala.compiletime.uninitialized
 
 /*
  *
@@ -132,14 +133,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     with    BCJGenSigGen {
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
-    inline val MaximumJvmParameters = 254
+    private inline val MaximumJvmParameters = 254
 
     // current class
-    var cnode: ClassNode1          = null
-    var thisName: String           = null // the internal name of the class being emitted
+    private var cnode: ClassNode1  = uninitialized
+    private var thisName: String   = uninitialized // the internal name of the class being emitted
 
-    var claszSymbol: Symbol        = null
-    var isCZStaticModule           = false
+    protected var claszSymbol: Symbol = uninitialized
+    private var isCZStaticModule    = false
 
     // keep track of interfaces that are used in super calls, as they need to be directly inherited even if they are also indirectly inherited
     val superCallTargets = mutable.LinkedHashSet[ClassBType]()
@@ -160,7 +161,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef)(using Context) = (cd0: @unchecked) match {
+    def genPlainClass(cd0: TypeDef)(using Context): ClassNode1 = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
 
@@ -288,7 +289,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       TraceUtils.traceClassIfRequested(cnode)
 
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
-
+      cnode
     } // end of method genPlainClass()
 
     /*
@@ -386,7 +387,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         .addFlagIf(!sym.is(Mutable), ACC_FINAL)
     }
 
-    def addClassField(f: Symbol)(using Context): Unit = {
+    private def addClassField(f: Symbol)(using Context): Unit = {
       val descriptor = symInfoTK(f).descriptor
       val javagensig = getGenericSignature(f, claszSymbol, descriptor)
       val flags = javaFieldFlags(f)
@@ -405,7 +406,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       emitAnnotations(jfield, f.annotations)
     }
 
-    def addClassFields()(using Context): Unit =
+    private def addClassFields()(using Context): Unit =
       /*  Non-method term members are fields, except for module members. Module
        *  members can only happen on .NET (no flatten) for inner traits. There,
        *  a module symbol is generated (transformInfo in mixin) which is used
@@ -416,18 +417,18 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Method)).foreach(addClassField)
 
     // current method
-    var mnode: MethodNode1         = null
-    var jMethodName: String        = null
-    var isMethSymStaticCtor        = false
-    var returnType: BType          = null
-    var methSymbol: Symbol         = null
+    var mnode: MethodNode1         = uninitialized
+    var jMethodName: String        = uninitialized
+    private var isMethSymStaticCtor = false
+    var returnType: BType          = uninitialized
+    var methSymbol: Symbol         = uninitialized
     // used by genLoadTry() and genSynchronized()
-    var earlyReturnVar: Symbol     = null
+    var earlyReturnVar: Symbol | Null = null
     var shouldEmitCleanup          = false
     // stack tracking
     val stack                      = new BTypesStack
     // line numbers
-    var lastEmittedLineNr          = -1
+    private var lastEmittedLineNr  = -1
 
     object bc extends JCodeMethodN {
       override def jmethod = PlainSkelBuilder.this.mnode
@@ -440,7 +441,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      *  The `jumpDest` map is used to find the `LoadDestination` at the end of the `Labeled` block, as well as the
      *  corresponding expected type. The `LoadDestination` can never be `FallThrough` here.
      */
-    var jumpDest: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] = null
+    var jumpDest: immutable.Map[ /* Labeled */ Symbol, (BType, LoadDestination) ] = immutable.Map.empty
     def registerJumpDest(labelSym: Symbol, expectedType: BType, dest: LoadDestination)(using Context): Unit = {
       assert(labelSym.is(Label), s"trying to register a jump-dest for a non-label symbol, at: ${labelSym.span}")
       assert(dest != LoadDestination.FallThrough, s"trying to register a FallThrough dest for label, at: ${labelSym.span}")
@@ -484,10 +485,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      *  emitted for that purpose as described in `genLoadTry()` and `genSynchronized()`.
      */
     var cleanups: List[asm.Label] = Nil
-    def registerCleanup(finCleanup: asm.Label): Unit = {
+    def registerCleanup(finCleanup: asm.Label | Null): Unit = {
       if (finCleanup != null) { cleanups = finCleanup :: cleanups }
     }
-    def unregisterCleanup(finCleanup: asm.Label): Unit = {
+    def unregisterCleanup(finCleanup: asm.Label | Null): Unit = {
       if (finCleanup != null) {
         assert(cleanups.head eq finCleanup,
                s"Bad nesting of cleanup operations: $cleanups trying to unregister: $finCleanup")
@@ -585,7 +586,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /* ---------------- Part 2 of program points, ie Labels in the ASM world ---------------- */
 
     // bookkeeping the scopes of non-synthetic local vars, to emit debug info (`emitVars`).
-    var varsInScope: List[(Symbol, asm.Label)] = null // (local-var-sym -> start-of-scope)
+    var varsInScope: List[(Symbol, asm.Label)] | Null = null // (local-var-sym -> start-of-scope)
 
     // helpers around program-points.
     def lastInsn: asm.tree.AbstractInsnNode = mnode.instructions.getLast
@@ -806,7 +807,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
 
-    def genDefDef(dd: DefDef)(using Context): Unit = {
+    private def genDefDef(dd: DefDef)(using Context): Unit = {
       val rhs = dd.rhs
       val vparamss = dd.termParamss
       // the only method whose implementation is not emitted: getClass()
@@ -924,7 +925,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       TraceUtils.traceMethodIfRequested(mnode)
 
-      mnode = null
+      mnode = null.asInstanceOf[MethodNode1] // for GC
     } // end of method genDefDef()
 
     def emitLocalVarScope(sym: Symbol, start: asm.Label, end: asm.Label, force: Boolean = false): Unit = {

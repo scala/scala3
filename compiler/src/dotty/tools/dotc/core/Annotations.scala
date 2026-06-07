@@ -352,6 +352,17 @@ object Annotations {
         }
         else None
     }
+
+    /** Like `Child`, but yields `None` instead of throwing `StaleSymbol` when
+     *  the annotation refers to a child symbol from a previous run that is no
+     *  longer valid (e.g. after compilation was suspended and the child class
+     *  has been re-typechecked in the current run; see tests/pos/i24414).
+     */
+    object NonStaleChild {
+      def unapply(ann: Annotation)(using Context): Option[Symbol] =
+        try Child.unapply(ann)
+        catch case _: Denotations.StaleSymbol => None
+    }
   }
 
   /** An annotation that is used as a result of mapping annotations

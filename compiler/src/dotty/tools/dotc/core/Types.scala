@@ -624,10 +624,11 @@ object Types extends TypeUtils {
      *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
-    final def classSymbol(using Context): Symbol = this match
+    final def classSymbol(using Context): ClassSymbol | NoSymbol.type = this match
       case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol
+        tp.symbol match
+          case classSym: ClassSymbol => classSym
+          case _ => tp.superType.classSymbol
       case tp: TypeProxy =>
         tp.superType.classSymbol
       case tp: ClassInfo =>
@@ -872,7 +873,7 @@ object Types extends TypeUtils {
           NoDenotation
       }
       def goRec(tp: RecType) =
-        // TODO: change tp.parent to nullable or other values
+        // this can be called while we're initializing `tp.parent`, at which point it's null
         if ((tp.parent: Type | Null) == null) NoDenotation
         else if (tp eq pre) go(tp.parent)
         else
@@ -4881,9 +4882,9 @@ object Types extends TypeUtils {
     def paramInfo: binder.PInfo    = binder.paramInfos(paramNum)
 
     override def underlying(using Context): Type = {
-      // TODO: update paramInfos's type to nullable
+      // This can be called while we're initializing `binder.paramInfos`, at which point it's null
       val infos: List[Type] | Null = binder.paramInfos
-      if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
+      if (infos == null) NoType
       else infos(paramNum)
     }
 
