@@ -286,6 +286,8 @@ object Inlines:
 
   private def checkInnerClasses(tmpl: Template)(using Context) = 
     tmpl.body.foreach { 
+      // If we want to add these back, some work was done on this in the original Master Thesis
+      // (https://infoscience.epfl.ch/server/api/core/bitstreams/9413f583-46bc-4106-b994-0be32f20eeba/content)
       case innerClass: TypeDef if innerClass.symbol.isClass => report.error("Inline traits may not define inner classes or traits.", innerClass.srcPos)
       case _ =>
     }
@@ -294,10 +296,6 @@ object Inlines:
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
     checkInnerClasses(tmpl)
     val body1 = tmpl.body.flatMap {
-      /* case innerClass: TypeDef if innerClass.symbol.isClass =>
-         val newTrait = makeTraitFromInnerClass(innerClass)
-         val newType = makeTypeFromInnerClass(inlineTrait.symbol, innerClass, newTrait.symbol)
-         List(newTrait, newType) */
       case member: MemberDef =>
         List(member)
       case _ =>
@@ -866,7 +864,9 @@ object Inlines:
 
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       paramAccessorsMapper.registerParamValuesOf(parent)
-      val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol) && stat.symbol.is(Deferred))
+      val stats = Inlines.defsToInline(parentSym)
+                         .filterNot(stat => overriddenDecls.contains(stat.symbol) && stat.symbol.is(Deferred))
+                         .filterNot(stat => stat.isDef && stat.symbol.isClass) // Inline traits may not define inner classes; error elsewhere but skip now for best effort error msgs
 
       val stats1 = stats.map{  // Private symbols must be entered before the RHSs are inlined
         case member: MemberDef => Left((member, inlinedSym(member.symbol, overriddenDecls)))
@@ -961,40 +961,12 @@ object Inlines:
         inlinedValDef(stat, inlinedSym)
       case stat: DefDef =>
         inlinedDefDef(stat, inlinedSym)
-      case stat @ TypeDef(_, _: Template) => EmptyTree
-        /* inlinedClassDef(stat, inlinedSym.asClass) */ // Inner classes are not allowed for now.
       case stat: TypeDef =>
         inlinedTypeDef(stat, inlinedSym)
 
     private def inlinedSym(sym: Symbol, overriddenDecls: Set[Symbol], withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
-      val newSym = if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, overriddenDecls, withoutFlags)
-      newSym
-
-    private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
-      sym.info match {
-        case clsInfo: ClassInfo =>
-          val typeParams: List[Type] = sym.primaryConstructor.info match {
-            case poly: PolyType => poly.paramRefs
-            case _ => Nil
-          }
-          // Extend inner class from inline trait to preserve typing
-          val newParent = ctx.owner.thisType.select(sym).appliedTo(typeParams)
-          val inlinedSym = newClassSymbol(
-            ctx.owner,
-            sym.name,
-            (sym.flags | Synthetic) &~ withoutFlags,
-            newCls => {
-              val ClassInfo(prefix, _, parents, _, selfInfo) = inlinerTypeMap.mapClassInfo(clsInfo)
-              ClassInfo(prefix, newCls, parents :+ newParent, Scopes.newScope, selfInfo) // TODO fix selfInfo (what to use?)
-            },
-            sym.privateWithin,
-            spanCoord(parent.span)
-          )
-          inlinedSym.entered
-        case _ =>
-          report.error(s"Class symbol ${sym.show} does not have class info")
-          sym
-      }
+      assert(!sym.isClass)
+      inlinedMemberSym(sym, overriddenDecls, withoutFlags)
 
     private def inlinedMemberSym(sym: Symbol, overriddenDecls: Set[Symbol], withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
       var name = sym.name
@@ -1034,30 +1006,6 @@ object Inlines:
             val ddef1 = cpy.DefDef(ddef)(rhs = ddef.rhs.subst(oldParamSyms, newParamSyms))
             inlinedRhs(ddef1, inlinedSym)
       tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
-
-    /*
-    private def inlinedPrimaryConstructorDefDef(ddef: DefDef)(using Context): DefDef =
-      // TODO check if symbol must be copied
-      val inlinedSym = inlinedMemberSym(ddef.symbol, withoutFlags = Override)
-      val constr = inlinedDefDef(ddef, inlinedSym)
-      cpy.DefDef(constr)(tpt = TypeTree(defn.UnitType), rhs = EmptyTree)
-    */
-    /*
-    private def inlinedClassDef(clsDef: TypeDef, inlinedCls: ClassSymbol)(using Context): Tree =
-      val TypeDef(_, tmpl: Template) = clsDef: @unchecked
-      val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
-        val inlinedConstr = inlinedPrimaryConstructorDefDef(tmpl.constr)
-        val inlinedTmpl = tmpl.body.map {
-          case stat: TypeDef if stat.symbol.isAllOf(PrivateLocal | Param) =>
-            expandStat(stat, inlinedSym(stat.symbol, withoutFlags = Override))
-          case stat =>
-            expandStat(stat, inlinedSym(stat.symbol))
-        }
-        (inlinedConstr, inlinedTmpl)
-      }
-      val clsDef1 = tpd.ClassDefWithParents(inlinedCls, constr, tmpl.parents, body) // TODO add correct parent tree
-      inlined(clsDef1)._2.withSpan(clsDef.span)
-    */
 
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
       if inlinedSym.isOpaqueAlias then
