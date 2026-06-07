@@ -100,7 +100,7 @@ abstract class Positioned private[ast] (initialSpan: Positioned.InitialSpan)(imp
           else
             val pspan = p.span
             if (pspan.exists) {
-              if (span.exists) Span(span.start min pspan.start, span.end max pspan.end, span.point)
+              if (span.exists) Span(span.start min pspan.start, span.end max pspan.end)
               else pspan
             }
             else if (span.exists) {
