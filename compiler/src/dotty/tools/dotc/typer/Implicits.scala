@@ -2145,14 +2145,24 @@ final class SearchRoot extends SearchHistory:
             val nsyms = vsyms.map(vsym => newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
             val vsymMap = (vsyms zip nsyms).toMap
 
+            def substVsymRefs(t: tpd.Tree, termRefMap: TermRef => Type, identMap: Ident => tpd.Tree): tpd.Tree =
+              new TreeTypeMap(
+                typeMap = new TypeMap {
+                  def apply(tp: Type): Type = tp match
+                    case ref: TermRef if vsymMap.contains(ref.symbol) => termRefMap(ref)
+                    case _ => mapOver(tp)
+                },
+                treeMap = {
+                  case id: Ident if vsymMap.contains(id.symbol) => identMap(id)
+                  case tree => tree
+                })(t)
+
             val rhss = pruned.map(_._2)
             // Substitute dictionary references into dictionary entry RHSs
-            val rhsMap = new TreeTypeMap(treeMap = {
-              case id: Ident if vsymMap.contains(id.symbol) =>
-                tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)
-              case tree => tree
-            })
-            val nrhss = rhss.map(rhsMap(_))
+            val nrhss = rhss.map(substVsymRefs(
+              _,
+              ref => classSym.thisType.select(vsymMap(ref.symbol)),
+              id  => tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)))
 
             val vdefs = (nsyms zip nrhss) map {
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
@@ -2165,13 +2175,10 @@ final class SearchRoot extends SearchHistory:
             val inst = ValDef(valSym, New(classSym.typeRef, Nil))
 
             // Substitute dictionary references into outermost result term.
-            val resMap = new TreeTypeMap(treeMap = {
-              case id: Ident if vsymMap.contains(id.symbol) =>
-                Select(tpd.ref(valSym), id.name)
-              case tree => tree
-            })
-
-            val res = resMap(success.tree)
+            val res = substVsymRefs(
+              success.tree,
+              ref => valSym.termRef.select(vsymMap(ref.symbol)),
+              id  => Select(tpd.ref(valSym), id.name))
 
             val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
 
