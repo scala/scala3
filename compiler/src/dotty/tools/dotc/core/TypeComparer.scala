@@ -3856,8 +3856,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               else util.HashSet[(Type, Type)]()
             innerPending += tpPair
 
-            val cls2BaseClassSet = SymDenotations.BaseClassSet(cls2.classDenot.baseClasses)
-            val commonBaseClasses = cls1.classDenot.baseClasses.filter(cls2BaseClassSet.contains(_))
+            val cls2Denot = cls2.classDenot
+            val commonBaseClasses = cls1.classDenot.baseClasses.filter(cls2Denot.hasBaseClass)
             def isAncestorOfOtherBaseClass(cls: ClassSymbol): Boolean =
               commonBaseClasses.exists(other => (other ne cls) && other.mayDeriveFrom(cls))
             val result = commonBaseClasses.exists { baseClass =>
