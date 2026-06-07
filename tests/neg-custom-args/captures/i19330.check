@@ -26,8 +26,3 @@
    |                             any² is a root capability in the type of type T
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------
-16 |    val t: () => Logger^ = () => l // error
-   |           ^^^^^^^^^^^^^
-   |           Separation failure: value t's type () => Logger^ hides parameter l.
-   |           The parameter needs to be annotated with consume to allow this.

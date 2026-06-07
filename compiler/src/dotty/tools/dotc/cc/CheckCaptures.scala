@@ -2499,12 +2499,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      checkEscapingReachUses()
-      if Feature.sepChecksEnabled then
-        for (tree, cs, env) <- useInfos do
-          usedSet(tree) = tree.markedFree ++ cs
-        ccState.inSepCheck:
-          SepCheck(this).traverse(unit)
+      if !ctx.reporter.errorsReported then
+        checkEscapingReachUses()
+
+        if Feature.sepChecksEnabled then
+          for (tree, cs, env) <- useInfos do
+            usedSet(tree) = tree.markedFree ++ cs
+          ccState.inSepCheck:
+            SepCheck(this).traverse(unit)
 
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
