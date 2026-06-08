@@ -1331,11 +1331,23 @@ object Trees {
 
       protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
         Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
-        postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
+        val copied1: copied.type =
+          if copied.span.exists then
+            copied.span = tree.span
+            copied
+          else
+            copied.withSpan(tree.span)
+        postProcess(tree, copied1.withAttachmentsFrom(tree))
 
       protected def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
         Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
-        postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
+        val copied1: copied.type =
+          if copied.span.exists then
+            copied.span = tree.span
+            copied
+          else
+            copied.withSpan(tree.span)
+        postProcess(tree, copied1.withAttachmentsFrom(tree))
 
       protected def finalizeKnownSpan(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
         Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
