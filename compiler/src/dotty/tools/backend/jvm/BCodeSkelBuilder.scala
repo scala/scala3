@@ -715,7 +715,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val thrownExceptions: List[String] = getExceptions(excs)
 
       val bytecodeName =
-        if (isMethSymStaticCtor) CLASS_CONSTRUCTOR_NAME
+        if (isMethSymStaticCtor) BCodeUtils.CLASS_CONSTRUCTOR_NAME
         else jMethodName
 
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)

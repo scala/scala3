@@ -136,7 +136,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
 
   def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean = {
-    insn.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc))
+    insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc))
   }
 
   def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
@@ -230,7 +230,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       if (t == AbstractInsnNode.METHOD_INSN) {
         val mi = i.asInstanceOf[MethodInsnNode]
         // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
-        if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME) {
+        if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
           numCallsOrNew = 2 // stop here: don't inline forwarders with a private or super call
         } else {
           if (isScalaBox(mi) || isScalaUnbox(mi) || isPredefAutoBox(mi) || isPredefAutoUnbox(mi) || isJavaBox(mi) || isJavaUnbox(mi))
@@ -251,7 +251,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
     }
     if (numCallsOrNew > 1 || numBoxConv > paramTypes.length + 1) -1
     else if (numCallsOrNew == 0) if (numBoxConv == 0) 1 else 3
-    else if (callMi.nn.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME) 2 // if numCallsOrNew > 0 then callMi is nonnull
+    else if (callMi.nn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) 2 // if numCallsOrNew > 0 then callMi is nonnull
     else if (numBoxConv > 0) 3
     else 4
   }

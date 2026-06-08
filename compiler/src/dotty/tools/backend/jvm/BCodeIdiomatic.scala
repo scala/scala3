@@ -29,9 +29,6 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
       case null => NoSourcePosition
     }))
 
-  val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
-  val INSTANCE_CONSTRUCTOR_NAME = "<init>"
-
   val EMPTY_STRING_ARRAY   = Array.empty[String]
   val EMPTY_INT_ARRAY      = Array.empty[Int]
   val EMPTY_LABEL_ARRAY    = Array.empty[asm.Label]
