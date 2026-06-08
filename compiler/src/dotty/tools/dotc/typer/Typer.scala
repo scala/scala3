@@ -4870,22 +4870,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def adaptNoArgsOther(wtp: Type, functionExpected: => Boolean): Tree = {
       val implicitFun = defn.isContextFunctionType(wtp) && !untpd.isContextualClosure(tree)
       def caseCompanion =
-          functionExpected &&
-          tree.symbol.is(Module) &&
-          tree.symbol.companionClass.is(Case) &&
+          functionExpected && {
+            val sym = tree.symbol
+            sym.is(Module) &&
+            sym.companionClass.is(Case)
+          } &&
           !tree.tpe.baseClasses.exists(defn.isFunctionClass) && {
             report.warning("The method `apply` is inserted. The auto insertion will be deprecated, please write `" + tree.show + ".apply` explicitly.", tree.sourcePos)
             true
           }
 
-      if (implicitFun || caseCompanion)
-          && !isApplyProto(pt)
-          && pt != SingletonTypeProto
-          && pt != LhsProto
-          && !ctx.mode.is(Mode.Pattern)
-          && !tree.isInstanceOf[SplicePattern]
-          && !ctx.isAfterTyper
-          && !ctx.isInlineContext
+      def canInsertApply =
+        !isApplyProto(pt)
+        && pt != SingletonTypeProto
+        && pt != LhsProto
+        && !ctx.mode.is(Mode.Pattern)
+        && !tree.isInstanceOf[SplicePattern]
+        && !ctx.isAfterTyper
+        && !ctx.isInlineContext
+
+      if canInsertApply && (implicitFun || caseCompanion)
       then
         typr.println(i"insert apply on implicit $tree")
         val sel = untpd.Select(untpd.TypedSplice(tree), nme.apply).withAttachment(InsertedApply, ())
