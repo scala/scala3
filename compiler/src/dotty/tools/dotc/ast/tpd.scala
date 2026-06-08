@@ -1474,7 +1474,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   override def inlineContext(tree: Inlined)(using Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
-    val oldIC = enclosingInlineds
+    val oldICIndex = ctx.propertyIndex(InlinedCalls)
+    val oldIC =
+      if oldICIndex >= 0 then ctx.propertyAt[List[Tree]](oldICIndex)
+      else Nil
 
     val newIC =
       if tree.inlinedFromOuterScope then
@@ -1485,7 +1488,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         tree.call :: oldIC
 
     if oldIC.isEmpty then ctx.fresh.setProperties(InlinedCalls, newIC, InlinedTrees, new Counter)
-    else ctx.fresh.setProperty(InlinedCalls, newIC)
+    else ctx.fresh.replacePropertyAt(oldICIndex, InlinedCalls, newIC)
   }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.

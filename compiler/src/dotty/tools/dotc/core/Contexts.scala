@@ -202,6 +202,18 @@ object Contexts {
         i += 2
       default
 
+    private[dotc] def propertyIndex(key: Key[?]): Int =
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return i
+        i += 2
+      -1
+
+    private[dotc] def propertyAt[T](index: Int): T =
+      morePropertiesArr(index + 1).asInstanceOf[T]
+
     /** A store that can be used by sub-components.
      *  Typically used for attributes that are defined only once per compilation unit.
      *  Access to store entries is much faster than access to properties, and only
@@ -857,6 +869,16 @@ object Contexts {
       copy(oldLen) = key.asInstanceOf[AnyRef]
       copy(oldLen + 1) = value.asInstanceOf[AnyRef]
       setMorePropertiesArr(copy)
+
+    private[dotc] def replacePropertyAt[T](index: Int, key: Key[T], value: T): this.type =
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      if index >= 0 && (index & 1) == 0 && index + 1 < oldLen && (arr(index) eq key) then
+        val copy = new Array[AnyRef](oldLen)
+        System.arraycopy(arr, 0, copy, 0, oldLen)
+        copy(index + 1) = value.asInstanceOf[AnyRef]
+        setMorePropertiesArr(copy)
+      else setProperty(key, value)
 
     def setProperties[T, U](key1: Key[T], value1: T, key2: Key[U], value2: U): this.type =
       if key1 eq key2 then return setProperty(key2, value2)
