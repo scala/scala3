@@ -1114,7 +1114,6 @@ class Definitions {
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.unsafe.untrackedCaptures")
-  @tu lazy val ReserveAnnot: ClassSymbol = requiredClass("scala.caps.reserve")
   @tu lazy val AssumeSafeAnnot: ClassSymbol = requiredClass("scala.caps.assumeSafe")
   @tu lazy val RejectSafeAnnot: ClassSymbol = requiredClass("scala.caps.rejectSafe")
   @tu lazy val ConsumeAnnot: ClassSymbol = requiredClass("scala.caps.internal.consume")
@@ -2047,7 +2046,7 @@ class Definitions {
     Caps_ExclusiveCapability, Caps_Mutable, Caps_Unscoped, Caps_Stateful,
     Caps_Shared, RequiresCapabilityAnnot,
     Caps_any, Caps_fresh, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
-    ConsumeAnnot, ReserveAnnot, AssumeSafeAnnot, RejectSafeAnnot,
+    ConsumeAnnot, AssumeSafeAnnot, RejectSafeAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)

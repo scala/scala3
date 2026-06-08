@@ -597,7 +597,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             i"Type variable $pname of $sym", "be instantiated to", addendum, errTree.srcPos)
 
           val param = fn.symbol.paramNamed(pname)
-          if param.isUseParam then markFree(arg.nuType.deepCaptureSet, errTree)
+          if param.isCapsetParam then markFree(arg.nuType.deepCaptureSet, errTree)
     end markFreeTypeArgs
 
 // ---- Rechecking operations for different kinds of trees----------------------
@@ -2106,7 +2106,6 @@ class CheckCaptures extends Recheck, SymTransformer:
                   if member.owner == clazz then member.srcPos else clazz.srcPos)
 
             checkAnnot(defn.ConsumeAnnot)
-            checkAnnot(defn.ReserveAnnot)
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
@@ -2282,16 +2281,16 @@ class CheckCaptures extends Recheck, SymTransformer:
             c match
               case c: TypeRef =>
                 c.paramPathRoot match
-                  case croot: NamedType if !c.symbol.isUseParam =>
+                  case croot: NamedType if !c.symbol.isCapsetParam =>
                     badUseUnlessBoxed(c, croot.symbol.owner)
                   case _ =>
               case c: DerivedCapability =>
                 checkElem(c.underlying)
               case c: LocalCap =>
                 c.origin match
-                  case Origin.Parameter(param) if !param.isUseParam =>
+                  case Origin.Parameter(param) if !param.isCapsetParam =>
                     badUseUnlessBoxed(c, param.owner)
-                  case Origin.InDecl(param, _) if param.is(Param) && !param.isUseParam =>
+                  case Origin.InDecl(param, _) if param.is(Param) && !param.isCapsetParam =>
                      badUseUnlessBoxed(c, param.owner)
                   case _ =>
                     check(c.hiddenSet)

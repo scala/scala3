@@ -713,27 +713,10 @@ extension (sym: Symbol) {
   def hasTrackedParts(using Context): Boolean =
     !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
 
-  /** Until 3.7:
-   *    `sym` itself or its info is annotated @use or it is a type parameter with a matching
-   *    @use-annotated term parameter that contains `sym` in its deep capture set.
-   *  From 3.8:
-   *    `sym` is a capset parameter without a `@reserve` annotation that
-   *      - belongs to a class in a class, or
-   *      - belongs to a method where it appears in a the deep capture set of a following term parameter of the same method.
+  /** `sym` is a capset parameter
    */
-  def isUseParam(using Context): Boolean =
-    sym.is(TypeParam)
-        && !sym.info.hasAnnotation(defn.ReserveAnnot)
-        && (sym.owner.isClass
-            || sym.owner.rawParamss.nestedExists: param =>
-                param.is(TermParam)
-                && param.info.deepCaptureSet.elems.exists:
-                    case c: TypeRef => c.symbol == sym
-                    case _ => false
-            || {
-              //println(i"not is use param $sym")
-              false
-            })
+  def isCapsetParam(using Context): Boolean =
+    sym.is(TypeParam) && sym.info.derivesFromCapSet
 
   /** `sym` or its info is annotated with `@consume`. */
   def isConsumeParam(using Context): Boolean =
