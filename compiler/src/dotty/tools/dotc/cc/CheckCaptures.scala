@@ -2399,9 +2399,23 @@ class CheckCaptures extends Recheck, SymTransformer:
             if nextEnv != null && !nextEnv.isRoot then boxedOwner(nextEnv)
             else NoSymbol
 
-        def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
-          if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
-            checkUseDeclared(c, tree.srcPos)
+        def badUseUnlessBoxed(c: Capability, owner: Symbol) =
+          if !boxedOwner(env).isContainedIn(owner) then
+            def mitigation = c match
+              case c: TypeRef => ""
+              case c: LocalCap => i"\nYou could try to abstract the capability in a capset variable."
+              case _ => i"\nYou could try to abstract the capabilities referred to by $c in a capset variable."
+            val what = c match
+              case _: TypeRef => i"Capture set parameter $c"
+              case Reach(_) => i"Local reach capability $c"
+              case c: LocalCap =>
+                def where = c.origin match
+                  case Origin.InDecl(sym, _) => c.origin.explanation
+                  case _ => i" created in ${c.ccOwnerStr}${c.origin.explanation}"
+                i"Local $c$where"
+            report.error(
+              em"$what leaks into capture scope${owner.qualString("of")}.$mitigation",
+              tree.srcPos)
 
         def check(cs: CaptureSet): Unit = cs.elems.foreach(checkElem)
 
@@ -2411,20 +2425,23 @@ class CheckCaptures extends Recheck, SymTransformer:
             c match
               case Reach(c1) =>
                 c1.paramPathRoot match
-                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
-                  case _ => check(CaptureSet.ofTypeDeeply(c1.widen))
+                  case croot: NamedType if !croot.symbol.isUseParam =>
+                    badUseUnlessBoxed(c, croot.symbol.owner)
+                  case _ =>
+                    check(CaptureSet.ofTypeDeeply(c1.widen))
               case c: TypeRef =>
                 c.paramPathRoot match
-                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
+                  case croot: NamedType if !c.symbol.isUseParam =>
+                    badUseUnlessBoxed(c, croot.symbol.owner)
                   case _ =>
               case c: DerivedCapability =>
                 checkElem(c.underlying)
               case c: LocalCap =>
                 c.origin match
-                  case Origin.Parameter(param) =>
-                    report.error(
-                      em"Local $c created in type of $param leaks into capture scope${param.owner.qualString("of")}",
-                      tree.srcPos)
+                  case Origin.Parameter(param) if !param.isUseParam =>
+                    badUseUnlessBoxed(c, param.owner)
+                  case Origin.InDecl(param, _) if param.is(Param) && !param.isUseParam =>
+                     badUseUnlessBoxed(c, param.owner)
                   case _ =>
                     check(c.hiddenSet)
               case _ =>
@@ -2499,12 +2516,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      checkEscapingReachUses()
-      if Feature.sepChecksEnabled then
-        for (tree, cs, env) <- useInfos do
-          usedSet(tree) = tree.markedFree ++ cs
-        ccState.inSepCheck:
-          SepCheck(this).traverse(unit)
+      if !ctx.reporter.errorsReported then
+        checkEscapingReachUses()
+
+        if Feature.sepChecksEnabled then
+          for (tree, cs, env) <- useInfos do
+            usedSet(tree) = tree.markedFree ++ cs
+          ccState.inSepCheck:
+            SepCheck(this).traverse(unit)
 
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other

@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/leak-apply-rule.scala:2:11 ----------------------------------------------------
+2 |  val x = s(0) // error
+  |          ^^^^
+  |          Local reach capability s* leaks into capture scope of method select.
+  |          You could try to abstract the capabilities referred to by s* in a capset variable.
+-- Error: tests/neg-custom-args/captures/leak-apply-rule.scala:3:12 ----------------------------------------------------
+3 |  val y = s.head // error
+  |          ^^^^^^
+  |          Local reach capability s* leaks into capture scope of method select.
+  |          You could try to abstract the capabilities referred to by s* in a capset variable.

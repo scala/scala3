@@ -1,0 +1,58 @@
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:5:27 ---------------------------------------------
+5 |  update def append(x: T): BadBuffer[T]^ = this // error
+  |                           ^^^^^^^^^^^^^
+  |      Separation failure: method append's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
+  |      The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:8:29 ---------------------------------------------
+8 |    def bar: BadBuffer[T]^ = this // error // error
+  |                             ^^^^
+  |                Separation failure: Illegal access to {BadBuffer.this} which is hidden by the previous definition
+  |                of method append with result type BadBuffer[T]^.
+  |                This type hides capabilities  {BadBuffer.this}
+  |
+  |                where:    ^ refers to a root capability classified as Unscoped in the result type of method append
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:8:13 ---------------------------------------------
+8 |    def bar: BadBuffer[T]^ = this // error // error
+  |             ^^^^^^^^^^^^^
+  |         Separation failure: method bar's result type BadBuffer[T]^ hides non-local this of class class BadBuffer.
+  |         The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:21:17 --------------------------------------------
+21 |  val buf3 = app(buf, 3) // error
+   |                 ^^^
+   |Separation failure: Illegal access to (buf : Buffer[Int]^), which was passed as a consume parameter to method app
+   |on line 19 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability classified as Unscoped in the type of parameter buf
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:28:17 --------------------------------------------
+28 |  val buf3 = app(buf1, 4) // error
+   |                 ^^^^
+   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
+   |on line 26 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability classified as Unscoped in the type of value buf1
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:36:17 --------------------------------------------
+36 |  val buf3 = app(buf1, 4) // error
+   |                 ^^^^
+   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
+   |on line 33 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability classified as Unscoped in the type of value buf1
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:46:17 --------------------------------------------
+46 |  val buf3 = app(buf1, 4) // error
+   |                 ^^^^
+   |Separation failure: Illegal access to (buf1 : Buffer[Int]^), which was passed as a consume parameter to method app
+   |on line 41 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability classified as Unscoped in the type of value buf1
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:50:8 ---------------------------------------------
+50 |    app(buf, 1)  // error
+   |        ^^^
+   |        Separation failure: (buf : Buffer[Int]^) appears in a loop, therefore it cannot
+   |        be passed as a consume parameter to method app.
+   |
+   |        where:    ^ refers to a root capability classified as Unscoped in the type of parameter buf
+-- Error: tests/neg-custom-args/captures/linear-buffer-sepcheck.scala:60:20 --------------------------------------------
+60 |  val c3 = contents(buf)  // error
+   |                    ^^^
+   |             Separation failure: Illegal access to buf.rd, which was passed as a consume parameter to method app
+   |             on line 57 and therefore is no longer available.

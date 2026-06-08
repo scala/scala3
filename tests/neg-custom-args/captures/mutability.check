@@ -9,7 +9,7 @@
   |    Cannot call update method set of self
   |    since its capture set {self} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:10:25 -----------------------------------
-10 |    val self2: Ref[T]^ = this // error // error separation
+10 |    val self2: Ref[T]^ = this // error // sep error
    |                         ^^^^
    |                         Found:    Ref[T]^{Ref.this.rd}
    |                         Required: Ref[T]^{any}
@@ -31,7 +31,7 @@
    |    Cannot call update method set of Ref[T^{}]^{self3}
    |    since its capture set {self3} is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:15:37 -----------------------------------
-15 |    val self4: () => Ref[T]^ = () => this // error // error separation
+15 |    val self4: () => Ref[T]^ = () => this // error // sep error
    |                                     ^^^^
    |                            Found:    Ref[T]^{Ref.this.rd}
    |                            Required: Ref[T]^{any}
@@ -53,7 +53,7 @@
    |    Cannot call update method set of Ref[T^{}]^{Ref.this.rd}
    |    since its capture set {Ref.this.rd} of method self5 is read-only.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/mutability.scala:20:27 -----------------------------------
-20 |    def self6(): Ref[T]^ = this // error // error separation
+20 |    def self6(): Ref[T]^ = this // error // sep error
    |                           ^^^^
    |                    Found:    Ref[T]^{Ref.this.rd}
    |                    Required: Ref[T]^{any}
@@ -104,27 +104,3 @@
    |  ^^^^^^^^^^
    |  Cannot call update method set of Ref[Int]^{any.rd}
    |  since its capture set {any.rd} is read-only.
--- Error: tests/neg-custom-args/captures/mutability.scala:10:15 --------------------------------------------------------
-10 |    val self2: Ref[T]^ = this // error // error separation
-   |               ^^^^^^^
-   |               Separation failure: value self2's type Ref[T]^ hides non-local this of class class Ref.
-   |               The access must be in a consume method to allow this.
--- Error: tests/neg-custom-args/captures/mutability.scala:15:18 --------------------------------------------------------
-15 |    val self4: () => Ref[T]^ = () => this // error // error separation
-   |               ^^^^^^^^^^^^^
-   |               Separation failure: value self4's type () => Ref[T]^ hides non-local this of class class Ref.
-   |               The access must be in a consume method to allow this.
--- Error: tests/neg-custom-args/captures/mutability.scala:18:18 --------------------------------------------------------
-18 |    def self5() = this // error
-   |                  ^^^^
-   |                  Separation failure: Illegal access to {Ref.this} which is hidden by the previous definition
-   |                  of value self4 with type () => Ref[T]^.
-   |                  This type hides capabilities  {Ref.this.rd, Ref.this}
-   |
-   |                  where:    => refers to a root capability in the type of value self4
-   |                            ^  refers to a root capability classified as Unscoped in the type of value self4
--- Error: tests/neg-custom-args/captures/mutability.scala:20:17 --------------------------------------------------------
-20 |    def self6(): Ref[T]^ = this // error // error separation
-   |                 ^^^^^^^
-   |                 Separation failure: method self6's result type Ref[T]^ hides non-local this of class class Ref.
-   |                 The access must be in a consume method to allow this.
