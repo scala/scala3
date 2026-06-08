@@ -110,15 +110,12 @@ object TypeErasure:
         case tp: TypeVar if !tp.isInstantiated => -2
         case _ => -1
 
-  def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
-    if (defn.specialErasure.contains(cls))
-      return defn.specialErasure(cls).uncheckedNN
-    if (cls.owner == defn.ScalaPackageClass) {
-      if (cls == defn.UnitClass)
-        return defn.BoxedUnitClass
-    }
-    cls
-  }
+  def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol =
+    defn.specialErasure.get(cls) match
+      case Some(se) => se
+      case None =>
+        if cls.owner == defn.ScalaPackageClass && cls == defn.UnitClass then defn.BoxedUnitClass
+        else cls
 
   /** A predicate that tests whether a type is a legal erased type. Only asInstanceOf and
    *  isInstanceOf may have types that do not satisfy the predicate.

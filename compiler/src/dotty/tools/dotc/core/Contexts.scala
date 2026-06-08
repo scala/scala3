@@ -895,7 +895,7 @@ object Contexts {
     finally ctx.base.comparersInUse = saved
   end comparing
 
-  @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN) {
+  @sharable val NoContext: Context = new FreshContext(null.asInstanceOf[ContextBase]) {
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
     setSource(NoSource)
   }
@@ -913,7 +913,7 @@ object Contexts {
     val initialCtx: Context = FreshContext.initial(this: @unchecked, settings)
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform | Null = uninitialized
+    private var _platform: Platform | Null = null
 
     /** The platform */
     def platform: Platform = {

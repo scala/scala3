@@ -113,9 +113,9 @@ object Implicits:
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(using Context): Type = {
-      if (mySingletonClass == null) mySingletonClass = defn.SingletonClass
+      val sc = initialize(mySingletonClass, mySingletonClass = _, defn.SingletonClass)
       val wtp = tp.widenSingleton
-      if (wtp.derivesFrom(mySingletonClass.uncheckedNN)) defn.AnyType else wtp
+      if (wtp.derivesFrom(sc)) defn.AnyType else wtp
     }
 
     protected def isAccessible(ref: TermRef)(using Context): Boolean
@@ -315,15 +315,13 @@ object Implicits:
      *  Scala2 mode, since we do not want to change the implicit disambiguation then.
      */
     override val level: Int =
-      def isSameOwner = irefCtx.owner eq outerImplicits.uncheckedNN.irefCtx.owner
-      def isSameScope = irefCtx.scope eq outerImplicits.uncheckedNN.irefCtx.scope
       def isLazyImplicit = refs.head.implicitName.is(LazyImplicitName)
 
-      if outerImplicits == null then 1
-      else if migrateTo3(using irefCtx)
-              || isSameOwner && (isImport || isSameScope && !isLazyImplicit)
-      then outerImplicits.uncheckedNN.level
-      else outerImplicits.uncheckedNN.level + 1
+      outerImplicits match
+        case null => 1
+        case oi if migrateTo3(using irefCtx) 
+                || (irefCtx.owner eq oi.irefCtx.owner) && (isImport || (irefCtx.scope eq oi.irefCtx.scope) && !isLazyImplicit) => oi.level
+        case oi => oi.level + 1
     end level
 
     /** Is this the outermost implicits? This is the case if it either the implicits
@@ -951,8 +949,8 @@ trait Implicits:
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
         else
-          if synthesizer == null then synthesizer = Synthesizer(this)
-          val (tree, errors) = synthesizer.uncheckedNN.tryAll(formal, span)
+          val synth = initialize(synthesizer, synthesizer = _, Synthesizer(this))
+          val (tree, errors) = synth.tryAll(formal, span)
           if errors.nonEmpty then
             SearchFailure(new SynthesisFailure(errors, formal), span).tree
           else
@@ -2021,9 +2019,7 @@ final class SearchRoot extends SearchHistory:
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
   var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] | Null = null
   private def implicitDictionary =
-    if myImplicitDictionary == null then
-      myImplicitDictionary = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
-    myImplicitDictionary.uncheckedNN
+    initialize(myImplicitDictionary, myImplicitDictionary = _,  mutable.Map.empty[Type, (TermRef, tpd.Tree)])
 
   /**
    * Link a reference to an under-construction implicit for the provided type to its
@@ -2209,12 +2205,10 @@ sealed class TermRefSet(using Context):
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    def handle(sym: TermSymbol | Null, prefixes: Type | List[Type] | Null): Unit =
-      // We cannot use `.nn` here due to inference issue.
-      val prefixes0: Type | List[Type] = prefixes.uncheckedNN
-      prefixes0 match
-        case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
+    def handle(sym: TermSymbol, prefixes: Type | List[Type]): Unit =
+      prefixes match
+        case prefix: Type => f(TermRef(prefix, sym))
+        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym)))
     elems.forEach(handle)
 
   // used only for debugging

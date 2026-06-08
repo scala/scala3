@@ -23,6 +23,18 @@ package object tools {
   end extension
 
   /**
+   * Allows one to lazily initialize values without explicit `.nn`.
+   * This is useful for values that need a Context and thus can't be `lazy val`s.
+   */
+  inline def initialize[T](getter: T | Null, inline setter: T => Unit, inline value: => T): T =
+    if getter != null then
+      getter
+    else
+      val res = value
+      setter(res)
+      res
+
+  /**
    * Infrastructure to shorten method calls by not requiring a lambda.
    * Instead of `def f(x: ... => ...)` that must be called as, e.g.,  `f(x => x + 1)`,
    * write `def f(x: WrappedResult[...] ?=> ...)`, use that parameter by creating a `WrappedResult`,
