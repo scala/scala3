@@ -93,6 +93,32 @@ abstract class Positioned private[ast] (initialSpan: Positioned.InitialSpan)(imp
   def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = (this: @unchecked) match {
     case Trees.Inlined(call, _, _) =>
       call.span
+    case tree: Trees.Select[?] =>
+      val qualifier = tree.qualifier
+      def includeQualifier(span: Span): Span =
+        if (qualifier.source `ne` src) span
+        else
+          val pspan = qualifier.span
+          if (pspan.exists) {
+            if (span.exists) Span(span.start min pspan.start, span.end max pspan.end, span.point)
+            else pspan
+          }
+          else if (span.exists) {
+            if (span.end != MaxOffset)
+              qualifier.span = qualifier.envelope(src, span.endPos)
+            span
+          }
+          else // No span available to assign yet, signal this by returning a span with MaxOffset end
+            Span(MaxOffset, MaxOffset)
+      val span1 = includeQualifier(startSpan)
+      val span2 =
+        if (!span1.exists || span1.end != MaxOffset)
+          span1
+        else if (span1.start == MaxOffset)
+          NoSpan
+        else
+          includeQualifier(span1.startPos)
+      span2.toSynthetic
     case _ =>
       def include(span: Span, x: Any): Span = x match {
         case p: Positioned =>
