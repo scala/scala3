@@ -45,7 +45,6 @@ trait Arrows:
   def pathDependent2(n: Nested^)(g: AnyRef^{n.next.c} => Any): Any
   def pathDependent3(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): Any
   def pathDependent4(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c}
-  def pathDependent5(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c*, n.c, any}
 
   def contextPure(f: AnyRef^{a} ?-> Int): Int
   def contextImpure(f: AnyRef^{a} ?=> Int): Int

@@ -1682,10 +1682,9 @@ object Parsers {
 
       def reachOpt(ref: Tree): Tree =
         if in.isIdent(nme.raw.STAR) then
-          atSpan(startOffset(ref)):
-            in.nextToken()
-            Annotated(ref, makeReachAnnot())
-        else ref
+          report.error("Reach capability is no longer supported", in.sourcePos())
+          in.nextToken()
+        ref
 
       def restrictedOpt(ref: Tree): Tree =
         if in.token == DOT && in.lookahead.isIdent(nme.only) then
