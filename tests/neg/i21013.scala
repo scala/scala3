@@ -1,25 +1,38 @@
-// Issue #21013: applying a match type alias to a wildcard argument is
-// unsound when the type parameter appears outside the match scrutinee
-// (in a pattern, a case body, or the declared upper bound).
+// #21013: a match type alias applied to a wildcard is rejected when the
+// application does not reduce and the wildcarded parameter occurs outside the
+// scrutinee -- in a case pattern, a case body, or the declared upper bound.
+// Accepted applications are in tests/pos/i21013.scala.
+// The body/bound aliases take an extra scrutinee parameter `S` so that the
+// alias itself stays a match type instead of reducing away at definition.
 
-type M1[K] = Double match
-  case K => Int // K appears in a pattern
+type InPattern[K] = Double match
+  case K => Int                      // K in a pattern
 
-type M2[K] = Double match
-  case Option[K] => Int // K appears in a pattern
+type InNestedPattern[K] = Double match
+  case List[K] => Int                // K in a nested pattern
 
-type M3[X, Y] = X match
-  case Int => (Y, Y) // Y appears in a case body
+type InBody[K, S] = S match
+  case Int => List[K]                // K in a body
 
-type M4[K, S] <: List[K] = S match // K appears in the declared upper bound
-  case Int => List[K]
+type InBodyTwice[K, S] = S match
+  case Int => (K, K)                 // K twice in a body
+
+// K in the bound of an application that stays stuck (wildcard scrutinee);
+// contrast PlainBound[?, Int] in tests/pos, which reduces and is accepted
+type InBound[K, S] <: List[K] = S match
+  case Int => Nothing
+
+// bound that is itself a match alias: InAliasBound[?] <: Bad[?], where Bad[?]
+// would reduce unsoundly -- the case that makes bound occurrences dangerous
+type Bad[K] = Double match
+  case K => Int
+type InAliasBound[K, S] <: Bad[K] = S match
+  case Int => Nothing
 
 def Test: Unit =
-  val x1: M1[?] = ??? // error
-  val x2: M2[?] = ??? // error
-  val x3: M3[Int, ?] = ??? // error
-  val x4: M4[?, String] = ??? // error
-
-  // The unsoundness observed in #21013: M1[?] should not be a valid
-  // supertype of M1[Int]. With the fix, M1[?] itself is rejected.
-  // (If it were accepted, M1[?] would reduce to Int, but M1[Int] would not.)
+  val a1: InPattern[?]         = ??? // error
+  val a2: InNestedPattern[?]   = ??? // error
+  val a3: InBody[?, Int]       = ??? // error
+  val a4: InBodyTwice[?, Int]  = ??? // error
+  val a5: InBound[?, ?]        = ??? // error
+  val a6: InAliasBound[?, Int] = ??? // error

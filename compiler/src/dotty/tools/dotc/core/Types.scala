@@ -4802,26 +4802,12 @@ object Types extends TypeUtils {
      *  are equivalent to existential types, which are not supported.
      */
     def isUnreducibleWild(using Context): Boolean =
-      if !tycon.isLambdaSub || !hasWildcardArg then false
-      else if args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol) then false // S is a pseudo Match Alias
-      else matchAliasLambda match
-        case lam: HKTypeLambda => unsoundMatchAliasWildcardArgs(lam, args)
-        case _ => true
-
-    /** If this application is (the eta-expansion of) a match type alias,
-     *  returns the underlying `HKTypeLambda` whose `resType` is a `MatchType`.
-     *  Otherwise returns `NoType`. Used by `isUnreducibleWild` so that sound
-     *  wildcard applications of match aliases (the parameter only appears in
-     *  the scrutinee) can be accepted, while unsound ones are rejected.
-     */
-    private def matchAliasLambda(using Context): Type = tycon match
-      case tr: TypeRef => tr.info match
-        case MatchAlias(l: HKTypeLambda) => l
-        case _ => NoType
-      case l: HKTypeLambda => l.resType match
-        case _: MatchType => l
-        case _ => NoType
-      case _ => NoType
+      tycon.isLambdaSub && hasWildcardArg
+      && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
+      && (tycon match
+            case lam: HKTypeLambda if lam.resType.isInstanceOf[MatchType] =>
+              unsoundMatchAliasWildcardArgs(lam, args)
+            case _ => true)
 
     def tryCompiletimeConstantFold(using Context): Type =
       if myEvalRunId == ctx.runId then myEvalued
@@ -7334,13 +7320,19 @@ object Types extends TypeUtils {
   val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
 
   /** Does applying `lam` (the HKTypeLambda body of a match alias) to `args`
-   *  yield an unsound wildcard application? The application is unsound iff
-   *  `lam.resType` is a `MatchType` and some wildcard argument (a `TypeBounds`)
-   *  corresponds to a lambda parameter that occurs outside the match scrutinee
-   *  — i.e., in the match's declared upper bound, in any case pattern, or in
-   *  any case body. See issue #21013 for the motivation: substituting `?` for
-   *  a type parameter in such a position is analogous to the classic
-   *  `type U[X] = (X, X); type V = U[?]` unsoundness.
+   *  yield an unsound wildcard application? Returns true iff `lam.resType` is a
+   *  `MatchType` and some wildcard argument (a `TypeBounds`) corresponds to a
+   *  lambda parameter that occurs anywhere other than the scrutinee -- in a
+   *  case pattern, a case body, or the declared upper bound.
+   *
+   *  Consulted only for applications that `appliedTo` could not reduce away;
+   *  an application that reduces without its wildcard arguments taking part is
+   *  accepted there and never reaches this check. A surviving application is
+   *  sound only if its wildcarded parameters occur solely in the scrutinee,
+   *  where a wildcard merely leaves the match stuck. Elsewhere it would take
+   *  part in reduction, which may equate types that need not be equal; see
+   *  issue #21013, and compare the classic `type U[X] = (X, X); type V = U[?]`
+   *  unsoundness.
    */
   def unsoundMatchAliasWildcardArgs(lam: HKTypeLambda, args: List[Type])(using Context): Boolean =
     lam.resType match
