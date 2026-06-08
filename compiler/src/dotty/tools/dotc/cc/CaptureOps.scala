@@ -431,9 +431,6 @@ extension (tp: Type)
   def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
     RefinedType.precise(tp, name, rinfo)
 
-  def dropUseAndConsumeAnnots(using Context): Type =
-    tp.dropAnnot(defn.UseAnnot).dropAnnot(defn.ConsumeAnnot)
-
   /** If `tp` is a function or method, a type of the same kind with the given
    *  argument and result types.
   */
@@ -725,14 +722,11 @@ extension (sym: Symbol) {
    *      - belongs to a method where it appears in a the deep capture set of a following term parameter of the same method.
    */
   def isUseParam(using Context): Boolean =
-    sym.hasAnnotation(defn.UseAnnot)
-    || sym.info.hasAnnotation(defn.UseAnnot)
-    || sym.is(TypeParam)
+    sym.is(TypeParam)
         && !sym.info.hasAnnotation(defn.ReserveAnnot)
         && (sym.owner.isClass
             || sym.owner.rawParamss.nestedExists: param =>
                 param.is(TermParam)
-                && (!ccConfig.allowUse || param.hasAnnotation(defn.UseAnnot))
                 && param.info.deepCaptureSet.elems.exists:
                     case c: TypeRef => c.symbol == sym
                     case _ => false

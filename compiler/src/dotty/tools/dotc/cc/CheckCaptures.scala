@@ -790,9 +790,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       val instantiatedFormal = globalCapToLocal(formal, Origin.Formal(pref, app))
       val argType = recheck(arg, instantiatedFormal)
         .showing(i"recheck arg $arg vs $instantiatedFormal = $result", capt)
-      if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
+      if formal.hasAnnotation(defn.ConsumeAnnot) then
         // The @use and/or @consume annotation is added to `formal` when creating methods types.
         // See [[MethodTypeCompanion.adaptParamInfo]].
+        // TODO: Needed?
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
       if formal.containsGlobalAny then
@@ -842,9 +843,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val resultType = super.recheckApplication(tree, qualType, funType, instArgs)
       val appType = resultToAny(resultType, Origin.ResultInstance(_, funType, tree))
       val qualCaptures = qualType.captureSet
-      val argCaptures =
-        for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
-          if formal.hasAnnotation(defn.UseAnnot) then argType.deepCaptureSet else argType.captureSet
+      val argCaptures = argTypes.map(_.captureSet)
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
@@ -2013,7 +2012,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         // Compute the widened type. Drop `@use` and `@consume` annotations from the type,
         // since they obscures the capturing type.
-        val widened = actual.widen.dealiasKeepAnnots.dropUseAndConsumeAnnots
+        val widened = actual.widen.dealiasKeepAnnots.dropAnnot(defn.ConsumeAnnot)
         val improvedVAR = improveCaptures(widened, actual)
         val adaptedReadOnly = adaptReadOnly(improvedVAR, actual, expected, tree)
         val adapted = adaptBoxed(adaptedReadOnly, expected, tree,
@@ -2106,7 +2105,6 @@ class CheckCaptures extends Recheck, SymTransformer:
                     ),
                   if member.owner == clazz then member.srcPos else clazz.srcPos)
 
-            checkAnnot(defn.UseAnnot)
             checkAnnot(defn.ConsumeAnnot)
             checkAnnot(defn.ReserveAnnot)
       end OverridingPairsCheckerCC

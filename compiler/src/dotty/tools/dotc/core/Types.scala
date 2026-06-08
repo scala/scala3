@@ -4323,8 +4323,6 @@ object Types extends TypeUtils {
       if param.is(Erased) then
         paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
       // Copy `@use` and `@consume` annotations from parameter symbols to the type.
-      if param.hasAnnotation(defn.UseAnnot) then
-        paramType = addAnnotation(paramType, defn.UseAnnot, param)
       if param.hasAnnotation(defn.ConsumeAnnot) then
         paramType = addAnnotation(paramType, defn.ConsumeAnnot, param)
       paramType

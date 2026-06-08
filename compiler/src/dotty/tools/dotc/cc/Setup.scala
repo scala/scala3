@@ -708,7 +708,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverseChildren(tree)
 
       postProcess(tree)
-      checkProperUseOrConsume(tree)
+      checkProperConsume(tree)
     end traverse
 
     /** Processing done on node `tree` after its children are traversed */
@@ -868,7 +868,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      *  anonymous function parameters. Check that @use annotations don't appear
      *  at all from 3.8 on.
      */
-    def checkProperUseOrConsume(tree: Tree)(using Context): Unit = tree match
+    def checkProperConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
         val sym = tree.symbol
         def isMethodParam = (sym.is(Param) || sym.is(ParamAccessor))
@@ -883,24 +883,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 em"""consume cannot be used here. Only member methods and their term parameters
                     |can have a consume modifier.""",
                 tree.srcPos)
-          else if annotCls == defn.UseAnnot then
-            if !ccConfig.allowUse then
-              if sym.is(TypeParam) then
-                report.error(
-                  em"""@use is redundant here and should no longer be written explicitly.
-                      |Capset variables are always implicitly used, unless they are annotated with @caps.preserve.""",
-                  tree.srcPos)
-              else
-                report.error(
-                  em"""@use is no longer supported. Instead of @use you can introduce capset
-                      |variables for the polymorphic parts of parameter types.""",
-                  tree.srcPos)
-            else if !isMethodParam then
-              report.error(
-                em"@use cannot be used here. Only method parameters can have @use annotations.",
-                tree.srcPos)
       case _ =>
-    end checkProperUseOrConsume
   end setupTraverser
 
 // --------------- Adding capture set variables ----------------------------------
