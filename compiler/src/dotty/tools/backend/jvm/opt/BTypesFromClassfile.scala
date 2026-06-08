@@ -157,13 +157,16 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
   }
 
   def loadInlineInfoFor(name: InternalName): InlineInfo =
-    byteCodeRepository.classNode(name) match {
+    // No point in trying to load SCoverage runtime counters, we shouldn't and can't inline them,
+    // and warning about it is also not productive.
+    if name.startsWith("scala/runtime/coverage/") then InlineInfo.empty
+    else byteCodeRepository.classNode(name) match {
       case Right(classNode, moduleNode) =>
         inlineInfoFromClassfile(classNode, moduleNode)
       case Left(missingClass) =>
         InlineInfo.empty.copy(warning = Some(ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass)))
     }
-  
+
   /**
    * Build the InlineInfo for a class. For Scala classes, the information is stored in the
    * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
