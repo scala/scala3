@@ -571,8 +571,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Type arguments come either from a TypeApply node or from an AppliedType
      *  which represents a trait parent in a template.
      *   - Disallow GlobalCaps and ResultCaps in such arguments.
-     *   - If a corresponding formal type parameter is declared or implied @use,
-     *     charge the deep capture set of the argument to the environent.
+     *   - Charge the deep capture sets of arguments to capset parameters.
      *  @param  fn   the type application, of type TypeApply or TypeTree
      *  @param  sym  the constructor symbol (could be a method or a val or a class)
      *  @param  args the type arguments
@@ -777,9 +776,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         res
 
     /** Recheck argument against an instantiated version of `formal` where toplevel `any`
-     *  occurrences are replaced by LocalCap instances. Also, if formal parameter carries a `@use`
-     *  or @consume, charge the deep capture set of the actual argument to the environment.
-     *  TODO: Maybe not charge deep capture sets for consume?
+     *  occurrences are replaced by LocalCap instances.
      */
     protected override def recheckArg(arg: Tree, formal: Type, pref: ParamRef, app: Apply)(using Context): Type =
       val meth = app.fun.symbol
@@ -791,9 +788,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argType = recheck(arg, instantiatedFormal)
         .showing(i"recheck arg $arg vs $instantiatedFormal = $result", capt)
       if formal.hasAnnotation(defn.ConsumeAnnot) then
-        // The @use and/or @consume annotation is added to `formal` when creating methods types.
+        // The @consume annotation is added to `formal` when creating methods types.
         // See [[MethodTypeCompanion.adaptParamInfo]].
-        // TODO: Needed?
+        // We need to charge the deep capture set because to inform SepCheck which set
+        // is consumed.
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
       if formal.containsGlobalAny then
@@ -809,8 +807,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  ---------------------
      *  E |- f(a): Tr^C
      *
-     *  If the function `f` does not have an `@use` parameter, then
-     *  any unboxing it does would be charged to the environment of the function
+     *  Any unboxing of function `f` would be charged to the environment of the function
      *  so they have to appear in Cq. Since any capabilities of the result of the
      *  application must already be present in the application, an upper
      *  approximation of the result capture set is Cq \union Ca, where `Ca`
@@ -2010,8 +2007,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
             actual
       else
-        // Compute the widened type. Drop `@use` and `@consume` annotations from the type,
-        // since they obscures the capturing type.
+        // Compute the widened type. Drop `@consume` annotations from the type,
+        // since they obscure the capturing type.
         val widened = actual.widen.dealiasKeepAnnots.dropAnnot(defn.ConsumeAnnot)
         val improvedVAR = improveCaptures(widened, actual)
         val adaptedReadOnly = adaptReadOnly(improvedVAR, actual, expected, tree)
@@ -2090,7 +2087,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         override def checkInheritedTraitParameters: Boolean = false
 
-        /** Check that overrides don't change the @use, @consume, or @reserve status of their parameters */
+        /** Check that overrides don't change the @consume status of their parameters */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
           for
             (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)

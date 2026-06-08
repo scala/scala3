@@ -7,7 +7,7 @@ import config.{Feature, SourceVersion}
 
 object ccConfig:
 
-  /** If enabled, cache capture sets of infos capabilities */
+  /** If enabled, cache capture sets of infos of capabilities */
   inline val cacheCaptureSetOfInfo = false
 
   /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`
@@ -49,10 +49,6 @@ object ccConfig:
   /** Not used currently. Handy for trying out new features */
   def newScheme(using ctx: Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.10`)
-
-  /** Allow @use annotations */
-  def allowUse(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtMost(SourceVersion.`3.7`)
 
   /** Treat arrays as mutable types and force all mutable fields to be in Stateful
    *  classes, unless they are annotated with @untrackedCaptures.

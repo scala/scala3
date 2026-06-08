@@ -719,7 +719,7 @@ extension (sym: Symbol) {
     sym.is(TypeParam) && sym.info.derivesFromCapSet
 
   /** `sym` or its info is annotated with `@consume`. */
-  def isConsumeParam(using Context): Boolean =
+  def isConsume(using Context): Boolean =
     sym.hasAnnotation(defn.ConsumeAnnot)
     || sym.info.hasAnnotation(defn.ConsumeAnnot)
 

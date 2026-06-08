@@ -864,9 +864,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case _ =>
     end postProcess
 
-    /** Check that @use and @consume annotations only appear on parameters and not on
-     *  anonymous function parameters. Check that @use annotations don't appear
-     *  at all from 3.8 on.
+    /** Check that @consume annotations only appear on parameters and not on
+     *  anonymous function parameters.
      */
     def checkProperConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
@@ -884,6 +883,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     |can have a consume modifier.""",
                 tree.srcPos)
       case _ =>
+
   end setupTraverser
 
 // --------------- Adding capture set variables ----------------------------------
