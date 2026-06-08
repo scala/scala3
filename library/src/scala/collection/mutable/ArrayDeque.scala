@@ -345,7 +345,7 @@ class ArrayDeque[A] protected (
     * Removes all elements from this collection and returns the elements while emptying this data structure.
     * @return
     */
-  def removeAll(): scala.collection.immutable.Seq[A] = {
+  override def removeAll(): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
     elems.sizeHint(length)
     while(nonEmpty) {
@@ -358,7 +358,7 @@ class ArrayDeque[A] protected (
     * Removes all elements from this collection and returns the elements in reverse while emptying this data structure.
     * @return
     */
-  def removeAllReverse(): scala.collection.immutable.Seq[A] = {
+  override def removeAllReverse(): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
     elems.sizeHint(length)
     while(nonEmpty) {
@@ -373,7 +373,7 @@ class ArrayDeque[A] protected (
     *  @param f   the predicate used for choosing elements
     *  @return
     */
-  def removeHeadWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
+  override def removeHeadWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
     while(headOption.exists(f)) {
       elems += removeHeadAssumingNonEmpty()
@@ -387,7 +387,7 @@ class ArrayDeque[A] protected (
     *  @param f   the predicate used for choosing elements
     *  @return
     */
-  def removeLastWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
+  override def removeLastWhile(f: A => Boolean): scala.collection.immutable.Seq[A] = {
     val elems = scala.collection.immutable.Seq.newBuilder[A]
     while(lastOption.exists(f)) {
       elems += removeLastAssumingNonEmpty()
@@ -402,7 +402,7 @@ class ArrayDeque[A] protected (
     *  @param from the start index
     *  @return the first element of the queue for which p yields true
     */
-  def removeFirst(p: A => Boolean, from: Int = 0): Option[A] = {
+  override def removeFirst(p: A => Boolean, from: Int = 0): Option[A] = {
     val i = indexWhere(p, from)
     if (i < 0) None else Some(remove(i))
   }
@@ -414,7 +414,7 @@ class ArrayDeque[A] protected (
     *  @return    a sequence of all elements in the queue for which
     *             p yields true.
     */
-  def removeAll(p: A => Boolean): scala.collection.immutable.Seq[A] = {
+  override def removeAll(p: A => Boolean): scala.collection.immutable.Seq[A] = {
     val res = scala.collection.immutable.Seq.newBuilder[A]
     var i, j = 0
     while (i < size) {
