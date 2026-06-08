@@ -1901,6 +1901,9 @@ object SymDenotations {
     type BaseTypeMap = EqHashMap[CachedType, Type]
     private var myBaseTypeCache: BaseTypeMap | Null = null
     private var myBaseTypeCachePeriod: Period = Nowhere
+    private var myBaseTypeCacheKey: CachedType | Null = null
+    private var myBaseTypeCacheValue: Type | Null = null
+    private var myBaseTypeCacheKeyPeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
@@ -2017,6 +2020,9 @@ object SymDenotations {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
         myBaseTypeCache = new BaseTypeMap()
         myBaseTypeCachePeriod = ctx.period
+        myBaseTypeCacheKey = null
+        myBaseTypeCacheValue = null
+        myBaseTypeCacheKeyPeriod = Nowhere
       myBaseTypeCache.nn
     }
 
@@ -2038,6 +2044,9 @@ object SymDenotations {
     def invalidateBaseTypeCache(): Unit = {
       myBaseTypeCache = null
       myBaseTypeCachePeriod = Nowhere
+      myBaseTypeCacheKey = null
+      myBaseTypeCacheValue = null
+      myBaseTypeCacheKeyPeriod = Nowhere
     }
 
     def invalidateMemberCaches()(using Context): Unit =
@@ -2572,6 +2581,7 @@ object SymDenotations {
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(using Context): Type = {
       val btrCache = baseTypeCache
+      val btrCachePeriod = myBaseTypeCachePeriod
       // Side-channel: set by `recur` on every exit to indicate whether the
       // value just returned is/was stored in `btrCache` for its input.
       // Post-`recur` sites use this to decide whether to record the outer
@@ -2579,6 +2589,15 @@ object SymDenotations {
       // Capture into a local immediately after each recur call before any
       // other recur invocation overwrites it.
       var lastRecurCacheable: Boolean = false
+      def rememberFront(tp: CachedType, baseTp: Type) =
+        myBaseTypeCacheKey = tp
+        myBaseTypeCacheValue = baseTp
+        myBaseTypeCacheKeyPeriod = btrCachePeriod
+      def forgetFront(tp: CachedType) =
+        if (myBaseTypeCacheKeyPeriod == btrCachePeriod) && (myBaseTypeCacheKey eq tp) then
+          myBaseTypeCacheKey = null
+          myBaseTypeCacheValue = null
+          myBaseTypeCacheKeyPeriod = Nowhere
       // Updates `lastRecurCacheable` to reflect whether `tp` ended up
       // present in `btrCache` (i.e. the cacheable branch was taken).
       def record(tp: CachedType, baseTp: Type) = {
@@ -2588,10 +2607,12 @@ object SymDenotations {
         }
         if !(tp.isProvisional || CapturingType.isUncachable(tp) || ctx.gadt.isNarrowing) then {
           btrCache(tp) = baseTp
+          rememberFront(tp, baseTp)
           lastRecurCacheable = true
         }
         else {
           btrCache.remove(tp) // Remove any potential sentinel value
+          forgetFront(tp)
           lastRecurCacheable = false
         }
       }
@@ -2604,10 +2625,15 @@ object SymDenotations {
       def recur(tp: Type): Type = try {
         tp match {
           case tp: CachedType =>
+            if (myBaseTypeCacheKeyPeriod == btrCachePeriod) && (myBaseTypeCacheKey eq tp) then
+              lastRecurCacheable = true
+              return ensureAcyclic(myBaseTypeCacheValue.nn)
             val baseTp: Type | Null = btrCache.lookup(tp)
             if (baseTp != null) {
               lastRecurCacheable = true
-              return ensureAcyclic(baseTp)
+              val cached = ensureAcyclic(baseTp)
+              rememberFront(tp, cached)
+              return cached
             }
           case _ =>
         }
@@ -2661,6 +2687,7 @@ object SymDenotations {
                   if (lastRecurCacheable) record(tp, baseTp)
                   else {
                     btrCache.remove(tp)
+                    forgetFront(tp)
                     lastRecurCacheable = false
                   }
                   baseTp
@@ -2759,7 +2786,9 @@ object SymDenotations {
       catch {
         case ex: Exception =>
           tp match
-            case tp: CachedType => btrCache.remove(tp)
+            case tp: CachedType =>
+              btrCache.remove(tp)
+              forgetFront(tp)
             case _ =>
           lastRecurCacheable = false
           throw ex
