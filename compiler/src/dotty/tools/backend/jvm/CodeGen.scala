@@ -22,7 +22,6 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.util.SourceFile
 
 class CodeGen(impl: BCodeSyncAndTry) {
-  private val builder = new impl.SyncAndTryBuilder()
   private val mirrorBuilder = new impl.JMirrorBuilder()
 
   /**
@@ -35,7 +34,8 @@ class CodeGen(impl: BCodeSyncAndTry) {
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
-        val mainClassNode = builder.genPlainClass(cd, topLevel = true)
+        // This builder cannot be shared as it includes per-class mutable state that is not reset
+        val mainClassNode = new impl.SyncAndTryBuilder().genPlainClass(cd, topLevel = true)
         val mirrorClassNode = mirrorBuilder.genMirrorClassIfNeeded(sym)
 
         if sym.isClass then
