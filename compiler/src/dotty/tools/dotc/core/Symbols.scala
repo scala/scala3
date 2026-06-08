@@ -132,7 +132,10 @@ object Symbols extends SymUtils {
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
-      val newd = lastd.current.asInstanceOf[SymDenotation]
+      val fast = lastd.nextInRunIfFast(ctx.period)
+      val newd =
+        if fast == null then lastd.current.asInstanceOf[SymDenotation]
+        else fast.asInstanceOf[SymDenotation]
       if newd.exists || lastd.initial.validFor.firstPhaseId <= ctx.phaseId then
         lastDenot = newd
       else
