@@ -122,6 +122,13 @@ object Symbols extends SymUtils {
       else { checkedPeriod = now; recomputeDenot(lastd) }
     }
 
+    protected final def validLastDenot(using Context): SymDenotation | Null = {
+      val lastd = lastDenot
+      val vf = lastd.validFor
+      if vf.contains(ctx.period) then { checkedPeriod = vf; lastd }
+      else null
+    }
+
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
@@ -540,7 +547,9 @@ object Symbols extends SymUtils {
     }
 
     final def classDenot(using Context): ClassDenotation =
-      denot.asInstanceOf[ClassDenotation]
+      val lastd = validLastDenot
+      if lastd == null then denot.asInstanceOf[ClassDenotation]
+      else lastd.asInstanceOf[ClassDenotation]
 
     override protected def prefixString: String = "ClassSymbol"
   }
