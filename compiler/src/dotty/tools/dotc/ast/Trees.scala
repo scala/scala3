@@ -1342,7 +1342,7 @@ object Trees {
         postProcess(tree, copied.withAttachmentsFrom(tree))
 
       private def childHasSpanOrForeignSource(src: SourceFile, child: Trees.Tree[?]): Boolean =
-        (child.source ne src) || child.span.exists
+        child.span.exists || (child.source ne src)
 
       private def childrenHaveSpansOrForeignSource(src: SourceFile, children: List[? <: Trees.Tree[?]]): Boolean =
         var rest = children
