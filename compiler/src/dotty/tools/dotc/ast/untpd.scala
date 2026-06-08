@@ -573,9 +573,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case _ =>
       false
 
-  def makeReachAnnot()(using Context): Tree =
-    New(scalaAnnotationInternalDot(tpnme.reachCapability), Nil :: Nil)
-
   def makeReadOnlyAnnot()(using Context): Tree =
     New(scalaAnnotationInternalDot(tpnme.readOnlyCapability), Nil :: Nil)
 

@@ -3,8 +3,3 @@
   |          ^^^^^^^
   |          Local any in the type of parameter xs leaks into capture scope of method f.
   |          You could try to abstract the capability in a capset variable.
--- Error: tests/neg-custom-args/captures/leak-unsound-reach-6.scala:11:14 ----------------------------------------------
-11 |    val z = f(ys)   // error consume failure
-   |              ^^
-   |              Local reach capability ys* leaks into capture scope of method test.
-   |              You could try to abstract the capabilities referred to by ys* in a capset variable.

@@ -15,12 +15,6 @@ object ccConfig:
    */
   inline val handleEtaExpansionsSpecially = true
 
-  /** Don't require @use for reach capabilities that are accessed
-   *  only in a nested closure. This is unsound without additional
-   *  mitigation measures, as shown by unsound-reach-5.scala.
-   */
-  inline val deferredReaches = false
-
   /** Check that if a type map (which is not a BiTypeMap) maps initial capture
    *  set variable elements to themselves it will not map any elements added in
    *  the future to something else. That is, we can safely use a capture set

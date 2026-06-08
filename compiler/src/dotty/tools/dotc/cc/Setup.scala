@@ -1085,8 +1085,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             && !ref.coreType.derivesFromCapSet
         then
           if ref.captureSetOfInfo.elems.isEmpty then
-            val deepStr = if ref.isReach then " deep" else ""
-            report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
+            report.error(em"$ref cannot be tracked since its capture set is empty", pos)
           check(parent.captureSet, parent)
 
           val others =
