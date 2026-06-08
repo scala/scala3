@@ -23,7 +23,7 @@ import scala.tools.asm.tree.MethodNode
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
-import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
+import dotty.tools.backend.jvm.BCodeUtils.isSynchronizedMethod
 import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.report
 
@@ -133,10 +133,6 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: Optimi
       // Could be done by locking on the receiver, wrapping the inlined code in a try and unlocking
       // in finally. But it's probably not worth the effort, scala never emits synchronized methods.
       Some(SynchronizedMethod(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
-    } else if (isStrictfpMethod(callsiteMethod) != isStrictfpMethod(callee)) {
-      Some(StrictfpMismatch(
-        calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated,
-        callsiteClass.internalName, callsiteMethod.name, callsiteMethod.desc))
     } else if (callee.instructions.size == 0) {
       Some(NoBytecode(calleeDeclarationClass.internalName, callee.name, callee.desc, callsite.isInlineAnnotated))
     } else

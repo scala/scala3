@@ -845,7 +845,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         import GenBCodeOps.addFlagIf
         BCodeUtils.javaFlags(methSymbol)
           .addFlagIf(isAbstractMethod, asm.Opcodes.ACC_ABSTRACT)
-          .addFlagIf(false /*methSymbol.isStrictFP*/, asm.Opcodes.ACC_STRICT)
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }

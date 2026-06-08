@@ -135,11 +135,6 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
       case _: NoBytecode =>
         s"Method $calleeMethodSig cannot be inlined because it does not have any instructions, even though it is not abstract. The class may come from a signature jar file (such as a Bazel 'hjar')."
 
-      case StrictfpMismatch(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
-        s"""The callsite method ${OptimizerUtils.methodSignature(callsiteClass, callsiteName, callsiteDesc)}
-           |does not have the same strictfp mode as the callee $calleeMethodSig.
-       """.stripMargin
-
       case ResultingMethodTooLarge(_, _, _, _, callsiteClass, callsiteName, callsiteDesc) =>
         s"""The size of the callsite method ${OptimizerUtils.methodSignature(callsiteClass, callsiteName, callsiteDesc)}
            |would exceed the JVM method size limit after inlining $calleeMethodSig.
@@ -168,9 +163,6 @@ final case class MethodWithHandlerCalledOnNonEmptyStack(calleeDeclarationClass: 
 final case class SynchronizedMethod(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean) extends CannotInlineWarning
 
 final case class NoBytecode(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean) extends CannotInlineWarning
-
-final case class StrictfpMismatch(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean,
-                                  callsiteClass: InternalName, callsiteName: String, callsiteDesc: String) extends CannotInlineWarning
 
 case class ResultingMethodTooLarge(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean,
                                    callsiteClass: InternalName, callsiteName: String, callsiteDesc: String) extends CannotInlineWarning
