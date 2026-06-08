@@ -174,16 +174,15 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
               declarationClassBType <- bTypesFromClassfile.classBTypeFromClassNode(declarationClassNode, declarationModuleNode)
             } yield {
               val info = analyzeCallsite(method, declarationClassBType, call, paramTps, calleeSourceFilePath, definingClass)
-              import info._
               Callee(
                 callee = method,
                 calleeDeclarationClass = declarationClassBType,
-                isStaticallyResolved = isStaticallyResolved,
-                sourceFilePath = sourceFilePath,
-                annotatedInline = annotatedInline,
-                annotatedNoInline = annotatedNoInline,
+                isStaticallyResolved = info.isStaticallyResolved,
+                sourceFilePath = info.sourceFilePath,
+                annotatedInline = info.annotatedInline,
+                annotatedNoInline = info.annotatedNoInline,
                 samParamTypes = info.samParamTypes,
-                calleeInfoWarning = warning)
+                calleeInfoWarning = info.warning)
             }
           }
 
@@ -417,9 +416,12 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
                   warning = warning)
 
       case None =>
-        val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc,
-                                              calleeDeclarationClassBType.info.inlineInfo.warning)
-        CallsiteInfo(warning = Some(warning))
+        if OptimizerUtils.isSCoverage(calleeDeclarationClassBType.internalName) then
+          CallsiteInfo(warning = None)
+        else
+          val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc,
+                                                calleeDeclarationClassBType.info.inlineInfo.warning)
+          CallsiteInfo(warning = Some(warning))
     }
   }
 }

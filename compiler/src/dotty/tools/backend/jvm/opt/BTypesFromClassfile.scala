@@ -157,9 +157,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
   }
 
   def loadInlineInfoFor(name: InternalName): InlineInfo =
-    // No point in trying to load SCoverage runtime counters, we shouldn't and can't inline them,
-    // and warning about it is also not productive.
-    if name.startsWith("scala/runtime/coverage/") then InlineInfo.empty
+    if OptimizerUtils.isSCoverage(name) then InlineInfo.empty
     else byteCodeRepository.classNode(name) match {
       case Right(classNode, moduleNode) =>
         inlineInfoFromClassfile(classNode, moduleNode)
