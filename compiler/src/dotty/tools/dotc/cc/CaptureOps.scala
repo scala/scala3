@@ -774,24 +774,14 @@ extension (sym: Symbol) {
    *  From 3.8:
    *    `sym` is a capset parameter without a `@reserve` annotation that
    *      - belongs to a class in a class, or
-   *      - belongs to a method where it appears in a the deep capture set of a following term parameter of the same method.
+   *      - belongs to a method wh∂ere it appears in a the deep capture set of a following term parameter of the same method.
+   *  From 3.10:
+   *    `sym` is a capset parameter
    */
   def isUseParam(using Context): Boolean =
     sym.hasAnnotation(defn.UseAnnot)
     || sym.info.hasAnnotation(defn.UseAnnot)
-    || sym.is(TypeParam)
-        && !sym.info.hasAnnotation(defn.ReserveAnnot)
-        && (sym.owner.isClass
-            || sym.owner.rawParamss.nestedExists: param =>
-                param.is(TermParam)
-                && (!ccConfig.allowUse || param.hasAnnotation(defn.UseAnnot))
-                && param.info.deepCaptureSet.elems.exists:
-                    case c: TypeRef => c.symbol == sym
-                    case _ => false
-            || {
-              //println(i"not is use param $sym")
-              false
-            })
+    || sym.is(TypeParam) && sym.info.derivesFromCapSet
 
   /** `sym` or its info is annotated with `@consume`. */
   def isConsumeParam(using Context): Boolean =

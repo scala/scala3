@@ -136,7 +136,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     keywordText("erased ").provided(isErased)
     ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
-    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)

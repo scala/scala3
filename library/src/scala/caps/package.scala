@@ -129,16 +129,12 @@ object Contains:
   @experimental
   given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
-/** An annotation on capset parameters `C` stating that the method's body does not
+/** Was an annotation on capset parameters `C` stating that the method's body does not
  *  have `C` in its use-set. `C` might be accessed under a box in the method
- *  or in the result type of the method. Consequently, when calling the method
- *  we do not need to charge the capture set of the actual argiment to the
- *  environment.
- *
- *  Note: This should go into annotations. For now it is here, so that we
- *  can experiment with it quickly between minor releases
+ *  or in the result type of the method.
+ *  Now deprecated and with no effect.
  */
-@experimental
+@experimental @deprecated
 final class reserve extends annotation.StaticAnnotation
 
 /** An annotation for definitions that should not be accessible from code
