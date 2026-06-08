@@ -4,7 +4,7 @@ package jvm
 
 import dotty.tools.backend.jvm.opt.CallGraph
 import scala.tools.asm
-import scala.annotation.{switch, tailrec}
+import scala.annotation.tailrec
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
@@ -29,26 +29,19 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
       case null => NoSourcePosition
     }))
 
-  /* Just a namespace for utilities that encapsulate MethodVisitor idioms.
-   *  In the ASM world, org.objectweb.asm.commons.InstructionAdapter plays a similar role,
-   *  but the methods here allow choosing when to transition from ICode to ASM types
-   *  (including not at all, e.g. for performance).
-   */
   abstract class JCodeMethodN {
 
     def jmethod: asm.tree.MethodNode
 
     import asm.Opcodes
 
-    final def emit(opc: Int): Unit = { jmethod.visitInsn(opc) }
-
     /*
      * can-multi-thread
      */
     final def genPrimitiveNot(kind: BType): Unit =
       if (kind.isIntSizedType) {
-        emit(Opcodes.ICONST_M1)
-        emit(Opcodes.IXOR)
+        jmethod.visitInsn(Opcodes.ICONST_M1)
+        jmethod.visitInsn(Opcodes.IXOR)
       } else if (kind == LONG) {
         jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
         jmethod.visitInsn(Opcodes.LXOR)
@@ -65,22 +58,22 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
       import ScalaPrimitivesOps.{ AND, OR, XOR }
 
       ((op, kind): @unchecked) match {
-        case (AND, LONG) => emit(Opcodes.LAND)
-        case (AND, INT)  => emit(Opcodes.IAND)
+        case (AND, LONG) => jmethod.visitInsn(Opcodes.LAND)
+        case (AND, INT)  => jmethod.visitInsn(Opcodes.IAND)
         case (AND, _)    =>
-          emit(Opcodes.IAND)
+          jmethod.visitInsn(Opcodes.IAND)
           if (kind != BOOL) { emitT2T(INT, kind) }
 
-        case (OR, LONG) => emit(Opcodes.LOR)
-        case (OR, INT)  => emit(Opcodes.IOR)
+        case (OR, LONG) => jmethod.visitInsn(Opcodes.LOR)
+        case (OR, INT)  => jmethod.visitInsn(Opcodes.IOR)
         case (OR, _) =>
-          emit(Opcodes.IOR)
+          jmethod.visitInsn(Opcodes.IOR)
           if (kind != BOOL) { emitT2T(INT, kind) }
 
-        case (XOR, LONG) => emit(Opcodes.LXOR)
-        case (XOR, INT)  => emit(Opcodes.IXOR)
+        case (XOR, LONG) => jmethod.visitInsn(Opcodes.LXOR)
+        case (XOR, INT)  => jmethod.visitInsn(Opcodes.IXOR)
         case (XOR, _) =>
-          emit(Opcodes.IXOR)
+          jmethod.visitInsn(Opcodes.IXOR)
           if (kind != BOOL) { emitT2T(INT, kind) }
       }
 
@@ -94,22 +87,22 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
       import ScalaPrimitivesOps.{ LSL, ASR, LSR }
 
       ((op, kind): @unchecked) match {
-        case (LSL, LONG) => emit(Opcodes.LSHL)
-        case (LSL, INT)  => emit(Opcodes.ISHL)
+        case (LSL, LONG) => jmethod.visitInsn(Opcodes.LSHL)
+        case (LSL, INT)  => jmethod.visitInsn(Opcodes.ISHL)
         case (LSL, _) =>
-          emit(Opcodes.ISHL)
+          jmethod.visitInsn(Opcodes.ISHL)
           emitT2T(INT, kind)
 
-        case (ASR, LONG) => emit(Opcodes.LSHR)
-        case (ASR, INT)  => emit(Opcodes.ISHR)
+        case (ASR, LONG) => jmethod.visitInsn(Opcodes.LSHR)
+        case (ASR, INT)  => jmethod.visitInsn(Opcodes.ISHR)
         case (ASR, _) =>
-          emit(Opcodes.ISHR)
+          jmethod.visitInsn(Opcodes.ISHR)
           emitT2T(INT, kind)
 
-        case (LSR, LONG) => emit(Opcodes.LUSHR)
-        case (LSR, INT)  => emit(Opcodes.IUSHR)
+        case (LSR, LONG) => jmethod.visitInsn(Opcodes.LUSHR)
+        case (LSR, INT)  => jmethod.visitInsn(Opcodes.IUSHR)
         case (LSR, _) =>
-          emit(Opcodes.IUSHR)
+          jmethod.visitInsn(Opcodes.IUSHR)
           emitT2T(INT, kind)
       }
 
@@ -158,7 +151,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
           case FLOAT  => opcs(5)
           case DOUBLE => opcs(6)
         }
-        if (chosen != -1) { emit(chosen) }
+        if (chosen != -1) { jmethod.visitInsn(chosen) }
       }
 
       if (from == to) { return }
@@ -177,25 +170,25 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
         case FLOAT  =>
           import asm.Opcodes.{ F2L, F2D, F2I }
           to match {
-            case LONG    => emit(F2L)
-            case DOUBLE  => emit(F2D)
-            case _       => emit(F2I); emitT2T(INT, to)
+            case LONG    => jmethod.visitInsn(F2L)
+            case DOUBLE  => jmethod.visitInsn(F2D)
+            case _       => jmethod.visitInsn(F2I); emitT2T(INT, to)
           }
 
         case LONG   =>
           import asm.Opcodes.{ L2F, L2D, L2I }
           to match {
-            case FLOAT   => emit(L2F)
-            case DOUBLE  => emit(L2D)
-            case _       => emit(L2I); emitT2T(INT, to)
+            case FLOAT   => jmethod.visitInsn(L2F)
+            case DOUBLE  => jmethod.visitInsn(L2D)
+            case _       => jmethod.visitInsn(L2I); emitT2T(INT, to)
           }
 
         case DOUBLE =>
           import asm.Opcodes.{ D2L, D2F, D2I }
           to match {
-            case FLOAT   => emit(D2F)
-            case LONG    => emit(D2L)
-            case _       => emit(D2I); emitT2T(INT, to)
+            case FLOAT   => jmethod.visitInsn(D2F)
+            case LONG    => jmethod.visitInsn(D2L)
+            case _       => jmethod.visitInsn(D2I); emitT2T(INT, to)
           }
 
         case _ => throw new IllegalArgumentException("Unsupported from type for T2T: " + from)
@@ -208,7 +201,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     // can-multi-thread
     final def iconst(cst: Int): Unit = {
       if (cst >= -1 && cst <= 5) {
-        emit(Opcodes.ICONST_0 + cst)
+        jmethod.visitInsn(Opcodes.ICONST_0 + cst)
       } else if (cst >= java.lang.Byte.MIN_VALUE && cst <= java.lang.Byte.MAX_VALUE) {
         jmethod.visitIntInsn(Opcodes.BIPUSH, cst)
       } else if (cst >= java.lang.Short.MIN_VALUE && cst <= java.lang.Short.MAX_VALUE) {
@@ -221,7 +214,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     // can-multi-thread
     final def lconst(cst: Long): Unit = {
       if (cst == 0L || cst == 1L) {
-        emit(Opcodes.LCONST_0 + cst.asInstanceOf[Int])
+        jmethod.visitInsn(Opcodes.LCONST_0 + cst.asInstanceOf[Int])
       } else {
         jmethod.visitLdcInsn(java.lang.Long.valueOf(cst))
       }
@@ -231,7 +224,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     final def fconst(cst: Float): Unit = {
       val bits: Int = java.lang.Float.floatToIntBits(cst)
       if (bits == 0L || bits == 0x3f800000 || bits == 0x40000000) { // 0..2
-        emit(Opcodes.FCONST_0 + cst.asInstanceOf[Int])
+        jmethod.visitInsn(Opcodes.FCONST_0 + cst.asInstanceOf[Int])
       } else {
         jmethod.visitLdcInsn(java.lang.Float.valueOf(cst))
       }
@@ -241,11 +234,14 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     final def dconst(cst: Double): Unit = {
       val bits: Long = java.lang.Double.doubleToLongBits(cst)
       if (bits == 0L || bits == 0x3ff0000000000000L) { // +0.0d and 1.0d
-        emit(Opcodes.DCONST_0 + cst.asInstanceOf[Int])
+        jmethod.visitInsn(Opcodes.DCONST_0 + cst.asInstanceOf[Int])
       } else {
         jmethod.visitLdcInsn(java.lang.Double.valueOf(cst))
       }
     }
+
+    final def nullconst(): Unit =
+      jmethod.visitInsn(Opcodes.ACONST_NULL)
 
     // can-multi-thread
     final def newarray(elem: BType): Unit = {
@@ -304,7 +300,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
       emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false, pos)
     }
 
-    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
+    private def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
       val node = new MethodInsnNode(opcode, owner, name, desc, itf)
       jmethod.instructions.add(node)
       recordCallsitePosition(node, pos)
@@ -330,7 +326,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
 
     // can-multi-thread
     final def emitRETURN(tk: BType): Unit = {
-      if (tk == UNIT) { emit(Opcodes.RETURN) }
+      if (tk == UNIT) { jmethod.visitInsn(Opcodes.RETURN) }
       else            { emitTypeBased(JCodeMethodN.returnOpcodes, tk)      }
     }
 
@@ -407,7 +403,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     // don't make private otherwise inlining will suffer
 
     // can-multi-thread
-    final def emitVarInsn(opc: Int, idx: Int, tk: BType): Unit = {
+    private final def emitVarInsn(opc: Int, idx: Int, tk: BType): Unit = {
       assert((opc == Opcodes.ILOAD) || (opc == Opcodes.ISTORE), opc)
       jmethod.visitVarInsn(tk.typedOpcode(opc), idx)
     }
@@ -415,7 +411,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     // ---------------- array load and store ----------------
 
     // can-multi-thread
-    final def emitTypeBased(opcs: Array[Int], tk: BType): Unit = {
+    private final def emitTypeBased(opcs: Array[Int], tk: BType): Unit = {
       assert(tk != UNIT, tk)
       val opc = {
         if (tk.isRef) { opcs(0) }
@@ -434,7 +430,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
           }
         }
       }
-      emit(opc)
+      jmethod.visitInsn(opc)
     }
 
     // ---------------- primitive operations ----------------
@@ -450,24 +446,24 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
           case _      => opcs(0)
         }
       }
-      emit(opc)
+      jmethod.visitInsn(opc)
     }
 
     // can-multi-thread
-    final def drop(tk: BType): Unit = { emit(if (tk.isWideType) Opcodes.POP2 else Opcodes.POP) }
+    final def drop(tk: BType): Unit = { jmethod.visitInsn(if (tk.isWideType) Opcodes.POP2 else Opcodes.POP) }
 
     // can-multi-thread
     final def dropMany(size: Int): Unit = {
       var s = size
       while s >= 2 do
-        emit(Opcodes.POP2)
+        jmethod.visitInsn(Opcodes.POP2)
         s -= 2
       if s > 0 then
-        emit(Opcodes.POP)
+        jmethod.visitInsn(Opcodes.POP)
     }
 
     // can-multi-thread
-    final def dup(tk: BType): Unit =  { emit(if (tk.isWideType) Opcodes.DUP2 else Opcodes.DUP) }
+    final def dup(tk: BType): Unit =  { jmethod.visitInsn(if (tk.isWideType) Opcodes.DUP2 else Opcodes.DUP) }
 
     // ---------------- type checks and casts ----------------
 

@@ -402,7 +402,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
           val local = stashLocals(i)
           bc.load(local.idx, local.tk)
           if local.tk.isRef then
-            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.nullconst()
             bc.store(local.idx, local.tk)
 
         stack.restoreFullStack(acquiredStack.nn)
@@ -410,7 +410,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
         if resultLoc != null then
           bc.load(resultLoc.idx, kind)
           if kind.isRef then
-            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.nullconst()
             bc.store(resultLoc.idx, kind)
       end if // stashLocals != null
 
