@@ -1670,8 +1670,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+        val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
+        // Discard a `then` value that only *conforms* to `Unit` (e.g. a Java
+        // `FlexibleType[Unit]`, as returned by `Map[K, Unit].put`) so the branch is
+        // actually `Unit`. Otherwise `assignType(If)`'s lub (used when the tree is
+        // unpickled or rebuilt) recomputes the `if` to `lub(FlexibleType[Unit], Unit) =
+        // FlexibleType[Unit]` and disagrees with the `Unit` hardcoded here, breaking TASTY
+        // pickling round-trips. (The previous `FlexibleType` representation hid this: being
+        // a freshly-allocated proxy rather than a hash-consed `AppliedType`, it failed the
+        // `eq` check in `TypedTreeCopier.If`, forcing that copier to recompute the `if` to
+        // the same lub the unpickler uses.)
+        val thenp1 =
+          if FlexibleType.isInstance(thenp0.tpe.widenExpr)
+          then tpd.Block(thenp0 :: Nil, tpd.unitLiteral.withSpan(tree.span.endPos))
+          else thenp0
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
