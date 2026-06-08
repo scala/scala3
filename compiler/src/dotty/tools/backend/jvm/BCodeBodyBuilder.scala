@@ -983,8 +983,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
          * On a second pass, we emit the switch blocks, one for each different target.
          */
 
-        var flatKeys: List[Int]       = Nil
-        var targets:  List[asm.Label] = Nil
+        var flatKeysAndTargets: List[(Int, asm.Label)]       = Nil
         var default:  asm.Label | Null = null
         var switchBlocks: List[(asm.Label, Tree)] = Nil
 
@@ -997,16 +996,14 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           switchBlocks ::= (switchBlockPoint, body)
           pat match {
             case Literal(value) =>
-              flatKeys ::= value.intValue
-              targets  ::= switchBlockPoint
+              flatKeysAndTargets ::= (value.intValue, switchBlockPoint)
             case Ident(nme.WILDCARD) =>
               assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
               default = switchBlockPoint
             case Alternative(alts) =>
               alts foreach {
                 case Literal(value) =>
-                  flatKeys ::= value.intValue
-                  targets  ::= switchBlockPoint
+                  flatKeysAndTargets ::= (value.intValue, switchBlockPoint)
                 case _ =>
                   throw new AssertionError(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
               }
@@ -1019,7 +1016,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         if !hasDefault then
           default = new asm.Label
 
-        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default.nn, MIN_SWITCH_DENSITY)
+        bc.emitSWITCH(flatKeysAndTargets, default.nn, MIN_SWITCH_DENSITY)
 
         // emit switch-blocks.
         for (sb <- switchBlocks.reverse) {
@@ -1082,14 +1079,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         }
 
         // Organize the hashCode options into switch cases
-        var flatKeys: List[Int]       = Nil
-        var targets:  List[asm.Label] = Nil
+        var flatKeysAndTargets: List[(Int, asm.Label)]       = Nil
         var hashBlocks: List[(asm.Label, List[(String, Either[asm.Label, Tree])])] = Nil
         for ((hashValue, hashCases) <- casesByHash) {
           val switchBlockPoint = new asm.Label
           hashBlocks ::= (switchBlockPoint, hashCases)
-          flatKeys ::= hashValue
-          targets  ::= switchBlockPoint
+          flatKeysAndTargets ::= (hashValue, switchBlockPoint)
         }
 
         val hasDefault = default != null
@@ -1107,7 +1102,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           INT,
           LoadDestination.FallThrough
         )
-        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default.nn, MIN_SWITCH_DENSITY)
+        bc.emitSWITCH(flatKeysAndTargets, default.nn, MIN_SWITCH_DENSITY)
 
         // emit blocks for each hash case
         for ((hashLabel, caseAlternatives) <- hashBlocks.reverse) {

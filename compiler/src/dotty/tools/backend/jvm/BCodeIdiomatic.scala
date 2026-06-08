@@ -4,7 +4,7 @@ package jvm
 
 import dotty.tools.backend.jvm.opt.CallGraph
 import scala.tools.asm
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
@@ -28,61 +28,6 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
       case p: Positioned => p.sourcePos
       case null => NoSourcePosition
     }))
-
-  val EMPTY_STRING_ARRAY   = Array.empty[String]
-  val EMPTY_INT_ARRAY      = Array.empty[Int]
-  val EMPTY_LABEL_ARRAY    = Array.empty[asm.Label]
-  val EMPTY_BTYPE_ARRAY    = Array.empty[BType]
-
-  /* can-multi-thread */
-  final def mkArrayB(xs: List[BType]): Array[BType] = {
-    if (xs.isEmpty) { return EMPTY_BTYPE_ARRAY }
-    val a = new Array[BType](xs.size); xs.copyToArray(a); a
-  }
-  /* can-multi-thread */
-  final def mkArrayS(xs: List[String]): Array[String] = {
-    if (xs.isEmpty) { return EMPTY_STRING_ARRAY }
-    val a = new Array[String](xs.size); xs.copyToArray(a); a
-  }
-  /* can-multi-thread */
-  final def mkArrayL(xs: List[asm.Label]): Array[asm.Label] = {
-    if (xs.isEmpty) { return EMPTY_LABEL_ARRAY }
-    val a = new Array[asm.Label](xs.size); xs.copyToArray(a); a
-  }
-
-  /*
-   * can-multi-thread
-   */
-  final def mkArrayReverse(xs: List[String]): Array[String] = {
-    val len = xs.size
-    if (len == 0) { return EMPTY_STRING_ARRAY }
-    val a = new Array[String](len)
-    var i = len - 1
-    var rest = xs
-    while (rest.nonEmpty) {
-      a(i) = rest.head
-      rest = rest.tail
-      i -= 1
-    }
-    a
-  }
-
-  /*
-   * can-multi-thread
-   */
-  final def mkArrayReverse(xs: List[Int]): Array[Int] = {
-    val len = xs.size
-    if (len == 0) { return EMPTY_INT_ARRAY }
-    val a = new Array[Int](len)
-    var i = len - 1
-    var rest = xs
-    while (rest.nonEmpty) {
-      a(i) = rest.head
-      rest = rest.tail
-      i -= 1
-    }
-    a
-  }
 
   /* Just a namespace for utilities that encapsulate MethodVisitor idioms.
    *  In the ASM world, org.objectweb.asm.commons.InstructionAdapter plays a similar role,
@@ -393,50 +338,33 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
      *
      * can-multi-thread
      */
-    final def emitSWITCH(keys: Array[Int], branches: Array[asm.Label], defaultBranch: asm.Label, minDensity: Double): Unit = {
-      assert(keys.length == branches.length)
+    final def emitSWITCH(unsortedKeysAndBranches: List[(Int, asm.Label)], defaultBranch: asm.Label, minDensity: Double): Unit = {
+      val keysAndBranches = unsortedKeysAndBranches.sortBy(_._1)
+
+      // check for duplicate keys to avoid "VerifyError: unsorted lookupswitch" (SI-6011)
+      @tailrec
+      def scan(lst: List[(Int, asm.Label)], prev: Int): Unit = lst match {
+        case (n, _) :: tl if n == prev => throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+        case (n, _) :: tl => scan(tl, n)
+        case _ => ()
+      }
 
       // For empty keys, it makes sense emitting LOOKUPSWITCH with defaultBranch only.
       // Similar to what javac emits for a switch statement consisting only of a default case.
-      if (keys.length == 0) {
-        jmethod.visitLookupSwitchInsn(defaultBranch, keys, branches)
-        return
-      }
+      keysAndBranches match
+        case Nil =>
+          jmethod.visitLookupSwitchInsn(defaultBranch, Array.empty[Int], Array.empty[asm.Label])
+          return
+        case (n, _) :: tl =>
+          scan(tl, n)
 
-      // sort `keys` by increasing key, keeping `branches` in sync. TODO FIXME use quicksort
-      var i = 1
-      while (i < keys.length) {
-        var j = 1
-        while (j <= keys.length - i) {
-          if (keys(j) < keys(j - 1)) {
-            val tmp     = keys(j)
-            keys(j)     = keys(j - 1)
-            keys(j - 1) = tmp
-            val tmpL        = branches(j)
-            branches(j)     = branches(j - 1)
-            branches(j - 1) = tmpL
-          }
-          j += 1
-        }
-        i += 1
-      }
-
-      // check for duplicate keys to avoid "VerifyError: unsorted lookupswitch" (SI-6011)
-      i = 1
-      while (i < keys.length) {
-        if (keys(i-1) == keys(i)) {
-          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
-        }
-        i += 1
-      }
-
-      val keyMin = keys(0)
-      val keyMax = keys(keys.length - 1)
+      val keyMin = keysAndBranches.head._1
+      val keyMax = keysAndBranches.last._1
 
       val isDenseEnough: Boolean = {
         /* Calculate in long to guard against overflow. TODO what overflow? */
         val keyRangeD: Double = (keyMax.asInstanceOf[Long] - keyMin + 1).asInstanceOf[Double]
-        val klenD:     Double = keys.length
+        val klenD:     Double = keysAndBranches.length
         val kdensity:  Double = klenD / keyRangeD
 
         kdensity >= minDensity
@@ -446,21 +374,31 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
         // use a table in which holes are filled with defaultBranch.
         val keyRange    = keyMax - keyMin + 1
         val newBranches = new Array[asm.Label](keyRange)
-        var oldPos = 0
+        var remainingKeysAndBranches = keysAndBranches
         var i = 0
         while (i < keyRange) {
           val key = keyMin + i
-          if (keys(oldPos) == key) {
-            newBranches(i) = branches(oldPos)
-            oldPos += 1
+          if (remainingKeysAndBranches.head._1 == key) {
+            newBranches(i) = remainingKeysAndBranches.head._2
+            remainingKeysAndBranches = remainingKeysAndBranches.tail
           } else {
             newBranches(i) = defaultBranch
           }
           i += 1
         }
-        assert(oldPos == keys.length, "emitSWITCH")
+        assert(remainingKeysAndBranches.isEmpty, "emitSWITCH")
         jmethod.visitTableSwitchInsn(keyMin, keyMax, defaultBranch, newBranches*)
       } else {
+        val len = keysAndBranches.length
+        val keys = new Array[Int](len)
+        val branches = new Array[asm.Label](len)
+        var remainingKeysAndBranches = keysAndBranches
+        var idx = 0
+        while remainingKeysAndBranches.nonEmpty do
+          keys(idx) = remainingKeysAndBranches.head._1
+          branches(idx) = remainingKeysAndBranches.head._2
+          remainingKeysAndBranches = remainingKeysAndBranches.tail
+          idx = idx + 1
         jmethod.visitLookupSwitchInsn(defaultBranch, keys, branches)
       }
     }

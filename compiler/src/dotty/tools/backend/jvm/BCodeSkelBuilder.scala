@@ -728,7 +728,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         bytecodeName,
         mdesc,
         jgensig,
-        mkArrayS(thrownExceptions)
+        if thrownExceptions.isEmpty then null else thrownExceptions.toArray
       ).asInstanceOf[MethodNode1]
 
       // TODO param names: (m.params.map(p => javaName(p.sym)))

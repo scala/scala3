@@ -415,7 +415,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         mirrorMethodName,
         mdesc,
         jgensig,
-        mkArrayS(thrownExceptions)
+        if thrownExceptions.isEmpty then null else thrownExceptions.toArray
       )
 
       emitAnnotations(mirrorMethod, others)
@@ -546,6 +546,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
   /* builder of mirror classes */
   class JMirrorBuilder extends JCommonBuilder {
+    private val EMPTY_STRING_ARRAY = Array.empty[String]
 
     /* Generate a mirror class for a top-level module. A mirror class is a class
      *  containing only static methods that forward to the corresponding method
