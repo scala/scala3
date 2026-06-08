@@ -231,6 +231,15 @@ object TypeErasure:
       case ErasedValueType(_, underlying) => erasure(underlying)
       case etp => etp
 
+  /** Rewrite a `JavaArrayType` (the post-erasure representation of `T[]`) to its
+   *  source-level Scala `Array[T]` form. Other types are returned unchanged. Used
+   *  when an erased type has to flow back into a tree where only Scala-level types
+   *  are valid, e.g. the type argument of a class literal.
+   */
+  def escapeJavaArray(tp: Type)(using Context): Type = tp match
+    case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
+    case _                     => tp
+
   def sigName(tp: Type, sourceLanguage: SourceLanguage)(using Context): TypeName = {
     val normTp = tp.translateFromRepeated(toArray = sourceLanguage.isJava)
     val erase = erasureFn(sourceLanguage, semiEraseVCs = !sourceLanguage.isJava, isConstructor = false, isSymbol = false, inSigName = true)
