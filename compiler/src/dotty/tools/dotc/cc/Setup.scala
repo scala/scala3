@@ -202,7 +202,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   AnnotatedType(sym.info, RetainingAnnotation.fromAnnotation(ann))
                 case None => sym.info
             else sym.info
-          toResultInReturnType(sym, msg => throw TypeError(msg)):
+          toResultInReturnType(sym):
             transformExplicitType(oldInfo, sym)(using symCtx)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
@@ -231,7 +231,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Apply toResult to the return types of def methods, so that local `any` capabilties
    *  are mapped to `fresh` in the return type of the resulting methodic types.
    */
-  def toResultInReturnType(sym: Symbol, fail: Message => Unit)(tp: Type)(using Context): Type =
+  def toResultInReturnType(sym: Symbol)(tp: Type)(using Context): Type =
     val needsConversion =
       sym.is(Method, butNot = Accessor)
       && !sym.name.is(DefaultGetterName)
@@ -240,12 +240,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       tp match
       case tp: ExprType =>
         // Map the result of parameterless `def` methods.
-        tp.derivedExprType(toResult(tp.resType, tp, sym, fail))
+        tp.derivedExprType(toResult(tp.resType, tp, sym))
       case tp: MethodOrPoly =>
         tp.derivedLambdaType(resType =
           if tp.marksExistentialScope
-          then toResult(tp.resType, tp, sym, fail)
-          else toResultInReturnType(sym, fail)(tp.resType))
+          then toResult(tp.resType, tp, sym)
+          else toResultInReturnType(sym)(tp.resType))
       case _ => tp
     else tp
 
@@ -773,7 +773,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               val paramSymss = sym.paramSymss
               def newInfo(using Context) = // will be run in this or next phase
                 if sym.is(Method) then
-                  toResultInReturnType(sym, report.error(_, tree.srcPos)):
+                  toResultInReturnType(sym):
                     inContext(ctx.withOwner(sym)):
                       paramsToCap(paramSymss, methodType(paramSymss, localReturnType))
                 else tree.tpt.nuType

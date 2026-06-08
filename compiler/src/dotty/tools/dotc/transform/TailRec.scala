@@ -11,9 +11,7 @@ import StdNames.nme
 import reporting.*
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
-import dotty.tools.uncheckedNN
-
-import scala.compiletime.uninitialized
+import dotty.tools.initialize
 
 /** A Tail Rec Transformer.
  *
@@ -236,12 +234,9 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private var myContinueLabel: Symbol | Null = uninitialized
-    def continueLabel(using Context): Symbol = {
-      if (myContinueLabel == null)
-        myContinueLabel = newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
-      myContinueLabel.uncheckedNN
-    }
+    private var myContinueLabel: Symbol | Null = null
+    def continueLabel(using Context): Symbol =
+      initialize(myContinueLabel, myContinueLabel = _, newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType))
 
     /** The local `var` that replaces `this`, if it is modified in at least one recursive call. */
     var varForRewrittenThis: Option[Symbol] = None

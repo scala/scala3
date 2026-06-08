@@ -15,7 +15,6 @@ import Spans.*
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
-import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -1373,13 +1372,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] | Null = uninitialized
+    private var myTrees: List[Tree] | Null = null
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
       if (ctx.settings.YretainTrees.value) {
-        if (myTrees == null) myTrees = computeRootTrees
-        myTrees.uncheckedNN
+        initialize(myTrees, myTrees = _, computeRootTrees)
       }
       else computeRootTrees
 

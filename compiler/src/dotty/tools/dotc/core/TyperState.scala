@@ -50,7 +50,7 @@ class TyperState() {
   private var myId: Int = uninitialized
   def id: Int = myId
 
-  private var previous: TyperState | Null = uninitialized
+  private var previous: TyperState | Null = null
 
   private var myReporter: Reporter = uninitialized
 
@@ -80,7 +80,9 @@ class TyperState() {
     this
 
   def isGlobalCommittable: Boolean =
-    isCommittable && (previous == null || previous.uncheckedNN.isGlobalCommittable)
+    isCommittable && (previous match
+      case null => true
+      case p => p.isGlobalCommittable)
 
   private var isCommitted: Boolean = uninitialized
 
@@ -139,7 +141,10 @@ class TyperState() {
    *  which is not yet committed, or which does not have a parent.
    */
   def uncommittedAncestor: TyperState =
-    if (isCommitted && previous != null) previous.uncheckedNN.uncommittedAncestor else this
+    previous match
+      case null => this
+      case p if isCommitted => p.uncommittedAncestor
+      case _ => this
 
   /** Commit `this` typer state by copying information into the current typer state,
    *  where "current" means contextual, so meaning `ctx.typerState`.
@@ -279,7 +284,9 @@ class TyperState() {
     ownedVars += tvar
 
   private def isOwnedAnywhere(ts: TyperState, tvar: TypeVar): Boolean =
-    ts.ownedVars.contains(tvar) || ts.previous != null && isOwnedAnywhere(ts.previous.uncheckedNN, tvar)
+    ts.ownedVars.contains(tvar) || (ts.previous match
+      case null => false
+      case tp => isOwnedAnywhere(tp, tvar))
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
@@ -304,9 +311,9 @@ class TyperState() {
   override def toString: String = {
     def ids(state: TyperState): List[String] =
       s"${state.id}${if (state.isCommittable) "" else "X"}" ::
-        (if (state.previous == null) Nil else ids(state.previous.uncheckedNN))
+        (state.previous match { case null => Nil; case sp => ids(sp) })
     s"TS[${ids(this).mkString(", ")}]"
   }
 
-  def stateChainStr: String = s"$this${if (previous == null) "" else previous.uncheckedNN.stateChainStr}"
+  def stateChainStr: String = s"$this${previous match { case null => ""; case p => p.stateChainStr }}"
 }

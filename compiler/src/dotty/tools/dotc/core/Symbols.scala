@@ -212,7 +212,7 @@ object Symbols extends SymUtils {
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
     final def signature(using Context): Signature =
-      if lastDenot.uncheckedNN.isCompleted || lastDenot.uncheckedNN.is(Method) then
+      if lastDenot.isCompleted || lastDenot.is(Method) then
         denot.signature
       else
         Signature.NotAMethod

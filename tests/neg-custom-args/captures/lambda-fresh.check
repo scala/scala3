@@ -1,0 +1,108 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:10:22 ---------------------------------
+10 |  val _: () -> Ref^ = f1 // error
+   |                      ^^
+   |                      Found:    (f1 : () -> Ref^{fresh})
+   |                      Required: () -> Ref^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$1.
+   |
+   |                      where:    any   is a root capability classified as Unscoped in the type of value _$1
+   |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:11:22 ---------------------------------
+11 |  val _: () => Ref^ = f1 // error
+   |                      ^^
+   |                      Found:    (f1 : () -> Ref^{fresh})
+   |                      Required: () => Ref^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$2.
+   |
+   |                      where:    =>    refers to a root capability in the type of value _$2
+   |                                any   is a root capability classified as Unscoped in the type of value _$2
+   |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:12:22 ---------------------------------
+12 |  val _: () -> Ref^ = () => Ref() // error, because any propagates to function
+   |                      ^^^^^^^^^^^
+   |                      Found:    () ->'s1 Ref^{fresh}
+   |                      Required: () -> Ref^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$3.
+   |
+   |                      where:    any   is a root capability classified as Unscoped in the type of value _$3
+   |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:22:23 ---------------------------------
+22 |  val _ = withPureFile(f => () => Ref()) // error, because any propagates to function
+   |                       ^^^^^^^^^^^^^^^^
+   |          Capability `fresh` outlives its scope: it leaks into outer capture set 's2 which is owned by value x3.
+   |          The leakage occurred when trying to match the following types:
+   |
+   |          Found:    (f: File^) ->'s3 () ->'s4 Ref^{fresh²}
+   |          Required: File^ -> () ->'s5 Ref^'s2
+   |
+   |          where:    ^      refers to the root capability caps.any
+   |                    fresh  is a root capability associated with the result type of (): Ref^'s2
+   |                    fresh² is a root capability associated with the result type of (): Ref^{fresh²}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:23:23 ---------------------------------
+23 |  val _ = withPureFile(f => Ref())  // error, because any propagates to function
+   |                       ^^^^^^^^^^
+   |          Capability `fresh` outlives its scope: it leaks into outer capture set 's6 which is owned by value x4.
+   |          The leakage occurred when trying to match the following types:
+   |
+   |          Found:    (f: File^) ->'s7 Ref^{fresh²}
+   |          Required: File^ -> Ref^'s6
+   |
+   |          where:    ^      refers to the root capability caps.any
+   |                    fresh  is a root capability associated with the result type of (f: File^): Ref^'s6
+   |                    fresh² is a root capability associated with the result type of (f: File^): Ref^{fresh²}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:29:22 ---------------------------------
+29 |  val _: () -> One^ = f2 // error, need fresh
+   |                      ^^
+   |                      Found:    (f2 : () -> One^{fresh})
+   |                      Required: () -> One^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$8.
+   |
+   |                      where:    any   is a root capability in the type of value _$8
+   |                                fresh is a root capability associated with the result type of (): One^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:30:22 ---------------------------------
+30 |  val _: () => One^ = f2 // error, need fresh
+   |                      ^^
+   |                      Found:    (f2 : () -> One^{fresh})
+   |                      Required: () => One^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$9.
+   |
+   |                      where:    =>    refers to a root capability in the type of value _$9
+   |                                any   is a root capability in the type of value _$9
+   |                                fresh is a root capability associated with the result type of (): One^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh.scala:31:31 ---------------------------------
+31 |  val _: () => One^ = () => One() // error, need fresh
+   |                            ^^^^^
+   |Found:    One^{any}
+   |Required: One^{any²}
+   |
+   |Note that capability `any` cannot flow into capture set {any²}
+   |because any in an enclosing function is not visible from any² in value _$10.
+   |
+   |where:    any  is a root capability created in anonymous function of type (): One^ when constructing instance One
+   |          any² is a root capability in the type of value _$10
+   |
+   | longer explanation available when compiling with `-explain`

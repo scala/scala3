@@ -85,7 +85,7 @@ trait LzyList[+A]:
 object LzyList:
   def apply[T](xs: T*): LzyList[T] = ???
 //}
-val xs = usingLogFile { f => // error // error
+val xs = usingLogFile { f => // error
   LzyList(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```

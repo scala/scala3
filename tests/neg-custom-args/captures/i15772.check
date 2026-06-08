@@ -41,7 +41,3 @@
    |  Note that capability `filesList` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/i15772.scala:34:10 ------------------------------------------------------------
-34 |  def c : C^ = new C(x) // error separation
-   |          ^^
-   |          Separation failure: method c's result type C^ hides non-local parameter x

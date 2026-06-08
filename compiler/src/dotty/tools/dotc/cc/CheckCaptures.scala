@@ -721,7 +721,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def mapResultRoots(tp: Type, tree: Tree)(using Context): Type =
       tp.widenSingleton match
         case tp: ExprType if tree.symbol.is(Method) =>
-          resultToAny(tp, Origin.ResultInstance(tp, tree))
+          resultToAny(tp, Origin.ResultInstance(_, tp, tree))
         case _ =>
           tp
 
@@ -956,7 +956,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           argTypes1
         else argTypes
       val resultType = super.recheckApplication(tree, qualType, funType, instArgs)
-      val appType = resultToAny(resultType, Origin.ResultInstance(funType, tree))
+      val appType = resultToAny(resultType, Origin.ResultInstance(_, funType, tree))
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
@@ -968,9 +968,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             && !resultType.isBoxedCapturing
             && !tree.fun.symbol.isConstructor
             && !resultType.captureSet.containsResultCapability
-            && !resultType.captureSet.elems.exists(_.derivesFromCapTrait(defn.Caps_Unscoped))
+
             && qualCaptures.mightSubcapture(refs)
-            && argCaptures.forall(_.mightSubcapture(refs)) =>
+            && argCaptures.forall(_.mightSubcapture(refs))
+            // No longer needed since we now ensure monotonicity of closure types
+            // && !resultType.captureSet.elems.exists(_.derivesFromCapTrait(defn.Caps_Unscoped))
+        =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
           appType.derivedCapturingType(appType1, callCaptures)
             .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)
@@ -1094,7 +1097,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       markFreeTypeArgs(tree.fun, meth, tree.args)
 
       val funType = super.recheckTypeApply(tree, pt)
-      val res = resultToAny(funType, Origin.ResultInstance(funType, tree))
+      val res = resultToAny(funType, Origin.ResultInstance(_, funType, tree))
       includeCallCaptures(tree.symbol, res, tree)
       checkContains(tree)
       res
@@ -1395,6 +1398,16 @@ class CheckCaptures extends Recheck, SymTransformer:
             // Anonymous functions propagate their type to the enclosing environment
             // so it is not in general sound to interpolate their types.
             interpolateIfInferred(tree.tpt, sym)
+          else if sym.info.hasCapInResult then
+            // If the info has an `any` in its result, this would be propagated
+            // into the function type tp ensure monotonicity. We should do this
+            // only if the _body_ of the lambda has an `any` in its type, not
+            // if the `any` just came from the expected type. So if there is an `any`
+            // in the expected type we sharpen the declared type to be the body's type.
+            // Why not sharpen unconditionally? This would also overwrite `fresh`
+            // with the body's type, and thereby make it impossible to define lambdas
+            // that return fresh results.
+            tree.tpt.updNuType(tree.rhs.nuType)
           curEnv = saved
       }
 
@@ -1468,7 +1481,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           then
             todoAtPostCheck += { () =>
               val cls = sym.owner.asClass
-              val fieldClassifiers = sym.classifiersOfLocalCapsInType
+              val fieldClassifiers = sym.classifiersOfLocalCapsInInfo
               val classCapset = cls.creationCapset()
               if !covers(classCapset, fieldClassifiers) then
                 report.error(
@@ -1781,7 +1794,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       case _ => NoType
 
     inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: List[Note])
-        (fail: (Tree, Type, List[Note]) => Unit)(using Context): Type =
+        (fail: (Tree, Type, List[Note]) => Unit)(using Context): Type = {
 
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val falseDeps = expected1 ne expected
@@ -1805,45 +1818,78 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
 
-      def tryCurrentType: Boolean =
-        isCompatible(actualBoxed, expected1)
+      def nestedLambdas(mdef: DefDef): List[Symbol] =
+        mdef.symbol :: mdef.rhs.match
+          case closureDef(mdef1) => nestedLambdas(mdef1)
+          case _ => Nil
 
-      /** When the actual type is a named type, and the previous attempt failed, try to widen the named type
-       * and try another time.
+      /** Try to convert ResultCaps that are classified as Unscoped
+       *  back to local caps, if they were generated as parts of the types
+       *  of closures. I.e. a closure such as
        *
-       * This is useful for cases like:
+       *      () => Ref()
        *
-       *   def id[X <: box IO^{a}](x: X): IO^{a} = x
-       *
-       * When typechecking the body, we need to show that `(x: X)` can be typed at `IO^{a}`.
-       * In the first attempt, since `X` is simply a parameter reference, we treat it as non-boxed and perform
-       * no box adptation. But its upper bound is in fact boxed, and adaptation is needed for typechecking the body.
-       * In those cases, we widen such types and try box adaptation another time.
+       *  is initially given type `() -> Ref^{fresh}`. This means it could not
+       *  be passed to a method `withFile` declared as `withFile[T](op: File^ => T)`.
+       *  By adapting its type to `() => Ref^` we make it fit. Test cases are in
+       *  ref-with-file.scala and lambda-fresh.scala.
        */
-      def tryWidenNamed: Boolean =
-        val actual1 = findImpureUpperBound(actual)
-        actual1.exists && {
-          val actualBoxed1 = adapt(actual1, expected1, tree)
-          isCompatible(actualBoxed1, expected1)
-        }
+      def existentialWiden(notes: List[Note]): Type =
+        tree match
+        case closureDef(mdef) =>
+          val mappable =
+            for
+              case IncludeFailure(cs, rc: ResultCap, _) <- notes
+              if rc.classifier.derivesFrom(defn.Caps_Unscoped)
+                && nestedLambdas(mdef).contains(rc.primaryResultCap.origin.ccOwner.enclosingMethod)
+            yield rc
+          if mappable.isEmpty then NoType
+          else
+            val core = RetractResult(SimpleIdentitySet(mappable*))(actual)
+            core.capturing(core.impliedLambdaCaptures)
+              .showing(i"try existential widen $actual to $result", capt)
+        case _ => NoType
 
-      TypeComparer.compareResult(tryCurrentType || tryWidenNamed) match
-        case TypeComparer.CompareResult.Fail(cmpNotes) =>
-          capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-          if falseDeps then expected1 = unalignFunction(expected1)
-          val toAdd0 = notes ++ cmpNotes
-          val toAdd1 = addApproxAddenda(toAdd0, expected1)
-          val failTree =
-            if definedSym(tree).exists then tree else tree.withType(actualBoxed)
-          fail(failTree, expected1, toAdd1)
-          actual
-        case /*OK*/ _ =>
-          if debugSuccesses then tree match
-            case Ident(_) =>
-              println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
-            case _ =>
-          actualBoxed
-    end testAdapted
+      def tryType(actualBoxed: Type)(alt: List[Note] => Type): Type = {
+        TypeComparer.compareResult(isCompatible(actualBoxed, expected1)) match
+          case TypeComparer.CompareResult.Fail(cmpNotes) => alt(cmpNotes)
+          case _ =>
+            if debugSuccesses then tree match
+              case Ident(_) =>
+                println(i"SUCCESS $tree for $actual <:< $expected:\n${TypeComparer.explained(_.isSubType(actualBoxed, expected1))}")
+              case _ =>
+            actualBoxed
+      }
+
+      def tryAltType(altActual: Type)(alt: => Type): Type =
+        if altActual.exists && (altActual ne actual)
+        then
+          val altActualBoxed = adapt(altActual, expected1, tree)
+          tryType(altActualBoxed)(_ => alt)
+        else alt
+
+      tryType(actualBoxed): cmpNotes =>
+        // When the actual type is a named type, and the previous attempt failed, try to widen the named type
+        // and try another time. This is useful for cases like:
+        //
+        //    def id[X <: box IO^{a}](x: X): IO^{a} = x
+        //
+        // When typechecking the body, we need to show that `(x: X)` can be typed at `IO^{a}`.
+        // In the first attempt, since `X` is simply a parameter reference, we treat it as non-boxed and perform
+        // no box adptation. But its upper bound is in fact boxed, and adaptation is needed for typechecking the body.
+        // In those cases, we widen such types and try box adaptation another time.
+        tryAltType(findImpureUpperBound(actual)):
+          tryAltType(existentialWiden(cmpNotes)):
+            capt.println(i"conforms failed for ${tree}: $actual vs $expected")
+            if falseDeps then expected1 = unalignFunction(expected1)
+            val toAdd0 = notes ++ cmpNotes
+            val toAdd1 = addApproxAddenda(toAdd0, expected1)
+            val failTree =
+              if definedSym(tree).exists then tree
+              else tree.withType(actualBoxed)
+            fail(failTree, expected1, toAdd1)
+            actual
+    }
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
@@ -2353,9 +2399,23 @@ class CheckCaptures extends Recheck, SymTransformer:
             if nextEnv != null && !nextEnv.isRoot then boxedOwner(nextEnv)
             else NoSymbol
 
-        def checkUseUnlessBoxed(c: Capability, croot: NamedType) =
-          if !boxedOwner(env).isContainedIn(croot.symbol.owner) then
-            checkUseDeclared(c, tree.srcPos)
+        def badUseUnlessBoxed(c: Capability, owner: Symbol) =
+          if !boxedOwner(env).isContainedIn(owner) then
+            def mitigation = c match
+              case c: TypeRef => ""
+              case c: LocalCap => i"\nYou could try to abstract the capability in a capset variable."
+              case _ => i"\nYou could try to abstract the capabilities referred to by $c in a capset variable."
+            val what = c match
+              case _: TypeRef => i"Capture set parameter $c"
+              case Reach(_) => i"Local reach capability $c"
+              case c: LocalCap =>
+                def where = c.origin match
+                  case Origin.InDecl(sym, _) => c.origin.explanation
+                  case _ => i" created in ${c.ccOwnerStr}${c.origin.explanation}"
+                i"Local $c$where"
+            report.error(
+              em"$what leaks into capture scope${owner.qualString("of")}.$mitigation",
+              tree.srcPos)
 
         def check(cs: CaptureSet): Unit = cs.elems.foreach(checkElem)
 
@@ -2365,20 +2425,23 @@ class CheckCaptures extends Recheck, SymTransformer:
             c match
               case Reach(c1) =>
                 c1.paramPathRoot match
-                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
-                  case _ => check(CaptureSet.ofTypeDeeply(c1.widen))
+                  case croot: NamedType if !croot.symbol.isUseParam =>
+                    badUseUnlessBoxed(c, croot.symbol.owner)
+                  case _ =>
+                    check(CaptureSet.ofTypeDeeply(c1.widen))
               case c: TypeRef =>
                 c.paramPathRoot match
-                  case croot: NamedType => checkUseUnlessBoxed(c, croot)
+                  case croot: NamedType if !c.symbol.isUseParam =>
+                    badUseUnlessBoxed(c, croot.symbol.owner)
                   case _ =>
               case c: DerivedCapability =>
                 checkElem(c.underlying)
               case c: LocalCap =>
                 c.origin match
-                  case Origin.Parameter(param) =>
-                    report.error(
-                      em"Local $c created in type of $param leaks into capture scope${param.owner.qualString("of")}",
-                      tree.srcPos)
+                  case Origin.Parameter(param) if !param.isUseParam =>
+                    badUseUnlessBoxed(c, param.owner)
+                  case Origin.InDecl(param, _) if param.is(Param) && !param.isUseParam =>
+                     badUseUnlessBoxed(c, param.owner)
                   case _ =>
                     check(c.hiddenSet)
               case _ =>
@@ -2453,12 +2516,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      checkEscapingReachUses()
-      if Feature.sepChecksEnabled then
-        for (tree, cs, env) <- useInfos do
-          usedSet(tree) = tree.markedFree ++ cs
-        ccState.inSepCheck:
-          SepCheck(this).traverse(unit)
+      if !ctx.reporter.errorsReported then
+        checkEscapingReachUses()
+
+        if Feature.sepChecksEnabled then
+          for (tree, cs, env) <- useInfos do
+            usedSet(tree) = tree.markedFree ++ cs
+          ccState.inSepCheck:
+            SepCheck(this).traverse(unit)
 
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other

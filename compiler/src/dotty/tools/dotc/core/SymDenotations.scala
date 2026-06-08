@@ -1940,7 +1940,9 @@ object SymDenotations {
       invalidateMemberNamesCache()
 
     def invalidateMemberCachesFor(sym: Symbol)(using Context): Unit =
-      if myMemberCache != null then myMemberCache.uncheckedNN.remove(sym.name)
+      myMemberCache match
+        case null => ()
+        case mc => mc.remove(sym.name)
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
         if sym.isWrappedToplevelDef then
@@ -2188,7 +2190,9 @@ object SymDenotations {
      */
     def replace(prev: Symbol, replacement: Symbol)(using Context): Unit = {
       unforcedDecls.openForMutations.replace(prev, replacement)
-      if (myMemberCache != null) myMemberCache.uncheckedNN.remove(replacement.name)
+      myMemberCache match
+        case null => ()
+        case mc => mc.remove(replacement.name)
     }
 
     /** Delete symbol from current scope.
@@ -2199,7 +2203,9 @@ object SymDenotations {
       val scope = info.decls.openForMutations
       scope.unlink(sym, sym.name)
       if sym.name != sym.originalName then scope.unlink(sym, sym.originalName)
-      if (myMemberCache != null) myMemberCache.uncheckedNN.remove(sym.name)
+      myMemberCache match
+        case null => ()
+        case mc => mc.remove(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
@@ -3096,17 +3102,18 @@ object SymDenotations {
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
       CyclicReference.trace("compute the base classes of ", clsd.symbol):
-        if cache != null then cache.uncheckedNN
-        else
-          if (locked) throw CyclicReference(clsd)
-          locked = true
-          provisional = false
-          val computed =
-            try clsd.computeBaseData(using this, ctx)
-            finally locked = false
-          if (!provisional) cache = computed
-          else onBehalf.signalProvisional()
-          computed
+        cache match
+          case null =>
+            if (locked) throw CyclicReference(clsd)
+            locked = true
+            provisional = false
+            val computed =
+              try clsd.computeBaseData(using this, ctx)
+              finally locked = false
+            if (!provisional) cache = computed
+            else onBehalf.signalProvisional()
+            computed
+          case mc => mc
     }
 
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId

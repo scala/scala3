@@ -2431,7 +2431,9 @@ object Types extends TypeUtils {
      *  current run.
      */
     def denotationIsCurrent(using Context): Boolean =
-      lastDenotation != null && lastDenotation.uncheckedNN.validFor.runId == ctx.runId
+      lastDenotation match
+        case null => false
+        case ld => ld.validFor.runId == ctx.runId
 
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
      *
@@ -5065,11 +5067,13 @@ object Types extends TypeUtils {
     private[core] def permanentInst = inst
     private[core] def setPermanentInst(tp: Type): Unit =
       inst = tp
-      if tp.exists && owningState != null then
-        val owningState1 = owningState.uncheckedNN.get
-        if owningState1 != null then
-          owningState1.ownedVars -= this
-          owningState = null // no longer needed; null out to avoid a memory leak
+      owningState match
+        case os: WeakReference[TyperState] if tp.exists =>
+          val owningState1 = os.get
+          if owningState1 != null then
+            owningState1.ownedVars -= this
+            owningState = null // no longer needed; null out to avoid a memory leak
+        case _ => ()
 
     private[core] def resetInst(ts: TyperState): Unit =
       assert(inst.exists)
@@ -5126,7 +5130,7 @@ object Types extends TypeUtils {
         assert(currentEntry.bounds.contains(tp),
           i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
 
-      if ((ctx.typerState eq owningState.nn.get.uncheckedNN) && !TypeComparer.subtypeCheckInProgress)
+      if ((ctx.typerState eq owningState.nn.get) && !TypeComparer.subtypeCheckInProgress)
         setPermanentInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
@@ -6117,7 +6121,7 @@ object Types extends TypeUtils {
             val args1 = args.zipWithConserve(tparams):
               case (arg @ TypeBounds(lo, hi), tparam) =>
                 val v = vmap.computedVariance(tparam)
-                if v.uncheckedNN < 0 then lo
+                if v != null && v < 0 then lo
                 else hi
               case (arg, _) => arg
             tp.derivedAppliedType(tycon, args1)
