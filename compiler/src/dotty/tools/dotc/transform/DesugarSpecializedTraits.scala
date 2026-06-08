@@ -58,6 +58,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
   override def description: String = DesugarSpecializedTraits.description
   override def changesMembers: Boolean = false
   override def changesParents: Boolean = true 
+
   override def allowsImplicitSearch: Boolean = true
 
   private def newInterfaceTrait(specialization: Specialization, specializations: SpecializedTraitCache)(using Context): (ClassSymbol, SpecializedTraitCache) = {
@@ -266,13 +267,19 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
       case tree: TypeDef =>
         assert(tree.symbol.isInlineTrait)
         val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree)).asInstanceOf[TypeDef]
-        cpy.TypeDef(inlined)(name = inlined.name, rhs = inlined.rhs).withSpan(inlined.span)
+        
+        // Inlined body may contain references to inline traits that need to be inlined as well
+        // See tests/neg/specialized-trait-inlining-causes-implementation-required-loop-bad-manual.scala
+        // specializeInlineTraits is responsible for inlining into D because it's not $sp$ or $impl$
+        // Because this code is synthetic we won't run the phase on this code as part of the usual
+        // megaphase transform so we need to do it manually.
+        transformFollowing(inlined)(using ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits)))
     } 
 
     val generatedClassStats1 = generatedClassStats.map {
       case tree: TypeDef =>
         val inlined = Inlines.inlineParentInlineTraits(tree).asInstanceOf[TypeDef]
-        cpy.TypeDef(inlined)(name = inlined.name, rhs = inlined.rhs).withSpan(inlined.span)
+        transformFollowing(inlined)(using ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits)))
     }
 
     val (generatedTraitStatsFinal, generatedClassStatsFinal, specializationsFinal) = 

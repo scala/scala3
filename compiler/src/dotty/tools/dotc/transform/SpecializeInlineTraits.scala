@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package transform
 
+
 import core._
 import Flags._
 import Contexts._
@@ -17,7 +18,7 @@ import dotty.tools.dotc.core.StdNames.{str, nme}
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Names.{Name, TermName}
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.inlines.Inlines.InlineTraitState
 import dotty.tools.dotc.ast.TreeTypeMap
@@ -37,45 +38,51 @@ class SpecializeInlineTraits extends MiniPhase {
   override def prepareForUnit(tree: Tree)(using Context): Context = 
     ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits))    
 
-  override def transformTypeDef(tree: TypeDef)(using Context): Tree = tree match {
-    case tree: TypeDef if tree.symbol.isInlineTrait || Inlines.needsInlining(tree) =>
-      new TreeMapWithPreciseStatContexts { // We need to inline recursively because inlining may create further opportunities for inlining. Notably this does limit the composition potential of this miniphase.
-        override def transform(tree: Tree)(using Context): Tree = tree match {
-          case tree: TypeDef if tree.symbol.isInlineTrait =>
-            val tree1 = Inlines.checkAndTransformInlineTrait(tree)
-            val tree2 = if Inlines.needsInlining(tree1) then Inlines.inlineParentInlineTraits(tree1) else tree1
-            super.transform(tree2) // We may need to inline inline traits into the bodies of methods defined inside inline traits.
-          case tree: TypeDef if Inlines.needsInlining(tree) =>
-            if tree.symbol.isAllOf(Trait, butNot = Inline) then
-              val problemParents = tree.symbol.info.parents.filter(
-                p => p.classSymbol.isInlineTrait 
-                    && p.classSymbol.primaryConstructor.paramSymss.exists(paramList => paramList.nonEmpty && paramList.head.isTerm)
-              )
-              problemParents.foreach( p =>
-                val message = if p.typeSymbol.isSpecializedTrait then "Specialized traits may not be extended by ordinary traits. They may only be extended by classes, objects or inline/specialized traits."
-                                                                  else s"Only parameterless inline traits may be extended by ordinary traits. Make ${tree.symbol} inline or remove inline ${p.typeSymbol}'s parameter list."
-                  
-                report.error(message, tree.srcPos)
-              )
-            val tree1 =
-              if tree.symbol.isInlineTrait then 
-                Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree))
-              else Inlines.inlineParentInlineTraits(tree)
-            super.transform(tree1)
-          case t => super.transform(t)  
-        }
-      }.transform(tree)
-    case tree => tree
-  }
+  private val seen = mutable.HashSet[Symbol]() 
 
+  private def inlineInlineTraitsIfNew(tree: Tree)(using Context) = 
+    if !seen.contains(tree.symbol) then
+      seen.add(tree.symbol)
+      Inlines.inlineParentInlineTraits(tree)
+    else
+      tree
 
+  override def transformTypeDef(tree: TypeDef)(using Context): Tree =
+    new TreeMapWithPreciseStatContexts { // We need to inline recursively because inlining may create further opportunities for inlining. 
+                                         // Notably this does limit the composition potential of this miniphase.
+                                         // We use seen to make sure we don't inline into the same child class multiple times
+      override def transform(tree: Tree)(using Context): Tree = 
+        tree match {
+        case tree: TypeDef if tree.symbol.isInlineTrait =>
+          val tree1 = Inlines.checkAndTransformInlineTrait(tree)
+          val tree2 = if Inlines.needsInlining(tree1) then inlineInlineTraitsIfNew(tree1) else tree1
+          super.transform(tree2) // We may need to inline inline traits into the bodies of methods defined inside inline traits.
+        case tree: TypeDef if Inlines.needsInlining(tree) =>
+          if tree.symbol.isAllOf(Trait, butNot = Inline) then
+            val problemParents = tree.symbol.info.parents.filter(
+              p => p.classSymbol.isInlineTrait 
+                  && p.classSymbol.primaryConstructor.paramSymss.exists(paramList => paramList.nonEmpty && paramList.head.isTerm)
+            )
+            problemParents.foreach( p =>
+              val message = if p.typeSymbol.isSpecializedTrait then "Specialized traits may not be extended by ordinary traits. They may only be extended by classes, objects or inline/specialized traits."
+                                                                else s"Only parameterless inline traits may be extended by ordinary traits. Make ${tree.symbol} inline or remove inline ${p.typeSymbol}'s parameter list."
+                
+              report.error(message, tree.srcPos)
+            )
+          val tree1 =
+            if tree.symbol.isInlineTrait then 
+              inlineInlineTraitsIfNew(Inlines.checkAndTransformInlineTrait(tree))
+            else inlineInlineTraitsIfNew(tree)
+          super.transform(tree1)
+        case t => super.transform(t)  
+      }
+    }.transform(tree)
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
       // TODO check that things are inlined properly
       case _ =>
     }
-
 
   private object ConcreteParentStripper extends TreeAccumulator[Tree] {
     def apply(tree: Tree)(using Context): Tree = apply(tree, tree)
