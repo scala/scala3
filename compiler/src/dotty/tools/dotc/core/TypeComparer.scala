@@ -448,6 +448,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
     }
 
+    def canSkipSecondTryForAppliedRhs(tp1: Type): Boolean = tp1 match
+      case _: NamedType | _: TypeParamRef | _: ThisType | _: SkolemType | _: TypeVar
+          | _: WildcardType | _: LazyRef | _: AndType | _: OrType | _: MatchType | _: FlexType =>
+        false
+      case CapturingType(_, _) =>
+        false
+      case tp1: AnnotatedType if !tp1.isRefining =>
+        false
+      case _ =>
+        true
+
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
@@ -622,6 +633,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
       case _: FlexType =>
         true
+      case tp2 @ AppliedType(tycon2, args2) if canSkipSecondTryForAppliedRhs(tp1) =>
+        compareAppliedType2(tp2, tycon2, args2)
       case _ =>
         secondTry
     }
