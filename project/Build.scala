@@ -984,6 +984,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala-library:*.**.**-nonbootstrapped project */
   lazy val `scala-library-nonbootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
+    .settings(scalaLibrarySettings)
     .settings(
       name          := "scala-library-nonbootstrapped",
       moduleName    := "scala-library",
@@ -1041,6 +1042,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
   lazy val `scala3-library-nonbootstrapped` = project.in(file("library"))
     .dependsOn(`scala-library-nonbootstrapped`)
+    .settings(scala3LibrarySettings)
     .settings(
       name          := "scala3-library-nonbootstrapped",
       moduleName    := "scala3-library",
@@ -1068,6 +1070,7 @@ object Build {
   lazy val `scala-library-bootstrapped` = project.in(file("library"))
     .enablePlugins(ScalaLibraryPlugin)
     .settings(publishSettings)
+    .settings(scalaLibrarySettings)
     .settings(
       name          := "scala-library-bootstrapped",
       moduleName    := "scala-library",
@@ -1130,6 +1133,7 @@ object Build {
   lazy val `scala3-library-bootstrapped` = project.in(file("library"))
     .dependsOn(`scala-library-bootstrapped`)
     .settings(publishSettings)
+    .settings(scala3LibrarySettings)
     .settings(
       name          := "scala3-library-bootstrapped",
       moduleName    := "scala3-library",
@@ -1260,6 +1264,7 @@ object Build {
   lazy val `scala3-library-sjs` = project.in(file("library-js"))
     .dependsOn(`scala-library-sjs`)
     .settings(publishSettings)
+    .settings(scala3LibrarySettings)
     .settings(
       name          := "scala3-library-sjs",
       moduleName    := "scala3-library_sjs1",
@@ -2676,6 +2681,21 @@ object Build {
     } finally jarFile.close()
     jar
   }
+
+  private def automaticModuleNameAttribute(name: String): Package.ManifestAttributes =
+    ManifestAttributes("Automatic-Module-Name" -> name)
+
+  lazy val scala3LibrarySettings = Def.settings(
+    Compile / packageBin / packageOptions +=
+      automaticModuleNameAttribute(
+        s"${dottyOrganization.replaceAll("-", ".")}.${moduleName.value.replaceAll("-", ".")}"
+      )
+  )
+
+  lazy val scalaLibrarySettings = Def.settings(
+    Compile / packageBin / packageOptions +=
+      automaticModuleNameAttribute("scala.library")
+  )
 
   /** Settings for projects that should produce empty JARs (only META-INF allowed).
    *  These are dependency placeholder projects like scala3-library-bootstrapped and scala3-library-sjs.

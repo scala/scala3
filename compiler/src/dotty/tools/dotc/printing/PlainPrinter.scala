@@ -277,7 +277,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val boxText: Text = Str("box ") `provided` tp.isBoxed && ccVerbose
         if elideCapabilityCaps
             && parent.derivesFromCapability
-            && refs.containsTerminalCapability
+            && refs.containsGlobalOrLocalCap
             && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)

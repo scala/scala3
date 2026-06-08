@@ -19,7 +19,7 @@ def test(io: Object^): Unit =
 
   val h: S -> B^ = ???
   val _: (x: S) -> B^{fresh} = h          // error: direct conversion fails
-  val _: (x: S) -> B^{fresh} = (x: S) => h(x)  // eta expansion is ok
+  val _: (x: S) -> B^{fresh} = (x: S) => h(x)  // sepcheck error: eta expansion also fails since `h` is non-local
 
   val h2: S -> S = ???
   val _: (x: S) -> S^{fresh} = h2               // direct conversion OK for shared S

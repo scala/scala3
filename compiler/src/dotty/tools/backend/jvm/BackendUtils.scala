@@ -14,7 +14,6 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.switch
 import scala.collection.{BitSet, mutable}
 import scala.jdk.CollectionConverters.*
-import scala.language.unsafeNulls
 import scala.tools.asm
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Handle, Opcodes, Type}
@@ -179,43 +178,44 @@ class BackendUtils(val ts: WellKnownBTypes) {
 
   // ==============================================================================================
 
-  def primitiveAsmTypeToBType(primitiveType: asm.Type): PrimitiveBType = (primitiveType.getSort: @switch) match {
-    case asm.Type.BOOLEAN => BOOL
-    case asm.Type.BYTE    => BYTE
-    case asm.Type.CHAR    => CHAR
-    case asm.Type.SHORT   => SHORT
-    case asm.Type.INT     => INT
-    case asm.Type.LONG    => LONG
-    case asm.Type.FLOAT   => FLOAT
-    case asm.Type.DOUBLE  => DOUBLE
-    case _            => null
-  }
+  val primitiveAsmTypeSortToBType: Map[Int, PrimitiveBType] = Map(
+    asm.Type.BOOLEAN -> BOOL,
+    asm.Type.BYTE    -> BYTE,
+    asm.Type.CHAR    -> CHAR,
+    asm.Type.SHORT   -> SHORT,
+    asm.Type.INT     -> INT,
+    asm.Type.LONG    -> LONG,
+    asm.Type.FLOAT   -> FLOAT,
+    asm.Type.DOUBLE  -> DOUBLE
+  )
 
-  def isScalaBox(insn: MethodInsnNode): Boolean = {
+  def isScalaBox(insn: MethodInsnNode): Boolean =
     insn.owner == ts.srBoxesRuntimeRef.internalName && {
       val args = asm.Type.getArgumentTypes(insn.desc)
-      args.length == 1 && (ts.srBoxesRuntimeBoxToMethods.get(primitiveAsmTypeToBType(args(0))) match {
-        case Some(MethodNameAndType(name, tp)) => name == insn.name && tp.descriptor == insn.desc
-        case _ => false
-      })
+      args.length == 1 && (primitiveAsmTypeSortToBType.get(args(0).getSort) match
+        case Some(prim) => 
+          val MethodNameAndType(name, tp) = ts.srBoxesRuntimeBoxToMethods(prim)
+          name == insn.name && tp.descriptor == insn.desc
+        case None => false)
     }
-  }
 
   def getScalaBox(primitiveType: asm.Type): MethodInsnNode = {
-    val bType = primitiveAsmTypeToBType(primitiveType)
+    val bType = primitiveAsmTypeSortToBType(primitiveType.getSort)
     val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeBoxToMethods(bType)
     new MethodInsnNode(Opcodes.INVOKESTATIC, ts.srBoxesRuntimeRef.internalName, name, methodBType.descriptor, /*itf =*/ false)
   }
 
   def getScalaUnbox(primitiveType: asm.Type): MethodInsnNode = {
-    val bType = primitiveAsmTypeToBType(primitiveType)
+    val bType = primitiveAsmTypeSortToBType(primitiveType.getSort)
     val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeUnboxToMethods(bType)
     new MethodInsnNode(Opcodes.INVOKESTATIC, ts.srBoxesRuntimeRef.internalName, name, methodBType.descriptor, /*itf =*/ false)
   }
 
   def isScalaUnbox(insn: MethodInsnNode): Boolean = {
-    insn.owner == ts.srBoxesRuntimeRef.internalName && (ts.srBoxesRuntimeUnboxToMethods.get(primitiveAsmTypeToBType(asm.Type.getReturnType(insn.desc))) match {
-      case Some(MethodNameAndType(name, tp)) => name == insn.name && tp.descriptor == insn.desc
+    insn.owner == ts.srBoxesRuntimeRef.internalName && (primitiveAsmTypeSortToBType.get(asm.Type.getReturnType(insn.desc).getSort) match {
+      case Some(prim) =>
+        val MethodNameAndType(name, tp) = ts.srBoxesRuntimeUnboxToMethods(prim)
+        name == insn.name && tp.descriptor == insn.desc
       case _ => false
     })
   }
@@ -349,7 +349,7 @@ class BackendUtils(val ts: WellKnownBTypes) {
 
     var numBoxConv = 0
     var numCallsOrNew = 0
-    var callMi: MethodInsnNode = null
+    var callMi: MethodInsnNode | Null = null
     val it = method.instructions.iterator
     while (it.hasNext && numCallsOrNew < 2) {
       val i = it.next()
@@ -378,7 +378,7 @@ class BackendUtils(val ts: WellKnownBTypes) {
     }
     if (numCallsOrNew > 1 || numBoxConv > paramTypes.length + 1) -1
     else if (numCallsOrNew == 0) if (numBoxConv == 0) 1 else 3
-    else if (callMi.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME) 2
+    else if (callMi.nn.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME) 2 // if numCallsOrNew > 0 then callMi is nonnull
     else if (numBoxConv > 0) 3
     else 4
   }

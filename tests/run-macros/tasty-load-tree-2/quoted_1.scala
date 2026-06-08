@@ -10,7 +10,7 @@ object Foo {
 
     def definitionString(sym: Symbol): Expr[String] =
       if sym.isClassDef || sym.isDefDef || sym.isValDef then Expr(sym.tree.show(using Printer.TreeStructure))
-      else '{"NO DEFINTION"}
+      else '{"NO DEFINITION"}
 
     x.asTerm match {
       case Inlined(None, Nil, arg) => definitionString(arg.symbol)

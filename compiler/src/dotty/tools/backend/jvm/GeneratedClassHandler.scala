@@ -73,21 +73,22 @@ private[jvm] object GeneratedClassHandler {
     private val processingUnits = ListBuffer.empty[CompilationUnitInPostProcess]
 
     def process(unit: GeneratedCompilationUnit): Unit = {
-      val unitInPostProcess = new CompilationUnitInPostProcess(unit.classes, unit.tasty, unit.sourceFile)
-      postProcessUnit(unitInPostProcess)
-      processingUnits += unitInPostProcess
+      given ExecutionContext = executionContext
+
+      // We want to release these for GC as soon as their processing is done, even if the Future is still referenced
+      val classesRef = scala.runtime.ObjectRef(unit.classes)
+      val tastyRef = scala.runtime.ObjectRef(unit.tasty)
+
+      val task = Future:
+        classesRef.elem.foreach(postProcessor.sendToDisk)
+        classesRef.elem = null
+        tastyRef.elem.foreach(postProcessor.sendToDisk)
+        tastyRef.elem = null
+
+      processingUnits += new CompilationUnitInPostProcess(unit.sourceFile, task)
     }
 
     private val executionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(javaExecutor)
-
-    private def postProcessUnit(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
-      given ExecutionContext = executionContext
-      unitInPostProcess.task = Future:
-        // we 'take' classes to reduce the memory pressure
-        // as soon as the class is consumed and written, we release its data
-        unitInPostProcess.takeClasses().foreach(postProcessor.sendToDisk)
-        unitInPostProcess.takeTasty().foreach(postProcessor.sendToDisk)
-    }
 
     private def takeProcessingUnits(): List[CompilationUnitInPostProcess] = {
       val result = processingUnits.result()
@@ -154,24 +155,7 @@ private[jvm] object GeneratedClassHandler {
 
   /**
    * State for a compilation unit being post-processed.
-   *   - Holds the classes to post-process (released for GC when no longer used)
-   *   - Keeps a reference to the future that runs the post-processor
-   *   - Buffers messages reported during post-processing
+   * Keeps a reference to the future that runs the post-processor.
    */
-  final private class CompilationUnitInPostProcess(private var classes: List[GeneratedClass], private var tasty: List[GeneratedTasty], val sourceFile: AbstractFile) {
-    def takeClasses(): List[GeneratedClass] = {
-      val c = classes
-      classes = Nil
-      c
-    }
-
-    def takeTasty(): List[GeneratedTasty] = {
-      val v = tasty
-      tasty = Nil
-      v
-    }
-
-    /** the main async task submitted onto the scheduler */
-    var task: Future[Unit] = uninitialized
-  }
+  final private class CompilationUnitInPostProcess(val sourceFile: AbstractFile, val task: Future[Unit])
 }

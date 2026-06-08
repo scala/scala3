@@ -36,14 +36,14 @@ def runAll1[C^](xs: List[() ->{C} Unit]): Unit =
 def runAll2(consume xs: List[Proc]): Unit =
   var cur: List[Proc] = xs
   while cur.nonEmpty do
-    val next: () => Unit = cur.head   // error, use
+    val next: () => Unit = cur.head   // leak error
     next()
     cur = cur.tail
 
 def runAll3(xs: List[Proc]): Unit =
-  val cur = Ref[List[Proc]](xs) // error
+  val cur = Ref[List[Proc]](xs) // sep error
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head // error // error
+    val next: () => Unit = cur.get.head // leak error // sep error
     next()
     cur.set(cur.get.tail: List[Proc])
 
@@ -64,8 +64,8 @@ def attack2 =
     f1
 
 def attack3 =
-  val id: (x: File^) -> File^{fresh} = x => x // was error, now OK
-  val id2: File^ -> File^{fresh} = x => x // now also OK
+  val id: (x: File^) -> File^{fresh} = x => x // sep error
+  val id2: File^ -> File^{fresh} = x => x // sep error
 
   val leaked = usingFile[File^{id*}]: f =>
     val f1: File^{id*} = id(f)   // error
@@ -85,7 +85,7 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // error // error // error
+  ps.map((x, y) => compose1(x, y)) // leak error // leak error // sep error
 
 def mapCompose2[A, C^](ps: List[(A ->{C} A, A ->{C} A)]): List[A ->{C} A] =
-  ps.map((x, y) => compose1(x, y)) // error
+  ps.map((x, y) => compose1(x, y)) // sep error

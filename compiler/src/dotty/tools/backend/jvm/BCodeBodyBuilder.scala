@@ -2,7 +2,6 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.SortedMap
 import scala.tools.asm
@@ -202,7 +201,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
 
       if (isArrayGet(code)) {
         // load argument on stack
-        assert(args.length == 1, s"Too many arguments for array get operation: $tree");
+        assert(args.length == 1, s"Too many arguments for array get operation: $tree")
         stack.push(k)
         genLoad(args.head, INT)
         stack.pop()
@@ -335,7 +334,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           bc.store(idx, tk)
           val localVarStart = currProgramPoint()
           if (!isSynth) { // there are case <synthetic> ValDef's emitted by patmat
-            varsInScope ::= (sym -> localVarStart)
+            varsInScope = (sym -> localVarStart) :: varsInScope.nn
           }
           generatedType = UNIT
 
@@ -547,7 +546,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     private def fieldOp(field: Symbol, isLoad: Boolean, specificReceiver: Symbol | Null)(using Context): Unit = {
       val useSpecificReceiver = specificReceiver != null && !field.isScalaStatic
 
-      val owner      = bTypeLoader.classBTypeFromSymbol(if (useSpecificReceiver) specificReceiver else field.owner).internalName
+      val owner      = bTypeLoader.classBTypeFromSymbol(if (useSpecificReceiver) specificReceiver.nn else field.owner).internalName
       val fieldJName = field.javaSimpleName
       val fieldDescr = symInfoTK(field).descriptor
       val isStatic   = field.isStaticMember
@@ -582,9 +581,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         case UnitTag    => ()
 
         case StringTag  =>
-          assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
           if BCodeUtils.checkConstantStringLength(const.stringValue) then
-            mnode.visitLdcInsn(const.stringValue) // `stringValue` special-cases null, but not for a const with StringTag
+            mnode.visitLdcInsn(const.stringValue)
           else
             // Emit a fake constant anyway so the resulting bytecode is valid, even if wrong (e.g., if the optimizer consumes it)
             mnode.visitLdcInsn("<string too long>")
@@ -653,7 +651,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
               if (earlyReturnVar == null) {
                 earlyReturnVar = locals.makeLocal(returnType, "earlyReturnVar", expr.tpe, expr.span)
               }
-              locals.store(earlyReturnVar)
+              locals.store(earlyReturnVar.nn)
             }
             bc.goTo(nextCleanup)
             shouldEmitCleanup = true
@@ -986,7 +984,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
 
         var flatKeys: List[Int]       = Nil
         var targets:  List[asm.Label] = Nil
-        var default:  asm.Label       = null
+        var default:  asm.Label | Null = null
         var switchBlocks: List[(asm.Label, Tree)] = Nil
 
         genLoad(selector, INT)
@@ -1020,7 +1018,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         if !hasDefault then
           default = new asm.Label
 
-        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
+        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default.nn, MIN_SWITCH_DENSITY)
 
         // emit switch-blocks.
         for (sb <- switchBlocks.reverse) {
@@ -1030,7 +1028,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         }
 
         if !hasDefault then
-          markProgramPoint(default)
+          markProgramPoint(default.nn)
           emitThrowMatchError()
       } else {
 
@@ -1042,13 +1040,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
          * This mirrors the way that Java compiles `switch` on Strings.
          */
 
-        var default:  asm.Label       = null
-        var indirectBlocks: List[(asm.Label, Tree)] = Nil
+        var default:  asm.Label | Null = null
+        var indirectBlocks: List[(asm.Label, Tree | Null)] = Nil
 
 
         // Cases grouped by their hashCode
         val casesByHash = SortedMap.empty[Int, List[(String, Either[asm.Label, Tree])]]
-        var caseFallback: Tree = null
 
         for (caze @ CaseDef(pat, guard, body) <- cases) {
           assert(guard == tpd.EmptyTree, guard)
@@ -1062,7 +1059,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
             case Ident(nme.WILDCARD) =>
               assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
               default = new asm.Label
-              indirectBlocks ::= (default, body)
+              indirectBlocks ::= (default.nn, body)
             case Alternative(alts) =>
               // We need an extra basic block since multiple strings can lead to this code
               val indirectCaseGroupLabel = new asm.Label
@@ -1097,7 +1094,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         val hasDefault = default != null
         if !hasDefault then
           default = new asm.Label
-          indirectBlocks ::= (default, null)
+          indirectBlocks ::= (default.nn, null)
 
         // Push the hashCode of the string (or `0` it is `null`) onto the stack and switch on it
         genLoadIfTo(
@@ -1109,7 +1106,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           INT,
           LoadDestination.FallThrough
         )
-        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
+        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default.nn, MIN_SWITCH_DENSITY)
 
         // emit blocks for each hash case
         for ((hashLabel, caseAlternatives) <- hashBlocks.reverse) {
@@ -1130,7 +1127,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
             }
             markProgramPoint(keepGoing)
           }
-          bc.goTo(default)
+          bc.goTo(default.nn)
         }
 
         // emit blocks for common patterns
@@ -1165,7 +1162,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     def emitLocalVarScopes(): Unit =
       if (BackendUtils.emitVars) {
         val end = currProgramPoint()
-        for ((sym, start) <- varsInScope.reverse) {
+        for ((sym, start) <- varsInScope.nn.reverse) {
           emitLocalVarScope(sym, start, end)
         }
       }
@@ -1321,7 +1318,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
     }
 
     /* Is the given symbol a primitive operation? */
-    def isPrimitive(fun: Tree): Boolean = {
+    def isPrimitive(fun: Tree)(using Context): Boolean = {
       primitives.isPrimitive(fun)
     }
 
@@ -1445,7 +1442,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           assert(style.isVirtual || style.isSuper || specificReceiver == methodOwner, s"specificReceiver can only be specified for virtual and super calls. $method - $specificReceiver")
 
         val useSpecificReceiver = specificReceiver != null && !defn.isBottomClass(specificReceiver) && !method.isScalaStatic
-        val receiver = if (useSpecificReceiver) specificReceiver else methodOwner
+        val receiver: Symbol = if (useSpecificReceiver) specificReceiver.nn else methodOwner
 
         // TODO this JVM bug was resolved a very long time ago, workaround could be removed?
         // workaround for a JVM bug: https://bugs.openjdk.java.net/browse/JDK-8154587
@@ -1603,7 +1600,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           case Literal(Constant(null)) => true
           case _ => false
         }
-        def ifOneIsNull(l: Tree, r: Tree): Tree = if (isNull(l)) r else if (isNull(r)) l else null
+        def ifOneIsNull(l: Tree, r: Tree): Tree | Null = if (isNull(l)) r else if (isNull(r)) l else null
         val nonNullSide = if (ScalaPrimitivesOps.isReferenceEqualityOp(code)) ifOneIsNull(l, r) else null
         if (nonNullSide != null) {
           // special-case reference (in)equality test for null (null eq x, x eq null)

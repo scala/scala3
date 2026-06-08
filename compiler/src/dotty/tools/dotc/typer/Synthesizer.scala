@@ -6,7 +6,7 @@ import core.*
 import util.Spans.Span
 import Contexts.*
 import Types.*, Flags.*, Symbols.*, Names.*, StdNames.*, Constants.*
-import TypeErasure.{erasure, hasStableErasure}
+import TypeErasure.{erasure, escapeJavaArray, hasStableErasure}
 import Decorators.*
 import ProtoTypes.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
@@ -680,10 +680,6 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    */
   val synthesizedMirror: SpecialHandler = (formal, span) =>
     orElse(synthesizedProductMirror(formal, span), synthesizedSumMirror(formal, span))
-
-  private def escapeJavaArray(tp: Type)(using Context): Type = tp match
-    case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
-    case _                     => tp
 
   private enum ManifestKind:
     case Full, Opt, Clss

@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/sep-scoped-caps.scala:8:36 ----------------------------------------------------
+8 |  val _: (x: S) -> B^{fresh} = (x: S) => h(x)  // error: eta expansion fails since `h` is non-local
+  |                                    ^
+  |Separation failure: anonymous function of type (x: S^): B^{fresh}'s inferred result type B^ hides non-local value h

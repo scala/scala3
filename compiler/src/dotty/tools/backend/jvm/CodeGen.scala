@@ -137,7 +137,6 @@ class CodeGen(val backendUtils: BackendUtils, val primitives: ScalaPrimitives, v
   private def genClass(cd: TypeDef)(using Context): ClassNode = {
     val b = new impl.SyncAndTryBuilder
     b.genPlainClass(cd)
-    b.cnode
   }
 
 }

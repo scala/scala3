@@ -388,9 +388,9 @@ absorb capabilities that would allow scoped resources to escape. Consider trying
 directly returning a closure that captures it:
 
 ```scala sc:fail sc-compile-with:scoped-withfile-context
-withFile[() => File^]("test.txt"): f =>
+withFile[() => File^]("test.txt"): f => // error
 //       ^^^^^^^^^^^ T = () => File^, i.e., () ->{any} File^{any} for some outer any
-  () => f  // error // error // error: We want to return this as () => File^
+  () => f  // error: We want to return this as () => File^
 ```
 
 The lambda `(f: File^) => () => f` has inferred type:
@@ -414,7 +414,7 @@ into this outer `any`, so the assignment fails.
 Otherwise, allowing widening `∃fresh. () ->{fresh} File^{fresh}` to `() => File^` would let the scoped file escape:
 
 ```scala sc:fail sc-compile-with:scoped-withfile-context
-val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f) // error // error
+val escaped: () => File^ = withFile[() => File^]("test.txt")(f => () => f) // error
 //           ^^^^^^^^^^^ any here is in the outer scope
 escaped().read()  // Use-after-close!
 ```

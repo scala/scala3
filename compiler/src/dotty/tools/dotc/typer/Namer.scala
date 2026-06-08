@@ -538,7 +538,7 @@ class Namer { typer: Typer =>
       ann.symbol == defn.ChildAnnot && !ann.isEvaluating
     def insertInto(annots: List[Annotation]): List[Annotation] =
       annots.find(isReady) match {
-        case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
+        case Some(Annotation.NonStaleChild(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
@@ -600,7 +600,7 @@ class Namer { typer: Typer =>
         if (tree == modCls) {
           val fromTempl = fromCls.rhs.asInstanceOf[Template]
           val modTempl = modCls.rhs.asInstanceOf[Template]
-          res = cpy.TypeDef(modCls)(
+          val r = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
               derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
               body = fromTempl.body.filter {
@@ -611,10 +611,10 @@ class Namer { typer: Typer =>
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
-            // `res` is inside a closure, so the flow-typing doesn't work here.
-            res.uncheckedNN.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
+            r.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
           }
-          res.uncheckedNN
+          res = r
+          r
         }
         else tree
       }
@@ -936,8 +936,9 @@ class Namer { typer: Typer =>
       completedTypeParamSyms = tparams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if completedTypeParamSyms != null then completedTypeParamSyms.uncheckedNN
-      else Nil
+      completedTypeParamSyms match
+        case null => Nil
+        case cpts => cpts
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
@@ -1099,10 +1100,11 @@ class Namer { typer: Typer =>
       }
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if myTypeParams == null then
+      initialize(myTypeParams, myTypeParams = _, {
         //println(i"completing type params of $sym in ${sym.owner}")
-        nestedCtx = localContext(sym).setNewScope
-        given Context = nestedCtx.uncheckedNN
+        val newScope = localContext(sym).setNewScope
+        nestedCtx = newScope
+        given Context = newScope
 
         def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
           case TypeDef(_, original) =>
@@ -1114,10 +1116,11 @@ class Namer { typer: Typer =>
 
         val tparams = typeParamTrees(original)
         index(tparams)
-        myTypeParams = tparams.map(symbolOfTree(_).asType)
+        val res = tparams.map(symbolOfTree(_).asType)
+        myTypeParams = res
         for param <- tparams do typedAheadExpr(param)
-      end if
-      myTypeParams.uncheckedNN
+        res
+      })
     end completerTypeParams
 
     override final def typeSig(sym: Symbol): Type =
@@ -2276,7 +2279,7 @@ class Namer { typer: Typer =>
         // See i21558, the default argument new A(1.0) is of type A[?T]
         // With an uninterpolated, invariant ?T type variable.
         // So before we return the default getter parameter type (A[? <: Double])
-        // we want to force ?T to instantiate, so it's poly is removed from the constraint
+        // we want to force ?T to instantiate, so its poly is removed from the constraint
         isFullyDefined(tp, ForceDegree.all)
         // When possible, widen to the default getter parameter type to permit a
         // larger choice of overrides (see `default-getter.scala`).

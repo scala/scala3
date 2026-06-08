@@ -137,13 +137,14 @@ object OverridingPairs:
      */
     private def nextOverriding(): Unit = {
       @tailrec def loop(): Unit =
-        if (curEntry != null) {
-          overriding = curEntry.uncheckedNN.sym
-          if (visited.contains(overriding)) {
-            curEntry = curEntry.uncheckedNN.prev
-            loop()
-          }
-        }
+        curEntry match
+          case null => ()
+          case ce =>
+            overriding = ce.sym
+            if visited.contains(overriding) then
+              curEntry = ce.prev
+              loop()
+
       loop()
       nextEntry = curEntry
     }
@@ -154,22 +155,26 @@ object OverridingPairs:
      *    overridden = overridden member of the pair, provided hasNext is true
      */
     @tailrec final def next(): Unit =
-      if nextEntry != null then
-        nextEntry = decls.lookupNextEntry(nextEntry.uncheckedNN)
-        if nextEntry != null then
-          try
-            overridden = nextEntry.uncheckedNN.sym
-            if overriding.owner != overridden.owner && matches(overriding, overridden) then
-              visited += overridden
-              if !isHandledByParent(overriding, overridden) then return
-          catch case ex: TypeError =>
-            // See neg/i1750a for an example where a cyclic error can arise.
-            // The root cause in this example is an illegal "override" of an inner trait
-            report.error(ex, base.srcPos)
-        else
-          curEntry = curEntry.nn.prev
-          nextOverriding()
-        next()
+      nextEntry match
+        case null => ()
+        case ne =>
+          decls.lookupNextEntry(ne) match
+            case null =>
+              nextEntry = null
+              curEntry = curEntry.nn.prev
+              nextOverriding()
+            case ne =>
+              nextEntry = ne
+              try
+                overridden = ne.sym
+                if overriding.owner != overridden.owner && matches(overriding, overridden) then
+                  visited += overridden
+                  if !isHandledByParent(overriding, overridden) then return
+              catch case ex: TypeError =>
+                // See neg/i1750a for an example where a cyclic error can arise.
+                // The root cause in this example is an illegal "override" of an inner trait
+                report.error(ex, base.srcPos)
+          next()
 
     nextOverriding()
     next()

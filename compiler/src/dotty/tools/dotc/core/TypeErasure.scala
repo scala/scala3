@@ -110,15 +110,12 @@ object TypeErasure:
         case tp: TypeVar if !tp.isInstantiated => -2
         case _ => -1
 
-  def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
-    if (defn.specialErasure.contains(cls))
-      return defn.specialErasure(cls).uncheckedNN
-    if (cls.owner == defn.ScalaPackageClass) {
-      if (cls == defn.UnitClass)
-        return defn.BoxedUnitClass
-    }
-    cls
-  }
+  def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol =
+    defn.specialErasure.get(cls) match
+      case Some(se) => se
+      case None =>
+        if cls.owner == defn.ScalaPackageClass && cls == defn.UnitClass then defn.BoxedUnitClass
+        else cls
 
   /** A predicate that tests whether a type is a legal erased type. Only asInstanceOf and
    *  isInstanceOf may have types that do not satisfy the predicate.
@@ -233,6 +230,15 @@ object TypeErasure:
     valueErasure(tp) match
       case ErasedValueType(_, underlying) => erasure(underlying)
       case etp => etp
+
+  /** Rewrite a `JavaArrayType` (the post-erasure representation of `T[]`) to its
+   *  source-level Scala `Array[T]` form. Other types are returned unchanged. Used
+   *  when an erased type has to flow back into a tree where only Scala-level types
+   *  are valid, e.g. the type argument of a class literal.
+   */
+  def escapeJavaArray(tp: Type)(using Context): Type = tp match
+    case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
+    case _                     => tp
 
   def sigName(tp: Type, sourceLanguage: SourceLanguage)(using Context): TypeName = {
     val normTp = tp.translateFromRepeated(toArray = sourceLanguage.isJava)
@@ -1021,7 +1027,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else tp match
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym eq defn.UnitClass) sym.typeRef
+        if (tp.isRef(defn.UnitClass)) defn.UnitType
         else apply(tp)
       case tp: AppliedType =>
         val sym = tp.tycon.typeSymbol

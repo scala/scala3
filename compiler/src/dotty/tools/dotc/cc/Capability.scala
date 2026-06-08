@@ -9,7 +9,6 @@ import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
 import Periods.{NoRunId, RunId, RunWidth}
-import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.{Refs, emptyRefs, VarState}
 import Annotations.Annotation
@@ -213,12 +212,13 @@ object Capabilities:
     /** Is this LocalCap at the right level to be able to subsume `ref`?
      */
     def acceptsLevelOf(ref: Capability)(using Context): Boolean =
-      if ccConfig.useLocalCapLevels && !CCState.collapseLocalCaps then
-        ccOwner.isContainedIn(ref.levelOwner.widenOwner(skipModules = true))
-        || classifier.derivesFrom(defn.Caps_Unscoped)
-      else ref.core match
+      ref.core match
         case ResultCap(_) | _: ParamRef => false
-        case _ => true
+        case _ =>
+          !ccConfig.useLocalCapLevels
+          || CCState.collapseLocalCaps
+          || ccOwner.isContainedIn(ref.levelOwner.widenOwner(skipModules = true))
+          || classifier.derivesFrom(defn.Caps_Unscoped)
 
     /** Classify this LocalCap as `cls`, provided `isClassified` is still false.
      *  @param  freeze  Determines future `isClassified` state.
@@ -340,7 +340,7 @@ object Capabilities:
    */
   trait Capability extends Showable:
 
-    private var myCaptureSet: CaptureSet | Null = uninitialized
+    private var myCaptureSet: CaptureSet | Null = null
     private var captureSetValid: Validity = invalid
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
     private var myDerived: List[DerivedCapability] = Nil
@@ -408,6 +408,7 @@ object Capabilities:
       case ReadOnly(ref1) => ref1.classifier
       case Maybe(ref1) => ref1.classifier
       case self: LocalCap => self.hiddenSet.classifier
+      case self: ResultCap => self.origin.classifier
       case _ => NoSymbol
 
     /** Is this a reach reference of the form `x*` or a readOnly or maybe variant
@@ -600,9 +601,7 @@ object Capabilities:
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
-      if mySingletonCaptureSet == null then
-        mySingletonCaptureSet = CaptureSet(this)
-      mySingletonCaptureSet.uncheckedNN
+      initialize(mySingletonCaptureSet, mySingletonCaptureSet = _, CaptureSet(this))
 
     /** The capture set of the type underlying this reference */
     def captureSetOfInfo(using Context): CaptureSet =
@@ -667,7 +666,7 @@ object Capabilities:
             if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
             else captureSetOfInfo.transClassifiers
         if myClassifiers != UnknownClassifier then
-          classifiersValid == currentId
+          classifiersValid = currentId
       myClassifiers
     end transClassifiers
 
@@ -1024,7 +1023,7 @@ object Capabilities:
     case TypeArg(tp: Type)
     case UnsafeAssumePure
     case Formal(pref: ParamRef, app: tpd.Apply)
-    case ResultInstance(methType: Type, tree: Tree)
+    case ResultInstance(result: ResultCap, methType: Type, tree: Tree = EmptyTree)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
     case NewInstance(tp: Type, fields: List[Symbol])
@@ -1049,6 +1048,7 @@ object Capabilities:
     def explanation(using Context): String = this match
       case InDecl(sym, fields) =>
         if sym.is(Method) then i" in the result type of $sym$contributingStr"
+        else if sym.isAbstractOrParamType then i" in the bound of $sym"
         else if sym.exists then i" in the type of $sym$contributingStr"
         else ""
       case TypeArg(tp: Type) =>
@@ -1060,7 +1060,7 @@ object Capabilities:
         if meth.exists
         then i" when checking argument to parameter ${pref.paramName} of $meth"
         else ""
-      case ResultInstance(mt, tree) =>
+      case ResultInstance(rc, mt, tree) =>
         def methDescr(tree: Tree): String = tree match
           case app: GenericApply =>
             methDescr(app.fun)
@@ -1221,7 +1221,7 @@ object Capabilities:
   end Internalize
 
   /** Map top-level free ResultCaps one-to-one to LocalCap instances */
-  def resultToAny(tp: Type, origin: Origin)(using Context): Type =
+  def resultToAny(tp: Type, mkOrigin: ResultCap => Origin)(using Context): Type =
     val subst = new TypeMap:
       val seen = EqHashMap[ResultCap, LocalCap | GlobalCap]()
       var localBinders: SimpleIdentitySet[MethodType] = SimpleIdentitySet.empty
@@ -1245,9 +1245,9 @@ object Capabilities:
           else
             // Create a LocalCap skolem that does not subsume anything
             def localCapSkolem =
-              val c = LocalCap(origin)
-              c.hiddenSet.markSolved(provisional = false)
-              c
+              val lc = LocalCap(mkOrigin(c))
+              lc.hiddenSet.markSolved(provisional = false)
+              lc
             seen.getOrElseUpdate(c, localCapSkolem) // map free references to LocalCap
         case _ => super.mapCapability(c, deep)
     end subst
@@ -1264,16 +1264,14 @@ object Capabilities:
       case _ =>
         super.mapOver(t)
 
-  class ToResult(localResType: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context) extends CapMap:
+  class ToResult(mt: MethodicType, sym: Symbol)(using Context) extends CapMap:
 
     def apply(t: Type) = mapOver(t)
 
     override def mapCapability(c: Capability, deep: Boolean) = c match
       case c: LocalCap =>
         if variance >= 0 then
-          if sym.isAnonymousFunction && c.classifier.derivesFrom(defn.Caps_Unscoped) then
-            c
-          else if sym.exists && !c.ccOwner.isContainedIn(sym) then
+          if sym.exists && !c.ccOwner.isContainedIn(sym) then
             //println(i"not mapping $c with ${c.ccOwner} in $sym")
             c
           else
@@ -1310,9 +1308,21 @@ object Capabilities:
     end inverse
   end ToResult
 
+  /** Map all ResultCaps that have the same primaryResultCap as one of the elements
+   *  of `rcs` to their LocalCap origins.
+   */
+  class RetractResult(rcs: SimpleIdentitySet[ResultCap])(using Context) extends TypeMap:
+    def apply(t: Type) = mapOver(t)
+    override def mapCapability(c: Capability, deep: Boolean) = c match
+      case c: ResultCap if rcs.exists(_.primaryResultCap == c.primaryResultCap) =>
+        c.primaryResultCap.origin match
+          case origin: LocalCap => origin
+          case _ => c
+      case _ => super.mapCapability(c, deep)
+
   /** Replace all occurrences of `caps.any` or LocalCap in parts of this type by an existentially bound
    *  variable bound by `mt`. Stop at function or method types since these have been mapped before.
    */
-  def toResult(tp: Type, mt: MethodicType, sym: Symbol, fail: Message => Unit)(using Context): Type =
-    ToResult(tp, mt, sym, fail)(tp)
+  def toResult(tp: Type, mt: MethodicType, sym: Symbol)(using Context): Type =
+    ToResult(mt, sym)(tp)
 end Capabilities

@@ -34,6 +34,7 @@ import reporting.*
 import Message.Note
 import transform.Splicer
 import annotation.tailrec
+import NullOpsDecorator.stripNull
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -112,9 +113,9 @@ object Implicits:
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(using Context): Type = {
-      if (mySingletonClass == null) mySingletonClass = defn.SingletonClass
+      val sc = initialize(mySingletonClass, mySingletonClass = _, defn.SingletonClass)
       val wtp = tp.widenSingleton
-      if (wtp.derivesFrom(mySingletonClass.uncheckedNN)) defn.AnyType else wtp
+      if (wtp.derivesFrom(sc)) defn.AnyType else wtp
     }
 
     protected def isAccessible(ref: TermRef)(using Context): Boolean
@@ -314,15 +315,13 @@ object Implicits:
      *  Scala2 mode, since we do not want to change the implicit disambiguation then.
      */
     override val level: Int =
-      def isSameOwner = irefCtx.owner eq outerImplicits.uncheckedNN.irefCtx.owner
-      def isSameScope = irefCtx.scope eq outerImplicits.uncheckedNN.irefCtx.scope
       def isLazyImplicit = refs.head.implicitName.is(LazyImplicitName)
 
-      if outerImplicits == null then 1
-      else if migrateTo3(using irefCtx)
-              || isSameOwner && (isImport || isSameScope && !isLazyImplicit)
-      then outerImplicits.uncheckedNN.level
-      else outerImplicits.uncheckedNN.level + 1
+      outerImplicits match
+        case null => 1
+        case oi if migrateTo3(using irefCtx) 
+                || (irefCtx.owner eq oi.irefCtx.owner) && (isImport || (irefCtx.scope eq oi.irefCtx.scope) && !isLazyImplicit) => oi.level
+        case oi => oi.level + 1
     end level
 
     /** Is this the outermost implicits? This is the case if it either the implicits
@@ -950,8 +949,8 @@ trait Implicits:
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
         else
-          if synthesizer == null then synthesizer = Synthesizer(this)
-          val (tree, errors) = synthesizer.uncheckedNN.tryAll(formal, span)
+          val synth = initialize(synthesizer, synthesizer = _, Synthesizer(this))
+          val (tree, errors) = synth.tryAll(formal, span)
           if errors.nonEmpty then
             SearchFailure(new SynthesisFailure(errors, formal), span).tree
           else
@@ -1684,14 +1683,14 @@ trait Implicits:
     def isUnderSpecifiedArgument(tp: Type): Boolean =
       tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
 
-    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar match
+    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar.stripNull() match
       case tp: WildcardType =>
         !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)
       case tp: ViewProto =>
         isUnderspecified(tp.resType)
         || tp.resType.isRef(defn.UnitClass)
         || isUnderSpecifiedArgument(tp.argType.widen)
-      case _ =>
+      case tp =>
         tp.isAny || tp.isAnyRef
 
     /** Search implicit in context `ctxImplicits` or else in implicit scope
@@ -2020,9 +2019,7 @@ final class SearchRoot extends SearchHistory:
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
   var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] | Null = null
   private def implicitDictionary =
-    if myImplicitDictionary == null then
-      myImplicitDictionary = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
-    myImplicitDictionary.uncheckedNN
+    initialize(myImplicitDictionary, myImplicitDictionary = _,  mutable.Map.empty[Type, (TermRef, tpd.Tree)])
 
   /**
    * Link a reference to an under-construction implicit for the provided type to its
@@ -2144,14 +2141,24 @@ final class SearchRoot extends SearchHistory:
             val nsyms = vsyms.map(vsym => newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
             val vsymMap = (vsyms zip nsyms).toMap
 
+            def substVsymRefs(t: tpd.Tree, termRefMap: TermRef => Type, identMap: Ident => tpd.Tree): tpd.Tree =
+              new TreeTypeMap(
+                typeMap = new TypeMap {
+                  def apply(tp: Type): Type = tp match
+                    case ref: TermRef if vsymMap.contains(ref.symbol) => termRefMap(ref)
+                    case _ => mapOver(tp)
+                },
+                treeMap = {
+                  case id: Ident if vsymMap.contains(id.symbol) => identMap(id)
+                  case tree => tree
+                })(t)
+
             val rhss = pruned.map(_._2)
             // Substitute dictionary references into dictionary entry RHSs
-            val rhsMap = new TreeTypeMap(treeMap = {
-              case id: Ident if vsymMap.contains(id.symbol) =>
-                tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)
-              case tree => tree
-            })
-            val nrhss = rhss.map(rhsMap(_))
+            val nrhss = rhss.map(substVsymRefs(
+              _,
+              ref => classSym.thisType.select(vsymMap(ref.symbol)),
+              id  => tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)))
 
             val vdefs = (nsyms zip nrhss) map {
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
@@ -2164,13 +2171,10 @@ final class SearchRoot extends SearchHistory:
             val inst = ValDef(valSym, New(classSym.typeRef, Nil))
 
             // Substitute dictionary references into outermost result term.
-            val resMap = new TreeTypeMap(treeMap = {
-              case id: Ident if vsymMap.contains(id.symbol) =>
-                Select(tpd.ref(valSym), id.name)
-              case tree => tree
-            })
-
-            val res = resMap(success.tree)
+            val res = substVsymRefs(
+              success.tree,
+              ref => valSym.termRef.select(vsymMap(ref.symbol)),
+              id  => Select(tpd.ref(valSym), id.name))
 
             val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
 
@@ -2201,12 +2205,10 @@ sealed class TermRefSet(using Context):
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    def handle(sym: TermSymbol | Null, prefixes: Type | List[Type] | Null): Unit =
-      // We cannot use `.nn` here due to inference issue.
-      val prefixes0: Type | List[Type] = prefixes.uncheckedNN
-      prefixes0 match
-        case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
+    def handle(sym: TermSymbol, prefixes: Type | List[Type]): Unit =
+      prefixes match
+        case prefix: Type => f(TermRef(prefix, sym))
+        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym)))
     elems.forEach(handle)
 
   // used only for debugging
