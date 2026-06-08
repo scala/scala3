@@ -4003,11 +4003,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      }
   }
 
+  private def widensToMethodOrPoly(tp: Type)(using Context): Boolean = tp match
+    case _: TypeRef | _: AppliedType => false
+    case _: MethodOrPoly => true
+    case tp: TermRef =>
+      val denot = tp.denot
+      !denot.isOverloaded && widensToMethodOrPoly(denot.info)
+    case tp: SingletonType => widensToMethodOrPoly(tp.underlying)
+    case tp: ExprType => widensToMethodOrPoly(tp.resultType)
+    case _ => tp.widen.isInstanceOf[MethodOrPoly]
+
   /** Interpolate and simplify the type of the given tree. */
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
     if !tree.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
-      if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
-         || tree.isDef                              // ... unless tree is a definition
+      if !widensToMethodOrPoly(tree.tpe) // wait with simplifying until method is fully applied
+         || tree.isDef                   // ... unless tree is a definition
       then
         interpolateTypeVars(tree, pt, locked)
         val simplified = tree.tpe.simplified
