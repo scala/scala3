@@ -52,6 +52,15 @@ object TestMutable {
   }
   assert(bs.size == 0, s"Expected size == 0 for $bs")
   assert(bs.isEmpty, s"Expected isEmpty for $bs")
+
+  // subtractOne with large nonexistent element should not grow the array
+  val small = BitSet(1, 2, 3)
+  val oldNwords = small.elems.length
+  small -= 1000000  // element far beyond current capacity
+  assert(small.elems.length == oldNwords,
+    s"subtractOne for nonexistent element should not grow array: ${small.elems.length} > $oldNwords")
+  assert(small.toList == List(1, 2, 3),
+    s"subtractOne for nonexistent element should not change contents: ${small.toList}")
 }
 
 object TestMutable2 {
