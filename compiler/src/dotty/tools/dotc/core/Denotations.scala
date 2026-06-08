@@ -313,8 +313,9 @@ object Denotations {
 
     final def validFor: Period = myValidFor
     final def validFor_=(p: Period): Unit = {
-      myValidFor = p
-      symbol.invalidateDenotCache()
+      if p != myValidFor then
+        myValidFor = p
+        symbol.invalidateDenotCache()
     }
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
