@@ -304,13 +304,14 @@ trait TypeAssigner {
     if dependencyMask < 0 then safeSubstParams(tp, fntpe.paramRefs, args, skolems)
     else if dependencyMask == 0 then tp
     else
+      val lastDependentIdx = 63 - java.lang.Long.numberOfLeadingZeros(dependencyMask)
       def loop(tp: Type, args: List[Tree], idx: Int): Type = args match
-        case arg :: args1 =>
+        case arg :: args1 if idx <= lastDependentIdx =>
           val tp1 =
             if idx >= 63 || (dependencyMask & (1L << idx)) == 0 then tp
             else safeSubstParam(tp, fntpe.paramRef(idx), arg.tpe, sk => skolems += ((arg, sk)))
           loop(tp1, args1, idx + 1)
-        case Nil =>
+        case _ =>
           tp
       loop(tp, args, 0)
 
