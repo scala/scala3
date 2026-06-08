@@ -2,26 +2,26 @@ foo
 ValDef("macro", Inferred(), None)
 
 bar
-DefDef("foo", Nil, Inferred(), None)
+DefDef("foo", Nil, Inferred(), Some(Block(List(DefDef("bar", Nil, Inferred(), Some(Literal(IntConstant(1)))), ValDef("bar2", Inferred(), Some(Literal(IntConstant(2))))), Typed(Ident("bar"), Inferred()))))
 
 bar2
-DefDef("foo", Nil, Inferred(), None)
+DefDef("foo", Nil, Inferred(), Some(Block(List(DefDef("bar", Nil, Inferred(), Some(Literal(IntConstant(1)))), ValDef("bar2", Inferred(), Some(Literal(IntConstant(2))))), Typed(Ident("bar"), Inferred()))))
 
 foo2
 ValDef("macro", Inferred(), None)
 
 baz
-ValDef("foo2", Inferred(), None)
+ValDef("foo2", Inferred(), Some(Block(List(DefDef("baz", Nil, Inferred(), Some(Literal(IntConstant(3)))), ValDef("baz2", Inferred(), Some(Literal(IntConstant(4))))), Typed(Ident("baz"), Inferred()))))
 
 baz2
-ValDef("foo2", Inferred(), None)
+ValDef("foo2", Inferred(), Some(Block(List(DefDef("baz", Nil, Inferred(), Some(Literal(IntConstant(3)))), ValDef("baz2", Inferred(), Some(Literal(IntConstant(4))))), Typed(Ident("baz"), Inferred()))))
 
 <init>
-ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Inferred()), None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), None, List(TypeDef("B", TypeIdent("Int")), DefDef("b", Nil, Inferred(), Some(Literal(IntConstant(5)))), ValDef("b2", Inferred(), Some(Literal(IntConstant(6))))))
 
 b
-ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Inferred()), None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), None, List(TypeDef("B", TypeIdent("Int")), DefDef("b", Nil, Inferred(), Some(Literal(IntConstant(5)))), ValDef("b2", Inferred(), Some(Literal(IntConstant(6))))))
 
 b2
-ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Inferred()), None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), None, List(TypeDef("B", TypeIdent("Int")), DefDef("b", Nil, Inferred(), Some(Literal(IntConstant(5)))), ValDef("b2", Inferred(), Some(Literal(IntConstant(6))))))
 
