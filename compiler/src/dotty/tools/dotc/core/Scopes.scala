@@ -388,11 +388,12 @@ object Scopes {
         while ((e != null) && e.name != name)
           e = e.prev
       }
-      synthesize match
-        case s: SymbolSynthesizer if e == null =>
+      if e != null then e
+      else synthesize match
+        case null => null
+        case s =>
           val sym = s(name)
           if (sym.exists) newScopeEntry(sym.name, sym) else e
-        case _ => e
     }
 
     /** lookup next entry with same name as this one */

@@ -26,9 +26,10 @@ package object tools {
    * Allows one to lazily initialize values without explicit `.nn`.
    * This is useful for values that need a Context and thus can't be `lazy val`s.
    */
-  inline def initialize[T](getter: T | Null, setter: T => Unit, inline value: T): T = getter match
-    case v: T => v
-    case null =>
+  inline def initialize[T](getter: T | Null, inline setter: T => Unit, inline value: => T): T =
+    if getter != null then
+      getter
+    else
       val res = value
       setter(res)
       res
