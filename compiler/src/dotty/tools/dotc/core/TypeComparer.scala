@@ -3041,7 +3041,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case formal2 :: rest2 =>
             val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
             val paramsMatch =
-              if precise then
+              if formal1 eq formal2a then
+                true
+              else if precise then
                 isSameTypeWhenFrozen(formal1, formal2a)
               else if isCCOrSetup then
                 // allow to constrain capture set variables
@@ -3070,7 +3072,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         formals2 match {
           case formal2 :: rest2 =>
             val formal2a = formal2.subst(tp2, tp1)
-            isSubTypeWhenFrozen(formal2a, formal1) &&
+            ((formal1 eq formal2a) || isSubTypeWhenFrozen(formal2a, formal1)) &&
             loop(rest1, rest2)
           case nil =>
             false
