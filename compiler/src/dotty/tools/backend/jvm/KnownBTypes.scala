@@ -87,37 +87,6 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     DOUBLE -> loader.classBTypeFromSymbol(requiredClass[java.lang.Double])
   )
 
-  /**
-   * Maps the method symbol for a box method to the boxed type of the result. For example, the
-   * method symbol for `Byte.box()` is mapped to the ClassBType `java/lang/Byte`.
-   */
-  val boxResultType: Map[Symbol, ClassBType] = Map(
-    Erasure.Boxing.boxMethod(defn.UnitClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Void]),
-    Erasure.Boxing.boxMethod(defn.BooleanClass) -> loader.classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
-    Erasure.Boxing.boxMethod(defn.ByteClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Byte]),
-    Erasure.Boxing.boxMethod(defn.ShortClass)   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Short]),
-    Erasure.Boxing.boxMethod(defn.CharClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Character]),
-    Erasure.Boxing.boxMethod(defn.IntClass)     -> loader.classBTypeFromSymbol(requiredClass[java.lang.Integer]),
-    Erasure.Boxing.boxMethod(defn.LongClass)    -> loader.classBTypeFromSymbol(requiredClass[java.lang.Long]),
-    Erasure.Boxing.boxMethod(defn.FloatClass)   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Float]),
-    Erasure.Boxing.boxMethod(defn.DoubleClass)  -> loader.classBTypeFromSymbol(requiredClass[java.lang.Double])
-  )
-  /**
-   * Maps the method symbol for an unbox method to the primitive type of the result.
-   * For example, the method symbol for `Byte.unbox()` is mapped to the PrimitiveBType BYTE.
-   */
-  val unboxResultType: Map[Symbol, BType] = Map(
-    Erasure.Boxing.unboxMethod(defn.UnitClass)    -> UNIT,
-    Erasure.Boxing.unboxMethod(defn.BooleanClass) -> BOOL,
-    Erasure.Boxing.unboxMethod(defn.ByteClass)    -> BYTE,
-    Erasure.Boxing.unboxMethod(defn.ShortClass)   -> SHORT,
-    Erasure.Boxing.unboxMethod(defn.CharClass)    -> CHAR,
-    Erasure.Boxing.unboxMethod(defn.IntClass)     -> INT,
-    Erasure.Boxing.unboxMethod(defn.LongClass)    -> LONG,
-    Erasure.Boxing.unboxMethod(defn.FloatClass)   -> FLOAT,
-    Erasure.Boxing.unboxMethod(defn.DoubleClass)  -> DOUBLE
-  )
-
   val asmBoxTo: Map[BType, MethodNameAndType] = Map(
     BOOL   -> MethodNameAndType("boxToBoolean",   MethodBType(List(BOOL),   boxedClassOfPrimitive(BOOL))),
     BYTE   -> MethodNameAndType("boxToByte",      MethodBType(List(BYTE),   boxedClassOfPrimitive(BYTE))),
@@ -137,17 +106,5 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectRef), LONG)),
     FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectRef), FLOAT)),
     DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
-  )
-
-  val typeOfArrayOp: Map[Int, BType] = Map(
-    ZARRAY_LENGTH -> BOOL, ZARRAY_GET -> BOOL, ZARRAY_SET -> BOOL,
-    BARRAY_LENGTH -> BYTE, BARRAY_GET -> BYTE, BARRAY_SET -> BYTE,
-    SARRAY_LENGTH -> SHORT, SARRAY_GET -> SHORT, SARRAY_SET -> SHORT,
-    CARRAY_LENGTH -> CHAR, CARRAY_GET -> CHAR, CARRAY_SET -> CHAR,
-    IARRAY_LENGTH -> INT, IARRAY_GET -> INT, IARRAY_SET -> INT,
-    LARRAY_LENGTH -> LONG, LARRAY_GET -> LONG, LARRAY_SET -> LONG,
-    FARRAY_LENGTH -> FLOAT, FARRAY_GET -> FLOAT, FARRAY_SET -> FLOAT,
-    DARRAY_LENGTH -> DOUBLE, DARRAY_GET -> DOUBLE, DARRAY_SET -> DOUBLE,
-    OARRAY_LENGTH -> ObjectRef, OARRAY_GET -> ObjectRef, OARRAY_SET -> ObjectRef
   )
 }

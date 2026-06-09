@@ -195,7 +195,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       import ScalaPrimitivesOps.*
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
-      val elementType = bTypes.typeOfArrayOp.getOrElse[BType](code, throw new AssertionError(s"Unknown operation on arrays: $tree code: $code"))
+      val elementType = k.asArrayBType.componentType
 
       var generatedType = expectedType
 
@@ -205,7 +205,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         stack.push(k)
         genLoad(args.head, INT)
         stack.pop()
-        generatedType = k.asArrayBType.componentType
+        generatedType = elementType
         bc.aload(elementType)
       }
       else if (isArraySet(code)) {
@@ -840,11 +840,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = bTypes.asmBoxTo(nativeKind)
           bc.invokestatic(bTypes.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
-          generatedType = bTypes.boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
+          generatedType = methodType.returnType
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
-          val boxType = bTypes.unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
+          val boxType = bTypeLoader.bTypeFromType(app.tpe)
           generatedType = boxType
           val MethodNameAndType(mname, methodType) = bTypes.asmUnboxTo(boxType)
           bc.invokestatic(bTypes.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
