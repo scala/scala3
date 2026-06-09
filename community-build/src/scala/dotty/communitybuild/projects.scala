@@ -123,8 +123,6 @@ object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
     "-Wsafe-init",
-    "-Yexplicit-nulls",
-    "-language:unsafeNulls",
   )
 
 object projects:

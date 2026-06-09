@@ -447,6 +447,9 @@ object language {
   @compileTimeOnly("`unsafeNulls` can only be used at compile time in import statements")
   object unsafeNulls
 
+  @compileTimeOnly("`safeNulls` can only be used at compile time in import statements")
+  object safeNulls
+
   @compileTimeOnly("`future` can only be used at compile time in import statements")
   object future
 

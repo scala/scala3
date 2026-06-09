@@ -4,8 +4,9 @@
   |class Walker needs to be abstract, since it has 4 unimplemented members.
   |
   |Members declared in java.nio.file.FileVisitor:
-  |- def postVisitDirectory(x0: java.nio.file.Path, x1: java.io.IOException): java.nio.file.FileVisitResult
+  |- def postVisitDirectory(x0: (java.nio.file.Path)?, x1: (java.io.IOException)?): (java.nio.file.FileVisitResult)?
   |- def preVisitDirectory
-  |  (x0: java.nio.file.Path, x1: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult
-  |- def visitFile(x0: java.nio.file.Path, x1: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult
-  |- def visitFileFailed(x0: java.nio.file.Path, x1: java.io.IOException): java.nio.file.FileVisitResult
+  |  (x0: (java.nio.file.Path)?, x1: (java.nio.file.attribute.BasicFileAttributes)?): (java.nio.file.FileVisitResult)?
+  |- def visitFile
+  |  (x0: (java.nio.file.Path)?, x1: (java.nio.file.attribute.BasicFileAttributes)?): (java.nio.file.FileVisitResult)?
+  |- def visitFileFailed(x0: (java.nio.file.Path)?, x1: (java.io.IOException)?): (java.nio.file.FileVisitResult)?
