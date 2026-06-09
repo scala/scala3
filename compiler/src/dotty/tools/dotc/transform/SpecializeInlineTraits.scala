@@ -50,7 +50,7 @@ class SpecializeInlineTraits extends MiniPhase {
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     new TreeMapWithPreciseStatContexts { // We need to inline recursively because inlining may create further opportunities for inlining. 
-                                         // Notably this does limit the composition potential of this miniphase.
+                                         // Notably this does limit the composition potential of this miniphase. TOOD: We might be able to fix that with transformFollowing 
                                          // We use seen to make sure we don't inline into the same child class multiple times
       override def transform(tree: Tree)(using Context): Tree = 
         tree match {

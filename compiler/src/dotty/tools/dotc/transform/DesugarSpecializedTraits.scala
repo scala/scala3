@@ -339,9 +339,14 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
 
   private def specializedTraitCtx(using Context): Context = ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.SpecializedTraits))
 
-  override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
-      tree match { // TODO: Is Package level processing really what we want? Given we are going to output the classes somewhere else do we not really want either to deepFold the whole tree directly or do a more direct transform?
-        case pkg@PackageDef(pid, stats) => // TODO: If we do everything ourselves and match only on the package then we can get rid of the MacroTransform aspect and just have a Phase with the transformPackageDef method or even transformStats ideally
+  // TODO: I reckon to get the best miniphase style processing we can do everything except outputting the final $impl$ / $sp$ classes in the normal miniphase methods.
+  // I.e. instead of folding with transformStatements (which is odd now that we don't actually transform anything except creating the new specializations) 
+  // we have all of the cases for collecting specialized references in ordinary transformMethods or prepare methods and then we just spit out the final classes
+  // in this transformUnit function. As long as we remember to call transformFollowing on the synthetic classes (Which we do) then we should be composable in the way that we want 
+  // to be.
+  override def transformUnit(tree: Tree)(using Context): Tree = 
+      tree match {
+        case pkg@PackageDef(pid, stats) =>
           
           checkSpecializedTraitRules(tree)
 
@@ -358,6 +363,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
             grouped.getOrElse(defn.EmptyPackageClass, List()) :::
             grouped.toList.filter((pk, stmts) => pk != defn.RootClass && pk != defn.EmptyPackageClass).map((pkg, stmts) => tpd.PackageDef(Ident(pkg.sourceModule.namedType), stmts))
           ).withType(defn.EmptyPackageVal.namedType)
+        case t => t
       }
 
   private def collectReferencedSpecializations(stats: List[Tree], specializations: SpecializedTraitCache)(using Context): SpecializedTraitCache =
