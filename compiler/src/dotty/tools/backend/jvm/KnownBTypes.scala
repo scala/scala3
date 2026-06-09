@@ -12,8 +12,6 @@ import dotty.tools.backend.ScalaPrimitivesOps.*
 
 import scala.annotation.constructorOnly
 
-case class MethodNameAndType(name: String, methodType: MethodBType)
-
 class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) {
   val ObjectRef: ClassBType = loader.classBTypeFromSymbol(defn.ObjectClass)
   val StringRef: ClassBType = loader.classBTypeFromSymbol(defn.StringClass)
@@ -69,8 +67,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
   )
 
   /**
-   * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
-   * operand stack (ldc instruction taking a class literal), see genConstant.
+   * Map from primitive types to their boxed class type.
    */
   val boxedClassOfPrimitive: Map[BType, ClassBType] = Map(
     UNIT   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Void]),
@@ -82,26 +79,5 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     LONG   -> loader.classBTypeFromSymbol(requiredClass[java.lang.Long]),
     FLOAT  -> loader.classBTypeFromSymbol(requiredClass[java.lang.Float]),
     DOUBLE -> loader.classBTypeFromSymbol(requiredClass[java.lang.Double])
-  )
-
-  val asmBoxTo: Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("boxToBoolean",   MethodBType(List(BOOL),   boxedClassOfPrimitive(BOOL))),
-    BYTE   -> MethodNameAndType("boxToByte",      MethodBType(List(BYTE),   boxedClassOfPrimitive(BYTE))),
-    CHAR   -> MethodNameAndType("boxToCharacter", MethodBType(List(CHAR),   boxedClassOfPrimitive(CHAR))),
-    SHORT  -> MethodNameAndType("boxToShort",     MethodBType(List(SHORT),  boxedClassOfPrimitive(SHORT))),
-    INT    -> MethodNameAndType("boxToInteger",   MethodBType(List(INT),    boxedClassOfPrimitive(INT))),
-    LONG   -> MethodNameAndType("boxToLong",      MethodBType(List(LONG),   boxedClassOfPrimitive(LONG))),
-    FLOAT  -> MethodNameAndType("boxToFloat",     MethodBType(List(FLOAT),  boxedClassOfPrimitive(FLOAT))),
-    DOUBLE -> MethodNameAndType("boxToDouble",    MethodBType(List(DOUBLE), boxedClassOfPrimitive(DOUBLE)))
-  )
-  val asmUnboxTo: Map[BType, MethodNameAndType] = Map(
-    BOOL   -> MethodNameAndType("unboxToBoolean", MethodBType(List(ObjectRef), BOOL)),
-    BYTE   -> MethodNameAndType("unboxToByte",    MethodBType(List(ObjectRef), BYTE)),
-    CHAR   -> MethodNameAndType("unboxToChar",    MethodBType(List(ObjectRef), CHAR)),
-    SHORT  -> MethodNameAndType("unboxToShort",   MethodBType(List(ObjectRef), SHORT)),
-    INT    -> MethodNameAndType("unboxToInt",     MethodBType(List(ObjectRef), INT)),
-    LONG   -> MethodNameAndType("unboxToLong",    MethodBType(List(ObjectRef), LONG)),
-    FLOAT  -> MethodNameAndType("unboxToFloat",   MethodBType(List(ObjectRef), FLOAT)),
-    DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
   )
 }

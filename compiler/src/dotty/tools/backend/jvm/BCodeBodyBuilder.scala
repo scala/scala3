@@ -838,16 +838,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
-          val MethodNameAndType(mname, methodType) = bTypes.asmBoxTo(nativeKind)
-          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, mname, methodType.descriptor, itf = false, app)
-          generatedType = methodType.returnType
+          val returnType = bTypes.boxedClassOfPrimitive(nativeKind)
+          val methodName = "boxTo" + returnType.simpleName
+          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(nativeKind, returnType), itf = false, app)
+          generatedType = returnType
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
           val boxType = bTypeLoader.bTypeFromType(app.tpe)
           generatedType = boxType
-          val MethodNameAndType(mname, methodType) = bTypes.asmUnboxTo(boxType)
-          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, mname, methodType.descriptor, itf = false, app)
+          val methodName = "unboxTo" + boxType.asInstanceOf[PrimitiveBType].name
+          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(bTypes.ObjectRef, boxType), itf = false, app)
 
         case app @ Apply(fun, args) =>
           val sym = fun.symbol

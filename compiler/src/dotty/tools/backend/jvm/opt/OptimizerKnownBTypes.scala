@@ -1,13 +1,15 @@
 package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.{BType, BTypeLoader, ClassBType, KnownBTypes, MethodBType, MethodNameAndType, UNIT}
+import dotty.tools.backend.jvm.{BType, BTypeLoader, ClassBType, KnownBTypes, MethodBType, UNIT}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.core.Symbols.{defn, requiredClass}
 
 import scala.annotation.constructorOnly
+
+case class MethodNameAndType(name: String, methodType: MethodBType)
 
 final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Context) extends KnownBTypes(ts) {
 

@@ -39,7 +39,7 @@ sealed trait BType {
     case DOUBLE => "D"
     case c: ClassBType            => "L" + c.internalName + ";"
     case ArrayBType(component)    => "[" + component
-    case MethodBType(args, res)   => args.mkString("(", "", ")" + res)
+    case MethodBType(args, res)   => BTypes.methodDescriptor(args, res)
   }
 
   /**
@@ -218,7 +218,7 @@ sealed trait BType {
   def asPrimitiveBType : PrimitiveBType = this.asInstanceOf[PrimitiveBType]
 }
 
-sealed trait PrimitiveBType extends BType {
+sealed trait PrimitiveBType(val name: String) extends BType {
   final def isNothing: Boolean = false
   final def isNull: Boolean = false
 
@@ -291,15 +291,15 @@ sealed trait PrimitiveBType extends BType {
   }
 }
 
-case object UNIT   extends PrimitiveBType
-case object BOOL   extends PrimitiveBType
-case object CHAR   extends PrimitiveBType
-case object BYTE   extends PrimitiveBType
-case object SHORT  extends PrimitiveBType
-case object INT    extends PrimitiveBType
-case object FLOAT  extends PrimitiveBType
-case object LONG   extends PrimitiveBType
-case object DOUBLE extends PrimitiveBType
+case object UNIT   extends PrimitiveBType("Unit")
+case object BOOL   extends PrimitiveBType("Boolean")
+case object CHAR   extends PrimitiveBType("Char")
+case object BYTE   extends PrimitiveBType("Byte")
+case object SHORT  extends PrimitiveBType("Short")
+case object INT    extends PrimitiveBType("Int")
+case object FLOAT  extends PrimitiveBType("Float")
+case object LONG   extends PrimitiveBType("Long")
+case object DOUBLE extends PrimitiveBType("Double")
 
 sealed trait RefBType extends BType {
 
@@ -898,4 +898,10 @@ object BTypes {
    * But that would create overhead in a Collection[InternalName].
    */
   type InternalName = String
+
+  def methodDescriptor(argumentType: BType, returnType: BType): String =
+    s"($argumentType)$returnType"
+
+  def methodDescriptor(argumentTypes: List[BType], returnType: BType): String =
+    argumentTypes.mkString("(", "", ")" + returnType)
 }
