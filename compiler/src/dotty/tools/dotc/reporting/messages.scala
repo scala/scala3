@@ -3935,3 +3935,13 @@ extends Message(ConcreteClassHasUnimplementedMethodsID), NoDisambiguation:
 
   def explain(using Context) = ""
   override def actions(using Context) = methodActions
+
+class UseOfAnyMethodAsInterpolator(interpolator: Name)(using Context)
+  extends Message(UseOfAnyMethodAsInterpolatorID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Interpolator $interpolator resolves to a method from Any"
+  def explain(using Context) =
+    i"""String interpolation resolves to methods calls on ${hl("StringContext")},
+       |which can target methods declared by ${hl("Any")} such as ${hl(i"$interpolator")}.
+       |This is unlikely to be what you intended."""
+}

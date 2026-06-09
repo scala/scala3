@@ -246,7 +246,8 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case AmbiguousTemplateNameID // errorNumber: 228
   case IndentationWarningID // errorNumber: 229
   case IllegalIdentifierID // errorNumber: 230
-  case ConcreteClassHasUnimplementedMethodsID // errorNumer: 231
+  case ConcreteClassHasUnimplementedMethodsID // errorNumber: 231
+  case UseOfAnyMethodAsInterpolatorID // errorNumber: 232
 
   def errorNumber = ordinal - 1
 
