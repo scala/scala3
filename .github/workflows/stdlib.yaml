@@ -15,31 +15,75 @@ env:
 
 jobs:
 
+  # Skip all downstream jobs on doc-only PRs.
+  # Non-PR events (push, workflow_call) always run everything.
+  changes:
+    name: Detect source changes
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.filter.outputs.source }}
+      compiler: ${{ steps.filter.outputs.compiler }}
+      library: ${{ steps.filter.outputs.library }}
+      interfaces: ${{ steps.filter.outputs.interfaces }}
+      tasty_core: ${{ steps.filter.outputs.tasty_core }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: filter
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            FILES=$(git diff --name-only "$BASE" HEAD)
+
+            echo "source=$(echo "$FILES" | grep -qvE '^(docs/|changelogs/|.*\.md$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+            echo "compiler=$(echo "$FILES" | grep -qE '^(compiler/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "library=$(echo "$FILES" | grep -qE '^(library/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "interfaces=$(echo "$FILES" | grep -qE '^(interfaces/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "tasty_core=$(echo "$FILES" | grep -qE '^(tasty/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          else
+            echo "source=true" >> "$GITHUB_OUTPUT"
+            echo "compiler=true" >> "$GITHUB_OUTPUT"
+            echo "library=true" >> "$GITHUB_OUTPUT"
+            echo "interfaces=true" >> "$GITHUB_OUTPUT"
+            echo "tasty_core=true" >> "$GITHUB_OUTPUT"
+          fi
+
   test-scala-library-nonbootstrapped:
     name: Non-Bootstrapped Library Unit Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
-      - run: ./project/scripts/sbt scala-library-nonbootstrapped/test
+      - run: ./project/scripts/sbt "scala-library-nonbootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   test-scala-library-bootstrapped:
     name: Bootstrapped Library Unit Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
-      - run: ./project/scripts/sbt scala-library-bootstrapped/test
+      - run: ./project/scripts/sbt "scala-library-bootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   #################################################################################################
   ########################################### MiMa JOBS ###########################################
@@ -65,6 +109,8 @@ jobs:
 
   mima-scala3-interfaces:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.interfaces == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -82,6 +128,8 @@ jobs:
 
   mima-tasty-core-nonbootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.tasty_core == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -99,6 +147,8 @@ jobs:
 
   static-analysis-scala-library-bootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.library == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -119,6 +169,8 @@ jobs:
 
   mima-tasty-core-bootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.tasty_core == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -136,6 +188,8 @@ jobs:
 
   mima-scala-library-sjs:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.library == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -157,9 +211,13 @@ jobs:
 
   test-scala3-compiler-nonbootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -171,18 +229,23 @@ jobs:
       - uses: sbt/setup-sbt@v1
 
       - name: Test `scala3-compiler-nonbootstrapped`
-        run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
+        run: ./project/scripts/sbt "scala3-compiler-nonbootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
       - name: Cmd Tests
+        if: needs.changes.outputs.compiler == 'true'
         run: |
           ./project/scripts/sbt scala3-nonbootstrapped/publishLocal
           ./project/scripts/cmdTests
 
   test-scala3-compiler-bootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -194,15 +257,18 @@ jobs:
       - uses: sbt/setup-sbt@v1
 
       - name: Test `scala3-compiler-bootstrapped`
-        run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
+        run: ./project/scripts/sbt "scala3-compiler-bootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
       - name: Cmd Tests
+        if: needs.changes.outputs.compiler == 'true'
         run: |
           ./project/scripts/sbt scala3-bootstrapped/publishLocal
           ./project/scripts/bootstrappedOnlyCmdTests
 
   test-scala3-bootstrapped-compilation-coverage:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -219,9 +285,13 @@ jobs:
 
   test-scala3-sbt-bridge-nonbootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -231,13 +301,17 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test `scala3-sbt-bridge-nonbootstrapped`
-        run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
+        run: ./project/scripts/sbt "scala3-sbt-bridge-nonbootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   test-scala3-sbt-bridge-bootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -247,13 +321,17 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test `scala3-sbt-bridge-bootstrapped`
-        run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
+        run: ./project/scripts/sbt "scala3-sbt-bridge-bootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   test-tasty-core-nonbootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -263,13 +341,17 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test `tasty-core-nonbootstrapped`
-        run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
+        run: ./project/scripts/sbt "tasty-core-nonbootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   test-tasty-core-bootstrapped:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -279,10 +361,12 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test `tasty-core-bootstrapped`
-        run: ./project/scripts/sbt tasty-core-bootstrapped/test
+        run: ./project/scripts/sbt "tasty-core-bootstrapped/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   test-scala-js:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -311,9 +395,13 @@ jobs:
 
   test-repl:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -323,13 +411,17 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test REPL
-        run: ./project/scripts/sbt scala3-repl/test
+        run: ./project/scripts/sbt "scala3-repl/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   test-presentation-compiler:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -339,13 +431,17 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test Presentation Compiler
-        run: ./project/scripts/sbt scala3-presentation-compiler/test
+        run: ./project/scripts/sbt "scala3-presentation-compiler/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   test-language-server:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -355,10 +451,12 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Test Language Server
-        run: ./project/scripts/sbt scala3-language-server/test
+        run: ./project/scripts/sbt "scala3-language-server/${{ github.event_name == 'pull_request' && 'validatePullRequest' || 'test' }}"
 
   scripted-tests:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -375,6 +473,8 @@ jobs:
 
   community_build_a:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v6
@@ -393,6 +493,8 @@ jobs:
 
   community_build_b:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v6
@@ -412,6 +514,8 @@ jobs:
 
   community_build_c:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v6
@@ -434,6 +538,8 @@ jobs:
 
   scala-library-docs:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.library == 'true'
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6

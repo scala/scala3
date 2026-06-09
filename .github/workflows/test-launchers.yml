@@ -1,6 +1,11 @@
 name: Test CLI Launchers on all the platforms
 on:
   pull_request:
+    # Doc-only PRs skip the cross-platform launcher matrix.
+    paths-ignore:
+      - 'docs/**'
+      - 'changelogs/**'
+      - '**.md'
   workflow_dispatch:
 
 jobs:
