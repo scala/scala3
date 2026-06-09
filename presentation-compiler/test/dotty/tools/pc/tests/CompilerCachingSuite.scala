@@ -1,5 +1,6 @@
 package dotty.tools.pc.tests
 
+import java.net.URI
 import java.nio.file.Paths
 import java.util.Collections
 import java.util.concurrent.CompletableFuture
@@ -16,6 +17,8 @@ import scala.meta.pc.VirtualFileParams
 import scala.meta.pc.reports.EmptyReportContext
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.pc.CachingDriver
 import dotty.tools.pc.ScalaPresentationCompiler
 import dotty.tools.pc.base.BasePCSuite
 
@@ -25,26 +28,35 @@ class CompilerCachingSuite extends BasePCSuite:
 
   val timeout = 5.seconds
 
-  private def checkCompilationCount(expected: Int): Unit =
-    presentationCompiler match
-      case pc: ScalaPresentationCompiler =>
-        val compilations = pc.compilerAccess.withNonInterruptableCompiler(-1, EmptyCancelToken) { driver =>
-          driver.compiler().currentCtx.runId
-        }(using emptyQueryContext).get(timeout.length, timeout.unit)
-        assertEquals(expected, compilations, s"Expected $expected compilations but got $compilations")
-      case _ =>
-        throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
-
-  private def getContext(): Context =
+  private def withDriver[T](f: InteractiveDriver => T): T =
     presentationCompiler match
       case pc: ScalaPresentationCompiler =>
         pc.compilerAccess.withNonInterruptableCompiler(null, EmptyCancelToken) { driver =>
-          driver.compiler().currentCtx
+          f(driver.compiler())
         }(using emptyQueryContext).get(timeout.length, timeout.unit)
       case _ =>
         throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
+  private def checkCompilationCount(expected: Int): Unit =
+    val compilations = withDriver(_.currentCtx.runId)
+    assertEquals(expected, compilations, s"Expected $expected compilations but got $compilations")
+
+  private def getContext(): Context = withDriver(_.currentCtx)
+
   private def emptyQueryContext = PcQueryContext(None, () => "")(using EmptyReportContext())
+
+  private def getCompilationUnitURIs(): Set[URI] = withDriver(_.compilationUnits.keySet.toSet)
+
+  private def assertCompilationUnits(expected: URI*): Unit =
+    val units = getCompilationUnitURIs()
+    val expectedSet = expected.toSet
+    assertEquals(
+      expectedSet.size,
+      units.size,
+      s"Expected ${expectedSet.size} compilation units but got ${units.size}: $units"
+    )
+    for uri <- expectedSet do
+      assert(units.contains(uri), s"Expected $uri to be present in compilation units but got $units")
 
   @Before
   def beforeEach: Unit =
@@ -180,3 +192,40 @@ class CompilerCachingSuite extends BasePCSuite:
 
     val res = Await.result(Future.sequence(futures), timeout).toSet
     assert(res == Set(contextBefore))
+
+  @Test
+  def `old-units-are-evicted-after-limit`: Unit =
+    for i <- 1 to 7 do
+      val params = CompilerOffsetParams(Paths.get(s"Evict$i.scala").toUri(), "def hello = ne", 13, EmptyCancelToken)
+      presentationCompiler.complete(params).get(timeout.length, timeout.unit)
+
+    assertCompilationUnits((3 to 7).map(i => Paths.get(s"Evict$i.scala").toUri())*)
+
+  @Test
+  def `modified-files-are-not-evicted`: Unit =
+    val modifiedUri = Paths.get("Modified.scala").toUri()
+    val modifiedParams = CompilerOffsetParams(modifiedUri, "def hello = ne", 13, EmptyCancelToken)
+    presentationCompiler.complete(modifiedParams).get(timeout.length, timeout.unit)
+
+    val changeParams = CompilerOffsetParams(modifiedUri, "def hello = prin", 16, EmptyCancelToken)
+    presentationCompiler.didChange(changeParams).get(timeout.length, timeout.unit)
+
+    for i <- 1 to 6 do
+      val params = CompilerOffsetParams(Paths.get(s"Other$i.scala").toUri(), "def hello = ne", 13, EmptyCancelToken)
+      presentationCompiler.complete(params).get(timeout.length, timeout.unit)
+
+    val expectedOthers = (2 to 6).map(i => Paths.get(s"Other$i.scala").toUri())
+    assertCompilationUnits((expectedOthers :+ modifiedUri)*)
+
+  @Test
+  def `didClose-removes-regardless-of-cache`: Unit =
+    val closeMeUri = Paths.get("CloseMe.scala").toUri()
+    val params = CompilerOffsetParams(closeMeUri, "def hello = ne", 13, EmptyCancelToken)
+    presentationCompiler.complete(params).get(timeout.length, timeout.unit)
+
+    val testUri = Paths.get("Test.scala").toUri()
+    assertCompilationUnits(closeMeUri, testUri)
+
+    presentationCompiler.didClose(closeMeUri)
+
+    assertCompilationUnits(testUri)
