@@ -50,7 +50,7 @@ object Versions {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimental
    */
-  // TODO: temporary downgraded to 28.9-exp-1 to allow consuming 3.9.0-RC reference compiler. Inrement to 28.10-exp-1 when 3.9.0 is released before 3.10.0-RC1
+  // TODO: temporary downgraded to 28.9-exp-1 to allow consuming 3.9.0-RC reference compiler. Increment to 28.10-exp-1 when 3.9.0 is released and before 3.10.0-RC1 is published
   val expectedTastyVersion = "28.9-experimental-1"
   checkReleasedTastyVersion()
 
