@@ -14,8 +14,6 @@ package scala
 
 import scala.language.`2.13`
 
-import scala.collection.immutable.NumericRange
-
 /** `Byte`, a 8-bit signed integer (equivalent to Java's `byte` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Byte` are not
  *  represented by an object in the underlying runtime system.
@@ -709,60 +707,5 @@ object Byte extends AnyValCompanion {
       * - `0` if `this == that`
       */
     def compare(that: Byte): Int = java.lang.Byte.compare(self, that)
-
-    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
-      *
-      * @param end The final bound of the range to make.
-      */
-    def until(end: Byte): NumericRange.Exclusive[Byte] = NumericRange(self, end, 1)
-
-    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
-      *
-      * @param end The final bound of the range to make.
-      * @param step The number to increase by for each step of the range.
-      */
-    def until(end: Byte, step: Byte): NumericRange.Exclusive[Byte] = NumericRange(self, end, step)
-
-    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
-      *
-      * @param end The final bound of the range to make.
-      */
-    def to(end: Byte): NumericRange.Inclusive[Byte] = NumericRange.inclusive(self, end, 1)
-
-    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
-      *
-      * @param end The final bound of the range to make.
-      * @param step The number to increase by for each step of the range.
-      */
-    def to(end: Byte, step: Byte): NumericRange.Inclusive[Byte] = NumericRange.inclusive(self, end, step)
-
-    // ------------------------------------
-    // For source compatibility with the previous API, when the rhs is an Int, we want an int Range
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
-      *
-      * @param end The final bound of the range to make.
-      */
-    def until(end: Int): Range = Range(self.toInt, end, 1)
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
-      *
-      * @param end The final bound of the range to make.
-      * @param step The number to increase by for each step of the range.
-      */
-    def until(end: Int, step: Int): Range = Range(self.toInt, end, step)
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
-      *
-      * @param end The final bound of the range to make.
-      */
-    def to(end: Int): Range.Inclusive = Range.inclusive(self.toInt, end, 1)
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
-      *
-      * @param end The final bound of the range to make.
-      * @param step The number to increase by for each step of the range.
-      */
-    def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(self.toInt, end, step)
   }
 }

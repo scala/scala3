@@ -740,35 +740,6 @@ object Char extends AnyValCompanion {
     def to(end: Char, step: Char): NumericRange.Inclusive[Char] = NumericRange.inclusive(self, end, step)
 
     // ------------------------------------
-    // For source compatibility with the previous API, when the rhs is an Int, we want an int Range
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
-      *
-      * @param end The final bound of the range to make.
-      */
-    def until(end: Int): Range = Range(self.toInt, end, 1)
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to but not including `end`.
-      *
-      * @param end The final bound of the range to make.
-      * @param step The number to increase by for each step of the range.
-      */
-    def until(end: Int, step: Int): Range = Range(self.toInt, end, step)
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
-      *
-      * @param end The final bound of the range to make.
-      */
-    def to(end: Int): Range.Inclusive = Range.inclusive(self.toInt, end, 1)
-
-    /** A [[scala.collection.immutable.Range]] from `this` up to and including `end`.
-      *
-      * @param end The final bound of the range to make.
-      * @param step The number to increase by for each step of the range.
-      */
-    def to(end: Int, step: Int): Range.Inclusive = Range.inclusive(self.toInt, end, step)
-
-    // ------------------------------------
     // Unicode properties
 
     def asDigit: Int                      = Character.digit(self, Character.MAX_RADIX)
