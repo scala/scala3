@@ -299,6 +299,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         Str("")
 
     homogenize(tp) match {
+      case tp @ FlexibleType(_) =>
+        super.toText(tp)
       case tp: AppliedType =>
         val refined = appliedText(tp)
         if refined.isEmpty then super.toText(tp) else refined
