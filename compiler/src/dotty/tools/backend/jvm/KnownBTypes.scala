@@ -1,14 +1,9 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.transform.Erasure
 
 import scala.tools.asm.{Handle, Opcodes}
-import dotty.tools.dotc.core.Symbols
-import BTypes.*
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.backend.ScalaPrimitivesOps.*
 
 import scala.annotation.constructorOnly
 
@@ -18,16 +13,16 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
 
   val jlThrowableRef: ClassBType = loader.classBTypeFromSymbol(defn.ThrowableClass)
 
-  protected val jliLambdaMetafactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
-  protected val jliStringConcatFactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])
-  protected val jliMethodHandlesLookupRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandlesLookupClass)
-  protected val jliMethodTypeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
-  protected val jliMethodHandleRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandleClass)
-  protected val jliCallSiteRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
-  protected val srLambdaDeserialize: ClassBType = loader.classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize])
+  private val jliLambdaMetafactoryInternalName: String = "java/lang/invoke/LambdaMetafactory"
+  private val jliStringConcatFactoryInternalName: String = "java/lang/invoke/StringConcatFactory"
+  private val jliMethodHandlesLookupRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandlesLookupClass)
+  private val jliMethodTypeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
+  private val jliMethodHandleRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandleClass)
+  private val jliCallSiteRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
+  private val srLambdaDeserializeInternalName: String = "scala/runtime/LambdaDeserialize"
   val jliLambdaDeserializeBootstrapHandle: Handle = new Handle(
     Opcodes.H_INVOKESTATIC,
-    srLambdaDeserialize.internalName,
+    srLambdaDeserializeInternalName,
     "bootstrap",
     MethodBType(
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
@@ -37,7 +32,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
   )
   val jliLambdaMetaFactoryMetafactoryHandle: Handle = new Handle(
     Opcodes.H_INVOKESTATIC,
-    jliLambdaMetafactoryRef.internalName,
+    jliLambdaMetafactoryInternalName,
     "metafactory",
     MethodBType(
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
@@ -47,7 +42,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
   )
   val jliLambdaMetaFactoryAltMetafactoryHandle: Handle = new Handle(
     Opcodes.H_INVOKESTATIC,
-    jliLambdaMetafactoryRef.internalName,
+    jliLambdaMetafactoryInternalName,
     "altMetafactory",
     MethodBType(
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
@@ -57,7 +52,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
   )
   val jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle = new Handle(
     Opcodes.H_INVOKESTATIC,
-    jliStringConcatFactoryRef.internalName,
+    jliStringConcatFactoryInternalName,
     "makeConcatWithConstants",
     MethodBType(
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
