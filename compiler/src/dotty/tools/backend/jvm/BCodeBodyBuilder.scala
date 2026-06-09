@@ -317,7 +317,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
     /* Generate code for trees that produce values, sent to a given `LoadDestination`. */
     def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination)(using Context): Unit =
-      var generatedType = expectedType
+      var generatedType: BType | Null = expectedType
       var generatedDest = LoadDestination.FallThrough
 
       lineNumber(tree)
@@ -453,7 +453,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           if (value.tag != UnitTag) (value.tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
-            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = bTypes.srNullRef
+            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = null
             case _                  => genConstant(value, l.srcPos);     generatedType = tpeTK(tree)
           }
 
@@ -497,7 +497,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         genAdaptAndSendToDest(generatedType, expectedType, dest)
     end genLoadTo
 
-    def genAdaptAndSendToDest(generatedType: BType, expectedType: BType, dest: LoadDestination)(using Context): Unit =
+    def genAdaptAndSendToDest(generatedType: BType | Null, expectedType: BType, dest: LoadDestination)(using Context): Unit =
       if generatedType != expectedType then
         adapt(generatedType, expectedType)
 
@@ -1168,8 +1168,27 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       }
     end emitLocalVarScopes
 
-    def adapt(from: BType, to: BType)(using Context): Unit = {
-      if (from.isNothing) {
+    def adapt(from: BType | Null, to: BType)(using Context): Unit = {
+      if (from == null || from.isNull) {
+        /* After loading an expression of type `scala.runtime.Null$`, introduce POP; ACONST_NULL.
+         * This is required to pass the verifier: in Scala's type system, Null conforms to any
+         * reference type. In bytecode, the type Null is represented by scala.runtime.Null$, which
+         * is not a subtype of all reference types. Example:
+         *
+         *   def nl: Null = null // in bytecode, nl has return type scala.runtime.Null$
+         *   val a: String = nl  // OK for Scala but not for the JVM, scala.runtime.Null$ does not conform to String
+         *
+         * In order to fix the above problem, the value returned by nl is dropped and ACONST_NULL is
+         * inserted instead - after all, an expression of type scala.runtime.Null$ can only be null.
+         */
+        if (lastInsn.getOpcode != asm.Opcodes.ACONST_NULL) {
+          bc.drop(bTypes.ObjectRef)
+          if (to != UNIT)
+            emit(asm.Opcodes.ACONST_NULL)
+        } else if (to == UNIT) {
+          bc.drop(bTypes.ObjectRef)
+        }
+      } else if (from.isNothing) {
         /* There are two possibilities for from being Nothing: emitting a "throw e" expressions and
          * loading a (phantom) value of type Nothing.
          *
@@ -1216,25 +1235,6 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
          */
         if (lastInsn.getOpcode != asm.Opcodes.ATHROW)
           emit(asm.Opcodes.ATHROW)
-      } else if (from.isNull) {
-        /* After loading an expression of type `scala.runtime.Null$`, introduce POP; ACONST_NULL.
-         * This is required to pass the verifier: in Scala's type system, Null conforms to any
-         * reference type. In bytecode, the type Null is represented by scala.runtime.Null$, which
-         * is not a subtype of all reference types. Example:
-         *
-         *   def nl: Null = null // in bytecode, nl has return type scala.runtime.Null$
-         *   val a: String = nl  // OK for Scala but not for the JVM, scala.runtime.Null$ does not conform to String
-         *
-         * In order to fix the above problem, the value returned by nl is dropped and ACONST_NULL is
-         * inserted instead - after all, an expression of type scala.runtime.Null$ can only be null.
-         */
-        if (lastInsn.getOpcode != asm.Opcodes.ACONST_NULL) {
-          bc.drop(from)
-          if (to != UNIT)
-            emit(asm.Opcodes.ACONST_NULL)
-        } else if (to == UNIT) {
-          bc.drop(from)
-        }
       } else if (!from.conformsTo(to)) {
         to match {
           case UNIT => bc.drop(from)

@@ -17,7 +17,6 @@ case class MethodNameAndType(name: String, methodType: MethodBType)
 class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) {
   val ObjectRef: ClassBType = loader.classBTypeFromSymbol(defn.ObjectClass)
   val StringRef: ClassBType = loader.classBTypeFromSymbol(defn.StringClass)
-  val srNullRef: ClassBType = loader.classBTypeFromSymbol(defn.RuntimeNullClass)
 
   val jlThrowableRef: ClassBType = loader.classBTypeFromSymbol(defn.ThrowableClass)
 

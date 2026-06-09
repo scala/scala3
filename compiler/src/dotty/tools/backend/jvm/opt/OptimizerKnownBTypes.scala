@@ -12,6 +12,7 @@ import scala.annotation.constructorOnly
 final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx: Context) extends KnownBTypes(ts) {
 
   val srNothingRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNothingClass)
+  val srNullRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNullClass)
 
   val boxedClasses: Set[ClassBType] = boxedClassOfPrimitive.values.toSet
 
