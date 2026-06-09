@@ -4655,7 +4655,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   // If there are none, we have to propagate the ambiguity to the caller.
                   arg :: formals1.map(dummyArg)
               case _ =>
-                arg :: inferArgsAfter(arg)
+                // When the found argument is an inline given, position it over the whole
+                // application instead of only its (synthetic) end point. This way errors
+                // raised from expanding the given (e.g. via `compiletime.error`) mark the
+                // entire expression, mirroring the position of a direct inline call. Note
+                // that a *missing* implicit argument is still reported at `tree.srcPos.endPos`
+                // below, so its position is unaffected. See i21537.
+                val arg1 =
+                  if arg.symbol.is(Inline) then arg.withSpan(tree.span) else arg
+                arg1 :: inferArgsAfter(arg1)
         end implicitArgs
 
         // Pick a failure type to propagate, if any.
