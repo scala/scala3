@@ -37,7 +37,7 @@ jobs:
             BASE="${{ github.event.pull_request.base.sha }}"
             FILES=$(git diff --name-only "$BASE" HEAD)
 
-            echo "source=$(echo "$FILES" | grep -qvE '^(docs/|changelogs/|.*\.md$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "source=$(echo "$FILES" | grep -v '^$' | grep -qvE '^(docs/|changelogs/|.*\.md$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
             echo "compiler=$(echo "$FILES" | grep -qE '^(compiler/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
             echo "library=$(echo "$FILES" | grep -qE '^(library/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
