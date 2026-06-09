@@ -198,6 +198,12 @@ object ImplicitNullInterop:
             OrNull(derivedAnnotatedType(tp, parent2a, tp.annot))
           case _ =>
             derivedAnnotatedType(tp, parent2, tp.annot)
+      case FlexibleType(_) =>
+        // A flexible type is already a fully-nullified result, so nullification must be
+        // idempotent on it: leave it unchanged. Without this case it would match the
+        // `AppliedType` case below (a flexible type is encoded as `AppliedType(FlexibleType, T)`)
+        // and get wrapped a second time, e.g. `(Array[T])?` becoming `((Array[T])?)?`.
+        tp
       case appTp @ AppliedType(tycon, targs) =>
         val savedState = state
         // If Java-defined tycon, don't nullify outer level of type args (Java classes are fully nullified)
