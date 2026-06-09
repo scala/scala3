@@ -21,8 +21,6 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
 
   val jlThrowableRef: ClassBType = loader.classBTypeFromSymbol(defn.ThrowableClass)
 
-  val srBoxesRuntimeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
-
   protected val jliLambdaMetafactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
   protected val jliStringConcatFactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])
   protected val jliMethodHandlesLookupRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandlesLookupClass)

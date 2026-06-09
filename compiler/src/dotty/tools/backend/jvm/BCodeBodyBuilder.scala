@@ -839,7 +839,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = bTypes.asmBoxTo(nativeKind)
-          bc.invokestatic(bTypes.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
+          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, mname, methodType.descriptor, itf = false, app)
           generatedType = methodType.returnType
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
@@ -847,7 +847,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           val boxType = bTypeLoader.bTypeFromType(app.tpe)
           generatedType = boxType
           val MethodNameAndType(mname, methodType) = bTypes.asmUnboxTo(boxType)
-          bc.invokestatic(bTypes.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
+          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, mname, methodType.descriptor, itf = false, app)
 
         case app @ Apply(fun, args) =>
           val sym = fun.symbol

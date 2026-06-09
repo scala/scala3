@@ -63,7 +63,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   )
 
   def isScalaBox(insn: MethodInsnNode): Boolean =
-    insn.owner == ts.srBoxesRuntimeRef.internalName && {
+    insn.owner == ClassBType.scalaRuntimeBoxesRunTimeInternalName && {
       val args = asm.Type.getArgumentTypes(insn.desc)
       args.length == 1 && (primitiveAsmTypeSortToBType.get(args(0).getSort) match
         case Some(prim) => 
@@ -75,17 +75,17 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   def getScalaBox(primitiveType: asm.Type): MethodInsnNode = {
     val bType = primitiveAsmTypeSortToBType(primitiveType.getSort)
     val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeBoxToMethods(bType)
-    new MethodInsnNode(Opcodes.INVOKESTATIC, ts.srBoxesRuntimeRef.internalName, name, methodBType.descriptor, /*itf =*/ false)
+    new MethodInsnNode(Opcodes.INVOKESTATIC, ClassBType.scalaRuntimeBoxesRunTimeInternalName, name, methodBType.descriptor, /*itf =*/ false)
   }
 
   def getScalaUnbox(primitiveType: asm.Type): MethodInsnNode = {
     val bType = primitiveAsmTypeSortToBType(primitiveType.getSort)
     val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeUnboxToMethods(bType)
-    new MethodInsnNode(Opcodes.INVOKESTATIC, ts.srBoxesRuntimeRef.internalName, name, methodBType.descriptor, /*itf =*/ false)
+    new MethodInsnNode(Opcodes.INVOKESTATIC, ClassBType.scalaRuntimeBoxesRunTimeInternalName, name, methodBType.descriptor, /*itf =*/ false)
   }
 
   def isScalaUnbox(insn: MethodInsnNode): Boolean = {
-    insn.owner == ts.srBoxesRuntimeRef.internalName && (primitiveAsmTypeSortToBType.get(asm.Type.getReturnType(insn.desc).getSort) match {
+    insn.owner == ClassBType.scalaRuntimeBoxesRunTimeInternalName && (primitiveAsmTypeSortToBType.get(asm.Type.getReturnType(insn.desc).getSort) match {
       case Some(prim) =>
         val MethodNameAndType(name, tp) = ts.srBoxesRuntimeUnboxToMethods(prim)
         name == insn.name && tp.descriptor == insn.desc

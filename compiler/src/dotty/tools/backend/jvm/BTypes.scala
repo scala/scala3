@@ -813,6 +813,7 @@ object ClassBType {
   private val runtimeNothingInternalName: String = Definitions.RuntimeNothingName.replace('.', '/')
   private val runtimeNullInternalName: String = Definitions.RuntimeNullName.replace('.', '/')
   val javaLangObjectInternalName: String = "java/lang/Object"
+  val scalaRuntimeBoxesRunTimeInternalName: String = "scala/runtime/BoxesRunTime"
 
   /**
    * Retrieve the `ClassBType` for the class with the given internal name, creating the entry if it doesn't
