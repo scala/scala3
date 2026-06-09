@@ -907,7 +907,9 @@ object SymDenotations {
      *  but it becomes nullable after erasure.
      */
     final def isNullableClassAfterErasure(using Context): Boolean =
-      isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+      // `Null` is a value class under `-Yexplicit-nulls` (it extends `AnyVal`), but
+      // `null` is still a value of it, so it must be treated as a nullable class.
+      isClass && (!isValueClass || symbol == defn.NullClass) && !is(ModuleClass) && symbol != defn.NothingClass
 
     /** Is `pre` the same as C.this, where C is exactly the owner of this symbol,
      *  or, if this symbol is protected, a subclass of the owner?
