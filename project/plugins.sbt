@@ -24,3 +24,5 @@ addSbtPlugin("com.github.sbt" % "sbt-jdi-tools" % "1.2.0")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.6")
 libraryDependencies += "com.spotify" % "missinglink-core" % "0.2.11"
+
+addSbtPlugin("com.github.sbt" % "sbt-pull-request-validator" % "2.0.0")
