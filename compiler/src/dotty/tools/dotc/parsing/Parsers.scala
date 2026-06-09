@@ -1948,7 +1948,8 @@ object Parsers {
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
-    def refinedType() = refinedTypeRest(withType())
+    def refinedType(inPatternType: Boolean = false): Tree =
+      refinedTypeRest(withType(inPatternType))
 
     /** Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
      *  if followed by `{`, `->`, or `?->`,
@@ -1987,10 +1988,19 @@ object Parsers {
     }
 
     /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
+     *
+     *  `inPatternType` indicates that this type appears in a typed pattern
+     *  position (such as `case x: A with B =>` or `case given A with B =>`).
+     *  The pattern grammar here is `PatVar ':' RefinedType` (not `InfixType`),
+     *  so `with` is accepted but `&` is not. When the `-rewrite` flag is also
+     *  set, the textual `with -> &` patch on its own would therefore produce
+     *  code that no longer parses; in that case we additionally wrap the whole
+     *  rewritten `WithType` in parentheses, turning `A with B` into `(A & B)`.
      */
-    def withType(): Tree = withTypeRest(annotType())
+    def withType(inPatternType: Boolean = false): Tree =
+      withTypeRest(annotType(), inPatternType)
 
-    def withTypeRest(t: Tree): Tree =
+    def withTypeRest(t: Tree, inPatternType: Boolean = false): Tree =
       if in.token == WITH then
         val withOffset = in.offset
         in.nextToken()
@@ -2004,7 +2014,11 @@ object Parsers {
             MigrationVersion.WithOperator)
           if MigrationVersion.WithOperator.needsPatch then
             patch(source, withSpan, "&")
-          atSpan(startOffset(t)) { makeAndType(t, withType()) }
+          val rest = withType()
+          if MigrationVersion.WithOperator.needsPatch && inPatternType then
+            patch(source, Span(t.span.start, t.span.start), "(")
+            patch(source, Span(rest.span.end, rest.span.end), ")")
+          atSpan(startOffset(t)) { makeAndType(t, rest) }
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
@@ -2399,7 +2413,7 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then rejectWildcardType(refinedType())
+      else if location.inPattern then rejectWildcardType(refinedType(inPatternType = true))
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -2711,7 +2725,7 @@ object Parsers {
      *        case x2 => "b"
      *     }
      * This issue is avoided by dropping the `InCase` region when parsing match clause,
-     * since `Indetented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
+     * since `Indented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
      * Note that this _could_ break previous code which relied on matches within guards
      * being considered as a separate region without explicit indentation.
      */
@@ -3460,7 +3474,7 @@ object Parsers {
       case GIVEN =>
         atSpan(in.offset) {
           val givenMod = atSpan(in.skipToken())(Mod.Given())
-          val typed = Typed(Ident(nme.WILDCARD), refinedType())
+          val typed = Typed(Ident(nme.WILDCARD), refinedType(inPatternType = true))
           Bind(nme.WILDCARD, typed).withMods(addMod(Modifiers(), givenMod))
         }
       case _ =>

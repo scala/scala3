@@ -38,5 +38,5 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           KEY: ${{ secrets.API-KEY }}
-        run: choco push "scala.$VERSION.nupkg" --source https://push.chocolatey.org/ --api-key "$KEY"
-        
+        shell: pwsh
+        run: choco push "scala.$env:VERSION.nupkg" --source https://push.chocolatey.org/ --api-key $env:KEY

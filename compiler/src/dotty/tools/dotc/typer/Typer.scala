@@ -311,14 +311,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        *  @param using_Context the outer context of `precCtx`
        */
       def checkImportAlternatives(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
-
-        def addAltImport(altImp: TermRef) =
-          if !TypeComparer.isSameRef(previous, altImp)
-              && !altImports.uncheckedNN.exists(TypeComparer.isSameRef(_, altImp))
-          then
-            altImports.uncheckedNN += altImp
-
         if altImports != null && ctx.isImportContext then
+          def addAltImport(altImp: TermRef) =
+            if !TypeComparer.isSameRef(previous, altImp)
+              && !altImports.exists(TypeComparer.isSameRef(_, altImp))
+            then
+              altImports += altImp
+
           val curImport = ctx.importInfo.uncheckedNN
           namedImportRef(curImport) match
             case altImp: TermRef =>
@@ -558,12 +557,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if (curImport.nn.unimported ne NoSymbol) unimported += curImport.nn.unimported
             if (curOwner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
-            else if (isPossibleImport(NamedImport) && (curImport ne outer.importInfo)) {
-              val namedImp = namedImportRef(curImport.uncheckedNN)
+            else if (isPossibleImport(NamedImport) && curImport != null && (curImport ne outer.importInfo)) {
+              val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 checkImportAlternatives(namedImp, NamedImport, ctx)(using outer)
-              else if (isPossibleImport(WildImport) && !curImport.nn.importSym.isCompleting) {
-                val wildImp = wildImportRef(curImport.uncheckedNN)
+              else if (isPossibleImport(WildImport) && !curImport.importSym.isCompleting) {
+                val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
                   checkImportAlternatives(wildImp, WildImport, ctx)(using outer)
                 else {

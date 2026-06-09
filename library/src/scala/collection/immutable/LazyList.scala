@@ -287,7 +287,7 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
     if (lazyState eq EmptyMarker) null else Uninitialized
 
   // when `_head eq Uninitialized`
-  //   - `lazySate: () => LazyList[A]`
+  //   - `lazyState: () => LazyList[A]`
   //   - MidEvaluation while evaluating lazyState
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list

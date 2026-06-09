@@ -888,22 +888,23 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         i += 1
     }
 
-  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = uninitialized
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = null
 
   /** The uninstantiated typevars of this constraint */
-  def uninstVars: collection.Seq[TypeVar] = {
-    if (myUninstVars == null || myUninstVars.uncheckedNN.exists(_.isPermanentlyInstantiated)) {
-      myUninstVars = new mutable.ArrayBuffer[TypeVar]
-      boundsMap.foreachBinding { (poly, entries) =>
-        for (i <- 0 until paramCount(entries))
-          typeVar(entries, i) match {
-            case tv: TypeVar if !tv.isPermanentlyInstantiated && isBounds(entries(i)) => myUninstVars.uncheckedNN += tv
-            case _ =>
-          }
-      }
-    }
-    myUninstVars.uncheckedNN
-  }
+  def uninstVars: collection.Seq[TypeVar] =
+    myUninstVars match
+      case uv: mutable.ArrayBuffer[TypeVar] if !uv.exists(_.isPermanentlyInstantiated) => uv
+      case _ =>
+        val res = new mutable.ArrayBuffer[TypeVar]
+        myUninstVars = res
+        boundsMap.foreachBinding { (poly, entries) =>
+          for (i <- 0 until paramCount(entries))
+            typeVar(entries, i) match {
+              case tv: TypeVar if !tv.isPermanentlyInstantiated && isBounds(entries(i)) => res += tv
+              case _ =>
+            }
+        }
+        res
 
 // ---------- Checking -----------------------------------------------
 

@@ -11,7 +11,7 @@ import org.jsoup.nodes.Document
 import java.nio.charset.Charset
 import dotty.tools.scaladoc.test.BuildInfo
 
-class SiteGeneratationTest extends BaseHtmlTest:
+class SiteGenerationTest extends BaseHtmlTest:
 
   def indexLinks(content: DocumentContext) =
     content.assertAttr("p a","href", "_docs/index.html")

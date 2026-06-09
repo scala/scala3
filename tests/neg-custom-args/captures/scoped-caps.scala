@@ -12,12 +12,12 @@ def test(io: Object^): Unit =
   val _: A^ -> B^ = f // error
   val _: A^ -> B^{fresh} = f // ok
   val _: A^ -> B^ = g
-  val _: A^ -> B^ = x => g(x)      // was error: g is no longer pure, since it contains the ^ of B
+  val _: A^ -> B^ = x => g(x)      // was error: g is no longer pure, since it contains the ^ of B, but now RHS it is pure since RHS is pure by APPLY via g
   val _: (x: A^) -> B^{fresh} = x => f(x) // now OK, was error: existential in B cannot subsume `x` since `x` is not shared
 
   val h: S -> B^ = ???
   val _: (x: S) -> B^{fresh} = h          // error: direct conversion fails
-  val _: (x: S) -> B^{fresh} = (x: S) => h(x)  // eta expansion is ok
+  val _: (x: S) -> B^{fresh} = (x: S) => h(x)  // sep error: eta expansion also fails since `h` is non-local
 
   val h2: S -> S = ???
   val _: (x: S) -> S^{fresh} = h2               // direct conversion OK for shared S

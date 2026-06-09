@@ -58,14 +58,9 @@ class ImportInfo(symf: Context ?=> Symbol,
     case _                  => None
   }
 
-  def importSym(using Context): Symbol = {
-    if (mySym == null) {
-      mySym = symf
-      assert(mySym != null)
-    }
-    mySym.uncheckedNN
-  }
-  private var mySym: Symbol | Null = uninitialized
+  private var mySym: Symbol | Null = null
+  def importSym(using Context): Symbol =
+    initialize(mySym, mySym = _, symf)
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(using Context): Type = importSym.info match {
@@ -99,8 +94,8 @@ class ImportInfo(symf: Context ?=> Symbol,
   /** Compute info relating to the selector list */
   private def ensureInitialized(): Unit = if myExcluded == null then
     myExcluded = Set()
-    myForwardMapping = SimpleIdentityMap.empty
-    myReverseMapping = SimpleIdentityMap.empty
+    var forwardMapping: SimpleIdentityMap[TermName, TermName] = SimpleIdentityMap.empty
+    var reverseMapping: SimpleIdentityMap[TermName, TermName] = SimpleIdentityMap.empty
     for sel <- selectors do
       if sel.isWildcard then
         myWildcardImport = true
@@ -109,8 +104,10 @@ class ImportInfo(symf: Context ?=> Symbol,
         if sel.rename != sel.name then
           myExcluded = myExcluded.nn + sel.name
         if !sel.isUnimport then
-          myForwardMapping = myForwardMapping.uncheckedNN.updated(sel.name, sel.rename)
-          myReverseMapping = myReverseMapping.uncheckedNN.updated(sel.rename, sel.name)
+          forwardMapping = forwardMapping.updated(sel.name, sel.rename)
+          reverseMapping = reverseMapping.updated(sel.rename, sel.name)
+    myForwardMapping = forwardMapping
+    myReverseMapping = reverseMapping
 
   /** The upper bound for `given` wildcards, or `Nothing` if there are none */
   def givenBound(using Context) =
@@ -166,20 +163,18 @@ class ImportInfo(symf: Context ?=> Symbol,
    *      override import java.lang.{}                                   // disables all imports
    */
   def unimported(using Context): Symbol =
-    if myUnimported == null then
+    initialize(myUnimported, myUnimported = _, {
       lazy val sym = site.termSymbol
       def maybeShadowsRoot = symNameOpt match
         case Some(symName) => defn.ShadowableImportNames.contains(symName)
         case None => false
-      myUnimported =
-        if maybeShadowsRoot && defn.rootImportTypes.exists(_.symbol == sym) then sym
-        else NoSymbol
-      assert(myUnimported != null)
-    myUnimported.uncheckedNN
+      if maybeShadowsRoot && defn.rootImportTypes.exists(_.symbol == sym) then sym
+      else NoSymbol
+    })
 
   private val isLanguageImport: Boolean = untpd.languageImport(qualifier).isDefined
 
-  private var myUnimported: Symbol | Null = uninitialized
+  private var myUnimported: Symbol | Null = null
 
   private var featureCache: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
 

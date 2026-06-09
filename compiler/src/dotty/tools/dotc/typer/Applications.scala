@@ -1156,8 +1156,9 @@ trait Applications extends Compatibility {
 
     override def liftFun(): Unit =
       if (liftedDefs == null) {
-        liftedDefs = new mutable.ListBuffer[Tree]
-        myNormalizedFun = lifter.liftApp(liftedDefs.uncheckedNN, myNormalizedFun)
+        val lds = new mutable.ListBuffer[Tree]
+        liftedDefs = lds
+        myNormalizedFun = lifter.liftApp(lds, myNormalizedFun)
       }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
