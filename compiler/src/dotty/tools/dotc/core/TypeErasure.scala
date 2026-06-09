@@ -1024,17 +1024,22 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     // constructor method should not be semi-erased.
     if semiEraseVCs && isConstructor && !tp.isInstanceOf[MethodOrPoly] then
       erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName).eraseResult(tp)
-    else tp match
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        if (tp.isRef(defn.UnitClass)) defn.UnitType
-        else apply(tp)
-      case tp: AppliedType =>
-        val sym = tp.tycon.typeSymbol
-        if (sym.isClass && !erasureDependsOnArgs(sym)) eraseResult(tp.tycon)
-        else apply(tp)
-      case _ =>
-        apply(tp)
+    else if tp =:= defn.UnitType then
+      // This should always be UnitType. However, there is one exception: if we
+      // are computing the erasure of a Scala 2 symbol whose result type is a
+      // Scala.js pseudo-union type, we must preserve the pseudo-union.
+      // Typical example: js.undefined, which returns a `Unit | Nothing`.
+      if ctx.settings.scalajs.value && isSymbol && sourceLanguage.isScala2 then
+        apply(tp) match {
+          case erased if erased.isRef(JSDefinitions.jsdefn.PseudoUnionClass) =>
+            erased
+          case _ =>
+            defn.UnitType
+        }
+      else
+        defn.UnitType
+    else
+      apply(tp)
 
   /** The name of the type as it is used in `Signature`s.
    *
