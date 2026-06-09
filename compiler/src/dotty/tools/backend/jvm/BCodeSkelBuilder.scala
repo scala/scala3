@@ -334,7 +334,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val flags = BCodeUtils.javaFlags(claszSymbol)
 
-      val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner, null)
+      val thisSignature = getGenericSignature(claszSymbol, null)
       val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
                                               else BCodeUtils.checkConstantStringLength(thisName)
       if !lengthOk then
@@ -390,7 +390,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     private def addClassField(f: Symbol)(using Context): Unit = {
       val descriptor = symInfoTK(f).descriptor
-      val javagensig = getGenericSignature(f, claszSymbol, descriptor)
+      val javagensig = getGenericSignature(f, descriptor)
       val flags = javaFieldFlags(f)
 
       assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
@@ -709,7 +709,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
 
       val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
-      val jgensig = getGenericSignature(methSymbol, claszSymbol, mdesc)
+      val jgensig = getGenericSignature(methSymbol, mdesc)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(excs)
 

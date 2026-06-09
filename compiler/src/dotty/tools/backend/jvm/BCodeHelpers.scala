@@ -325,13 +325,12 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
      * Generates the generic signature for `sym` before erasure.
      *
      * @param sym   The symbol for which to generate a signature.
-     * @param owner The owner of `sym`.
      * @param descriptor The descriptor of the symbol; the signature is unnecessary if they are equal.
      * @return The generic signature of `sym` before erasure, as specified in the Java Virtual
      *         Machine Specification, §4.3.4, or `null` if `sym` doesn't need a generic signature.
      * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
      */
-    def getGenericSignature(sym: Symbol, owner: Symbol, descriptor: String | Null)(using Context): String | Null = {
+    def getGenericSignature(sym: Symbol, descriptor: String | Null)(using Context): String | Null = {
       atPhase(erasurePhase) {
         // Finding the member's type is nontrivial because of erasure and how it interacts with other phases.
         def computeMemberType(): Type = {
@@ -361,12 +360,12 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
                 case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
                 case _ => ()
 
-          owner.denot.thisType.memberInfo(sym)
+          sym.owner.denot.thisType.memberInfo(sym)
         }
 
         if ctx.base.settings.XnoGenericSig.value then null
         else
-          val genSig = getGenericSignatureHelper(sym, owner, computeMemberType())
+          val genSig = getGenericSignatureHelper(sym, computeMemberType())
           if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
           else genSig.toString
       }
@@ -593,7 +592,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
   } // end of class JMirrorBuilder
 
-  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
+  private def getGenericSignatureHelper(sym: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
     val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
     if (erasedTypeSym.isPrimitiveValueClass) {
       // Suppress signatures for symbols whose types erase in the end to primitive
@@ -645,7 +644,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
       val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
       if (erasedMemberType =:= sym.denot.info)
-        val gensig = getGenericSignatureHelper(sym, moduleClass, memberTpe)
+        val gensig = getGenericSignatureHelper(sym, memberTpe)
         if gensig == null || (descriptor != null && descriptor.contentEquals(gensig)) then null
         else gensig.toString
       else null
