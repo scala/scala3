@@ -18,15 +18,10 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
   val ObjectRef: ClassBType = loader.classBTypeFromSymbol(defn.ObjectClass)
   val StringRef: ClassBType = loader.classBTypeFromSymbol(defn.StringClass)
   val srNullRef: ClassBType = loader.classBTypeFromSymbol(defn.RuntimeNullClass)
-  val jlClassRef: ClassBType = loader.classBTypeFromSymbol(defn.ClassClass)
 
   val jlThrowableRef: ClassBType = loader.classBTypeFromSymbol(defn.ThrowableClass)
-  val jlClassCastExceptionRef: ClassBType = loader.classBTypeFromSymbol(defn.ClassCastExceptionClass)
-  val jlIllegalArgExceptionRef: ClassBType = loader.classBTypeFromSymbol(defn.IllegalArgumentExceptionClass)
 
   val srBoxesRuntimeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
-
-  val jliSerializedLambdaRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
 
   protected val jliLambdaMetafactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
   protected val jliStringConcatFactoryRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.StringConcatFactory])

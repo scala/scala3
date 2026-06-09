@@ -139,7 +139,6 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
     indyLambdaBodyMethods.toArray
   }
 
-  private val serializedLamdaObjDesc = MethodBType(bTypes.jliSerializedLambdaRef :: Nil, bTypes.ObjectRef).descriptor
   /*
   * Add:
   *
@@ -176,11 +175,11 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
     // `classBTypeFromInternalNameMap`. When writing the classfile, the asm ClassWriter computes
     // stack map frames and invokes the `getCommonSuperClass` method. This method expects all
     // ClassBTypes mentioned in the source code to exist in the map.
-
-    val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serializedLamdaObjDesc, null, null)
+    val serializedLambdaObjDesc = s"(Ljava/lang/invoke/SerializedLambda;)L${ClassBType.javaLangObjectInternalName};"
+    val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serializedLambdaObjDesc, null, null)
     def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
       mv.visitVarInsn(ALOAD, 0)
-      mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLamdaObjDesc, bTypes.jliLambdaDeserializeBootstrapHandle, targetMethods*)
+      mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLambdaObjDesc, bTypes.jliLambdaDeserializeBootstrapHandle, targetMethods*)
     }
 
     val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See MAX_MH_ARITY in CallSite.java
@@ -193,7 +192,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
     def nextLabel(i: Int) = if (i == numGroups - 2) terminalLabel else initialLabels(i + 1)
 
     for ((label, i) <- initialLabels.iterator.zipWithIndex) {
-      mv.visitTryCatchBlock(label, nextLabel(i), nextLabel(i), bTypes.jlIllegalArgExceptionRef.internalName)
+      mv.visitTryCatchBlock(label, nextLabel(i), nextLabel(i), "java/lang/IllegalArgumentException")
     }
     for ((label, i) <- initialLabels.iterator.zipWithIndex) {
       mv.visitLabel(label)
