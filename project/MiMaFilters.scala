@@ -19,6 +19,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.language.safeNulls"),
         ProblemFilters.exclude[MissingClassProblem]("scala.language$safeNulls$"),
+        // new feature: CanEqual support for NamedTuple
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

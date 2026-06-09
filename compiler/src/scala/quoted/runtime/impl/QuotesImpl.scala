@@ -2096,8 +2096,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AppliedTypeTypeTest extends TypeTest[TypeRepr, AppliedType]:
       def unapply(x: TypeRepr): Option[AppliedType & x.type] = x match
-        case tpe: (Types.AppliedType & x.type)
-        if !tpe.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) && !Types.FlexibleType.isInstance(tpe) => Some(tpe)
+        case tpe: (Types.AppliedType & x.type) if !tpe.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) => Some(tpe)
         case _ => None
     end AppliedTypeTypeTest
 
