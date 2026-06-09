@@ -35,17 +35,18 @@ class SpecializeInlineTraits extends MiniPhase {
 
   override def changesParents: Boolean = true
 
-  override def prepareForUnit(tree: Tree)(using Context): Context = 
-    ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits))    
+  private def inlineTraitCtx(using Context): Context = ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits))    
 
   private val seen = mutable.HashSet[Symbol]() 
 
   private def inlineInlineTraitsIfNew(tree: Tree)(using Context) = 
     if !seen.contains(tree.symbol) then
       seen.add(tree.symbol)
-      Inlines.inlineParentInlineTraits(tree)
+      Inlines.inlineParentInlineTraits(tree)(using inlineTraitCtx)
     else
       tree
+
+  private def shouldInline(tree: Tree)(using Context) = Inlines.needsInlining(tree)(using inlineTraitCtx)
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     new TreeMapWithPreciseStatContexts { // We need to inline recursively because inlining may create further opportunities for inlining. 
@@ -55,9 +56,9 @@ class SpecializeInlineTraits extends MiniPhase {
         tree match {
         case tree: TypeDef if tree.symbol.isInlineTrait =>
           val tree1 = Inlines.checkAndTransformInlineTrait(tree)
-          val tree2 = if Inlines.needsInlining(tree1) then inlineInlineTraitsIfNew(tree1) else tree1
+          val tree2 = if shouldInline(tree1) then inlineInlineTraitsIfNew(tree1) else tree1
           super.transform(tree2) // We may need to inline inline traits into the bodies of methods defined inside inline traits.
-        case tree: TypeDef if Inlines.needsInlining(tree) =>
+        case tree: TypeDef if shouldInline(tree) =>
           if tree.symbol.isAllOf(Trait, butNot = Inline) then
             val problemParents = tree.symbol.info.parents.filter(
               p => p.classSymbol.isInlineTrait 

@@ -248,8 +248,8 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
             case Block(stats, expr) => Block(stats, flattenTree(expr)) 
             case t => t // if inlining failed due to max inlines reached
           }
+          val inlinedTree = Inlines.inlineCall(tree)(using specializedTraitCtx)
 
-          val inlinedTree = Inlines.inlineCall(tree)
           super.transform(flattenTree(inlinedTree))
         case tree => super.transform(tree)
       }
@@ -266,7 +266,8 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     val generatedTraitStats1 = generatedTraitStats.map {
       case tree: TypeDef =>
         assert(tree.symbol.isInlineTrait)
-        val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree)).asInstanceOf[TypeDef]
+        val ctx = specializedTraitCtx
+        val inlined = Inlines.inlineParentInlineTraits(Inlines.checkAndTransformInlineTrait(tree)(using specializedTraitCtx))(using specializedTraitCtx).asInstanceOf[TypeDef]
         
         // Inlined body may contain references to inline traits that need to be inlined as well
         // See tests/neg/specialized-trait-inlining-causes-implementation-required-loop-bad-manual.scala
@@ -278,7 +279,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
 
     val generatedClassStats1 = generatedClassStats.map {
       case tree: TypeDef =>
-        val inlined = Inlines.inlineParentInlineTraits(tree).asInstanceOf[TypeDef]
+        val inlined = Inlines.inlineParentInlineTraits(tree)(using specializedTraitCtx).asInstanceOf[TypeDef]
         transformFollowing(inlined)(using ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits)))
     }
 
@@ -336,8 +337,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
       case _ =>
     }
 
-  override def prepareForUnit(tree: Tree)(using Context): Context = 
-    ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.SpecializedTraits))
+  private def specializedTraitCtx(using Context): Context = ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.SpecializedTraits))
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
       tree match { // TODO: Is Package level processing really what we want? Given we are going to output the classes somewhere else do we not really want either to deepFold the whole tree directly or do a more direct transform?
