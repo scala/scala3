@@ -57,7 +57,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     maxErrorLevel = -1
     errorNotes = Nil
-    undoLog.clear()
+    // The undo log is only ever written to during capture checking (via `logUndoAction`);
+    // on most compiles it stays permanently empty, so skip the non-trivial
+    // `clear()` (mutationCount write + Arrays.fill) when there is nothing to clear.
+    if undoLog.length != 0 then undoLog.clear()
     frozenConstraint = false
     lastBottomTp = null
     lastBottomConstraint = null
