@@ -39,6 +39,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   override def relaxedTypingInGroup: Boolean = true
     // Because it adds additional parameters to some constructors
 
+  override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isConstructor
+
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
     if (sym.isConstructor && (
          sym == defn.JavaEnumClass.primaryConstructor ||

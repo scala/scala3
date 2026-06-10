@@ -39,7 +39,10 @@ object DenotTransformers {
 
     def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
       val sym = ref.symbol
-      if (sym.exists && !infoMayChange(sym)) ref
+      // Test `infoMayChange` first: it is a pure predicate on the symbol's own
+      // fields, whereas `sym.exists` can force an off-period denotation recompute,
+      // which is wasted whenever `infoMayChange(sym)` is true.
+      if (!infoMayChange(sym) && sym.exists) ref
       else {
         val info1 = transformInfo(ref.info, ref.symbol)
         if (info1 eq ref.info) ref
