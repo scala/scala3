@@ -2504,6 +2504,21 @@ object Types extends TypeUtils {
           else computeSymbol
         case _ => computeSymbol
 
+    /** Returns `lastDenotation.symbol` if there is a cached denotation valid for the
+     *  current period, otherwise `null`. Uses the SAME `validFor.contains(ctx.period)`
+     *  gate as `NamedType.denot`, so the fast-path hit rate matches `denot`'s -- which
+     *  is looser than the strict `checkedPeriod == ctx.period` gate used by `symbol`.
+     *  Returning `null` lets callers fall back to `denot.symbol` without allocating
+     *  an Option. Used to short-circuit `Tree.symbol` reads on hot typed-arm callers
+     *  (e.g. `Select.symbol`) where the cached denotation is virtually always valid.
+     */
+    final def cachedSymbolOrNull(using Context): Symbol | Null =
+      val lastd = lastDenotation
+      if lastd != null && checkedPeriod != Nowhere && lastd.validFor.contains(ctx.period) then
+        lastd.symbol: Symbol | Null
+      else
+        null
+
     private def computeSymbol(using Context): Symbol =
       val result = designator match
         case sym: Symbol =>
