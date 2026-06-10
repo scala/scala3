@@ -94,6 +94,21 @@ object Symbols extends SymUtils {
     private var lastDenot: SymDenotation = uninitialized
     private var checkedPeriod: Period = Nowhere
 
+    /** A cache for `SourceLanguage(this)`, which is stable for a whole run:
+     *  the language a symbol was defined in does not change between phases
+     *  (see the comment in `SourceLanguage.apply`). Keyed by run id since the
+     *  symbol can be re-completed with different flags in a later run.
+     */
+    private var mySourceLanguage: SourceLanguage | Null = null
+    private var mySourceLanguageRunId: RunId = NoRunId
+
+    private[core] final def cachedSourceLanguage(runId: RunId): SourceLanguage | Null =
+      if mySourceLanguageRunId == runId then mySourceLanguage else null
+
+    private[core] final def setCachedSourceLanguage(language: SourceLanguage, runId: RunId): Unit =
+      mySourceLanguage = language
+      mySourceLanguageRunId = runId
+
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
 
     /** Set the denotation of this symbol
