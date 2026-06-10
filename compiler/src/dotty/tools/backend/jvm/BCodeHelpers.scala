@@ -322,7 +322,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     }
   end BCAnnotGen
 
-  trait BCForwardersGen {
+  object BCForwardersGen:
 
     /* Add a forwarder for method m. Used only from addForwarders().
      *
@@ -460,7 +460,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       for (case ThrownException(exc) <- excs.distinct)
       yield bTypeLoader.classBTypeFromSymbol(TypeErasure.erasure(exc).classSymbol).internalName
     }
-  } // end of trait BCForwardersGen
+  end BCForwardersGen
 
   trait BCClassGen {
 
@@ -486,12 +486,8 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     }
   } // end of trait BCClassGen
 
-  /* functionality for building plain and mirror classes */
-  abstract class JCommonBuilder
-    extends BCForwardersGen { }
-
   /* builder of mirror classes */
-  class JMirrorBuilder extends JCommonBuilder {
+  class JMirrorBuilder {
     private val EMPTY_STRING_ARRAY = Array.empty[String]
 
     /* Generate a mirror class for a top-level module. A mirror class is a class
@@ -529,7 +525,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       mirrorClass.visitAttribute(if (ssa.isDefined) BCPickles.pickleMarkerLocal else BCPickles.pickleMarkerForeign)
       BCAnnotGen.emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
-      addForwarders(mirrorClass, mirrorName, moduleClass)
+      BCForwardersGen.addForwarders(mirrorClass, mirrorName, moduleClass)
       mirrorClass.visitEnd()
 
       moduleClass.name // this side effect is necessary, really.
