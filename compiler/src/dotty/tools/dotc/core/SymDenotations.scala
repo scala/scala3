@@ -2487,7 +2487,12 @@ object SymDenotations {
         info match
           case cinfo: ClassInfo if parentClassDenots(cinfo) != null =>
             val bases = baseClasses
-            if bases.isEmpty || (bases.head ne classSymbol) then null
+            // `!baseDataCache.isComputed` detects a provisional linearization:
+            // during typer a base class can still be completing, in which case
+            // `computeBaseData` signals provisionality (transitively) and the
+            // base list may silently be missing bases. Scanning it would prove
+            // false absences, so we bail to the recursive path instead.
+            if bases.isEmpty || (bases.head ne classSymbol) || !baseDataCache.isComputed then null
             else
               val excludedInherited = excluded | Private
               var denots: PreDenotation = NoDenotation
@@ -2502,7 +2507,11 @@ object SymDenotations {
                       if filtered.exists then
                         if denots.exists then ok = false
                         else
-                          val inherited = filtered.mapInherited(NoDenotation, NoDenotation, thisType)
+                          // `mapInherited(NoDenotation, NoDenotation, thisType)`
+                          // reduces to `asSeenFrom(thisType)`: with empty
+                          // prevDenots the containsSym check is always false and
+                          // with empty ownDenots filterDisjoint is the identity.
+                          val inherited = filtered.asSeenFrom(thisType)
                           if inherited.exists then denots = inherited
                   case _ =>
                     ok = false
@@ -2537,18 +2546,27 @@ object SymDenotations {
           case _ =>
             collect(ownDenots, info.parents)
       if name.isConstructorName then ownDenots
-      else if ctx.isAfterTyper && !ownDenots.exists && !is(PackageClass) && !is(Package) then
+      else if !ownDenots.exists && !is(PackageClass) && !is(Package) then
         // The linearized fast path reads base classes' `info.decls` directly.
         // During lazy TASTy completion (e.g. doc generation) this can force a
         // still-completing base and turn a normally-provisional cyclic
         // dependency into a fatal CyclicReference. The fast path is a pure
         // optimization, so on a cycle we fall back to the provisional-safe
         // `collectFromInfo`; a genuine cyclic error is re-thrown by that path.
+        // During typer, a still-completing base can also yield a provisional
+        // (possibly incomplete) linearization without throwing; that case is
+        // detected via `baseDataCache.isComputed` inside the fast path, which
+        // then likewise bails to `collectFromInfo`.
         val fast =
           try collectLinearizedNoOwn()
           catch case _: CyclicReference => null
         fast match
-          case denots: PreDenotation => denots
+          case denots: PreDenotation =>
+            if Config.checkCacheMembersNamed then
+              val denots1 = collectFromInfo()
+              assert(denots.exists == denots1.exists,
+                s"linearized/recursive inconsistency: linearized: $denots, recursive: $denots1, name = $name, owner = $this")
+            denots
           case null => collectFromInfo()
       else collectFromInfo()
 
@@ -3354,12 +3372,21 @@ object SymDenotations {
     def apply(clsd: ClassDenotation)
              (implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet)
     def signalProvisional(): Unit
+
+    /** Does this cache hold a fully computed, non-provisional result?
+     *  Provisional results (a base class was still completing when the base
+     *  data was computed, so the linearization may be missing bases) are
+     *  never stored in the cache, so this is false right after a provisional
+     *  compute and true right after a complete one.
+     */
+    def isComputed: Boolean
   }
 
   object BaseData {
     implicit val None: BaseData = new InvalidCache with BaseData {
       def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context) = ???
       def signalProvisional() = ()
+      def isComputed = false
     }
     def newCache()(using Context): BaseData = new BaseDataImpl(ctx.period)
   }
@@ -3457,6 +3484,8 @@ object SymDenotations {
       }
 
     def signalProvisional() = provisional = true
+
+    def isComputed = cache != null
 
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {
