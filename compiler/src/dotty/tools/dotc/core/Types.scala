@@ -4798,8 +4798,32 @@ object Types extends TypeUtils {
       && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
       && (tycon match
             case lam: HKTypeLambda if lam.resType.isInstanceOf[MatchType] =>
-              unsoundMatchAliasWildcardArgs(lam, args)
+              unsoundMatchAliasWildcardArgs(lam)
             case _ => true)
+
+    /** Is this application of the match alias eta-expanded to `lam` an unsound
+     *  wildcard application? This is the case if a wildcard argument (a
+     *  `TypeBounds`) corresponds to a parameter that occurs outside the match
+     *  scrutinee: in the declared bound, or in a case pattern or body. Only
+     *  consulted for applications that `appliedTo` could not reduce away.
+     *  Implements clause 4.2 of the spec section "Applications to Wildcard
+     *  Arguments" (clause 4.1 is the reduction that already failed).
+     *  See issue #21013.
+     */
+    private def unsoundMatchAliasWildcardArgs(lam: HKTypeLambda)(using Context): Boolean =
+      lam.resType match
+        case mt: MatchType =>
+          val collector = new TypeAccumulator[Set[Int]]:
+            def apply(acc: Set[Int], tp: Type): Set[Int] = tp match
+              case tp: TypeParamRef if tp.binder eq lam => acc + tp.paramNum
+              case _ => foldOver(acc, tp)
+          val inBound = collector(Set.empty, mt.bound)
+          val unsafe = mt.cases.foldLeft(inBound)(collector(_, _))
+          unsafe.nonEmpty && args.iterator.zipWithIndex.exists {
+            case (_: TypeBounds, i) => unsafe.contains(i)
+            case _ => false
+          }
+        case _ => false
 
     def tryCompiletimeConstantFold(using Context): Type =
       if myEvalRunId == ctx.runId then myEvalued
@@ -7309,33 +7333,4 @@ object Types extends TypeUtils {
   private val keepIfRefining: AnnotatedType => Context ?=> Boolean = _.isRefining
 
   val isBounds: Type => Boolean = _.isInstanceOf[TypeBounds]
-
-  /** Does applying `lam` (the HKTypeLambda body of a match alias) to `args`
-   *  yield an unsound wildcard application? Returns true iff `lam.resType` is a
-   *  `MatchType` and some wildcard argument (a `TypeBounds`) corresponds to a
-   *  lambda parameter that occurs anywhere other than the scrutinee -- in a
-   *  case pattern, a case body, or the declared upper bound.
-   *
-   *  Consulted only for applications that `appliedTo` could not reduce away;
-   *  an application that reduces without its wildcard arguments taking part is
-   *  accepted there and never reaches this check. A surviving application is
-   *  sound only if its wildcarded parameters occur solely in the scrutinee,
-   *  where a wildcard merely leaves the match stuck. Elsewhere it would take
-   *  part in reduction, which may equate types that need not be equal; see
-   *  issue #21013, and compare the classic `type U[X] = (X, X); type V = U[?]`
-   *  unsoundness.
-   */
-  def unsoundMatchAliasWildcardArgs(lam: HKTypeLambda, args: List[Type])(using Context): Boolean =
-    lam.resType match
-      case mt: MatchType =>
-        val collector = new TypeAccumulator[Set[Int]]:
-          def apply(acc: Set[Int], tp: Type): Set[Int] = tp match
-            case tp: TypeParamRef if tp.binder eq lam => acc + tp.paramNum
-            case _ => foldOver(acc, tp)
-        val unsafe = mt.cases.foldLeft(collector(Set.empty, mt.bound))(collector(_, _))
-        unsafe.nonEmpty && args.iterator.zipWithIndex.exists {
-          case (_: TypeBounds, i) => unsafe.contains(i)
-          case _ => false
-        }
-      case _ => false
 }
