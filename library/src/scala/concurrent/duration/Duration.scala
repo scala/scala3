@@ -516,13 +516,11 @@ sealed abstract class Duration extends Serializable with Ordered[Duration] {
   /** Returns the smaller of this and that duration as determined by the natural ordering.
    *
    *  @param other the duration to compare with
-   *  @return the smaller of `this` and `other`
    */
   def min(other: Duration): Duration = if (this < other) this else other
   /** Returns the larger of this and that duration as determined by the natural ordering.
    *
    *  @param other the duration to compare with
-   *  @return the larger of `this` and `other`
    */
   def max(other: Duration): Duration = if (this > other) this else other
 
@@ -708,7 +706,6 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
   /** Returns the quotient of this duration and the given integer factor.
    *
    *  @param divisor the integer value to divide by
-   *  @return this duration divided by the given divisor
    *  @throws java.lang.ArithmeticException if the factor is 0
    */
   def /(divisor: Long): FiniteDuration = fromNanos(toNanos / divisor)
@@ -743,7 +740,6 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
   /** Returns the quotient of this duration and the given integer factor.
    *
    *  @param divisor the integer value to divide by
-   *  @return this duration divided by the given divisor
    *  @throws java.lang.ArithmeticException if the factor is 0
    */
   def div(divisor: Long): FiniteDuration = this / divisor
@@ -751,7 +747,6 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
   /** Returns the product of this duration and the given integer factor.
    *
    *  @param factor the integer value to multiply by
-   *  @return this duration scaled by the given factor
    *  @throws IllegalArgumentException if the result would overflow the range of FiniteDuration
    */
   def mul(factor: Long): FiniteDuration  = this * factor
