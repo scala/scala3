@@ -267,7 +267,6 @@ private[collection] object RedBlackTree {
    *  @param tree the red-black tree to search
    *  @param x the inclusive lower bound key to search for
    *  @param ordering the ordering used to compare keys
-   *  @return the node with the smallest key greater than or equal to `x`, or `null` if no such node exists
    */
   def minAfter[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
@@ -285,7 +284,6 @@ private[collection] object RedBlackTree {
    *  @param tree the red-black tree to search
    *  @param x the exclusive upper bound key
    *  @param ordering the ordering used to compare keys
-   *  @return the node with the largest key strictly less than `x`, or `null` if no such node exists
    */
   def maxBefore[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)

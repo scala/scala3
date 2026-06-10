@@ -2208,7 +2208,6 @@ private final class MapNodeRemoveAllSetNodeIterator[K](rootSetNode: SetNode[K]) 
    *
    *  @tparam V the value type of the map node
    *  @param rootMapNode the root node of the map from which keys will be removed
-   *  @return the root node of a map with every key from `rootSetNode` removed from `rootMapNode`
    */
   def removeAll[V](rootMapNode: BitmapIndexedMapNode[K, V]): BitmapIndexedMapNode[K, V] = {
     var curr = rootMapNode
