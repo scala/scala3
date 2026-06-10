@@ -430,7 +430,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private var lastEmittedLineNr  = -1
 
     object bc extends JCodeMethodN {
-      override def jmethod = PlainSkelBuilder.this.mnode
+      override protected def jmethod = PlainSkelBuilder.this.mnode
     }
 
     /* ---------------- Part 1 of program points, ie Labels in the ASM world ---------------- */
