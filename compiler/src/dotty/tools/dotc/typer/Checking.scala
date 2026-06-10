@@ -131,13 +131,8 @@ object Checking {
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
         if tp.isUnreducibleWild then
-          val msg = tycon match
-            case lam: HKTypeLambda if lam.resType.isInstanceOf[MatchType] =>
-              UnsoundMatchTypeWildcardApplication(tycon)
-            case _ =>
-              UnreducibleApplication(tycon)
           report.errorOrMigrationWarning(
-            showInferred(msg, tp, tpt),
+            showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos, MigrationVersion.Scala2to3)
       case _ =>
     }

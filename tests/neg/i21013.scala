@@ -1,29 +1,22 @@
-// #21013: a match type alias applied to a wildcard is rejected when the
-// application does not reduce and the wildcarded parameter occurs outside the
-// scrutinee -- in a case pattern, a case body, or the declared upper bound.
+// #21013: a wildcard application of a match type alias is rejected when it
+// does not reduce and the wildcarded parameter occurs outside the scrutinee.
 // Accepted applications are in tests/pos/i21013.scala.
-// The body/bound aliases take an extra scrutinee parameter `S` so that the
-// alias itself stays a match type instead of reducing away at definition.
 
 type InPattern[K] = Double match
-  case K => Int                      // K in a pattern
+  case K => Int
 
 type InNestedPattern[K] = Double match
-  case List[K] => Int                // K in a nested pattern
+  case List[K] => Int
 
 type InBody[K, S] = S match
-  case Int => List[K]                // K in a body
+  case Int => List[K]
 
 type InBodyTwice[K, S] = S match
-  case Int => (K, K)                 // K twice in a body
+  case Int => (K, K)
 
-// K in the bound of an application that stays stuck (wildcard scrutinee);
-// contrast PlainBound[?, Int] in tests/pos, which reduces and is accepted
 type InBound[K, S] <: List[K] = S match
   case Int => Nothing
 
-// bound that is itself a match alias: InAliasBound[?] <: Bad[?], where Bad[?]
-// would reduce unsoundly -- the case that makes bound occurrences dangerous
 type Bad[K] = Double match
   case K => Int
 type InAliasBound[K, S] <: Bad[K] = S match
