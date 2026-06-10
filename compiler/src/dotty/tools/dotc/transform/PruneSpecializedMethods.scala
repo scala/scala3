@@ -34,7 +34,7 @@ class PruneSpecializedMethods extends MiniPhase with InfoTransformer { thisTrans
       case stmt => Some(stmt)
     }))
 
-  private def isDeletable(sym: SymDenotation)(using Context): Boolean = sym.isSpecializedMethod
+  private def isDeletable(sym: Symbol)(using Context): Boolean = sym.isSpecializedMethod
 }
 
 object PruneSpecializedMethods {
