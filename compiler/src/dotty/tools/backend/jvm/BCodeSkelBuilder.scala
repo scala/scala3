@@ -128,7 +128,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
    */
   abstract class PlainSkelBuilder
     extends BCClassGen
-    with    BCAnnotGen
     with    BCForwardersGen
     with    BCPickles
     with    BCJGenSigGen {
@@ -356,7 +355,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val ssa = None // TODO: inlined form `getAnnotPickle(thisName, claszSymbol)`. Should something be done on Dotty?
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
-      emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
+      BCAnnotGen.emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
       if (!isCZStaticModule) {
         val skipStaticForwarders = (claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
@@ -404,7 +403,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         null // no initial value
       )
       cnode.fields.add(jfield)
-      emitAnnotations(jfield, f.annotations)
+      BCAnnotGen.emitAnnotations(jfield, f.annotations)
     }
 
     private def addClassFields()(using Context): Unit =
@@ -730,9 +729,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         if thrownExceptions.isEmpty then null else thrownExceptions.toArray
       ).asInstanceOf[MethodNode]
 
-      emitAnnotations(mnode, others)
-      emitParamNames(mnode, params)
-      emitParamAnnotations(mnode, params.map(_.annotations))
+      BCAnnotGen.emitAnnotations(mnode, others)
+      BCAnnotGen.emitParamNames(mnode, params)
+      BCAnnotGen.emitParamAnnotations(mnode, params.map(_.annotations))
 
     } // end of method initJMethod
 
