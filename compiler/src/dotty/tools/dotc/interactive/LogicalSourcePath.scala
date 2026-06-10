@@ -3,7 +3,6 @@ package dotty.tools.dotc.interactive
 import dotty.tools.dotc.classpath.BinaryFileEntry
 import dotty.tools.dotc.classpath.PackageEntry
 import dotty.tools.dotc.classpath.PackageEntryImpl
-import dotty.tools.dotc.classpath.PackageName
 import dotty.tools.dotc.classpath.SourceFileEntry
 import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation}
 
@@ -19,25 +18,21 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
 
   override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = None
   override def findClassFile(className: String): Option[AbstractFile] = None
-  override def classes(inPackage: PackageName): Seq[BinaryFileEntry] = Seq.empty
+  override def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
 
-  override def hasPackage(inPackage: PackageName): Boolean =
-    findPackage(
-      inPackage.dottedString
-    ).isDefined
+  override def hasPackage(inPackage: String): Boolean =
+    findPackage(inPackage).isDefined
 
   /** Return all packages contained inside `inPackage`. Package entries contain the *full name* of the package. */
-  override def packages(inPackage: PackageName): Seq[PackageEntry] =
-    val rawPackage = inPackage.dottedString
-    findPackage(rawPackage) match
-      case Some(pkg) => packagesIn(pkg, rawPackage)
+  override def packages(inPackage: String): Seq[PackageEntry] =
+    findPackage(inPackage) match
+      case Some(pkg) => packagesIn(pkg, inPackage)
       case None => Seq.empty[PackageEntry]
 
 
   /** Return all sources contained directly inside `inPackage` */
-  override def sources(inPackage: PackageName): Seq[SourceFileEntry] =
-    val rawPackage = inPackage.dottedString
-    findPackage(rawPackage) match
+  override def sources(inPackage: String): Seq[SourceFileEntry] =
+    findPackage(inPackage) match
       case Some(pkg) =>
         sourcesIn(pkg)
       case None => Seq.empty[SourceFileEntry]

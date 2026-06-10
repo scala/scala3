@@ -9,38 +9,19 @@ package io
 
 import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.util.regex.PatternSyntaxException
-
 import File.pathSeparator
 import Jar.isJarOrZip
-
-import dotc.classpath.{ PackageEntry, PackageName, BinaryFileEntry, SourceFileEntry }
+import dotc.classpath.{BinaryFileEntry, FileUtils, PackageEntry, SourceFileEntry}
 
 /**
   * A representation of the compiler's class- or sourcepath.
   */
 trait ClassPath {
   def asURLs: Seq[URL]
-
-  final def hasPackage(pkg: String): Boolean = hasPackage(PackageName(pkg))
-  final def packages(inPackage: String): Seq[PackageEntry] = packages(PackageName(inPackage))
-  final def classes(inPackage: String): Seq[BinaryFileEntry] = classes(PackageName(inPackage))
-  final def sources(inPackage: String): Seq[SourceFileEntry] = sources(PackageName(inPackage))
-
-  /*
-   * These methods are mostly used in the ClassPath implementation to implement the `list` and
-   * `findX` methods below.
-   *
-   * However, there are some other uses in the compiler, to implement `invalidateClassPathEntries`,
-   * which is used by the repl's `:require` (and maybe the spark repl, https://github.com/scala/scala/pull/4051).
-   * Using these methods directly is more efficient than calling `list`.
-   *
-   * The `inPackage` contains a full package name, e.g. "" or "scala.collection".
-   */
-
-  private[dotty] def hasPackage(pkg: PackageName): Boolean
-  private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry]
-  private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry]
-  private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry]
+  def hasPackage(pkg: String): Boolean
+  def packages(inPackage: String): Seq[PackageEntry]
+  def classes(inPackage: String): Seq[BinaryFileEntry]
+  def sources(inPackage: String): Seq[SourceFileEntry]
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
@@ -114,7 +95,7 @@ object ClassPath {
         Some(basedir.resolve(Path(spec)).toURL)
     catch
       case _: MalformedURLException | _: URISyntaxException => None
-
+  
   @deprecated("shim for sbt's compiler interface", since = "2.12.0")
   sealed abstract class ClassPathContext
 

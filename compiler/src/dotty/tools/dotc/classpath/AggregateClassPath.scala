@@ -22,29 +22,27 @@ import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }
 case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
     val (pkg, _) = PackageNameUtils.separatePkgAndClassNames(className)
-    aggregatesForPackage(PackageName(pkg)).iterator.map(_.findClassFileAndModuleFile(className, findModule)).collectFirst {
+    aggregatesForPackage(pkg).iterator.map(_.findClassFileAndModuleFile(className, findModule)).collectFirst {
       case Some(x) => x
     }
   }
   private val packageIndex: collection.mutable.Map[String, Seq[ClassPath]] = collection.mutable.Map()
-  private def aggregatesForPackage(pkg: PackageName): Seq[ClassPath] = packageIndex.synchronized {
-    packageIndex.getOrElseUpdate(pkg.dottedString, aggregates.filter(_.hasPackage(pkg)))
+  private def aggregatesForPackage(pkg: String): Seq[ClassPath] = packageIndex.synchronized {
+    packageIndex.getOrElseUpdate(pkg, aggregates.filter(_.hasPackage(pkg)))
   }
 
   override def asURLs: Seq[URL] = aggregates.flatMap(_.asURLs)
 
-  override private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry] = {
-    val aggregatedPackages = aggregates.flatMap(_.packages(inPackage)).distinct
-    aggregatedPackages
-  }
+  override def packages(inPackage: String): Seq[PackageEntry] =
+    aggregates.flatMap(_.packages(inPackage)).distinct
 
-  override private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] =
+  override def classes(inPackage: String): Seq[BinaryFileEntry] =
     getDistinctEntries(_.classes(inPackage))
 
-  override private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] =
+  override def sources(inPackage: String): Seq[SourceFileEntry] =
     getDistinctEntries(_.sources(inPackage))
 
-  override private[dotty] def hasPackage(pkg: PackageName): Boolean = aggregates.exists(_.hasPackage(pkg))
+  override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
 
   /** Returns only one entry for each name.
    *

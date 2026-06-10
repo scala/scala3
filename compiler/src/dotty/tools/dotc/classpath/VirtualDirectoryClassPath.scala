@@ -34,8 +34,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   def isPackage(f: AbstractFile): Boolean = f.isPackage
 
   // mimic the behavior of the old nsc.util.DirectoryClassPath
-  def asURLs: Seq[URL] = Seq(new URI(dir.name).toURL)
-  def asClassPathStrings: Seq[String] = Seq(dir.path)
+  override def asURLs: Seq[URL] = Seq(new URI(dir.name).toURL)
 
   override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
     val pathSeq = FileUtils.dirPath(className).split(java.io.File.separator)
@@ -52,7 +51,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
         Some((classFile, optModuleFile))
   }
 
-  private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = files(inPackage)
+  override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
 
   protected def createFileEntry(file: AbstractFile): BinaryFileEntry = BinaryFileEntry(file)
 

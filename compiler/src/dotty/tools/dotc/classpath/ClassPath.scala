@@ -4,31 +4,7 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.dotc.classpath.FileUtils.isTasty
-import dotty.tools.io.AbstractFile
-import dotty.tools.io.ClassRepresentation
-import dotty.tools.io.FileExtension
-
-case class PackageName(dottedString: String) {
-  val dirPathTrailingSlashJar: String = FileUtils.dirPathInJar(dottedString) + "/"
-
-  val dirPathTrailingSlash: String =
-    if (java.io.File.separatorChar == '/')
-      dirPathTrailingSlashJar
-    else
-      FileUtils.dirPath(dottedString) + java.io.File.separator
-
-  def isRoot: Boolean = dottedString.isEmpty
-
-  def entryName(entry: String): String = {
-    if (isRoot) entry else {
-      val builder = new java.lang.StringBuilder(dottedString.length + 1 + entry.length)
-      builder.append(dottedString)
-      builder.append('.')
-      builder.append(entry)
-      builder.toString
-    }
-  }
-}
+import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation, FileExtension}
 
 trait PackageEntry {
   def name: String
@@ -83,10 +59,10 @@ private[dotty] final case class BinaryAndSourceFilesEntry(binaryEntry: BinaryFil
 private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry
 
 private[dotty] trait NoSourcePaths {
-  private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = Seq.empty
+  def sources(inPackage: String): Seq[SourceFileEntry] = Seq.empty
 }
 
 private[dotty] trait NoClassPaths {
   def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = None
-  private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = Seq.empty
+  def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
 }
