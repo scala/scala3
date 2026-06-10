@@ -2245,14 +2245,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Returns the tree of type or kind (TypeTree) of T.
        *
        *  @tparam T the type or kind to create a `TypeTree` for
-       *  @return a `TypeTree` representing `T`
        */
       def of[T <: AnyKind](using Type[T]): TypeTree
 
       /** Returns a type tree reference to the symbol
        *
        *  @param typeSymbol The type symbol for which we are creating a type tree reference.
-       *  @return a `TypeTree` referencing the given type symbol
        */
       def ref(typeSymbol: Symbol): TypeTree
     }
@@ -3089,14 +3087,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Returns the type or kind (TypeRepr) of T.
        *
        *  @tparam T the type or kind to get the `TypeRepr` for
-       *  @return the `TypeRepr` representing `T`
        */
       def of[T <: AnyKind](using Type[T]): TypeRepr
 
       /** Returns the type constructor of the runtime (erased) class.
        *
        *  @param clazz the runtime class
-       *  @return the `TypeRepr` representing the type constructor of the given class
        */
       def typeConstructorOf(clazz: Class[?]): TypeRepr
     }
