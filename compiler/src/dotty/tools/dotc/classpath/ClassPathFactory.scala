@@ -18,18 +18,18 @@ import java.nio.file.Files
 class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None) {
 
   /**
-    * Creators for sub classpaths which preserve this context.
-    */
+   * Creators for sub classpaths which preserve this context.
+   */
   def sourcesInPath(path: String)(using Context): List[ClassPath] =
     precomputedSourcePackages match {
       // We also accept files in case of YlogicalPackageLoading
-      case Some(rootPackage) if ctx.settings.YlogicalPackageLoading.value  =>
+      case Some(rootPackage) if ctx.settings.YlogicalPackageLoading.value =>
         List(new LogicalSourcePath(path, rootPackage))
       case _ =>
         for
           file <- expandPath(path, expandStar = false)
           dir <- Option(AbstractFile.getDirectory(file))
-        yield createSourcePath(dir)
+        yield ClassPathFactory.newSourcePath(dir)
     }
 
   def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
@@ -38,7 +38,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
   private def expandDir(extdir: String): List[String] =
     AbstractFile.getDirectory(extdir) match
       case null => Nil
-      case dir  => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
+      case dir => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
 
   def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
     for {
@@ -46,7 +46,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       name <- expandDir(dir)
       entry <- Option(AbstractFile.getDirectory(name))
     }
-    yield createClassPath(entry)
+    yield ClassPathFactory.newClassPath(entry)
 
   def classesInExpandedPath(path: String)(using Context): IndexedSeq[ClassPath] =
     classesInPathImpl(path, expand = true).toIndexedSeq
@@ -58,6 +58,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       file <- expandPath(path, expand)
       dir <- {
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None
+
         Option(AbstractFile.getDirectory(file)).orElse(asImage)
       }
     }
@@ -71,23 +72,17 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
           path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield
-          createClassPath(AbstractFile.getFile(path).nn) // .nn ok because of Files.exists(path)
+          ClassPathFactory.newClassPath(AbstractFile.getFile(path).nn) // .nn ok because of Files.exists(path)
       else
         Seq.empty
 
-    files.map(createClassPath) ++ expanded
+    files.map(ClassPathFactory.newClassPath) ++ expanded
 
   end classesInPathImpl
+}
 
-  private def createSourcePath(file: AbstractFile)(using Context): ClassPath =
-    if (file.isJarOrZip)
-      ZipAndJarSourcePathFactory.create(file)
-    else if (file.isDirectory)
-      new DirectorySourcePath(file.file.nn)
-    else
-      sys.error(s"Unsupported sourcepath element: $file")
-
-  private def createClassPath(file: AbstractFile)(using Context): ClassPath = file match {
+object ClassPathFactory {
+  def newClassPath(file: AbstractFile)(using Context): ClassPath = file match {
     case vd: VirtualDirectory => VirtualDirectoryClassPath(vd)
     case _ =>
       if (file.isJarOrZip)
@@ -97,4 +92,12 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       else
         sys.error(s"Unsupported classpath element: $file")
   }
+
+  def newSourcePath(file: AbstractFile)(using Context): ClassPath =
+    if (file.isJarOrZip)
+      ZipAndJarSourcePathFactory.create(file)
+    else if (file.isDirectory)
+      new DirectorySourcePath(file.file.nn)
+    else
+      sys.error(s"Unsupported sourcepath element: $file")
 }
