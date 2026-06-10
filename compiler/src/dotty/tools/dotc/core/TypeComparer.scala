@@ -504,7 +504,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
                 || thirdTryKnownClass(tp2, sym2)
             case _ =>
-              secondTry
+              // If no secondTry LHS case can fire, secondTry would dispatch to thirdTry,
+              // which for a class-symboled RHS continues with thirdTryKnownClass after
+              // re-forcing tp2.info and re-reading tp2.symbol. Call it directly instead.
+              if canSkipSecondTryForAppliedRhs(tp1) then thirdTryKnownClass(tp2, sym2)
+              else secondTry
 
           tp2 match
             case tp2: TypeRef =>
@@ -551,7 +555,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
                 || thirdTryNamed(tp2, info2)
             case _ =>
-              secondTry
+              // Same bypass as in compareKnownClass: when no secondTry LHS case can
+              // fire, go to thirdTryNamed directly, reusing the already-forced info2.
+              if canSkipSecondTryForAppliedRhs(tp1) then thirdTryNamed(tp2, info2)
+              else secondTry
         end compareNamed
         // See the documentation of `FromJavaObjectSymbol`
         if !ctx.erasedTypes && tp2.isFromJavaObject then
