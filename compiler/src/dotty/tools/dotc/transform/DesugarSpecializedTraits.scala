@@ -670,7 +670,7 @@ object Specialization:
     } 
 
   def isSpecializedTrait(sym: Symbol)(using Context) = sym.isClass && sym.isAllOf(InlineTrait) && classSpecializedTypeParams(sym).nonEmpty
-  def isSpecializedMethod(sym: Symbol)(using Context) = sym.isAllOf(InlineMethod) && methodSpecializedTypeParams(sym).nonEmpty
+  def isSpecializedMethod(sym: Symbol)(using Context) = !sym.is(Flags.JavaDefined) && sym.isAllOf(InlineMethod) && methodSpecializedTypeParams(sym).nonEmpty
   def traitParamIsSpecialized(traitSym: Symbol, tParam: Symbol)(using Context) = classSpecializedTypeParams(traitSym).exists(tp => tp.typeSymbol eq tParam)
 end Specialization
 
