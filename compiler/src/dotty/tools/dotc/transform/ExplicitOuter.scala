@@ -57,6 +57,17 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isClass && !sym.is(JavaDefined)
 
+  override def transformIsNoOpFor(ref: core.Denotations.SingleDenotation)(using Context): Boolean =
+    // `infoMayChange` is `sym.isClass && !sym.is(JavaDefined)`; an existing non-class
+    // (or Java-defined) SymDenotation takes the `!infoMayChange(sym) && sym.exists`
+    // identity exit in `InfoTransformer.transform` (for a SymDenotation, `sym.exists`
+    // evaluated at this phase equals `ref.exists`). `isClass` is an instanceof on the
+    // denotation and JavaDefined is creation-stable, both read off `ref` directly.
+    ref match
+      case ref: core.SymDenotations.SymDenotation =>
+        ref.exists && (!ref.isClass || ref.is(JavaDefined))
+      case _ => false
+
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
    *  Furthermore, if a parent trait might have an outer accessor,
