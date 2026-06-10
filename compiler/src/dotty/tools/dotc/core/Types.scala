@@ -4260,29 +4260,31 @@ object Types extends TypeUtils {
         (if status == TrueDeps then status else status | provisional).toByte
       def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus] | Null): DependencyStatus =
         def applyPrefix(tp: NamedType) =
-          if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
+          // Test the terminator prefixes first: when the prefix is NoPrefix or a
+          // ThisType, both the static-stop branch and the recursive `compute`
+          // call (via its `case _: ThisType | _: BoundType | NoPrefix => status`
+          // arm) return `status` unchanged, so the `currentSymbol.isStatic`
+          // probe is irrelevant and can be skipped. BoundType is excluded
+          // because TermParamRef (which also extends BoundType) is intercepted
+          // earlier in `compute` and can return TrueDeps.
+          val pre = tp.prefix
+          if (pre eq NoPrefix) || pre.isInstanceOf[ThisType]
+          then status
+          else if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
           then status // Note: a type ref with static symbol can still be dependent since the symbol might be refined in the enclosing type. See pos/15331.scala.
-          else
-            // Skip the extra `compute` frame when the prefix is a terminator
-            // that would just return `status` unchanged. NoPrefix and ThisType
-            // hit the `case _: ThisType | _: BoundType | NoPrefix => status`
-            // arm directly; BoundType is excluded because TermParamRef (which
-            // also extends BoundType) is intercepted earlier in `compute` and
-            // can return TrueDeps.
-            val pre = tp.prefix
-            if (pre eq NoPrefix) || pre.isInstanceOf[ThisType]
-            then status
-            else compute(status, pre, theAcc)
+          else compute(status, pre, theAcc)
         if status == TrueDeps then status
         else tp match
           case tp: TypeRef =>
             val status1 = applyPrefix(tp)
-            tp.info match { // follow type alias to avoid dependency
-              case TypeAlias(alias) if status1 == TrueDeps =>
-                combine(compute(status, alias, theAcc), FalseDeps)
-              case _ =>
-                status1
-            }
+            if status1 == TrueDeps then
+              tp.info match { // follow type alias to avoid dependency
+                case TypeAlias(alias) =>
+                  combine(compute(status, alias, theAcc), FalseDeps)
+                case _ =>
+                  status1
+              }
+            else status1
           case tp: TermRef => applyPrefix(tp)
           case tp: AppliedType => tp.fold(status, compute(_, _, theAcc))
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
