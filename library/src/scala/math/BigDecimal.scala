@@ -629,7 +629,6 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
   /** Returns the minimum of this and that, or this if the two are equal
    *
    *  @param that the `BigDecimal` to compare with
-   *  @return the smaller of `this` and `that`, or `this` if they are equal
    */
   def min (that: BigDecimal): BigDecimal = (this compare that) match {
     case x if x <= 0 => this
@@ -639,7 +638,6 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
   /** Returns the maximum of this and that, or this if the two are equal
    *
    *  @param that the `BigDecimal` to compare with
-   *  @return the larger of `this` and `that`, or `this` if they are equal
    */
   def max (that: BigDecimal): BigDecimal = (this compare that) match {
     case x if x >= 0 => this
@@ -662,7 +660,6 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
   /** Returns a BigDecimal whose value is this ** n.
    *
    *  @param n the exponent to raise this `BigDecimal` to
-   *  @return a `BigDecimal` whose value is `this` raised to the power `n`
    */
   def pow (n: Int): BigDecimal = new BigDecimal(this.bigDecimal.pow(n, mc), mc)
 
@@ -693,7 +690,6 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *  preserving its own MathContext for future operations.
    *
    *  @param mc the `MathContext` specifying the precision and rounding mode
-   *  @return a `BigDecimal` rounded per `mc`, retaining this instance's own `MathContext`
    */
   def round(mc: MathContext): BigDecimal = {
     val r = this.bigDecimal.round(mc)
@@ -723,7 +719,6 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *  numerically equal to this BigDecimal's.
    *
    *  @param scale the scale to set for this `BigDecimal`
-   *  @return a `BigDecimal` numerically equal to this one but with the requested `scale`
    */
   def setScale(scale: Int): BigDecimal =
     if (this.scale == scale) this

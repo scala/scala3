@@ -539,7 +539,6 @@ package object math {
    *  @group explog
    *
    *  @param x the exponent to raise `e` to in the computation of `e`^`x`^ - 1
-   *  @return the value `e`^`x`^ - 1
    */
   def expm1(x: Double): Double = java.lang.Math.expm1(x)
 
@@ -575,7 +574,6 @@ package object math {
    *  @group explog
    *
    *  @param x the value for which to compute `ln(1 + x)`
-   *  @return the natural logarithm of `1 + x`
    */
   def log1p(x: Double): Double = java.lang.Math.log1p(x)
 
@@ -583,7 +581,6 @@ package object math {
    *  @group explog
    *
    *  @param x the value whose base 10 logarithm is to be computed
-   *  @return the base 10 logarithm of `x`
    */
   def log10(x: Double): Double = java.lang.Math.log10(x)
 
@@ -595,7 +592,6 @@ package object math {
    *  @group hyperbolic
    *
    *  @param x the value whose hyperbolic sine is to be returned
-   *  @return the hyperbolic sine of `x`
    */
   def sinh(x: Double): Double = java.lang.Math.sinh(x)
 
@@ -603,7 +599,6 @@ package object math {
    *  @group hyperbolic
    *
    *  @param x the value whose hyperbolic cosine is to be returned
-   *  @return the hyperbolic cosine of `x`
    */
   def cosh(x: Double): Double = java.lang.Math.cosh(x)
 
@@ -611,7 +606,6 @@ package object math {
    *  @group hyperbolic
    *
    *  @param x the value whose hyperbolic tangent is to be returned
-   *  @return the hyperbolic tangent of `x`
    */
   def tanh(x: Double):Double = java.lang.Math.tanh(x)
 

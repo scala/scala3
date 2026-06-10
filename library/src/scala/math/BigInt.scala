@@ -137,7 +137,6 @@ object BigInt {
    *
    *  @param bitLength the bit length of the returned probable prime `BigInt`
    *  @param rnd the source of randomness used to generate the candidate
-   *  @return a positive `BigInt` that is probably prime with the specified bit length
    */
   def probablePrime(bitLength: Int, rnd: scala.util.Random): BigInt =
     apply(BigInteger.probablePrime(bitLength, rnd.self))
@@ -529,7 +528,6 @@ final class BigInt private (
   /** Returns the minimum of this and that
    *
    *  @param that the value to compare with this `BigInt`
-   *  @return the smaller of this and `that`
    */
   def min(that: BigInt): BigInt =
     if (this <= that) this else that
@@ -537,7 +535,6 @@ final class BigInt private (
   /** Returns the maximum of this and that
    *
    *  @param that the value to compare with this `BigInt`
-   *  @return the larger of this and `that`
    */
   def max(that: BigInt): BigInt =
     if (this >= that) this else that
@@ -545,7 +542,6 @@ final class BigInt private (
   /** Returns a BigInt whose value is (<tt>this</tt> raised to the power of <tt>exp</tt>).
    *
    *  @param exp the exponent, must be non-negative
-   *  @return a `BigInt` whose value is `this` raised to the power of `exp`
    */
   def pow(exp: Int): BigInt = BigInt(this.bigInteger.pow(exp))
 
@@ -554,14 +550,12 @@ final class BigInt private (
    *
    *  @param exp the exponent; if negative, this operation uses the modular inverse of `this`, so `this` and `m` must be relatively prime
    *  @param m the modulus, must be positive
-   *  @return a `BigInt` whose value is `this` raised to the power of `exp` modulo `m`
    */
   def modPow(exp: BigInt, m: BigInt): BigInt = BigInt(this.bigInteger.modPow(exp.bigInteger, m.bigInteger))
 
   /** Returns a BigInt whose value is (the inverse of <tt>this</tt> modulo <tt>m</tt>).
    *
    *  @param m the modulus, must be positive
-   *  @return a `BigInt` whose value is the multiplicative inverse of `this` modulo `m`
    */
   def modInverse(m: BigInt): BigInt = BigInt(this.bigInteger.modInverse(m.bigInteger))
 
@@ -593,7 +587,6 @@ final class BigInt private (
   /** Returns true if and only if the designated bit is set.
    *
    *  @param n the zero-based index of the bit to test
-   *  @return `true` if the bit at position `n` is set, `false` otherwise
    */
   def testBit(n: Int): Boolean =
     if (longEncoding && n >= 0) {
@@ -606,7 +599,6 @@ final class BigInt private (
   /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit set.
    *
    *  @param n the zero-based index of the bit to set
-   *  @return a `BigInt` equal to this with the bit at position `n` set to `1`
    */
   def setBit(n: Int): BigInt  = // note that we do not operate on the Long sign bit #63
     if (longEncoding && n <= 62 && n >= 0) BigInt(_long | (1L << n)) else BigInt(this.bigInteger.setBit(n))
@@ -614,7 +606,6 @@ final class BigInt private (
   /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit cleared.
    *
    *  @param n the zero-based index of the bit to clear
-   *  @return a `BigInt` equal to this with the bit at position `n` cleared to `0`
    */
   def clearBit(n: Int): BigInt  = // note that we do not operate on the Long sign bit #63
     if (longEncoding && n <= 62 && n >= 0) BigInt(_long & ~(1L << n)) else BigInt(this.bigInteger.clearBit(n))
@@ -622,7 +613,6 @@ final class BigInt private (
   /** Returns a BigInt whose value is equivalent to this BigInt with the designated bit flipped.
    *
    *  @param n the zero-based index of the bit to flip
-   *  @return a `BigInt` equal to this with the bit at position `n` flipped
    */
   def flipBit(n: Int): BigInt  = // note that we do not operate on the Long sign bit #63
     if (longEncoding && n <= 62 && n >= 0) BigInt(_long ^ (1L << n)) else BigInt(this.bigInteger.flipBit(n))
@@ -661,7 +651,6 @@ final class BigInt private (
    *                    exceeds (1 - 1/2 ^ certainty).
    *                    The execution time of this method is proportional to the value of
    *                    this parameter.
-   *  @return `true` if this `BigInt` is probably prime, `false` if it is definitely composite
    */
   def isProbablePrime(certainty: Int): Boolean = this.bigInteger.isProbablePrime(certainty)
 
@@ -741,7 +730,6 @@ final class BigInt private (
   /** Returns the String representation in the specified radix of this BigInt.
    *
    *  @param radix the radix to use in the string representation
-   *  @return the string representation of this `BigInt` in the specified `radix`
    */
   def toString(radix: Int): String = this.bigInteger.toString(radix)
 

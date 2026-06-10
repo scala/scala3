@@ -39,7 +39,6 @@ trait Equiv[T] extends Any with Serializable {
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
-   *  @return `true` if `x` is equivalent to `y` under this relation, `false` otherwise
    */
   def equiv(x: T, y: T): Boolean
 }

@@ -110,7 +110,6 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
-   *  @return `true` if `x` is less than or equal to `y` according to this ordering, `false` otherwise
    */
   override def lteq(x: T, y: T): Boolean = compare(x, y) <= 0
 
@@ -118,7 +117,6 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
-   *  @return `true` if `x` is greater than or equal to `y` according to this ordering, `false` otherwise
    */
   override def gteq(x: T, y: T): Boolean = compare(x, y) >= 0
 
@@ -126,7 +124,6 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
-   *  @return `true` if `x` is strictly less than `y` according to this ordering, `false` otherwise
    */
   override def lt(x: T, y: T): Boolean = compare(x, y) < 0
 
@@ -134,7 +131,6 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
-   *  @return `true` if `x` is strictly greater than `y` according to this ordering, `false` otherwise
    */
   override def gt(x: T, y: T): Boolean = compare(x, y) > 0
 
@@ -142,7 +138,6 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *
    *  @param x the first value to compare
    *  @param y the second value to compare
-   *  @return `true` if `x` and `y` are considered equivalent under this ordering, `false` otherwise
    */
   override def equiv(x: T, y: T): Boolean = compare(x, y) == 0
 
@@ -151,7 +146,6 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  @tparam U a subtype of `T`, used to preserve the specific type in the return value
    *  @param x the first candidate value
    *  @param y the second candidate value
-   *  @return the greater of `x` and `y` according to this ordering, returning `x` when they are equivalent
    */
   @uncheckedOverride def max[U <: T](x: U, y: U): U = if (gteq(x, y)) x else y
 
@@ -160,7 +154,6 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  @tparam U a subtype of `T`, used to preserve the specific type in the return value
    *  @param x the first candidate value
    *  @param y the second candidate value
-   *  @return the lesser of `x` and `y` according to this ordering, returning `x` when they are equivalent
    */
   @uncheckedOverride def min[U <: T](x: U, y: U): U = if (lteq(x, y)) x else y
 

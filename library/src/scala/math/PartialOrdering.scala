@@ -96,7 +96,6 @@ trait PartialOrdering[T] extends Equiv[T] {
    *
    *  @param x the first element to compare
    *  @param y the second element to compare
-   *  @return `true` if `x` and `y` are equivalent under the ordering's induced equivalence relation
    */
   def equiv(x: T, y: T): Boolean = lteq(x,y) && lteq(y,x)
 
