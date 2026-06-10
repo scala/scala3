@@ -1912,6 +1912,10 @@ object SymDenotations {
     private var myParentClassDenotsInfo: ClassInfo | Null = null
     private var myParentClassDenots: Array[ClassDenotation] | Null = null
 
+    private var myLinearizedBaseScopesPeriod: Period = Nowhere
+    private var myLinearizedBaseScopesInfo: ClassInfo | Null = null
+    private var myLinearizedBaseScopes: Array[Scope] | Null = null
+
     // 2-slot direct-mapped RunId-keyed cache for derivesFrom(base).
     // Slot 0 is the most recently inserted entry; on a miss we shift slot 0
     // into slot 1 and write the new entry into slot 0 (FIFO size 2). The
@@ -2036,6 +2040,11 @@ object SymDenotations {
       myParentClassDenotsInfo = null
       myParentClassDenots = null
 
+    private def invalidateLinearizedBaseScopesCache(): Unit =
+      myLinearizedBaseScopesPeriod = Nowhere
+      myLinearizedBaseScopesInfo = null
+      myLinearizedBaseScopes = null
+
     private def invalidateMemberNamesCache() = {
       memberNamesCache.invalidate()
       memberNamesCache = MemberNames.None
@@ -2053,6 +2062,7 @@ object SymDenotations {
       myMemberCachePeriod = Nowhere
       invalidateMembersNamedCache()
       invalidateMemberNamesCache()
+      invalidateLinearizedBaseScopesCache()
 
     def invalidateMemberCachesFor(sym: Symbol)(using Context): Unit =
       myMemberCache match
@@ -2141,6 +2151,7 @@ object SymDenotations {
       myTypeParamRefs = null
       myTypeParamRefsPeriod = Nowhere
       invalidateParentClassDenotsCache()
+      invalidateLinearizedBaseScopesCache()
       super.info_=(tp)
     }
 
@@ -2168,6 +2179,51 @@ object SymDenotations {
         myParentClassDenotsInfo = cinfo
         myParentClassDenots = denots
         denots
+
+    /** The `info.decls` scopes of this class's base classes in linearization
+     *  order, excluding the class itself, or `null` if the linearized
+     *  inherited-member scan does not apply to this class in the current
+     *  period (a parent or base class without a class denotation, or a
+     *  linearization not headed by this class, or still-provisional base
+     *  data). This caches, per (info, period), exactly the machinery
+     *  `collectLinearizedNoOwn` would otherwise re-derive on every scan:
+     *  `baseClasses` (a `baseData` access), the per-base `Symbol.denot`
+     *  probe, and the `info.decls` dereference. Like `parentClassDenots`,
+     *  it is invalidated by `info_=`; mid-period member-scope replacement
+     *  is excluded by the same enter-after-subclass-query contract that
+     *  already protects `memberCache`. Provisional base data (a base class
+     *  still completing, so the linearization may be missing bases) is never
+     *  captured: `BaseDataImpl` does not cache provisional results, which
+     *  `baseDataCache.isComputed` detects exactly. A `CyclicReference` from
+     *  forcing a base's `info` propagates before any field is written, so a
+     *  partial chain is never cached either.
+     */
+    private def linearizedBaseScopes(cinfo: ClassInfo)(using Context): Array[Scope] | Null =
+      val period = ctx.period
+      if myLinearizedBaseScopesPeriod == period && (myLinearizedBaseScopesInfo eq cinfo) then
+        myLinearizedBaseScopes
+      else
+        var scopes: Array[Scope] | Null = null
+        if parentClassDenots(cinfo) != null then
+          val bases = baseClasses
+          if bases.nonEmpty && (bases.head eq classSymbol) && baseDataCache.isComputed then
+            val arr = new Array[Scope](bases.length - 1)
+            var rest = bases.tail
+            var i = 0
+            var ok = true
+            while ok && rest.nonEmpty do
+              rest.head.denot match
+                case based: ClassDenotation =>
+                  arr(i) = based.info.decls
+                  i += 1
+                  rest = rest.tail
+                case _ =>
+                  ok = false
+            if ok then scopes = arr
+        myLinearizedBaseScopesPeriod = period
+        myLinearizedBaseScopesInfo = cinfo
+        myLinearizedBaseScopes = scopes
+        scopes
 
     /** The types of the parent classes. */
     def parentTypes(using Context): List[Type] = info match
@@ -2485,37 +2541,28 @@ object SymDenotations {
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
       def collectLinearizedNoOwn(): PreDenotation | Null =
         info match
-          case cinfo: ClassInfo if parentClassDenots(cinfo) != null =>
-            val bases = baseClasses
-            // `!baseDataCache.isComputed` detects a provisional linearization:
-            // during typer a base class can still be completing, in which case
-            // `computeBaseData` signals provisionality (transitively) and the
-            // base list may silently be missing bases. Scanning it would prove
-            // false absences, so we bail to the recursive path instead.
-            if bases.isEmpty || (bases.head ne classSymbol) || !baseDataCache.isComputed then null
+          case cinfo: ClassInfo =>
+            val baseScopes = linearizedBaseScopes(cinfo)
+            if baseScopes == null then null
             else
               val excludedInherited = excluded | Private
               var denots: PreDenotation = NoDenotation
-              var rest = bases.tail
+              var i = 0
               var ok = true
-              while ok && rest.nonEmpty do
-                rest.head.denot match
-                  case based: ClassDenotation =>
-                    val ownInherited = based.info.decls.denotsNamed(name)
-                    if ownInherited.exists then
-                      val filtered = ownInherited.filterWithFlags(required, excludedInherited)
-                      if filtered.exists then
-                        if denots.exists then ok = false
-                        else
-                          // `mapInherited(NoDenotation, NoDenotation, thisType)`
-                          // reduces to `asSeenFrom(thisType)`: with empty
-                          // prevDenots the containsSym check is always false and
-                          // with empty ownDenots filterDisjoint is the identity.
-                          val inherited = filtered.asSeenFrom(thisType)
-                          if inherited.exists then denots = inherited
-                  case _ =>
-                    ok = false
-                rest = rest.tail
+              while ok && i < baseScopes.length do
+                val ownInherited = baseScopes(i).denotsNamed(name)
+                if ownInherited.exists then
+                  val filtered = ownInherited.filterWithFlags(required, excludedInherited)
+                  if filtered.exists then
+                    if denots.exists then ok = false
+                    else
+                      // `mapInherited(NoDenotation, NoDenotation, thisType)`
+                      // reduces to `asSeenFrom(thisType)`: with empty
+                      // prevDenots the containsSym check is always false and
+                      // with empty ownDenots filterDisjoint is the identity.
+                      val inherited = filtered.asSeenFrom(thisType)
+                      if inherited.exists then denots = inherited
+                i += 1
               if ok then denots else null
           case _ => null
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
