@@ -13,6 +13,7 @@ import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import util.Property
 import transform.Splicer
+import config.Feature
 
 trait TypeAssigner {
   import tpd.*
@@ -440,7 +441,30 @@ trait TypeAssigner {
           case pt: PolyType =>
             pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
         val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
-        methodicType.toFunctionType(isJava = meth.symbol.is(JavaDefined))
+        // Gross hack to support boostrapping with 3.8.4:
+        // PickleQuotes expected a quote closure to be of FunctionN form.
+        // This is now fixed, but 3.8.4 still has the old behavior. So we cannot
+        // generate closures with RefinedTypes under 3.8.4.
+        // TODO: Remove quotesException once we bootstrap with 3.10.
+        val quotesException = meth.tpe.widen match
+          case mt: MethodType =>
+            mt.paramInfos.exists: pinfo =>
+              pinfo.typeSymbol == defn.QuotesClass
+          case _ =>
+            false
+        // When capture checking is on, we want a closure's inferred type to
+        // expose its user-written parameter names as a dependent function
+        // type, so they print and appear in capture sets as written. We do
+        // this only for closures that actually carry meaningful names
+        // originating from user source .
+        val keepsParamNamesUnderCC =
+          Feature.ccEnabled
+          && !ctx.erasedTypes                       // RefinedType is invalid after erasure
+          && methodicType.hasMeaningfulParamNames   // skip empty/synthetic/wildcard/contextual params
+          && !quotesException                       // TODO drop once we bootstrap with 3.10
+        methodicType.toFunctionType(
+          isJava = meth.symbol.is(JavaDefined),
+          alwaysDependent = keepsParamNamesUnderCC)
       else target.tpe)
 
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
