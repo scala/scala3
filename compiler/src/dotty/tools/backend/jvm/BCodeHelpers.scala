@@ -68,45 +68,9 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     }
   }
 
-  /*
-   * Custom attribute (JVMS 4.7.1) "ScalaSig" used as marker only
-   * i.e., the pickle is contained in a custom annotation, see:
-   *   (1) `addAnnotations()`,
-   *   (2) SID # 10 (draft) - Storage of pickled Scala signatures in class files, http://www.scala-lang.org/sid/10
-   *   (3) SID # 5 - Internals of Scala Annotations, http://www.scala-lang.org/sid/5
-   * That annotation in turn is not related to the "java-generic-signature" (JVMS 4.7.9)
-   * other than both ending up encoded as attributes (JVMS 4.7)
-   * (with the caveat that the "ScalaSig" attribute is associated to some classes,
-   * while the "Signature" attribute can be associated to classes, methods, and fields.)
-   *
-   */
-  object BCPickles:
-
-    import dotty.tools.dotc.core.unpickleScala2.{ PickleFormat, PickleBuffer }
-
-    private val versionPickle = {
-      val vp = new PickleBuffer(new Array[Byte](16), -1, 0)
-      assert(vp.writeIndex == 0, vp)
-      vp.writeNat(PickleFormat.MajorVersion)
-      vp.writeNat(PickleFormat.MinorVersion)
-      vp.writeNat(0)
-      vp
-    }
-
-    /*
-     * can-multi-thread
-     */
-    def pickleMarkerLocal(using Context) = {
-      createJAttribute(nme.ScalaSignatureATTR.toString, versionPickle.bytes, 0, versionPickle.writeIndex)
-    }
-
-    /*
-     * can-multi-thread
-     */
-    def pickleMarkerForeign(using Context) = {
-      createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
-    }
-  end BCPickles
+  def createScalaJAttribute()(using Context): asm.Attribute = {
+    createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
+  }
 
   object BCAnnotGen:
     // OK to cache these across Contexts, what they refer to won't change
@@ -134,7 +98,6 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       if cachedAnnotationRetentionRuntime eq null then
         cachedAnnotationRetentionRuntime = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
       cachedAnnotationRetentionRuntime.nn
-
 
     /*
      * must-single-thread
@@ -494,9 +457,8 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         mirrorClass.visitSource("" + ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
-      val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Module)) moduleClass.companionClass else moduleClass.companionModule)
-      mirrorClass.visitAttribute(if (ssa.isDefined) BCPickles.pickleMarkerLocal else BCPickles.pickleMarkerForeign)
-      BCAnnotGen.emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
+      mirrorClass.visitAttribute(createScalaJAttribute())
+      BCAnnotGen.emitAnnotations(mirrorClass, moduleClass.annotations)
 
       BCForwardersGen.addForwarders(mirrorClass, mirrorName, moduleClass)
       mirrorClass.visitEnd()
