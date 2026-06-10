@@ -48,6 +48,14 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       addConstrParams(sym.info)
     else tp
 
+  override def transformIsNoOpFor(ref: Denotations.SingleDenotation)(using Context): Boolean =
+    // `transformInfo` only changes infos of constructors (`isConstructor` is a
+    // phase-stable name test); for a non-constructor SymDenotation it returns
+    // `ref.info` unchanged, so `transform` returns `ref` itself.
+    ref match
+      case ref: SymDenotations.SymDenotation => !ref.isConstructor
+      case _ => false
+
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
    *  the last parameter list of (method- or poly-) type `tp`.
    */

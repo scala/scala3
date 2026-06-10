@@ -29,6 +29,17 @@ object DenotTransformers {
     /** The transformation method */
     def transform(ref: SingleDenotation)(using Context): SingleDenotation
 
+    /** If true, `transform(ref)` is known to return `ref` itself, so `goForward`
+     *  in `SingleDenotation.current` may extend `ref`'s validity period across
+     *  this transformer without invoking `transform`. Overriding predicates must
+     *  be pure, phase-stable, and evaluated against `ref`'s own fields (never
+     *  through `Symbol.denot`, whose result depends on the context's phase).
+     *  A wrong `true` silently freezes a denotation across this transformer,
+     *  so only opt in predicates that exactly mirror the identity-return
+     *  condition of `transform`.
+     */
+    def transformIsNoOpFor(ref: SingleDenotation)(using Context): Boolean = false
+
     override def isRunnable(using Context) = super.isRunnable && !ctx.usedBestEffortTasty
   }
 

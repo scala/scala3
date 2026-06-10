@@ -845,6 +845,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
     compilingScala2StdLib && sym.isAllOf(ModuleClass, butNot = Package)
 
+  override def transformIsNoOpFor(ref: Denotations.SingleDenotation)(using Context): Boolean =
+    // Off-stdlib, `infoMayChange` is constant-false, so `InfoTransformer.transform`
+    // returns `ref` for every existing symbol denotation. For a SymDenotation,
+    // `ref.symbol.exists` evaluated at this phase is exactly `ref.exists`, since
+    // `ref` is the denotation of its symbol valid up to this transformer's phase.
+    !compilingScala2StdLib && (ref match
+      case ref: SymDenotation => ref.exists
+      case _ => false)
+
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
     case info: ClassInfo =>
       var parents1 = info.parents

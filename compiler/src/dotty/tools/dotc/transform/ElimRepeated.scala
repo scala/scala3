@@ -79,6 +79,17 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.is(Method)
 
+  override def transformIsNoOpFor(ref: SingleDenotation)(using Context): Boolean =
+    // An existing non-method SymDenotation takes the `sym.exists &&
+    // !infoMayChange(sym)` exit in `InfoTransformer.transform` and falls
+    // through `transform`'s vararg-forwarder match unchanged (`Method` is a
+    // creation-stable FromStartFlags flag, readable off `ref` directly).
+    // Non-sym denotations can carry method types that `transformInfo` does
+    // rewrite, so they are never gated.
+    ref match
+      case ref: SymDenotation => ref.exists && !ref.is(Method)
+      case _ => false
+
   /** Does `sym` override a symbol defined in a Java class? One might think that
    *  this can be expressed as
    *
