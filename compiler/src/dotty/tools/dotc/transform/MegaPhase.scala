@@ -142,12 +142,35 @@ object MegaPhase {
     def transformFollowing(tree: Tree)(using Context): Tree =
       superPhase.transformNode(tree, idxInGroup + 1)
 
-    protected def singletonGroup: MegaPhase = new MegaPhase(Array(this))
+    protected lazy val singletonGroup: MegaPhase = new MegaPhase(Array(this))
 
     protected def run(using Context): Unit =
       singletonGroup.run
 
     override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
+  }
+
+  /** The names of all methods declared between a mini phase's class and `MiniPhase`,
+   *  memoized process-wide. Which prepare/transform hooks a mini phase redefines is a
+   *  class-static fact, so one reflective scan per class suffices; `Class#getDeclaredMethods`
+   *  is slow, and rescanning it for every group construction is wasteful. `ClassValue`
+   *  computation is idempotent and safe under concurrent first use of a class.
+   */
+  private val definedMethodNames = new ClassValue[java.util.HashSet[String]] {
+    override def computeValue(cls: Class[?]): java.util.HashSet[String] = {
+      val names = new java.util.HashSet[String]()
+      var cur: Class[?] = cls
+      while (!cur.eq(classOf[MiniPhase])) {
+        val methods = cur.getDeclaredMethods
+        var i = 0
+        while (i < methods.length) {
+          names.add(methods(i).nn.getName)
+          i += 1
+        }
+        cur = cur.getSuperclass.asInstanceOf[Class[?]]
+      }
+      names
+    }
   }
 }
 import MegaPhase.*
@@ -793,26 +816,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   // Initialization code
 
-  /** Class#getDeclaredMethods is slow, so we cache its output */
-  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method | Null]]
-
   /** Does `phase` contain a redefinition of method `name`?
    *  (which is a method of MiniPhase)
    */
-  private def defines(phase: MiniPhase, name: String) = {
-    def hasRedefinedMethod(cls: Class[?]): Boolean =
-      if (cls.eq(classOf[MiniPhase])) false
-      else {
-        var clsMethods = clsMethodsCache.get(cls)
-        if (clsMethods == null) {
-          clsMethods = cls.getDeclaredMethods
-          clsMethodsCache.put(cls, clsMethods)
-        }
-        clsMethods.nn.exists(_.nn.getName == name) ||
-        hasRedefinedMethod(cls.getSuperclass.nn)
-      }
-    hasRedefinedMethod(phase.getClass)
-  }
+  private def defines(phase: MiniPhase, name: String) =
+    definedMethodNames.get(phase.getClass).contains(name)
 
   private def newNxArray = new Array[MiniPhase | Null](miniPhases.length + 1)
   private val emptyNxArray = newNxArray
