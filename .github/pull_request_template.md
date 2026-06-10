@@ -2,7 +2,7 @@ Fixes #XYZ
 
 <!-- where #XYZ is the issue number; create as draft if this is still a WIP;
      if in doubt about your contribution, refer to: https://github.com/scala/scala3/blob/main/CONTRIBUTING.md
-     don't forget to sign the CLA: https://contribute.akka.io/cla/scala -->
+     don't forget to sign the CLA: https://contribute.akka.io/contribute/cla/scala -->
 
 ## How much have you relied on LLM-based tools in this contribution?
 
