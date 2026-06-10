@@ -271,5 +271,19 @@ class TypeUtils:
       case self: SingletonType => ctx.printer.toTextRef(self).show
       case _ => self.show
 
+    /** True if `tp` is a method or poly type whose term parameter names are
+     *  worth surfacing in printed types and capture sets — they are
+     *  user-given (not all `x$N` synthetic, not all `_$N` wildcard) and there
+     *  is at least one of them.
+     */
+    def hasMeaningfulParamNames(using Context): Boolean = self match
+      case mt: MethodType =>
+        mt.paramNames.nonEmpty
+        && !mt.allParamNamesSynthetic
+        && !mt.paramNames.forall(_.is(NameKinds.WildcardParamName))
+      case pt: PolyType =>
+        pt.resType.hasMeaningfulParamNames
+      case _ =>
+        false
 end TypeUtils
 
