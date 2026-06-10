@@ -79,6 +79,17 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   var hasLevel0Quotes: Boolean = true
 
+  /** Conservatively `true` if a staged quote may survive in this unit's tree when the
+   *  `Staging` phase runs. It is set at exactly the points that set `needsStaging`, but
+   *  unlike that one-way flag it is rolled back by `InlineTyper.typedSplice` around a
+   *  level-0 macro expansion: the quotes typed while typing the consumed splice body never
+   *  survive in the unit tree, and quotes surviving in the macro result set the flag again
+   *  while the result is re-typed. `Staging` skips its `CrossStageSafety` walk over
+   *  `needsStaging` units when no staged quote survived, as the walk is the identity
+   *  outside quote/splice scope.
+   */
+  var stagedQuoteSurvivors: Boolean = false
+
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsCaptureChecking: Boolean = false
 
@@ -167,6 +178,7 @@ object CompilationUnit {
       val force = new Force
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
+      unit1.stagedQuoteSurvivors = force.containsQuote
       unit1.needsInlining = force.containsInline
       unit1.hasMacroAnnotations = force.containsMacroAnnotation
     }
