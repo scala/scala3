@@ -8,7 +8,6 @@ import FileUtils.*
 import dotty.tools.io.ClassPath
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
-import dotty.tools.dotc.interactive.LogicalPackagesProvider
 import dotty.tools.dotc.interactive.LogicalPackage
 import java.nio.file.Files
 
@@ -17,10 +16,6 @@ import java.nio.file.Files
  * it uses proper type of classpath depending on a types of particular files containing sources or classes.
  */
 class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None) {
-  /**
-    * Create a new classpath based on the abstract file.
-    */
-  def newClassPath(file: AbstractFile)(using Context): ClassPath = ClassPathFactory.newClassPath(file)
 
   /**
     * Creators for sub classpaths which preserve this context.
@@ -39,7 +34,11 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
 
   def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
 
-  def expandDir(extdir: String): List[String] = dotty.tools.io.ClassPath.expandDir(extdir)
+  /** Expand dir out to contents, a la extdir */
+  private def expandDir(extdir: String): List[String] =
+    AbstractFile.getDirectory(extdir) match
+      case null => Nil
+      case dir  => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
 
   def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
     for {
@@ -47,20 +46,14 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       name <- expandDir(dir)
       entry <- Option(AbstractFile.getDirectory(name))
     }
-    yield newClassPath(entry)
+    yield createClassPath(entry)
 
   def classesInExpandedPath(path: String)(using Context): IndexedSeq[ClassPath] =
     classesInPathImpl(path, expand = true).toIndexedSeq
 
   def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
 
-  def classesInManifest(useManifestClassPath: Boolean)(using Context): List[ClassPath] =
-    if useManifestClassPath
-    then dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile.getResources(url)))
-    else Nil
-
-  // Internal
-  protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
+  private def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
     val files: List[AbstractFile] = for {
       file <- expandPath(path, expand)
       dir <- {
@@ -78,11 +71,11 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
           path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield
-          newClassPath(AbstractFile.getFile(path).nn) // .nn ok because of Files.exists(path)
+          createClassPath(AbstractFile.getFile(path).nn) // .nn ok because of Files.exists(path)
       else
         Seq.empty
 
-    files.map(newClassPath) ++ expanded
+    files.map(createClassPath) ++ expanded
 
   end classesInPathImpl
 
@@ -93,10 +86,8 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       new DirectorySourcePath(file.file.nn)
     else
       sys.error(s"Unsupported sourcepath element: $file")
-}
 
-object ClassPathFactory {
-  def newClassPath(file: AbstractFile)(using Context): ClassPath = file match {
+  private def createClassPath(file: AbstractFile)(using Context): ClassPath = file match {
     case vd: VirtualDirectory => VirtualDirectoryClassPath(vd)
     case _ =>
       if (file.isJarOrZip)

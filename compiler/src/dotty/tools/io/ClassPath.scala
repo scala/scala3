@@ -111,22 +111,10 @@ object ClassPath {
   /** Split classpath using platform-dependent path separator */
   def split(path: String): List[String] = path.split(pathSeparator).toList.filterNot(_ == "").distinct
 
-  /** Join classpath using platform-dependent path separator */
-  def join(paths: String*): String  = paths.filterNot(_ == "").mkString(pathSeparator)
-
-  /** Split the classpath, apply a transformation function, and reassemble it. */
-  def map(cp: String, f: String => String): String = join(split(cp).map(f)*)
-
   /** Expand path and possibly expanding stars */
   def expandPath(path: String, expandStar: Boolean = true): List[String] =
     if (expandStar) split(path).flatMap(expandS)
     else split(path)
-
-  /** Expand dir out to contents, a la extdir */
-  def expandDir(extdir: String): List[String] =
-    AbstractFile.getDirectory(extdir) match
-      case null => Nil
-      case dir  => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
 
   /** Expand manifest jar classpath entries: these are either urls, or paths
    *  relative to the location of the jar.
@@ -149,12 +137,6 @@ object ClassPath {
         Some(basedir.resolve(Path(spec)).toURL)
     catch
       case _: MalformedURLException | _: URISyntaxException => None
-
-  def manifests: List[java.net.URL] = {
-    import scala.jdk.CollectionConverters.EnumerationHasAsScala
-    val resources = Thread.currentThread().getContextClassLoader().getResources("META-INF/MANIFEST.MF")
-    resources.asScala.filter(_.getProtocol == "jar").toList
-  }
 
   @deprecated("shim for sbt's compiler interface", since = "2.12.0")
   sealed abstract class ClassPathContext
