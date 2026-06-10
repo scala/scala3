@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core.*
+import core.Phases.stagingPhase
 import Decorators.*
 import Flags.*
 import Types.*
@@ -77,7 +78,14 @@ class Splicing extends MacroTransform:
 
   override protected def run(using Context): Unit =
     if ctx.compilationUnit.needsStaging then
-      super.run
+      // The Staging phase, which runs just before this one on the same tree, records in
+      // `hasLevel0Quotes` whether any level-0 quote survives in this unit (most quotes are
+      // consumed by macro expansion long before these phases). If none survived, this
+      // phase's walk would only rediscover that fact, so skip it. The walk is only skipped
+      // if Staging is the phase immediately preceding this one (always true in the standard
+      // pipeline), so that a plugin phase inserted in between cannot invalidate the record.
+      if ctx.compilationUnit.hasLevel0Quotes || !(this.prev eq stagingPhase) then
+        super.run
       ctx.compilationUnit.needsStaging = false
 
   protected def newTransformer(using Context): Transformer = Level0QuoteTransformer
