@@ -127,7 +127,9 @@ object TypeApplications {
    *        C[..., ? >: L <: H, ...]
    *
    *  The `allReplaced` field indicates whether all occurrences of type lambda parameters
-   *  in the reduced type have been replaced with arguments.
+   *  in the reduced type have been replaced with arguments. This implements the
+   *  `admitsWildcard` condition of the spec section "Applications to Wildcard
+   *  Arguments": `allReplaced` is true iff it held for every wildcarded parameter.
    *
    *  2. If Mode.AllowLambdaWildcardApply is not set:
    *  All `X` arguments are replaced by:

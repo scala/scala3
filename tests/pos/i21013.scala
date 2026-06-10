@@ -40,3 +40,27 @@ def Test: Unit =
 
   val c1: List[Single[?]] = Nil                           // nested in a constructor
   val c2: Option[WithDefault[?]] = None
+
+// Escaping local types: avoidance must not infer an unsound wildcard application
+type Elem[X] = X match { case List[t] => t }
+type IfList[K, S] = S match { case List[t] => K }
+
+def d1 =
+  trait Local
+  val v: Elem[Local] = ???
+  v
+
+def d2[S] =
+  trait Local
+  val v: IfList[Local, S] = ???
+  v
+
+def d3 =
+  trait Local
+  val v: Elem[? <: Local] = ???
+  v
+
+def d4[S] =
+  trait Local
+  val v: List[IfList[Local, S]] = Nil
+  v
