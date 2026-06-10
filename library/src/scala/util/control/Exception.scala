@@ -438,7 +438,6 @@ object Exception {
    *
    *  @tparam T the result type of the `Catch` body
    *  @param body the finally logic to execute after the `Catch` body completes
-   *  @return a `Catch[T]` that catches no exceptions but runs `body` in a finally block
    */
   def ultimately[T](body: => Unit): Catch[T] = noCatch andFinally body
 

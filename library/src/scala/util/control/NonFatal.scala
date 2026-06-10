@@ -51,7 +51,6 @@ object NonFatal {
   /** Returns `Some`(t) if `NonFatal`(t) == true, otherwise `None`
    *
    *  @param t the `Throwable` to test for being non-fatal
-   *  @return `Some(t)` if `t` is non-fatal, otherwise `None`
    */
   def unapply(t: Throwable): Option[Throwable] = if (apply(t)) Some(t) else None
 }
