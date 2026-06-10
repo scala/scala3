@@ -528,9 +528,8 @@ WildcardTypeArg   ::=  ‘?‘ TypeBounds
 A _parameterized type_ ´T[T_1, ..., T_n]´ consists of a type constructor ´T´ and type arguments ´T_1, ..., T_n´ where ´n \geq 1´.
 The parameterized type is well-formed if
 
-- ´T´ is a type constructor which takes ´n´ type parameters ´a_1, ..., a_n´, i.e., it must conform to a type lambda of the form ´[\pm a_1 >: L_1 <: H_1, ..., \pm a_n >: L_n <: H_n] => U´, and
-- if ´T´ is an abstract type constructor, none of the type arguments is a wildcard type argument, and
-- if ´T´ is a _match type alias_, every wildcard type argument additionally satisfies the conditions in [Applications to Wildcard Arguments](#applications-to-wildcard-arguments), and
+- ´T´ is a type constructor which takes ´n´ type parameters ´a_1, ..., a_n´, i.e., it must conform to a type lambda of the form ´[\pm a_1 >: L_1 <: H_1, ..., \pm a_n >: L_n <: H_n] =>> U´, and
+- if some type argument is a wildcard type argument, the application satisfies the conditions in [Applications to Wildcard Arguments](#applications-to-wildcard-arguments), and
 - each type argument _conforms to its bounds_, i.e., given ´\sigma´ the substitution ´[a_1 := T_1, ..., a_n := T_n]´, for each type ´i´:
   - if ´T_i´ is a type and ´\sigma L_i <: T_i <: \sigma H_i´, or
   - ´T_i´ is a wildcard type argument ´? >: L_{Ti} <: H_{Ti}´ and ´\sigma L_i <: L_{Ti}´ and ´H_{Ti} <: \sigma H_i´.
@@ -544,9 +543,61 @@ If only one bound is omitted, `Nothing` or `Any` is used, as usual.
 Also in the concrete syntax, `_` can be used instead of `?` for compatibility reasons, with the same meaning.
 This alternative will be deprecated in the future, and is already deprecated under `-source:future`.
 
+#### Applications to Wildcard Arguments
+
+A wildcard type argument stands for some unknown type; distinct wildcard type arguments may stand for distinct types.
+Substituting a wildcard type argument for a type parameter is therefore not meaning-preserving in general.
+For instance, substituting `?` for ´X´ in `(´X´, ´X´)` yields `(?, ?)`, replacing one unknown type, used twice, by two unrelated ones.
+
+We define `admitsWildcard(´a´, ´U´)`, for a type parameter ´a´ and a type ´U´, to hold if:
+
+1. ´a´ occurs at most once in ´U´;
+2. the occurrence, if any, is a type argument of a parameterized class type, or the aliased type of a refinement; and
+3. that class type or refinement appears at the top level of ´U´, i.e., not within a type argument or refinement.
+
+If `admitsWildcard(´a´, ´U´)` holds, a wildcard type argument retains its meaning when it takes the place of the occurrence of ´a´ in ´U´, or is dropped if ´a´ does not occur; in any other position, the placed wildcard would equate types that need not be equal.
+
+The well-formedness and meaning of an application ´T[T_1, ..., T_n]´ in which some ´T_i´ are wildcard type arguments depend on ´T´.
+Let ´a_i´ range over the parameters instantiated to wildcard type arguments.
+
+1. If ´T´ is a class type constructor, the application is a parameterized class type; it retains its wildcard type arguments, and no substitution takes place.
+2. If ´T´ is an abstract type constructor, the application is ill-formed.
+3. If ´T´ is a concrete type alias to a type lambda with body ´U´, or such a type lambda itself, the application is well-formed only if `admitsWildcard(´a_i´, ´U´)` holds for each ´a_i´.
+   The application then denotes ´U´, with the other type arguments substituted for their parameters and each wildcard type argument at the place of the occurrence of its ´a_i´, if any.
+4. If ´T´ is a _match type alias_, i.e., a concrete type alias to a type lambda whose body is a [match type](#match-types) ´M´ of the form `´X´ match <: ´H´ { case ´P_1´ => ´R_1´; ...; case ´P_k´ => ´R_k´ }`:
+   1. If `admitsWildcard(´a_i´, ´M´)` holds for each ´a_i´, and each occurrence is in the scrutinee ´X´ or the upper bound ´H´, the application denotes ´M´ with the wildcard type arguments so placed.
+   2. Otherwise, if each ´a_i´ occurs solely in the scrutinee ´X´, the application denotes an irreducible match type.
+   3. Otherwise, the application is ill-formed.
+
+A type alias application that cannot be expanded denotes nothing; an irreducible match type, by contrast, is a valid type.
+This is why clause 4.2 accepts applications that clause 3 would reject.
+
+##### Example
+
+```scala
+type Id[X]   = List[X]
+type Dup[X]  = (X, X)
+type Deep[X] = List[List[X]]
+
+def ok1: Id[?]   = ???   // legal: denotes List[?]
+def no1: Dup[?]  = ???   // error: ? may not be duplicated
+def no2: Deep[?] = ???   // error: ? may not move into the nested type argument
+
+type Scrut[X]   =          X match { case Int => String }    // X only in the scrutinee
+type Pat[X]     =     Double match { case X   => Int }       // X in a pattern
+type Body[X, S] =          S match { case Int => List[X] }   // X in a case body
+type Bnd[X, S] <: List[X]  = S match { case Int => Nothing } // X in the upper bound
+
+def ok2: Scrut[?]     = ???  // legal: an irreducible match type
+def ok3: Bnd[?, Int]  = ???  // legal: X moves into the upper bound: List[?]
+def no3: Pat[?]       = ???  // error: X occurs in a case
+def no4: Body[?, Int] = ???  // error: X occurs in a case
+def no5: Bnd[?, ?]    = ???  // error: X is in the bound, and S occurs only as the bare scrutinee
+```
+
 #### Simplification Rules
 
-Wildcard type arguments used in covariant or contravariant positions can always be simplified to regular types.
+Wildcard type arguments used in covariant or contravariant positions can be simplified to regular types.
 
 Let ´T[T_1, ..., T_n]´ be a parameterized type for a concrete type constructor.
 Then, applying a wildcard type argument ´? >: L <: H´ at the ´i´'th position obeys the following equivalences:
@@ -554,7 +605,7 @@ Then, applying a wildcard type argument ´? >: L <: H´ at the ´i´'th position
 - If the type parameter ´T_i´ is declared covariant, then ´T[..., ? >: L <: H, ...] =:= T[..., H, ...]´.
 - If the type parameter ´T_i´ is declared contravariant, then ´T[..., ? >: L <: H, ...] =:= T[..., L, ...]´.
 
-These equivalences apply only to well-formed applications; a wildcard type argument that [Applications to Wildcard Arguments](#applications-to-wildcard-arguments) forbids for a _match type alias_ is therefore not simplified.
+These equivalences apply only to well-formed applications; a wildcard type argument that [Applications to Wildcard Arguments](#applications-to-wildcard-arguments) forbids is therefore not simplified.
 
 #### Example Parameterized Types
 
@@ -1158,33 +1209,7 @@ For ´n \geq 1´, it is specified as:
 
 The reduction of an "empty" match type `´X´ match { }` (which cannot be written in user programs) is a compile error.
 
-#### Applications to Wildcard Arguments
-
-Let `´M´` be a _match type alias_ of the form `type ´M´[´a_1´, ..., ´a_n´] = ´X´ match { case ´P_1´ => ´R_1´; ...; case ´P_k´ => ´R_k´ }` (optionally with a declared upper bound).
-A wildcard type argument is never substituted into the underlying match type.
-An application `´M´[´T_1´, ..., ´T_n´]` in which some `´T_i´` is a wildcard type argument is well-formed only if
-
-- the underlying match type reduces without the wildcard type arguments taking part (the application then denotes the reduct), or
-- every parameter `´a_i´` instantiated to a wildcard occurs solely in the scrutinee `´X´` (the application then denotes an irreducible match type).
-
-A wildcard type argument stands for an unknown type, and distinct wildcards may denote distinct types.
-A wildcard in the scrutinee merely leaves the match irreducible.
-Anywhere else — in a case pattern, in a case body, or in the declared upper bound of an irreducible application — it would take part in reduction, where treating distinct wildcards as the same type is unsound: the same reason `[X] =>> (X, X)` may not be applied to a wildcard type argument.
-
-##### Example
-
-```scala
-type Scrut[X]   =          X match { case Int => String }    // X only in the scrutinee
-type Pat[X]     =     Double match { case X   => Int }       // X in a pattern
-type Body[X, S] =          S match { case Int => List[X] }   // X in a case body
-type Bnd[X, S] <: List[X]  = S match { case Int => Nothing } // X in the upper bound
-
-def ok1: Scrut[?]     = ???  // legal: irreducible, X only in the scrutinee
-def ok2: Bnd[?, Int]  = ???  // legal: reduces to Nothing, X takes no part
-def no1: Pat[?]       = ???  // error: irreducible, X in a pattern
-def no2: Body[?, Int] = ???  // error: irreducible, X in a case body
-def no3: Bnd[?, ?]    = ???  // error: irreducible, X in the upper bound
-```
+Applying a match type alias to wildcard type arguments is restricted; see [Applications to Wildcard Arguments](#applications-to-wildcard-arguments).
 
 ### Skolem Types
 
@@ -1549,7 +1574,7 @@ We define `matches(´S´, ´T´)` where ´S´ and ´T´ are types or methodic ty
 Note that conformance in Scala is _not_ transitive.
 Given two abstract types ´A´ and ´B´, and one abstract `type ´C >: A <: B´` available on prefix ´p´, we have ´A <: p.C´ and ´C <: p.B´ but not necessarily ´A <: B´.
 
- [^argisnotwildcard]: In these cases, if `T_i` and/or `U_i` are wildcard type arguments, the [simplification rules](#simplification-rules) for parameterized types allow to reduce them to real types.
+ [^argisnotwildcard]: In these cases, if `T_i` and/or `U_i` are wildcard type arguments, the [simplification rules](#simplification-rules) for parameterized types allow to reduce them to real types. Such applications are subject to the conditions in [Applications to Wildcard Arguments](#applications-to-wildcard-arguments).
 
 #### Least upper bounds and greatest lower bounds
 
