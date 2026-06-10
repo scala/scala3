@@ -379,7 +379,6 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the tree entries
    *  @tparam B the value type of the tree entries
    *  @param node the node whose in-order successor is to be found
-   *  @return the next node in the in-order traversal, or `null` if `node` is the last node
    */
   private def successor[A, B](node: Node[A, B]): Node[A, B] | Null = {
     if (node.right ne null) minNodeNonNull(node.right)
@@ -400,7 +399,6 @@ private[collection] object RedBlackTree {
    *  @tparam A the key type of the tree entries
    *  @tparam B the value type of the tree entries
    *  @param node the node whose in-order predecessor is to be found
-   *  @return the previous node in the in-order traversal, or `null` if `node` is the first node
    */
   private def predecessor[A, B](node: Node[A, B]): Node[A, B] | Null = {
     if (node.left ne null) maxNodeNonNull(node.left)
