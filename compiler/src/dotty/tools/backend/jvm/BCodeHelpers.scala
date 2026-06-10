@@ -108,7 +108,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     }
   } // end of trait BCPickles
 
-  trait BCAnnotGen {
+  object BCAnnotGen:
     // OK to cache these across Contexts, what they refer to won't change
     private var cachedAnnotationRetentionAttr: ClassSymbol | Null = null
     private var cachedAnnotationRetentionSource: TermSymbol | Null = null
@@ -320,7 +320,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
           }
       }
     }
-  } // end of trait BCAnnotGen
+  end BCAnnotGen
 
   trait BCJGenSigGen {
 
@@ -376,7 +376,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
   } // end of trait BCJGenSigGen
 
-  trait BCForwardersGen extends BCAnnotGen with BCJGenSigGen {
+  trait BCForwardersGen extends BCJGenSigGen {
 
     /* Add a forwarder for method m. Used only from addForwarders().
      *
@@ -420,13 +420,13 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         if thrownExceptions.isEmpty then null else thrownExceptions.toArray
       )
 
-      emitAnnotations(mirrorMethod, others)
+      BCAnnotGen.emitAnnotations(mirrorMethod, others)
       val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
       // to static methods of companion class
       // Old assumption: in Dotty this link does not exists: there is no way to get from method type
       // to inner symbols of DefDef
       // TODO: now we have paramSymss and could use it here.
-      emitParamAnnotations(mirrorMethod, params.map(_.annotations))
+      BCAnnotGen.emitParamAnnotations(mirrorMethod, params.map(_.annotations))
 
       mirrorMethod.visitCode()
 
@@ -542,8 +542,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
   /* functionality for building plain and mirror classes */
   abstract class JCommonBuilder
-    extends BCAnnotGen
-    with    BCForwardersGen
+    extends BCForwardersGen
     with    BCPickles { }
 
   /* builder of mirror classes */
@@ -583,7 +582,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
       val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Module)) moduleClass.companionClass else moduleClass.companionModule)
       mirrorClass.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
-      emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
+      BCAnnotGen.emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
       addForwarders(mirrorClass, mirrorName, moduleClass)
       mirrorClass.visitEnd()
