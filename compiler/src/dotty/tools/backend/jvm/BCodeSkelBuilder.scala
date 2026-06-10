@@ -129,8 +129,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
    *   - `jumpDest` , `cleanups` , `labelDefsAtOrUnder`
    */
   abstract class PlainSkelBuilder
-    extends BCClassGen
-    with    BCForwardersGen {
+    extends BCClassGen {
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
     private inline val MaximumJvmParameters = 254
@@ -367,7 +366,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             val isCandidateForForwarders =  (lmoc.is(Module)) && lmoc.isStatic
             if (isCandidateForForwarders) {
               report.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
-              addForwarders(cnode, thisName, lmoc.moduleClass)
+              BCForwardersGen.addForwarders(cnode, thisName, lmoc.moduleClass)
             }
           }
         }
@@ -710,7 +709,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
       val jgensig = BCSignatureGen.getGenericSignature(methSymbol, mdesc)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
-      val thrownExceptions: List[String] = getExceptions(excs)
+      val thrownExceptions: List[String] = BCForwardersGen.getExceptions(excs)
 
       val bytecodeName =
         if (methSymbol.name.isStaticConstructorName) BCodeUtils.CLASS_CONSTRUCTOR_NAME
