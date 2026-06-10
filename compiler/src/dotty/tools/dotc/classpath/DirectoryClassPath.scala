@@ -8,7 +8,7 @@ import java.net.{URI, URL}
 import java.nio.file.{FileSystems, Files}
 
 import dotty.tools.dotc.classpath.PackageNameUtils.{packageContains, separatePkgAndClassNames}
-import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation, EfficientClassPath}
+import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation}
 import FileUtils.*
 import PlainFile.toPlainFile
 
@@ -22,7 +22,7 @@ import scala.collection.immutable.ArraySeq
  * when we have a name of a package.
  * It abstracts over the file representation to work with both JFile and AbstractFile.
  */
-trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends EfficientClassPath {
+trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
   type F
 
   val dir: F
@@ -173,9 +173,10 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
         Files.list(x.resolve(inPackage.dirPathTrailingSlash)).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
         ClassFileEntry(x.toPlainFile)).toVector
 
-  override private[dotty] def list(inPackage: PackageName): ClassPathEntries =
-    if (inPackage.isRoot) ClassPathEntries(packages(inPackage), Nil)
-    else ClassPathEntries(packages(inPackage), classes(inPackage))
+  override private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit =
+    packages(inPackage).foreach(onPackageEntry)
+    if !inPackage.isRoot then
+      classes(inPackage).foreach(onClassesAndSources)
 
   def asURLs: Seq[URL] = Seq(new URI("jrt:/").toURL)
   // We don't yet have a scheme to represent the JDK modules in our `-classpath`.
@@ -239,9 +240,11 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
     }
   }
 
-  override private[dotty] def list(inPackage: PackageName): ClassPathEntries =
-    if (inPackage.isRoot) ClassPathEntries(packages(inPackage), Nil)
-    else ClassPathEntries(packages(inPackage), classes(inPackage))
+  override private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
+    packages(inPackage).foreach(onPackageEntry)
+    if !inPackage.isRoot then
+      classes(inPackage).foreach(onClassesAndSources)
+  }
 
   def asURLs: Seq[URL] = Nil
   def asClassPathStrings: Seq[String] = Nil

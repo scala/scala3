@@ -9,7 +9,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.immutable.ArraySeq
 import dotc.util
 
-import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, EfficientClassPath }
+import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }
 
 /**
  * A classpath unifying multiple class- and sourcepath entries.
@@ -45,27 +45,12 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     getDistinctEntries(_.sources(inPackage))
 
   override private[dotty] def hasPackage(pkg: PackageName): Boolean = aggregates.exists(_.hasPackage(pkg))
-  override private[dotty] def list(inPackage: PackageName): ClassPathEntries = {
-    val packages: java.util.HashSet[PackageEntry] = new java.util.HashSet[PackageEntry]()
+  override private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
+    val packages = new collection.mutable.HashSet[PackageEntry]()
     val classesAndSourcesBuffer = collection.mutable.ArrayBuffer[ClassRepresentation]()
-    val onPackage: PackageEntry => Unit = packages.add
-    val onClassesAndSources: ClassRepresentation => Unit = classesAndSourcesBuffer += _
-
-    aggregates.foreach {
-      case ecp: EfficientClassPath =>
-        ecp.list(inPackage, onPackage, onClassesAndSources)
-      case cp =>
-        val entries = cp.list(inPackage)
-        entries._1.foreach(onPackage)
-        classesAndSourcesBuffer ++= entries._2
-    }
-
-    val distinctPackages: Seq[PackageEntry] = {
-      val arr = packages.toArray(new Array[PackageEntry](packages.size()))
-      ArraySeq.unsafeWrapArray(arr)
-    }
-    val distinctClassesAndSources = mergeClassesAndSources(classesAndSourcesBuffer)
-    ClassPathEntries(distinctPackages, distinctClassesAndSources)
+    aggregates.foreach(cp => cp.list(inPackage, packages.add, classesAndSourcesBuffer += _))
+    packages.foreach(onPackageEntry)
+    mergeClassesAndSources(classesAndSourcesBuffer).foreach(onClassesAndSources)
   }
 
   /** Returns only one entry for each name.

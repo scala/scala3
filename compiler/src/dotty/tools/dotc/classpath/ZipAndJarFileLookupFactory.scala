@@ -131,7 +131,10 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     }
 
     override private[dotty] def hasPackage(pkg: PackageName) = cachedPackages.contains(pkg.dottedString)
-    override private[dotty] def list(inPackage: PackageName): ClassPathEntries = ClassPathEntries(packages(inPackage), classes(inPackage))
+    override private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
+      packages(inPackage).foreach(onPackageEntry)
+      classes(inPackage).foreach(onClassesAndSources)
+    }
   }
 
   private object ManifestResourcesClassPath {

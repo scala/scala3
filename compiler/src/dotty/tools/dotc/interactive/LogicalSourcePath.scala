@@ -6,8 +6,7 @@ import dotty.tools.dotc.classpath.PackageEntry
 import dotty.tools.dotc.classpath.PackageEntryImpl
 import dotty.tools.dotc.classpath.PackageName
 import dotty.tools.dotc.classpath.SourceFileEntry
-import dotty.tools.io.AbstractFile
-import dotty.tools.io.ClassPath
+import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation}
 
 import java.io.File
 import java.net.URL
@@ -51,13 +50,14 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
     val pre = if (prefix.isEmpty) prefix else s"$prefix."
     pkg.packages.map(p => PackageEntryImpl(pre + p.name))
 
-  override def list(inPackage: PackageName): ClassPathEntries =
+  override def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
     val rawPackage = inPackage.dottedString
-    val res = findPackage(rawPackage) match
+    findPackage(rawPackage) match
       case Some(pkg) =>
-        ClassPathEntries(packagesIn(pkg, rawPackage), sourcesIn(pkg))
-      case None => ClassPathEntries(Seq(), Seq())
-    res
+        packagesIn(pkg, rawPackage).foreach(onPackageEntry)
+        sourcesIn(pkg).foreach(onClassesAndSources)
+      case None => ()
+  }
 
   override def asURLs: Seq[URL] = sourcepath.split(File.pathSeparator).toIndexedSeq.map(new File(_)).map(_.toURI.toURL)
 

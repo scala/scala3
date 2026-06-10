@@ -9,14 +9,14 @@ import java.net.URL
 
 import dotty.tools.io.{ AbstractFile, FileZipArchive }
 import FileUtils.*
-import dotty.tools.io.{EfficientClassPath, ClassRepresentation}
+import dotty.tools.io.{ClassPath, ClassRepresentation}
 
 /**
  * A trait allowing to look for classpath entries of given type in zip and jar files.
  * It provides common logic for classes handling class and source files.
  * It's aware of things like e.g. META-INF directory which is correctly skipped.
  */
-trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends EfficientClassPath {
+trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
   val zipFile: File
   def release: Option[String]
 

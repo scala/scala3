@@ -42,15 +42,22 @@ trait ClassPath {
   private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry]
   private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry]
   private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry]
+  private def list(inPackage: PackageName): ClassPathEntries = {
+    val packageBuf = collection.mutable.ArrayBuffer.empty[PackageEntry]
+    val classRepBuf = collection.mutable.ArrayBuffer.empty[ClassRepresentation]
+    list(inPackage, packageBuf += _, classRepBuf += _)
+    if (packageBuf.isEmpty && classRepBuf.isEmpty) ClassPathEntries.empty
+    else ClassPathEntries(packageBuf, classRepBuf)
+  }
 
   /**
-    * Returns packages and classes (source or classfile) that are members of `inPackage` (not
+    * Lists packages and classes (source or classfile) that are members of `inPackage` (not
     * recursively). The `inPackage` contains a full package name, e.g., "scala.collection".
     *
     * This is the main method uses to find classes, see class `PackageLoader`. The
     * `rootMirror.rootLoader` is created with `inPackage = ""`.
     */
-  private[dotty] def list(inPackage: PackageName): ClassPathEntries
+  private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
@@ -69,18 +76,6 @@ trait ClassPath {
     findClassFileAndModuleFile(className, findModule = true)
 
   def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])]
-}
-
-trait EfficientClassPath extends ClassPath {
-  def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit
-
-  override def list(inPackage: PackageName): ClassPathEntries = {
-    val packageBuf = collection.mutable.ArrayBuffer.empty[PackageEntry]
-    val classRepBuf = collection.mutable.ArrayBuffer.empty[ClassRepresentation]
-    list(inPackage, packageBuf += _, classRepBuf += _)
-    if (packageBuf.isEmpty && classRepBuf.isEmpty) ClassPathEntries.empty
-    else ClassPathEntries(packageBuf, classRepBuf)
-  }
 }
 
 object ClassPath {
