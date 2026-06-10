@@ -299,7 +299,7 @@ object SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.list(packageName).classesAndSources
+        val classReps = classPath.classes(packageName) ++ classPath.sources(packageName)
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -340,7 +340,8 @@ object SymbolLoaders {
           // definitions. See #23043.
           val hasConflict = currentDecls.lookup(name.toTermName) != NoSymbol
           if !hasConflict
-            || classPath.list(fullName).classesAndSources.nonEmpty
+            || classPath.classes(fullName).nonEmpty
+            || classPath.sources(fullName).nonEmpty
             || classPath.packages(fullName).nonEmpty
           then
             enterPackage(root.symbol, name.toTermName,

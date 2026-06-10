@@ -48,17 +48,6 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends ClassPa
     yield createFileEntry(entry)
 
   override def hasPackage(pkg: PackageName) = findDirEntry(pkg).isDefined
-  def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit =
-    findDirEntry(inPackage) match {
-      case Some(dirEntry) =>
-        for (entry <- dirEntry.iterator) {
-          if (entry.isPackage)
-            onPackageEntry(PackageEntryImpl(inPackage.entryName(entry.name)))
-          else if (isRequiredFileType(entry))
-            onClassesAndSources(createFileEntry(entry))
-        }
-      case None =>
-    }
 
   private def findDirEntry(pkg: PackageName): Option[archive.DirEntry] =
     archive.allDirs.get(pkg.dirPathTrailingSlashJar)

@@ -62,20 +62,6 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
     }
     files.iterator.map(f => createFileEntry(toAbstractFile(f))).toSeq
   }
-
-  override def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
-    val dirForPackage = getDirectory(inPackage)
-    dirForPackage match {
-      case None =>
-      case Some(directory) =>
-        for (file <- listChildren(directory)) {
-          if (isPackage(file))
-            onPackageEntry(PackageEntryImpl(inPackage.entryName(getName(file))))
-          else if (isMatchingFile(file))
-            onClassesAndSources(createFileEntry(toAbstractFile(file)))
-        }
-    }
-  }
 }
 
 trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends DirectoryLookup[FileEntryType] {
@@ -172,12 +158,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
       packageToModuleBases.getOrElse(inPackage.dottedString, Nil).flatMap(x =>
         Files.list(x.resolve(inPackage.dirPathTrailingSlash)).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
         ClassFileEntry(x.toPlainFile)).toVector
-
-  override private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit =
-    packages(inPackage).foreach(onPackageEntry)
-    if !inPackage.isRoot then
-      classes(inPackage).foreach(onClassesAndSources)
-
+  
   def asURLs: Seq[URL] = Seq(new URI("jrt:/").toURL)
   // We don't yet have a scheme to represent the JDK modules in our `-classpath`.
   // java models them as entries in the new "module path", we'll probably need to follow this.
@@ -238,12 +219,6 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
         Files.list(p).iterator.asScala.filter(_.getFileName.toString.endsWith(".sig")))
       sigFiles.map(f => ClassFileEntry(f.toPlainFile)).toVector
     }
-  }
-
-  override private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
-    packages(inPackage).foreach(onPackageEntry)
-    if !inPackage.isRoot then
-      classes(inPackage).foreach(onClassesAndSources)
   }
 
   def asURLs: Seq[URL] = Nil

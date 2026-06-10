@@ -45,13 +45,6 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     getDistinctEntries(_.sources(inPackage))
 
   override private[dotty] def hasPackage(pkg: PackageName): Boolean = aggregates.exists(_.hasPackage(pkg))
-  override private[dotty] def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
-    val packages = new collection.mutable.HashSet[PackageEntry]()
-    val classesAndSourcesBuffer = collection.mutable.ArrayBuffer[ClassRepresentation]()
-    aggregates.foreach(cp => cp.list(inPackage, packages.add, classesAndSourcesBuffer += _))
-    packages.foreach(onPackageEntry)
-    mergeClassesAndSources(classesAndSourcesBuffer).foreach(onClassesAndSources)
-  }
 
   /** Returns only one entry for each name.
    *

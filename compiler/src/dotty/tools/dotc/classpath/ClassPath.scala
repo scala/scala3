@@ -8,12 +8,6 @@ import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation
 import dotty.tools.io.FileExtension
 
-case class ClassPathEntries(packages: scala.collection.Seq[PackageEntry], classesAndSources: scala.collection.Seq[ClassRepresentation])
-
-object ClassPathEntries {
-  val empty = ClassPathEntries(Seq.empty, Seq.empty)
-}
-
 case class PackageName(dottedString: String) {
   val dirPathTrailingSlashJar: String = FileUtils.dirPathInJar(dottedString) + "/"
 

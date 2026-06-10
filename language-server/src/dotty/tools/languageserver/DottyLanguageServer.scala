@@ -22,7 +22,6 @@ import dotc._
 import ast.{Trees, tpd, untpd}
 import core._, core.Decorators._
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
-import classpath.ClassPathEntries
 import reporting._
 import typer.Typer
 import util._

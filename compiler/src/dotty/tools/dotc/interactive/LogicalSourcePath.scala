@@ -1,7 +1,6 @@
 package dotty.tools.dotc.interactive
 
 import dotty.tools.dotc.classpath.BinaryFileEntry
-import dotty.tools.dotc.classpath.ClassPathEntries
 import dotty.tools.dotc.classpath.PackageEntry
 import dotty.tools.dotc.classpath.PackageEntryImpl
 import dotty.tools.dotc.classpath.PackageName
@@ -49,15 +48,6 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
   private def packagesIn(pkg: LogicalPackage, prefix: String) =
     val pre = if (prefix.isEmpty) prefix else s"$prefix."
     pkg.packages.map(p => PackageEntryImpl(pre + p.name))
-
-  override def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit = {
-    val rawPackage = inPackage.dottedString
-    findPackage(rawPackage) match
-      case Some(pkg) =>
-        packagesIn(pkg, rawPackage).foreach(onPackageEntry)
-        sourcesIn(pkg).foreach(onClassesAndSources)
-      case None => ()
-  }
 
   override def asURLs: Seq[URL] = sourcepath.split(File.pathSeparator).toIndexedSeq.map(new File(_)).map(_.toURI.toURL)
 
