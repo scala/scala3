@@ -367,9 +367,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => ()
       }
 
-      val ssa = None // TODO: inlined form `getAnnotPickle(thisName, claszSymbol)`. Should something be done on Dotty?
-      cnode.visitAttribute(if (ssa.isDefined) BCPickles.pickleMarkerLocal else BCPickles.pickleMarkerForeign)
-      BCAnnotGen.emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
+      cnode.visitAttribute(createScalaJAttribute())
+      BCAnnotGen.emitAnnotations(cnode, claszSymbol.annotations)
 
       if (!isCZStaticModule) {
         val skipStaticForwarders = (claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
