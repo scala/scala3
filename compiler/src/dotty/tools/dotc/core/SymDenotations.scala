@@ -2489,7 +2489,8 @@ object SymDenotations {
             if Config.checkCacheMembersNamed then
               val denots1 = computeMembersNamed(name)
               assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
-            rememberMembersNamed(period, name, cached)
+            if cached eq NoDenotation then rememberMembersNamedNoDenotation(period, name)
+            else rememberMembersNamed(period, name, cached)
             return cached
         else
           reservedScalarSlot = reserveMembersNamedSlot(period, name)
@@ -2498,7 +2499,15 @@ object SymDenotations {
         val denots = computeMembersNamed(name)
         if myMemberCacheMutationId == mutationId then
           if denots eq NoDenotation then
-            if reservedScalarSlot then rememberMembersNamed(period, name, denots)
+            // Remember computed absences in an already-promoted member-cache
+            // map so repeat negative lookups become map hits instead of full
+            // recomputed parent walks. Promotion policy is unchanged: absences
+            // never trigger a promotion, and classes without a map keep using
+            // the scalar negative runway. Package classes are excluded since
+            // their scopes are backed by lazy symbol loaders.
+            cache = currentMemberCache
+            if cache != null && !is(PackageClass) then cache(name) = denots
+            else if reservedScalarSlot then rememberMembersNamed(period, name, denots)
             else rememberMembersNamedNoDenotation(period, name)
           else
             cache = currentMemberCache
