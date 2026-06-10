@@ -80,7 +80,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
    * while the "Signature" attribute can be associated to classes, methods, and fields.)
    *
    */
-  trait BCPickles {
+  object BCPickles:
 
     import dotty.tools.dotc.core.unpickleScala2.{ PickleFormat, PickleBuffer }
 
@@ -106,7 +106,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     def pickleMarkerForeign(using Context) = {
       createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
     }
-  } // end of trait BCPickles
+  end BCPickles
 
   object BCAnnotGen:
     // OK to cache these across Contexts, what they refer to won't change
@@ -539,8 +539,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
   /* functionality for building plain and mirror classes */
   abstract class JCommonBuilder
-    extends BCForwardersGen
-    with    BCPickles { }
+    extends BCForwardersGen { }
 
   /* builder of mirror classes */
   class JMirrorBuilder extends JCommonBuilder {
@@ -578,7 +577,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       }
 
       val ssa = None // getAnnotPickle(mirrorName, if (moduleClass.is(Module)) moduleClass.companionClass else moduleClass.companionModule)
-      mirrorClass.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
+      mirrorClass.visitAttribute(if (ssa.isDefined) BCPickles.pickleMarkerLocal else BCPickles.pickleMarkerForeign)
       BCAnnotGen.emitAnnotations(mirrorClass, moduleClass.annotations ++ ssa)
 
       addForwarders(mirrorClass, mirrorName, moduleClass)

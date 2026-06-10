@@ -129,7 +129,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
   abstract class PlainSkelBuilder
     extends BCClassGen
     with    BCForwardersGen
-    with    BCPickles
     with    BCJGenSigGen {
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
@@ -354,7 +353,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       val ssa = None // TODO: inlined form `getAnnotPickle(thisName, claszSymbol)`. Should something be done on Dotty?
-      cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
+      cnode.visitAttribute(if (ssa.isDefined) BCPickles.pickleMarkerLocal else BCPickles.pickleMarkerForeign)
       BCAnnotGen.emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
       if (!isCZStaticModule) {
