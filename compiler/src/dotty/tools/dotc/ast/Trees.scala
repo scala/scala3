@@ -284,6 +284,11 @@ object Trees {
     type ThisTree[+T <: Untyped] <: ProxyTree[T]
     def forwardTo: Tree[T]
     override def denot(using Context): Denotation = forwardTo.denot
+    // Symbol-side fast path: forward directly to `forwardTo.symbol` instead of
+    // routing through `denot.symbol`, so that any `symbol` override on the
+    // forwardTo target (e.g. Select.symbol's cached-symbol fast path) applies
+    // to Apply / TypeApply / Typed / Annotated reads as well.
+    override def symbol(using Context): Symbol = forwardTo.symbol
     override def isTerm: Boolean = forwardTo.isTerm
     override def isType: Boolean = forwardTo.isType
   }
