@@ -147,7 +147,7 @@ object Trees {
     def denot(using Context): Denotation = NoDenotation
 
     /** Shorthand for `denot.symbol`. */
-    final def symbol(using Context): Symbol = denot.symbol
+    def symbol(using Context): Symbol = denot.symbol
 
     /** The owner to install when running a MegaPhase transform under this tree.
      *  Equal to `symbol` for every tree except `PackageDef`, which folds in the
@@ -487,6 +487,18 @@ object Trees {
         case tpe: ThisType => tpe.cls.denot
         case _ => NoDenotation
 
+    // Symbol-side fast path: when the cached NamedType denotation is valid for the
+    // current period (the same gate `NamedType.denot` uses, looser than the strict
+    // `checkedPeriod == ctx.period` gate in `NamedType.symbol`), skip the full
+    // denot-then-`.symbol` indirection and read the cached symbol directly.
+    // Falls back bit-for-bit to `denot.symbol` on a cache miss or non-NamedType
+    // type, preserving the ConstantType / stripped fallbacks in `denotSlowPath`.
+    override def symbol(using Context): Symbol = typeOpt match
+      case tpe: NamedType =>
+        val s = tpe.cachedSymbolOrNull
+        if s != null then s else denot.symbol
+      case _ => denot.symbol
+
     def nameSpan(using Context): Span =
       if span.exists then
         val point = span.point
@@ -520,6 +532,18 @@ object Trees {
         case _ =>
           super.denot
       }
+    // Symbol-side fast path: avoid the `asSeenFrom` allocation and full denot path
+    // for the common case where we only need the symbol. For Module TermRefs we
+    // return the moduleClass directly (matching the denot.symbol above); for
+    // ThisType / non-module NamedType we use the cached-symbol fast path.
+    override def symbol(using Context): Symbol = typeOpt match
+      case tpe: ThisType => tpe.cls
+      case tpe: NamedType =>
+        val s = tpe.cachedSymbolOrNull
+        if s == null then denot.symbol
+        else if s.is(Module) then s.moduleClass
+        else s
+      case _ => denot.symbol
   }
 
   /** C.super[mix], where qual = C.this */
