@@ -128,8 +128,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
    *   - `genSynchronized()
    *   - `jumpDest` , `cleanups` , `labelDefsAtOrUnder`
    */
-  abstract class PlainSkelBuilder
-    extends BCClassGen {
+  abstract class PlainSkelBuilder {
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
     private inline val MaximumJvmParameters = 254
@@ -290,6 +289,22 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
       cnode
     } // end of method genPlainClass()
+
+    /*
+     *  Add public static final field serialVersionUID with value `id`
+     *
+     *  can-multi-thread
+     */
+    private def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
+      // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
+      jclass.visitField(
+        asm.Opcodes.ACC_PRIVATE | asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
+        "serialVersionUID",
+        "J",
+        null, // no java-generic-signature
+        java.lang.Long.valueOf(id)
+      ).visitEnd()
+    }
 
     /*
      * must-single-thread

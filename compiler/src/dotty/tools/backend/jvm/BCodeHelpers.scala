@@ -459,30 +459,6 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     }
   end BCForwardersGen
 
-  trait BCClassGen {
-
-    // Used as threshold above which a tableswitch bytecode instruction is preferred over a lookupswitch.
-    // There's a space tradeoff between these multi-branch instructions (details in the JVM spec).
-    // The particular value in use for `MIN_SWITCH_DENSITY` reflects a heuristic.
-    val MIN_SWITCH_DENSITY = 0.7
-
-    /*
-     *  Add public static final field serialVersionUID with value `id`
-     *
-     *  can-multi-thread
-     */
-    def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
-      // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
-      jclass.visitField(
-        asm.Opcodes.ACC_PRIVATE | asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
-        "serialVersionUID",
-        "J",
-        null, // no java-generic-signature
-        java.lang.Long.valueOf(id)
-      ).visitEnd()
-    }
-  } // end of trait BCClassGen
-
   /* builder of mirror classes */
   class JMirrorBuilder {
     private val EMPTY_STRING_ARRAY = Array.empty[String]
