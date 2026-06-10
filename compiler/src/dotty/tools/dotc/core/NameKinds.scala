@@ -80,10 +80,9 @@ object NameKinds {
     def apply(underlying: TermName): TermName = underlying.derived(info)
 
     /** Extractor operation for names of this kind */
-    def unapply(name: DerivedName): Option[TermName] =  name match {
-      case DerivedName(underlying, `info`) => Some(underlying)
-      case _ => None
-    }
+    def unapply(name: DerivedName): Option[TermName] =
+      // `eq` since `Info` has no `equals` override; avoids the virtual dispatch on this hot path
+      if name.info eq info then Some(name.underlying) else None
 
     simpleNameKinds(tag) = this: @unchecked
   }
