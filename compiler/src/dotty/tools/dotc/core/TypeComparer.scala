@@ -61,6 +61,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     frozenConstraint = false
     lastBottomTp = null
     lastBottomConstraint = null
+    lastContainsAndTp = null
+    lastContainsAndConstraint = null
+    lastContainsAndGadt = null
     lastGadt = null
     lastFrozenSubTypeConstraint = null
     lastTypeVarInstanceVar = null
@@ -166,6 +169,36 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       lastBottomTp = tp
       lastBottomConstraint = c
       lastBottomResult = r
+      r
+
+  // 1-slot cache for `containsAnd(tp1)` at its two `recur` call sites
+  // (secondTry OrType-LHS arm and compareRefined). Refinement peeling recurs
+  // on `(tp1, tp2.parent)` with `tp1` unchanged, re-walking the same LHS at
+  // every refinement level. The walk reads `bounds(tp).hi` (a pure function
+  // of the current constraint), GADT bounds (any GADT narrowing replaces
+  // `ctx.gadt` with a fresh instance), `info.hiBound` and `superType`
+  // (idempotent forces), so the result is fully determined by the
+  // (type, constraint, gadt) identity key; mutation of either constraint
+  // invalidates the slot automatically.
+  private var lastContainsAndTp: Type | Null = null
+  private var lastContainsAndConstraint: Constraint | Null = null
+  private var lastContainsAndGadt: GadtConstraint | Null = null
+  private var lastContainsAndResult: Boolean = false
+
+  private def cachedContainsAnd(tp: Type)(using Context): Boolean =
+    val c = constraint
+    val g = ctx.gadt
+    if (tp eq lastContainsAndTp)
+        && (c eq lastContainsAndConstraint)
+        && (g eq lastContainsAndGadt)
+    then
+      lastContainsAndResult
+    else
+      val r = containsAnd(tp)
+      lastContainsAndTp = tp
+      lastContainsAndConstraint = c
+      lastContainsAndGadt = g
+      lastContainsAndResult = r
       r
 
   // 1-slot empty-GADT cache: keyed on GadtConstraint *identity*. The common
@@ -734,7 +767,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         val res = widenOK || joinOK
           || recur(tp11, tp2) && recur(tp12, tp2)
-          || containsAnd(tp1)
+          || cachedContainsAnd(tp1)
               && !joined
               && {
                 joined = true
@@ -935,7 +968,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
           val skipped2 = skipMatching(tp1w, tp2)
           if (skipped2 eq tp2) || !Config.fastPathForRefinedSubtype then
-            if containsAnd(tp1) then
+            if cachedContainsAnd(tp1) then
               tp2.parent match
                 case _: RefinedType | _: AndType =>
                   // maximally decompose RHS to limit the bad effects of the `either` that is necessary
