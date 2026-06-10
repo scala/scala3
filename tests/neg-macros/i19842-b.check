@@ -1,6 +1,6 @@
--- Error: tests/neg-macros/i19842-b/Test.scala:9:50 --------------------------------------------------------------------
+-- Error: tests/neg-macros/i19842-b/Test.scala:9:23 --------------------------------------------------------------------
 9 |@main def Test = summon[Serializer[ValidationCls]] // error
-  |                                                  ^
+  |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |Exception occurred while executing macro expansion.
   |java.lang.AssertionError: Parents of class symbol differs from the parents in the tree for object objectSerializer$macro$1
   |
