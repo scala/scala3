@@ -53,7 +53,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *   - maximize overlap between DerivingTemplate and Template for code streamlining
    *   - keep invariant that elements of untyped trees align with source positions
    */
-  class DerivingTemplate(constr: DefDef, parentsOrDerived: List[Tree], self: ValDef, preBody: LazyTreeList, derivedCount: Int)(implicit @constructorOnly src: SourceFile)
+  class DerivingTemplate(constr: DefDef, parentsOrDerived: List[Tree], self: ValDef, preBody: LazyTreeList, derivedCount: Int)(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
   extends Template(constr, parentsOrDerived, self, preBody) {
     private val myParents = parentsOrDerived.dropRight(derivedCount)
     override def parents(using Context) = myParents
@@ -413,18 +413,26 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Literal(const: Constant)(implicit src: SourceFile): Literal = new Literal(const)
   def New(tpt: Tree)(implicit src: SourceFile): New = new New(tpt)
   def Typed(expr: Tree, tpt: Tree)(implicit src: SourceFile): Typed = new Typed(expr, tpt)
+  def Typed(expr: Tree, tpt: Tree, span: Span)(implicit src: SourceFile): Typed =
+    new Typed(expr, tpt)(using src, Positioned.initialSpan(span))
   def NamedArg(name: Name, arg: Tree)(implicit src: SourceFile): NamedArg = new NamedArg(name, arg)
   def Assign(lhs: Tree, rhs: Tree)(implicit src: SourceFile): Assign = new Assign(lhs, rhs)
   def Block(stats: List[Tree], expr: Tree)(implicit src: SourceFile): Block = new Block(stats, expr)
   def Block(stats: List[Tree], expr: Tree, span: Span)(implicit src: SourceFile): Block =
     new Block(stats, expr)(using src, Positioned.initialSpan(span))
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceFile): If = new If(cond, thenp, elsep)
+  def If(cond: Tree, thenp: Tree, elsep: Tree, span: Span)(implicit src: SourceFile): If =
+    new If(cond, thenp, elsep)(using src, Positioned.initialSpan(span))
   def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceFile): If = new InlineIf(cond, thenp, elsep)
   def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit src: SourceFile): Closure = new Closure(env, meth, tpt)
+  def Closure(env: List[Tree], meth: Tree, tpt: Tree, span: Span)(implicit src: SourceFile): Closure =
+    new Closure(env, meth, tpt)(using src, Positioned.initialSpan(span))
   def Match(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): Match = new Match(selector, cases)
   def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): Match = new InlineMatch(selector, cases)
   def SubMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): SubMatch = new SubMatch(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit src: SourceFile): CaseDef = new CaseDef(pat, guard, body)
+  def CaseDef(pat: Tree, guard: Tree, body: Tree, span: Span)(implicit src: SourceFile): CaseDef =
+    new CaseDef(pat, guard, body)(using src, Positioned.initialSpan(span))
   def Labeled(bind: Bind, expr: Tree)(implicit src: SourceFile): Labeled = new Labeled(bind, expr)
   def Return(expr: Tree, from: Tree)(implicit src: SourceFile): Return = new Return(expr, from)
   def WhileDo(cond: Tree, body: Tree)(implicit src: SourceFile): WhileDo = new WhileDo(cond, body)
@@ -456,11 +464,20 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Alternative(trees: List[Tree])(implicit src: SourceFile): Alternative = new Alternative(trees)
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit src: SourceFile): UnApply = new UnApply(fun, implicits, patterns)
   def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): ValDef = new ValDef(name, tpt, rhs)
+  def ValDef(name: TermName, tpt: Tree, rhs: LazyTree, span: Span)(implicit src: SourceFile): ValDef =
+    new ValDef(name, tpt, rhs)(using src, Positioned.initialSpan(span))
   def DefDef(name: TermName, paramss: List[ParamClause], tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): DefDef = new DefDef(name, paramss, tpt, rhs)
+  def DefDef(name: TermName, paramss: List[ParamClause], tpt: Tree, rhs: LazyTree, span: Span)(implicit src: SourceFile): DefDef =
+    new DefDef(name, paramss, tpt, rhs)(using src, Positioned.initialSpan(span))
   def TypeDef(name: TypeName, rhs: Tree)(implicit src: SourceFile): TypeDef = new TypeDef(name, rhs)
+  def TypeDef(name: TypeName, rhs: Tree, span: Span)(implicit src: SourceFile): TypeDef =
+    new TypeDef(name, rhs)(using src, Positioned.initialSpan(span))
   def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
     if (derived.isEmpty) new Template(constr, parents, self, body)
     else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)
+  def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeList, span: Span)(implicit src: SourceFile): Template =
+    if (derived.isEmpty) new Template(constr, parents, self, body)(using src, Positioned.initialSpan(span))
+    else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)(using src, Positioned.initialSpan(span))
   def Template(constr: DefDef, parents: LazyTreeList, self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
     new Template(constr, parents, self, body)
   def Import(expr: Tree, selectors: List[ImportSelector])(implicit src: SourceFile): Import = new Import(expr, selectors)
