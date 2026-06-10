@@ -15,8 +15,13 @@ enum FileExtension(val toLowerCase: String):
   /** Fallback extension */
   case External(override val toLowerCase: String) extends FileExtension(toLowerCase)
 
+  // The comparisons below use `eq` rather than `==`: all the compared cases are
+  // singletons without `equals` overrides, and the only equals-overriding case
+  // `External` can never equal a singleton case, so `==` and `eq` agree while
+  // `eq` avoids the virtual `equals` dispatch on this very hot path.
+
   /** represents an empty file extension. */
-  def isEmpty: Boolean = this == Empty
+  def isEmpty: Boolean = this eq Empty
 
   /** the full extension including a leading dot */
   val withDot: String = "." + toLowerCase
@@ -24,21 +29,21 @@ enum FileExtension(val toLowerCase: String):
   override def toString: String = toLowerCase
 
   /** represents `".tasty"` */
-  def isTasty = this == Tasty
+  def isTasty = this eq Tasty
   /** represents `".betasty"` */
-  def isBetasty = this == Betasty
+  def isBetasty = this eq Betasty
   /** represents `".class"` */
-  def isClass = this == Class
+  def isClass = this eq Class
   /** represents `".scala"` */
-  def isScala = this == Scala
+  def isScala = this eq Scala
   /** represents `".sc"` */
-  def isScalaScript = this == ScalaScript
+  def isScalaScript = this eq ScalaScript
   /** represents `".java"` */
-  def isJava = this == Java
+  def isJava = this eq Java
   /** represents `".jar"` */
-  def isJar: Boolean = this == Jar
+  def isJar: Boolean = this eq Jar
   /** represents `".zip"` */
-  def isZip: Boolean = this == Zip
+  def isZip: Boolean = this eq Zip
   /** represents `".jar"` or `".zip"` */
   def isJarOrZip: Boolean = isJar || isZip
   /** represents `".scala"` or `".java"` */
