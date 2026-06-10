@@ -161,8 +161,8 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for java/util/Collections#singleton().
-         |singleton[T](o: T): java.util.Set[T]
-         |             ^^^^
+         |singleton[T](o: (T)?): (java.util.Set[T])?
+         |             ^^^^^^^
          |  @param T Found documentation for type param T
          |  @param o Found documentation for param o
          |""".stripMargin
@@ -191,11 +191,11 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  new java.io.File(@@)
         |}
       """.stripMargin,
-      """|File(uri: URI)
-         |     ^^^^^^^^
-         |File(parent: File, child: String)
-         |File(parent: String, child: String)
-         |File(pathname: String)
+      """|File(uri: (URI)?)
+         |     ^^^^^^^^^^^
+         |File(parent: (File)?, child: (String)?)
+         |File(parent: (String)?, child: (String)?)
+         |File(pathname: (String)?)
          |""".stripMargin
     )
 
@@ -206,8 +206,8 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  "".substring(1@@)
         |}
       """.stripMargin,
-      """|substring(beginIndex: Int, endIndex: Int): String
-         |substring(beginIndex: Int): String
+      """|substring(beginIndex: Int, endIndex: Int): (String)?
+         |substring(beginIndex: Int): (String)?
          |          ^^^^^^^^^^^^^^^
          |""".stripMargin
     )
@@ -219,16 +219,16 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  String.valueOf(1@@)
         |}
       """.stripMargin,
-      """|valueOf(d: Double): String
-         |valueOf(f: Float): String
-         |valueOf(l: Long): String
-         |valueOf(i: Int): String
+      """|valueOf(d: Double): (String)?
+         |valueOf(f: Float): (String)?
+         |valueOf(l: Long): (String)?
+         |valueOf(i: Int): (String)?
          |        ^^^^^^
-         |valueOf(c: Char): String
-         |valueOf(b: Boolean): String
-         |valueOf(data: Array[Char], offset: Int, count: Int): String
-         |valueOf(data: Array[Char]): String
-         |valueOf(obj: Object): String
+         |valueOf(c: Char): (String)?
+         |valueOf(b: Boolean): (String)?
+         |valueOf(data: (Array[Char])?, offset: Int, count: Int): (String)?
+         |valueOf(data: (Array[Char])?): (String)?
+         |valueOf(obj: (Object)?): (String)?
          |""".stripMargin
     )
 
@@ -239,16 +239,16 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  String.valueOf(@@)
         |}
       """.stripMargin,
-      """|valueOf(d: Double): String
+      """|valueOf(d: Double): (String)?
          |        ^^^^^^^^^
-         |valueOf(f: Float): String
-         |valueOf(l: Long): String
-         |valueOf(i: Int): String
-         |valueOf(c: Char): String
-         |valueOf(b: Boolean): String
-         |valueOf(data: Array[Char], offset: Int, count: Int): String
-         |valueOf(data: Array[Char]): String
-         |valueOf(obj: Object): String
+         |valueOf(f: Float): (String)?
+         |valueOf(l: Long): (String)?
+         |valueOf(i: Int): (String)?
+         |valueOf(c: Char): (String)?
+         |valueOf(b: Boolean): (String)?
+         |valueOf(data: (Array[Char])?, offset: Int, count: Int): (String)?
+         |valueOf(data: (Array[Char])?): (String)?
+         |valueOf(obj: (Object)?): (String)?
          |""".stripMargin
     )
 

@@ -26,11 +26,11 @@ class HoverDocSuite extends BaseHoverSuite:
         |""".stripMargin,
       """|**Expression type**:
         |```scala
-        |java.util.List[Int]
+        |(java.util.List[Int])?
         |```
         |**Symbol signature**:
         |```scala
-        |final def emptyList[T](): java.util.List[T]
+        |final def emptyList[T](): (java.util.List[T])?
         |```
         |Found documentation for java/util/Collections#emptyList().
         |""".stripMargin
@@ -57,7 +57,7 @@ class HoverDocSuite extends BaseHoverSuite:
          |}
       """.stripMargin,
       """|```scala
-         |def substring(beginIndex: Int): String
+         |def substring(beginIndex: Int): (String)?
          |```
          |Found documentation for java/lang/String#substring().
          |""".stripMargin

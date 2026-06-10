@@ -67,19 +67,19 @@
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:126:37 -------------------------------------------
 126 |    if (start.length != 0) jsb.append(start) // warn (value-discard)
     |                           ^^^^^^^^^^^^^^^^^
-    |                           discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
+    |                          discarded non-Unit value of type (StringBuilder)?. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:132:18 -------------------------------------------
 132 |        jsb.append(it.next()) // warn (value-discard)
     |        ^^^^^^^^^^^^^^^^^^^^^
-    |        discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
+    |        discarded non-Unit value of type (StringBuilder)?. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:135:35 -------------------------------------------
 135 |    if (end.length != 0) jsb.append(end) // warn (value-discard)
     |                         ^^^^^^^^^^^^^^^
-    |                         discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
+    |                         discarded non-Unit value of type (StringBuilder)?. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:141:14 -------------------------------------------
 141 |      b.append(it.next()) // warn (value-discard)
     |      ^^^^^^^^^^^^^^^^^^^
-    |      discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
+    |      discarded non-Unit value of type (StringBuilder)?. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:146:30 -------------------------------------------
 146 |    while (it.hasNext) it.next()  // warn
     |                       ^^^^^^^^^

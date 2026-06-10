@@ -68,7 +68,7 @@ object TestConfiguration {
       Properties.scalaXml
   ))
 
-  lazy val replWithStagingClasspath = 
+  lazy val replWithStagingClasspath =
     replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   def mkClasspath(classpaths: List[String]): String =
@@ -107,7 +107,7 @@ object TestConfiguration {
   val picklingWithCompilerOptions =
     picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
-  val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
+  val explicitNullsOptions = defaultOptions `and` "-language:safeNulls"
 
   val oldSyntax = defaultOptions `and` "-old-syntax"
   val newSyntax = defaultOptions `and` "-new-syntax"

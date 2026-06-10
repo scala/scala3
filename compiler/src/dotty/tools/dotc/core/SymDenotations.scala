@@ -899,7 +899,7 @@ object SymDenotations {
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
-      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.MatchableClass
+      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.AnyValClass || symbol == defn.MatchableClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -907,7 +907,9 @@ object SymDenotations {
      *  but it becomes nullable after erasure.
      */
     final def isNullableClassAfterErasure(using Context): Boolean =
-      isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+      // `Null` is a value class under `-Yexplicit-nulls` (it extends `AnyVal`), but
+      // `null` is still a value of it, so it must be treated as a nullable class.
+      isClass && (!isValueClass || symbol == defn.NullClass) && !is(ModuleClass) && symbol != defn.NothingClass
 
     /** Is `pre` the same as C.this, where C is exactly the owner of this symbol,
      *  or, if this symbol is protected, a subclass of the owner?
