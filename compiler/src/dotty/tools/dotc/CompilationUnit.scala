@@ -69,6 +69,14 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   var needsStaging: Boolean = false
 
+  /** Conservatively `true` if this unit's tree may still contain level-0 quotes that the
+   *  `Splicing` phase must process. The `Staging` phase resets it before walking the unit
+   *  and `CrossStageSafety` sets it again for every level-0 quote that survives in the
+   *  transformed tree, so that `Splicing` can skip re-scanning units whose quotes were all
+   *  consumed earlier (typically by macro expansion).
+   */
+  var hasLevel0Quotes: Boolean = true
+
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsCaptureChecking: Boolean = false
 

@@ -73,6 +73,7 @@ class CrossStageSafety extends TreeMapWithStages {
           tree.withBodyType(bodyType1)
 
         if level == 0 then
+          ctx.compilationUnit.hasLevel0Quotes = true // record the survivor for `Splicing`
           val (tags, body1) = inContextWithQuoteTypeTags { transform(tree1.body)(using quoteContext) }
           cpy.Quote(tree1)(body1, tags)
         else
@@ -99,6 +100,7 @@ class CrossStageSafety extends TreeMapWithStages {
               tag // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
             case _ =>
               // `quoted.Type.of[<body>](<quotes>)` --> `'[<body1>].apply(<quotes>)`
+              ctx.compilationUnit.hasLevel0Quotes = true // record the survivor for `Splicing`
               tpd.Quote(body1, tags).select(nme.apply).appliedTo(quotes).withSpan(tree.span)
         else
           super.transform(tree)

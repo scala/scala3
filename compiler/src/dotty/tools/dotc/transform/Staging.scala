@@ -77,7 +77,13 @@ class Staging extends MacroTransform {
   end checkPostCondition
 
   override protected def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run
+    if (ctx.compilationUnit.needsStaging) {
+      // Assume no level-0 quote survives until the walk below encounters one;
+      // `CrossStageSafety` records each survivor so that `Splicing`, which runs
+      // on this exact tree just after this phase, can skip survivor-free units.
+      ctx.compilationUnit.hasLevel0Quotes = false
+      super.run
+    }
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
