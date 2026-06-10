@@ -72,8 +72,6 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
       clss.find(_.name == simpleClassName).map(c => (c.file, (if findModule then clss.find(_.name == "module-info") else None).map(_.file)))
     }
 
-    override def asClassPathStrings: Seq[String] = Seq(file.path)
-
     override def asURLs: Seq[URL] = file.toURLs()
 
     import ManifestResourcesClassPath.PackageFileInfo
@@ -164,8 +162,6 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
     with NoClassPaths {
 
     def release: Option[String] = None
-
-    override def asSourcePathString: String = asClassPathString
 
     override private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = files(inPackage)
 

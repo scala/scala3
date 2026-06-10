@@ -61,10 +61,6 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
 
   override def asURLs: Seq[URL] = sourcepath.split(File.pathSeparator).toIndexedSeq.map(new File(_)).map(_.toURI.toURL)
 
-  override def asClassPathStrings: Seq[String] = Seq()
-
-  override def asSourcePathString: String = sourcepath
-
   /** Return the package for the given fullName, if any */
   private def findPackage(fullName: String): Option[LogicalPackage] =
     if fullName == "" then Option(rootPackage)

@@ -21,7 +21,6 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
   def release: Option[String]
 
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
-  override def asClassPathStrings: Seq[String] = Seq(zipFile.getPath)
 
   private val archive = new FileZipArchive(zipFile.toPath, release)
 

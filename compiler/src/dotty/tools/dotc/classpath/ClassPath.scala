@@ -91,7 +91,6 @@ private[dotty] final case class BinaryAndSourceFilesEntry(binaryEntry: BinaryFil
 private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry
 
 private[dotty] trait NoSourcePaths {
-  def asSourcePathString: String = ""
   private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = Seq.empty
 }
 

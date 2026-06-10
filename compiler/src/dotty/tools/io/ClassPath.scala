@@ -70,19 +70,6 @@ trait ClassPath {
     findClassFileAndModuleFile(className, findModule = true)
 
   def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])]
-
-  def asClassPathStrings: Seq[String]
-
-  /** The whole classpath in the form of one String.
-    */
-  def asClassPathString: String = ClassPath.join(asClassPathStrings*)
-  // for compatibility purposes
-  @deprecated("use asClassPathString instead of this one", "2.11.5")
-  def asClasspathString: String = asClassPathString
-
-  /** The whole sourcepath in the form of one String.
-    */
-  def asSourcePathString: String
 }
 
 trait EfficientClassPath extends ClassPath {
@@ -95,11 +82,6 @@ trait EfficientClassPath extends ClassPath {
     if (packageBuf.isEmpty && classRepBuf.isEmpty) ClassPathEntries.empty
     else ClassPathEntries(packageBuf, classRepBuf)
   }
-}
-
-trait EfficientClassPathCallBack {
-  def packageEntry(entry: PackageEntry): Unit
-  def classesAndSources(entry: ClassRepresentation): Unit
 }
 
 object ClassPath {
@@ -159,7 +141,7 @@ object ClassPath {
     )
   }
 
-  def specToURL(spec: String, basedir: Directory): Option[URL] =
+  private def specToURL(spec: String, basedir: Directory): Option[URL] =
     try
       val uri = new URI(spec)
       if uri.isAbsolute() then Some(uri.toURL())

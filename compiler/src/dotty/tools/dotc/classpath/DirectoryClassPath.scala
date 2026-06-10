@@ -119,7 +119,6 @@ trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends Directo
   assert(dir.asInstanceOf[JFile | Null] != null, "Directory file in DirectoryFileLookup cannot be null")
 
   def asURLs: Seq[URL] = Seq(dir.toURI.toURL)
-  def asClassPathStrings: Seq[String] = Seq(dir.getPath)
 }
 
 object JrtClassPath {
@@ -278,8 +277,6 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFil
 }
 
 case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] with NoClassPaths {
-  def asSourcePathString: String = asClassPathString
-
   protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
   protected def isMatchingFile(f: JFile): Boolean = endsSourceExtension(f.getName)
 
