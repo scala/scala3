@@ -13,13 +13,12 @@ import java.util.regex.PatternSyntaxException
 import File.pathSeparator
 import Jar.isJarOrZip
 
-import dotc.classpath.{ PackageEntry, ClassPathEntries, PackageName }
+import dotc.classpath.{ PackageEntry, ClassPathEntries, PackageName, BinaryFileEntry, SourceFileEntry }
 
 /**
   * A representation of the compiler's class- or sourcepath.
   */
 trait ClassPath {
-  import dotty.tools.dotc.classpath.*
   def asURLs: Seq[URL]
 
   final def hasPackage(pkg: String): Boolean = hasPackage(PackageName(pkg))

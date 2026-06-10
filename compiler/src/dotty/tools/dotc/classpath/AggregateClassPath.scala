@@ -48,25 +48,16 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override private[dotty] def list(inPackage: PackageName): ClassPathEntries = {
     val packages: java.util.HashSet[PackageEntry] = new java.util.HashSet[PackageEntry]()
     val classesAndSourcesBuffer = collection.mutable.ArrayBuffer[ClassRepresentation]()
-    val onPackage: PackageEntry => Unit = packages.add(_)
+    val onPackage: PackageEntry => Unit = packages.add
     val onClassesAndSources: ClassRepresentation => Unit = classesAndSourcesBuffer += _
 
-    aggregates.foreach { cp =>
-      try {
-        cp match {
-          case ecp: EfficientClassPath =>
-            ecp.list(inPackage, onPackage, onClassesAndSources)
-          case _ =>
-            val entries = cp.list(inPackage)
-            entries._1.foreach(entry => packages.add(entry))
-            classesAndSourcesBuffer ++= entries._2
-        }
-      } catch {
-        case ex: java.io.IOException =>
-          val e = FatalError(ex.getMessage)
-          e.initCause(ex)
-          throw e
-      }
+    aggregates.foreach {
+      case ecp: EfficientClassPath =>
+        ecp.list(inPackage, onPackage, onClassesAndSources)
+      case cp =>
+        val entries = cp.list(inPackage)
+        entries._1.foreach(onPackage)
+        classesAndSourcesBuffer ++= entries._2
     }
 
     val distinctPackages: Seq[PackageEntry] = {
@@ -133,17 +124,5 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
       seenNames += entry.name
     }
     entriesBuffer.toIndexedSeq
-  }
-}
-
-object AggregateClassPath {
-  def createAggregate(parts: ClassPath*): ClassPath = {
-    val elems = new ArrayBuffer[ClassPath]()
-    parts foreach {
-      case AggregateClassPath(ps) => elems ++= ps
-      case p => elems += p
-    }
-    if (elems.size == 1) elems.head
-    else AggregateClassPath(elems.toIndexedSeq)
   }
 }
