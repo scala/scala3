@@ -237,9 +237,9 @@ object PickledQuotes {
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
     QuotesCache.getTree(pickled) match
-      case Some(tree) =>
+      case Some((tree, cachedTreeOwner)) =>
         quotePickling.println(s"**** Using cached quote for TASTY\n$tree")
-        treeOwner(tree) match
+        cachedTreeOwner match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
             val treeCpy = TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
@@ -276,10 +276,11 @@ object PickledQuotes {
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree
-          QuotesCache(pickled) = tree
 
           // Make sure trees and positions are fully loaded
           tree.foreachSubTree(identity)
+
+          QuotesCache.update(pickled, tree, treeOwner(tree))
 
           quotePickling.println(i"**** unpickled quote\n$tree")
 
