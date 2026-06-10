@@ -90,6 +90,16 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   var stagedQuoteSurvivors: Boolean = false
 
+  /** Will be set to `true` during erasure if the erased tree of this unit references
+   *  a mutable variable owned by a term. Erasure re-types every tree of the unit and
+   *  runs after the last phase that can grant `Mutable` to a term-owned symbol before
+   *  the mega-phase group containing `CapturedVars` (grants made inside that group are
+   *  invisible to `CapturedVars.prepareForUnit`, which runs before the group's
+   *  transforms). `CapturedVars` uses this to skip its per-unit collection walk:
+   *  without such a reference no variable can be captured.
+   */
+  var hasMutableLocalRefs: Boolean = false
+
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsCaptureChecking: Boolean = false
 

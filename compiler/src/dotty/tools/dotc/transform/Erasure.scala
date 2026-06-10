@@ -612,7 +612,19 @@ object Erasure {
         super.typedLiteral(tree)
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      checkNotErased(super.typedIdent(tree, pt))
+      val tree1 = checkNotErased(super.typedIdent(tree, pt))
+      tree1 match
+        case tree1: Ident if tree1.isTerm =>
+          // Record references to term-owned mutable variables, so that
+          // `CapturedVars.prepareForUnit` can skip its collection walk for units
+          // without any. Erasure runs after every phase that can grant `Mutable`
+          // to a term-owned symbol visibly to that walk, and the walk traverses
+          // exactly the trees produced here.
+          val sym = tree1.symbol
+          if sym.isMutableVar && sym.owner.isTerm then
+            ctx.compilationUnit.hasMutableLocalRefs = true
+        case _ =>
+      tree1
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`

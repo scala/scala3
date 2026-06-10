@@ -51,7 +51,8 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
     captured.clear()
-    atPhase(thisPhase)(CapturedVars.collect(captured)).traverse(tree)
+    if ctx.compilationUnit.hasMutableLocalRefs then
+      atPhase(thisPhase)(CapturedVars.collect(captured)).traverse(tree)
     ctx
 
   /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,
@@ -65,6 +66,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
   }
 
   override def prepareForValDef(vdef: ValDef)(using Context): Context =
+    if captured.isEmpty then return ctx
     val sym = atPhase(thisPhase)(vdef.symbol)
     if captured.contains(sym) then
       val newd = atPhase(thisPhase)(sym.denot).copySymDenotation(
@@ -75,6 +77,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
     ctx
 
   override def transformValDef(vdef: ValDef)(using Context): Tree = {
+    if (captured.isEmpty) return vdef
     val vble = vdef.symbol
     if (captured.contains(vble)) {
       def boxMethod(name: TermName): Tree =
@@ -87,6 +90,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
   }
 
   override def transformIdent(id: Ident)(using Context): Tree = {
+    if (captured.isEmpty) return id
     val vble = id.symbol
     if (captured.contains(vble))
       id.select(nme.elem).ensureConforms(atPhase(thisPhase)(vble.denot).info)
