@@ -960,6 +960,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       bc.invokespecial("scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false, pos)
       bc.throwex()
 
+    // Used as threshold above which a tableswitch bytecode instruction is preferred over a lookupswitch.
+    // There's a space tradeoff between these multi-branch instructions (details in the JVM spec).
+    // The particular value in use for `MIN_SWITCH_DENSITY` reflects a heuristic.
+    private val MIN_SWITCH_DENSITY = 0.7
+
     private def genMatchTo(tree: Match, expectedType: BType, dest: LoadDestination)(using Context): BType = tree match {
       case Match(selector, cases) =>
       lineNumber(tree)
