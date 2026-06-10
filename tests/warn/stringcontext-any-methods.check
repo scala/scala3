@@ -19,4 +19,18 @@
   |                   ^
   |                   Interpolator getClass resolves to a method from Any
   |
+5 |  { val x = "X"; eq" $x" } // warn
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E232] Potential Issue Warning: tests/warn/stringcontext-any-methods.scala:6:20 -------------------------------------
+6 |  { val x = "X"; eq" $x" } // warn
+  |                    ^^^^^^^
+  |                    Interpolator eq resolves to a method from Any
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E232] Potential Issue Warning: tests/warn/stringcontext-any-methods.scala:7:20 -------------------------------------
+7 |  { val x = "X"; ne" $x" } // warn
+  |                    ^^^^^^^
+  |                    Interpolator ne resolves to a method from Any
+  |
   | longer explanation available when compiling with `-explain`
