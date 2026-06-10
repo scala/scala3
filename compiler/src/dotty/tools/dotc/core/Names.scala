@@ -225,7 +225,7 @@ object Names {
 
     override def is(kind: NameKind): Boolean = {
       val thisKind = this.info.kind
-      thisKind == kind ||
+      (thisKind eq kind) || // `eq` since NameKind has no `equals` override; avoids the virtual dispatch on this hot path
       !shadows(thisKind, kind) && underlying.is(kind)
     }
 
