@@ -59,6 +59,23 @@ object NameOps {
     }
   }
 
+  /** Bit layout of the packed function-name classification cached in
+   *  `Name#myFunKind`. Bits 0..24 hold `funArity + 1` if the arity fits the
+   *  field (with `FunKindArityBig` as a sentinel for values that do not),
+   *  the remaining bits are flags. `FunKindComputed` is always set, so a
+   *  computed encoding is never 0 and 0 can serve as the
+   *  not-yet-computed sentinel.
+   */
+  private inline val FunKindArityMask    = (1 << 25) - 1
+  private inline val FunKindArityBig     = FunKindArityMask
+  private inline val FunKindSuffixFound  = 1 << 25
+  private inline val FunKindSuffixAtZero = 1 << 26
+  private inline val FunKindPrefixOK     = 1 << 27
+  private inline val FunKindHasContext   = 1 << 28
+  private inline val FunKindHasImpure    = 1 << 29
+  private inline val FunKindArityNonNeg  = 1 << 30
+  private inline val FunKindComputed     = 1 << 31
+
   extension [N <: Name](name: N) {
 
     def testSimple(f: SimpleName => Boolean): Boolean = name match {
@@ -243,60 +260,88 @@ object NameOps {
           else collectDigits(acc * 10 + d, idx + 1)
       collectDigits(0, suffixStart + 8)
 
-    private def isFunctionPrefix(suffixStart: Int, mustHave: String = "")(using Context): Boolean =
-      suffixStart >= 0
-      && {
-        val first = name.firstPart
-        var found = mustHave.isEmpty
-        def skip(idx: Int, str: String) =
-          if first.startsWith(str, idx) then
-            if str == mustHave then found = true
-            idx + str.length
-          else idx
-        skip(skip(0, "Impure"), "Context") == suffixStart
-        && found
-      }
-
-    /** Same as `funArity`, except that it returns -1 if the prefix
-     *  is not one of a (possibly empty) concatenation of a subset of
-     *  "Impure" (only under pureFunctions), "Erased" and "Context" (in that order).
+    /** The packed function-name classification of this name, computed once
+     *  and cached on the name itself. The parse only reads `firstPart`'s
+     *  characters, so the result is a pure function of the (interned,
+     *  process-lifetime) name and the cache can never go stale.
+     *
+     *  The prefix is accepted (`FunKindPrefixOK`) if it is a (possibly
+     *  empty) concatenation of a subset of "Impure" and "Context"
+     *  (in that order).
      */
-    private def checkedFunArity(suffixStart: Int)(using Context): Int =
-      if isFunctionPrefix(suffixStart) then funArity(suffixStart) else -1
+    private def funKind: Int =
+      val k = name.myFunKind
+      if k != 0 then k
+      else
+        val suffixStart = functionSuffixStart
+        var computed = FunKindComputed
+        if suffixStart >= 0 then
+          computed |= FunKindSuffixFound
+          if suffixStart == 0 then computed |= FunKindSuffixAtZero
+          val first = name.firstPart
+          var idx = 0
+          if first.startsWith("Impure", idx) then
+            computed |= FunKindHasImpure
+            idx += "Impure".length
+          if first.startsWith("Context", idx) then
+            computed |= FunKindHasContext
+            idx += "Context".length
+          if idx == suffixStart then computed |= FunKindPrefixOK
+          val arity = funArity(suffixStart)
+          if arity >= 0 then computed |= FunKindArityNonNeg
+          computed |=
+            (if arity >= -1 && arity < FunKindArityBig - 1 then arity + 1
+             else FunKindArityBig)
+        name.myFunKind = computed
+        computed
+
+    /** The `funArity` of this name as recorded in classification `k`,
+     *  re-parsing the name in the unlikely case that the arity did not fit
+     *  the packed encoding. Only meaningful if the function suffix was found.
+     */
+    private def funKindArity(k: Int): Int =
+      val enc = k & FunKindArityMask
+      if enc == FunKindArityBig then funArity(functionSuffixStart)
+      else enc - 1
 
     /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ImpureFunctionN, ImpureContextFunctionN for N >= 0
      */
     def isFunction(using Context): Boolean =
       (name eq tpnme.FunctionXXL)
-      || checkedFunArity(functionSuffixStart) >= 0
+      || {
+        val k = funKind
+        (k & (FunKindPrefixOK | FunKindArityNonNeg)) == (FunKindPrefixOK | FunKindArityNonNeg)
+      }
 
     /** Is a function name
      *    - FunctionN for N >= 0
      */
     def isPlainFunction(using Context): Boolean = functionArity >= 0
 
-    /** Is a function name that contains `mustHave` as a substring
+    /** Is a function name whose prefix contains the part corresponding to
+     *  `mustHaveFlag` (`FunKindHasContext` or `FunKindHasImpure`)
      *  and has arity `minArity` or greater.
      */
-    private def isSpecificFunction(mustHave: String, minArity: Int = 0)(using Context): Boolean =
-      val suffixStart = functionSuffixStart
-      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= minArity
+    private def isSpecificFunction(mustHaveFlag: Int, minArity: Int = 0)(using Context): Boolean =
+      val k = funKind
+      (k & (FunKindPrefixOK | mustHaveFlag)) == (FunKindPrefixOK | mustHaveFlag)
+      && funKindArity(k) >= minArity
 
-    def isContextFunction(using Context): Boolean = isSpecificFunction("Context")
-    def isImpureFunction(using Context): Boolean = isSpecificFunction("Impure")
+    def isContextFunction(using Context): Boolean = isSpecificFunction(FunKindHasContext)
+    def isImpureFunction(using Context): Boolean = isSpecificFunction(FunKindHasImpure)
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
      *    - ContextFunctionN for N >= 0
      */
     def isSyntheticFunction(using Context): Boolean =
-      val suffixStart = functionSuffixStart
-      if suffixStart == 0 then funArity(suffixStart) > MaxImplementedFunctionArity
-      else checkedFunArity(suffixStart) >= 0
+      val k = funKind
+      if (k & FunKindSuffixAtZero) != 0 then funKindArity(k) > MaxImplementedFunctionArity
+      else (k & (FunKindPrefixOK | FunKindArityNonNeg)) == (FunKindPrefixOK | FunKindArityNonNeg)
 
     def functionArity(using Context): Int =
-      val suffixStart = functionSuffixStart
-      if suffixStart >= 0 then checkedFunArity(suffixStart) else -1
+      val k = funKind
+      if (k & FunKindPrefixOK) != 0 then funKindArity(k) else -1
 
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {

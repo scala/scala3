@@ -33,6 +33,16 @@ object Names {
     /** A type for names of the same kind as this name */
     type ThisName <: Name
 
+    /** A packed encoding of this name's function-name classification
+     *  (FunctionN, ContextFunctionN, ImpureFunctionN, ...), computed and
+     *  decoded by NameOps. 0 means not yet computed. The classification is
+     *  a pure function of the name and names are interned for the lifetime
+     *  of the process, so the cache can never go stale; racy initialization
+     *  is benign since all threads compute the same value.
+     */
+    @sharable // because it's just a cache for performance
+    private[core] var myFunKind: Int = 0
+
     /** Is this name a type name? */
     def isTypeName: Boolean
 
