@@ -319,61 +319,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     }
   end BCAnnotGen
 
-  trait BCJGenSigGen {
-
-    /**
-     * Generates the generic signature for `sym` before erasure.
-     *
-     * @param sym   The symbol for which to generate a signature.
-     * @param descriptor The descriptor of the symbol; the signature is unnecessary if they are equal.
-     * @return The generic signature of `sym` before erasure, as specified in the Java Virtual
-     *         Machine Specification, §4.3.4, or `null` if `sym` doesn't need a generic signature.
-     * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
-     */
-    def getGenericSignature(sym: Symbol, descriptor: String | Null)(using Context): String | Null = {
-      atPhase(erasurePhase) {
-        // Finding the member's type is nontrivial because of erasure and how it interacts with other phases.
-        def computeMemberType(): Type = {
-          // Mixins are resolved _after_ erasure, so we cannot simply ask for "the information before erasure" for these,
-          // since that information never existed.
-          // Thus, we first check if the symbol was specifically marked as having generic information,
-          mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(sym) match
-            // and if so, we use it.
-            case Some(genericInfo) => return genericInfo
-            case _ => ()
-
-          // Methods are straightforward.
-          if sym.is(Method) then
-            return sym.denot.info
-
-          // Fields have two special cases:
-          if sym.isField then
-            // we must use the getter if entered after erasure at memoize, see tests/generic-java-signatures/17069.scala for an example
-            if sym.denot.validFor.firstPhaseId > erasurePhase.id then
-              if sym.getter.exists then
-                return sym.getter.denot.info.resultType
-
-              // there might be a getter created after erasure by the mixin phase,
-              // and if so we must use the information that the mixin phase stored for it.
-              val mixinGetter = atPhase(mixinPhase.next) { sym.getter }
-              if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
-                case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
-                case _ => ()
-
-          sym.owner.denot.thisType.memberInfo(sym)
-        }
-
-        if ctx.base.settings.XnoGenericSig.value then null
-        else
-          val genSig = getGenericSignatureHelper(sym, computeMemberType())
-          if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
-          else genSig.toString
-      }
-    }
-
-  } // end of trait BCJGenSigGen
-
-  trait BCForwardersGen extends BCJGenSigGen {
+  trait BCForwardersGen {
 
     /* Add a forwarder for method m. Used only from addForwarders().
      *
@@ -399,7 +345,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
       val jReturnType = bTypeLoader.bTypeFromType(methodInfo.resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
-      val jgensig = getStaticForwarderGenericSignature(m, module, mdesc)
+      val jgensig = BCSignatureGen.getStaticForwarderGenericSignature(m, module, mdesc)
       val (throws, others) = m.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(throws)
 
@@ -590,64 +536,119 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
   } // end of class JMirrorBuilder
 
-  private def getGenericSignatureHelper(sym: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
-    val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
-    if (erasedTypeSym.isPrimitiveValueClass) {
-      // Suppress signatures for symbols whose types erase in the end to primitive
-      // value types. This is needed to fix #7416.
-      null
-    } else {
-      val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
-      if (jsOpt != null && ctx.settings.XverifySignatures.value) {
-        verifySignature(sym, jsOpt.toString)
+  object BCSignatureGen:
+    /**
+     * Generates the generic signature for `sym` before erasure.
+     *
+     * @param sym        The symbol for which to generate a signature.
+     * @param descriptor The descriptor of the symbol; the signature is unnecessary if they are equal.
+     * @return The generic signature of `sym` before erasure, as specified in the Java Virtual
+     *         Machine Specification, §4.3.4, or `null` if `sym` doesn't need a generic signature.
+     *
+     * @see    https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
+     */
+    def getGenericSignature(sym: Symbol, descriptor: String | Null)(using Context): String | Null = {
+      atPhase(erasurePhase) {
+        // Finding the member's type is nontrivial because of erasure and how it interacts with other phases.
+        def computeMemberType(): Type = {
+          // Mixins are resolved _after_ erasure, so we cannot simply ask for "the information before erasure" for these,
+          // since that information never existed.
+          // Thus, we first check if the symbol was specifically marked as having generic information,
+          mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(sym) match
+            // and if so, we use it.
+            case Some(genericInfo) => return genericInfo
+            case _ => ()
+
+          // Methods are straightforward.
+          if sym.is(Method) then
+            return sym.denot.info
+
+          // Fields have two special cases:
+          if sym.isField then
+            // we must use the getter if entered after erasure at memoize, see tests/generic-java-signatures/17069.scala for an example
+            if sym.denot.validFor.firstPhaseId > erasurePhase.id then
+              if sym.getter.exists then
+                return sym.getter.denot.info.resultType
+
+              // there might be a getter created after erasure by the mixin phase,
+              // and if so we must use the information that the mixin phase stored for it.
+              val mixinGetter = atPhase(mixinPhase.next) {
+                sym.getter
+              }
+              if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
+                case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
+                case _ => ()
+
+          sym.owner.denot.thisType.memberInfo(sym)
+        }
+
+        if ctx.base.settings.XnoGenericSig.value then null
+        else
+          val genSig = getGenericSignatureHelper(sym, computeMemberType())
+          if genSig == null || (descriptor != null && descriptor.contentEquals(genSig)) then null
+          else genSig.toString
       }
-      jsOpt
     }
-  }
 
-  private def verifySignature(sym: Symbol, sig: String)(using Context): Unit = {
-    import scala.tools.asm.util.CheckClassAdapter
-    def wrap(body: => Unit): Unit = {
-      try body
-      catch case ex: Exception =>
-        report.error(
-          em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
-               |signature: $sig
-               |if this is reproducible, please report bug at https://github.com/scala/scala3/issues
-             """, sym.sourcePos)
-        throw ex
-    }
-
-    wrap {
-      if (sym.is(Method)) {
-        CheckClassAdapter.checkMethodSignature(sig)
-      }
-      else if (sym.isTerm) {
-        CheckClassAdapter.checkFieldSignature(sig)
-      }
-      else {
-        CheckClassAdapter.checkClassSignature(sig)
+    private def getGenericSignatureHelper(sym: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
+      val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
+      if (erasedTypeSym.isPrimitiveValueClass) {
+        // Suppress signatures for symbols whose types erase in the end to primitive
+        // value types. This is needed to fix #7416.
+        null
+      } else {
+        val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
+        if (jsOpt != null && ctx.settings.XverifySignatures.value) {
+          verifySignature(sym, jsOpt.toString)
+        }
+        jsOpt
       }
     }
-  }
 
-  private def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol, descriptor: String | Null)(using Context): String | Null = {
-    // scala/bug#3452 Static forwarder generation uses the same erased signature as the method if forwards to.
-    // By rights, it should use the signature as-seen-from the module class, and add suitable
-    // primitive and value-class boxing/unboxing.
-    // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
-    // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
+    private def verifySignature(sym: Symbol, sig: String)(using Context): Unit = {
+      import scala.tools.asm.util.CheckClassAdapter
+      def wrap(body: => Unit): Unit = {
+        try body
+        catch case ex: Exception =>
+          report.error(
+            em"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+                 |signature: $sig
+                 |if this is reproducible, please report bug at https://github.com/scala/scala3/issues
+               """, sym.sourcePos)
+          throw ex
+      }
 
-    if !ctx.base.settings.XnoGenericSig.value then
-      val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
-      val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
-      if (erasedMemberType =:= sym.denot.info)
-        val gensig = getGenericSignatureHelper(sym, memberTpe)
-        if gensig == null || (descriptor != null && descriptor.contentEquals(gensig)) then null
-        else gensig.toString
+      wrap {
+        if (sym.is(Method)) {
+          CheckClassAdapter.checkMethodSignature(sig)
+        }
+        else if (sym.isTerm) {
+          CheckClassAdapter.checkFieldSignature(sig)
+        }
+        else {
+          CheckClassAdapter.checkClassSignature(sig)
+        }
+      }
+    }
+
+    def getStaticForwarderGenericSignature(sym: Symbol, moduleClass: Symbol, descriptor: String | Null)(using Context): String | Null = {
+      // scala/bug#3452 Static forwarder generation uses the same erased signature as the method if forwards to.
+      // By rights, it should use the signature as-seen-from the module class, and add suitable
+      // primitive and value-class boxing/unboxing.
+      // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
+      // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
+
+      if !ctx.base.settings.XnoGenericSig.value then
+        val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
+        val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
+        if (erasedMemberType =:= sym.denot.info)
+          val gensig = getGenericSignatureHelper(sym, memberTpe)
+          if gensig == null || (descriptor != null && descriptor.contentEquals(gensig)) then null
+          else gensig.toString
+        else null
       else null
-    else null
-  }
+    }
+  end BCSignatureGen
 }
 
 object BCodeHelpers {

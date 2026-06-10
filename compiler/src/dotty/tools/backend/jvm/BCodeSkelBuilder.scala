@@ -20,6 +20,8 @@ import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 import SymbolUtils.given
 import dotty.tools.dotc.core.NameOps.isStaticConstructorName
+import dotty.tools.dotc.core.Phases.{erasurePhase, mixinPhase}
+import dotty.tools.dotc.transform.Mixin
 import tpd.*
 
 import scala.compiletime.uninitialized
@@ -128,8 +130,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
    */
   abstract class PlainSkelBuilder
     extends BCClassGen
-    with    BCForwardersGen
-    with    BCJGenSigGen {
+    with    BCForwardersGen {
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
     private inline val MaximumJvmParameters = 254
@@ -332,7 +333,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val flags = BCodeUtils.javaFlags(claszSymbol)
 
-      val thisSignature = getGenericSignature(claszSymbol, null)
+      val thisSignature = BCSignatureGen.getGenericSignature(claszSymbol, null)
       val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
                                               else BCodeUtils.checkConstantStringLength(thisName)
       if !lengthOk then
@@ -388,7 +389,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     private def addClassField(f: Symbol)(using Context): Unit = {
       val descriptor = symInfoTK(f).descriptor
-      val javagensig = getGenericSignature(f, descriptor)
+      val javagensig = BCSignatureGen.getGenericSignature(f, descriptor)
       val flags = javaFieldFlags(f)
 
       assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
@@ -707,7 +708,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
 
       val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
-      val jgensig = getGenericSignature(methSymbol, mdesc)
+      val jgensig = BCSignatureGen.getGenericSignature(methSymbol, mdesc)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
       val thrownExceptions: List[String] = getExceptions(excs)
 
