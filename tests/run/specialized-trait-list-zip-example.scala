@@ -1,8 +1,8 @@
-//> using options -language:experimental.specializedTraits
+//> using options -language:experimental.specializedTraits -Werror
 
 import scala.annotation.nowarn
 
-@nowarn("id=E233")
+@nowarn("id=E234")
 sealed inline trait List[+T: Specialized]:
     inline def zip[S: Specialized](other: List[S]): List[(T, S)] = 
         def zip(xxs: List[T], yys: List[S]): List[(T, S)] = (xxs, yys) match {
