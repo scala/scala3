@@ -447,8 +447,15 @@ class ArrayDeque[A] protected (
     * See clearAndShrink if you want to also resize internally
     */
   def clear(): Unit = {
-    while(nonEmpty) {
-      removeHeadAssumingNonEmpty()
+    if (nonEmpty) {
+      if (start < end) {
+        java.util.Arrays.fill(array, start, end, null)
+      } else {
+        java.util.Arrays.fill(array, start, array.length, null)
+        java.util.Arrays.fill(array, 0, end, null)
+      }
+      start = 0
+      end = 0
     }
   }
 
