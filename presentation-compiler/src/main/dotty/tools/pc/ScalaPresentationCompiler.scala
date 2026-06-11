@@ -3,12 +3,14 @@ package dotty.tools.pc
 import java.io.File
 import java.net.URI
 import java.nio.file.Path
+import java.time.Duration
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledExecutorService
 import java.util as ju
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContextExecutor
 import scala.jdk.CollectionConverters.*
@@ -27,9 +29,12 @@ import scala.meta.pc.*
 import scala.meta.pc.PcSymbolInformation as IPcSymbolInformation
 import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.pc.reports.ReportContext
+import scala.util.control.NonFatal
 
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.reporting.StoreReporter
+import dotty.tools.dotc.semanticdb.TextDocument
+import dotty.tools.dotc.semanticdb.TextDocuments
 import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.SymbolInformationProvider
 import dotty.tools.pc.buildinfo.BuildInfo
@@ -301,6 +306,59 @@ case class ScalaPresentationCompiler(
       val provider = SemanticdbTextDocumentProvider(driver, folderPath)
       provider.textDocument(filename, code)
     }(using virtualFile.toQueryContext)
+
+  def supportsBatchSemanticdbTextDocuments(): Boolean = true
+
+  def batchSemanticdbTextDocuments(
+      params: ju.List[VirtualFileParams],
+      timeout: Duration
+  ): CompletableFuture[Array[Byte]] =
+    if params.isEmpty() then
+      CompletableFuture.completedFuture(Array.emptyByteArray)
+    else
+      processBatchSequential(params, timeout)
+
+  private def processBatchSequential(
+      params: ju.List[VirtualFileParams],
+      timeout: Duration
+  ): CompletableFuture[Array[Byte]] =
+    val param = params.get(0)
+    compilerAccess.withInterruptableCompiler(
+      Array.emptyByteArray,
+      param.token()
+    ) { access =>
+      val driver = access.compiler()
+      val provider = SemanticdbTextDocumentProvider(driver, folderPath)
+      val startTime = System.nanoTime()
+      val timeoutNanos = timeout.toNanos()
+      val docs = processFiles(params.asScala.toSeq, provider, startTime, timeoutNanos)
+      TextDocuments(docs.toList).toByteArray
+    }(using param.toQueryContext)
+
+  private def processFiles(
+      files: Seq[VirtualFileParams],
+      provider: SemanticdbTextDocumentProvider,
+      startTime: Long,
+      timeoutNanos: Long
+  ): Seq[TextDocument] =
+    val docsBuffer = mutable.ListBuffer.empty[TextDocument]
+    val filesIterator = files.iterator
+    var timedOut = false
+
+    while filesIterator.hasNext && !timedOut do
+      val elapsed = System.nanoTime() - startTime
+      if elapsed >= timeoutNanos then
+        timedOut = true
+      else
+        val fileParam = filesIterator.next()
+        try
+          val doc = provider.textDocumentData(fileParam.uri(), fileParam.text())
+            .withUri(fileParam.uri().toString())
+          docsBuffer += doc
+        catch
+          case NonFatal(_) =>
+            docsBuffer += TextDocument.defaultInstance.withUri(fileParam.uri().toString())
+    docsBuffer.toSeq
 
   def completionItemResolve(
       item: l.CompletionItem,
