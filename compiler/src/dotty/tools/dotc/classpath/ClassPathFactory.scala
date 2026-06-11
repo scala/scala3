@@ -4,7 +4,6 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import FileUtils.*
 import dotty.tools.io.ClassPath
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
