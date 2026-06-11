@@ -281,7 +281,7 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
 }
 
 final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                                           callGraph: CallGraph, indyTracker: IndyLambdaImplTracker,
+                                           callGraph: OptimizerCallGraph, indyTracker: IndyLambdaImplTracker,
                                            bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(classBTypeCache, bTypes) {
   private val optSettings         = new OptimizerSettings()
   private val optimizerUtils      = new OptimizerUtils(bTypes)

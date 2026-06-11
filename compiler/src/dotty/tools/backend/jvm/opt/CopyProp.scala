@@ -276,17 +276,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracke
         }
       }
 
-      if (toInline.nonEmpty) {
-        var css = toInline.flatMap(callGraph.getCallsite(method, _))
-                          .collect { case k: KnownCallsite => k }
-                          .toList
-                          .sorted(using callsiteOrdering)
-        while (css.nonEmpty) {
-          val cs = css.head
-          css = css.tail
-          inliner.inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
-        }
-      }
+      inliner.inlineCallsites(method, toInline)
 
       (staleStoreRemoved, intrinsicRewritten, callInlined)
     }
