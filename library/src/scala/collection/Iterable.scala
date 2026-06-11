@@ -642,6 +642,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @param key the discriminator function
    *  @param f the element transformation function
    *  @param reduce the reduction function used to combine values mapped to the same key
+   *  @return a map associating each key `k` produced by `key` with the reduction of all values produced by applying `f` to elements that map to `k`
    */
   def groupMapReduce[K, B](key: A => K)(f: A => B)(reduce: (B, B) => B): immutable.Map[K, B] = {
     val m = mutable.Map.empty[K, B]

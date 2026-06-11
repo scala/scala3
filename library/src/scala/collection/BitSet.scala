@@ -105,12 +105,14 @@ transparent trait BitSetOps[+C <: BitSet & BitSetOps[C]]
    *  **Note:** requires `idx >= 0`
    *
    *  @param idx the index of the word to retrieve, must be non-negative
+   *  @return the 64-bit word at position `idx`, or `0L` if `idx` is outside the range of the set
    */
   protected[collection] def word(idx: Int): Long
 
   /** Creates a new set of this kind from an array of longs
    *
    *  @param elems the array of 64-bit words representing the bit mask for the new set
+   *  @return a new bitset of type `C` whose contents are given by the bit mask in `elems` (the array is used directly and not copied)
    */
   protected[collection] def fromBitMaskNoCopy(elems: Array[Long]): C
 

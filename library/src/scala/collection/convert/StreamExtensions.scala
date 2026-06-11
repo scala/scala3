@@ -38,7 +38,11 @@ trait StreamExtensions {
      *  collection contains primitive values, a corresponding specialized Stream is returned (e.g.,
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
-     *  @tparam S the type of Java Stream to create, determined by the element type `A`
+     *  @tparam S the type of Java Stream to create, determined by the element type `A` via the implicit `StreamShape`
+     *  @tparam St the type of `Stepper` used to traverse the collection's elements
+     *  @param s implicit evidence connecting element type `A` to the appropriate Java Stream and Stepper types
+     *  @param st implicit evidence selecting the appropriate `Stepper` shape for element type `A`
+     *  @return a sequential Java Stream of type `S` containing the elements of this collection
      */
     def asJavaSeqStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S =
       s.fromStepper(cc.stepper, par = false)
@@ -55,6 +59,7 @@ trait StreamExtensions {
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the element type `A`
+     *  @tparam St the type of `Stepper` used to traverse the collection's elements, required to support efficient splitting
      */
     def asJavaParStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[A, S, St],
@@ -72,6 +77,10 @@ trait StreamExtensions {
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the key type `K`
+     *  @tparam St the type of `Stepper` used to traverse the map's keys
+     *  @param s implicit evidence connecting key type `K` to the appropriate Java Stream and Stepper types
+     *  @param st implicit evidence selecting the appropriate `Stepper` shape for key type `K`
+     *  @return a sequential Java Stream of type `S` containing the keys of this map
      */
     def asJavaSeqKeyStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[K, S, St], st: StepperShape[K, St]): S =
       s.fromStepper(cc.keyStepper, par = false)
@@ -81,6 +90,10 @@ trait StreamExtensions {
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the value type `V`
+     *  @tparam St the type of `Stepper` used to traverse the map's values
+     *  @param s implicit evidence connecting value type `V` to the appropriate Java Stream and Stepper types
+     *  @param st implicit evidence selecting the appropriate `Stepper` shape for value type `V`
+     *  @return a sequential Java Stream of type `S` containing the values of this map
      */
     def asJavaSeqValueStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[V, S, St], st: StepperShape[V, St]): S =
       s.fromStepper(cc.valueStepper, par = false)
@@ -90,6 +103,10 @@ trait StreamExtensions {
      *  this map.
      *
      *  @tparam S the type of Java Stream to create, determined by the pair type `(K, V)`
+     *  @tparam St the type of `Stepper` used to traverse the map's key-value pairs
+     *  @param s implicit evidence connecting pair type `(K, V)` to the appropriate Java Stream and Stepper types
+     *  @param st implicit evidence selecting the appropriate `Stepper` shape for pair type `(K, V)`
+     *  @return a sequential Java Stream of type `S` containing the `(key, value)` pairs of this map
      */
     def asJavaSeqStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[(K, V), S, St], st: StepperShape[(K, V), St]): S =
       s.fromStepper(cc.stepper, par = false)
@@ -106,6 +123,7 @@ trait StreamExtensions {
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the key type `K`
+     *  @tparam St the type of `Stepper` used to traverse the map's keys, required to support efficient splitting
      */
     def asJavaParKeyStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[K, S, St],
@@ -119,6 +137,7 @@ trait StreamExtensions {
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the value type `V`
+     *  @tparam St the type of `Stepper` used to traverse the map's values, required to support efficient splitting
      */
     def asJavaParValueStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[V, S, St],
@@ -132,6 +151,7 @@ trait StreamExtensions {
      *  this map.
      *
      *  @tparam S the type of Java Stream to create, determined by the pair type `(K, V)`
+     *  @tparam St the type of `Stepper` used to traverse the map's key-value pairs, required to support efficient splitting
      */
     def asJavaParStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit
         s: StreamShape[(K, V), S, St],
@@ -149,6 +169,10 @@ trait StreamExtensions {
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the element type `A`
+     *  @tparam St the type of `Stepper` used to traverse the elements
+     *  @param s implicit evidence connecting element type `A` to the appropriate Java Stream and Stepper types
+     *  @param st implicit evidence selecting the appropriate `Stepper` shape for element type `A`; also used to unbox an `AnyStepper` to a specialized stepper when needed
+     *  @return a sequential Java Stream of type `S` containing the elements yielded by this stepper
      */
     def asJavaSeqStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S = {
       val sStepper = stepper match {
@@ -165,6 +189,10 @@ trait StreamExtensions {
      *  [[java.util.stream.IntStream `IntStream`]]).
      *
      *  @tparam S the type of Java Stream to create, determined by the element type `A`
+     *  @tparam St the type of `Stepper` used to traverse the elements
+     *  @param s implicit evidence connecting element type `A` to the appropriate Java Stream and Stepper types
+     *  @param st implicit evidence selecting the appropriate `Stepper` shape for element type `A`; also used to unbox an `AnyStepper with EfficientSplit` to a specialized stepper when needed
+     *  @return a parallel Java Stream of type `S` containing the elements yielded by this stepper
      */
     def asJavaParStream[S <: BaseStream[?, ?], St <: Stepper[?]](implicit s: StreamShape[A, S, St], st: StepperShape[A, St]): S = {
       val sStepper = (stepper: @unchecked) match {
@@ -302,6 +330,7 @@ trait StreamExtensions {
      *
      *  @tparam S the resulting primitive stream type (e.g., `IntStream`, `LongStream`, `DoubleStream`)
      *  @param unboxer implicit conversion from boxed `Stream[A]` to primitive stream `S`
+     *  @return a primitive Java Stream of type `S` containing the unboxed elements of this stream
      */
     def asJavaPrimitiveStream[S](implicit unboxer: StreamUnboxer[A, S]): S = unboxer(stream)
   }
