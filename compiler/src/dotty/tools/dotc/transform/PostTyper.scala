@@ -683,7 +683,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           if tree.symbol.isInlineTrait then
-            ctx.compilationUnit.needsInlining = true  // Transform inner classes to traits
+            ctx.compilationUnit.needsInlining = true  // Check and transform inline traits
           if tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) && (tree.symbol ne defn.SpecializedClass) then
             report.error(IllegalUseOfSpecialized(), tree.srcPos)
           registerIfHasMacroAnnotations(tree)

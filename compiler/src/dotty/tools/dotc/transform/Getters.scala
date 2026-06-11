@@ -62,8 +62,6 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   override def description: String = Getters.description
 
-  override def changesMembers: Boolean = true // TODO: Is this ok? I mean it does call enteredAfter via ensureSetter and that does change members.
-
   override def transformSym(d: SymDenotation)(using Context): SymDenotation = {
     def noGetterNeeded =
       d.isOneOf(NoGetterNeededFlags) ||

@@ -603,13 +603,7 @@ object TreeChecker {
 
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
-        !x.name.is(DocArtifactName) &&
-        !(x.owner.isInlineTrait) 
-        // ^TODO: Not sure if this is strictly necessary but it seems to help in some cases because 
-        // we can generate undefined private members in inline traits - we might need to think about
-        // this a bit more because I think it's only fine if you assume that you can't directly instantiate 
-        // inline traits, whereas we might want to allow that (aside from specialisation) . 
-
+        !x.name.is(DocArtifactName)
       
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)

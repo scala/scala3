@@ -42,5 +42,5 @@ object PruneSpecializedMethods {
   import tpd._
 
   val name: String = "pruneSpecializedMethods"
-  val description: String = "drop specialized methods which have already been inlined; we can't wait until erasure because they can be broken by pruneInlineTraits removing members from the specialized traits they instantiate"
+  val description: String = "drop specialized methods which have already been inlined" // We can't wait until erasure because they can be broken by pruneInlineTraits removing members from the specialized traits they instantiate
 }

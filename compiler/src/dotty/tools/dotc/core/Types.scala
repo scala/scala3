@@ -1355,7 +1355,6 @@ object Types extends TypeUtils {
       case _ => this
     }
 
-
     /** Strip PolyType prefixes */
     def stripPoly(using Context): Type = this match {
       case tp: PolyType => tp.resType.stripPoly

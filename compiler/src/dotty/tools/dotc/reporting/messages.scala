@@ -3946,7 +3946,6 @@ class UseOfAnyMethodAsInterpolator(interpolator: Name)(using Context)
        |This is unlikely to be what you intended."""
 }
 
-
 final class IllegalUseOfSpecialized(using Context)
     extends SyntaxMsg(IllegalUseOfSpecializedID):
   override protected def msg(using Context): String =

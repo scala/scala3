@@ -1941,17 +1941,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case _ =>
                 if v < 0 then 
                   val isValidSubtype = isSubType(arg2, arg1)
+                  // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
                      && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
                      && isValidSubtype
                      && !(DesugarSpecializedTraits.isSameErasureBucket(arg1, arg2))
-                  then // using contravariance in a way which specialized trait erasure cannot support
+                  then
                     addErrorNote(IllegalVarianceInSpecializedTraitsNote())
                     false
-                  else
+                  else // Normal contravariance case
                     isValidSubtype
                 else if v > 0 then 
                   val isValidSubtype = isSubType(arg1, arg2)
+                  // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
                      && Specialization.traitParamIsSpecialized(tp1.classSymbol, tparam.paramRef.typeSymbol)
                      && isValidSubtype
@@ -1960,7 +1962,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   then
                     addErrorNote(IllegalVarianceInSpecializedTraitsNote())
                     false
-                  else
+                  else // Normal covariance case
                     isValidSubtype
                 else isSameType(arg2, arg1)
 

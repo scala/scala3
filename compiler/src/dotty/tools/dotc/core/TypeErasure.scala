@@ -791,10 +791,11 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else eraseNormalClassRef(tp)
       case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until 
                                                                                    // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
-                                                                                   // foo(Foo):Int. Only at erasure do the symbol swap. This ensures
-                                                                                   // the signatures don't change before erasure.
+                                                                                   // foo(Foo):Int. Only at erasure do the symbols swap. This ensures
+                                                                                   // the signatures don't change before erasure which is required (meta-ordering
+                                                                                   // constraint in Compiler.scala)
                                     && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
-        val specName = DesugarSpecializedTraits.newSpecializedTraitName(spec) // TODO: Maybe better as method on spec
+        val specName = DesugarSpecializedTraits.newSpecializedTraitName(spec) // TODO: Maybe we should make this a method on Specialization (spec) in this case
         val interfaceSymbol = spec.traitSymbol.owner.enclosingPackageClass.info.decls.lookup(specName)
         assert(interfaceSymbol.exists && interfaceSymbol.isClass)
         this(interfaceSymbol.typeRef.appliedTo(spec.unspecializedTypeArgs.map(_.tpe)))
@@ -897,7 +898,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             else
               // Match corresponding tree erasure in Erasure::typedClassDef
               val parents1 = 
-                if cls.isSpecializedTraitInterface then // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
+                if cls.isSpecializedTraitInterface then // {source: inline trait Bar[T: Specialized] extends Foo[T] both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
                   val (obj :: originalTrait :: inheritedParents) = parents : @unchecked
                   eraseParent(obj) :: apply(originalTrait)(using disallowSpecializedCtx) :: inheritedParents.mapConserve(eraseParent(_)(using allowSpecializedCtx))
                 else if cls.isSpecializedTraitImplementationClass && !cls.isRawSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
@@ -907,7 +908,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
                   val originalSpecializedTraits = parents.filter(p => p.typeSymbol.isSpecializedTrait).map(eraseParent(_)(using allowSpecializedCtx))
 
                 // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
-                // class Bar extends Object, Foo(10), Bar(10), Foo$sp$Int, Bar$sp$Int
+                // class Bar extends Object, Foo(10), Baz(10), Foo$sp$Int, Baz$sp$Int
                   parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then 
                                              apply(p)(using disallowSpecializedCtx)
                                            else eraseParent(p)) ::: originalSpecializedTraits

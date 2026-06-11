@@ -1742,7 +1742,10 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef)
 
-  private val SpecializeImportFns: RootRef = // TODO: Find a solution to importing in scala package without conflict with original specialized.
+  // TODO: Maybe we don't want to import by default; maybe we do but we would rather not create another special case ImportFns for the importing.
+  // Problem which required the special case: the new Specialized lives in scala.specialize. This is to avoid conflict with the Scala2 specialized annotation.
+  // Therefore it is not imported by default with everything else that lives in the scala package.
+  private val SpecializeImportFns: RootRef =
     RootRef(() => ScalaSpecializePackageVal.termRef)
 
   @tu private lazy val YimportsImportFns: List[RootRef] = ctx.settings.Yimports.value.map { name =>

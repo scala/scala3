@@ -37,7 +37,7 @@ class SpecializeInlineTraits extends MiniPhase {
 
   private def inlineTraitCtx(using Context): Context = ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.InlineTraits))    
 
-  private val seen = mutable.HashSet[Symbol]() 
+  private val seen = mutable.HashSet[Symbol]() // Ensure we don't inline into the same child class multiple times even though we repeatedly check for nested inlines.
 
   private def inlineInlineTraitsIfNew(tree: Tree)(using Context) = 
     if !seen.contains(tree.symbol) then
@@ -50,8 +50,8 @@ class SpecializeInlineTraits extends MiniPhase {
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     new TreeMapWithPreciseStatContexts { // We need to inline recursively because inlining may create further opportunities for inlining. 
-                                         // Notably this does limit the composition potential of this miniphase. TOOD: We might be able to fix that with transformFollowing 
-                                         // We use seen to make sure we don't inline into the same child class multiple times
+                                         // Notably this does limit the composition potential of this miniphase.
+                                         // TODO: We might be able to fix that with transformFollowing 
       override def transform(tree: Tree)(using Context): Tree = 
         tree match {
         case tree: TypeDef if tree.symbol.isInlineTrait =>
@@ -81,7 +81,7 @@ class SpecializeInlineTraits extends MiniPhase {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
-      // TODO check that things are inlined properly
+      // TODO: check that things are inlined properly
       case _ =>
     }
 

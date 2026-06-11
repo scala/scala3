@@ -27,16 +27,11 @@ import util.Spans.{Span, spanCoord}
 import dotty.tools.dotc.core.Periods.PhaseId
 import dotty.tools.dotc.util.chaining.*
 import NameOps.expandedName
-import dotty.tools.dotc.core.Annotations.ConcreteBodyAnnotation
-import dotty.tools.dotc.core.Annotations.LazyBodyAnnotation
-import dotty.tools.dotc.core.Scopes.EmptyScope
-import dotty.tools.dotc.core.Scopes.MutableScope
 import dotty.tools.dotc.reporting.OverrideError
 import dotty.tools.dotc.typer.RefChecks.OverridingPairsChecker
 import dotty.tools.dotc.typer.ErrorReporting.err
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.inlines.Inlines.InlineTraitState.InlineContext
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -85,7 +80,6 @@ object Inlines:
   def isInlineableFromInlineTrait(inlinedTraitSym: ClassSymbol, member: tpd.Tree)(using Context): Boolean =
     !(member.isInstanceOf[tpd.TypeDef] && inlinedTraitSym.typeParams.contains(member.symbol))
     && !member.symbol.isAllOf(Inline)
-    // && !member.symbol.is(Deferred) // Also inline interfaces (see specialized-trait-collections-example.scala)
 
   /** Should call be inlined in this context? */
   def needsInlining(tree: Tree)(using Context): Boolean =
@@ -99,13 +93,12 @@ object Inlines:
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
-      // && !ctx.owner.ownersIterator.exists(_.isInlineTrait)
 
     tree match
       case Block(_, expr) =>
         needsInlining(expr)
       case tdef @ TypeDef(_, impl: Template) =>
-        impl.parents.map(symbolFromParent).exists(sym => sym.isInlineTrait) && isInlineableInCtx // We also allow inlining into inline traits for consistency when implementing specialized traits (see docs)
+        impl.parents.map(symbolFromParent).exists(sym => sym.isInlineTrait) && isInlineableInCtx // We also allow inlining of inline traits into inline traits for consistency when implementing specialized traits (see docs)
       case _ =>
         def isUnapplyExpressionWithDummy: Boolean =
           // The first step of typing an `unapply` consists in typing the call
@@ -116,7 +109,7 @@ object Inlines:
             case Apply(fn, _) => rec(fn)
             case _ => false
           tree.symbol.name.isUnapplyName && rec(tree)
-        // We don't inline inline calls into inline traits because we can inline them into the children and this gets around the issue of
+        // We don't inline inline method calls into inline traits because we can inline them into the children and this gets around the issue of
         // needing to apply the symbol replacement map to those calls (which is tricky because we don't apply any inline maps beyond Inlined() calls)
         // See tests/pos/i11866.scala and tests/run/specialized-trait-vector-dot-product.scala
         isInlineable(tree.symbol) && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] && isInlineableInCtx && !(ctx.owner.ownersIterator.exists(_.isInlineTrait)) && !ctx.mode.is(Mode.NoInline) && !isUnapplyExpressionWithDummy
@@ -128,9 +121,17 @@ object Inlines:
   private def inlineTraitAncestors(cls: TypeDef)(using Context): List[Tree] = cls match {
     case tpd.TypeDef(_, tmpl: Template) =>
       val parentTrees: Map[Symbol, Tree] = tmpl.parents.map(par => symbolFromParent(par) -> par).toMap.filter(_._1.isInlineTrait)
-      val ancestors: List[ClassSymbol] = cls.tpe.baseClasses.filter(sym => sym != cls.symbol && sym.isInlineTrait // && // TODO: Do we not need to stop if there is a non-inline trait somewhere in the hierarchy? It should block the inlining right?
-            && !(cls.symbol.asClass.ownersIterator.toList.tail.exists(p => p.isInlineTrait)) // We can skip anything that would be inlined nested into an inline trait because it must be pruned out later                                                                                            
+      
+      // TODO: We need to stop inlining if there is a non-inline trait or class that sits between the inline trait and the current class.
+      // Because we also inline into other inline traits, it should be possible to do this by just 
+      // looking at the direct parents of the class instead of also needing to look at the indirect parents (baseClasses).
+      // See inline-trait-non-inline-blocks-inlining.scala
+      val ancestors: List[ClassSymbol] =
+         cls.tpe.baseClasses.filter(sym => sym != cls.symbol && sym.isInlineTrait
+            && !(cls.symbol.asClass.ownersIterator.toList.tail.exists(p => p.isInlineTrait)) // We can skip anything that would be inlined into a class that lives somewhere inside an inline trait
+                                                                                             // because it must be on the RHS of a member definition in the inline trait and so pruned out later                                                                                            
         )
+
       ancestors.flatMap(ancestor =>
         def baseTree =
           cls.tpe.baseType(ancestor) match
@@ -312,7 +313,7 @@ object Inlines:
        here to ensure that the behaviour is the same as ordinary traits. The usual checks only apply
       in refChecks which is too late for us. */
     
-    // TODO: This does cause some code duplication
+    // TODO: This does cause some code duplication with RefChecks
     def checkInlineTraitOverride(member: Symbol, other: Symbol) =
       if !member.is(Override) && !other.is(Deferred) && member.owner == clsSym then
         report.error(
@@ -942,7 +943,7 @@ object Inlines:
     override protected val inlinerTreeMap: InlinerTreeMap = InlineTraitTreeMap()
 
     override protected def inlineCopier: tpd.TreeCopier = new TypedTreeCopier() {
-      // FIXME it feels weird... Is this correct?
+      // TODO: Timothée left this comment: "it feels weird... Is this correct?"
       override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
         untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
     }
@@ -991,7 +992,7 @@ object Inlines:
           .getParamAccessorRhs(vdef.symbol.owner, vdef.symbol.name)
           .getOrElse(inlinedRhs(vdef, inlinedSym))
       
-      val rhs1 = rhs.changeNonLocalOwners(inlinedSym) // if rhs.symbol.exists then rhs.changeOwner(rhs.symbol.owner, inlinedSym) else rhs
+      val rhs1 = rhs.changeNonLocalOwners(inlinedSym)
 
       tpd.ValDef(inlinedSym.asTerm, rhs1).withSpan(parent.span)
 
@@ -1026,15 +1027,15 @@ object Inlines:
         rhs
       else
         val symbolMap = mutable.Map[Symbol, Symbol]()
-        // TODO make version of inlined that does not return bindings?
-        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parent.span), Nil, inlined(rhs)._2.withSpan(parent.span).cloneIn(parentSym.source)).withSpan(parent.span) // TODO: This inlines also calls to inline defs that were made in the inline trait body, is that desirable? 
+        // TODO: This inlines also some calls to inline defs that were made in the inline trait body, is that ok? 
+        val rhs1 = Inlined(tpd.ref(parentSym).withSpan(parent.span), Nil, inlined(rhs)._2.withSpan(parent.span).cloneIn(parentSym.source)).withSpan(parent.span)
         
         // In case of nested inline trait inlines, because BodyAnnotation is out of date,
         // body inlined misses nested expansion, but we have the symbols for the items that should be there
         // Remove them so that they can be inlined properly later.
         val ttmap = TreeTypeMap(treeMap = {
           case tree@TypeDef(name, tmpl: Template) if Inlines.needsInlining(tree) => 
-            val newSym = tree.symbol.copy(coord = spanCoord(tree.span))               // Coord should correspond to original location because we will inline from there.
+            val newSym = tree.symbol.copy(coord = spanCoord(tree.span))  // Coord should correspond to original location because we will inline from there.
             newSym.info = ClassInfo(tree.symbol.owner.thisType, newSym.asClass, tree.symbol.asClass.parentTypes, Scopes.newScope)
 
             val newConstructorSymbol = tree.symbol.primaryConstructor.copy(owner = newSym)
@@ -1128,7 +1129,7 @@ object Inlines:
     def registerInlineOrigin(newSym: Symbol, owner: Symbol, parentSym: Symbol): Unit =
       inlineOrigins(newSym) = inlineOrigins(owner) + parentSym
 
-    def copyInPhase(phase: InlineContext) =
+    def copyInPhase(phase: InlineTraitState.InlineContext) =
       InlineTraitState(inlineOrigins, phase)
 
   end InlineTraitState

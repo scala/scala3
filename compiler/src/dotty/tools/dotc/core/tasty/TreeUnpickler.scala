@@ -31,7 +31,6 @@ import Trees.*
 import Decorators.*
 import config.Feature
 import quoted.QuotePatterns
-import inlines.Inlines
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.*
@@ -1172,12 +1171,10 @@ class TreeUnpickler(reader: TastyReader,
              .map(_.changeOwner(localDummy, constr.symbol)))
         else parents
 
-      val statsStart = currentAddr
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
-
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
       
@@ -1191,7 +1188,7 @@ class TreeUnpickler(reader: TastyReader,
             val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
             inContext(sourceChangeContext(Addr(0))(using ctx1)) {
               // avoids space leaks by not capturing the current context
-              val inlinedMembers = strictStats.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
+              val inlinedMembers = strictStats.filter(member => inlines.Inlines.isInlineableFromInlineTrait(cls, member))
               Block(inlinedMembers, unitLiteral).withSpan(cls.span)
             }
           })

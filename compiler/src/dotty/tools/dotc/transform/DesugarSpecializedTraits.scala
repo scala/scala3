@@ -62,8 +62,10 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
   override def allowsImplicitSearch: Boolean = true
 
   private def newInterfaceTrait(specialization: Specialization, specializations: SpecializedTraitCache)(using Context): (ClassSymbol, SpecializedTraitCache) = {
-    val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
-      def apply(t: Type) = specialization.specializedTypeParamsToTypeArgumentsMap.view.mapValues(_.tpe).applyOrElse(t, mapOver) // TODO: If we can do just types we can get rid of this 
+    // TODO: Ideally we can get rid of this type map, either by making the Specialization store arguments as Type instead 
+    // of Tree, or at least move this into Specialization and give it a better name.
+    val tm = new TypeMap: 
+      def apply(t: Type) = specialization.specializedTypeParamsToTypeArgumentsMap.view.mapValues(_.tpe).applyOrElse(t, mapOver)
   
     val inheritedParents = specialization.traitSymbol.denot.info.parents.filterNot(_.typeSymbol == defn.ObjectClass).map(tm(_))
     // Parents may be specializable and so we need to specialize them as well
@@ -91,7 +93,10 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
       parents,
       tm(specialization.traitSymbol.asClass.classInfo.selfType),
       specialization.traitSymbol.privateWithin,
-      spanCoord(specialization.span), // TODO: Show errors where they actually show up in the inline trait and not at the type of the user which is very confusing. Need to use inline stack
+      spanCoord(specialization.span), // TODO: Show errors where they actually show up in the inline trait and not at the type of the user which is very confusing. Need to use the inline stack
+                                      // (i.e. "this location contains code inlined from ...").
+                                      // In particular if the user does not specify the type explicitly but a specialization of an inline trait is the inferred type, the error cursor can point to somewhere
+                                      // very unexpected as the type does not appear in the source code. Probably need to change some spans and coords in other places as well.
       specialization.traitSymbol.compilationUnitInfo
     )
 
@@ -173,13 +178,13 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
 
     newImplementationClassSymbol.entered
 
-  // TODO: Do we want to share some code with the newSpecializedInterfaceTrait and buildInterfaceTraitTree?
-  // TODO: Tidy this up a bit with functions
+  // TODO: Maybe we can split this function up into smaller functions.
+
   // intefaceSymbol: None if no interface; this only happens with the fully non-specialized $impl$ (raw) case 
   private def buildImplementationClassTree(specialization: Specialization, interfaceSymbol: Option[ClassSymbol], classSymbol: ClassSymbol)(using Context) = {
     val (objectParent, traitSpParent_, originalTraitSpecializedParent_) = generateImplementationClassParents(specialization, interfaceSymbol)
 
-    // Apply Type Param Fix: TODO : This really ought to be done more cleanly somewhere else.
+    /* Apply Type Param Fix */
     val tpMap: Map[Type, Type] = specialization.unspecializedTypeParams.zip(classSymbol.typeParams.map(_.typeRef)).toMap
     val freshTypeVarMap = new TypeMap:
       def apply(t: Type) = tpMap.applyOrElse(t, mapOver)
@@ -187,7 +192,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     val originalTraitSpecializedParent = freshTypeVarMap(originalTraitSpecializedParent_)
 
     val init = newConstructor(classSymbol, EmptyFlags, Nil, Nil, coord=spanCoord(specialization.span))
-    val tm = new TypeMap: // TODO: Can we get this into the specialization ideally.
+    val tm = new TypeMap: // TODO: As per tm in newInterfaceTrait
       def apply(t: Type) = specialization.specializedConstructorParamToArgumentTypeMap.applyOrElse(t, mapOver)
     
     /* Create constructor and setup constructor type */
@@ -211,7 +216,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     val newParamss = paramAccessorss.nestedMap(ref(_))
     val newParams1 = if (newParamss.length == 1) then newParamss ++ List(List()) else newParamss
     
-    // Re-expand varargs parameters from Seq[T] to *T for passing into parent constructor
+    /* Re-expand varargs parameters from Seq[T] to *T for passing into parent constructor */
     val newParams2 = newParams1.nestedMap( param =>
       if param.symbol.info.hasAnnotation(defn.RepeatedAnnot) then ctx.typer.seqToRepeated(param) else param 
     )
@@ -223,13 +228,11 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
           .appliedToTypes(originalTraitSpecializedParent.argTypes)
           .appliedToArgss(newParams2)
 
-    // TODO: Clean and robust
     ClassDefWithParents(
       classSymbol,
       DefDef(init.asTerm.entered), 
       if tspTree.nonEmpty then List(opTree, tspTree.get, opSpTree)
       else List(opTree, opSpTree),
-        // Put into body of class
       paramAccessorss.flatMap(syms => syms.map(sym => tpd.ValDef(sym.asTerm)))
     ).withSpan(specialization.span)
   }
@@ -240,7 +243,7 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     val inlineSpecializedMethods = new TreeMapWithPreciseStatContexts {
       override def transform(tree: Tree)(using Context): Tree = tree match {
         case MethodSpecialization(methSpec) if methSpec.isSpecialized || methSpec.isFullySpecializedToTopClassesOrNothing =>
-          // TODO: Not sure why we needed this - it doesn't seem to make any difference
+          // TODO: Not sure why we needed this function - it doesn't seem to make any difference to the test results
           def flattenTree(inlinedTree: Tree): Tree = inlinedTree match {
             case it@Inlined(call, bindings, expansion) =>
               val callTrace = Inlines.inlineCallTrace(tree.symbol, inlinedTree.sourcePos)(using ctx.withSource(inlinedTree.source))
@@ -292,8 +295,9 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
         
         (generatedTraitStats2, generatedClassStats2, specializations4)
 
-    (generatedTraitStatsFinal ++ generatedClassStatsFinal ++ stats, specializationsFinal) // TODO: Since we only change stats by the inlining we could potentially arguably "undo" the inlining and then redo it at the "correct" point later - 
-                                                                                          // so we don't actually modify the tree in that way here; not sure if that's worth doing (it would be throwing away work) 
+    (generatedTraitStatsFinal ++ generatedClassStatsFinal ++ stats, specializationsFinal) // TODO: Since the only change we make to stats1 => stats is inlining we could potentially arguably "undo" the inlining and then redo it at the "correct" point later - 
+                                                                                          // so we don't actually modify the tree in that way here. Then we would only be generating new class and trait stats and we wouldn't need a transform statements method at all
+                                                                                          // (just a "generateInlineTraitsInterfaceAndImplementation" or something), but not sure if that's worth doing (it would be throwing away work).
   }
   
   private def checkSpecializedTraitRules(tree: Tree)(using Context) =
@@ -303,7 +307,8 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
       case _ =>
     }
           
-    tree.foreachSubTree { // TODO: This is not particularly efficient
+    tree.foreachSubTree { // TODO: This is not particularly efficient - we can fix this now we are using a miniphase as we can just have this run inside e.g. transformDefDef
+                          // and transformBlock
       case d@DefDef(name, paramss, tpt, preRhs) if d.symbol.isConstructor && !d.symbol.owner.is(Flags.Inline) => d.paramss.flatten.foreach(p => checkType(p.tpe, d.srcPos))
       case d@DefDef(name, paramss, tpt, preRhs) if !d.symbol.isConstructor && !d.symbol.is(Flags.Inline) => d.paramss.flatten.foreach(p => checkType(p.tpe, d.srcPos))
       case AnonymousClassInstance(anon) =>
@@ -339,10 +344,12 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
 
   private def specializedTraitCtx(using Context): Context = ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.SpecializedTraits))
 
+  private var specializedTraitCache = SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass)
+
   // TODO: I reckon to get the best miniphase style processing we can do everything except outputting the final $impl$ / $sp$ classes in the normal miniphase methods.
   // I.e. instead of folding with transformStatements (which is odd now that we don't actually transform anything except creating the new specializations) 
   // we have all of the cases for collecting specialized references in ordinary transformMethods or prepare methods and then we just spit out the final classes
-  // in this transformUnit function. As long as we remember to call transformFollowing on the synthetic classes (Which we do) then we should be composable in the way that we want 
+  // in this transformUnit function. As long as we remember to call transformFollowing on the synthetic classes (which we do) then we should be composable in the way that we want 
   // to be.
   override def transformUnit(tree: Tree)(using Context): Tree = 
       tree match {
@@ -350,11 +357,8 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
           
           checkSpecializedTraitRules(tree)
 
-          if ctx.specializedTraitState.specializedTraitCache.isEmpty then
-             ctx.specializedTraitState.specializedTraitCache = Some(SpecializedTraitCache(genInterfaceSymbol = newInterfaceTrait, genImplementationSymbol = newImplementationClass))
-
-          val (stats1, specializedTraitCache2) = transformStatements(stats, ctx.specializedTraitState.specializedTraitCache.get)
-          ctx.specializedTraitState.specializedTraitCache = Some(specializedTraitCache2) // TODO: Avoid mutation here - we will make the cache mutable instead I think. Makes more sense
+          val (stats1, specializedTraitCache2) = transformStatements(stats, specializedTraitCache)
+          specializedTraitCache = specializedTraitCache2 // TODO: Decide if we would rather make the cache itself mutable and have the container variable as a val, rather than creating several new versions and having the container variable as a var.
           
           val grouped = stats1.groupBy(tree => tree.symbol.enclosingPackageClass)
           
@@ -434,17 +438,18 @@ object DesugarSpecializedTraits:
   val name: String = "desugarSpecializedTraits"
   val description: String = "Identifies traits having type parameters that have the Specialized annotation and generates corresponding specialized versions" // Replacement with specialized versions occurs in erasure.
 
-  // TODO: Do we want to compress this more by adopting e.g. specializedTypeNames from scala 2? 
-  // TODO: NameKind?
+  // TODO: Do we want to compress this more by adopting e.g. specializedTypeNames from scala 2? Using the exact Scala 2 naming scheme might be tricky since
+  // we currently check if "$$sp$" is contained within the name in order to figure out if it is a Scala 3 specialization specialized trait interface, and we need
+  // therefore to avoid name conflicts. However we could keep our existing scheme but use Scala 2 specialization naming scheme for the typenames after the separator
+  // e.g. I instead of scala.Int. That is probably worth doing from compression.
+  // Alternatively to avoid the conflict we can create our own NameKind for scala 3 specialized names and then use the presence of that to determine if a symbol comes
+  // from scala 3 specialization
   def canonicalName(tp: Type)(using Context): String = tp.dealias match
     case AppliedType(tycon, args) =>
       canonicalName(tycon) + args.map(canonicalName).mkString("$_$")
     case other =>
       other.typeSymbol.fullName.toString.replace('.', '$')
 
-
-  // TODO: What happens with this name generation if we have Vec[Vec[T]] for example? We potentially don't have an Ident
-  // TODO: Check what happens here when we have a case where the types being specialized into are user defined instead of primitives or type vars.
   private def generateName(specialization: Specialization, suffix: String)(using Context) = 
     val name = (specialization.traitSymbol.name ++ suffix ++ "$").asTypeName ++ specialization.specializedTypeArgs.map(t => canonicalName(specType(t.tpe))).mkString(str.SPECIALIZED_TRAIT_TYPE_SEP)
     if specialization.traitSymbol.owner.is(Flags.Package) then
@@ -452,10 +457,11 @@ object DesugarSpecializedTraits:
     else
       FlatName(specialization.traitSymbol.owner.flatName.toTermName, name.toTermName).toSimpleName.toTypeName
 
-  /*private[transform]*/ def newSpecializedTraitName(specialization: Specialization)(using Context): TypeName = 
+  // TODO: Perhaps move this to be a method on Specialization (or maybe we consider it a property of the phase and not belonging to the specialization I don't know)
+  def newSpecializedTraitName(specialization: Specialization)(using Context): TypeName = 
     generateName(specialization, str.SPECIALIZED_TRAIT_SUFFIX)
 
-  /*private[transform]*/ def newImplementationClassName(specialization: Specialization)(using Context): TypeName = 
+  def newImplementationClassName(specialization: Specialization)(using Context): TypeName = 
     if specialization.isFullySpecializedToTopClassesOrNothing then
       (specialization.traitSymbol.name ++ str.SPECIALIZED_TRAIT_IMPL_SUFFIX).asTypeName
     else
@@ -499,7 +505,11 @@ object SpecializedTraitCache:
   type GenInterfaceSymbol = (Specialization, SpecializedTraitCache) => Context ?=> (ClassSymbol, SpecializedTraitCache)
   type GenImplementationSymbol = (Specialization, Option[ClassSymbol]) => Context ?=> ClassSymbol
 
-// TODO: We don't need to share this between phases anymore and maybe we don't even need it at all. Can also rename. 
+
+// TODO: Once we have actual caching depending on how it's implemented, maybe we don't want to call this the cache anymore
+// Maybe you can implement caching to use this directly. Also, if we want to change it to make it mutable maybe we can
+// simplify it a bit. I think we still need the multiple levels because we need to be able to do multiple iterations of
+// specialization symbol generation and inlining if we have specialized traits that depend on other specialized traits. 
 class SpecializedTraitCache(
   private val newInterfaceSymbols: SpecializedTraitCache.SymbolMap = Map.empty,
   private val newImplementationSymbols: SpecializedTraitCache.SymbolMap = Map.empty,
@@ -556,18 +566,16 @@ class SpecializedTraitCache(
 end SpecializedTraitCache
 
 /* Represents an application traitSymbol[typeArguments] */
-class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val span: Span)(using Context): // TODO: Can we get away with List[Type]
-  val specializedTypeParams: List[Type] = Specialization.classSpecializedTypeParams(traitSymbol) // Type parameters marked with Specialized
-  
-  // private val specializedTypeParamsSet = specializedTypeParams.toSet // TODO: We can bring this back if we manage to get the =:= type hashing but it's really not a big deal given the expected number of type parameters.
+class Specialization(val traitSymbol: Symbol, val typeArguments: List[Tree], val span: Span)(using Context): // TODO: As mentioned in tm above, maybe we can get away with List[Type] and remove a lot of the needless .tpe and TypeTree calls
   private val paramToArgList = traitSymbol.typeParams.map(_.typeRef.asInstanceOf[Type]).zip(typeArguments)
 
+  val specializedTypeParams: List[Type] = Specialization.classSpecializedTypeParams(traitSymbol) // Type parameters marked with Specialized
   val unspecializedTypeParams: List[Type] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._1) // Type parameters not marked with Specialized
   val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are marked with Specialized at their definition
   val unspecializedTypeArgs: List[Tree] = paramToArgList.filterNot((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are not marked with Specialized at their definition 
 
   val specializedTypeParamsToTypeArgumentsMap: Map[Type, Tree] = paramToArgList.toMap.filter((k, v) => specializedTypeParams.exists(_ =:= k)).view.mapValues(tr => TypeTree(specType(tr.tpe))).toMap // TODO: Maybe not efficient
-  val specialization: List[Tree] = traitSymbol.typeParams.map(_.typeRef).map(specializedTypeParamsToTypeArgumentsMap.applyOrElse(_, TypeTree(_))) // TODO: Don't really like this name
+  val specialization: List[Tree] = traitSymbol.typeParams.map(_.typeRef).map(specializedTypeParamsToTypeArgumentsMap.applyOrElse(_, TypeTree(_))) // TODO: Maybe can improve the name of this field
 
   def constructorTypeParams: List[Type] = traitSymbol.primaryConstructor.rawParamss.head.map(_.typeRef)
   def unspecializedConstructorParams: List[Symbol] = traitSymbol.primaryConstructor.rawParamss.head.zip(traitSymbol.typeParams).filterNot((constrParam, typeParam) => specializedTypeParams.exists(_ =:= typeParam.typeRef)).map((constrParam, typeParam) => constrParam)
@@ -614,7 +622,7 @@ class MethodSpecialization(val methodSymbol: Symbol, val typeArgss: List[List[Tr
     (params, args) => params.map(_.typeRef.asInstanceOf[Type]).zip(args) 
   ).flatten
 
-  // TODO: Can we share these? General Specialization + Method + Trait
+  // TODO: Can we share these with the original Specialization? General Specialization superclass and then Method and Trait specializations below that? It ended up seeming a bit annoying but maybe there's a way.
   val specializedTypeArgs: List[Tree] = paramToArgList.filter((tParam, tArg) => specializedTypeParams.exists(_ =:= tParam)).map(_._2) // Type arguments provided to parameters that are marked with Specialized at their definition
 
   val hasSpecializedParams: Boolean = specializedTypeParams.nonEmpty
@@ -627,7 +635,7 @@ class MethodSpecialization(val methodSymbol: Symbol, val typeArgss: List[List[Tr
     methodSymbol.isSpecializedMethod && hasSpecializedParams && isFullySpecialized && specializedTypeArgs.forall(tr => isTopClassOrNothing(specType(tr.tpe).classSymbol))
 end MethodSpecialization
 
-// TODO: If we can get this in Specialization when we do inheritance that would be great.
+// TODO: If we do have a general specialization superclass tha links MethodSpecialization and Trait Specialization then we can put this in the general superclass
 object SpecializedEvidence {
   def unapply(tpe: Type)(using Context): Option[Type] = tpe match {
     case AppliedType(tycon, List(tpeArg)) if (tycon =:= ctx.definitions.SpecializedClass.typeRef && tpeArg.typeSymbol.isTypeParam) => Some(tpeArg)
@@ -660,8 +668,7 @@ object Specialization:
       classSym.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
 
   def methodSpecializedTypeParams(methodSym: Symbol)(using Context): List[Type] = methodSym.paramSymss.flatten.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
-  
-  // TODO: These methods are used in other phases; probably move them to the phase object? 
+   
   def anonymousClassIsSpecialized(tree: Tree)(using Context) = 
     tree match {
       case TypeDef(anon, Template(_, parentCalls: List[Tree], _, _)) =>
@@ -713,27 +720,3 @@ object AnonymousClassInstance:
     case _ => None
   }
 end AnonymousClassInstance 
-
-class SpecializedTraitState:
-  var specializedTraitCache: Option[SpecializedTraitCache] = None
-end SpecializedTraitState
-
-
-// Need to somehow make my naming a lot more consistent as well.
-// figure out why we generate the T version.
-// Try to see if we can do with only types and not trees
-// Synthesise Specialized instances so that people can't do stupid stuff like Specialized[Array[T]]. type x = Specialized[Array[Array[Int]]]
-// Set the Synthetic flags somewhere
-// Cache / only generate once instead of multiple times.
-// Ideally standardise on either specialization or specializationMap
-
-// TODO: Need to try with a bigger project with multiple packages later on to see if we get the behaviour that we are expecting to get in terms of the classes that we generate.
-
-// TODO: need to test with explicit evidence / our own custom type classes
-
-// In the case of foo[S](a: Vec[S, Int, Int, Int, Int]) I think we ideally do want this because we should be able to get speed gains by accessing the specialized members 
-
-// TODO: Only specialize if there is some material increase in specialization - I think only if at least one new parameter gets fully specialized
-// Maybe it is better to not allow partial specializations --  we can think about that.
-
-// TODO: Don't synthesize specialized instances for random generic types probably - as Hamza said we want to be able to control the specialization

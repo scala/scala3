@@ -98,7 +98,7 @@ class TreeTypeMap(
 
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
-      val tmap = withMappedSyms(localSyms(impl :: self :: Nil)) 
+      val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
           parents = impl.parents.mapconserve(transform),
@@ -127,7 +127,7 @@ class TreeTypeMap(
           cpy.Block(blk)(stats1, expr1)
         case lit @ Literal(Constant(tpe: Type)) =>
           cpy.Literal(lit)(Constant(mapType(tpe)))
-        case ddef @ DefDef(name, paramss, tpt, _) => // Why are we not correctly mapping foo's return type? See Reached def def ...
+        case ddef @ DefDef(name, paramss, tpt, _) =>
           val (tmap1, paramss1) = transformAllParamss(paramss)
           val res = cpy.DefDef(ddef)(name, paramss1, tmap1.transform(tpt), tmap1.transform(ddef.rhs))
           res.symbol.setParamssFromDefs(paramss1)
@@ -135,7 +135,6 @@ class TreeTypeMap(
             case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))
             case ann => ann
           } 
-          // HERE?
           res
         case tdef @ LambdaTypeTree(tparams, body) =>
           val (tmap1, tparams1) = transformDefs(tparams)
