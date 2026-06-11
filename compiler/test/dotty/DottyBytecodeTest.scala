@@ -14,7 +14,7 @@ import dotty.tools.vulpix.TestConfiguration
 import scala.tools.asm
 import scala.tools.asm.*
 import scala.tools.asm.tree.*
-import dotty.tools.io.{AbstractFile, JavaClassPath, VirtualDirectory}
+import dotty.tools.io.{AbstractFile, VirtualDirectory}
 
 import scala.jdk.CollectionConverters.*
 import java.io.{InputStream, File as JFile}

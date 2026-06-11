@@ -11,7 +11,7 @@ import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.util.regex.PatternSyntaxException
 import File.pathSeparator
 import Jar.isJarOrZip
-import dotc.classpath.{BinaryFileEntry, FileUtils, PackageEntry, SourceFileEntry}
+import dotc.classpath.{BinaryFileEntry, PackageEntry, SourceFileEntry}
 
 /**
   * A representation of the compiler's class- or sourcepath.
@@ -95,12 +95,6 @@ object ClassPath {
         Some(basedir.resolve(Path(spec)).toURL)
     catch
       case _: MalformedURLException | _: URISyntaxException => None
-  
-  @deprecated("shim for sbt's compiler interface", since = "2.12.0")
-  sealed abstract class ClassPathContext
-
-  @deprecated("shim for sbt's compiler interface", since = "2.12.0")
-  sealed abstract class JavaContext
 }
 
 trait ClassRepresentation {
@@ -118,12 +112,3 @@ trait ClassRepresentation {
     if (ix < 0) fileName.length else ix
   }
 }
-
-@deprecated("shim for sbt's compiler interface", since = "2.12.0")
-sealed abstract class DirectoryClassPath
-
-@deprecated("shim for sbt's compiler interface", since = "2.12.0")
-sealed abstract class MergedClassPath
-
-@deprecated("shim for sbt's compiler interface", since = "2.12.0")
-sealed abstract class JavaClassPath
