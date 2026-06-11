@@ -681,6 +681,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedMirror: SpecialHandler = (formal, span) =>
     orElse(synthesizedProductMirror(formal, span), synthesizedSumMirror(formal, span))
 
+  val synthesizedSpecialized: SpecialHandler = (formal, span) => formal match {
+    case AppliedType(tycon, arg :: Nil) if tycon =:= defn.SpecializedClass.typeRef => 
+      withNoErrors(TypeApply(ref(defn.SpecializedModule_apply), TypeTree(arg) :: Nil))
+    case _ => EmptyTreeNoError
+  }
+
   private enum ManifestKind:
     case Full, Opt, Clss
 
@@ -804,6 +810,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.OptManifestClass     -> synthesizedOptManifest,
     defn.SingletonClass       -> synthesizedSingleton,
     defn.PreciseClass         -> synthesizedPrecise,
+    defn.SpecializedClass     -> synthesizedSpecialized
   )
 
   def tryAll(formal: Type, span: Span)(using Context): TreeWithErrors =

@@ -26,6 +26,7 @@ import cc.{CapturingType, derivedCapturingType, stripCapturing}
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.transform.Specialization
 
 object SymDenotations {
 
@@ -442,7 +443,6 @@ object SymDenotations {
      *
      */
     def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: List[TypeSymbol])(using Context): Type =
-
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
           case RefinedType(parent, name, rinfo) => rinfo match
@@ -645,6 +645,20 @@ object SymDenotations {
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(using Context): Boolean =
       isClass && initial.name.isAnonymousClassName
+
+    /** Is this symbol an specialized trait interface? */
+    final def isSpecializedTraitInterface(using Context): Boolean =
+      isClass && name.isSpecializedTraitInterfaceName
+
+    /** Is this symbol an specialized trait implementation class? */
+    final def isSpecializedTraitImplementationClass(using Context): Boolean =
+      isClass && name.isSpecializedTraitImplementationName
+
+    /** Is this symbol a specialized trait implementation class that 
+     * was generated from a specialization using only top classes / Nothing
+     * and is therefore not subject to a specialized interface */ 
+    final def isRawSpecializedTraitImplementationClass(using Context): Boolean =
+      isClass && name.isSpecializedTraitImplementationName
 
     final def isAnonymousFunction(using Context): Boolean =
       this.symbol.is(Method) && initial.name.isAnonymousFunctionName
@@ -1049,6 +1063,15 @@ object SymDenotations {
 
     def isInlineMethod(using Context): Boolean =
       isAllOf(InlineMethod, butNot = Accessor)
+
+    def isInlineTrait(using Context): Boolean =
+      isAllOf(InlineTrait)
+    
+    def isSpecializedMethod(using Context): Boolean = 
+      Specialization.isSpecializedMethod(symbol)
+
+    def isSpecializedTrait(using Context): Boolean = 
+      Specialization.isSpecializedTrait(symbol)
 
     /** Does this method or field need to be retained at runtime */
     def isRetainedInline(using Context): Boolean =

@@ -3524,6 +3524,29 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             addAccessorDefs(cls,
               typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)))
 
+      if !ctx.isAfterTyper && cls.isInlineTrait then
+        body1.map(_.symbol).filter(_.isInlineTrait).foreach(innerInlTrait =>
+          report.error(
+            em"Implementation restriction: an inline trait cannot be defined inside of another inline trait",
+            innerInlTrait.srcPos
+          )
+        )
+        val membersToInline = body1.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
+        membersToInline.foreach {
+          case tdef: TypeDef if tdef.symbol.isClass =>
+            def rec(paramss: List[List[Symbol]]): Unit = paramss match {
+              case (param :: _) :: _ if param.isTerm =>
+                report.error(em"Implementation restriction: inner classes inside inline traits cannot have term parameters", param.srcPos)
+              case _ :: paramss =>
+                rec(paramss)
+              case _ =>
+            }
+            rec(tdef.symbol.primaryConstructor.paramSymss)
+          case _ =>
+        }
+        val wrappedMembersToInline = Block(membersToInline, unitLiteral).withSpan(cdef.span)
+        PrepareInlineable.registerInlineInfo(cls, wrappedMembersToInline)
+
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
@@ -4904,13 +4927,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree
           }
         else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
-          case CompareResult.Fail(_) =>
+          case CompareResult.Fail(notes) =>
             wtp match
               case wtp: MethodType => missingArgs(wtp)
               case _ =>
                 typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
                 //typr.println(TypeComparer.explained(tree.tpe <:< pt))
-                adaptToSubType(wtp)
+                adaptToSubType(wtp, notes)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
              && !inContext(ctx.fresh.setGadtState(GadtState(GadtConstraint.empty))) {
@@ -5011,7 +5034,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case tree: Closure => cpy.Closure(tree)(tpt = TypeTree(samParent)).withType(samParent)
     }
 
-    def adaptToSubType(wtp: Type): Tree =
+    def adaptToSubType(wtp: Type, cmpNotes: List[Message.Note] = Nil): Tree =
       // try converting a constant to the target type
       tree.tpe.widenTermRefExpr.normalized match
         case ConstantType(x) =>
@@ -5080,7 +5103,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           val tree1 = healAdapt(tree, pt)
           if tree1 ne tree then readapt(tree1)
-          else err.typeMismatch(tree, pt, failure.notes)
+          else err.typeMismatch(tree, pt, cmpNotes ++ failure.notes)
 
       pt match
         case _: SelectionProto =>

@@ -977,6 +977,16 @@ object Symbols extends SymUtils {
 
       copies.foreach(_.ensureCompleted()) // avoid memory leak
 
+      // We add this because without it retainsDefTree is not consistent with defTree. 
+      // Also, we need it to get the correct source files when unpickling coords inlined
+      // from inline traits. This does change the output of tests/run-macros/tasty-extractors-owners
+      // as the tree is now present to be returned from the macro so some Nones turn into Somes
+      // and a few Inferred() turn into Apply(Select(New(Inferred()), "<init>"), Nil).
+      copies.zip(originals).foreach { (copied, original) => 
+        if copied.retainsDefTree then
+          copied.defTree = original.defTree
+      }
+
       // Update Child annotations of classes encountered previously to new values
       // if some child is among the mapped symbols
       for orig <- ttmap1.substFrom do

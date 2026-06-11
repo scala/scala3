@@ -43,6 +43,8 @@ class Compiler {
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
+    List(new DesugarSpecializedTraits,  // Process Specialized traits
+         new SpecializeInlineTraits) :: // Inline the code of inline traits into their children
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
@@ -81,7 +83,9 @@ class Compiler {
          new ForwardDepChecks,       // Check that there are no forward references to local vals
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new TryCatchPatterns,       // Compile cases in try/catch
-         new PatternMatcher) ::      // Compile pattern matches
+         new PatternMatcher,         // Compile pattern matches
+         new PruneSpecializedMethods,// Remove specialized methods which have already been inlined
+         new PruneInlineTraits) ::   // Remove right-hand side of definitions in inline traits
     List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
     List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
     List(new cc.Setup) ::            // Preparations for check captures phase, enabled under captureChecking
