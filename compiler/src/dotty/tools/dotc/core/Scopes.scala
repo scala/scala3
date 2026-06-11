@@ -37,6 +37,9 @@ object Scopes {
    */
   private inline val MaxRecursions = 1000
 
+  private[core] inline def memberNameBloomBit(name: Name): Long =
+    1L << (name.hashCode & 63)
+
   /** A function that optionally produces synthesized symbols with
    *  the given name in the given context. Returns `NoSymbol` if the
    *  no symbol should be synthesized for the given name.
@@ -122,6 +125,17 @@ object Scopes {
 
     /** Lookup next entry with same name as this one */
     def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null
+
+    /** A set-only Bloom word for names already stored in this scope.
+     *
+     *  A clear bit proves an ordinary stored entry with that name is absent,
+     *  but callers that skip `lookupEntry` must stay conservative if this
+     *  scope can synthesize members.
+     */
+    private[core] def memberNameBloom: Long = 0L
+
+    /** Can `lookupEntry` synthesize a missing name for this scope? */
+    private[core] def maySynthesizeMember: Boolean = false
 
     /** Lookup a symbol */
     final def lookup(name: Name)(using Context): Symbol = {
@@ -229,7 +243,7 @@ object Scopes {
     private var membersBloom: Long = 0L
 
     private inline def addToBloom(name: Name): Unit =
-      membersBloom |= 1L << (name.hashCode & 63)
+      membersBloom |= memberNameBloomBit(name)
 
     /** Fold the name hashes of `e` and all its predecessors into the Bloom
      *  filter. Used when entries are shared from a base scope without going
@@ -261,6 +275,10 @@ object Scopes {
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
     private var synthesize: SymbolSynthesizer | Null = null
+
+    override private[core] def memberNameBloom: Long = membersBloom
+
+    override private[core] def maySynthesizeMember: Boolean = synthesize != null
 
     /** Use specified synthesize for this scope */
     def useSynthesizer(s: SymbolSynthesizer): Unit = synthesize = s
@@ -407,7 +425,7 @@ object Scopes {
       // A clear Bloom bit proves the name is absent from the stored entries,
       // so we can skip the chain/hash probe entirely and only consult the
       // synthesizer below. Bits are set-only, hence there are no false negatives.
-      if ((membersBloom & (1L << (name.hashCode & 63))) != 0L) {
+      if ((membersBloom & memberNameBloomBit(name)) != 0L) {
         val ht = hashTable
         if (ht != null) {
           e = ht(name.hashCode & (ht.length - 1))

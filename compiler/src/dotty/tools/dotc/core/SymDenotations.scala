@@ -1915,6 +1915,7 @@ object SymDenotations {
     private var myLinearizedBaseScopesPeriod: Period = Nowhere
     private var myLinearizedBaseScopesInfo: ClassInfo | Null = null
     private var myLinearizedBaseScopes: Array[Scope] | Null = null
+    private var myLinearizedBaseScopesBloom: Long = 0L
 
     // 2-slot direct-mapped RunId-keyed cache for derivesFrom(base).
     // Slot 0 is the most recently inserted entry; on a miss we shift slot 0
@@ -2044,6 +2045,7 @@ object SymDenotations {
       myLinearizedBaseScopesPeriod = Nowhere
       myLinearizedBaseScopesInfo = null
       myLinearizedBaseScopes = null
+      myLinearizedBaseScopesBloom = 0L
 
     private def invalidateMemberNamesCache() = {
       memberNamesCache.invalidate()
@@ -2204,6 +2206,7 @@ object SymDenotations {
         myLinearizedBaseScopes
       else
         var scopes: Array[Scope] | Null = null
+        var bloom = 0L
         if parentClassDenots(cinfo) != null then
           val bases = baseClasses
           if bases.nonEmpty && (bases.head eq classSymbol) && baseDataCache.isComputed then
@@ -2214,7 +2217,11 @@ object SymDenotations {
             while ok && rest.nonEmpty do
               rest.head.denot match
                 case based: ClassDenotation =>
-                  arr(i) = based.info.decls
+                  val decls = based.info.decls
+                  arr(i) = decls
+                  bloom =
+                    if decls.maySynthesizeMember then -1L
+                    else bloom | decls.memberNameBloom
                   i += 1
                   rest = rest.tail
                 case _ =>
@@ -2223,6 +2230,7 @@ object SymDenotations {
         myLinearizedBaseScopesPeriod = period
         myLinearizedBaseScopesInfo = cinfo
         myLinearizedBaseScopes = scopes
+        myLinearizedBaseScopesBloom = if scopes == null then 0L else bloom
         scopes
 
     /** The types of the parent classes. */
@@ -2553,6 +2561,7 @@ object SymDenotations {
           case cinfo: ClassInfo =>
             val baseScopes = linearizedBaseScopes(cinfo)
             if baseScopes == null then null
+            else if (myLinearizedBaseScopesBloom & memberNameBloomBit(name)) == 0L then NoDenotation
             else
               val excludedInherited = excluded | Private
               var denots: PreDenotation = NoDenotation
