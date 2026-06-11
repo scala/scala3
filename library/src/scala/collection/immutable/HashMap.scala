@@ -1541,7 +1541,7 @@ private final class BitmapIndexedMapNode[K, +V](
               getNode(leftNodeIdx).updated(
                 key = bm.getKey(rightDataIdx),
                 value = bm.getValue(rightDataIdx),
-                originalHash = bm.getHash(rightDataIdx),
+                originalHash = rightOriginalHash,
                 hash = improve(rightOriginalHash),
                 shift = nextShift,
                 replaceValue = true
