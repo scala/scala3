@@ -65,7 +65,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
    * in the call graph to remember its source position, which is required for inliner warnings.
    */
-  val callsitePositions: concurrent.Map[MethodInsnNode, SourcePosition] = TrieMap.empty
+  private val callsitePositions: concurrent.Map[MethodInsnNode, SourcePosition] = TrieMap.empty
 
   /**
    * Stores callsite instructions of invocations annotated `f(): @inline/noinline`.
@@ -79,7 +79,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
 
   // Contains `INVOKESPECIAL` instructions that were cloned by the inliner and need to be resolved
   // statically by the call graph. See Inliner.maybeInlinedLater.
-  val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = mutable.Set.empty
+  private val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = mutable.Set.empty
 
   def isStaticCallsite(call: MethodInsnNode): Boolean = {
     val opc = call.getOpcode
@@ -234,6 +234,35 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
       callsites(methodNode) = methodCallsites
       closureInstantiations(methodNode) = methodClosureInstantiations
     }
+  }
+
+  // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
+  // inlined in a later inlining round.
+  // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
+  // super accessors that we emit in traits. The inlined calls are marked in the call graph as
+  // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
+  // the call graph will always return the corresponding method in the trait.
+  def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
+    insns.forall({
+      case mi: MethodInsnNode =>
+        (mi.getOpcode != Opcodes.INVOKESPECIAL) || {
+          // Special handling for invokespecial T.f that appears within T, and T defines f.
+          // Such an instruction can be inlined into a different class, but it needs to be inlined in
+          // turn in a later inlining round.
+          // The call graph needs to treat it specially: the normal dynamic lookup needs to be
+          // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
+          def hasMethod(c: ClassNode): Boolean = {
+            val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
+            if (r) staticallyResolvedInvokespecial += mi
+            r
+          }
+
+          mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME &&
+            mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
+            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
+        }
+      case _ => false
+    })
   }
 
 
