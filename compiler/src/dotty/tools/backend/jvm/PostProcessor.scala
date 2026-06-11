@@ -287,7 +287,7 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
   private val optimizerUtils      = new OptimizerUtils(bTypes)
   private val closureOptimizer    = new ClosureOptimizer(optimizerUtils, indyTracker, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
   private val heuristics          = new InlinerHeuristics(optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new Inliner(indyTracker, callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val inliner             = new InlinerImpl(indyTracker, callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
   private val localOpt            = new LocalOpt(optimizerUtils, indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
@@ -302,7 +302,7 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
-    inliner.runInlinerAndClosureOptimizer(i => report.optimizerWarning(i.msg, i.site, i.pos))
+    inliner.run(i => report.optimizerWarning(i.msg, i.site, i.pos))
   }
 
   protected override def runLocalOptimizations(classNode: ClassNode): Unit =

@@ -27,12 +27,17 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(indyTracker: IndyLambdaImplTracker,
-              callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
-              settings: OptimizerSettings) {
+abstract class Inliner {
+  def run(issueSink: OptimizerIssue => Unit): Unit
+  def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit
+}
 
-  def runInlinerAndClosureOptimizer(issueSink: OptimizerIssue => Unit): Unit = {
+final class InlinerImpl(indyTracker: IndyLambdaImplTracker,
+                        callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+                        heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
+                        settings: OptimizerSettings) extends Inliner {
+
+  override def run(issueSink: OptimizerIssue => Unit): Unit = {
     var round = 0
     var changedByInliner = Iterable.empty[MethodNode]
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
@@ -374,7 +379,7 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
    * @return A map associating instruction nodes of the callee with the corresponding cloned
    *         instruction in the callsite method.
    */
-  def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
+  private def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
     val callsiteCallee = callsite.callee
     import callsiteCallee.{callee, calleeDeclarationClass, sourceFilePath}
 
@@ -687,7 +692,7 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
     instructionMap
   }
 
-  def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit = {
+  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit = {
       var css = toInline.flatMap(callGraph.getCallsite(method, _))
         .collect { case k: KnownCallsite => k }
         .toList
@@ -955,6 +960,13 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
     }
     Right(illegalAccess.toList)
   }
+}
+
+object DisabledInliner extends Inliner {
+  override def run(issueSink: OptimizerIssue => Unit): Unit =
+    ()
+  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit =
+    ()
 }
 
 object Inliner {
