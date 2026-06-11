@@ -195,7 +195,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         case _ =>
       }
 
-      currentStartingComment.headOption.foreach { start =>
+      currentStartingComment.foreach { start =>
         excludedSpans += start.span.withEnd(unit.source.length - 1)
       }
 
