@@ -96,21 +96,21 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaIm
 
     // the `toList` prevents modifying closureInstantiations while iterating it.
     // minimalRemoveUnreachableCode (called in the loop) removes elements
-    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toList)
+    val methodsToRewrite = methods.getOrElse(callGraph.methodsWithClosureInstantiations())
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get(method) match {
-      case Some(closureInitsBeforeDCE) if closureInitsBeforeDCE.nonEmpty =>
+    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.getClosureInstantiations(method) match {
+      case closureInitsBeforeDCE if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
         LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, indyTracker)
 
-        if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
-          case Some(closureInits) =>
+        if (Limits.sizeOKForSourceValue(method)) {
+          val closureInits = callGraph.getClosureInstantiations(method)
             // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
             lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)
 
@@ -121,8 +121,6 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaIm
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
             }
-
-          case _ =>
         }
 
       case _ =>
