@@ -399,6 +399,40 @@ DefaultArgs
 Object
 covtest.DefaultArgs
 staticCaller
+706
+720
+28
+staticMethod
+Apply
+false
+0
+false
+staticMethod()
+
+23
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticCaller
+706
+738
+28
++
+Apply
+false
+0
+false
+staticMethod() + staticMethod(5)
+
+24
+DefaultArgs.scala
+covtest
+DefaultArgs
+Object
+covtest.DefaultArgs
+staticCaller
 676
 692
 27

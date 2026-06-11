@@ -6,6 +6,7 @@ import java.nio.file.{Files, Path}
 
 import ast.tpd
 import ast.tpd.*
+import ast.desugar.TrailingForMap
 import collection.mutable
 import core.Comments.Comment
 import core.Flags.*
@@ -32,6 +33,7 @@ object LiftCoverage extends LiftImpure:
 
   // Property indicating whether we're currently lifting the arguments of an application
   private val LiftingArgs = new Property.Key[Boolean]
+  private val SelectedReceiverApply = Property.StickyKey[tpd.Apply]()
   val CoverageLiftedTemp = Property.StickyKey[Unit]()
 
   private inline def liftingArgs(using Context): Boolean =
@@ -68,6 +70,12 @@ object LiftCoverage extends LiftImpure:
   def isCoverageLiftedTemp(sym: Symbol)(using Context): Boolean =
     sym.defTree.hasAttachment(CoverageLiftedTemp)
 
+  def selectedReceiverApply(tree: tpd.Tree)(using Context): Option[tpd.Apply] =
+    tree.getAttachment(SelectedReceiverApply)
+
+  def markSelectedReceiverApply(tree: tpd.Apply)(using Context): Unit =
+    tree.putAttachment(SelectedReceiverApply, tree)
+
   override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
     tree.putAttachment(CoverageLiftedTemp, ())
 
@@ -93,10 +101,33 @@ object LiftCoverage extends LiftImpure:
       case _ if valueType.existsPart(_.typeSymbol == defn.TypeBox_CAP) => valueType
       case _ => super.liftedExprType(expr)
 
+  private def markSelectedReceiverDef(
+    defs: mutable.ListBuffer[tpd.Tree],
+    from: Int,
+    selectedReceiver: tpd.Apply
+  )(using Context): Unit =
+    if defs.length > from then
+      defs.last match
+        case stat: tpd.ValDef => stat.putAttachment(SelectedReceiverApply, selectedReceiver)
+        case _ => ()
+
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
-    val liftedFun = liftApp(defs, tree.fun)
-    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
-    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+    def recur(tree: tpd.Apply): tpd.Tree =
+      val liftedFun = tree.fun match
+        case sel @ tpd.Select(app: tpd.Apply, name) if selectedReceiverApply(app).nonEmpty =>
+          val selectedReceiver = tpd.cpy.Select(sel)(recur(app), name)
+          val defsBeforeReceiver = defs.length
+          val liftedReceiver = liftApp(defs, selectedReceiver)
+          markSelectedReceiverDef(defs, defsBeforeReceiver, app)
+          liftedReceiver
+        case _ =>
+          liftApp(defs, tree.fun)
+      val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
+      tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+    end recur
+
+    recur(tree)
+  end liftForCoverage
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -324,6 +355,15 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     private def allConstArgs(args: List[Tree]) =
       args.forall(arg => arg.isInstanceOf[Literal] || arg.isInstanceOf[Ident])
+
+    private def withSelectedReceiverProbes(stats: List[Tree])(using Context): List[Tree] =
+      stats.flatMap: stat =>
+        LiftCoverage.selectedReceiverApply(stat) match
+          case Some(app) =>
+            createInvokeCall(app, app.sourcePos) :: stat :: Nil
+          case _ =>
+            stat :: Nil
+
     /**
       * Tries to instrument an `Apply`.
       * These "tryInstrument" methods are useful to tweak the generation of coverage instrumentation,
@@ -345,14 +385,17 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           if tree.fun.symbol eq defn.throwMethod then tree
           else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
 
-        if needsLift(tree) then
+        if needsLift(app) then
           // Lifts the arguments. Note that if only one argument needs to be lifted, we lift them all.
           // Also, tree.fun can be lifted too.
           // See LiftCoverage for the internal working of this lifting.
           val liftedDefs = mutable.ListBuffer[Tree]()
           val liftedApp = LiftCoverage.liftForCoverage(liftedDefs, app)
+          val prefix =
+            if tree.hasAttachment(TrailingForMap) then liftedDefs.toList
+            else withSelectedReceiverProbes(liftedDefs.toList)
 
-          InstrumentedParts(liftedDefs.toList, coverageCall, liftedApp)
+          InstrumentedParts(prefix, coverageCall, liftedApp)
         else
           // Instrument without lifting
           InstrumentedParts.singleExpr(coverageCall, app)
@@ -360,6 +403,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // Transform recursively but don't instrument the tree itself
         val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
+    end tryInstrument
 
     private def tryInstrument(tree: Ident)(using Context): InstrumentedParts =
       val sym = tree.symbol
@@ -730,6 +774,32 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * should not be changed to {val $x = f(); T($x)}(1) but to {val $x = f(); val $y = 1; T($x)($y)}
      */
     private def needsLift(tree: Apply)(using Context): Boolean =
+      def hasSelectedApply(fun: Tree): Boolean = fun match
+        case Select(app: Apply, _) =>
+          val nestedNeedsProbe = hasSelectedApply(app.fun)
+          val needsProbe = selectedReceiverNeedsProbe(app)
+          if needsProbe then LiftCoverage.markSelectedReceiverApply(app)
+          nestedNeedsProbe || needsProbe
+        case TypeApply(fn, _) => hasSelectedApply(fn)
+        case _ => false
+      end hasSelectedApply
+
+      def applicationEvaluationNeedsLift(tree: Apply): Boolean =
+          val fun = tree.fun
+          val nestedApplyNeedsLift = fun match
+            case a: Apply => applicationEvaluationNeedsLift(a)
+            case _ => false
+
+          nestedApplyNeedsLift ||
+          !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      end applicationEvaluationNeedsLift
+
+      def selectedReceiverNeedsProbe(tree: Apply): Boolean =
+        !LiftCoverage.isUnsafeAssumeSeparate(tree)
+        && canInstrumentApply(tree)
+        && applicationEvaluationNeedsLift(tree)
+      end selectedReceiverNeedsProbe
+
       def isShortCircuitedOp(sym: Symbol) =
         sym == defn.Boolean_&& || sym == defn.Boolean_||
 
@@ -757,7 +827,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         case _ => false
 
       nestedApplyNeedsLift ||
-      !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      !isUnliftableFun(fun)
+      && (
+        !tree.hasAttachment(TrailingForMap) && hasSelectedApply(fun)
+        || !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      )
+    end needsLift
 
     private def isContextFunctionApply(fun: Tree)(using Context): Boolean =
       fun match
