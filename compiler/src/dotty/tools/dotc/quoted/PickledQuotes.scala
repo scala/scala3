@@ -83,25 +83,30 @@ object PickledQuotes {
 
   /** Unpickle the tree contained in the TastyExpr */
   def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    withMode(Mode.ReadPositions)(unpickle(pickled, isType = false)) match
-      case tree @ Inlined(call, Nil, expansion) =>
-        val inlineCtx = inlineContext(tree)
-        val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
-        val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
-        cpy.Inlined(tree)(call, Nil, expansion2)
+    val (unpickled, needsAnnotationRemap) = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
+    val tree @ Inlined(call, Nil, expansion) = unpickled: @unchecked
+    val inlineCtx = inlineContext(tree)
+    val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
+    val expansion2 = spliceTerms(expansion1, typeHole, termHole, needsAnnotationRemap)(using inlineCtx)
+    cpy.Inlined(tree)(call, Nil, expansion2)
   }
 
 
   /** Unpickle the tree contained in the TastyType */
   def unpickleTypeTree(pickled: String | List[String], typeHole: TypeHole)(using Context): Tree = {
-    val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
+    val (unpickled, _) = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
     spliceTypes(unpickled, typeHole)
   }
 
   /** Replace all term holes with the spliced terms */
-  private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    def evaluateHoles = new TreeMapWithImplicits {
-      override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
+  private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole, needsAnnotationRemap: Boolean)(using Context): Tree = {
+    abstract class HoleEvaluator extends TreeMapWithImplicits {
+      protected def transformNonHole(tree: tpd.Tree)(using Context): tpd.Tree
+
+      protected def transformChildren(tree: tpd.Tree)(using Context): tpd.Tree =
+        super.transform(tree)
+
+      final override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args, _) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
             if isTerm then
@@ -128,14 +133,20 @@ object PickledQuotes {
               PickledQuotes.quotedTypeToTree(quotedType)
           }
         case tree =>
+          transformNonHole(tree)
+      }
+    }
+
+    def evaluateHoles = new HoleEvaluator {
+      protected def transformNonHole(tree: tpd.Tree)(using Context): tpd.Tree = {
           if tree.isDef then
             tree.symbol.annotations = tree.symbol.annotations.map {
               annot => annot.derivedAnnotation(transform(annot.tree))
             }
           end if
 
-         val tree1 = super.transform(tree)
-         tree1.withType(mapAnnots(tree1.tpe))
+          val tree1 = transformChildren(tree)
+          tree1.withType(mapAnnots(tree1.tpe))
       }
 
       // Evaluate holes in type annotations
@@ -149,9 +160,17 @@ object PickledQuotes {
         }
       }
     }
+
+    def evaluateCleanHoles = new HoleEvaluator {
+      protected def transformNonHole(tree: tpd.Tree)(using Context): tpd.Tree =
+        transformChildren(tree)
+    }
+
     val tree1 = termHole match
       case ExprHole.V2(null) => tree
-      case _ => evaluateHoles.transform(tree)
+      case _ =>
+        if needsAnnotationRemap then evaluateHoles.transform(tree)
+        else evaluateCleanHoles.transform(tree)
     quotePickling.println(i"**** evaluated quote\n$tree1")
     tree1
   }
@@ -235,11 +254,12 @@ object PickledQuotes {
   }
 
   /** Unpickle TASTY bytes into it's tree */
-  private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
+  private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): (Tree, Boolean) = {
     QuotesCache.getTree(pickled) match
-      case Some((tree, cachedTreeOwner)) =>
+      case Some(cached) =>
+        val tree = cached.tree
         quotePickling.println(s"**** Using cached quote for TASTY\n$tree")
-        cachedTreeOwner match
+        val tree1 = cached.treeOwner match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
             val treeCpy = TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
@@ -247,6 +267,7 @@ object PickledQuotes {
             treeCpy.changeNonLocalOwners(ctx.owner)
           case _ =>
             tree
+        (tree1, cached.needsAnnotationRemap)
 
       case _ =>
         val bytes = pickled match
@@ -280,13 +301,32 @@ object PickledQuotes {
           // Make sure trees and positions are fully loaded
           tree.foreachSubTree(identity)
 
-          QuotesCache.update(pickled, tree, treeOwner(tree))
+          val needsAnnotationRemap = containsAnnotationMetadata(tree)
+          QuotesCache.update(pickled, tree, treeOwner(tree), needsAnnotationRemap)
 
           quotePickling.println(i"**** unpickled quote\n$tree")
 
-          tree
+          (tree, needsAnnotationRemap)
         }
 
+  }
+
+  private def containsAnnotationMetadata(tree: Tree)(using Context): Boolean = {
+    val containsAnnotatedType = new TypeAccumulator[Boolean] {
+      def apply(found: Boolean, tp: Type): Boolean =
+        found || (tp match
+          case AnnotatedType(_, _) => true
+          case _ => foldOver(false, tp)
+        )
+    }
+    val containsAnnotationMetadata = new TreeAccumulator[Boolean] {
+      def apply(found: Boolean, tree: Tree)(using Context): Boolean =
+        found
+        || tree.isDef && tree.symbol.exists && tree.symbol.annotations.nonEmpty
+        || containsAnnotatedType(false, tree.tpe)
+        || foldOver(false, tree)
+    }
+    containsAnnotationMetadata(false, tree)
   }
 
 }
