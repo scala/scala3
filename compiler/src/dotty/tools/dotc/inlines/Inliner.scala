@@ -427,43 +427,46 @@ object Inliner:
 
   private val InlineRhsLeafSummaryKey = Property.Key[InlineRhsLeafSummary]()
 
-  private final class InlineRhsLeafSummary private (val leafTypes: Array[Type]):
+  private final class InlineRhsLeafSummary private (val candidateParts: Array[Type]):
     def foreachType(op: Type => Unit): Unit =
       var idx = 0
-      while idx < leafTypes.length do
-        op(leafTypes(idx))
+      while idx < candidateParts.length do
+        op(candidateParts(idx))
         idx += 1
 
   private object InlineRhsLeafSummary:
     val Empty = new InlineRhsLeafSummary(new Array[Type](0))
 
     final class Builder:
-      private var leafTypes: Array[Type] | Null = null
+      private var candidateParts: Array[Type] | Null = null
+      private var seen: SimpleIdentitySet[Type] = SimpleIdentitySet.empty
       private var used = 0
 
       private def ensureCapacity(): Array[Type] =
-        val existing = leafTypes
+        val existing = candidateParts
         if existing == null then
           val fresh = new Array[Type](16)
-          leafTypes = fresh
+          candidateParts = fresh
           fresh
         else if used == existing.length then
           val fresh = new Array[Type](existing.length * 2)
           java.lang.System.arraycopy(existing, 0, fresh, 0, existing.length)
-          leafTypes = fresh
+          candidateParts = fresh
           fresh
         else existing
 
       def add(tpe: Type): Unit =
-        val types = ensureCapacity()
-        types(used) = tpe
-        used += 1
+        if !seen.contains(tpe) then
+          seen += tpe
+          val types = ensureCapacity()
+          types(used) = tpe
+          used += 1
 
       def result(): InlineRhsLeafSummary =
         if used == 0 then Empty
         else
           val result = new Array[Type](used)
-          java.lang.System.arraycopy(leafTypes, 0, result, 0, used)
+          java.lang.System.arraycopy(candidateParts, 0, result, 0, used)
           new InlineRhsLeafSummary(result)
 
   private def inlineRhsLeafType(tree: Tree)(using Context): Type = tree match
@@ -963,9 +966,22 @@ class Inliner(val call: tpd.Tree)(using Context):
     case _ =>
   }
 
-  private val registerTypes = new TypeTraverser:
+  private def addInlineRhsCandidatePart(summary: InlineRhsLeafSummary.Builder, tpe: Type): Unit = tpe match
+    case tpe: ThisType =>
+      summary.add(tpe)
+    case tpe: NamedType =>
+      val param = tpe.symbol
+      if param.is(Param) && param.owner == inlinedMethod then
+        summary.add(tpe)
+        if tpe.isTerm then
+          val widened = tpe.widenTermRefExpr
+          if widened ne tpe then addInlineRhsCandidatePart(summary, widened)
+    case _ =>
+
+  private def registerTypesAndSummarize(summary: InlineRhsLeafSummary.Builder) = new TypeTraverser:
     override def stopAt = StopAt.Package
     override def traverse(t: Type) =
+      addInlineRhsCandidatePart(summary, t)
       registerType(t)
       traverseChildren(t)
 
@@ -973,13 +989,13 @@ class Inliner(val call: tpd.Tree)(using Context):
   private def registerInlineRhsLeaves(rhs: Tree): Unit =
     rhs.getAttachment(InlineRhsLeafSummaryKey) match
       case Some(summary) =>
-        summary.foreachType(tpe => registerTypes.traverse(tpe))
+        summary.foreachType(registerType)
       case None =>
         val summary = new InlineRhsLeafSummary.Builder
+        val registerTypes = registerTypesAndSummarize(summary)
         rhs.foreachSubTree: tree =>
           val tpe = inlineRhsLeafType(tree)
           if tpe.exists then
-            summary.add(tpe)
             registerTypes.traverse(tpe)
         rhs.putAttachment(InlineRhsLeafSummaryKey, summary.result())
 
