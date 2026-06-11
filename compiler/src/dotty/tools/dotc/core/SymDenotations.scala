@@ -783,12 +783,13 @@ object SymDenotations {
      *  Same as `ownersIterator contains boundary` but more efficient.
      */
     final def isContainedIn(boundary: Symbol)(using Context): Boolean = {
-      def recur(sym: Symbol): Boolean =
-        if (sym eq boundary) true
-        else if (sym eq NoSymbol) false
-        else if (sym.is(PackageClass) && !boundary.is(PackageClass)) false
-        else recur(sym.owner)
-      recur(symbol)
+      val boundaryIsPackage = boundary.is(PackageClass)
+      @tailrec def recur(d: SymDenotation): Boolean =
+        if (d.symbol eq boundary) true
+        else if (!d.exists) false
+        else if (d.is(PackageClass) && !boundaryIsPackage) false
+        else recur(d.owner.denot)
+      recur(this)
     }
 
     final def isProperlyContainedIn(boundary: Symbol)(using Context): Boolean =
