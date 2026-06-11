@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, OptimizerKnownBTypes, OptimizerUtils}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
@@ -34,11 +34,11 @@ class GenBCode extends Phase { self =>
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
 
-  private var _backendUtils: BackendUtils | Null = null
-  def backendUtils(using Context): BackendUtils = {
-    if _backendUtils eq null then
-      _backendUtils = BackendUtils(wellKnownBTypes)
-    _backendUtils.nn
+  private var _optimizerUtils: OptimizerUtils | Null = null
+  def optimizerUtils(using Context): OptimizerUtils = {
+    if _optimizerUtils eq null then
+      _optimizerUtils = OptimizerUtils(optimizerKnownBTypes)
+    _optimizerUtils.nn
   }
 
   private var _frontendAccess: PostProcessorFrontendAccess | Null = null
@@ -58,7 +58,7 @@ class GenBCode extends Phase { self =>
   private var _byteCodeRepository: BCodeRepository | Null = null
   def byteCodeRepository(using Context): BCodeRepository = {
     if _byteCodeRepository eq null then
-      _byteCodeRepository = BCodeRepository(ctx.platform.classPath, backendUtils)
+      _byteCodeRepository = BCodeRepository(ctx.platform.classPath, optimizerUtils)
     _byteCodeRepository.nn
   }
 
@@ -78,13 +78,21 @@ class GenBCode extends Phase { self =>
     _bTypeLoader.nn
   }
 
-  private var _wellKnownBTypes: WellKnownBTypes | Null = null
-  def wellKnownBTypes(using Context): WellKnownBTypes = {
-    if _wellKnownBTypes eq null then
-      // lazy load to break the circular dependency
-      def inlineInfoLoader() = Option.when[InlineInfoLoader](ctx.settings.optInlineEnabled)(bTypesFromClassfile)
-      _wellKnownBTypes = WellKnownBTypes(frontendAccess, bTypeLoader)(using ctx)
-    _wellKnownBTypes.nn
+  private var _knownBTypes: KnownBTypes | Null = null
+  def knownBTypes(using Context): KnownBTypes = {
+    if _knownBTypes eq null then
+      if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
+        _knownBTypes = optimizerKnownBTypes // avoid creating two separate instances of this
+      else
+        _knownBTypes = KnownBTypes(bTypeLoader)(using ctx)
+    _knownBTypes.nn
+  }
+
+  private var _optimizerKnownBTypes: OptimizerKnownBTypes | Null = null
+  def optimizerKnownBTypes(using Context): OptimizerKnownBTypes = {
+    if _optimizerKnownBTypes eq null then
+      _optimizerKnownBTypes = OptimizerKnownBTypes(bTypeLoader)(using ctx)
+    _optimizerKnownBTypes.nn
   }
 
   private var _callGraph: CallGraph | Null = null
@@ -97,7 +105,10 @@ class GenBCode extends Phase { self =>
   private var _postProcessor: PostProcessor | Null = null
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
-      _postProcessor = new PostProcessor(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, backendUtils, bTypeLoader, wellKnownBTypes)
+      if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
+        _postProcessor = new PostProcessorWithOptimizations(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, optimizerKnownBTypes)
+      else
+        _postProcessor = new PostProcessor(bTypeLoader, knownBTypes)
     _postProcessor.nn
   }
 
@@ -125,7 +136,8 @@ class GenBCode extends Phase { self =>
   private var _codeGen: CodeGen | Null = null
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
-      _codeGen = new CodeGen(backendUtils, primitives, frontendAccess, callGraph, bTypeLoader, wellKnownBTypes, generatedClassHandler)
+      val cg = Option.when(ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations)(callGraph)
+      _codeGen = new CodeGen(primitives, cg, bTypeLoader, knownBTypes, generatedClassHandler)
     _codeGen.nn
   }
 
@@ -136,6 +148,9 @@ class GenBCode extends Phase { self =>
       case null => ()
 
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
+    // as long as we might initialize `generatedClassHandler` (or anything else) in here, we must set the context's phase,
+    // otherwise we'll initialize stuff like KnownBTypes with a context at the wrong phase, thus the symbols won't have the denotations we expect
+    given unitCtx: Context = ctx.fresh.setPhase(this)
     try
       val result = super.runOn(units)
       for (exn, f) <- generatedClassHandler.complete() do

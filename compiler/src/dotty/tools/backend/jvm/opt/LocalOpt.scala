@@ -24,7 +24,6 @@ import scala.tools.asm.tree.analysis.Frame
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
-import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
 
 /**
  * Optimizations within a single method. Certain optimizations enable others, for example removing
@@ -150,14 +149,14 @@ import dotty.tools.backend.jvm.BackendUtils.isArrayGetLength
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inliner,
-               ts: WellKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner,
+               ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                settings: OptimizerSettings) {
 
   import LocalOptImpls.*
 
-  private val boxUnbox = new BoxUnbox(backendUtils, callGraph, ts)
-  private val copyProp = new CopyProp(backendUtils, callGraph, inliner, ts, settings)
+  private val boxUnbox = new BoxUnbox(optimizerUtils, callGraph, ts)
+  private val copyProp = new CopyProp(optimizerUtils, callGraph, inliner, ts, settings)
 
   /**
    * Remove unreachable instructions from all (non-abstract) methods and apply various other
@@ -254,7 +253,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       val runDCE = (settings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
         settings.optBoxUnbox ||
         settings.optCopyPropagation
-      val codeRemoved = if (runDCE) LocalOptImpls.removeUnreachableCodeImpl(method, ownerClassName, callGraph, backendUtils) else false
+      val codeRemoved = if (runDCE) LocalOptImpls.removeUnreachableCodeImpl(method, ownerClassName, callGraph, optimizerUtils) else false
       traceIfChanged("dce")
 
       // BOX-UNBOX
@@ -343,7 +342,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       requestPushPop = true,
       requestStoreLoad = true)
 
-    if (settings.optUnreachableCode) BackendUtils.setDceDone(method)
+    if (settings.optUnreachableCode) OptimizerUtils.setDceDone(method)
 
     // (*) Removing stale local variable descriptors is required for correctness, see comment in `methodOptimizations`
     val localsRemoved =
@@ -365,8 +364,8 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
     assert(nullOrEmpty(method.invisibleLocalVariableAnnotations), method.invisibleLocalVariableAnnotations)
 
     // clear the non-official "access" flags once we're done and no longer look at them
-    // BackendUtils.clearMaxsComputed(method)
-    BackendUtils.clearDceDone(method)
+    // OptimizerUtils.clearMaxsComputed(method)
+    OptimizerUtils.clearDceDone(method)
 
     nullnessDceBoxesCastsCopypropPushpopOrJumpsChanged || localsRemoved || lineNumbersRemoved
   }
@@ -383,7 +382,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     Limits.sizeOKForNullness(method) && {
-      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, backendUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, optimizerUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
       // When running nullness optimizations the method may still have unreachable code. Analyzer
       // frames of unreachable instructions are `null`.
@@ -441,7 +440,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
           }
 
         case mi: MethodInsnNode =>
-          if (backendUtils.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
+          if (optimizerUtils.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
             toReplace(mi) = List(
               getPop(1),
               loadZeroForTypeSort(Type.getReturnType(mi.desc).getSort))
@@ -469,7 +468,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
       }
 
       // We don't need to worry about CallGraph.closureInstantiations and
-      // BackendUtils.indyLambdaImplMethods, the removed instructions are not IndyLambdas
+      // OptimizerUtils.indyLambdaImplMethods, the removed instructions are not IndyLambdas
       def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
         case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
         case _ =>
@@ -488,7 +487,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
 
   // Check for an Array.getLength(x) call where x is statically known to be of array type
   private def isArrayGetLengthOnStaticallyKnownArray(mi: MethodInsnNode, typeAnalyzer: NonLubbingTypeFlowAnalyzer): Boolean = {
-    BackendUtils.isArrayGetLength(mi) && {
+    AnalysisUtils.isArrayGetLength(mi) && {
       val f = typeAnalyzer.frameAt(mi)
       f.getValue(f.stackTop).getType.getSort == Type.ARRAY
     }
@@ -540,7 +539,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
           a.length - 2 == b.length && a(0) == 'L' && a.last == ';' && a.regionMatches(1, b, 0, b.length) ||
           b.length - 2 == a.length && b(0) == 'L' && b.last == ';' && b.regionMatches(1, a, 0, a.length)
       }
-      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, "java/lang/Object") || {
+      sameClass(aDescOrIntN, bDescOrIntN) || sameClass(bDescOrIntN, ClassBType.javaLangObjectInternalName) || {
         val aType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(aDescOrIntN)
         val bType = bTypesFromClassfile.bTypeForDescriptorOrInternalNameFromClassfile(bDescOrIntN)
         // TODO instead of getOrElse, we should bubble the warning up...
@@ -574,7 +573,7 @@ class LocalOpt(backendUtils: BackendUtils, callGraph: CallGraph, inliner: Inline
     }
 
     lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
-    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, backendUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, optimizerUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
     // cannot remove instructions while iterating, it gets the analysis out of synch (indexed by instructions)
     val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
@@ -653,18 +652,18 @@ object LocalOptImpls {
    *
    * @return A set containing the eliminated instructions
    */
-  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, backendUtils: BackendUtils): Boolean = {
+  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Boolean = {
     // In principle, for the inliner, a single removeUnreachableCodeImpl would be enough. But that
     // would potentially leave behind stale handlers (empty try block) which is not legal in the
     // classfile. So we run both removeUnreachableCodeImpl and removeEmptyExceptionHandlers.
     if (method.instructions.size == 0) return false  // fast path for abstract methods
-    if (BackendUtils.isDceDone(method)) return false // we know there is no unreachable code
+    if (OptimizerUtils.isDceDone(method)) return false // we know there is no unreachable code
 
     // For correctness, after removing unreachable code, we have to eliminate empty exception
     // handlers, see scaladoc of def methodOptimizations. Removing a live handler may render more
     // code unreachable and therefore requires running another round.
     def removalRound(): Boolean = {
-      val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName, callGraph, backendUtils)
+      val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName, callGraph, optimizerUtils)
       if (insnsRemoved) {
         val removeHandlersResult = removeEmptyExceptionHandlers(method)
         if (removeHandlersResult.liveHandlerRemoved) removalRound()
@@ -676,7 +675,7 @@ object LocalOptImpls {
 
     val changed = removalRound()
     if (changed) removeUnusedLocalVariableNodes(method)()
-    BackendUtils.setDceDone(method)
+    OptimizerUtils.setDceDone(method)
     changed
   }
 
@@ -684,9 +683,9 @@ object LocalOptImpls {
    * Removes unreachable basic blocks, returns `true` if instructions were removed.
    *
    * When this method returns, each `labelNode.getLabel` has a status set whether the label is live
-   * or not. This can be queried using `BackendUtils.isLabelReachable`.
+   * or not. This can be queried using `OptimizerUtils.isLabelReachable`.
    */
-  def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, backendUtils: BackendUtils): Boolean = {
+  def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Boolean = {
     val size = method.instructions.size
 
     // queue of instruction indices where analysis should start
@@ -803,7 +802,7 @@ object LocalOptImpls {
         insn match {
           case l: LabelNode =>
             // label nodes are not removed: they might be referenced for example in a LocalVariableNode
-            if (isLive) BackendUtils.setLabelReachable(l) else BackendUtils.clearLabelReachable(l)
+            if (isLive) OptimizerUtils.setLabelReachable(l) else OptimizerUtils.clearLabelReachable(l)
 
           case _: LineNumberNode =>
 
@@ -817,7 +816,7 @@ object LocalOptImpls {
                 case invocation: MethodInsnNode => callGraph.removeCallsite(invocation, method)
                 case indy: InvokeDynamicInsnNode =>
                   callGraph.removeClosureInstantiation(indy, method)
-                  backendUtils.removeIndyLambdaImplMethod(ownerClassName, method, indy)
+                  optimizerUtils.removeIndyLambdaImplMethod(ownerClassName, method, indy)
                 case _ =>
               }
             }
@@ -843,7 +842,7 @@ object LocalOptImpls {
    * Returns a pair of booleans (handlerRemoved, liveHandlerRemoved)
    *
    * The `liveHandlerRemoved` result depends on `removeUnreachableCode` being executed
-   * before, so that `BackendUtils.isLabelReachable` gives a correct answer.
+   * before, so that `OptimizerUtils.isLabelReachable` gives a correct answer.
    */
   def removeEmptyExceptionHandlers(method: MethodNode): RemoveHandlersResult = {
     /* True if there exists code between start and end. */
@@ -863,7 +862,7 @@ object LocalOptImpls {
       val handler = handlersIter.next()
       if (!containsExecutableCode(handler.start, handler.end)) {
         if (!result.handlerRemoved) result = RemoveHandlersResult.HandlerRemoved
-        if (!result.liveHandlerRemoved && BackendUtils.isLabelReachable(handler.start))
+        if (!result.liveHandlerRemoved && OptimizerUtils.isLabelReachable(handler.start))
           result = RemoveHandlersResult.LiveHandlerRemoved
         handlersIter.remove()
       }
@@ -1016,7 +1015,7 @@ object LocalOptImpls {
     while (iterator.hasNext) {
       iterator.next match {
         case label: LabelNode =>
-          BackendUtils.clearLabelReachable(label)
+          OptimizerUtils.clearLabelReachable(label)
           previousLabel = label
         case line: LineNumberNode if isEmpty(line) =>
           assert(line.start == previousLabel)

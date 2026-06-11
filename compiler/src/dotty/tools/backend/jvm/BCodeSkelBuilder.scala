@@ -298,7 +298,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor)(using Context): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if ps.isEmpty then bTypes.ObjectRef.internalName
+      val superClass: String = if ps.isEmpty then ClassBType.javaLangObjectInternalName
                                else bTypeLoader.classBTypeFromSymbol(ps.head.typeSymbol).internalName
 
       // We need to emit not only directly implemented interfaces, but also any indirectly implemented ones that are the target of super calls.
@@ -343,7 +343,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
 
-      if (BackendUtils.emitSource) {
+      if (emitSource) {
         cnode.visitSource(ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
@@ -619,7 +619,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _                     => a
       }
 
-      if (BackendUtils.emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
+      if (emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
         val nr =
           val sourcePos = tree.sourcePos
           (
@@ -759,7 +759,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     private def makeStatifiedDefDef(dd: DefDef)(using Context): DefDef =
       val origSym = dd.symbol.asTerm
-      val newSym = BackendUtils.makeStatifiedDefSymbol(origSym, origSym.name)
+      val newSym = SymbolUtils.makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
         val selfParamRef :: regularParamRefs = paramRefss.head: @unchecked
         val enclosingClass = origSym.owner.asClass
@@ -799,8 +799,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // but remember to change it there if you make changes here
       // !!!
       val origSym = dd.symbol.asTerm
-      val name = BackendUtils.traitSuperAccessorName(origSym).toTermName
-      val sym = BackendUtils.makeStatifiedDefSymbol(origSym, name)
+      val name = SymbolUtils.traitSuperAccessorName(origSym).toTermName
+      val sym = SymbolUtils.makeStatifiedDefSymbol(origSym, name)
       tpd.DefDef(sym, { paramss =>
         val params = paramss.head
         tpd.Apply(params.head.select(origSym), params.tail)
@@ -898,7 +898,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           else
             genLoadTo(trimmedRhs, returnType, LoadDestination.Return)
 
-          if (BackendUtils.emitVars) {
+          if (emitVars) {
             // add entries to LocalVariableTable JVM attribute
             val onePastLastProgramPoint = currProgramPoint()
             val hasStaticBitSet = ((flags & asm.Opcodes.ACC_STATIC) != 0)

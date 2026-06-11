@@ -82,7 +82,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
   private def computeClassInfoFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassInfo] = {
     val superClass = classNode.superName match {
       case null =>
-        assert(classNode.name == "java/lang/Object", s"class with missing super type: ${classNode.name}")
+        assert(classNode.name == ClassBType.javaLangObjectInternalName, s"class with missing super type: ${classNode.name}")
         Right(None)
       case superName =>
         classBTypeFromParsedClassfile(superName).map(Some.apply)
