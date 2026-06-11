@@ -54,6 +54,7 @@ trait PartialOrdering[T] extends Equiv[T] {
    *
    *  @param x the first element to compare
    *  @param y the second element to compare
+   *  @return `Some(r)` where `r < 0` if `x < y`, `r == 0` if `x` equals `y`, and `r > 0` if `x > y`; `None` if `x` and `y` are incomparable
    */
   def tryCompare(x: T, y: T): Option[Int]
 
@@ -61,6 +62,7 @@ trait PartialOrdering[T] extends Equiv[T] {
    *
    *  @param x the first element to compare
    *  @param y the second element to compare
+   *  @return `true` if `x` is less than or equal to `y` in this ordering; `false` if `x > y` or if `x` and `y` are incomparable
    */
   def lteq(x: T, y: T): Boolean
 
@@ -68,6 +70,7 @@ trait PartialOrdering[T] extends Equiv[T] {
    *
    *  @param x the first element to compare
    *  @param y the second element to compare
+   *  @return `true` if `x` is greater than or equal to `y` in this ordering; `false` if `x < y` or if `x` and `y` are incomparable
    */
   def gteq(x: T, y: T): Boolean = lteq(y, x)
 
@@ -76,6 +79,7 @@ trait PartialOrdering[T] extends Equiv[T] {
    *
    *  @param x the first element to compare
    *  @param y the second element to compare
+   *  @return `true` if `x` is strictly less than `y` in this ordering; `false` otherwise, including when `x` and `y` are incomparable
    */
   def lt(x: T, y: T): Boolean = lteq(x, y) && !equiv(x, y)
 
@@ -84,6 +88,7 @@ trait PartialOrdering[T] extends Equiv[T] {
    *
    *  @param x the first element to compare
    *  @param y the second element to compare
+   *  @return `true` if `x` is strictly greater than `y` in this ordering; `false` otherwise, including when `x` and `y` are incomparable
    */
   def gt(x: T, y: T): Boolean = gteq(x, y) && !equiv(x, y)
 
