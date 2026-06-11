@@ -578,9 +578,26 @@ class ClassfileParser(
       while (!isDelimiter(sig(index))) { index += 1 }
       termName(sig.slice(start, index))
     }
+
+    var tparams = classTParams
+    def typeParamCompleter(start: Int) = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val savedIndex = index
+        try {
+          index = start
+          denot.info =
+            checkNonCyclic( // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
+              denot.symbol,
+              sig2typeBounds(tparams, skiptvs = false),
+              reportErrors = false)
+        }
+        finally
+          index = savedIndex
+      }
+    }
     // Warning: sigToType contains nested completers which might be forced in a later run!
     // So local methods need their own ctx parameters.
-    def sig2type(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(using Context): Type = {
+    def sig2type(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean, isParent: Boolean = false)(using Context): Type = {
       val tag = sig(index); index += 1
       (tag: @switch) match {
         case 'L' =>
@@ -615,7 +632,7 @@ class ClassfileParser(
                           else TypeBounds(argTp, defn.FromJavaObjectType)
                         case '*' => TypeBounds.upper(defn.FromJavaObjectType)
                       }
-                    case _ => sig2type(tparams, skiptvs)
+                    case _ => sig2type(tparams, skiptvs, isParent)
                   }
                   if (argsBuf != null) argsBuf += arg
                 }
@@ -686,8 +703,19 @@ class ClassfileParser(
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
-          //assert(tparams contains n, s"classTparams = $classTParams, tparams = $tparams, key = $n")
-          if (skiptvs) defn.AnyType else tparams(n).typeRef
+          if (skiptvs) defn.AnyType
+          else tparams.get(n) match
+            case Some(tp) => tp.typeRef
+            case None =>
+              // Generic type parameters can be declared in the parent class's type signature, e.g., `class Y$1 extends Y<T>`,
+              // when the parent is a local class of a generic method, e.g., `<T> Y<T> y() { return new Y<T>() { ... } }`
+              assert(isParent && owner != null, s"Unknown key $n for sig = $sig, owner = $owner, classTparams = $classTParams, tparams = $tparams")
+              val s = newSymbol(
+                owner, n, owner.typeParamCreationFlags,
+                typeParamCompleter(index), coord = indexCoord(index))
+              if (owner.isClass) owner.asClass.enter(s)
+              classTParams += (n -> s)
+              s.typeRef
         case tag =>
           constantTagToType(tag)
       }
@@ -709,24 +737,6 @@ class ClassfileParser(
         TypeBounds.upper(bound)
       }
       else NoType
-    }
-
-    var tparams = classTParams
-
-    def typeParamCompleter(start: Int) = new LazyType {
-      def complete(denot: SymDenotation)(using Context): Unit = {
-        val savedIndex = index
-        try {
-          index = start
-          denot.info =
-            checkNonCyclic( // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
-                denot.symbol,
-                sig2typeBounds(tparams, skiptvs = false),
-                reportErrors = false)
-        }
-        finally
-          index = savedIndex
-      }
     }
 
     val newTParams = new ListBuffer[Symbol]()
@@ -754,7 +764,7 @@ class ClassfileParser(
         classTParams = tparams
         val parents = new ListBuffer[Type]()
         while (index < end)
-          parents += sig2type(tparams, skiptvs = false) // here the variance doesn't matter
+          parents += sig2type(tparams, skiptvs = false, isParent = true) // here the variance doesn't matter
         TempClassInfoType(parents.toList, instanceScope, owner)
       }
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)
