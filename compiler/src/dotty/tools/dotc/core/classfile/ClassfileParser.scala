@@ -3,7 +3,7 @@ package dotc
 package core
 package classfile
 
-import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler, UnpickleException }
+import dotty.tools.tasty.UnpickleException
 
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
 import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
@@ -13,13 +13,12 @@ import ast.tpd.*, util.*
 import java.io.IOException
 
 import java.lang.Integer.toHexString
-import java.util.UUID
 
 import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.{AbstractFile, ZipArchive}
+import io.AbstractFile
 import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
 
 import scala.compiletime.uninitialized

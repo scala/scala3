@@ -5,9 +5,7 @@ package dotty.tools.dotc.classpath
 
 import dotty.tools.io.{AbstractFile, ClassRepresentation, FileExtension}
 
-trait PackageEntry {
-  def name: String
-}
+case class PackageEntry(name: String)
 
 /** A TASTy file or classfile */
 sealed trait BinaryFileEntry extends ClassRepresentation {
@@ -54,5 +52,3 @@ private[dotty] final case class BinaryAndSourceFilesEntry(binaryEntry: BinaryFil
   def binary: Option[AbstractFile] = binaryEntry.binary
   def source: Option[AbstractFile] = sourceEntry.source
 }
-
-private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry

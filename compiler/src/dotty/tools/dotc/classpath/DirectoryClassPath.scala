@@ -51,7 +51,7 @@ trait DirectoryLookup[FileEntryType] extends ClassPath {
       case None => emptyFiles
       case Some(directory) => listChildren(directory, Some(isPackage))
     }
-    ArraySeq.unsafeWrapArray(nestedDirs).map(f => PackageEntryImpl(PackageNameUtils.entryName(inPackage, getName(f))))
+    ArraySeq.unsafeWrapArray(nestedDirs).map(f => PackageEntry(PackageNameUtils.entryName(inPackage, getName(f))))
   }
 
   protected def files(inPackage: String): Seq[FileEntryType] = {
@@ -75,7 +75,7 @@ trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType]
   }
   protected def listChildren(dir: JFile, filter: Option[JFile => Boolean]): Array[JFile] = {
     val listing = filter match {
-      case Some(f) => dir.listFiles(mkFileFilter(f))
+      case Some(f) => dir.listFiles(file => f(file))
       case None => dir.listFiles()
     }
 
@@ -84,7 +84,7 @@ trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType]
       // This gives stable results ordering of base type sequences for unrelated classes
       // with the same base type depth.
       //
-      // Notably, this will stably infer`Product with Serializable`
+      // Notably, this will stably infer `Product with Serializable`
       // as the type of `case class C(); case class D(); List(C(), D()).head`, rather than the opposite order.
       // On Mac, the HFS performs this sorting transparently, but on Linux the order is unspecified.
       //
@@ -150,7 +150,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   override def hasPackage(pkg: String): Boolean = packageToModuleBases.contains(pkg)
 
   override def packages(inPackage: String): Seq[PackageEntry] =
-    packageToModuleBases.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntryImpl(_)).toVector
+    packageToModuleBases.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntry(_)).toVector
 
   override def classes(inPackage: String): Seq[BinaryFileEntry] =
     if (inPackage == ClassPath.RootPackage) Nil
@@ -206,7 +206,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
   /** Empty string represents root package */
   override def hasPackage(pkg: String) = packageIndex.contains(pkg)
   override def packages(inPackage: String): Seq[PackageEntry] = {
-    packageIndex.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntryImpl(_)).toVector
+    packageIndex.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntry(_)).toVector
   }
   override def classes(inPackage: String): Seq[BinaryFileEntry] = {
     if (inPackage == ClassPath.RootPackage) Nil

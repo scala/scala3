@@ -4,8 +4,7 @@
 package dotty.tools
 package dotc.classpath
 
-import java.io.{FileFilter, File as JFile}
-import java.net.URL
+import java.io.File as JFile
 import dotty.tools.io.{AbstractFile, FileExtension}
 
 /**
@@ -14,14 +13,6 @@ import dotty.tools.io.{AbstractFile, FileExtension}
 object FileUtils {
   extension (file: AbstractFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
-
-    /**
-     * Safe method returning a sequence containing one URL representing this file, when underlying file exists,
-     * and returning given default value in other case
-     */
-    def toURLs(default: => Seq[URL] = Seq.empty): Seq[URL] =
-      val url = file.toURL
-      if (url == null) default else Seq(url)
 
     /**
      * Returns if there is an existing sibling `.tasty` file.
@@ -74,10 +65,6 @@ object FileUtils {
   // because then some tests in partest don't pass
   def mayBeValidPackage(dirName: String): Boolean =
     (dirName != "META-INF") && (dirName != "") && (dirName.charAt(0) != '.')
-
-  def mkFileFilter(f: JFile => Boolean): FileFilter = new FileFilter {
-    def accept(pathname: JFile): Boolean = f(pathname)
-  }
 
   /** Transforms a .class file name to a .tasty file name */
   private def classNameToTasty(fileName: String): String =

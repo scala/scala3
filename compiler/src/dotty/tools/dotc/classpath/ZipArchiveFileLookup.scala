@@ -29,7 +29,7 @@ trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
       dirEntry <- findDirEntry(inPackage).toSeq
       entry <- dirEntry.iterator if entry.isPackage
     }
-    yield PackageEntryImpl(PackageNameUtils.entryName(inPackage, entry.name))
+    yield PackageEntry(PackageNameUtils.entryName(inPackage, entry.name))
   }
 
   protected def files(inPackage: String): Seq[FileEntryType] =

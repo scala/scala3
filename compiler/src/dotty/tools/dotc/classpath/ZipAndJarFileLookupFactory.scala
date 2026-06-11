@@ -70,7 +70,9 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
       clss.find(_.name == simpleClassName).map(_.file)
     }
 
-    override def asURLs: Seq[URL] = file.toURLs()
+    override def asURLs: Seq[URL] = file.toURL match
+      case null => Seq.empty
+      case nonNull => Seq(nonNull)
 
     import ManifestResourcesClassPath.PackageFileInfo
     import ManifestResourcesClassPath.PackageInfo
@@ -119,7 +121,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     override def packages(inPackage: String): Seq[PackageEntry] = cachedPackages.get(inPackage) match {
       case None => Seq.empty
       case Some(PackageFileInfo(_, subpackages)) =>
-        subpackages.map(packageFile => PackageEntryImpl(PackageNameUtils.entryName(inPackage, packageFile.name)))
+        subpackages.map(packageFile => PackageEntry(PackageNameUtils.entryName(inPackage, packageFile.name)))
     }
 
     override def classes(inPackage: String): Seq[BinaryFileEntry] = cachedPackages.get(inPackage) match {

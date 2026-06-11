@@ -1,10 +1,8 @@
 package dotty.tools.dotc.interactive
 
-import dotty.tools.dotc.classpath.BinaryFileEntry
 import dotty.tools.dotc.classpath.PackageEntry
-import dotty.tools.dotc.classpath.PackageEntryImpl
 import dotty.tools.dotc.classpath.SourceFileEntry
-import dotty.tools.io.{AbstractFile, ClassPath}
+import dotty.tools.io.ClassPath
 
 import java.io.File
 import java.net.URL
@@ -37,7 +35,7 @@ class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
 
   private def packagesIn(pkg: LogicalPackage, prefix: String) =
     val pre = if (prefix.isEmpty) prefix else s"$prefix."
-    pkg.packages.map(p => PackageEntryImpl(pre + p.name))
+    pkg.packages.map(p => PackageEntry(pre + p.name))
 
   override def asURLs: Seq[URL] = sourcepath.split(File.pathSeparator).toIndexedSeq.map(new File(_)).map(_.toURI.toURL)
 
