@@ -97,15 +97,36 @@ class ElimByName extends MiniPhase, InfoTransformer:
   override def infoMayChange(sym: Symbol)(using Context): Boolean =
     sym.is(Method) || exprBecomesFunction(sym)
 
+  private def hasByNameParam(tp: Type)(using Context): Boolean = tp match
+    case tp: MethodType =>
+      var params = tp.paramInfos
+      var found = false
+      while !found && params.nonEmpty do
+        found = params.head.isInstanceOf[ExprType]
+        params = params.tail
+      found || hasByNameParam(tp.resType)
+    case tp: PolyType =>
+      hasByNameParam(tp.resType)
+    case _ =>
+      false
+
   override def transformIsNoOpFor(ref: Denotations.SingleDenotation)(using Context): Boolean =
     // `infoMayChange` is `is(Method) || is(Param) || is(ParamAccessor, butNot = Method)`;
     // an existing SymDenotation carrying none of these flags takes the
     // `!infoMayChange(sym) && sym.exists` identity exit in `InfoTransformer.transform`
     // (for a SymDenotation, `sym.exists` evaluated at this phase equals `ref.exists`).
     // All three flags are creation-stable and are read off `ref`'s own fields.
+    // Completed method infos with no by-name parameter in their methodic spine
+    // also return identity: `transformInfo` rewrites only direct method parameters
+    // of type `ExprType`, recursing through result MethodTypes and PolyTypes.
     ref match
       case ref: SymDenotation =>
-        ref.exists && !ref.is(Method) && !ref.is(Param) && !ref.is(ParamAccessor)
+        ref.exists &&
+          (!ref.is(Method) && !ref.is(Param) && !ref.is(ParamAccessor) ||
+            ref.is(Method) && (ref.infoOrCompleter match
+              case _: LazyType => false
+              case info => !hasByNameParam(info)
+            ))
       case _ => false
 
   def byNameClosure(arg: Tree, argType: Type)(using Context): Tree =

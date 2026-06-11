@@ -79,15 +79,45 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.is(Method)
 
+  private def hasRepeatedParam(tp: Type)(using Context): Boolean = tp match
+    case tp: MethodType =>
+      var params = tp.paramInfos
+      var found = false
+      while !found && params.nonEmpty do
+        found = params.head.isRepeatedParam
+        params = params.tail
+      found || hasRepeatedParam(tp.resType)
+    case tp: PolyType =>
+      hasRepeatedParam(tp.resType)
+    case _ =>
+      false
+
+  private def hasVarargsAnnotation(ref: SymDenotation)(using Context): Boolean =
+    var annots = ref.annotationsUNSAFE
+    var found = false
+    while !found && annots.nonEmpty do
+      found = annots.head.matches(defn.VarargsAnnot)
+      annots = annots.tail
+    found
+
   override def transformIsNoOpFor(ref: SingleDenotation)(using Context): Boolean =
     // An existing non-method SymDenotation takes the `sym.exists &&
     // !infoMayChange(sym)` exit in `InfoTransformer.transform` and falls
     // through `transform`'s vararg-forwarder match unchanged (`Method` is a
     // creation-stable FromStartFlags flag, readable off `ref` directly).
+    // Completed methods with no repeated parameter marker and no @varargs
+    // annotation also return identity: `elimRepeated` has no parameter/result
+    // component to rewrite, and the vararg-forwarder path has no diagnostic or
+    // forwarder work to do. LazyType infos stay ungated to avoid completion.
     // Non-sym denotations can carry method types that `transformInfo` does
     // rewrite, so they are never gated.
     ref match
-      case ref: SymDenotation => ref.exists && !ref.is(Method)
+      case ref: SymDenotation =>
+        ref.exists &&
+          (!ref.is(Method) || (ref.infoOrCompleter match
+            case _: LazyType => false
+            case info => !hasRepeatedParam(info) && !hasVarargsAnnotation(ref)
+          ))
       case _ => false
 
   /** Does `sym` override a symbol defined in a Java class? One might think that

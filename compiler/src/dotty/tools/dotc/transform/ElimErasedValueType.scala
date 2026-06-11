@@ -63,20 +63,35 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       elimEVT(tp)
   }
 
+  private def hasErasedValueType(tp: Type)(using Context): Boolean = tp match
+    case _: ErasedValueType =>
+      true
+    case tp: MethodType =>
+      var params = tp.paramInfos
+      var found = false
+      while !found && params.nonEmpty do
+        found = hasErasedValueType(params.head)
+        params = params.tail
+      found || hasErasedValueType(tp.resType)
+    case tp: PolyType =>
+      hasErasedValueType(tp.resType)
+    case _ =>
+      false
+
   override def transformIsNoOpFor(ref: Denotations.SingleDenotation)(using Context): Boolean =
     // `transformInfo` dispatches on the symbol: a ModuleClass arm that may unlink the
     // u2evt$/evt2u$ casts of a derived-value-class companion, and `elimEVT` otherwise,
-    // which is identity unless the info is an ErasedValueType or a MethodType. For a
-    // SymDenotation the ModuleClass flag and the info read off `ref` are exactly what
-    // `transform` observes at this phase; the LazyType arm refuses to force uncompleted
-    // infos. Non-sym denotations are never gated: a prefix-derived denotation of a
-    // value-class companion's ModuleClass carries a ClassInfo that the first arm does
-    // rewrite.
+    // which is identity unless the info is an ErasedValueType or a MethodType with an
+    // ErasedValueType in its parameter/result spine. For a SymDenotation the ModuleClass
+    // flag and the info read off `ref` are exactly what `transform` observes at this
+    // phase; the LazyType arm refuses to force uncompleted infos. Non-sym denotations
+    // are never gated: a prefix-derived denotation of a value-class companion's
+    // ModuleClass carries a ClassInfo that the first arm does rewrite.
     ref match
       case ref: SymDenotations.SymDenotation =>
         !ref.is(ModuleClass) && (ref.infoOrCompleter match
           case _: SymDenotations.LazyType => false
-          case info => !info.isInstanceOf[ErasedValueType] && !info.isInstanceOf[MethodType])
+          case info => !hasErasedValueType(info))
       case _ => false
 
   def transformTypeOfTree(tree: Tree)(using Context): Tree =
