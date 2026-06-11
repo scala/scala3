@@ -325,6 +325,12 @@ object Erasure {
       }
     }
 
+    private def isClassSubType(tp1: Type, tp2: Type)(using Context): Boolean = (tp1, tp2) match
+      case (tp1: TypeRef, tp2: TypeRef) =>
+        tp1.symbol.isClass && tp2.symbol.isClass && tp1.symbol.derivesFrom(tp2.symbol)
+      case _ =>
+        false
+
     /** Generate a synthetic cast operation from tree.tpe to pt.
      *  Does not do any boxing/unboxing (this is handled upstream).
      *  Casts from and to ErasedValueType are special, see the explanation
@@ -389,7 +395,7 @@ object Erasure {
           assert(mt.paramInfos.isEmpty, i"bad adapt for $tree: $mt")
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
-          if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
+          if (pt.isInstanceOf[ProtoType] || isClassSubType(tpw, pt) || tree.tpe <:< pt)
             tree
           else if (tpw.isErasedValueType)
             if (pt.isErasedValueType) then
