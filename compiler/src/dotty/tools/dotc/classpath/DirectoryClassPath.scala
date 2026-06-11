@@ -161,15 +161,14 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
 
   override def asURLs: Seq[URL] = Seq(new URI("jrt:/").toURL)
 
-  def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] =
+  def findClassFile(className: String): Option[AbstractFile] =
     if (!className.contains(".")) None
     else {
       val (inPackage, _) = separatePkgAndClassNames(className)
       packageToModuleBases.getOrElse(inPackage, Nil).iterator.flatMap{ x =>
         val file = x.resolve(FileUtils.dirPath(className) + ".class")
         if (Files.exists(file)) {
-          val moduleFile = Option.when(findModule)(x.resolve("module-info.class")).filter(f => Files.exists(f))
-          (file.toPlainFile, moduleFile.map(_.toPlainFile)) :: Nil
+          file.toPlainFile :: Nil
         } else Nil
       }.take(1).toList.headOption
     }
@@ -219,13 +218,13 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
   }
 
   override def asURLs: Seq[URL] = Nil
-  def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
+  def findClassFile(className: String): Option[AbstractFile] = {
     if (!className.contains(".")) None
     else {
       val (inPackage, classSimpleName) = separatePkgAndClassNames(className)
       packageIndex.getOrElse(inPackage, Nil).iterator.flatMap { p =>
         val path = p.resolve(classSimpleName + ".sig")
-        if (Files.exists(path)) (path.toPlainFile, None) :: Nil else Nil
+        if (Files.exists(path)) path.toPlainFile :: Nil else Nil
       }.take(1).toList.headOption
     }
   }
@@ -233,12 +232,11 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
 
 case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] with NoSourcePaths {
 
-  def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
+  def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
     val classFile = new JFile(dir, relativePath + ".class")
     if classFile.exists then {
-      val moduleFile = Option.when(findModule)(new JFile(dir, "module-info.class")).filter(_.exists)
-      Some(classFile.toPath.toPlainFile, moduleFile.map(_.toPath.toPlainFile))
+      Some(classFile.toPath.toPlainFile)
     } else None
   }
 

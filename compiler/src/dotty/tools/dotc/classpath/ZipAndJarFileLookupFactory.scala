@@ -45,9 +45,9 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     extends ZipArchiveFileLookup[BinaryFileEntry]
     with NoSourcePaths {
 
-    override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] =
+    override def findClassFile(className: String): Option[AbstractFile] =
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
-      file(pkg, simpleClassName + ".class").map(c => (c.file, (if findModule then file(pkg, "module-info.class") else None).map(_.file)))
+      file(pkg, simpleClassName + ".class").map(_.file)
 
     override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
 
@@ -65,10 +65,10 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
    * Name: scala/Function2$mcFJD$sp.class
    */
   private case class ManifestResourcesClassPath(file: ManifestResources) extends ClassPath with NoSourcePaths {
-    override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
+    override def findClassFile(className: String): Option[AbstractFile] = {
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
       val clss = classes(pkg)
-      clss.find(_.name == simpleClassName).map(c => (c.file, (if findModule then clss.find(_.name == "module-info") else None).map(_.file)))
+      clss.find(_.name == simpleClassName).map(_.file)
     }
 
     override def asURLs: Seq[URL] = file.toURLs()

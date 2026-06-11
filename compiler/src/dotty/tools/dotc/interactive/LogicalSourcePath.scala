@@ -4,11 +4,10 @@ import dotty.tools.dotc.classpath.BinaryFileEntry
 import dotty.tools.dotc.classpath.PackageEntry
 import dotty.tools.dotc.classpath.PackageEntryImpl
 import dotty.tools.dotc.classpath.SourceFileEntry
-import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation}
+import dotty.tools.io.{AbstractFile, ClassPath}
 
 import java.io.File
 import java.net.URL
-import java.nio.file.Path
 
 /**
  * A ClassPath implementation that can find sources regardless of the directory where they're declared.
@@ -16,7 +15,6 @@ import java.nio.file.Path
 class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
     extends ClassPath {
 
-  override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = None
   override def findClassFile(className: String): Option[AbstractFile] = None
   override def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
 

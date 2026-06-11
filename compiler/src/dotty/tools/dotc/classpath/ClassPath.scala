@@ -43,14 +43,14 @@ private[dotty] final case class StandaloneTastyFileEntry(file: AbstractFile) ext
 }
 
 private[dotty] final case class SourceFileEntry(file: AbstractFile) extends ClassRepresentation {
-  final def fileName: String = file.name
+  def fileName: String = file.name
   def name: String = FileUtils.stripSourceExtension(file.name)
   def binary: Option[AbstractFile] = None
   def source: Option[AbstractFile] = Some(file)
 }
 
 private[dotty] final case class BinaryAndSourceFilesEntry(binaryEntry: BinaryFileEntry, sourceEntry: SourceFileEntry) extends ClassRepresentation {
-  final def fileName: String = binaryEntry.fileName
+  def fileName: String = binaryEntry.fileName
   def name: String = binaryEntry.name
   def binary: Option[AbstractFile] = binaryEntry.binary
   def source: Option[AbstractFile] = sourceEntry.source
@@ -63,6 +63,6 @@ private[dotty] trait NoSourcePaths {
 }
 
 private[dotty] trait NoClassPaths {
-  def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = None
+  def findClassFile(className: String): Option[AbstractFile] = None
   def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
 }
