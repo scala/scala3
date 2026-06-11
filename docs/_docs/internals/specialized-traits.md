@@ -33,9 +33,9 @@ def f(b: Foo): Int = 37 + Int.unbox(b.foo#1()) // virtual call to foo#1 resolves
 
 We introduce the typeclass `Specialized` that can be used as a context bound on type parameters of inline traits and inline methods.
 
-The `Specialized` annotation indicates that we want to create specialized versions of the inline trait where the type parameter is instantiated to the type argument, and replace (in erasure) uses of the inline trait with the corresponding specialized version so that member accesses pass through the specialized interface. 
+The `Specialized` context bound indicates that we want to create specialized versions of the inline trait where the type parameter is instantiated to the type argument, and replace (in erasure) uses of the inline trait with the corresponding specialized version so that member accesses pass through the specialized interface.
 
-A `Specialized` annotation on an inline method allows it to call other specialized methods or instantiate specialized traits using the specialized type variable (any code may instantiate specialized traits with concrete types). This allows us to transport information about possible specialization types through multiple layers of generic code (inline methods).
+A `Specialized` context bound on an inline method allows it to call other specialized methods or instantiate specialized traits using the specialized type variable (any code may instantiate specialized traits with concrete types). This allows us to transport information about possible specialization types through multiple layers of generic inline methods (see Transportation of Specialized through Generic Code).
 
 ## Example
 
@@ -129,9 +129,9 @@ val myBar = Bar()
 [0] Note that because the specialized traits take evidence parameters for the `Specialized` typeclass, `new Foo[Int] {}` where `Foo` extends some other specialized trait `Bar` desugars in the compiler to `new Bar[Int] with Foo[Int] {}`, which means we can't distinguish these two cases. Therefore we allow 
 e.g. `new Bar[Int] with Foo[Int] {}` although there is no reason to use this in source code because it's exactly the same as writing `new Foo[Int] {}`.
 
-[1] Note that 'class extends specialized trait' and 'object extends specialized trait' are allowed. However, 'trait extends specialized trait' is not. This is due to the restriction on extending inline traits with parameters by ordinary traits, as discussed in `inline-traits.md`. 'inline trait extends specialized trait' is allowed as it is not subject to this restriction.
+Note that 'class extends specialized trait' and 'object extends specialized trait' are allowed. However, 'trait extends specialized trait' is not. This is due to the restriction on extending inline traits with parameters by ordinary traits, as discussed in `inline-traits.md`. 'inline trait extends specialized trait' is allowed as it is not subject to this restriction.
 
-[2] As explained in detail in _Specialized Traits Expansion Specification_, specialized instance traits and implementation classes have a special erasure. Classes/objects extending a specialized trait also have special erasure behaviour which adds both the specialized parents and ordinary parents:
+As explained in detail in _Specialized Traits Expansion Specification_, specialized instance traits and implementation classes have a special erasure. Classes/objects extending a specialized trait also have special erasure behaviour which adds both the specialized parents and ordinary parents:
 
 ```scala
 class Bar extends Foo[Int](10) with Baz[Int](10)
@@ -161,7 +161,7 @@ cannot take `Specialized[T]` parameters.
 
 **Definition** A _specialization_ `SpecTrait[T1, T2, T3, ...]` is a reference to a specialized trait with concrete type arguments.
 
-The presence of a specialization `SpecTrait[T1, T2, T3, ...]` in the program <!-- TODO: where exactly? In the source or in the types... --> implies the creation of a _specialized interface trait_. This trait will be named `SpecTrait$sp$C1$C2$C3`, where `$sp$` is a fixed specialization marker and `Cn` is an encoding of the fully qualified name of `SpecType(Tn)`. This means that the name of the specialized interface trait reflects in its name all specializing supertypes of the type arguments passed to specialized type parameters in sequence. Arguments passed to non-specialized type parameters are ignored.
+The presence of a specialization `SpecTrait[T1, T2, T3, ...]` in the program implies the creation of a _specialized interface trait_. This trait will be named `SpecTrait$sp$C1$C2$C3`, where `$sp$` is a fixed specialization marker and `Cn` is an encoding of the fully qualified name of `SpecType(Tn)`. This means that the name of the specialized interface trait reflects in its name all specializing supertypes of the type arguments passed to specialized type parameters in sequence. Arguments passed to non-specialized type parameters are ignored.
 
 The presence of an anonymous class instance creation like `new Vec[T](elems) {}` in the program implies the creation of both a specialized interface trait and a _specialized instance class_, named `Vec$impl$TN`. The class name derives from the trait name by replacing `$sp$` with `$impl$`. 
 
@@ -177,6 +177,8 @@ We also erase `new SpecTrait[T1, T2, T3, ....]` to:
  - `SpecTrait$impl$C1$C2$C3()` otherwise.
 
 The specialized interface traits and implementation classes are created on demand the first time the corresponding specialization or anonymous class is mentioned in the program.
+
+The idea of this transformation is that we obey the invariant `T <:< Foo[Int] <=> T <:< Foo$sp$Int`.
 
 ### Specialized interface traits definition
 
@@ -210,7 +212,7 @@ inline trait Vec$sp$scala$Int[S]() extends Vec[Int, S]
 val x = new Vec$impl$scala$Int()
 ```
 
-In the other case, specialization waits until all the types are known, except for `Bar` which gets an additional `Foo$sp$Any$Int` parent. <!-- I think the Foo$sp$Any$Int is not strictly necessary because it shouldn't be possible to generate an interface with that type, so maybe we can get rid of it. It may be the case that we can change the condition for specialization from "at least one type is known" to "all types are known". -->
+In the other case, specialization waits until all the types are known, except for `Bar` which gets an additional `Foo$sp$Any$Int` parent. <!-- I think the Foo$sp$Any$Int is not strictly necessary because it shouldn't be possible to generate an interface with that type, so maybe we can get rid of it. It may be the case that we can change the condition for specialization from "at least one type is known" (material specialization) to "all types are known" (complete specialization). -->
 ```scala
 inline trait Bar[T: Specialized] extends Foo[T, Int], Foo$sp$Any$Int
 inline trait Foo$sp$Any$Int extends Foo[Any, Int]
@@ -274,6 +276,86 @@ Covariance has a similar problem:
  - In general covariance works fine because it corresponds to interpreting `A[F1]` as `A[F2]` where `F1 <:< F2`. Either`A[F1]` and `A[F2]` both erase to the same type (`A$sp$SpecType(F2)`, or `A` if `F1` and `F2` are both top classes), or `A[F1]` erases to `A$sp$F1` and `A[F2]` erases to `A` (`F2` is a top class while `F1` is not). But `A$sp$F1` is a subtype of `A` by definition so the upcast will succeed (and upcasts are generally cheap compared to downcasts on the JVM so this is acceptable from a performance perspective).  
  - The only exception is with `Nothing`, because we want to interpret `A[Nothing]` as e.g. `A[Int]`, but we erase `A[Nothing]` to `A`. `A >:> A$sp$Int` so this doesn't work and so we also have to reject covariance using `Nothing`. To implement this correctly would require a specialization `A$sp$Nothing` which extends every single specialization in the program, and this was deemed infeasible. The lack of covariance with `Nothing` makes the code less ergonomic in some cases. For example `case object Nil extends List[Nothing]` has to become `inline trait Nil[T: Specialized] extends List[T]` and `inline def apply[T: Specialized] = new Nil[T] () {}`, but we don't lose too much expressivity.
 
+
+### `sealed` Specialized traits
+Like other traits, specialized traits may be `sealed`, but this requires some thought. In particular, the generated `$sp$` traits and `$impl$` classes extend the `sealed` specialized trait potentially from another file without the user being aware that this is happening behind the scenes. We want to allow for example:
+
+```scala
+// (1)
+// A.scala
+sealed inline trait Foo[T: Specialized]
+
+// B.scala
+def foo(x: Foo[String])
+```
+because this would be allowed with ordinary traits, but the desugaring creates `Foo$sp$String` which is arguably an illegal child of the sealed `Foo[String]` as it's produced only when compiling B.scala.
+
+We are also faced with the question of whether we should allow the following:
+```scala
+// (2)
+// A.scala
+sealed inline trait Foo[T: Specialized]
+val x = new Foo[Int]() {} // Forces creation of Foo$sp$Int and Foo$impl$Int
+
+// B.scala
+val y = new Foo[Int]() {}
+```
+In the bytecode `x` and `y` may or may not point to the same `Foo$impl$Int` depending on if we share the generated specialized classes, but in 
+the source code `y` extends `Foo[Int]` illegally.
+
+In both cases we essentially opt for the "source code" interpretation as this seems clearest for users. In particular we allow example (1) but not example (2). This happens automatically because `sealed` trait inheritance checking is done before specialized trait desugaring / erasure, so it is unaware of the `$sp$` traits and `$impl$` classes. 
+
+It is tempting to think that since the `$impl$` classes do not exist in source we may be able to allow the second example, but this is dangerous for exhaustivity checking:
+
+```scala
+// A.scala
+sealed inline trait Foo[T: Specialized]
+inline trait Bar[T: Specialized] extends Foo[T]
+
+def foo(x: Foo[Int]) = x match {
+    case y: Bar[Int] => println("All good!")
+}
+
+// B.scala
+val y = new Foo[Int]() {} // Bad; A.scala compiled with no warnings as exhaustivity checker assumed this was impossible
+foo(y)
+val z = new Bar[Int]() {} // Ok: We allow this because Bar is not sealed so the exhaustivity checking in A.scala was correct. 
+foo(z)
+
+```
+
+In terms of exhaustivity checking, we also want this to work within a single file. Consider:
+```scala
+sealed inline trait List[+T: Specialized]
+sealed inline trait Nil[T: Specialized] extends List[T]
+sealed inline trait :+:[T: Specialized](h: T, t: List[T]) extends List[T]
+
+val xs: List[Double] = new Nil[Double]() {}
+
+def foo(x: List[Double]): Unit = x match {
+  case xs: :+:[_] => println("Cons case")
+  case _: Nil[_] =>  println("Nil case")
+  // warning: non-exhaustive pattern match, missing case _: List[Double]
+}
+```
+
+Without any changes, the anonymous class `Nil[Double]` also extends the `List[Double]` interface (because anonymous class instances mixin all ancestor traits if there are parameters to pass), so pattern match exhaustivity checking on `List[Double]` requires `_: List[Double]` because the List trait has anonymous class children and so we are unable to decompose `_: List[Double]` to children in space checking. This occurs because we don't do the `$impl$` class replacements until erasure so the anonymous class is still around. For that reason we exempt anonymous classes extending specialized traits from being treated as children for pattern match exhaustivity checking, but we do treat the `$impl$` classes as children (the fact that they are defined even if unused suffices for them to be taken into account). This is correct because the anonymous classes will not exist at runtime when the pattern matches run, rather having been replaced by the `$impl$` classes.
+
+Furthermore, the generated `List$sp$Double` trait also interferes. After we fix this issue:
+
+```scala
+def foo(x: List[Double]): Unit = x match {
+  case xs: :+:[_] => println("Cons case")
+  case _: Nil[_] =>  println("Nil case")
+  // warning: non-exhaustive pattern match, missing case _: List[Double] & List$sp$Double
+}
+```
+There are two potential solutions to this:
+- make `$sp$` traits inherit `sealed` if the original specialized trait is `sealed`, but this may make future sharing of specializations challenging if we want to extend the specialized traits from another file.
+- don't register the `$sp$` traits as children of the original specialized trait for exhaustivity checking. This is safe because these traits are synthetic and we have the invariant that `T <:< Foo[Int] <=> T <:< Foo$sp$Int`, so users cannot match on `Foo$sp$Int` or `Foo[Int] minus Foo$sp$Int` (the latter being empty)
+
+We opt for the latter.
+
 ### Other implementation restrictions on specialized traits
 These could be lifted with additional work.
 
@@ -281,12 +363,6 @@ These could be lifted with additional work.
 |--------------------------|-----------------------------------------------|---|
 | Use of `?` bounds | May not be used for Specialized parameters; however may be used for non-Specialized parameters in specialized traits. | It was thought that this would be challenging because it would require bridge methods that "despecialize" to ensure that `A$sp$Int` implements `A`'s interface. In the end these bridge methods have been implements, so it should be very possible to lift this restriction as future work.|
 | Defining specialized traits inside traits/classes/objects | May define specialized traits inside `object`s. May not define them inside `class`es or `trait`s. | Limited by the way we flatten the owners of generated `$impl$` classes and `$sp$` traits. We really want to build the `Foo$impl$` class directly next to `Foo`. For a single CU this would be possible if we walked the entire tree and found where these belong; for multiple CUs it is more complicated as the tree may not exist in the current CU. The case of path dependent specialized traits was deemed niche enough to not be high priority, and for multiple CUs seems very tricky. |
-
-// GOT TO HERE
-
-
-
-
 
 ## A Larger Case Study
 
@@ -312,25 +388,30 @@ inline trait Seq[T: Specialized](elems: Array[T]) extends Iterable[T]:
   def length: Int           = elems.length
   def apply(i: Int): T      = elems(i)
   def iterator: Iterator[T] = new ArrayIterator[T](elems) {}
+
+val x = new Seq[Int](Array(1, 2, 3)) {}
 ```
 
-This generates the following interface traits (after inlining, conversion to pure interfaces and erasure): <!--and parent removal -->
+This generates the following interface traits (after inlining, conversion to pure interfaces and erasure):
 
-// TODO: Check that this matches what is actually generated
 ```scala
 inline trait Iterator$sp$Int extends Iterator:
   def hasNext: Boolean
   def next(): Int
 
-inline trait ArrayIterator$sp$Int extends ArrayIterator, Iterator$sp$Int
+inline trait ArrayIterator$sp$Int extends ArrayIterator, Iterator$sp$Int:
+  def hasNext(): Boolean
+  def next(): Int
 
 inline trait Iterable$sp$Int extends Iterable:
   def iterator: Iterator$sp$Int
   def forall(f: Int => Unit): Unit
 
 inline trait Seq$sp$Int extends Seq, Iterable$sp$Int:
-  def length: Int
+  def forall(f: Function1): Unit
+  def length(): Int
   def apply(i: Int): Int
+  def iterator(): Iterator$sp$Int
 ```
 Note that these traits repeat the parent types of their corresponding inline traits (but with specialization added). For instance, `ArrayIterator$sp$Int` extends the specialized version of its parent `Iterator$sp$Int`, so the specialized trait may be used in contexts expecting:
 
@@ -338,28 +419,54 @@ Note that these traits repeat the parent types of their corresponding inline tra
 - A generic `ArrayIterator` (i.e. `ArrayIterator[?]` in source code)
 - Specialized traits higher in the specialized hierarchy for example `Iterator$sp$Int`.
 
-The specialized implementation classes for `ArrayIterator` and `Seq` are as follows (after inlining; iff `new Seq[Int] {}` and `ArrayIterator[Int] {}` are to be found in the program):
+The specialized implementation classes for `ArrayIterator` and `Seq` are as follows (since `new Seq[Int] {}` is found in the program. This triggers creation of `Seq$sp$Int` which triggers the need for `ArrayIterator$sp$Int`):
 
 ```scala
-class ArrayIterator$impl$Int(elems: Array[Int]) extends ArrayIterator$sp$Int, ArrayIterator(elems):
+class ArrayIterator$impl$Int(elems: Int[]) extends ArrayIterator$sp$Int, ArrayIterator(elems):
   private var current = 0
   override def hasNext: Boolean =
     current < elems.length
   override def next(): Int =
     try elems(current) finally current += 1
 
-class Seq$impl$Int(elems: Array[Int]) extends Seq$sp$Int, Seq(elems):
+class Seq$impl$Int(elems: Int[]) extends Seq$sp$Int, Seq(elems):
   override def iterator: Iterator$sp$Int = new ArrayIterator$impl$Int(elems)
-
   override def forall(f: Int => Unit): Unit =
-    val it = iterator
-    while it.hasNext do f(it.next())
+    val it: Iterator$$sp$Int = this.iterator()
+    while it.hasNext do f.apply$mcVI$sp(it.next())
   override def length: Int = elems.length
   override def apply(i: Int): Int = elems(i)
 ```
 
+Here, `f.apply$mcVI$sp` is the specialized apply method of `Function1` at type `Int => Unit`.
+This method is generated by Scala 2's function specialization which is also adopted by Scala 3.
+
+Erasure also adds some bridge methods which are necessary to maintain interface compatibility. For example:
+```scala
+// in class Seq$impl$Int
+override def iterator(): Iterator = this.iterator()
+```
+
+This is especially important in the case where the specialized trait appears as a method parameter. For example:
+```scala
+inline trait Foo[T: Specialized]
+
+inline trait A[T: Specialized]:
+  def foo(x: Foo[T]): Int
+
+class B extends A[Int]:
+  override def foo(x: Foo[Int]) = 10
+
+// erases to:
+inline trait A: 
+  def foo(x: Foo): Int
+class B extends A A$sp$Int:
+  override def foo(x: Foo$sp$Int): Int = 10
+  override def foo(x: Foo): Int = this.foo(x.asInstanceOf[Foo$sp$Int]) // Bridge method maintains interface compatibility with A
+```
+This cast is fine because of the invariant that  `T <:< Foo[Int] <=> T <:< Foo$sp$Int`, since the method was typechecked under `Foo[Int]`.
+
 ## Transportation of Specialized through generic code
-<!-- TODO: At the moment we generate this for everything including type variables -->
 The `Specialized` Type Class is erased at runtime. Instances of `Specialized[T]` are created automatically for types that do not contain type variables.
 
 It may surprise you to note that the following is valid. The `Numeric` constraint on `T` is only checked when
@@ -374,36 +481,96 @@ inline trait T1[T: Specialized]
 inline trait T2[S] extends T1[S]
 val x = new T2[Int]() {}
 ```
-Should `x` be a Specialized `$impl$` instance or a normal anonymous class? If we naively look at just `S`'s definition we would say no,
+
+Should `x` be a Specialized `$impl$` instance or a normal anonymous class? If we naively look at just `S`'s definition we would say an anonymous class,
 but this is complicated by the fact that the generated anonymous class will also mixin `T1` directly as well as `T2`. Could we specialize
 just for `T1`? This is hard to imagine. Furthermore if we don't specialize, this is also counter intuitive because T1 is then never specialized
-to Int, because we have no specialized instance of trait `T2` to specialize into. Therefore we require users to explicitly transport `Specialized`
-through their code, in the following way:   
+to Int, because we have no specialized instance of trait `T2` to inline into.
+
+Therefore we require users to explicitly transport `Specialized` through their code. If a type is used in the right hand side of an `extends` clause then it must also be specialized at its definition. This also applies to type variables appearing deeper inside types. 
+
+Furthermore, a specialized method taking a type parameter `T` and invoking specialized traits or calling other specialized methods using `T` must declare this `T` as specialized. This ensures that a specialized 'slot' can only be filled by a concrete type or a type defined in terms of specialized type parameters.
 
 ```scala
 inline trait T1[T: Specialized]
 
-inline trait T2 extends T1[List[Int]]                           // ok
-inline trait T3[S] extends T1[List[S]]                          // error: S should be specialized
-inline trait T4[S] extends T1[List[List[S]]]                    // error: S should be specialized
-inline trait T5[S: Specialized] extends T1[List[S]]             // ok; should only specialize later
+inline trait T2[S] extends T1[S]                                // error: S should be specialized
+inline trait T3 extends T1[List[Int]]                           // ok
+inline trait T4[S] extends T1[List[S]]                          // error: S should be specialized
+inline trait T5[S: Specialized] extends T1[List[S]]             // ok
 inline trait T6[T[_], S] extends T1[T[S]]                       // error: T should be specialized // error: S should be specialized
-inline trait T7[T[_]] extends T1[T[Int]]                        // error: T should be specialized
 
-inline def foo1[S](x: T1[List[S]]): Int = 10                    // error: S should be specialized
-inline def foo2(x: T1[List[Int]]): Int = 10                     // ok
-inline def foo3[S](x: T1[List[List[S]]]): Int = 10              // error: S should be specialized
-inline def foo4[S: Specialized](x: T1[List[List[S]]]): Int = 10 // ok
+inline def foo1[S](x: T1[S]): Int = 10                          // error: S should be specialized
+inline def foo2[S](x: T1[List[S]]): Int = 10                    // error: S should be specialized
+inline def foo3[S: Specialized](x: T1[List[S]]): Int = 10       // ok
 
-inline def bar1[S] = new T1[List[S]]() {}                       // error: S should be specialized
-inline def bar2 = new T1[List[Int]]() {}                        // ok
-inline def bar3[S] = new T1[List[List[S]]]() {}                 // error: S should be specialized
-inline def bar4[S: Specialized] = new T1[List[List[S]]]() {}    // ok
+inline def bar1[S] = new T1[S]() {}                             // error: S should be specialized
+inline def bar2[S] = new T1[List[S]]() {}                       // error: S should be specialized
+inline def bar3[S: Specialized] = new T1[List[List[S]]]() {}    // ok
 ```
-Note that in the cases with `List` this restriction is not imposed because of the definition of `List`, but rather simply because we have a 
-type variable `S` which is not marked as Specialized which appears `somewhere inside' a type in a Specialized position. Again this is done to
+
+Note that in the cases with `List` this restriction is imposed not because of the definition of `List`, but rather simply because we have a 
+type variable `S` which is not marked as Specialized which appears 'somewhere inside' a type in a Specialized position. Again this is done to
 avoid confusion. A user extending `T1[List[S]]` would likely expect some degree of specialization to given the definition of `T1`, but this 
-is not possible if `S` is not marked as `Specialized`. 
+is not possible if `S` is not marked as `Specialized`. In practice `specType(List[_])` is `Any` however.
+
+## Specialized Traits in the Compiler
+We introduce a new phase `desugarSpecializedTraits` responsible for detecting specializations, generating the necessary `$sp$` and `$impl$` 
+classes for these specializations, and inlining into them.
+
+The replacement of references to e.g. `Vec[Int]` with `Vec$sp$Int` and `new Vec[Int] {}` with `Vec$impl$Int()` is done at erasure, because we cannot change signatures before then, and doing it afterwards would not prevent the boxing that we seek to avoid. 
+
+Specialized traits rely on the semantics and implementation of inline traits, so it may seem logical that `desugarSpecializedTraits` would merely generate
+the prototypes for the classes, and allow `specializeInlineTraits` to inline the bodies. We *do not* do this. Rather, the phase `desugarSpecializedTraits` directly performs inlining of the parent traits (`Vec[Int]` in the above example) into the
+generated `$sp$` traits and `$impl$` classes, sharing the relevant code with the `specializeInlineTraits` phase through
+the `Inlines.scala` file. 
+
+This is done because while we want to keep the two phases separate and avoid coupling where possible (thus allowing e.g. specialized traits to be disabled 
+while maintaining inline traits), implementing specialized traits requires being able to alternate
+ between the inlining and specializing steps in some cases. Consider the following
+example:
+
+```scala
+inline trait D[R: Specialized]
+
+inline trait C[S: Specialized]:
+   def w(y: D[S]): Unit = println("w")
+
+inline trait A[T: Specialized]:
+   def x(y: C[T]): Unit = println("x")
+
+class B extends A[Char]
+```
+If we run just the specialization part of the specialized trait processing (without the inlining yet), we get:
+
+```scala
+inline trait A$sp$Char extends A[Char]
+```
+
+Inlining the body of `A` results in:
+```scala
+inline trait A$sp$Char extends A[Char]:
+  def x(y: C[Char]): Unit = println("x")
+```
+Notice that this generates a reference to `C[Char]` which ought to be specialized, given that `S` is marked as `Specialized` in 
+the definition of `C`. Therefore we need to run the specialization process again. This time we will generate:
+```scala
+inline trait C$sp$Char extends C[Char]
+```
+Inlining the body of `C` into this trait will create a reference to `D[Char]`, which also ought to be specialized. Thus it is clear that
+it is possible to create arbitrarily long chains requiring alternating between specialized trait generation and inline trait inlining. We note that 
+this problem arises not only with the `$sp$` traits, but also the `$impl$` classes (see `specialized-trait-inlining-causes-implementation-required.scala`).
+
+To resolve this problem without alternating between and looping the `specializeInlineTraits` and `desugarSpecializedTraits` phases in an inconvenient way, we opt to make:
+- `specializeInlineTraits` responsible for inlining inline traits written directly in user code:
+   - If a specialized trait creates an inline trait inlining opportunity which is not `specialized`, this is dealt with by `specializeInlineTraits`. 
+   - Further if a user writes `class Bar extends Foo[Int]` where Foo is declared Specialized, `specializeInlineTraits` will do the inlining. 
+- `desugarSpecializedTraits` responsible for finding specializations and generating the required `$sp$` traits and `$impl$` classes, inlining the parent specialized traits into these traits/classes, and repeating until no more inlining can be performed and no more `$sp$` traits and `$impl$` classes are needed.
+
+This decouples the responsibilities of the two phases, but given that `desugarSpecializedTraits` could produce a reference that requires inline trait inlining
+in the child class (e.g. `tests/run/specialized-trait-requires-inline-trait-inlining.scala`) we need to run `desugarSpecializedTraits` first.
+
+We also need to introduce a miniphase `pruneSpecializedMethods` which removes specialized methods. These methods are inline so they would be removed later anyway, but we need to remove them before `pruneInlineTraits` to avoid potentially creating dangling references.
 
 ## [1] Why are the generated traits inline?
 Consider the following:
@@ -448,212 +615,16 @@ trait C extends B[Char]
 ```
 The definitions are stuck in `A$sp$S$Int$` because it is not inline. This means we can never usefully specialize on `W` even though it is declared `Specialized`. 
 
-Side note: Because we make the generated traits inline, we modify the behaviour of inline traits relative to the original semantics from Timothée's thesis, such that inline traits extended by other inline traits are still inlined (instead of inlining only at the first ordinary class extending the family of inline traits). This is necessary so that `A$sp$S$Int` can be made inline and still contain the specialized declarations which we need when we use it as an interface. The original argument for only inlining at the bottom of the hierarchy was to reduce code generation, and that this was sufficient when we only have inline traits, however the additional code generation is only linear in the number of traits in the sequence (and limited to the interfaces since the implementations are pruned) as we do not inline multiple copies, and we consider this acceptable to implement `Specialized`. 
+Because we make the generated traits inline, we modify the behaviour of inline traits relative to the original semantics from Timothée's thesis, such that inline traits extended by other inline traits are still inlined (instead of inlining only at the first ordinary class extending the family of inline traits). This is necessary so that `A$sp$S$Int` can be made inline and still contain the specialized declarations which we need when we use it as an interface. The original argument for only inlining at the bottom of the hierarchy was to reduce code generation, and that this was sufficient when we only have inline traits, however the additional code generation is only linear in the number of traits in the sequence (*and limited to the interfaces since the implementations are pruned*) as we do not inline multiple copies. We consider this acceptable in order to implement specialized.
 
+## Future Work
 
-## Specialized Traits in the Compiler
-We introduce a new phase `desugarSpecializedTraits` responsible for detecting specializations, generating the necessary `$sp$` and `$impl$` 
-classes for these specializations, and inlining into them. It also replaces `new Vec[Int] {}` with `new Vec$impl$Int`.
+### Caching of Specialized Traits and Classes
 
-The replacement of references to e.g. `Vec[Int]` with `Vec$sp$Int` is done at erasure, because we cannot change signatures before then, and doing it afterwards would not prevent the boxing that we seek to avoid. 
+To avoid redundant repeated code generation of the same traits and classes, specialized instance traits and classes could be cached. 
+The compiler would put their tasty and classfile artifacts in a special directory on the class path. Each artifact would contain in an annotation a hash of the  contents of the trait from which the instance was derived. Before creating a new specialized instance, the compiler would consult this directory to see whether an instance with the given name exists and whether its hash matches. In that case, the artifacts can be re-used.
 
-Specialized traits rely on the semantics and implementation of inline traits, so it may seem logical that `desugarSpecializedTraits` would merely generate
-the prototypes for the classes, and allow `specializeInlineTraits` to inline the bodies. We *do not* do this. Rather, the phase `desugarSpecializedTraits` directly performs inlining of the parent traits (`Vec[Int]` in the above example) into the
-generated `$sp$` traits and `$impl$` classes, sharing the relevant code with the `specializeInlineTraits` phase through
-the `Inlines.scala` file. 
-
-This is done because while we want to keep the two phases separate and avoid coupling where possible (thus allowing e.g. specialized traits to be disabled 
-while maintaining inline traits), implementing specialized traits requires being able to alternate
- between the inlining and specializing steps in some cases. Consider the following
-example:
-
-```scala
-inline trait D[R: Specialized]
-
-inline trait C[S: Specialized]:
-   def w(y: D[S]): Unit = println("w")
-
-inline trait A[T: Specialized]:
-   def x(y: C[T]): Unit = println("x")
-
-class B extends A[Char]
-```
-If we run just the specialization part of the specialized trait processing (without the inlining yet), we get:
-
-```scala
-inline trait A$sp$Char extends A[Char]
-```
-
-Inlining the body of `A` results in:
-```scala
-inline trait A$sp$Char extends A[Char]:
-  def x(y: C[Char]): Unit = println("x")
-```
-Notice that this generates a reference to `C[Char]` which ought to be specialized, given that `S` is marked as `Specialized` in 
-the definition of `C`. Therefore we need to run the specialization process again. This time we will generate:
-```scala
-inline trait C$sp$Char extends C[Char]
-```
-Inlining the body of `C` into this trait will create a reference to `D[Char]`, which also ought to be specialized. Thus it is clear that
-it is possible to create arbitrarily long chains requiring alternating between specialized trait generation and inline trait inlining. We note that 
-this problem arises not only with the `$sp$` traits, but also the `$impl$` classes (see `specialized-trait-inlining-causes-implementation-required.scala`).
-
-To resolve this problem without alternating between and looping the `specializeInlineTraits` and `desugarSpecializedTraits` phases in an inconvenient way, we opt to make:
-- `specializeInlineTraits` responsible for inlining inline traits written directly in user code. If a specialized trait creates an inline trait inlining opportunity which is not specialized, this is dealt with by specializeInlineTraits. Further if a user writes `class Bar extends Foo[Int]` where Foo is declared Specialized, `specializeInlineTraits` will do the inlining. 
-- `desugarSpecializedTraits` responsible for finding specializations and generating the required `$sp$` traits and `$impl$` classes, inlining the parent specialized traits into these classes, and repeating until no more inlining can be performed and no more `$sp$` traits and `$impl$` classes are needed. This phase also performs replacement of e.g. `Vec[Int]` with `Vec$sp$Int` and `new Vec[Int]` with `new Vec$impl$Int`.
-- `pruneInlineTraits` responsible for converting inline traits to pure interfaces
-- We also need to replace members accessed on inline receivers with the corresponding inlined symbols, and this is done in erasure. This is *whether the inline traits in question come from inline traits in source code or specialized trait expansion, in both cases.* (see the document on inline traits for a more detailed description of this operation and `pruneInlineTraits`). 
-
-In particular this decision means that we run `specializeInlineTraits` before `desugarSpecializedTraits`, as otherwise we may duplicate the inlined bodies of the `$sp$` traits and `$impl$` classes, since we have already inlined them in `desugarSpecializedTraits`.
-
-<!-- ## Caching of Specialized Traits and Classes
-
-<!-- TODO: At the moment we just support one file - give more details about where we store these later-->
-To avoid redundant repeated code generation of the same traits and classes, specialized instance traits and classes are cached. The compiler will put their tasty and classfile artifacts in a special directory
-on the class path. Each artifact will contain in an annotation a hash of the  contents of the trait from which the instance was derived. Before creating a new specialized instance, the compiler will consult this directory to see whether an instance with the given name exists and whether its hash matches. In that case, the artifacts can be re-used. -->
-
-
-// NEED TO PUT THIS WITH THE CLASS BAR EXTENDS FOO PARENTS -> Explain that it's due to pattern match exhaustivity checking for sealed specialized traits
-invariant is that if we extend the $sp$ trait we must also extend the original trait.
-
-## `sealed` Specialized traits
-Like other traits, specialized traits may be sealed, but this requires some thought. In particular, the generated $sp$ traits and $impl$ classes extend the sealed specialized trait potentially from another file without the user's consent. We want to allow for example:
-
-```scala
-// A.scala
-sealed inline trait Foo[T: Specialized]
-
-// B.scala
-def foo(x: Foo[String])
-```
-because this would be allowed with ordinary traits, but the desugaring creates `Foo$sp$String` which is arguably an illegal child of the sealed `Foo[String]` as it's produced only when compiling B.scala.
-
-We are also faced with the question of whether we should allow the following:
-```scala
-// A.scala
-sealed inline trait Foo[T: Specialized]
-val x = new Foo[Int]() {} // Forces creation of Foo$sp$Int and Foo$impl$Int
-
-// B.scala
-val y = new Foo[Int]() {}
-```
-In the bytecode x and y may or may not point to the same `Foo$impl$Int` depending on if we share the generated specialized classes, but in 
-the source code `y` extends `Foo[Int]` illegally.
-
-In both cases we essentially opt for the "source code" interpretation as this seems clearest for users. In particular we allow example (1) but not example (2). This happens automatically because `sealed` trait inheritance checking is done before specialized trait desugaring / erasure, so it is unaware of the `$sp$` traits and `$impl$` classes. 
-
-It is tempting to think that since the `$impl$` classes do not exist in source we may be able to allow the second example, but this is dangerous for exhaustivity checking:
-
-```scala
-// A.scala
-sealed inline trait Foo[T: Specialized]
-inline trait Bar[T: Specialized] extends Foo[T]
-
-def foo(x: Foo[Int]) = x match {
-    case y: Bar[Int] => println("All good!")
-}
-
-// B.scala
-val y = new Foo[Int]() {} // Bad; A.scala compiled with no warnings as exhaustivity checker assumed this was impossible
-foo(y)
-val z = new Bar[Int]() {} // Ok: We do allow this as well because Bar is not sealed so the exhaustivity checking in A.scala was correct. 
-foo(z)
-
-```
-
-In terms of exhaustivity checking, we also want this to work within a single file. Consider:
-```scala
-sealed inline trait List[+T: Specialized]
-sealed inline trait Nill[T: Specialized] extends List[T]:
-sealed inline trait :+:[T: Specialized](h: T, t: List[T]) extends List[T]
-
-val xs: List[Double] = new Nill[Double]() {}
-
-def foo(x: List[Double]): Unit = x match {
-  case xs: :+:[_] => f(xs.head); xs.tail.foreach(f)
-  case _: Nill[_] => 
-  // warning: non-exhaustive pattern match, missing case _: List[Double]
-}
-```
-
-Without any changes, the anonymous class `Nill[Double]` also extends the `List[Double]` interface (because anonymous class instances mixin all ancestor traits), so pattern match exhaustivity checking on `List[Double]` requires `_: List[Double]` because the List trait has anonymous class children. This occurs because we don't do the `$impl$` class replacements until erasure. For that reason we exempt anonymous classes extending specialized traits from being treated as children for pattern match exhaustivity checking, but we do treat the `$impl$` classes as children (the fact that they are defined even if unused suffices for them to be taken into account). This is correct because the anonymous classes will not exist at runtime when the pattern matches run.
-
-Furthermore, the generated `List$sp$Double` trait also interferes. After we fix this issue:
-
-```scala
-def foo(x: List[Double]): Unit = x match {
-  case xs: :+:[_] => f(xs.head); xs.tail.foreach(f)
-  case _: Nill[_] => 
-  // warning: non-exhaustive pattern match, missing case _: List[Double] & List$sp$Double
-}
-```
-There are two potential solutions to this:
-- make `$sp$` traits inherit `sealed` if the original specialized trait is, but this may make future sharing of specializations challenging if we want to extend the specialized traits from another file.
-- don't register the `$sp$` traits as children of the original specialized trait for exhaustivity checking. This is safe because these traits are synthetic and we have the invariant that `T <:< Foo[Int] <=> T <:< Foo$sp$Int`, so users cannot match on `Foo$sp$Int` or `Foo[Int] minus Foo$sp$Int` (the latter being empty)
-
-We opt for the latter.
-
-<!-- TODO :The dollar signs at the end should probably be correct -->
-
-<!-- TODO: We don't need to worry about this in the current situation if we don't worry about erasure -->
-<!-- These implementation classes are type correct as long as we inject the knowledge that a specialization trait
-like `Seq$sp$Int` is equal to its parameterized version `Seq[Int]`. This equality holds once types are erased.
-Before that we either have to assume it, or insert some casts, as shown in the test file
-`tests/pos/specialized-traits-strawman.scala`.
-
-<!-- TODO: Not sure to what extent we really care about the erasure here 
-After erasure, the implementation traits and classes look like this:
-
-```scala
-  inline trait Iterator$sp$Int extends Iterator:
-    def hasNext: Boolean
-    def next(): Int
-
-  inline trait ArrayIterator$sp$Int extends ArrayIterator, Iterator$sp$Int
-
-  inline trait Iterable$sp$Int extends Iterable:
-    def iterator: Iterator$sp$Int
-    def forall(f: Function1): Unit
-
-  inline trait Seq$sp$Int extends Seq, Iterable$sp$Int:
-    def length: Int
-    def apply(i: Int): Int
-
-  class ArrayIterator$impl$Int(elems: Int[]) extends ArrayIterator$sp$Int, ArrayIterator: // second parent seems redundant but was needed for correct param passing
-    private var current = 0
-    override def hasNext: Boolean =
-      current < elems.length
-    override def next(): Int =
-      try elems(current) finally current += 1
-
-    /* Bridges:
-    override def next(): Object = Int.box(next())
-    */
-  end ArrayIterator$impl$Int
-
-  class Seq$impl$Int(elems: Int[]) extends Seq$sp$Int, Seq:
-    override def iterator: Iterator$sp$Int =
-      new ArrayIterator$impl$Int(elems)
-    override def forall(f: Function1): Unit =
-      val it = iterator
-      while it.hasNext do f.apply$mcVI$sp(it.next())
-    override def length: Int = elems.length
-    override def apply(i: Int): Int = elems(i)
-
-    /* Bridges:
-    override def iterator: Iterator = iterator
-    override def apply(i: Int): Object = Int.box(apply(i))
-    */
-  end Seq$impl$Int
-```
-Here, `f.apply$mcVI$sp` is the specialized apply method of `Function1` at type `Int => Unit`.
-This method is generated by Scala 2's function specialization which is also adopted by Scala 3.
-
-The example shows that indeed all code is properly specialized with no need for box or unbox operations.
--->
-<!-- TODO: Implement this stuff obviously --->
-<!-- 
-## Going Further: Improve Existing Class Hierarchies
+### Improve Existing Class Hierarchies
 
 We have shown that we can formulate an alternative version of a collection-like class hierarchy that is fully specialized. But can we retro-fit this idea even to existing collections? The direct approach would
 clearly not work since an existing collection like `Vector[T]` can be created from anywhere whereas a specialized collection can be created only in a monomorphic context where we know the type instance of `T`. So specialized
@@ -661,7 +632,7 @@ collections come with a tax in expressiveness which pays for their superior perf
 
 But it turns out we can gain a lot of flexibility with three additional tweaks to the language and compiler.
 
-### 1. Adapt Overloading to Specialization
+#### 1. Adapt Overloading to Specialization
 
 More flexibility could be gained if we allowed method overloading between specialized inline methods and normal methods with matching type signatures. For instance, the `Vector` implementation above seriously restricts `map` by requiring that its `B` type parameter is also `Specialized`. Thus `map` cannot be used to map a specialized collection to another collection if the result element type is not statically known. But we could alleviate the problem by allowing a second, overloaded `map` operation like this:
 ```scala
@@ -683,7 +654,7 @@ object Vector:
 ```
 The same holds for all collection methods such as `map` that return a new collection of a different element type.
 
-### 2. Automate the Boilerplate with `specializedBy`
+#### 2. Automate the Boilerplate with `specializedBy`
 
 The described scheme would entail some amount of code duplication. We could automate this with a new annotation that is put on a class and states that the class has a specialized variant. Example:
 ```scala
@@ -691,7 +662,7 @@ The described scheme would entail some amount of code duplication. We could auto
 ```
 If a class carries such an annotation the specialized inline functions described above could be added automatically.
 
-### 3. Optimize Use Sites by Path Splitting
+#### 3. Optimize Use Sites by Path Splitting
 
 One remaining problem is that specialization is a compile-time operation. Without putting in additional work, we cannot immediately exploit the situation where a runtime type is a specialized collection but the static type is unspecialized. For instance, consider this use of `Vector`:
 
@@ -705,7 +676,6 @@ def sumElems(xs: Vector[Int]): Int =
   sum
 ```
 Here, the problem is that, even though we know that `xs` is a `Vector` of `Int`, we cannot deduce that has been specialized to a `faster.Vector[Int]`. Therefore, `xs(i)` goes through the `apply` method of `Vector`. If the runtime class of `Vector` is indeed specialized this would box the `Int` element to `Object` in a bridge method and unbox it again to `Int` at the call site. This could lose a lot of performance, unless the JVM manages to optimize the box/unbox pair away (so far, experience shows that the JVM is not very good at this). The performance could be even worse than working with an unspecialized `Vector` where elements are held in boxed form so they don't have to be boxed each time they are accessed.
-
 
 Of course, we can narrow the type of `sumElems` to
 ```scala
@@ -761,7 +731,7 @@ We could adopt the Scala 2 specialization scheme for pairs. This is not hard, si
 The situation with functions is a bit different. Here, Scala 2 specializes functions with up to two parameters, and Scala 3 re-uses these specializations.
 Going beyond that requires some adaptations since functions are not implemented as classes but as lambdas that are directly supported by the JVM. So Scala 3 specialization would have to be extended to the definition of these lambdas.
 
-## Going Further: Hand-written Specializations
+### Hand-written Specializations
 
 Additional improvements could be gained if we allowed the programmer to pick their own implementations for specialized class instances. For example,
 we could have a
@@ -775,21 +745,3 @@ inline trait IntHashMap[+V: Specialized] extends HashMap[Int, V] ...
 The implementation in `IntHashMap` could exploit that fact that the key type `K` is known to be `Int` to pick a more performant algorithm, for instance.
 
 It would be great if we could use `IntHashMap` each time a specialized HashMap such as `HashMap$sp$Int$String` is referred to or created. In other words, `IntHashMap` should act as a drop-in replacement for `HashMap$sp$Int$String` that is selected automatically. A detailed proposal for this is left for future work.
-
-## Summary
-
-This proposal
-
- 1. _Inline traits._ With them one can create specialized modules and classes, but no specialization on type parameters is possible. Inline traits also enable new patterns for meta programming.
- 2. _Specialized traits and classes._ With them one can create class hierarchies that can require and exploit statically known type parameters.
- 3. _Specialized overloads and path splitting_. With these additions one can create structures that can take advantage of statically known type parameters when they are available while still working for other type parameters as well. They also allow retro-fitting specializaton to existing libraries.
- 4. _Hand-written specializations_. They allow to make user-defined algorithmic optimizations based on statically known type parameters.
-
--->
-
-
-
-<!-- # the following things are banned... -->
-<!-- # Can S: Not Spec appear as [T: Spec]? How exactly we are going to transport through generic code - need to think about it -->
-<!-- TODO: Add rules about "material specialization" / "partial specializations" -->
-Maybe try rewriting as a spec of what we actually do rather than what we wanted to do and see if we get different results!

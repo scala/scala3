@@ -751,7 +751,7 @@ object Erasure {
               // it needs to happen coordinated with erasure of Specialized traits, so that:
               //    a) we see the erased A$sp$Int traits and can point at their members
               //    b) we make the replacement before boxing in case A.foo is typed with T and B.foo specializes this to e.g. Int
-              //       Otherwise we will end up with Int.unbox(A.foo) instead of directly B.foo which won't typecheck.  
+              //       Otherwise we will end up with Int.unbox(B.foo) instead of directly B.foo which won't typecheck.  
               val specializedInterfaceSym = qual1.tpe.widenDealias.classSymbol.asClass
               val newSym = inContext(preErasureCtx) { sym.overridingSymbol(specializedInterfaceSym) }
               qual1.select(newSym)
