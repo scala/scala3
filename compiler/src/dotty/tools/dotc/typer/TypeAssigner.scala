@@ -13,6 +13,7 @@ import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import util.Property
 import transform.Splicer
+import qualified_types.{QualifiedType, QualifiedTypes}
 
 trait TypeAssigner {
   import tpd.*
@@ -164,6 +165,8 @@ trait TypeAssigner {
           else
             qualType.findMember(name, pre)
 
+        QualifiedTypes.recordReceiverSkolem(qual1, pre)
+
         if reallyExists(mbr) && NamedType.validPrefix(qualType) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
         else NoType
@@ -276,15 +279,24 @@ trait TypeAssigner {
    *  skolemizing the argument type if it is not stable and `pref` occurs in `tp`.
    *  If skolemization happens the new SkolemType is passed to `recordSkolem`
    *  provided the latter is non-null.
+   *
+   *  When `argTree` is provided and skolemization is needed, occurrences of
+   *  `pref` inside `@qualified` annotations are first replaced with a stable
+   *  `ENodeVar` (of kind `Skolem`) whose index is attached to `argTree` (so
+   *  the same index is reused across re-type-checks). The remaining
+   *  occurrences (outside qualifiers) are substituted with the fresh
+   *  `SkolemType` as before.
    */
   def safeSubstParam(tp: Type, pref: ParamRef, argType: Type,
-      recordSkolem: (SkolemType => Unit) | Null = null)(using Context): Type =
+      recordSkolem: (SkolemType => Unit) | Null = null,
+      argTree: Tree | Null = null)(using Context): Type =
     val tp1 = tp.substParam(pref, argType)
     if (tp1 eq tp) || argType.isStable then tp1
     else
-      val narrowed = SkolemType(argType.widen)
+      val widened = argType.widen
+      val narrowed = SkolemType(widened)
       if recordSkolem != null then recordSkolem(narrowed)
-      tp.substParam(pref, narrowed)
+      QualifiedTypes.substParamInQualifiers(tp, pref, widened, argTree).substParam(pref, narrowed)
 
   /** Substitute types of all arguments `args` for corresponding `params` in `tp`.
    *  The number of parameters `params` may exceed the number of arguments.
@@ -294,7 +306,7 @@ trait TypeAssigner {
   private def safeSubstParams(tp: Type, params: List[ParamRef],
       args: List[Tree], skolems: SkolemBuffer)(using Context): Type = args match
     case arg :: args1 =>
-      val tp1 = safeSubstParam(tp, params.head, arg.tpe, sk => skolems += ((arg, sk)))
+      val tp1 = safeSubstParam(tp, params.head, arg.tpe, sk => skolems += ((arg, sk)), argTree = arg)
       safeSubstParams(tp1, params.tail, args1, skolems)
     case Nil =>
       tp
@@ -571,8 +583,12 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Annotated, arg: Tree, annotTree: Tree)(using Context): Annotated =
     assert(tree.isType) // annotating a term is done via a Typed node, can't use Annotate directly
-    if annotClass(annotTree).exists then
-      tree.withType(AnnotatedType(arg.tpe, Annotation(annotTree)))
+    val clazz = annotClass(annotTree)
+    if clazz.exists then
+      if clazz == defn.QualifiedAnnot then
+        tree.withType(QualifiedType(arg.tpe, annotTree))
+      else
+        tree.withType(AnnotatedType(arg.tpe, Annotation(annotTree)))
     else
       // this can happen if cyclic reference errors occurred when typing the annotation
       tree.withType(

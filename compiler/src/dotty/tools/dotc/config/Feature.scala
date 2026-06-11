@@ -34,6 +34,10 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val separationChecking = experimental("separationChecking")
+  val qualifiedTypes = experimental("qualifiedTypes")
+  val qualifiedTypesRuntimeChecks = QualifiedName(qualifiedTypes, "runtimeChecks".toTermName)
+  val qualifiedTypesWarn = QualifiedName(qualifiedTypes, "warn".toTermName)
+  val qualifiedTypesSilent = QualifiedName(qualifiedTypes, "silent".toTermName)
   val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
@@ -73,6 +77,10 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (separationChecking, "Enable experimental separation checking (implies captureChecking)"),
+    (qualifiedTypes, "Enable experimental qualified types"),
+    (qualifiedTypesRuntimeChecks, "Auto-insert runtime checks for qualified type conversions"),
+    (qualifiedTypesWarn, "Warn on unverified qualified type conversions"),
+    (qualifiedTypesSilent, "Silently accept unverified qualified type conversions"),
     (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
@@ -177,6 +185,19 @@ object Feature:
   def ccEnabledSomewhere(using Context) =
     if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
     else ccEnabled
+
+  /** Is qualifiedTypes enabled for this compilation unit? */
+  def qualifiedTypesEnabled(using Context) = true
+
+  enum QualifiedTypesMode:
+    case Error, Warn, Silent, RuntimeChecks
+
+  /** The active qualified types mode in the current scope. */
+  def qualifiedTypesMode(using Context): QualifiedTypesMode =
+    if enabled(qualifiedTypesRuntimeChecks) then QualifiedTypesMode.RuntimeChecks
+    else if enabled(qualifiedTypesSilent) then QualifiedTypesMode.Silent
+    else if enabled(qualifiedTypesWarn) then QualifiedTypesMode.Warn
+    else QualifiedTypesMode.Error
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)

@@ -332,6 +332,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
             toTextCapturing(tpe, annot.refs, boxText)
           case _ if defn.SilentAnnots.contains(annot.symbol) && !printDebug =>
             toText(tpe)
+          case annot: qualified_types.QualifiedAnnotation if !printDebug =>
+            toTextQualifiedType(tpe, annot.qualifier)
           case _ =>
             toTextLocal(tpe) ~ " " ~ toText(annot)
       case FlexibleType(_, tpe) =>
@@ -459,8 +461,23 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "<" ~ reprStr ~ ":" ~ toText(tp.info) ~ ">"
         else
           reprStr
+      case tp: qualified_types.ENodeVar =>
+        val head: Text = tp match
+          case _: qualified_types.ENodeVar.BoundParam => "boundArg" ~ "(" ~ tp.index.toString ~ ")"
+          case _: qualified_types.ENodeVar.OpenedParam => "openArg" ~ "(" ~ tp.index.toString ~ ")"
+          case tp: qualified_types.ENodeVar.Skolem =>  "skolem" ~ "(" ~ tp.index.toString ~ "," ~ nameString(tp.owner) ~ ")"
+        if ctx.settings.XprintTypes.value then
+          "<" ~ head ~ ":" ~ toText(tp.rawUnderlying) ~ ">"
+        else
+          head
     }
   }
+
+  def toTextQualifiedType(parent: Type, qualifier: qualified_types.ENode.Lambda): Text =
+    val paramTps = qualifier.paramTps
+    enodeLambdaDepth += paramTps.length
+    try toText(parent) ~ " with " ~ qualifier.body.toText(this)
+    finally enodeLambdaDepth -= paramTps.length
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"

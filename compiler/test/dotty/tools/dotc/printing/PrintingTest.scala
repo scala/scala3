@@ -84,4 +84,7 @@ class PrintingTest {
 
   @Test
   def inlining: Unit = testIn("tests/printing/inlining", "inlining")
+
+  @Test
+  def qualifiedTypesAnf: Unit = testIn("tests/printing/qualified-types-anf", "qualifiedTypesANF")
 }

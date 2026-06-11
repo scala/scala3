@@ -102,6 +102,10 @@ private[scala] object language:
     @compileTimeOnly("`separationChecking` can only be used at compile time in import statements")
     object separationChecking
 
+    /** Experimental support for qualified types */
+    @compileTimeOnly("`qualifiedTypes` is only be used at compile time")
+    object qualifiedTypes
+
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *

@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg-custom-args/qualified-types/predicate_error.scala:1:27 ----------------------------
+1 |def f[A](l: List[A] with l.notEmpty) = () // error
+  |                         ^^^^^^^^^^
+  |                         value notEmpty is not a member of List[A] - did you mean l.nonEmpty?

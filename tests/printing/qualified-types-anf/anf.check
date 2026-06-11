@@ -1,0 +1,51 @@
+[[syntax trees at end of         qualifiedTypesANF]] // tests/printing/qualified-types-anf/anf.scala
+package example {
+  @experimental("Added by -language:experimental.experimental.qualifiedTypes")
+    final lazy module val anf$package: example.anf$package =
+    new example.anf$package()
+  @SourceFile("tests/printing/qualified-types-anf/anf.scala") final module class
+     anf$package() extends Object() { this: example.anf$package.type =>
+    private def writeReplace(): AnyRef =
+      new scala.runtime.ModuleSerializationProxy(
+        classOf[example.anf$package.type])
+    @experimental("Added by -language:experimental.experimental.qualifiedTypes")
+       def id(x: Int): Int @qualified[Int]((r: Int) => r == x) =
+      x:(x : Int) @RuntimeChecked:x.type @RuntimeChecked
+    @experimental("Added by -language:experimental.experimental.qualifiedTypes")
+       def add(x: Int, y: Int): Int @qualified[Int]((r: Int) => r == x + y) =
+      {
+        val ev$1: Int =
+          {
+            val x$proxy1: Int = x + y
+            x$proxy1:(x$proxy1 : Int) @RuntimeChecked:
+              x$proxy1.type @RuntimeChecked
+          }
+        if ev$1.isInstanceOf[Int with boundArg(0) == x + y] then
+          ev$1.asInstanceOf[Int with boundArg(0) == x + y] else
+          throw new IllegalArgumentException()
+      }
+    @experimental("Added by -language:experimental.experimental.qualifiedTypes")
+       def a(): Int = 1
+    @experimental("Added by -language:experimental.experimental.qualifiedTypes")
+       def impure(): Int = 42
+    @experimental("Added by -language:experimental.experimental.qualifiedTypes")
+       def test(): Int =
+      {
+        val x$1: Int = example.impure()
+        val c: Int with boundArg(0) == x$1 = example.id(x$1)
+        val x$2: Int = example.a()
+        val x$3: Int = example.impure()
+        val y$1: Int with boundArg(0) == x$3 = example.id(x$3)
+        val d: Int with boundArg(0) == x$2 + y$1 = example.add(x$2, y$1)
+        c + d
+      }
+    @experimental("Added by -language:experimental.experimental.qualifiedTypes")
+       def inferred(): Int =
+      {
+        val x$4: Int = example.impure()
+        example.id(x$4)
+      }
+  }
+}
+
+[[syntax trees at end of    qualifiedTypesANFCheck]] // tests/printing/qualified-types-anf/anf.scala: unchanged since qualifiedTypesANF
