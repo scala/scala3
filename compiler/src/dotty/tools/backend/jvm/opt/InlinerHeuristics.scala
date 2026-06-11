@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.report
 
 class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
-                        callGraph: CallGraph, ts: OptimizerKnownBTypes,
+                        callGraph: OptimizerCallGraph, ts: OptimizerKnownBTypes,
                         settings: OptimizerSettings) {
 
   private lazy val inlineSourceMatcher: InlineSourceMatcher = new InlineSourceMatcher(settings.optInlineFrom)

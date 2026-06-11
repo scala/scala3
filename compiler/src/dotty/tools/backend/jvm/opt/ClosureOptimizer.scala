@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAna
 import BCodeUtils.*
 
 class ClosureOptimizer(optimizerUtils: OptimizerUtils,
-                       byteCodeRepository: BCodeRepository, callGraph: CallGraph,
+                       byteCodeRepository: BCodeRepository, callGraph: OptimizerCallGraph,
                        ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                        settings: OptimizerSettings) {
 

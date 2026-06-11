@@ -27,7 +27,7 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+class Inliner(callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
               settings: OptimizerSettings) {
 
@@ -677,6 +677,18 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
     instructionMap
   }
 
+  def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit = {
+      var css = toInline.flatMap(callGraph.getCallsite(method, _))
+        .collect { case k: KnownCallsite => k }
+        .toList
+        .sorted(using callsiteOrdering)
+      while (css.nonEmpty) {
+        val cs = css.head
+        css = css.tail
+        inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
+      }
+  }
+
   /**
    * Check whether the body of the callee contains any instructions that prevent the callsite from
    * being inlined. See also method `earlyCanInlineCheck`.
@@ -1017,7 +1029,7 @@ object Inliner {
   }
 }
 
-class UndoLog(callGraph: CallGraph) {
+class UndoLog(callGraph: OptimizerCallGraph) {
 
   import java.util.{ArrayList => JArrayList}
 

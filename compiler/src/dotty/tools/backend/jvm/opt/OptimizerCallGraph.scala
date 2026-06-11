@@ -26,7 +26,7 @@ import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 
-class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
+class OptimizerCallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) extends CallGraph {
 
   /**
    * The call graph contains the callsites in the program being compiled.
@@ -90,7 +90,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
   def getCallsite(methodNode: MethodNode, invocation: MethodInsnNode): Option[Callsite] =
     callsites(methodNode).get(invocation)
 
-  def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
+  override def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
     val methodCallsites = callsites(methodNode)
     val newCallsites = methodCallsites - invocation
     if (newCallsites.isEmpty) callsites.subtractOne(methodNode)
@@ -103,7 +103,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
     callsites(callsite.callsiteMethod) = methodCallsites + (callsite.callsiteInstruction -> callsite)
   }
 
-  def recordCallsitePosition(m: MethodInsnNode, pos: SourcePosition): Unit =
+  override def recordCallsitePosition(m: MethodInsnNode, pos: SourcePosition): Unit =
     callsitePositions(m) = pos
 
   def containsCallsite(callsite: Callsite): Boolean = callsites(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
@@ -114,12 +114,11 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
   def getClosureInstantiations(methodNode: MethodNode): Map[InvokeDynamicInsnNode, ClosureInstantiation] =
     closureInstantiations.getOrElse(methodNode, Map.empty)
 
-  def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Option[ClosureInstantiation] = {
+  override def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Unit = {
     val methodClosureInits = closureInstantiations(methodNode)
     val newClosureInits = methodClosureInits - indy
     if (newClosureInits.isEmpty) closureInstantiations.subtractOne(methodNode)
     else closureInstantiations(methodNode) = newClosureInits
-    methodClosureInits.get(indy)
   }
 
   def addClass(classNode: ClassNode): Unit = {
