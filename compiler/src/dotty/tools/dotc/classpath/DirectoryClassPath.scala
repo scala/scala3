@@ -133,7 +133,7 @@ object JrtClassPath {
   *
   * The implementation assumes that no classes exist in the empty package.
   */
-final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with NoSourcePaths {
+final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   import java.nio.file.Path, java.nio.file.*
   type F = Path
   private val dir: Path = fs.getPath("/packages")
@@ -161,7 +161,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
 
   override def asURLs: Seq[URL] = Seq(new URI("jrt:/").toURL)
 
-  def findClassFile(className: String): Option[AbstractFile] =
+  override def findClassFile(className: String): Option[AbstractFile] =
     if (!className.contains(".")) None
     else {
       val (inPackage, _) = separatePkgAndClassNames(className)
@@ -177,7 +177,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
 /**
   * Implementation `ClassPath` based on the \$JAVA_HOME/lib/ct.sym backing http://openjdk.java.net/jeps/247
   */
-final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends ClassPath with NoSourcePaths {
+final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends ClassPath {
   import java.nio.file.Path, java.nio.file.*
 
   private val fileSystem: FileSystem = FileSystems.newFileSystem(ctSym, null: ClassLoader | Null)
@@ -217,8 +217,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
     }
   }
 
-  override def asURLs: Seq[URL] = Nil
-  def findClassFile(className: String): Option[AbstractFile] = {
+  override def findClassFile(className: String): Option[AbstractFile] = {
     if (!className.contains(".")) None
     else {
       val (inPackage, classSimpleName) = separatePkgAndClassNames(className)
@@ -230,9 +229,9 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
   }
 }
 
-case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] with NoSourcePaths {
+case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFileEntry] {
 
-  def findClassFile(className: String): Option[AbstractFile] = {
+  override def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
     val classFile = new JFile(dir, relativePath + ".class")
     if classFile.exists then {
@@ -248,7 +247,7 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[BinaryFil
   override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
 }
 
-case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] with NoClassPaths {
+case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] {
   protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
   protected def isMatchingFile(f: JFile): Boolean = endsSourceExtension(f.getName)
 

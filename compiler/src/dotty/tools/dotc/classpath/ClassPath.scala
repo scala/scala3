@@ -4,7 +4,7 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.dotc.classpath.FileUtils.isTasty
-import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation, FileExtension}
+import dotty.tools.io.{AbstractFile, ClassRepresentation, FileExtension}
 
 trait PackageEntry {
   def name: String
@@ -57,12 +57,3 @@ private[dotty] final case class BinaryAndSourceFilesEntry(binaryEntry: BinaryFil
 }
 
 private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry
-
-private[dotty] trait NoSourcePaths {
-  def sources(inPackage: String): Seq[SourceFileEntry] = Seq.empty
-}
-
-private[dotty] trait NoClassPaths {
-  def findClassFile(className: String): Option[AbstractFile] = None
-  def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
-}

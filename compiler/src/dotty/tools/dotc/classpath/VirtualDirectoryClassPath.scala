@@ -1,11 +1,11 @@
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{ClassPath, ClassRepresentation}
+import dotty.tools.io.ClassPath
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import FileUtils.*
 import java.net.{URI, URL}
 
-case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[BinaryFileEntry] with NoSourcePaths {
+case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
   type F = AbstractFile
 
   // From AbstractFileClassLoader

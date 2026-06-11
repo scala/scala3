@@ -17,11 +17,11 @@ import dotc.classpath.{BinaryFileEntry, PackageEntry, SourceFileEntry}
   * A representation of the compiler's class- or sourcepath.
   */
 trait ClassPath {
-  def asURLs: Seq[URL]
-  def hasPackage(pkg: String): Boolean
-  def packages(inPackage: String): Seq[PackageEntry]
-  def classes(inPackage: String): Seq[BinaryFileEntry]
-  def sources(inPackage: String): Seq[SourceFileEntry]
+  def asURLs: Seq[URL] = Seq.empty
+  def hasPackage(pkg: String): Boolean = false
+  def packages(inPackage: String): Seq[PackageEntry] = Seq.empty
+  def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
+  def sources(inPackage: String): Seq[SourceFileEntry] = Seq.empty
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not
@@ -32,7 +32,7 @@ trait ClassPath {
    * It is also used in the backend, by the inliner, to obtain the bytecode when inlining from the
    * classpath. It's also used by scalap.
    */
-  def findClassFile(className: String): Option[AbstractFile]
+  def findClassFile(className: String): Option[AbstractFile] = None
 }
 
 object ClassPath {

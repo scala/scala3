@@ -42,8 +42,7 @@ sealed trait ZipAndJarFileLookupFactory {
  */
 object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveClassPath(zipFile: File, override val release: Option[String])
-    extends ZipArchiveFileLookup[BinaryFileEntry]
-    with NoSourcePaths {
+    extends ZipArchiveFileLookup[BinaryFileEntry] {
 
     override def findClassFile(className: String): Option[AbstractFile] =
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
@@ -64,7 +63,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
    * with a particularly prepared scala-library.jar. It should have all classes listed in the manifest like e.g. this entry:
    * Name: scala/Function2$mcFJD$sp.class
    */
-  private case class ManifestResourcesClassPath(file: ManifestResources) extends ClassPath with NoSourcePaths {
+  private case class ManifestResourcesClassPath(file: ManifestResources) extends ClassPath {
     override def findClassFile(className: String): Option[AbstractFile] = {
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
       val clss = classes(pkg)
@@ -155,9 +154,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  * It should be the only way of creating them as it provides caching.
  */
 object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveSourcePath(zipFile: File)
-    extends ZipArchiveFileLookup[SourceFileEntry]
-    with NoClassPaths {
+  private case class ZipArchiveSourcePath(zipFile: File) extends ZipArchiveFileLookup[SourceFileEntry] {
 
     def release: Option[String] = None
 

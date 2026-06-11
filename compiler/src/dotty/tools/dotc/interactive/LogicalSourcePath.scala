@@ -15,9 +15,6 @@ import java.net.URL
 class LogicalSourcePath(val sourcepath: String, rootPackage: LogicalPackage)
     extends ClassPath {
 
-  override def findClassFile(className: String): Option[AbstractFile] = None
-  override def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
-
   override def hasPackage(inPackage: String): Boolean =
     findPackage(inPackage).isDefined
 
