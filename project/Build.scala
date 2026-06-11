@@ -433,6 +433,155 @@ object Build {
   }
 
   // ==============================================================================================
+  // ================================= REUSABLE TASK DEFINITIONS ==================================
+  // ==============================================================================================
+
+  /** Build the `scalac` input task for an aggregate project.
+   *
+   *  @param compilerProject     the compiler project used to resolve the classpath and run the main class
+   *  @param libraryProject      the Scala library project that provides the stdlib jar
+   *  @param withCompilerDeps    additional classpath entries when `-with-compiler` is used;
+   *                             an empty sequence means the flag is not supported.
+   */
+  def scalacTask(
+    compilerProject: ProjectReference,
+    libraryProject: ProjectReference,
+    withCompilerDeps: Def.Initialize[Task[Seq[String]]]
+  ): Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
+    val log = streams.value.log
+    val stdlib = (libraryProject / Compile / packageBin).value.getAbsolutePath
+    val args: List[String] = spaceDelimited("<arg>").parsed.toList
+    val main = "dotty.tools.MainGenericCompiler"
+
+    var extraClasspath = Seq(stdlib)
+
+    if (args.contains("-decompile") && !args.contains("-classpath"))
+      extraClasspath ++= Seq(".")
+
+    val args1 = if (args.contains("-with-compiler")) {
+      val deps = withCompilerDeps.value
+      if (deps.isEmpty) {
+        log.error("-with-compiler should only be used with a bootstrapped compiler")
+        args
+      } else {
+        extraClasspath ++= deps
+        args.filter(_ != "-with-compiler")
+      }
+    } else args
+
+    val wrappedArgs = if (args1.contains("-print-tasty")) args1 else insertClasspathInArgs(args1, extraClasspath.mkString(File.pathSeparator))
+    val fullArgs = main :: wrappedArgs.map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
+
+    (compilerProject / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
+  }
+
+  /** The extra classpath entries (the compiler and its dependencies) added when `-with-compiler`
+   *  is passed to `scalac` or `scala`.
+   *
+   *  @param compilerProject  the compiler project providing the compiler jar and dependency classpath
+   */
+  def withCompilerClasspath(compilerProject: ProjectReference): Def.Initialize[Task[Seq[String]]] = Def.task {
+    val externalDeps = (compilerProject / Runtime / externalDependencyClasspath).value
+    val dottyCompiler = (compilerProject / Compile / packageBin).value.getAbsolutePath
+    val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
+    val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
+    val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
+    val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
+    val asm = findArtifactPath(externalDeps, "scala-asm")
+    val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+    Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
+  }
+
+  /** Build the `scala` input task for an aggregate project.
+   *
+   *  @param compilerProject   the compiler project used to resolve the `-with-compiler` classpath
+   *  @param libraryProject    the Scala library project that provides the stdlib jar
+   *  @param withCompilerDeps  additional classpath entries added when `-with-compiler` is passed
+   */
+  def scalaTask(
+    compilerProject: ProjectReference,
+    libraryProject: ProjectReference,
+    withCompilerDeps: Def.Initialize[Task[Seq[String]]]
+  ): Def.Initialize[InputTask[Unit]] = Def.inputTask {
+    val args: List[String] = spaceDelimited("<arg>").parsed.toList
+    val scalaLib = (libraryProject / Compile / packageBin).value.getAbsolutePath
+    def run(args: List[String]): Unit = {
+      val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
+      Process.runProcess("java" :: fullArgs, wait = true)
+    }
+    if (args.isEmpty) {
+      println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
+    } else if (scalaLib == "") {
+      println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
+    } else if (args.contains("-with-compiler")) {
+      val args1 = args.filter(_ != "-with-compiler")
+      run(insertClasspathInArgs(args1, withCompilerDeps.value.mkString(File.pathSeparator)))
+    } else run(args)
+  }
+
+  /** Build the `testCompilation` input task for an aggregate project.
+   *
+   *  Note: the default test patterns differ between bootstrapped and non-bootstrapped.
+   *  Non-bootstrapped unconditionally includes `dotty.tools.dotc.coverage.*`, while
+   *  bootstrapped only runs coverage tests when `--coverage` is passed. Preserving
+   *  this historical divergence to avoid changing test behaviour.
+   *
+   *  @param compilerProject  the compiler project on which `Test / testOnly` is invoked
+   *  @param coverageFlag     whether the `--coverage` flag is supported. When `true` (bootstrapped),
+   *                          coverage tests run only on `--coverage`; when `false` (non-bootstrapped),
+   *                          they are always part of the default run.
+   */
+  def testCompilationTask(
+    compilerProject: ProjectReference,
+    coverageFlag: Boolean
+  ): Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
+    val args = spaceDelimited("<arg>").parsed
+    if (args.contains("--help")) {
+      println(
+        s"""
+           |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [--enable-coverage-phase] [<filter>]
+           |
+           |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
+           |excluding tests tagged with dotty.SlowTests.
+           |
+           |  --help                show this message
+           |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
+           |  --update-checkfiles   override the checkfiles that did not match with the current output
+           |  --failed              re-run only failed tests
+           |  --enable-coverage-phase enable Scoverage instrumentation phase for compilation tests
+           |  <filter>              substring of the path of the tests file
+           |
+         """.stripMargin
+      )
+      (compilerProject / Test / testOnly).toTask(" not.a.test")
+    }
+    else {
+      val updateCheckfile = args.contains("--update-checkfiles")
+      val rerunFailed = args.contains("--failed")
+      val fromTasty = args.contains("--from-tasty")
+      val coverage = coverageFlag && args.contains("--coverage")
+      val enableCoveragePhase = args.contains("--enable-coverage-phase")
+      // Flags consumed here rather than passed through as a test-path filter. `--coverage` is only
+      // recognised by the bootstrapped task; elsewhere it is left untouched and treated as a filter.
+      val consumedFlags = Set("--update-checkfiles", "--from-tasty", "--failed", "--enable-coverage-phase") ++
+        (if (coverageFlag) Set("--coverage") else Set.empty[String])
+      val args1 = if (args.exists(consumedFlags)) args.filterNot(consumedFlags) else args
+      val compilationTests = "dotty.tools.dotc.*CompilationTests"
+      val test =
+        if (fromTasty) "dotty.tools.dotc.FromTastyTests"
+        else if (coverage) "dotty.tools.dotc.coverage.*"
+        else if (coverageFlag) compilationTests
+        else s"$compilationTests dotty.tools.dotc.coverage.*"
+      val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+        (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
+        (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
+        (if (enableCoveragePhase) " -Ddotty.tests.instrumentCoverage=TRUE" else "") +
+        (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
+      (compilerProject / Test / testOnly).toTask(cmd)
+    }
+  }
+
+  // ==============================================================================================
   // ============================================ ROOT ============================================
   // ==============================================================================================
 
@@ -502,50 +651,16 @@ object Build {
         // https://github.com/scala-js/scala-js/blob/c4e7f43932551aabb573c925147e3841ac3ca4be/project/Build.scala#L1006
         clean.dependsOn(allProjects.map(_ / clean): _*).value
       },
-      scalac := Def.inputTaskDyn {
-        val log = streams.value.log
-        val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
-        val stdlib = (`scala-library-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
-        val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
-        val args: List[String] = spaceDelimited("<arg>").parsed.toList
-        val main = "dotty.tools.MainGenericCompiler"
-        var extraClasspath = Seq(stdlib)
-
-        if (args.contains("-decompile") && !args.contains("-classpath"))
-          extraClasspath ++= Seq(".")
-
-        if (args.contains("-with-compiler"))
-          log.error("-with-compiler should only be used with a bootstrapped compiler")
-
-        val wrappedArgs = if (args.contains("-print-tasty")) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
-        val fullArgs = main :: wrappedArgs.map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
-
-        (`scala3-compiler-nonbootstrapped` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
-      }.evaluated,
-      scala := {
-        val args: List[String] = spaceDelimited("<arg>").parsed.toList
-        val externalDeps = (`scala3-compiler-nonbootstrapped` / Runtime / externalDependencyClasspath).value
-        val scalaLib = (`scala-library-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
-        def run(args: List[String]): Unit = {
-          val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
-          Process.runProcess("java" :: fullArgs, wait = true)
-        }
-        if (args.isEmpty) {
-          println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
-        } else if (scalaLib == "") {
-          println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
-        } else if (args.contains("-with-compiler")) {
-          val args1 = args.filter(_ != "-with-compiler")
-          val asm = findArtifactPath(externalDeps, "scala-asm")
-          val dottyCompiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.getAbsolutePath
-          val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
-          val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
-          val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
-          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
-        } else run(args)
-      },
+      scalac := scalacTask(
+        compilerProject = `scala3-compiler-nonbootstrapped`,
+        libraryProject = `scala-library-nonbootstrapped`,
+        withCompilerDeps = Def.task(Seq.empty[String])
+      ).evaluated,
+      scala := scalaTask(
+        compilerProject = `scala3-compiler-nonbootstrapped`,
+        libraryProject = `scala-library-nonbootstrapped`,
+        withCompilerDeps = withCompilerClasspath(`scala3-compiler-nonbootstrapped`)
+      ).evaluated,
       // TODO: scala3-repl depends on the bootstrapped compiler, making this slower
       // than it needs to be. A non-bootstrapped REPL project would speed this up.
       buildQuick := {
@@ -554,42 +669,10 @@ object Build {
         IO.write(baseDirectory.value / "bin" / ".cp", cp)
         streams.value.log.info(s"Wrote classpath to bin/.cp — use bin/scalacQ and bin/replQ")
       },
-      testCompilation := Def.inputTaskDyn {
-        val args = spaceDelimited("<arg>").parsed
-        if (args.contains("--help")) {
-          println(
-            s"""
-               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [--enable-coverage-phase] [<filter>]
-               |
-               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
-               |excluding tests tagged with dotty.SlowTests.
-               |
-               |  --help                show this message
-               |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
-               |  --update-checkfiles   override the checkfiles that did not match with the current output
-               |  --failed              re-run only failed tests
-               |  --enable-coverage-phase enable Scoverage instrumentation phase for compilation tests
-               |  <filter>              substring of the path of the tests file
-               |
-             """.stripMargin
-          )
-          (`scala3-compiler-nonbootstrapped` / Test / testOnly).toTask(" not.a.test")
-        }
-        else {
-          val updateCheckfile = args.contains("--update-checkfiles")
-          val rerunFailed = args.contains("--failed")
-          val fromTasty = args.contains("--from-tasty")
-          val enableCoveragePhase = args.contains("--enable-coverage-phase")
-          val args1 = if (updateCheckfile | fromTasty | rerunFailed | enableCoveragePhase) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty" && x != "--failed" && x != "--enable-coverage-phase") else args
-          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
-          val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
-            (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
-            (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
-            (if (enableCoveragePhase) " -Ddotty.tests.instrumentCoverage=TRUE" else "") +
-            (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
-          (`scala3-compiler-nonbootstrapped` / Test / testOnly).toTask(cmd)
-        }
-      }.evaluated,
+      testCompilation := testCompilationTask(
+        compilerProject = `scala3-compiler-nonbootstrapped`,
+        coverageFlag = false
+      ).evaluated,
       bspEnabled := false,
     )
 
@@ -652,96 +735,20 @@ object Build {
       publish / skip := true,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := (ThisBuild / baseDirectory).value / "target" / "scala3-bootstrapped",
-      scalac := Def.inputTaskDyn {
-        val log = streams.value.log
-        val externalDeps = (`scala3-compiler-bootstrapped` / Runtime / externalDependencyClasspath).value
-        val stdlib = (`scala-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-        val dottyCompiler = (`scala3-compiler-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-        val args: List[String] = spaceDelimited("<arg>").parsed.toList
-        val main = "dotty.tools.MainGenericCompiler"
-
-        var extraClasspath = Seq(stdlib)
-
-        if (args.contains("-decompile") && !args.contains("-classpath"))
-          extraClasspath ++= Seq(".")
-
-        val args1 = if (args.contains("-with-compiler")) {
-          val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
-          val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
-          val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
-          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-          val asm = findArtifactPath(externalDeps, "scala-asm")
-          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
-          args.filter(_ != "-with-compiler")
-        } else args
-
-        val wrappedArgs = if (args1.contains("-print-tasty")) args1 else insertClasspathInArgs(args1, extraClasspath.mkString(File.pathSeparator))
-        val fullArgs = main :: wrappedArgs.map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
-
-        (`scala3-compiler-bootstrapped` / Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
-      }.evaluated,
-      scala := {
-        val args: List[String] = spaceDelimited("<arg>").parsed.toList
-        val externalDeps = (`scala3-compiler-bootstrapped` / Runtime / externalDependencyClasspath).value
-        val scalaLib = (`scala-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-        def run(args: List[String]): Unit = {
-          val fullArgs = insertClasspathInArgs(args, List(".", scalaLib).mkString(File.pathSeparator))
-          Process.runProcess("java" :: fullArgs, wait = true)
-        }
-        if (args.isEmpty) {
-          println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
-        } else if (scalaLib == "") {
-          println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
-        } else if (args.contains("-with-compiler")) {
-          val args1 = args.filter(_ != "-with-compiler")
-          val asm = findArtifactPath(externalDeps, "scala-asm")
-          val dottyCompiler = (`scala3-compiler-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-          val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
-          val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
-          val dottyInterfaces = (`scala3-interfaces` / Compile / packageBin).value.getAbsolutePath
-          val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
-        } else run(args)
-      },
-      testCompilation := Def.inputTaskDyn {
-        val args = spaceDelimited("<arg>").parsed
-        if (args.contains("--help")) {
-          println(
-            s"""
-               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [--enable-coverage-phase] [<filter>]
-               |
-               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
-               |excluding tests tagged with dotty.SlowTests.
-               |
-               |  --help                show this message
-               |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
-               |  --update-checkfiles   override the checkfiles that did not match with the current output
-               |  --failed              re-run only failed tests
-               |  --enable-coverage-phase enable Scoverage instrumentation phase for compilation tests
-               |  <filter>              substring of the path of the tests file
-               |
-             """.stripMargin
-          )
-          (`scala3-compiler-bootstrapped` / Test / testOnly).toTask(" not.a.test")
-        }
-        else {
-          val updateCheckfile = args.contains("--update-checkfiles")
-          val rerunFailed = args.contains("--failed")
-          val fromTasty = args.contains("--from-tasty")
-          val coverage = args.contains("--coverage")
-          val enableCoveragePhase = args.contains("--enable-coverage-phase")
-          val args1 = if (updateCheckfile | fromTasty | rerunFailed | coverage | enableCoveragePhase) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty" && x != "--failed" && x != "--coverage" && x != "--enable-coverage-phase") else args
-          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else if (coverage) "dotty.tools.dotc.coverage.*" else "dotty.tools.dotc.*CompilationTests"
-          val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
-            (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
-            (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
-            (if (enableCoveragePhase) " -Ddotty.tests.instrumentCoverage=TRUE" else "") +
-            (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
-          (`scala3-compiler-bootstrapped` / Test / testOnly).toTask(cmd)
-        }
-      }.evaluated,
+      scalac := scalacTask(
+        compilerProject = `scala3-compiler-bootstrapped`,
+        libraryProject = `scala-library-bootstrapped`,
+        withCompilerDeps = withCompilerClasspath(`scala3-compiler-bootstrapped`)
+      ).evaluated,
+      scala := scalaTask(
+        compilerProject = `scala3-compiler-bootstrapped`,
+        libraryProject = `scala-library-bootstrapped`,
+        withCompilerDeps = withCompilerClasspath(`scala3-compiler-bootstrapped`)
+      ).evaluated,
+      testCompilation := testCompilationTask(
+        compilerProject = `scala3-compiler-bootstrapped`,
+        coverageFlag = true
+      ).evaluated,
       // ================================ SBT SCRIPT TEST SETTINGS ================================
       sbtTestDirectory := (ThisBuild / baseDirectory).value / "sbt-test",
       // The batch mode accidentally became the default with no way to disable
