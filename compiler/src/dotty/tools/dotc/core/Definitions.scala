@@ -1286,7 +1286,13 @@ class Definitions {
   object FunctionNOf {
     /** Create a `FunctionN` or `ContextFunctionN` type applied to the arguments and result type */
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
-      FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+      args match
+        case Nil =>
+          FunctionType(0, isContextual).appliedTo(resultType)
+        case arg :: Nil =>
+          FunctionType(1, isContextual).appliedTo(arg, resultType)
+        case _ =>
+          FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
 
     /** Matches a (possibly aliased) `FunctionN[...]` or `ContextFunctionN[...]`.
      *  Extracts the list of function argument types, the result type and whether function is contextual.
