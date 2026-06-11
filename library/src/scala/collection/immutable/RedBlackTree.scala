@@ -1062,44 +1062,40 @@ private[collection] object RedBlackTree {
 
   private val null2 = (null, null)
 
-  def partitionEntries[A, B](t: Tree[A, B] | Null, p: (A, B) => Boolean): (Tree[A, B] | Null, Tree[A, B] | Null) = if(t eq null) (null, null) else {
-    if (t eq null) null2
-    else {
-      object partitioner {
-        var tmpk, tmpd = null: Tree[A, B] | Null // shared vars to avoid returning tuples from fk
-        def fk(t: Tree[A, B]): Unit = {
-          val k                  = t.key
-          val v                  = t.value
-          var l                  = t.left
-          var r                  = t.right
-          var l2k, l2d, r2k, r2d = null: Tree[A, B] | Null
-          if (l ne null) {
-            fk(l)
-            l2k = tmpk
-            l2d = tmpd
-          }
-          val keep = p(k, v)
-          if (r ne null) {
-            fk(r)
-            r2k = tmpk
-            r2d = tmpd
-          }
-          val jk =
-            if (!keep) join2(l2k, r2k)
-            else if ((l2k eq l) && (r2k eq r)) t
-                 else join(l2k, k, v, r2k)
-          val jd =
-            if (keep) join2(l2d, r2d)
-            else if ((l2d eq l) && (r2d eq r)) t
-                 else join(l2d, k, v, r2d)
-          tmpk = jk
-          tmpd = jd
+  def partitionEntries[A, B](t: Tree[A, B] | Null, p: (A, B) => Boolean): (Tree[A, B] | Null, Tree[A, B] | Null) = if(t eq null) null2 else {
+      var tmpk: Tree[A, B] | Null = null // shared vars to avoid returning tuples from fk
+      var tmpd: Tree[A, B] | Null = null
+      def fk(t: Tree[A, B]): Unit = {
+        val k                  = t.key
+        val v                  = t.value
+        var l                  = t.left
+        var r                  = t.right
+        var l2k, l2d, r2k, r2d = null: Tree[A, B] | Null
+        if (l ne null) {
+          fk(l)
+          l2k = tmpk
+          l2d = tmpd
         }
+        val keep = p(k, v)
+        if (r ne null) {
+          fk(r)
+          r2k = tmpk
+          r2d = tmpd
+        }
+        val jk =
+          if (!keep) join2(l2k, r2k)
+          else if ((l2k eq l) && (r2k eq r)) t
+               else join(l2k, k, v, r2k)
+        val jd =
+          if (keep) join2(l2d, r2d)
+          else if ((l2d eq l) && (r2d eq r)) t
+               else join(l2d, k, v, r2d)
+        tmpk = jk
+        tmpd = jd
       }
 
-      partitioner.fk(t)
-      (blacken(partitioner.tmpk), blacken(partitioner.tmpd))
-    }
+      fk(t)
+      (blacken(tmpk), blacken(tmpd))
   }
 
   // Based on Stefan Kahrs' Haskell version of Okasaki's Red&Black Trees
