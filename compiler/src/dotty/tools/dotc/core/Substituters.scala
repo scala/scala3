@@ -85,6 +85,9 @@ object Substituters:
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
+        if theMap != null && !theMap.maySubstNamed(tp) then
+          if tp.prefix `eq` NoPrefix then return tp
+          else return tp.derivedSelect(theMap.substPrefix(tp.prefix, from, to))
         if theMap != null then
           val lookup = theMap.lookup
           if lookup != null then
@@ -110,6 +113,7 @@ object Substituters:
         else if theMap != null then tp.derivedSelect(theMap.substPrefix(tp.prefix, from, to))
         else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
       case tp: ThisType =>
+        if theMap != null && !theMap.maySubstThisType then return tp
         val sym = tp.cls
         if theMap != null then
           val lookup = theMap.lookup
@@ -289,6 +293,29 @@ object Substituters:
           ts = ts.tail
         m
       else null
+
+    private inline val ThisTypeSubst = 1
+    private inline val TermRefSubst = 2
+    private inline val TypeRefSubst = 4
+
+    private val substKindMask: Int =
+      var mask = 0
+      var fs = from
+      var ts = to
+      while fs.nonEmpty && ts.nonEmpty do
+        val sym = fs.head
+        if sym.isClass then mask |= ThisTypeSubst | TypeRefSubst
+        else if sym.originDenotation.name.isTypeName then mask |= TypeRefSubst
+        else mask |= TermRefSubst
+        fs = fs.tail
+        ts = ts.tail
+      mask
+
+    private[Substituters] inline def maySubstThisType: Boolean =
+      (substKindMask & ThisTypeSubst) != 0
+
+    private[Substituters] inline def maySubstNamed(tp: NamedType): Boolean =
+      (substKindMask & (if tp.isTerm then TermRefSubst else TypeRefSubst)) != 0
 
     // One-slot MRU keyed by reference equality on the input prefix:
     // sibling NamedTypes selecting different names from the same prefix
