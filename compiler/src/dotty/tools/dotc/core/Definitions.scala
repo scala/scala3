@@ -36,6 +36,15 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity: Int = MaxTupleArity
+
+  /*
+   * RuntimeNothingClass and RuntimeNullClass exist at run-time only.
+   * They are the run-time manifestation (in method signatures only)
+   * of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
+   * Therefore, when NothingClass or NullClass are to be emitted, a mapping is needed.
+   */
+  val RuntimeNothingName: String = "scala.runtime.Nothing$"
+  val RuntimeNullName: String = "scala.runtime.Null$"
 }
 
 /** A class defining symbols and types of standard definitions
@@ -485,14 +494,8 @@ class Definitions {
   }
   def NullType: TypeRef = NullClass.typeRef
 
-  /*
-   * RuntimeNothingClass and RuntimeNullClass exist at run-time only.
-   * They are the run-time manifestation (in method signatures only)
-   * of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
-   * Therefore, when NothingClass or NullClass are to be emitted, a mapping is needed.
-   */
-  @tu lazy val RuntimeNothingClass: Symbol = requiredClass("scala.runtime.Nothing$")
-  @tu lazy val RuntimeNullClass: Symbol = requiredClass("scala.runtime.Null$")
+  @tu lazy val RuntimeNothingClass: Symbol = requiredClass(RuntimeNothingName)
+  @tu lazy val RuntimeNullClass: Symbol = requiredClass(RuntimeNullName)
 
   @tu lazy val InvokerModule = requiredModule("scala.runtime.coverage.Invoker")
   @tu lazy val InvokedMethodRef = InvokerModule.requiredMethodRef("invoked")

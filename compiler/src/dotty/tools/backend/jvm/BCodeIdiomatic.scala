@@ -2,11 +2,13 @@ package dotty.tools
 package backend
 package jvm
 
+import dotty.tools.backend.jvm.opt.CallGraph
 import scala.tools.asm
 import scala.annotation.switch
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.util.NoSourcePosition
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -15,9 +17,17 @@ import dotty.tools.dotc.core.Contexts.Context
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic {
+trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
+  private val debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
+  final val emitSource = debugLevel >= 1
+  final val emitLines = debugLevel >= 2
+  final val emitVars = debugLevel >= 3
 
-  def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit
+  private def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
+     callGraph.foreach(_.recordCallsitePosition(m, pos match {
+      case p: Positioned => p.sourcePos
+      case null => NoSourcePosition
+    }))
 
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
   val INSTANCE_CONSTRUCTOR_NAME = "<init>"
@@ -172,12 +182,12 @@ trait BCodeIdiomatic {
       recipe: String,
       argTypes: Seq[asm.Type],
       constants: Seq[String],
-      ts: WellKnownBTypes
+      bTypes: KnownBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
-        asm.Type.getMethodDescriptor(ts.StringRef.toASMType, argTypes*),
-        ts.jliStringConcatFactoryMakeConcatWithConstantsHandle,
+        asm.Type.getMethodDescriptor(bTypes.StringRef.toASMType, argTypes*),
+        bTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants)*
       )
     }

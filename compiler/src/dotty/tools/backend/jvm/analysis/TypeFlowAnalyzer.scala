@@ -19,7 +19,6 @@ import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.{AbstractInsnNode, InsnNode, MethodNode}
 import scala.tools.asm.tree.analysis.{Analyzer, BasicInterpreter, BasicValue}
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
-import dotty.tools.backend.jvm.BackendUtils.LambdaMetaFactoryCall
 
 abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opcodes.ASM7) {
   import TypeFlowInterpreter.*
@@ -47,7 +46,7 @@ abstract class TypeFlowInterpreter extends BasicInterpreter(scala.tools.asm.Opco
     val v = super.naryOperation(insn, values)
     insn.getOpcode match {
       case Opcodes.INVOKEDYNAMIC => insn match {
-        case LambdaMetaFactoryCall(_, _, _, _, _) => new LMFValue(v.getType)
+        case AnalysisUtils.LambdaMetaFactoryCall(_, _, _, _, _) => new LMFValue(v.getType)
         case _ => v
       }
       case _ => v
@@ -69,7 +68,7 @@ object TypeFlowInterpreter {
   // Marker trait for BasicValue subclasses that add a special meaning on top of the value's `getType`.
   trait SpecialValue
 
-  private val obj = Type.getObjectType("java/lang/Object")
+  private val obj = Type.getObjectType(ClassBType.javaLangObjectInternalName)
 
   // A BasicValue with equality that knows about special versions
   class SpecialAwareBasicValue(tpe: Type | Null) extends BasicValue(tpe) {

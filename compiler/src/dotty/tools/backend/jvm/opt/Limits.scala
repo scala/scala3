@@ -1,7 +1,5 @@
 package dotty.tools.backend.jvm.opt
 
-import dotty.tools.backend.jvm.BackendUtils
-
 import scala.tools.asm.tree.MethodNode
 
 /**

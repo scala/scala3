@@ -32,7 +32,7 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes) extends BCodeSkelBuilder {
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -155,7 +155,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         // binary operation
         case rarg :: Nil =>
           val isShift = isShiftOp(code)
-          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), bTypes)
+          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), bTypes.ObjectRef)
 
           if (isShift || isBitwiseOp(code)) {
             assert(resKind.isIntegralType || (resKind == BOOL),
@@ -195,7 +195,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       import ScalaPrimitivesOps.*
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
-      val elementType = bTypes.typeOfArrayOp.getOrElse[BType](code, throw new AssertionError(s"Unknown operation on arrays: $tree code: $code"))
+      val elementType = k.asArrayBType.componentType
 
       var generatedType = expectedType
 
@@ -205,7 +205,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         stack.push(k)
         genLoad(args.head, INT)
         stack.pop()
-        generatedType = k.asArrayBType.componentType
+        generatedType = elementType
         bc.aload(elementType)
       }
       else if (isArraySet(code)) {
@@ -317,7 +317,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
 
     /* Generate code for trees that produce values, sent to a given `LoadDestination`. */
     def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination)(using Context): Unit =
-      var generatedType = expectedType
+      var generatedType: BType | Null = expectedType
       var generatedDest = LoadDestination.FallThrough
 
       lineNumber(tree)
@@ -453,7 +453,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           if (value.tag != UnitTag) (value.tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
-            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = bTypes.srNullRef
+            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = null
             case _                  => genConstant(value, l.srcPos);     generatedType = tpeTK(tree)
           }
 
@@ -497,7 +497,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         genAdaptAndSendToDest(generatedType, expectedType, dest)
     end genLoadTo
 
-    def genAdaptAndSendToDest(generatedType: BType, expectedType: BType, dest: LoadDestination)(using Context): Unit =
+    def genAdaptAndSendToDest(generatedType: BType | Null, expectedType: BType, dest: LoadDestination)(using Context): Unit =
       if generatedType != expectedType then
         adapt(generatedType, expectedType)
 
@@ -522,7 +522,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           val thrownType = expectedType
           // `throw null` is valid although scala.Null (as defined in src/library-aux) isn't a subtype of Throwable.
           // Similarly for scala.Nothing (again, as defined in src/library-aux).
-          assert(thrownType == bTypes.srNullRef || thrownType == bTypes.srNothingRef || thrownType.asClassBType.isSubtypeOf(bTypes.jlThrowableRef))
+          assert(thrownType.isNull || thrownType.isNothing || thrownType.asClassBType.isSubtypeOf(bTypes.jlThrowableRef))
           emit(asm.Opcodes.ATHROW)
     end genAdaptAndSendToDest
 
@@ -598,7 +598,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
               asm.Opcodes.GETSTATIC,
               boxedClass.internalName,
               "TYPE", // field name
-              bTypes.jlClassRef.descriptor
+              "Ljava/lang/Class;"
             )
           else
             val toASM = tp.toASMType
@@ -718,7 +718,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         else if (l.isPrimitive) {
           bc.drop(l)
           if (cast) {
-            mnode.visitTypeInsn(asm.Opcodes.NEW, bTypes.jlClassCastExceptionRef.internalName)
+            mnode.visitTypeInsn(asm.Opcodes.NEW, bTypeLoader.classBTypeFromSymbol(defn.ClassCastExceptionClass).internalName)
             bc.dup(bTypes.ObjectRef)
             emit(asm.Opcodes.ATHROW)
           } else {
@@ -838,16 +838,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
-          val MethodNameAndType(mname, methodType) = bTypes.asmBoxTo(nativeKind)
-          bc.invokestatic(bTypes.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
-          generatedType = bTypes.boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
+          val returnType = bTypes.boxedClassOfPrimitive(nativeKind)
+          val methodName = "boxTo" + returnType.simpleName
+          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(nativeKind, returnType), itf = false, app)
+          generatedType = returnType
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
-          val boxType = bTypes.unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
+          val boxType = bTypeLoader.bTypeFromType(app.tpe)
           generatedType = boxType
-          val MethodNameAndType(mname, methodType) = bTypes.asmUnboxTo(boxType)
-          bc.invokestatic(bTypes.srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false, app)
+          val methodName = "unboxTo" + boxType.asInstanceOf[PrimitiveBType].name
+          bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(bTypes.ObjectRef, boxType), itf = false, app)
 
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
@@ -1160,7 +1161,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
      *  `varsInScope`, ending at the current program point.
      */
     def emitLocalVarScopes(): Unit =
-      if (BackendUtils.emitVars) {
+      if (emitVars) {
         val end = currProgramPoint()
         for ((sym, start) <- varsInScope.nn.reverse) {
           emitLocalVarScope(sym, start, end)
@@ -1168,8 +1169,27 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
       }
     end emitLocalVarScopes
 
-    def adapt(from: BType, to: BType)(using Context): Unit = {
-      if (from == bTypes.srNothingRef) {
+    def adapt(from: BType | Null, to: BType)(using Context): Unit = {
+      if (from == null || from.isNull) {
+        /* After loading an expression of type `scala.runtime.Null$`, introduce POP; ACONST_NULL.
+         * This is required to pass the verifier: in Scala's type system, Null conforms to any
+         * reference type. In bytecode, the type Null is represented by scala.runtime.Null$, which
+         * is not a subtype of all reference types. Example:
+         *
+         *   def nl: Null = null // in bytecode, nl has return type scala.runtime.Null$
+         *   val a: String = nl  // OK for Scala but not for the JVM, scala.runtime.Null$ does not conform to String
+         *
+         * In order to fix the above problem, the value returned by nl is dropped and ACONST_NULL is
+         * inserted instead - after all, an expression of type scala.runtime.Null$ can only be null.
+         */
+        if (lastInsn.getOpcode != asm.Opcodes.ACONST_NULL) {
+          bc.drop(bTypes.ObjectRef)
+          if (to != UNIT)
+            emit(asm.Opcodes.ACONST_NULL)
+        } else if (to == UNIT) {
+          bc.drop(bTypes.ObjectRef)
+        }
+      } else if (from.isNothing) {
         /* There are two possibilities for from being Nothing: emitting a "throw e" expressions and
          * loading a (phantom) value of type Nothing.
          *
@@ -1216,25 +1236,6 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
          */
         if (lastInsn.getOpcode != asm.Opcodes.ATHROW)
           emit(asm.Opcodes.ATHROW)
-      } else if (from == bTypes.srNullRef) {
-        /* After loading an expression of type `scala.runtime.Null$`, introduce POP; ACONST_NULL.
-         * This is required to pass the verifier: in Scala's type system, Null conforms to any
-         * reference type. In bytecode, the type Null is represented by scala.runtime.Null$, which
-         * is not a subtype of all reference types. Example:
-         *
-         *   def nl: Null = null // in bytecode, nl has return type scala.runtime.Null$
-         *   val a: String = nl  // OK for Scala but not for the JVM, scala.runtime.Null$ does not conform to String
-         *
-         * In order to fix the above problem, the value returned by nl is dropped and ACONST_NULL is
-         * inserted instead - after all, an expression of type scala.runtime.Null$ can only be null.
-         */
-        if (lastInsn.getOpcode != asm.Opcodes.ACONST_NULL) {
-          bc.drop(from)
-          if (to != UNIT)
-            emit(asm.Opcodes.ACONST_NULL)
-        } else if (to == UNIT) {
-          bc.drop(from)
-        }
       } else if (!from.conformsTo(to)) {
         to match {
           case UNIT => bc.drop(from)
@@ -1483,7 +1484,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
         val ownerBType = bTypeLoader.bTypeFromType(method.owner.info)
         if (isInterface && !method.is(JavaDefined)) {
           val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
-          val staticName = BackendUtils.traitSuperAccessorName(method)
+          val staticName = SymbolUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
           if (isInterface) {
@@ -1607,7 +1608,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder
           genLoad(nonNullSide, bTypes.ObjectRef)
           genCZJUMP(success, failure, op, bTypes.ObjectRef, targetIfNoJump)
         } else {
-          val tk = tpeTK(l).maxType(tpeTK(r), bTypes)
+          val tk = tpeTK(l).maxType(tpeTK(r), bTypes.ObjectRef)
           genLoad(l, tk)
           stack.push(tk)
           genLoad(r, tk)
