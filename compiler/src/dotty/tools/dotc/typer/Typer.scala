@@ -5336,8 +5336,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean)
       (using Context): Unit =
-    if !tree.tpe.isErroneous
-      && !ctx.isAfterTyper
+    if !ctx.isAfterTyper
+      && !tree.tpe.isErroneous
       && tree.match
          case Inlined(_, Nil, Literal(k)) if k.tag == UnitTag => false // e.g., assert(2 + 2 == 4)
          case tree => isPureExpr(tree)
