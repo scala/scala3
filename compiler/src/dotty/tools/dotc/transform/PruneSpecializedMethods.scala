@@ -21,7 +21,7 @@ class PruneSpecializedMethods extends MiniPhase with InfoTransformer { thisTrans
   override def description: String = PruneSpecializedMethods.description
 
   override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match {
-    case clsInfo: ClassInfo if sym.isClass && !sym.is(Package) => 
+    case clsInfo: ClassInfo if sym.isClass && !sym.is(Package) && !sym.is(JavaDefined) => 
       clsInfo.derivedClassInfo(decls =
           clsInfo.decls.filteredScope(!isDeletable(_))
       )
@@ -34,7 +34,8 @@ class PruneSpecializedMethods extends MiniPhase with InfoTransformer { thisTrans
       case stmt => Some(stmt)
     }))
 
-  private def isDeletable(sym: Symbol)(using Context): Boolean = sym.isSpecializedMethod
+  private def isDeletable(sym: Symbol)(using Context): Boolean = 
+    Specialization.isSpecializedMethod(sym)
 }
 
 object PruneSpecializedMethods {

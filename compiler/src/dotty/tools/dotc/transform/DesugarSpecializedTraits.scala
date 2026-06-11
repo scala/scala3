@@ -653,7 +653,12 @@ object Specialization:
     case _ => None
   }
 
-  def classSpecializedTypeParams(classSym: Symbol)(using Context): List[Type] = classSym.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
+  def classSpecializedTypeParams(classSym: Symbol)(using Context): List[Type] = 
+    if !classSym.isClass || classSym.is(Flags.JavaDefined) then
+      List.empty
+    else
+      classSym.unforcedDecls.implicitDecls.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
+
   def methodSpecializedTypeParams(methodSym: Symbol)(using Context): List[Type] = methodSym.paramSymss.flatten.collect(_.info match { case SpecializedEvidence(typeVar) => typeVar })
   
   // TODO: These methods are used in other phases; probably move them to the phase object? 
