@@ -19,7 +19,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm
 import scala.tools.asm.Opcodes.*
-import scala.tools.asm.Type
+import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
 import dotty.tools.backend.jvm.BTypes.InternalName
@@ -31,35 +31,6 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
               callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
               settings: OptimizerSettings) {
-
-  // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
-  // inlined in a later inlining round.
-  // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
-  // super accessors that we emit in traits. The inlined calls are marked in the call graph as
-  // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
-  // the call graph will always return the corresponding method in the trait.
-  private def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
-    insns.forall({
-      case mi: MethodInsnNode =>
-        (mi.getOpcode != INVOKESPECIAL) || {
-          // Special handling for invokespecial T.f that appears within T, and T defines f.
-          // Such an instruction can be inlined into a different class, but it needs to be inlined in
-          // turn in a later inlining round.
-          // The call graph needs to treat it specially: the normal dynamic lookup needs to be
-          // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
-          def hasMethod(c: ClassNode): Boolean = {
-            val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
-            if (r) callGraph.staticallyResolvedInvokespecial += mi
-            r
-          }
-
-          mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME &&
-            mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
-            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
-        }
-      case _ => false
-    })
-  }
 
   def runInlinerAndClosureOptimizer(issueSink: OptimizerIssue => Unit): Unit = {
     var round = 0
@@ -176,7 +147,7 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
             case None =>
               doInline(r, aliasFrame, None)
 
-            case Some(w: IllegalAccessInstructions) if maybeInlinedLater(r.callsite, w.instructions) =>
+            case Some(w: IllegalAccessInstructions) if callGraph.maybeInlinedLater(r.callsite, w.instructions) =>
               if (state.undoLog.isEmpty) {
                 val undo = new UndoLog(indyTracker, callGraph)
                 val currentState = state.clone()
