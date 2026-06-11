@@ -22,6 +22,7 @@ abstract class methods:
     def bar8(a: A[Object]): Lion // A[Object] -> A
     def bar9(a: A[AnyVal]): Lion // A[AnyVal] -> A
     def bar10(a: A[AnyRef]): Lion // A[AnyRef] -> A
+    def bar11(a: A[A[Int]]): Lion // A[A[Int]] -> A
 
 @main def Test =
     val expectedParamErasure = Map(
@@ -35,6 +36,7 @@ abstract class methods:
         "bar8"  -> "A",
         "bar9"  -> "A",
         "bar10" -> "A",
+        "bar11" -> "A",
     )
 
     val actualParamErasure = classOf[methods].getDeclaredMethods.iterator
