@@ -89,7 +89,7 @@ object NamedTuple:
   type Drop[X <: AnyNamedTuple, N <: Int] =
     NamedTuple[Tuple.Drop[Names[X], N], Tuple.Drop[DropNames[X], N]]
 
-  /** The pair type `(Take(X, N), Drop[X, N]). */
+  /** The pair type `(Take[X, N], Drop[X, N]). */
   type Split[X <: AnyNamedTuple, N <: Int] = (Take[X, N], Drop[X, N])
 
   /** The type of the concatenation of two tuples `X` and `Y`. */
