@@ -893,7 +893,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     /** Does sym refer to a "compiler intrinsic" method, which only exist during compilation,
       * like Any.isInstanceOf?
-      * If this returns true, the call souldn't be instrumented.
+      * If this returns true, the call shouldn't be instrumented.
       */
     private def isCompilerIntrinsicMethod(sym: Symbol)(using Context): Boolean =
       val owner = sym.maybeOwner
