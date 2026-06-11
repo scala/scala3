@@ -484,7 +484,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
     }
 
-    def canSkipSecondTryForAppliedRhs(tp1: Type): Boolean = tp1 match
+    def canSkipSecondTry(tp1: Type): Boolean = tp1 match
       case _: NamedType | _: TypeParamRef | _: ThisType | _: SkolemType | _: TypeVar
           | _: WildcardType | _: LazyRef | _: AndType | _: OrType | _: MatchType | _: FlexType =>
         false
@@ -494,6 +494,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
       case _ =>
         true
+
+    def firstTryFallback: Boolean =
+      if canSkipSecondTry(tp1) then thirdTry else secondTry
 
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
@@ -543,7 +546,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // If no secondTry LHS case can fire, secondTry would dispatch to thirdTry,
               // which for a class-symboled RHS continues with thirdTryKnownClass after
               // re-forcing tp2.info and re-reading tp2.symbol. Call it directly instead.
-              if canSkipSecondTryForAppliedRhs(tp1) then thirdTryKnownClass(tp2, sym2)
+              if canSkipSecondTry(tp1) then thirdTryKnownClass(tp2, sym2)
               else secondTry
 
           tp2 match
@@ -593,7 +596,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ =>
               // Same bypass as in compareKnownClass: when no secondTry LHS case can
               // fire, go to thirdTryNamed directly, reusing the already-forced info2.
-              if canSkipSecondTryForAppliedRhs(tp1) then thirdTryNamed(tp2, info2)
+              if canSkipSecondTry(tp1) then thirdTryNamed(tp2, info2)
               else secondTry
         end compareNamed
         // See the documentation of `FromJavaObjectSymbol`
@@ -605,7 +608,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         isMatchedByProto(tp2, tp1)
       case tp2: BoundType =>
         tp2 == tp1
-        || secondTry
+        || firstTryFallback
       case tp2: TypeVar =>
         recur(tp1, typeVarInstance(tp2))
       case tp2: WildcardType =>
@@ -618,7 +621,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         cachedIsBottomTp1(tp1)
         || !tp2.evaluating && recur(tp1, tp2.ref)
       case CapturingType(_, _) =>
-        secondTry
+        firstTryFallback
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
       case tp2: ThisType =>
@@ -632,7 +635,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               recur(tp1.prefix, cls2.owner.thisType) ||
               secondTry
             case _ =>
-              secondTry
+              firstTryFallback
           }
         }
         compareThis
@@ -642,26 +645,26 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             recur(tp1.thistpe, tp2.thistpe) &&
             isSameType(tp1.supertpe, tp2.supertpe)
           case _ =>
-            secondTry
+            firstTryFallback
         }
         compareSuper
       case AndType(tp21, tp22) =>
         recur(tp1, tp21) && recur(tp1, tp22)
       case OrType(tp21, tp22) =>
         if (tp21.stripTypeVar eq tp22.stripTypeVar) recur(tp1, tp21)
-        else secondTry
+        else firstTryFallback
       case TypeErasure.ErasedValueType(tycon1, underlying2) =>
         def compareErasedValueType = tp1 match {
           case TypeErasure.ErasedValueType(tycon2, underlying1) =>
             (tycon1.symbol eq tycon2.symbol) && isSubType(underlying1, underlying2)
           case _ =>
-            secondTry
+            firstTryFallback
         }
         compareErasedValueType
       case ConstantType(v2) =>
         tp1 match {
           case ConstantType(v1) => v1 == v2 && recur(v1.tpe, v2.tpe)
-          case _ => secondTry
+          case _ => firstTryFallback
         }
       case tp2: AnyConstantType =>
         if (tp2.tpe.exists) recur(tp1, tp2.tpe)
@@ -670,14 +673,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             tp2.tpe = tp1
             true
           case _ =>
-            secondTry
+            firstTryFallback
         }
       case _: FlexType =>
         true
-      case tp2 @ AppliedType(tycon2, args2) if canSkipSecondTryForAppliedRhs(tp1) =>
+      case tp2 @ AppliedType(tycon2, args2) if canSkipSecondTry(tp1) =>
         compareAppliedType2(tp2, tycon2, args2)
       case _ =>
-        secondTry
+        firstTryFallback
     }
 
     def secondTry: Boolean = tp1 match {
