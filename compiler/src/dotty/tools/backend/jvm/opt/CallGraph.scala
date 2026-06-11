@@ -59,7 +59,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
    * optimizer: finding callsites to re-write requires running a producers-consumers analysis on
    * the method. Here the closure instantiations are already grouped by method.
    */
-  val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = concurrent.TrieMap.empty withDefaultValue Map.empty
+  private val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = concurrent.TrieMap.empty withDefaultValue Map.empty
 
   /**
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
@@ -104,6 +104,12 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
 
   def containsCallsite(callsite: Callsite): Boolean = callsites(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
 
+  def methodsWithClosureInstantiations(): List[MethodNode] =
+    closureInstantiations.keysIterator.toList // toList clones it so it's safe to update the call graph while iterating over this
+
+  def getClosureInstantiations(methodNode: MethodNode): Map[InvokeDynamicInsnNode, ClosureInstantiation] =
+    closureInstantiations.getOrElse(methodNode, Map.empty)
+  
   def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Option[ClosureInstantiation] = {
     val methodClosureInits = closureInstantiations(methodNode)
     val newClosureInits = methodClosureInits - indy
