@@ -8,7 +8,7 @@ import java.net.{URI, URL}
 import java.nio.file.{FileSystems, Files}
 
 import dotty.tools.dotc.classpath.PackageNameUtils.{packageContains, separatePkgAndClassNames}
-import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation}
+import dotty.tools.io.{AbstractFile, PlainFile, ClassPath}
 import FileUtils.*
 import PlainFile.toPlainFile
 
@@ -22,7 +22,7 @@ import scala.collection.immutable.ArraySeq
  * when we have a name of a package.
  * It abstracts over the file representation to work with both JFile and AbstractFile.
  */
-trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
+trait DirectoryLookup[FileEntryType] extends ClassPath {
   type F
 
   val dir: F
@@ -64,7 +64,7 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
   }
 }
 
-trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends DirectoryLookup[FileEntryType] {
+trait JFileDirectoryLookup[FileEntryType] extends DirectoryLookup[FileEntryType] {
   type F = JFile
 
   protected def emptyFiles: Array[JFile] = Array.empty
