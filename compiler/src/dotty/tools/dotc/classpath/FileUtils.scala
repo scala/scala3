@@ -4,9 +4,9 @@
 package dotty.tools
 package dotc.classpath
 
-import java.io.{File => JFile, FileFilter}
+import java.io.{FileFilter, File as JFile}
 import java.net.URL
-import dotty.tools.io.AbstractFile
+import dotty.tools.io.{AbstractFile, FileExtension}
 
 /**
  * Common methods related to Java files and abstract files used in the context of classpath
@@ -14,25 +14,6 @@ import dotty.tools.io.AbstractFile
 object FileUtils {
   extension (file: AbstractFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
-
-    def isClass: Boolean = !file.isDirectory && hasClassExtension
-
-    def hasClassExtension: Boolean = file.ext.isClass
-
-    def hasTastyExtension: Boolean = file.ext.isTasty
-
-    def hasBetastyExtension: Boolean = file.ext.isBetasty
-
-    def isTasty: Boolean = !file.isDirectory && hasTastyExtension
-
-    def isBestEffortTasty: Boolean = !file.isDirectory && hasBetastyExtension
-
-    def isScalaBinary: Boolean = file.isClass || file.isTasty
-
-    def isSource: Boolean = !file.isDirectory && file.ext.isSourceExtension
-
-    // TODO do we need to check also other files using ZipMagicNumber like in scala.tools.nsc.io.Jar.isJarOrZip?
-    def isJarOrZip: Boolean = file.ext.isJarOrZip
 
     /**
      * Safe method returning a sequence containing one URL representing this file, when underlying file exists,
@@ -46,7 +27,7 @@ object FileUtils {
      * Returns if there is an existing sibling `.tasty` file.
      */
     def hasSiblingTasty: Boolean =
-      assert(file.hasClassExtension, s"non-class: $file")
+      assert(file.ext.isClass, s"non-class: $file")
       file.resolveSibling(classNameToTasty(file.name)) != null
   }
 
@@ -55,11 +36,11 @@ object FileUtils {
 
     def isClass: Boolean = file.isFile && hasClassExtension
 
-    def hasClassExtension: Boolean = file.getName.endsWith(SUFFIX_CLASS)
+    def hasClassExtension: Boolean = file.getName.endsWith(FileExtension.Class.withDot)
 
-    def isTasty: Boolean = file.isFile && file.getName.endsWith(SUFFIX_TASTY)
+    def isTasty: Boolean = file.isFile && file.getName.endsWith(FileExtension.Tasty.withDot)
 
-    def isBestEffortTasty: Boolean = file.isFile && file.getName.endsWith(SUFFIX_BETASTY)
+    def isBestEffortTasty: Boolean = file.isFile && file.getName.endsWith(FileExtension.Betasty.withDot)
 
 
     /**
@@ -73,20 +54,12 @@ object FileUtils {
 
   }
 
-  private val SUFFIX_CLASS = ".class"
-  private val SUFFIX_SCALA = ".scala"
-  private val SUFFIX_TASTY = ".tasty"
-  private val SUFFIX_BETASTY = ".betasty"
-  private val SUFFIX_JAVA = ".java"
-
-  private val sourceSuffixes = Set(SUFFIX_SCALA, SUFFIX_JAVA)
-
   def stripSourceExtension(fileName: String): String =
     if endsSourceExtension(fileName) then stripExtension(fileName)
     else throw new FatalError("Unexpected source file ending: " + fileName)
 
   def endsSourceExtension(fileName: String): Boolean =
-    sourceSuffixes.exists(ends(fileName, _))
+    ends(fileName, FileExtension.Scala.withDot) || ends(fileName, FileExtension.Java.withDot)
 
   def dirPath(forPackage: String): String = forPackage.replace('.', JFile.separatorChar)
 
@@ -119,5 +92,5 @@ object FileUtils {
         && classOrModuleName != "$"
       then classOrModuleName.stripSuffix("$")
       else classOrModuleName
-    className + SUFFIX_TASTY
+    className + FileExtension.Tasty.withDot
 }

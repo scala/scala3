@@ -48,6 +48,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
 
   protected def createFileEntry(file: AbstractFile): BinaryFileEntry = BinaryFileEntry(file)
 
-  protected def isMatchingFile(f: AbstractFile): Boolean =
-    f.isTasty || (f.isClass && !f.hasSiblingTasty)
+  protected def isMatchingFile(f: AbstractFile): Boolean = {
+    f.exists && (f.ext.isTasty || (f.ext.isClass && !f.hasSiblingTasty))
+  }
 }

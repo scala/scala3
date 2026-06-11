@@ -3,7 +3,6 @@
  */
 package dotty.tools.dotc.classpath
 
-import dotty.tools.dotc.classpath.FileUtils.isTasty
 import dotty.tools.io.{AbstractFile, ClassRepresentation, FileExtension}
 
 trait PackageEntry {
@@ -20,7 +19,7 @@ sealed trait BinaryFileEntry extends ClassRepresentation {
 
 object BinaryFileEntry {
   def apply(file: AbstractFile): BinaryFileEntry =
-    if file.isTasty then
+    if file.exists && file.ext.isTasty then
       if file.resolveSiblingWithExtension(FileExtension.Class) != null then TastyWithClassFileEntry(file)
       else StandaloneTastyFileEntry(file)
     else

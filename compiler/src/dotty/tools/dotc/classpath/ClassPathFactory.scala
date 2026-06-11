@@ -85,7 +85,7 @@ object ClassPathFactory {
   def newClassPath(file: AbstractFile)(using Context): ClassPath = file match {
     case vd: VirtualDirectory => VirtualDirectoryClassPath(vd)
     case _ =>
-      if (file.isJarOrZip)
+      if (file.ext.isJarOrZip)
         ZipAndJarClassPathFactory.create(file)
       else if (file.isDirectory)
         new DirectoryClassPath(file.file.nn)
@@ -94,7 +94,7 @@ object ClassPathFactory {
   }
 
   def newSourcePath(file: AbstractFile)(using Context): ClassPath =
-    if (file.isJarOrZip)
+    if (file.ext.isJarOrZip)
       ZipAndJarSourcePathFactory.create(file)
     else if (file.isDirectory)
       new DirectorySourcePath(file.file.nn)

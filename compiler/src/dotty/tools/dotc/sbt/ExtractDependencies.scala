@@ -6,7 +6,6 @@ import java.nio.file.Path
 import java.util.EnumSet
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.classpath.FileUtils.{hasClassExtension, hasTastyExtension}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
@@ -531,7 +530,7 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTastyOrSig = depFile.hasTastyExtension
+      val isTastyOrSig = depFile.ext.isTasty
 
       def processExternalDependency() = {
         val binaryClassName = depClass.binaryClassName
@@ -548,7 +547,7 @@ class DependencyRecorder {
         }
       }
 
-      if isTastyOrSig || depFile.hasClassExtension then
+      if isTastyOrSig || depFile.ext.isClass then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because

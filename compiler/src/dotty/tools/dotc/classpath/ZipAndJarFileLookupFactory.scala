@@ -53,7 +53,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     override protected def createFileEntry(file: FileZipArchive#Entry): BinaryFileEntry = BinaryFileEntry(file)
 
     override protected def isRequiredFileType(file: AbstractFile): Boolean =
-      file.isTasty || (file.isClass && !file.hasSiblingTasty)
+      file.exists && (file.ext.isTasty || (file.ext.isClass && !file.hasSiblingTasty))
   }
 
   /**
@@ -125,7 +125,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     override def classes(inPackage: String): Seq[BinaryFileEntry] = cachedPackages.get(inPackage) match {
       case None => Seq.empty
       case Some(PackageFileInfo(pkg, _)) =>
-        (for (file <- pkg if file.isClass) yield ClassFileEntry(file)).toSeq
+        (for (file <- pkg if file.exists && file.ext.isClass) yield ClassFileEntry(file)).toSeq
     }
 
     override def hasPackage(pkg: String) = cachedPackages.contains(pkg)
@@ -161,7 +161,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
     override def sources(inPackage: String): Seq[SourceFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntry = SourceFileEntry(file)
-    override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isSource
+    override protected def isRequiredFileType(file: AbstractFile): Boolean = file.ext.isSourceExtension
   }
 
   override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =
