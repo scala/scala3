@@ -524,16 +524,20 @@ object Erasure {
      */
     private def checkNotErased(tree: Tree)(using Context): tree.type =
       if !ctx.mode.is(Mode.Type) then
+        val sym = tree.symbol
         if isErased(tree) then
           val msg =
-            if tree.symbol.is(Flags.Inline) then
+            if sym.is(Flags.Inline) then
               em"""${tree.symbol} is declared as `inline`, but was not inlined
                   |
                   |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}"""
             else
               em"${tree.symbol} is declared as `erased`, but is in fact used"
           report.error(msg, tree.srcPos)
-        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
+        val compileTimeOnlyAnnot = sym.annotations match
+          case Nil => None
+          case annots => annots.find(_.matches(defn.CompileTimeOnlyAnnot))
+        compileTimeOnlyAnnot match
           case Some(annot) =>
             val message = annot.argumentConstantString(0) match
               case Some(msg) =>
@@ -609,7 +613,7 @@ object Erasure {
       else if (tree.const.tag == Constants.ClazzTag)
         clsOf(tree.const.typeValue)
       else
-        super.typedLiteral(tree)
+        tree.withType(tree.const.tpe)
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
       val tree1 = checkNotErased(super.typedIdent(tree, pt))
@@ -646,8 +650,15 @@ object Erasure {
      *      e.clone -> e.clone'         where clone' is Object's clone method
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
+    private def shouldProbeIntegratedApply(tree: untpd.Select)(using Context): Boolean =
+      val sym = tree.symbol
+      if !sym.exists then true
+      else
+        val owner = sym.maybeOwner
+        owner.isClass && (defn.isContextFunctionClass(owner) || owner.derivesFrom(defn.PolyFunctionClass))
+
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      if tree.name == nme.apply && integrateSelect(tree) then
+      if tree.name == nme.apply && shouldProbeIntegratedApply(tree) && integrateSelect(tree) then
         return typed(tree.qualifier, pt)
 
       var qual1 = typed(tree.qualifier, AnySelectionProto)
@@ -820,16 +831,17 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
-      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
-          args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
-            if isErased then
-              checkPureErased(arg, isArgument = true,
-                isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
-              Nil
-            else
-              arg :: Nil
+        case mt: MethodType if mt.hasErasedParams =>
+          if ctx.owner.ownersIterator.exists(_.is(Flags.Bridge)) then args
+          else
+            args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
+              if isErased then
+                checkPureErased(arg, isArgument = true,
+                  isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
+                Nil
+              else
+                arg :: Nil
         case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
