@@ -215,7 +215,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
           }
 
         val rs = mutable.ListBuffer.empty[InlineRequest]
-        callGraph.callsites(method).valuesIterator foreach {
+        callGraph.getCallsites(method).foreach {
           // Don't inline: recursive calls, callsites that failed inlining before
           case cs: KnownCallsite if !failed(cs.callsiteInstruction) && !isLoop(cs.callsiteInstruction, cs.callee) =>
             heuristics.inlineRequest(cs) match {

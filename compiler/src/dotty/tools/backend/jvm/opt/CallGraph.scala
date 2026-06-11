@@ -20,13 +20,11 @@ import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
-import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, *}
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
-import dotty.tools.dotc.ast.Positioned
 
 class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
 
@@ -50,7 +48,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
    * The call graph is less problematic because only methods being called are kept alive, not entire
    * classes. But we should keep an eye on this.
    */
-  val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = concurrent.TrieMap.empty withDefaultValue Map.empty
+  private val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = concurrent.TrieMap.empty withDefaultValue Map.empty
 
   /**
    * Closure instantiations in the program being compiled.
@@ -81,10 +79,16 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
   // statically by the call graph. See Inliner.maybeInlinedLater.
   private val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = mutable.Set.empty
 
-  def isStaticCallsite(call: MethodInsnNode): Boolean = {
+  private def isStaticCallsite(call: MethodInsnNode): Boolean = {
     val opc = call.getOpcode
     opc == Opcodes.INVOKESTATIC || opc == Opcodes.INVOKESPECIAL && staticallyResolvedInvokespecial(call)
   }
+
+  def getCallsites(methodNode: MethodNode): Iterable[Callsite] =
+    callsites(methodNode).values
+
+  def getCallsite(methodNode: MethodNode, invocation: MethodInsnNode): Option[Callsite] =
+    callsites(methodNode).get(invocation)
 
   def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
     val methodCallsites = callsites(methodNode)
@@ -109,7 +113,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
 
   def getClosureInstantiations(methodNode: MethodNode): Map[InvokeDynamicInsnNode, ClosureInstantiation] =
     closureInstantiations.getOrElse(methodNode, Map.empty)
-  
+
   def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Option[ClosureInstantiation] = {
     val methodClosureInits = closureInstantiations(methodNode)
     val newClosureInits = methodClosureInits - indy
@@ -132,7 +136,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
     addMethod(methodNode, definingClass)
   }
 
-  def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
+  private def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
     if (!BCodeUtils.isAbstractMethod(methodNode) && !BCodeUtils.isNativeMethod(methodNode) && Limits.sizeOKForBasicValue(methodNode)) {
       lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
 
