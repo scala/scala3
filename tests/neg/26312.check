@@ -1,0 +1,10 @@
+-- [E173] Reference Error: tests/neg/26312/Use_2.scala:3:16 ------------------------------------------------------------
+3 |    val c = new Coder_1[Int, Int, Int](null) // error
+  |                ^^^^^^^^^^^^^^^^^^^^^^
+  |                constructor Coder_1 cannot be accessed as a member of Coder_1[Int, Int, Int] from object Test.
+  |                  private constructor Coder_1 can only be accessed from class Coder_1.
+-- [E171] Type Error: tests/neg/26312/Use_2.scala:4:13 -----------------------------------------------------------------
+4 |    val c2 = new Coder_1$1[Int, Int, Int](null) // error
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |not enough arguments for constructor Coder_1$1 in class Coder_1$1: (x$0: Coder_1[?, ?, ?], x$1: Coder_1.Ring[?], x$2: java.util.function.Function[?, ?], x$3: Coder_1[?, ?, ?]):
+  |  Coder_1$1[Int, Int, Int]
