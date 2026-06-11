@@ -703,7 +703,14 @@ object Erasure {
         qual1 = checkValue(qual1)
 
       def select(qual: Tree, sym: Symbol): Tree =
-        untpd.cpy.Select(tree)(qual, sym.name).withType(NamedType(qual.tpe, sym))
+        val qualType = qual.tpe
+        val tpe = tree.typeOpt match
+          case tpe: NamedType =>
+            if (tpe.prefix eq qualType) && (tpe.designator.asInstanceOf[AnyRef] eq sym) then tpe
+            else NamedType(qualType, sym)
+          case _ =>
+            NamedType(qualType, sym)
+        untpd.cpy.Select(tree)(qual, sym.name).withType(tpe)
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if erasedPre.isAnyRef then
