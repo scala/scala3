@@ -277,8 +277,10 @@ class CopyProp(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracke
       }
 
       if (toInline.nonEmpty) {
-        val methodCallsites = callGraph.callsites(method).collect { case (k, v: KnownCallsite) => (k, v) }
-        var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
+        var css = toInline.flatMap(callGraph.getCallsite(method, _))
+                          .collect { case k: KnownCallsite => k }
+                          .toList
+                          .sorted(using callsiteOrdering)
         while (css.nonEmpty) {
           val cs = css.head
           css = css.tail
