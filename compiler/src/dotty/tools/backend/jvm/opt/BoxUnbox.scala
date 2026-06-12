@@ -619,7 +619,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
         if (prodCons.producersForInputsOf(dupOp) == Set(newOp)) {
           val dupCons = prodCons.consumersOfOutputsFrom(dupOp)
           val initCalls = dupCons collect {
-            case mi: MethodInsnNode if mi.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME && mi.owner == newOp.desc => mi
+            case mi: MethodInsnNode if mi.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && mi.owner == newOp.desc => mi
           }
           if (initCalls.size == 1) {
             val initCall = initCalls.head
@@ -668,7 +668,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
     private def boxedType(mi: MethodInsnNode) = Type.getArgumentTypes(mi.desc)(0)
 
     private def boxClass(mi: MethodInsnNode) = {
-      if (mi.name == GenBCode.INSTANCE_CONSTRUCTOR_NAME) mi.owner
+      if (mi.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) mi.owner
       else Type.getReturnType(mi.desc).getInternalName
     }
 

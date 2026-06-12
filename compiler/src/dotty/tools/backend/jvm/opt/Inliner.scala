@@ -54,7 +54,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
             r
           }
 
-          mi.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME &&
+          mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME &&
             mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
             byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
         }
@@ -862,7 +862,7 @@ class Inliner(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils,
             } else {
               def canInlineCall(opcode: Int, methodFlags: Int, methodDeclClass: ClassBType, methodRefClass: ClassBType): Boolean = {
                 opcode match {
-                  case INVOKESPECIAL if mi.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME =>
+                  case INVOKESPECIAL if mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME =>
                     // invokespecial is used for private method calls, super calls and instance constructor calls.
                     // private method and super calls can only be inlined into the same class.
                     destinationClass == calleeDeclarationClass

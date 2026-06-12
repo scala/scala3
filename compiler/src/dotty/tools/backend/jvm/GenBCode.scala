@@ -177,8 +177,4 @@ class GenBCode extends Phase { self =>
 object GenBCode {
   val name: String = "genBCode"
   val description: String = "generate JVM bytecode"
-
-  val CLASS_CONSTRUCTOR_NAME = "<clinit>"
-  val INSTANCE_CONSTRUCTOR_NAME = "<init>"
-
 }
