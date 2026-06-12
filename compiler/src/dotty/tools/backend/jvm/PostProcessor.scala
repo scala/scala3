@@ -46,8 +46,7 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
     val classNode = clazz.classNode
     val bytes =
       try
-        if !clazz.isMirror then
-          runLocalOptimizations(classNode)
+        runLocalOptimizations(classNode)
         warnCaseInsensitiveOverwrite(clazz)
         setInnerClasses(classNode)
         serializeClass(classNode)
@@ -208,7 +207,6 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
       byteCodeRepository.add(c.classNode, Some(u.sourcePath))
     for u <- generatedUnits
         c <- u.classes
-        if !c.isMirror // skip call graph for mirrors: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
     inliner.run(i => report.optimizerWarning(i.msg, i.site, i.pos))
@@ -221,7 +219,6 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
 case class GeneratedClass(
   classNode: ClassNode,
   position: SourcePosition,
-  isMirror: Boolean,
   onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(internalName: String, tastyGen: () => Array[Byte])
 case class GeneratedCompilationUnit(sourcePath: String, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
