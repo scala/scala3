@@ -11,6 +11,8 @@ object MiMaFilters {
       Versions.mimaPreviousDottyVersion -> Seq(
         // new feature: CanEqual support for NamedTuple
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
+        // IArray integration with Scala Collections:
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.BuildFrom.buildFromIArray"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
