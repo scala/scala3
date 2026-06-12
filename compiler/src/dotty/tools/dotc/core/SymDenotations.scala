@@ -1052,9 +1052,9 @@ object SymDenotations {
       def preIsThis = pre match
         case pre: ThisType => pre.sameThis(thisType)
         case _ => false
-      !(  this.isTerm
-       || ctx.erasedTypes
+      !(  ctx.erasedTypes
        || (pre eq NoPrefix)
+       || this.isTerm
        || this.isStaticOwner && !this.seesOpaques
        || preIsThis
        )
