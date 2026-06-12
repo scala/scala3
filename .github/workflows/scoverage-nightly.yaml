@@ -4,13 +4,22 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
+  push:
+    tags:
+      - '*'
   pull_request:
     branches:
       - main
 
 # This workflow compiles a subset of the Scala 3 projects with
 # scoverage enabled to test robustness of scoverage.
-# 
+#
+# Triggers:
+# - Nightly at 3 AM
+# - Push to tags
+# - PRs to main with [test_coverage] marker in the body
+# - Manual workflow dispatch
+#
 # Project scoverage compilation status:
 #
 # Compiles with scoverage + Ycheck:
@@ -26,12 +35,16 @@ on:
 #   - scala3-compiler-nonbootstrapped
 #   - scaladoc
 #
+# Coverage test suite:
+#   - scala3-bootstrapped (testCompilation --enable-coverage-phase)
+#
 # Does not compile with scoverage (omitted):
 #   - scala-library-bootstrapped
 
 jobs:
   # Projects that compile with coverage + Ycheck
   tasty-core-bootstrapped-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -53,6 +66,7 @@ jobs:
           tasty-core-bootstrapped/compile'
 
   scala3-repl-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -74,6 +88,7 @@ jobs:
           scala3-repl/compile'
 
   scala3-presentation-compiler-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -95,6 +110,7 @@ jobs:
           scala3-presentation-compiler/compile'
 
   scala3-language-server-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -116,6 +132,7 @@ jobs:
           scala3-language-server/compile'
 
   scala3-staging-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -137,6 +154,7 @@ jobs:
           scala3-staging/compile'
 
   scala3-tasty-inspector-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -158,6 +176,7 @@ jobs:
           scala3-tasty-inspector/compile'
 
   scala3-sbt-bridge-bootstrapped-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -180,6 +199,7 @@ jobs:
 
   # Projects that compile with coverage but without Ycheck
   scala3-compiler-nonbootstrapped-coverage:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -201,6 +221,7 @@ jobs:
           scala3-compiler-nonbootstrapped/compile'
 
   scaladoc-coverage:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -220,3 +241,19 @@ jobs:
           );
           scaladoc/clean;
           scaladoc/compile'
+
+  # Coverage test suite
+  scala3-bootstrapped-compilation-coverage:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Run coverage compilation tests
+        run: ./project/scripts/sbt 'scala3-bootstrapped/testCompilation --enable-coverage-phase'
+
