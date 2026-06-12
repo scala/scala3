@@ -53,38 +53,6 @@ class ZipArchiveTest {
 
   private def manifestAt(location: URI): URL = classLoader(location).getResource("META-INF/MANIFEST.MF")
 
-
-  // ZipArchive.fromManifestURL(URL)
-  @Test def `manifest resources just works`(): Unit = {
-    val jar = createTestJar()
-    val archive = new ManifestResources(manifestAt(jar.toUri))
-    try {
-      val it = archive.iterator
-      assertTrue(it.hasNext)
-      val f = it.next()
-      assertFalse(it.hasNext)
-      assertEquals("foo.class", f.name)
-    }
-    finally {
-      archive.close()
-      // The following results in IOException on Windows (file in use by another process).
-      // As jar created with Files.createTempFile, it will be deleted automatically.
-      try Files.delete(jar) catch case _: IOException => ()
-    }
-  }
-
-  private def createTestJar(): Path = Files.createTempFile("junit", ".jar").tap { f =>
-    val man = new Manifest()
-    man.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
-    man.getEntries().put("foo.class", new Attributes(0))
-    Using.resource(new JarOutputStream(Files.newOutputStream(f), man)) { jout =>
-      jout.putNextEntry(new JarEntry("foo.class"))
-      val bytes = "hello, world".getBytes
-      jout.write(bytes, 0, bytes.length)
-      ()
-    }
-  }
-
   private def createTestZip(): Path = Files.createTempFile("junit", ".zip").tap { f =>
     import java.util.zip.*
     Using.resource(new ZipOutputStream(Files.newOutputStream(f))) { zout =>

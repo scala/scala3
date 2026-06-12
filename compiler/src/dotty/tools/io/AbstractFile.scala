@@ -51,8 +51,6 @@ object AbstractFile {
   def getURL(url: URL): AbstractFile | Null =
     if (url.getProtocol != "file") null
     else new PlainFile(new Path(Paths.get(url.toURI)))
-
-  def getResources(url: URL): AbstractFile = ZipArchive.fromManifestURL(url)
 }
 
 /**

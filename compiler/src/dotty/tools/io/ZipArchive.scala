@@ -5,13 +5,11 @@
 
 package dotty.tools.io
 
-import java.net.URL
 import java.io.{ IOException, InputStream, OutputStream, FilterInputStream }
 import java.nio.file.Files
 import java.util.zip.{ ZipEntry, ZipFile }
-import java.util.jar.{ Manifest, JarFile }
+import java.util.jar.JarFile
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.*
 
 /** An abstraction for zip files and streams.  Everything is written the way
  *  it is for performance: we come through here a lot on every run.  Be careful
@@ -33,8 +31,6 @@ object ZipArchive {
   def fromFile(file: File): FileZipArchive = fromPath(file.jpath)
   def fromPath(jpath: JPath): FileZipArchive = new FileZipArchive(jpath, release = None)
 
-  def fromManifestURL(url: URL): AbstractFile = new ManifestResources(url)
-
   private def dirName(path: String)  = splitPath(path, front = true)
   private def baseName(path: String) = splitPath(path, front = false)
   private def splitPath(path0: String, front: Boolean): String = {
@@ -52,7 +48,7 @@ object ZipArchive {
 }
 import ZipArchive.*
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-abstract class ZipArchive(override val jpath: JPath | Null, release: Option[String]) extends AbstractFile with Equals {
+abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
   self =>
 
   override def underlyingSource: Option[ZipArchive] = Some(this)
@@ -112,7 +108,7 @@ abstract class ZipArchive(override val jpath: JPath | Null, release: Option[Stri
 }
 // TODO: remove 'release' and JAR features; switch callers who need it to explicitly pick between JarFile and ZipFile
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArchive(jpath, release) {
+final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArchive(jpath) {
   private def openZipFile(): ZipFile = try {
     release match {
       case Some(r) if file.nn.getName.endsWith(".jar") =>
@@ -142,6 +138,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
     override def sizeOption: Option[Int] = Some(size) // could be stale
   }
 
+  // TODO might this be the cause of the issue about jar on windows?
   // keeps a file handle open to ZipFile, which forbids file mutation
   // on Windows, and leaks memory on all OS (typically by stopping
   // classloaders from being garbage collected). But is slightly
@@ -195,20 +192,19 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
     (root, dirs)
   }
 
-  def iterator: Iterator[Entry] = root.iterator
+  override def iterator: Iterator[Entry] = root.iterator
 
-  def name: String       = jpath.getFileName.toString
-  def path: String       = jpath.toString
-  def input: InputStream = Files.newInputStream(jpath)
-  def lastModified: Long = Files.getLastModifiedTime(jpath).toMillis
+  override def name: String       = jpath.getFileName.toString
+  override def path: String       = jpath.toString
+  override def input: InputStream = Files.newInputStream(jpath)
+  override def lastModified: Long = Files.getLastModifiedTime(jpath).toMillis
 
   override def sizeOption: Option[Int] = Some(Files.size(jpath).toInt)
   override def canEqual(other: Any): Boolean = other.isInstanceOf[FileZipArchive]
   override def hashCode(): Int = jpath.hashCode
   override def equals(that: Any): Boolean = that match {
     case x: FileZipArchive =>
-      val xJPath = x.jpath
-      xJPath != null && jpath.toAbsolutePath == xJPath.toAbsolutePath
+      jpath.toAbsolutePath == x.jpath.toAbsolutePath
     case _ =>
       false
   }
@@ -216,73 +212,6 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
   private var closeables: List[java.io.Closeable] = Nil
   override def close(): Unit = {
     closeables.foreach(_.close)
-    closeables = Nil
-  }
-}
-
-final class ManifestResources(val url: URL) extends ZipArchive(null, None) {
-  def iterator: Iterator[AbstractFile] = {
-    val root     = new DirEntry("/", null)
-    val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
-    val stream   = input
-    val manifest = new Manifest(stream)
-    val iter     = manifest.getEntries().keySet().iterator().asScala.filter(_.endsWith(".class")).map(new ZipEntry(_))
-
-    closeables ::= stream
-
-    for (zipEntry <- iter) {
-      val dir = getDir(dirs, zipEntry)
-      if (!zipEntry.isDirectory) {
-        class FileEntry() extends Entry(zipEntry.getName, dir) {
-          override def lastModified = zipEntry.getTime()
-          override def input        = resourceInputStream(this.path)
-          override def sizeOption   = None
-        }
-        val f = new FileEntry()
-        dir.entries(f.name) = f
-      }
-    }
-
-    try root.iterator
-    finally dirs.clear()
-  }
-
-  def name: String  = path
-  def path: String = {
-    val s = url.getPath
-    val n = s.lastIndexOf('!')
-    s.substring(0, n)
-  }
-  def input: InputStream = url.openStream()
-  def lastModified: Long =
-    try url.openConnection().getLastModified()
-    catch { case _: IOException => 0 }
-
-  override def canEqual(other: Any): Boolean = other.isInstanceOf[ManifestResources]
-  override def hashCode(): Int = url.hashCode
-  override def equals(that: Any): Boolean = that match {
-    case x: ManifestResources => url == x.url
-    case _                => false
-  }
-
-  private def resourceInputStream(path: String): InputStream = {
-    new FilterInputStream(null) {
-      override def read(): Int = {
-        if (in == null) in = Thread.currentThread().getContextClassLoader().getResourceAsStream(path)
-        if (in == null) throw new RuntimeException(path + " not found")
-        super.read()
-      }
-
-      override def close(): Unit = {
-        super.close()
-        in = null
-      }
-    }
-  }
-
-  private var closeables: List[java.io.Closeable] = Nil
-  override def close(): Unit = {
-    closeables.foreach(_.close())
     closeables = Nil
   }
 }
