@@ -48,7 +48,6 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
       try
         if !clazz.isMirror then
           runLocalOptimizations(classNode)
-          addLambdaDeserialize(classNode)
         warnCaseInsensitiveOverwrite(clazz)
         setInnerClasses(classNode)
         serializeClass(classNode)
@@ -134,93 +133,6 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
     val cw = new ClassWriterWithBTypeLub(asm.ClassWriter.COMPUTE_MAXS | asm.ClassWriter.COMPUTE_FRAMES)
     classNode.accept(cw)
     cw.toByteArray.nn
-  }
-
-  private def collectSerializableLambdas(classNode: ClassNode): Array[Handle] = {
-    val indyLambdaBodyMethods = new mutable.ArrayBuffer[Handle]
-    for (m <- classNode.methods.asScala) {
-      val iter = m.instructions.iterator
-      while (iter.hasNext) {
-        val insn = iter.next()
-        insn match {
-          case indy: InvokeDynamicInsnNode
-            if indy.bsm == bTypes.jliLambdaMetaFactoryAltMetafactoryHandle =>
-            import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
-            val metafactoryFlags = indy.bsmArgs(3).asInstanceOf[Integer].toInt
-            val isSerializable = (metafactoryFlags & FLAG_SERIALIZABLE) != 0
-            if isSerializable then
-              val implMethod = indy.bsmArgs(1).asInstanceOf[Handle]
-              indyLambdaBodyMethods += implMethod
-          case _ =>
-        }
-      }
-    }
-    indyLambdaBodyMethods.toArray
-  }
-
-  /*
-  * Add:
-  *
-  * private static Object $deserializeLambda$(SerializedLambda l) {
-  *   try return indy[scala.runtime.LambdaDeserialize.bootstrap, targetMethodGroup$0](l)
-  *   catch {
-  *     case i: IllegalArgumentException =>
-  *       try return indy[scala.runtime.LambdaDeserialize.bootstrap, targetMethodGroup$1](l)
-  *       catch {
-  *         case i: IllegalArgumentException =>
-  *           ...
-  *             return indy[scala.runtime.LambdaDeserialize.bootstrap, targetMethodGroup${NUM_GROUPS-1}](l)
-  *       }
-  *   }
-  * }
-  *
-  * We use invokedynamic here to enable caching within the deserializer without needing to
-  * host a static field in the enclosing class. This allows us to add this method to interfaces
-  * that define lambdas in default methods.
-  *
-  * SI-10232 we can't pass arbitrary number of method handles to the final varargs parameter of the bootstrap
-  * method due to a limitation in the JVM. Instead, we emit a separate invokedynamic bytecode for each group of target
-  * methods.
-  */
-  private def addLambdaDeserialize(classNode: ClassNode): Unit = {
-    val implMethodsArray = collectSerializableLambdas(classNode)
-    if implMethodsArray.isEmpty then
-      return
-
-    import asm.Opcodes.*
-    val cw = classNode
-    // Make sure to reference the ClassBTypes of all types that are used in the code generated
-    // here (e.g. java/util/Map) are initialized. Initializing a ClassBType adds it to
-    // `classBTypeFromInternalNameMap`. When writing the classfile, the asm ClassWriter computes
-    // stack map frames and invokes the `getCommonSuperClass` method. This method expects all
-    // ClassBTypes mentioned in the source code to exist in the map.
-    val serializedLambdaObjDesc = s"(Ljava/lang/invoke/SerializedLambda;)L${ClassBType.javaLangObjectInternalName};"
-    val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serializedLambdaObjDesc, null, null)
-    def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
-      mv.visitVarInsn(ALOAD, 0)
-      mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLambdaObjDesc, bTypes.jliLambdaDeserializeBootstrapHandle, targetMethods*)
-    }
-
-    val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See MAX_MH_ARITY in CallSite.java
-    val groups: Array[Array[Handle]] = implMethodsArray.grouped(targetMethodGroupLimit).toArray
-    val numGroups = groups.length
-
-    import scala.tools.asm.Label
-    val initialLabels = Array.fill(numGroups - 1)(new Label())
-    val terminalLabel = new Label
-    def nextLabel(i: Int) = if (i == numGroups - 2) terminalLabel else initialLabels(i + 1)
-
-    for ((label, i) <- initialLabels.iterator.zipWithIndex) {
-      mv.visitTryCatchBlock(label, nextLabel(i), nextLabel(i), "java/lang/IllegalArgumentException")
-    }
-    for ((label, i) <- initialLabels.iterator.zipWithIndex) {
-      mv.visitLabel(label)
-      emitLambdaDeserializeIndy(groups(i).toIndexedSeq)
-      mv.visitInsn(ARETURN)
-    }
-    mv.visitLabel(terminalLabel)
-    emitLambdaDeserializeIndy(groups(numGroups - 1).toIndexedSeq)
-    mv.visitInsn(ARETURN)
   }
 
   /*
