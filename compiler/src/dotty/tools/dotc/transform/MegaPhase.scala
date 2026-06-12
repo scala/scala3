@@ -775,7 +775,18 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     transformNonSplicingTrees(trees, start).asInstanceOf[List[T]]
 
   private inline def transformNonSplicingParamClause(params: ParamClause, start: Int)(using Context): ParamClause =
-    transformNonSplicingTrees(params.asInstanceOf[List[Tree]], start).asInstanceOf[ParamClause]
+    if noTreeHooks(start) then params
+    else params.asInstanceOf[List[Tree]] match
+      case Nil => params
+      case param0 :: Nil =>
+        val param1 = transformTree(param0, start)
+        if param1 eq param0 then params
+        else
+          param1 match
+            case Thicket(elems1) => elems1.asInstanceOf[ParamClause]
+            case _ => (param1 :: Nil).asInstanceOf[ParamClause]
+      case trees =>
+        transformNonSplicingTrees(trees, start).asInstanceOf[ParamClause]
 
   private inline def transformNonSplicingParamss(paramss: List[ParamClause], start: Int)(using Context): List[ParamClause] =
     paramss match
