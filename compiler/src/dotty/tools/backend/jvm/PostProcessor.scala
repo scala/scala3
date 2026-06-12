@@ -44,10 +44,9 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
 
   final def sendToDisk(clazz: GeneratedClass): Unit = {
     val classNode = clazz.classNode
-    val internalName = classNode.name.nn
     val bytes =
       try
-        if !clazz.isArtifact then
+        if !clazz.isMirror then
           runLocalOptimizations(classNode)
           addLambdaDeserialize(classNode)
         warnCaseInsensitiveOverwrite(clazz)
@@ -56,19 +55,18 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
       catch
         case ex: Exception =>
           if ctx.debug then ex.printStackTrace()
-          report.error(em"Error while emitting $internalName\n${ex.getMessage}")
+          report.error(em"Error while emitting ${classNode.name}\n${ex.getMessage}")
           null
 
     if bytes != null then
-      TraceUtils.traceSerializedClassIfRequested(internalName, bytes)
-      val clsFile = classfileWriter.writeClass(internalName, bytes)
+      TraceUtils.traceSerializedClassIfRequested(classNode.name, bytes)
+      val clsFile = classfileWriter.writeClass(classNode.name, bytes)
       clazz.onFileCreated(clsFile)
   }
 
   final def sendToDisk(tasty: GeneratedTasty): Unit = {
-    val GeneratedTasty(classNode, tastyGenerator) = tasty
-    val internalName = classNode.name.nn
-    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator())
+    val GeneratedTasty(internalName, tastyGenerator) = tasty
+    classfileWriter.writeTasty(internalName, tastyGenerator())
   }
 
   def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit =
@@ -295,10 +293,10 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
     for u <- generatedUnits
         c <- u.classes
     do
-      byteCodeRepository.add(c.classNode, Some(u.sourceFile.canonicalPath))
+      byteCodeRepository.add(c.classNode, Some(u.sourcePath))
     for u <- generatedUnits
         c <- u.classes
-        if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
+        if !c.isMirror // skip call graph for mirrors: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
     inliner.run(i => report.optimizerWarning(i.msg, i.site, i.pos))
@@ -308,15 +306,11 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
     localOpt.methodOptimizations(classNode)
 }
 
-/**
- * The result of code generation. [[isArtifact]] is `true` for mirror.
- */
 case class GeneratedClass(
   classNode: ClassNode,
-  sourceClassName: String,
   position: SourcePosition,
-  isArtifact: Boolean,
+  isMirror: Boolean,
   onFileCreated: AbstractFile => Unit)
-case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
+case class GeneratedTasty(internalName: String, tastyGen: () => Array[Byte])
+case class GeneratedCompilationUnit(sourcePath: String, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
 
