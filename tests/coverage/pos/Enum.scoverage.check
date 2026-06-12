@@ -60,14 +60,14 @@ Class
 covtest.Planet
 surfaceGravity
 359
-386
+387
 15
 /
 Apply
 false
 0
 false
-G * mass / (radius * radius
+G * mass / (radius * radius)
 
 3
 Enum.scala
