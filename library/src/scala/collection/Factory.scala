@@ -17,7 +17,6 @@ import scala.language.`2.13`
 import language.experimental.captureChecking
 
 import scala.collection.immutable.NumericRange
-import scala.language.implicitConversions
 import scala.collection.mutable.Builder
 import scala.annotation.unchecked.uncheckedVariance
 import scala.reflect.ClassTag
@@ -31,7 +30,7 @@ import scala.reflect.ClassTag
  *  @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
  *  @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
  */
-trait Factory[-A, +C] extends Any { self: Factory[A, C] =>
+into trait Factory[-A, +C] extends Any { self: Factory[A, C] =>
 
   /**
    *  @param it the source of elements to include in the collection
