@@ -1415,6 +1415,92 @@ object Parsers {
       else
         literal(inTypeOrSingleton = true)
 
+    private case class DedentedStringPart(value: String, offset: Offset)
+    private case class DedentedStringLine(value: String, offset: Offset)
+
+    private def linesOf(part: DedentedStringPart): List[DedentedStringLine] =
+      val lines = new ListBuffer[DedentedStringLine]
+      var start = 0
+      var idx = 0
+      while idx < part.value.length do
+        val ch = part.value.charAt(idx)
+        if ch == Chars.LF || ch == Chars.CR then
+          lines += DedentedStringLine(part.value.substring(start, idx), part.offset + start)
+          idx += 1
+          if idx < part.value.length
+              && (ch == Chars.CR && part.value.charAt(idx) == Chars.LF
+                || ch == Chars.LF && part.value.charAt(idx) == Chars.CR)
+          then idx += 1
+          start = idx
+        else
+          idx += 1
+      lines += DedentedStringLine(part.value.substring(start), part.offset + start)
+      lines.toList
+
+    private def dedentedStringQuoteCount(offset: Offset): Int =
+      if offset < 0 then 0
+      else
+        val buf = in.buf
+        var idx = offset
+        while idx < buf.length && buf(idx) == '\'' do idx += 1
+        idx - offset
+
+    private def isDedentedStringLiteral(offset: Offset): Boolean =
+      dedentedStringQuoteCount(offset) >= 3
+
+    private def dedentedStringContentOffset(offset: Offset): Offset =
+      offset + dedentedStringQuoteCount(offset)
+
+    private def closingIndentOf(part: DedentedStringPart): Option[String] =
+      val line = linesOf(part).last
+      if line.value.exists(!_.isWhitespace) then
+        syntaxError(
+          em"last line of dedented string literal must contain only whitespace before closing delimiter",
+          line.offset)
+        None
+      else if line.value.contains('\t') && line.value.contains(' ') then
+        syntaxError(
+          em"dedented string literal cannot mix tabs and spaces in indentation",
+          line.offset)
+        None
+      else
+        Some(line.value)
+
+    private def dedentStringPart(
+        part: DedentedStringPart,
+        closingIndent: String,
+        isFirstPart: Boolean,
+        isLastPart: Boolean): DedentedStringPart =
+      val allLines = linesOf(part)
+      val start = if isFirstPart then 1 else 0
+      val end = allLines.length - (if isLastPart then 1 else 0)
+      val value = allLines.slice(start, end).zipWithIndex.map: (line, idx) =>
+        val continuesPreviousLine = !isFirstPart && idx == 0
+        if continuesPreviousLine then line.value
+        else if line.value.startsWith(closingIndent) then line.value.substring(closingIndent.length)
+        else if line.value.forall(_.isWhitespace) then ""
+        else
+          syntaxError(
+            em"line in dedented string literal must be indented at least as much as the closing delimiter with an identical prefix",
+            line.offset)
+          line.value
+      part.copy(value = value.mkString("\n"))
+
+    private def dedentStringParts(parts: List[DedentedStringPart]): List[DedentedStringPart] =
+      if parts.isEmpty then parts
+      else
+        closingIndentOf(parts.last) match
+          case Some(closingIndent) =>
+            val lastIndex = parts.length - 1
+            parts.zipWithIndex.map: (part, idx) =>
+              dedentStringPart(
+                part,
+                closingIndent,
+                isFirstPart = idx == 0,
+                isLastPart = idx == lastIndex)
+          case None =>
+            parts
+
     /** Literal           ::=  SimpleLiteral
      *                      |  processedStringLiteral
      *                      |  symbolLiteral
@@ -1447,7 +1533,13 @@ object Parsers {
           case FLOATLIT                       => lit(floatFromDigits(digits))
           case DOUBLELIT | DECILIT | EXPOLIT  => lit(doubleFromDigits(digits))
           case CHARLIT                        => lit(in.strVal.nn.head)
-          case STRINGLIT | STRINGPART         => lit(in.strVal.nn)
+          case STRINGLIT | STRINGPART         =>
+            val str = in.strVal.nn
+            val value =
+              if token == STRINGLIT && !inStringInterpolation && isDedentedStringLiteral(start) then
+                dedentStringParts(DedentedStringPart(str, dedentedStringContentOffset(start)) :: Nil).head.value
+              else str
+            lit(value)
           case TRUE                           => lit(true)
           case FALSE                          => lit(false)
           case NULL                           => lit(null)
@@ -1522,36 +1614,71 @@ object Parsers {
         startOffset + 1 < in.buf.length &&
         in.buf(startOffset) == '"' &&
         in.buf(startOffset + 1) == '"'
+      val dedentedQuoteCount = dedentedStringQuoteCount(startOffset - 1)
+      val isDedented = dedentedQuoteCount >= 3
       in.nextToken()
-      def nextSegment(literalOffset: Offset) =
-        segmentBuf += Thicket(
-            literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
-            atSpan(in.offset) {
-              if (in.token == IDENTIFIER)
-                termIdent()
-              else if (in.token == USCORE && inPattern) {
-                in.nextToken()
-                Ident(nme.WILDCARD)
-              }
-              else if (in.token == THIS) {
-                in.nextToken()
-                This(EmptyTypeIdent)
-              }
-              else if (in.token == LBRACE)
-                if (inPattern) Block(Nil, inBraces(pattern()))
-                else expr()
-              else {
-                report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
-                EmptyTree
-              }
-            })
 
-      var offsetCorrection = if isTripleQuoted then 3 else 1
-      while (in.token == STRINGPART)
-        nextSegment(in.offset + offsetCorrection)
-        offsetCorrection = 0
-      if (in.token == STRINGLIT)
-        segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
+      def interpolationArg(): Tree =
+        atSpan(in.offset) {
+          if (in.token == IDENTIFIER)
+            termIdent()
+          else if (in.token == USCORE && inPattern) {
+            in.nextToken()
+            Ident(nme.WILDCARD)
+          }
+          else if (in.token == THIS) {
+            in.nextToken()
+            This(EmptyTypeIdent)
+          }
+          else if (in.token == LBRACE)
+            if (inPattern) Block(Nil, inBraces(pattern()))
+            else expr()
+          else {
+            report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+            EmptyTree
+          }
+        }
+
+      def literalTree(part: DedentedStringPart): Tree =
+        atSpan(part.offset, part.offset, part.offset + part.value.length) {
+          Literal(Constant(part.value))
+        }
+
+      if isDedented then
+        val parts = new ListBuffer[DedentedStringPart]
+        val args = new ListBuffer[Tree]
+        var offsetCorrection = dedentedQuoteCount
+        while in.token == STRINGPART do
+          parts += DedentedStringPart(in.strVal.nn, in.offset + offsetCorrection)
+          offsetCorrection = 0
+          in.nextToken()
+          args += interpolationArg()
+
+        val hasFinalPart = in.token == STRINGLIT
+        if hasFinalPart then
+          parts += DedentedStringPart(in.strVal.nn, in.offset + offsetCorrection)
+          in.nextToken()
+
+        val dedentedParts =
+          if hasFinalPart then dedentStringParts(parts.toList)
+          else parts.toList
+
+        for (part, arg) <- dedentedParts.zip(args) do
+          segmentBuf += Thicket(literalTree(part), arg)
+        if hasFinalPart && dedentedParts.nonEmpty then
+          segmentBuf += literalTree(dedentedParts.last)
+      else
+        def nextSegment(literalOffset: Offset) =
+          segmentBuf += Thicket(
+              literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
+              interpolationArg())
+
+        var offsetCorrection = if isTripleQuoted then 3 else 1
+        while in.token == STRINGPART do
+          nextSegment(in.offset + offsetCorrection)
+          offsetCorrection = 0
+        if in.token == STRINGLIT then
+          segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
 
       if interpolatorsFromAny(interpolator) then
         report.warning(UseOfAnyMethodAsInterpolator(interpolator), source.atSpan(Span(startOffset, in.charOffset)))
