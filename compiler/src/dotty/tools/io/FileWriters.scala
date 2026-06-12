@@ -50,7 +50,7 @@ object FileWriters {
      *
      * @param name the internal name of the class, e.g. "scala.Option"
      */
-    def writeTasty(name: String, bytes: Array[Byte])(using Context): AbstractFile
+    def writeTasty(name: String, bytes: Array[Byte]): AbstractFile
 
     /**
      * Close the writer. Behavior is undefined after a call to `close`.
@@ -59,7 +59,6 @@ object FileWriters {
   }
 
   object TastyWriter {
-
     def apply(output: AbstractFile)(using Context): TastyWriter =
       // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
@@ -67,15 +66,13 @@ object FileWriters {
 
     private final class SingleTastyWriter(underlying: FileWriter) extends TastyWriter {
 
-      override def writeTasty(className: String, bytes: Array[Byte])(using Context): AbstractFile = {
+      override def writeTasty(className: String, bytes: Array[Byte]): AbstractFile = {
         underlying.writeFile(classRelativePath(className, ".tasty"), bytes)
       }
 
       override def close(): Unit = underlying.close()
     }
-
   }
-
 
   /**
    * The interface to writing classfiles. GeneratedClassHandler calls these methods to generate the
@@ -90,7 +87,7 @@ object FileWriters {
     /**
      * Write a classfile
      */
-    def writeClass(name: String, bytes: Array[Byte])(using Context): AbstractFile
+    def writeClass(name: String, bytes: Array[Byte]): AbstractFile
 
     /**
      * Close the writer. Behavior is undefined after a call to `close`.
@@ -109,11 +106,11 @@ object FileWriters {
     }
 
     private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {
-      override def writeClass(className: String, bytes: Array[Byte])(using Context): AbstractFile = {
+      override def writeClass(className: String, bytes: Array[Byte]): AbstractFile = {
         underlying.writeFile(classRelativePath(className, ".class"), bytes)
       }
 
-      override def writeTasty(className: String, bytes: Array[Byte])(using Context): AbstractFile = {
+      override def writeTasty(className: String, bytes: Array[Byte]): AbstractFile = {
         underlying.writeFile(classRelativePath(className, ".tasty"), bytes)
       }
 
@@ -121,13 +118,13 @@ object FileWriters {
     }
 
     private final class DebugClassWriter(basic: ClassfileWriter, dump: FileWriter) extends ClassfileWriter {
-      override def writeClass(className: String, bytes: Array[Byte])(using Context): AbstractFile = {
+      override def writeClass(className: String, bytes: Array[Byte]): AbstractFile = {
         val outFile = basic.writeClass(className, bytes)
         dump.writeFile(classRelativePath(className, ".class"), bytes)
         outFile
       }
 
-      override def writeTasty(className: String, bytes: Array[Byte])(using Context): AbstractFile = {
+      override def writeTasty(className: String, bytes: Array[Byte]): AbstractFile = {
         basic.writeTasty(className, bytes)
       }
 
@@ -138,9 +135,8 @@ object FileWriters {
     }
   }
 
-
   sealed trait FileWriter {
-    def writeFile(relativePath: String, bytes: Array[Byte])(using Context): AbstractFile
+    def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile
     def close(): Unit
   }
 
@@ -149,7 +145,7 @@ object FileWriters {
       if (file.isInstanceOf[JarArchive]) {
         val jarCompressionLevel = ctx.settings.jarCompressionLevel
         // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
-        // created using `AbstractFile.bufferedOutputStream`instead of JarWriter
+        // created using `AbstractFile.bufferedOutputStream` instead of JarWriter
         val jarFile = file.underlyingSource.getOrElse{
           throw new IllegalStateException("No underlying source for jar")
         }
@@ -184,7 +180,7 @@ object FileWriters {
 
     lazy val crc = new CRC32
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using Context): AbstractFile = this.synchronized {
+    override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = this.synchronized {
       val entry = new ZipEntry(relativePath)
       if (storeOnly) {
         // When using compression method `STORED`, the ZIP spec requires the CRC and compressed/
@@ -218,18 +214,10 @@ object FileWriters {
     val noAttributes = Array.empty[FileAttribute[?]]
     private val isWindows = scala.util.Properties.isWin
 
-    private def checkName(component: Path)(using Context): Unit = if (isWindows) {
-      val specials = raw"(?i)CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]".r
-      val name = component.toString
-      def warnSpecial(): Unit = ctx.reporter.warning(em"path component is special Windows device: ${name}")
-      specials.findPrefixOf(name).foreach(prefix => if (prefix.length == name.length || name(prefix.length) == '.') warnSpecial())
-    }
-
-    def ensureDirForPath(baseDir: Path, filePath: Path)(using Context): Unit = {
+    private def ensureDirForPath(baseDir: Path, filePath: Path): Unit = {
       import java.lang.Boolean.TRUE
       val parent = filePath.getParent
       if (!builtPaths.containsKey(parent)) {
-        parent.iterator.forEachRemaining(checkName)
         try Files.createDirectories(parent, noAttributes*)
         catch {
           case e: FileAlreadyExistsException =>
@@ -244,7 +232,6 @@ object FileWriters {
           current = current.getParent
         }
       }
-      checkName(filePath.getFileName())
     }
 
     // the common case is that we are creating a new file, and on MS Windows the create and truncate is expensive
@@ -255,32 +242,24 @@ object FileWriters {
     private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using Context): AbstractFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val path = base.resolve(relativePath)
-      try {
-        ensureDirForPath(base, path)
-        val os = if (isWindows) {
-          try FileChannel.open(path, fastOpenOptions)
-          catch {
-            case _: FileAlreadyExistsException => FileChannel.open(path, fallbackOpenOptions)
-          }
-        } else FileChannel.open(path, fallbackOpenOptions)
-
-        try os.write(ByteBuffer.wrap(bytes), 0L)
+      ensureDirForPath(base, path)
+      val os = if (isWindows) {
+        try FileChannel.open(path, fastOpenOptions)
         catch {
-          case ex: ClosedByInterruptException =>
-            try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
-            catch { case _: java.io.IOException => () }
-            throw ex
+          case _: FileAlreadyExistsException => FileChannel.open(path, fallbackOpenOptions)
         }
-        os.close()
-      } catch {
-        case e: FileConflictException =>
-          ctx.reporter.error(em"error writing ${path.toString}: ${e.getMessage}")
-        case e: java.nio.file.FileSystemException =>
-          if (ctx.settings.debug) e.printStackTrace()
-          ctx.reporter.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
+      } else FileChannel.open(path, fallbackOpenOptions)
+
+      try os.write(ByteBuffer.wrap(bytes), 0L)
+      catch {
+        case ex: ClosedByInterruptException =>
+          try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
+          catch { case _: java.io.IOException => () }
+          throw ex
       }
+      os.close()
       AbstractFile.getFile(path).nn // we just wrote to it so it better still exist
     }
 
@@ -305,7 +284,7 @@ object FileWriters {
       finally out.close()
     }
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using Context): AbstractFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val outFile = getFile(base, relativePath)
       writeBytes(outFile, bytes)
       outFile
