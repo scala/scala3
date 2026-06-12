@@ -139,7 +139,7 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
           // JVMS 6.5 invokespecial: " If all of the following are true, let C be the direct superclass of the current class"
           def isSuperCall: Boolean =
             call.getOpcode == Opcodes.INVOKESPECIAL &&
-              call.name != GenBCode.INSTANCE_CONSTRUCTOR_NAME && {
+              call.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && {
               val owner = call.owner
               definingClass.internalName != owner && {
                 var nextSuper = definingClass.info.superClass

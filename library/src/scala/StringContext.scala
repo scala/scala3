@@ -81,7 +81,8 @@ case class StringContext(parts: String*) {
    *  ```
    *  will print the string `1 + 1 = 2`.
    *
-   *  @param `args` The arguments to be inserted into the resulting string.
+   *  @param args the values to be interpolated into the string
+   *  @return the interpolated string with arguments converted via `toString` and escape sequences expanded
    *  @throws IllegalArgumentException
    *          if the number of `parts` in the enclosing `StringContext` does not exceed
    *          the number of arguments `arg` by exactly 1.
@@ -127,6 +128,9 @@ case class StringContext(parts: String*) {
      *
      *  Here, we use the `TimeSplitter` regex within the `s` matcher, further splitting the
      *  matched string "10.50" into its constituent parts
+     *
+     *  @param s the string to match against the pattern
+     *  @return `Some` containing the sequence of matched substrings, or `None` if the input does not match
      */
     def unapplySeq(s: String): Option[Seq[String]] = glob(parts.map(processEscapes), s)
   }
@@ -147,7 +151,8 @@ case class StringContext(parts: String*) {
    *    res0: String = #
    *  ```
    *
-   *  @param `args` The arguments to be inserted into the resulting string.
+   *  @param args the values to be interpolated into the string
+   *  @return the interpolated string without expanding escape sequences
    *  @throws IllegalArgumentException
    *          if the number of `parts` in the enclosing `StringContext` does not exceed
    *          the number of arguments `arg` by exactly 1.
@@ -175,7 +180,9 @@ case class StringContext(parts: String*) {
    *    println(f"\$name%s is \$height%2.2f meters tall")  // James is 1.90 meters tall
    *  ```
    *
-   *  @param `args` The arguments to be inserted into the resulting string.
+   *  @tparam A the type of the arguments (effectively unconstrained; the lower bound `>: Any` ensures `A` resolves to `Any`)
+   *  @param args the values to be formatted and interpolated into the string
+   *  @return the interpolated and formatted string
    *  @throws IllegalArgumentException
    *          if the number of `parts` in the enclosing `StringContext` does not exceed
    *          the number of arguments `arg` by exactly 1.
@@ -421,6 +428,10 @@ object StringContext {
    *  backwards compatibility is also retained.
    *  Otherwise, the backslash is not taken to introduce an escape and the
    *  backslash is taken to be literal
+   *
+   *  @param str the string potentially containing Unicode escape sequences
+   *  @param backslash the index of the first `\\u` escape sequence in `str`
+   *  @return the string with Unicode escape sequences replaced by their corresponding characters
    */
   private def replaceU(str: String, backslash: Int): String = {
     val len = str.length()
@@ -466,6 +477,8 @@ object StringContext {
   /** Checks that the length of the given argument `args` is one less than the number
    *  of `parts` supplied to the `StringContext`.
    *
+   *  @param args the interpolated argument values
+   *  @param parts the literal parts of the interpolated string
    *  @throws IllegalArgumentException  if this is not the case.
    */
   def checkLengths(args: scala.collection.Seq[Any], parts: Seq[String]): Unit =

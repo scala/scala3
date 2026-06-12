@@ -111,6 +111,12 @@ object BuildFrom extends BuildFromLowPriority1 {
       def newBuilder(from: Array[?]): Builder[A, Array[A]] = Factory.arrayFactory[A].newBuilder
     }
 
+  given buildFromIArray[A : ClassTag]: BuildFrom[IArray[Any], A, IArray[A]] =
+    // IArray is covariant, so IArray[Any] should accept any IArray.
+    new BuildFrom[IArray[Any], A, IArray[A]]:
+      def fromSpecific(from: IArray[Any])(it: IterableOnce[A]^): IArray[A] = IArray.from(it)
+      def newBuilder(from: IArray[Any]): Builder[A, IArray[A]] = IArray.newBuilder[A]
+
   implicit def buildFromView[A, B]: BuildFrom[View[A], B, View[B]] =
     new BuildFrom[View[A], B, View[B]] {
       def fromSpecific(from: View[A])(it: IterableOnce[B]^): View[B]^{it} = View.from(it)

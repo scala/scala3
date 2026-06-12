@@ -1,5 +1,3 @@
-//> using options -deprecation -feature
-
 package p
 
 import scala.language.implicitConversions
@@ -27,7 +25,7 @@ object Test extends T {
   }
   def t2: Int = {
     val d = new j.D()
-    d // warn
+    d // error
   }
   def t3: Int = {
     val e = new E()
@@ -36,6 +34,6 @@ object Test extends T {
   def t4: Int = {
     val t = new T {}
     val e = new t.E()
-    e // warn
+    e // error
   }
 }

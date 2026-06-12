@@ -102,9 +102,6 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: Erased trait
   "scala.compiletime.Erased",
-
-  // New API: Multiversal equality for Named Tuples
-  "scala.NamedTuple$.namedTupleCanEqual",
 )
 
 

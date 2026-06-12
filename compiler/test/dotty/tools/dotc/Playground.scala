@@ -27,7 +27,7 @@ import org.junit.Ignore
     val options = TestConfiguration.bestEffortBaselineOptions
     // make sure we only test one thing at a time, despite the framework requiring an entire dir + filters
     val testFile = "26037.scala"
-    dotc.comptest.compileBestEffortTastyInDir(
+    compileBestEffortTastyInDir(
       "tests/neg", options,
       picklingFilter = FileFilter.include(List(testFile)),
       unpicklingFilter = FileFilter.include(List(testFile))
