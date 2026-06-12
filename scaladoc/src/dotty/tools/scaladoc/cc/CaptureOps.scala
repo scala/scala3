@@ -40,6 +40,8 @@ object CaptureDefs:
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.requiresCapability")
   def OnlyCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.onlyCapability")
+  def ExceptCapabilityAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.exceptCapability")
 
   def LanguageExperimental(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredPackage("scala.language.experimental")
@@ -80,6 +82,9 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
 
   def isOnlyCapabilityAnnot: Boolean =
     ann == CaptureDefs.OnlyCapabilityAnnot
+
+  def isExceptCapabilityAnnot: Boolean =
+    ann == CaptureDefs.ExceptCapabilityAnnot
 end extension
 
 extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and have versions on Symbol for those
@@ -205,6 +210,17 @@ object OnlyCapability:
       case _ => None
 end OnlyCapability
 
+object ExceptCapability:
+  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, qctx.reflect.Symbol)] =
+    import qctx.reflect._
+    ty match
+      case AnnotatedType(base, app @ Apply(TypeApply(Select(New(annot), _), _), Nil)) if annot.tpe.typeSymbol.isExceptCapabilityAnnot =>
+        app.tpe.typeArgs.head.classSymbol.match
+          case Some(clazzsym) => Some((base, clazzsym))
+          case None => None
+      case _ => None
+end ExceptCapability
+
 /** Decompose capture sets in the union-type-encoding into the sequence of atomic `TypeRepr`s.
  *  Returns `None` if the type is not a capture set.
 */
@@ -222,6 +238,7 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
       case t @ ReachCapability(_)    => include(t)
       case t @ ReadOnlyCapability(_) => include(t)
       case t @ OnlyCapability(_, _)  => include(t)
+      case t @ ExceptCapability(_, _) => include(t)
       case t : TypeRef               => include(t)
       case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false
   if traverse(typ0) then Some(buffer.toList) else None

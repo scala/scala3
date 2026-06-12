@@ -120,3 +120,31 @@ def test(io: IO, async: Async, proc: () => Unit) =
     // code accessing `io`, `async`, and `proc` and returning an `Int.
   val _: Try[Int]^{async, proc} = r
 ```
+
+### Classifier Exclusion
+
+Restriction selects the capabilities that fall under a classifier. Sometimes we need the opposite: keep all capabilities _except_ those that fall under a classifier. Consider a method that runs a computation on a different thread. The computation must not capture capabilities that are tied to the originating thread's stack, such as `Control` capabilities: using a `boundary.Label` from a different thread would attempt a non-local return across threads. But any other capability is fine. This is expressed with an _excluded capability_:
+```scala sc-compile-with:classifiers-cc-context
+def runOnNewThread[T](body: () ->{any.except[Control]} T): T = ???
+```
+The general form of an excluded capability is `c.except[A]` where
+
+ - `c` is a regular capability, possibly carrying an `only` restriction
+ - `A` is a classifier trait.
+
+`c.except[A]` stands for the parts of `c` that are _not_ classified as `A` or a subclass of `A`. A capability `x` is covered by `c.except[A]` only if `x` is covered by `c` and `x` is known to be unrelated to the classifier `A`. For instance, given
+```scala sc:nocompile
+trait IO extends SharedCapability, Classifier
+class FileSystem extends IO
+```
+a closure `() => fs.read()` over a capability `fs: FileSystem^` can be passed to `runOnNewThread`: the classifier of `fs` is `IO`, which is a sibling of `Control` in the classifier tree, so the two are unrelated. By contrast, a closure using an `Async` capability is rejected. A closure over an unclassified capability such as a plain function value `proc: () => Unit` is also rejected, since we cannot exclude that `proc` retains `Control` capabilities. The same holds for a capability classified as `SharedCapability`: since `Control` is a sub-classifier of `SharedCapability`, such a capability could retain `Control` capabilities.
+
+Restriction and exclusion can be combined: `c.only[A].except[B]` keeps those capabilities of `c` that are classified as `A` but not as `B`. This is useful only if `B` is a proper sub-classifier of `A`; if `B` covers all of `A` the resulting capture set is empty, and the capture reference is usually rejected as vacuous. Currently at most one `except` clause can be given per capture reference.
+
+Subcapturing relates excluded capabilities as follows, where `B` is a subtrait of classifier trait `A`:
+```
+{c.except[A]} <: {c}
+{c.only[A].except[B]} <: {c.only[A]}
+{c.except[A]} <: {c.except[B]}
+```
+The last rule holds since excluding a larger classifier `A` removes more capabilities than excluding a smaller one `B`. Exclusions of unrelated classifiers are not comparable.
