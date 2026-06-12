@@ -704,7 +704,7 @@ class ClassfileParser(
           val n = subName(';'.==).toTypeName
           index += 1
           if (skiptvs) defn.AnyType
-          else tparams.get(n) match
+          else tparams.get(n).orElse(classTParams.get(n)) match
             case Some(tp) => tp.typeRef
             case None =>
               // Generic type parameters can be declared in the parent class's type signature, e.g., `class Y$1 extends Y<T>`,
