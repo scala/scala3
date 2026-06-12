@@ -16,6 +16,7 @@ env:
 jobs:
 
   test-scala-library-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     name: Non-Bootstrapped Library Unit Tests
     runs-on: ubuntu-latest
     steps:
@@ -29,6 +30,7 @@ jobs:
       - run: ./project/scripts/sbt scala-library-nonbootstrapped/test
 
   test-scala-library-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     name: Bootstrapped Library Unit Tests
     runs-on: ubuntu-latest
     steps:
@@ -64,6 +66,7 @@ jobs:
         run: ./project/scripts/sbt scala-library-nonbootstrapped/mimaReportBinaryIssues
 
   mima-scala3-interfaces:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -81,6 +84,7 @@ jobs:
         run: ./project/scripts/sbt scala3-interfaces/mimaReportBinaryIssues
 
   mima-tasty-core-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -98,6 +102,7 @@ jobs:
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/mimaReportBinaryIssues
 
   static-analysis-scala-library-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -118,6 +123,7 @@ jobs:
         run: ./project/scripts/sbt scala-library-bootstrapped/missinglinkCheck
 
   mima-tasty-core-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -135,6 +141,7 @@ jobs:
         run: ./project/scripts/sbt tasty-core-bootstrapped/mimaReportBinaryIssues
 
   mima-scala-library-sjs:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -156,6 +163,7 @@ jobs:
   #################################################################################################
 
   test-scala3-compiler-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -179,6 +187,7 @@ jobs:
           ./project/scripts/cmdTests
 
   test-scala3-compiler-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -202,6 +211,7 @@ jobs:
           ./project/scripts/bootstrappedOnlyCmdTests
 
   test-scala3-sbt-bridge-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -218,6 +228,7 @@ jobs:
         run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
 
   test-scala3-sbt-bridge-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -234,6 +245,7 @@ jobs:
         run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
 
   test-tasty-core-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -250,6 +262,7 @@ jobs:
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
 
   test-tasty-core-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -296,6 +309,7 @@ jobs:
         run: ./project/scripts/sbt scala3-directives-parser-bootstrapped/test
 
   test-scala-js:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -324,6 +338,7 @@ jobs:
   # TODO Scala.js on Windows
 
   test-repl:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -367,6 +382,7 @@ jobs:
         run: ./project/scripts/sbt "scala3-repl/testOnly *LazyValsWarningTest *ShadingTest"
 
   test-presentation-compiler:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -383,6 +399,7 @@ jobs:
         run: ./project/scripts/sbt scala3-presentation-compiler/test
 
   test-language-server:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -399,6 +416,7 @@ jobs:
         run: ./project/scripts/sbt scala3-language-server/test
 
   scripted-tests:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -415,6 +433,7 @@ jobs:
         run: ./project/scripts/sbt scala3-bootstrapped/scripted
 
   community_build_a:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout cleanup script
@@ -433,6 +452,7 @@ jobs:
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
 
   community_build_b:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout cleanup script
@@ -452,6 +472,7 @@ jobs:
 
 
   community_build_c:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout cleanup script
@@ -474,6 +495,7 @@ jobs:
   #################################################################################################
 
   scala-library-docs:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
