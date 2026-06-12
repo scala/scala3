@@ -1,11 +1,11 @@
 package foo
 
-class Bippy
+class Bippy // warn
 
-class BIPPY // warn
+class BIPPY
 
-object Dingo
-object DINGO // warn
+object Dingo // warn
+object DINGO
 
-case class Hyrax()
-object HyRaX // warn
+case class Hyrax() // warn
+object HyRaX

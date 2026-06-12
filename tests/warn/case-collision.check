@@ -1,15 +1,15 @@
--- Warning: tests/warn/case-collision.scala:11:7 -----------------------------------------------------------------------
-11 |object HyRaX // warn
-   |       ^
-   |       Generated class foo.HyRaX differs only in case from foo.Hyrax.
-   |         Such classes will overwrite one another on case-insensitive filesystems.
--- Warning: tests/warn/case-collision.scala:5:6 ------------------------------------------------------------------------
-5 |class BIPPY // warn
+-- Warning: tests/warn/case-collision.scala:3:6 ------------------------------------------------------------------------
+3 |class Bippy // warn
   |      ^
-  |      Generated class foo.BIPPY differs only in case from foo.Bippy.
+  |      Generated class foo.Bippy differs only in case from foo.BIPPY.
   |        Such classes will overwrite one another on case-insensitive filesystems.
--- Warning: tests/warn/case-collision.scala:8:7 ------------------------------------------------------------------------
-8 |object DINGO // warn
+-- Warning: tests/warn/case-collision.scala:7:7 ------------------------------------------------------------------------
+7 |object Dingo // warn
   |       ^
-  |       Generated class foo.DINGO$ differs only in case from foo.Dingo$.
+  |       Generated class foo.Dingo differs only in case from foo.DINGO.
   |         Such classes will overwrite one another on case-insensitive filesystems.
+-- Warning: tests/warn/case-collision.scala:10:11 ----------------------------------------------------------------------
+10 |case class Hyrax() // warn
+   |           ^
+   |           Generated class foo.Hyrax differs only in case from foo.HyRaX.
+   |             Such classes will overwrite one another on case-insensitive filesystems.
