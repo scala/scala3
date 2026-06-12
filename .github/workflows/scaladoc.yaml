@@ -67,6 +67,7 @@ jobs:
           path: scaladoc/output/scala3
 
   validate-docs:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -80,6 +81,7 @@ jobs:
 
   validate-generated-docs:
     needs: build
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -144,6 +146,7 @@ jobs:
         run: true # ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test
 
   check-error-code-snippets:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
