@@ -42,24 +42,23 @@ class CodeGen(impl: BCodeSyncAndTry) {
           val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
           genTastyAndSetAttributes(sym, tastyAttrNode)
 
-        def registerGeneratedClass(classNode: ClassNode | Null, isArtifact: Boolean): Unit =
+        def registerGeneratedClass(classNode: ClassNode | Null, isMirror: Boolean): Unit =
           if classNode ne null then
             generatedClasses += GeneratedClass(classNode,
-              sourceClassName = sym.javaClassName,
               position = sym.srcPos.sourcePos,
-              isArtifact = isArtifact,
+              isMirror = isMirror,
               onFileCreated = onFileCreated(classNode, sym, ctx.compilationUnit.source)
             )
 
-        registerGeneratedClass(mainClassNode, isArtifact = false)
-        registerGeneratedClass(mirrorClassNode, isArtifact = true)
+        registerGeneratedClass(mainClassNode, isMirror = false)
+        registerGeneratedClass(mirrorClassNode, isMirror = true)
       catch
         case ex: TypeError =>
           report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
       for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-        generatedTasty += GeneratedTasty(store, binary)
+        generatedTasty += GeneratedTasty(store.name, binary)
         val tasty =
           val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
           val lo = uuid.getMostSignificantBits
