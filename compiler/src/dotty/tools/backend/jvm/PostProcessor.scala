@@ -2,21 +2,20 @@ package dotty.tools.backend.jvm
 
 import dotty.tools.backend.jvm.BTypes.InternalName
 
-import java.util.concurrent.ConcurrentHashMap
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.FileWriters
-import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.em
 
-import scala.tools.asm.{ClassWriter, Handle}
-import scala.tools.asm.tree.{ClassNode, InvokeDynamicInsnNode}
+import scala.tools.asm.ClassWriter
+import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.dotc.report
 import dotty.tools.io.PlainFile.toPlainFile
 
 import java.nio.file.{Files, Paths}
-import scala.jdk.CollectionConverters.*
+import scala.annotation.constructorOnly
 import scala.collection.mutable
 import scala.tools.asm
 import scala.util.chaining.scalaUtilChainingOps
@@ -27,39 +26,24 @@ import scala.util.chaining.scalaUtilChainingOps
  *
  * This base class doesn't do optimizations, use the subclass for that if they're enabled.
  */
-class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(using Context) {
+class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(using @constructorOnly initctx: Context) {
 
-  private val classfileWriter: FileWriters.ClassfileWriter = {
-    val dumpClassesPath =
-      ctx.settings.Xdumpclasses.valueSetByUser
-        .map(p => Paths.get(p))
-        .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
-        .map(_.toPlainFile)
-
-    FileWriters.ClassfileWriter(ctx.settings.outputDir.value, ctx.settings.XmainClass.valueSetByUser, ctx.settings.XjarCompressionLevel.value, dumpClassesPath)
-  }
-
-  private type ClassnamePosition = (String, SourcePosition)
-  private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
+  private val dumpClassesPath =
+    initctx.settings.Xdumpclasses.valueSetByUser
+      .map(p => Paths.get(p))
+      .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
+      .map(_.toPlainFile)
+  private val classfileWriter: FileWriters.ClassfileWriter =
+    FileWriters.ClassfileWriter(initctx.settings.outputDir.value, initctx.settings.XmainClass.valueSetByUser, initctx.settings.XjarCompressionLevel.value, dumpClassesPath)
 
   final def sendToDisk(clazz: GeneratedClass): Unit = {
     val classNode = clazz.classNode
-    val bytes =
-      try
-        runLocalOptimizations(classNode)
-        warnCaseInsensitiveOverwrite(clazz)
-        setInnerClasses(classNode)
-        serializeClass(classNode)
-      catch
-        case ex: Exception =>
-          if ctx.debug then ex.printStackTrace()
-          report.error(em"Error while emitting ${classNode.name}\n${ex.getMessage}")
-          null
-
-    if bytes != null then
-      TraceUtils.traceSerializedClassIfRequested(classNode.name, bytes)
-      val clsFile = classfileWriter.writeClass(classNode.name, bytes)
-      clazz.onFileCreated(clsFile)
+    runLocalOptimizations(classNode)
+    setInnerClasses(classNode)
+    val bytes = serializeClass(classNode)
+    TraceUtils.traceSerializedClassIfRequested(classNode.name, bytes)
+    val clsFile = classfileWriter.writeClass(classNode.name, bytes)
+    clazz.onFileCreated(clsFile)
   }
 
   final def sendToDisk(tasty: GeneratedTasty): Unit = {
@@ -67,7 +51,7 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
     classfileWriter.writeTasty(internalName, tastyGenerator())
   }
 
-  def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit =
+  def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit], issueSink: OptimizerIssue => Unit): Unit =
     () // no optimizations by default
 
   protected def runLocalOptimizations(classNode: ClassNode): Unit =
@@ -75,31 +59,6 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
 
   final def close(): Unit =
     classfileWriter.close()
-
-  private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
-    val name = clazz.classNode.name
-    val lowerCaseJavaName = name.toLowerCase
-    val clsPos = clazz.position
-    caseInsensitively.putIfAbsent(lowerCaseJavaName, (name, clsPos)) match {
-      case null => ()
-      case (dupName, dupPos) =>
-        // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
-        val ((pos1, pos2), (name1, name2)) =
-          if (name < dupName) ((clsPos, dupPos), (name, dupName))
-          else ((dupPos, clsPos), (dupName, name))
-        val locationAddendum =
-          if pos1.source.path == pos2.source.path then ""
-          else s" (defined in ${pos2.source.file.name})"
-        def nicify(name: String): String = name.replace('/', '.')
-        if name1 == name2 then
-          report.error(
-            em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
-        else
-          report.warning(
-            em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
-                |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
-    }
-  }
 
   private def setInnerClasses(classNode: ClassNode): Unit = {
     classNode.innerClasses.nn.clear()
@@ -191,14 +150,14 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
 
 final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
                                            callGraph: OptimizerCallGraph, indyTracker: IndyLambdaImplTracker,
-                                           bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(classBTypeCache, bTypes) {
+                                           bTypes: OptimizerKnownBTypes)(using @constructorOnly initctx: Context) extends PostProcessor(classBTypeCache, bTypes) {
   private val optSettings         = new OptimizerSettings()
   private val closureOptimizer    = new ClosureOptimizer(indyTracker, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
   private val heuristics          = new InlinerHeuristics(byteCodeRepository, callGraph, bTypes, optSettings)
   private val inliner             = new InlinerImpl(indyTracker, callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
   private val localOpt            = new LocalOpt(indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
-  override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
+  override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit], issueSink: OptimizerIssue => Unit): Unit = {
     // add classes to the bytecode repo before building the call graph: the latter needs to
     // look up classes and methods in the code repo.
     for u <- generatedUnits
@@ -209,7 +168,7 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
         c <- u.classes
     do
       callGraph.addClass(c.classNode)
-    inliner.run(i => report.optimizerWarning(i.msg, i.site, i.pos))
+    inliner.run(issueSink)
   }
 
   protected override def runLocalOptimizations(classNode: ClassNode): Unit =

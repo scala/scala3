@@ -60,7 +60,7 @@ class GenBCode extends Phase { self =>
       val knownBTypes = new OptimizerKnownBTypes(bTypeLoader)
       val callGraph = new OptimizerCallGraph(byteCodeRepository, bTypesFromClassfile)
       _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, knownBTypes)
-      _generatedClassHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(_postProcessor))
+      _generatedClassHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(_postProcessor), i => report.optimizerWarning(i.msg, i.site, i.pos))
       object impl extends BCodeIdiomatic(callGraph), BCodeSkelBuilder(knownBTypes), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives), BCodeSyncAndTry
       _codeGen = new CodeGen(impl)
     else
@@ -84,7 +84,7 @@ class GenBCode extends Phase { self =>
       val result = super.runOn(units)
       if _initialized then
         for (exn, f) <- _generatedClassHandler.complete() do
-          report.error(em"unable to write $f $exn")
+          report.error(em"Error while emitting $f\n${exn.getMessage}")
           exn.printStackTrace()
       result
     finally

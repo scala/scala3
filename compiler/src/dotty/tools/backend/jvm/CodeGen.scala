@@ -11,6 +11,7 @@ import Contexts.*
 import Phases.*
 import Symbols.*
 import StdNames.nme
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
@@ -19,9 +20,11 @@ import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.interfaces.CompilerCallback
 import dotty.tools.dotc.report
-import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 
 class CodeGen(impl: BCodeSyncAndTry) {
+  private val caseInsensitively = new java.util.HashMap[String, (String, SourcePosition)]
+
   private val mirrorBuilder = new impl.JMirrorBuilder()
 
   /**
@@ -83,8 +86,27 @@ class CodeGen(impl: BCodeSyncAndTry) {
       }
 
     genClassDefs(ctx.compilationUnit.tpdTree)
+    // Order is not deterministic so we enforce lexicographic order for error-reporting
+    generatedClasses.sortBy(_.classNode.name).foreach(c => warnCaseInsensitiveOverwrite(c.classNode.name, c.position))
     GeneratedCompilationUnit(ctx.compilationUnit.source.file.canonicalPath, generatedClasses.toList, generatedTasty.toList)
   }
+
+  private def warnCaseInsensitiveOverwrite(name: String, clsPos: SourcePosition)(using Context): Unit =
+    caseInsensitively.putIfAbsent(name.toLowerCase, (name, clsPos)) match {
+      case null => ()
+      case (dupName, dupPos) =>
+        val locationAddendum =
+          if clsPos.source.path == dupPos.source.path then ""
+          else s" (defined in ${dupPos.source.file.name})"
+        def nicify(name: String): String = name.replace('/', '.')
+        if name == dupName then
+          report.error(
+            em"${nicify(name)} and ${nicify(dupName)} produce classes that overwrite one another", clsPos)
+        else
+          report.warning(
+            em"""Generated class ${nicify(name)} differs only in case from ${nicify(dupName)}$locationAddendum.
+                |  Such classes will overwrite one another on case-insensitive filesystems.""", clsPos)
+    }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
   private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: SourceFile)(using Context): AbstractFile => Unit = {
