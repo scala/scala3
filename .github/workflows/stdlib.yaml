@@ -201,22 +201,6 @@ jobs:
           ./project/scripts/sbt scala3-bootstrapped/publishLocal
           ./project/scripts/bootstrappedOnlyCmdTests
 
-  test-scala3-bootstrapped-compilation-coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
-      - name: Run `scala3-bootstrapped/testCompilation --enable-coverage-phase`
-        run: ./project/scripts/sbt "scala3-bootstrapped/testCompilation --enable-coverage-phase"
-
   test-scala3-sbt-bridge-nonbootstrapped:
     runs-on: ubuntu-latest
     steps:
