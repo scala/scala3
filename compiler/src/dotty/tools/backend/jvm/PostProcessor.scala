@@ -204,7 +204,7 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
     for u <- generatedUnits
         c <- u.classes
     do
-      byteCodeRepository.add(c.classNode, Some(u.sourcePath))
+      byteCodeRepository.add(c.classNode, u.sourcePath)
     for u <- generatedUnits
         c <- u.classes
     do
