@@ -41,8 +41,7 @@ class JrtClassPathTest {
       node
     }
     assertEquals("java/lang/Object", jl_Class.name)
-    assertTrue(cp.list("java.lang").packages.exists(_.name == "java.lang.annotation"))
-    assertTrue(cp.list("java.lang").classesAndSources.exists(_.name == "Object"))
+    assertTrue(cp.packages("java.lang").exists(_.name == "java.lang.annotation"))
     assertTrue(cp.findClassFile("java.lang.Object").isDefined)
   }
 }

@@ -3450,7 +3450,7 @@ class JSCodeGen()(using genCtx: Context) {
             case genReceiver: js.LinkTimeIf =>
               genReceiver
             case _ =>
-              throw FatalError(s"Unexpected tree $genReceiver is generated for $innerFun at: ${tree.sourcePos}")
+              throw new FatalError(s"Unexpected tree $genReceiver is generated for $innerFun at: ${tree.sourcePos}")
           }
           js.LinkTimeIf(genReceiver1.cond, genReceiver1.thenp, genReceiver1.elsep)(toIRType(to))(using genReceiver1.pos)
         case _ =>
@@ -4123,7 +4123,7 @@ class JSCodeGen()(using genCtx: Context) {
             val newFlags = closure.flags.withTyped(false).withAsync(true)
             js.JSFunctionApply(closure.copy(flags = newFlags), Nil)
           case other =>
-            throw FatalError(
+            throw new FatalError(
                 s"Unexpected tree generated for the Function0 argument to js.async at ${tree.sourcePos}: $other")
         }
         js.Block(genStats, asyncExpr)

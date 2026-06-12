@@ -6,7 +6,6 @@ import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.dotc.classpath.{ ClassPathFactory, PackageNameUtils }
-import dotty.tools.dotc.classpath.FileUtils.{hasTastyExtension, hasBetastyExtension}
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
@@ -219,7 +218,7 @@ object SymbolLoaders {
         enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (Some(bin), _) =>
         val completer =
-          if bin.hasTastyExtension || bin.hasBetastyExtension then ctx.platform.newTastyLoader(bin)
+          if bin.ext.isTasty || bin.ext.isBetasty then ctx.platform.newTastyLoader(bin)
           else ctx.platform.newClassLoader(bin)
         enterClassAndModule(owner, nameOf(classRep), completer)
     }
@@ -299,7 +298,7 @@ object SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.list(packageName).classesAndSources
+        val classReps = classPath.classes(packageName) ++ classPath.sources(packageName)
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -340,7 +339,8 @@ object SymbolLoaders {
           // definitions. See #23043.
           val hasConflict = currentDecls.lookup(name.toTermName) != NoSymbol
           if !hasConflict
-            || classPath.list(fullName).classesAndSources.nonEmpty
+            || classPath.classes(fullName).nonEmpty
+            || classPath.sources(fullName).nonEmpty
             || classPath.packages(fullName).nonEmpty
           then
             enterPackage(root.symbol, name.toTermName,
@@ -501,7 +501,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 }
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
-  val isBestEffortTasty = tastyFile.hasBetastyExtension
+  val isBestEffortTasty = tastyFile.ext.isBetasty
 
   lazy val tastyBytes = tastyFile.toByteArray
 
