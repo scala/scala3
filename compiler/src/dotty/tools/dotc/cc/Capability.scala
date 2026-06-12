@@ -39,7 +39,8 @@ import collection.immutable
  *               |                      +-- SetCapability -----+-- TypeRef
  *               |                                             +-- TypeParamRef
  *               |
- *               +-- DerivedCapability -+-- Only
+ *               +-- DerivedCapability -+-- Restricted
+ *                                      +-- Excluded
  *                                      +-- ReadOnly
  *                                      +-- Maybe
  *
@@ -107,20 +108,37 @@ object Capabilities:
    *
    *  Read-only capabilities cannot wrap maybe capabilities.
    */
-  case class ReadOnly(underlying: CoreCapability | RootCapability | Restricted)
+  case class ReadOnly(underlying: CoreCapability | RootCapability | Restricted | Excluded)
   extends DerivedCapability:
     def newLikeThis(c: Capability) = ReadOnly(c.asInstanceOf)
 
   /** The restricted capability `x.only[C]`. We have {x.only[C]} <: {x}.
    *
-   *  Restricted capabilities cannot wrap maybe capabilities or read-only capabilities.
-   *  We have
+   *  Restricted capabilities cannot wrap maybe capabilities, read-only capabilities,
+   *  or excluded capabilities. We have
    *      (x?).restrict[T] = (x.restrict[T])?
    *      (x.rd).restrict[T] = (x.restrict[T]).rd
+   *      (x.except[T]).restrict[U] = (x.restrict[U]).exclude[T]  if T is a proper subclass of U
    */
   case class Restricted(underlying: CoreCapability | RootCapability, cls: ClassSymbol)
   extends DerivedCapability:
     def newLikeThis(c: Capability) = Restricted(c.asInstanceOf, cls)
+
+  /** The excluded capability `x.except[C]`, which stands for the parts of `x`
+   *  that are not classified as `C` or a subclass of `C`. We have {x.except[C]} <: {x}.
+   *
+   *  Excluded capabilities cannot wrap maybe capabilities or read-only capabilities,
+   *  but they can wrap restricted capabilities. We have
+   *      (x?).exclude[T] = (x.exclude[T])?
+   *      (x.rd).exclude[T] = (x.exclude[T]).rd
+   *  Excluded capabilities can also wrap other excluded capabilities, which
+   *  represents the exclusion of several unrelated classifiers. The surface syntax
+   *  allows only a single `.except[C]` per capture reference, but nested exclusions
+   *  can arise internally when capabilities are mapped or widened.
+   */
+  case class Excluded(underlying: CoreCapability | RootCapability | Restricted | Excluded, cls: ClassSymbol)
+  extends DerivedCapability:
+    def newLikeThis(c: Capability) = Excluded(c.asInstanceOf, cls)
 
   /** A class for the global root capabilities referenced as `caps.any` and `caps.fresh`.
    *  They do not subsume other capabilities, except in arguments of `withCapAsRoot` calls.
@@ -130,6 +148,7 @@ object Capabilities:
     override val maybe = Maybe(this)
     override val readOnly = ReadOnly(this)
     override def restrict(cls: ClassSymbol)(using Context) = Restricted(this, cls)
+    override def exclude(cls: ClassSymbol)(using Context) = Excluded(this, cls)
     override def singletonCaptureSet(using Context) = CaptureSet.universal
     override def captureSetOfInfo(using Context) = singletonCaptureSet
     override def cached[C <: DerivedCapability](newRef: C): C = unsupported("cached")
@@ -316,7 +335,7 @@ object Capabilities:
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
    *  as well as three kinds of AnnotatedTypes representing readOnly, only, and maybe capabilities.
    *  If there are several annotations they come with an order:
-   *  `*` first, `.only` next, `.rd` next, `?` last.
+   *  `*` first, `.only` next, `.except` next, `.rd` next, `?` last.
    */
   trait Capability extends Showable:
 
@@ -335,6 +354,10 @@ object Capabilities:
               newRef match
                 case Restricted(_, newCls) => cls == newCls
                 case _ => false
+            case Excluded(_, cls) =>
+              newRef match
+                case Excluded(_, newCls) => cls == newCls
+                case _ => false
             case _ =>
               ref.getClass == newRef.getClass
           if exists then ref.asInstanceOf[C]
@@ -351,16 +374,54 @@ object Capabilities:
     def readOnly: ReadOnly | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.readOnly)
       case self: ReadOnly => self
-      case self: (CoreCapability | RootCapability | Restricted) => cached(ReadOnly(self))
+      case self: (CoreCapability | RootCapability | Restricted | Excluded) => cached(ReadOnly(self))
 
-    def restrict(cls: ClassSymbol)(using Context): Restricted | ReadOnly | Maybe = this match
+    def restrict(cls: ClassSymbol)(using Context): Restricted | Excluded | ReadOnly | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.restrict(cls))
-      case ReadOnly(ref1) => ReadOnly(ref1.restrict(cls).asInstanceOf[Restricted])
+      case ReadOnly(ref1) => ReadOnly(ref1.restrict(cls).asInstanceOf[Restricted | Excluded])
+      case Excluded(ref1, prevCls) =>
+        if cls.isSubClass(prevCls) then
+          // Everything admitted by `cls` is excluded by `prevCls`, the result is empty.
+          ref1.restrict(defn.NothingClass)
+        else if prevCls.isSubClass(cls) then
+          // The exclusion is a proper subtree of `cls`, keep it.
+          ref1.restrict(cls).exclude(prevCls)
+        else
+          // The exclusion is unrelated to `cls`, so it is vacuous after the restriction.
+          ref1.restrict(cls)
       case self @ Restricted(ref1, prevCls) =>
         val combinedCls = leastClassifier(prevCls, cls)
         if combinedCls == prevCls then self
         else cached(Restricted(ref1, combinedCls))
       case self: (CoreCapability | RootCapability) => cached(Restricted(self, cls))
+
+    /** The excluded version `this.except[cls]` of this capability, which stands
+     *  for the parts of this capability that are not classified as `cls` or a
+     *  subclass of `cls`.
+     */
+    def exclude(cls: ClassSymbol)(using Context): Restricted | Excluded | ReadOnly | Maybe = this match
+      case Maybe(ref1) => Maybe(ref1.exclude(cls))
+      case ReadOnly(ref1) => ReadOnly(ref1.exclude(cls).asInstanceOf[Restricted | Excluded])
+      case self @ Excluded(ref1, prevCls) =>
+        if cls.isSubClass(prevCls) then
+          // The new exclusion is already covered by the previous one.
+          self
+        else if prevCls.isSubClass(cls) then
+          // The new exclusion supersedes the previous one.
+          ref1.exclude(cls)
+        else
+          // Unrelated exclusions are represented by nesting.
+          cached(Excluded(self, cls))
+      case self @ Restricted(ref1, prevCls) =>
+        if prevCls.isSubClass(cls) then
+          // Everything admitted by the restriction is excluded, the result is empty.
+          self.restrict(defn.NothingClass)
+        else if cls.isSubClass(prevCls) then
+          cached(Excluded(self, cls))
+        else
+          // The exclusion is unrelated to the restriction, so it is vacuous.
+          self
+      case self: (CoreCapability | RootCapability) => cached(Excluded(self, cls))
 
     /** Is this a maybe reference of the form `x?`? */
     final def isMaybe(using Context): Boolean = this ne stripMaybe
@@ -378,6 +439,7 @@ object Capabilities:
      */
     final def classifier(using Context): Symbol = this match
       case Restricted(_, cls) => cls
+      case Excluded(ref1, _) => ref1.classifier
       case ReadOnly(ref1) => ref1.classifier
       case Maybe(ref1) => ref1.classifier
       case self: LocalCap => self.hiddenSet.classifier
@@ -393,15 +455,31 @@ object Capabilities:
       case Maybe(ref1) => ref1.stripReadOnly.maybe
       case _ => this
 
-    /** Drop restrictions with clss `cls` or a superclass of `cls` */
+    /** Drop restrictions with class `cls` or a superclass of `cls`,
+     *  keeping exclusions in place.
+     */
     final def stripRestricted(cls: ClassSymbol)(using Context): Capability = this match
       case Restricted(ref1, cls1) if cls.isSubClass(cls1) => ref1
+      case Excluded(ref1, cls1) => ref1.stripRestricted(cls).exclude(cls1)
       case ReadOnly(ref1) => ref1.stripRestricted(cls).readOnly
       case Maybe(ref1) => ref1.stripRestricted(cls).maybe
       case _ => this
 
     final def stripRestricted(using Context): Capability =
       stripRestricted(defn.NothingClass)
+
+    /** Drop exclusions with classes that are subclasses of `cls`,
+     *  keeping restrictions in place.
+     */
+    final def stripExcluded(cls: ClassSymbol)(using Context): Capability = this match
+      case Excluded(ref1, cls1) if cls1.isSubClass(cls) => ref1.stripExcluded(cls)
+      case Excluded(ref1, cls1) => ref1.stripExcluded(cls).exclude(cls1)
+      case ReadOnly(ref1) => ref1.stripExcluded(cls).readOnly
+      case Maybe(ref1) => ref1.stripExcluded(cls).maybe
+      case _ => this
+
+    final def stripExcluded(using Context): Capability =
+      stripExcluded(defn.AnyClass)
 
     /** Is this reference a root capability or a derived version of one?
      *  These capabilities have themselves as their captureSetOfInfo.
@@ -598,6 +676,7 @@ object Capabilities:
     def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
       case self: LocalCap => f(self.hiddenSet.elems)
       case Restricted(elem1, cls) => elem1.computeHiddenSet(f).map(_.restrict(cls))
+      case Excluded(elem1, cls) => elem1.computeHiddenSet(f).map(_.exclude(cls))
       case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
@@ -616,6 +695,10 @@ object Capabilities:
             assert(cls != defn.AnyClass)
             if cls == defn.NothingClass then ClassifiedAs(Nil)
             else ClassifiedAs(cls :: Nil)
+          case Excluded(ref1, _) =>
+            // An exclusion only removes capabilities, so the transitive classifiers
+            // of the underlying capability remain a sound upper bound.
+            ref1.transClassifiers
           case ReadOnly(ref1) =>
             ref1.transClassifiers
           case Maybe(ref1) =>
@@ -639,6 +722,8 @@ object Capabilities:
         case Restricted(_, cls1) =>
           assert(cls != defn.AnyClass)
           cls1.isSubClass(cls)
+        case Excluded(ref1, _) =>
+          ref1.tryClassifyAs(cls)
         case ReadOnly(ref1) =>
           ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
@@ -652,11 +737,37 @@ object Capabilities:
         case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
         case _ => false
 
-    def isKnownEmpty(using Context): Boolean = this match
-      case Restricted(ref1, cls) =>
-        val isEmpty = ref1.transClassifiers match
+    /** Is this capability known to have no parts in common with the classifier
+     *  subtree rooted at `cls`? This is the case if all transitive classifiers
+     *  of the capability are unrelated to `cls`, or if all parts that could fall
+     *  under `cls` are removed by an exclusion.
+     */
+    def isKnownDisjointFrom(cls: ClassSymbol)(using Context): Boolean = this match
+      case Excluded(ref1, cls1) =>
+        cls.isSubClass(cls1) || ref1.isKnownDisjointFrom(cls)
+      case ReadOnly(ref1) =>
+        ref1.isKnownDisjointFrom(cls)
+      case Maybe(ref1) =>
+        ref1.isKnownDisjointFrom(cls)
+      case _ =>
+        transClassifiers match
           case ClassifiedAs(cs) =>
             cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
+          case _ => false
+
+    def isKnownEmpty(using Context): Boolean = this match
+      case Restricted(ref1, cls) =>
+        val isEmpty =
+          cls == defn.NothingClass
+          || ref1.transClassifiers.match
+              case ClassifiedAs(cs) =>
+                cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
+              case _ => false
+        isEmpty || ref1.isKnownEmpty
+      case Excluded(ref1, cls) =>
+        val isEmpty = ref1.transClassifiers match
+          case ClassifiedAs(cs) =>
+            cs.forall(_.isSubClass(cls))
           case _ => false
         isEmpty || ref1.isKnownEmpty
       case ReadOnly(ref1) => ref1.isKnownEmpty
@@ -725,6 +836,7 @@ object Capabilities:
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
         case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
         case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
+        case Excluded(y1, cls) => this.stripExcluded(cls).subsumes(y1)
         case y: TypeRef if y.derivesFromCapSet =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
           // They can be other capture set variables, which are bounded by `CapSet`,
@@ -741,6 +853,7 @@ object Capabilities:
         case _ => false
       || this.match
           case Restricted(x1, cls) => y.isKnownClassifiedAs(cls) && x1.subsumes(y)
+          case Excluded(x1, cls) => y.isKnownDisjointFrom(cls) && x1.subsumes(y)
           case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
           case x: TypeRef if assumedContainsOf(x).contains(y) => true
           case x: TypeRef if x.derivesFromCapSet =>
@@ -810,10 +923,13 @@ object Capabilities:
               // but this fails i25863a.scala, i.e compilers without errors where there should be
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
+        case Excluded(x1, cls) =>
+          y.isKnownDisjointFrom(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>
           y match
             case ReadOnly(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
             case Restricted(y1, cls) => this.stripRestricted(cls).maxSubsumes(y1, canAddHidden)
+            case Excluded(y1, cls) => this.stripExcluded(cls).maxSubsumes(y1, canAddHidden)
             case _ => false
 
     /** `x covers y` if we should retain `y` when computing the overlap of
@@ -826,6 +942,7 @@ object Capabilities:
      *   x covers y  ==>  x* covers y*, x? covers y?
      *   x covers y  ==>  <any hiding x> covers y
      *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
+     *   x covers y  ==>  x.except[C] covers y, x covers y.except[C]
      *
      *   TODO what other clauses from subsumes do we need to port here?
      *   The last clause is a conservative over-approximation: basically, we can't achieve
@@ -847,6 +964,8 @@ object Capabilities:
                 case _ => false
             case Restricted(y1, _) =>
               recur(x, y1)
+            case Excluded(y1, _) =>
+              recur(x, y1)
             case _ =>
               false
         || x.match
@@ -857,6 +976,7 @@ object Capabilities:
                 x.hiddenSet.exists(recur(_, y))
               else false
             case Restricted(x1, _) => recur(x1, y)
+            case Excluded(x1, _) => recur(x1, y)
             case _ => false
 
       recur(this, y)
@@ -898,6 +1018,7 @@ object Capabilities:
         c match
           case _: ReadOnly => ReadOnlyCapability(c1)
           case Restricted(_, cls) => OnlyCapability(c1, cls)
+          case Excluded(_, cls) => ExceptCapability(c1, cls)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
 
