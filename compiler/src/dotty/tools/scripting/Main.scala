@@ -4,6 +4,7 @@ import java.io.File
 import java.nio.file.{Path, Paths}
 import dotty.tools.dotc.config.Properties.isWin
 import dotty.tools.io.{FileWriters, JarArchive}
+import java.util.jar.Attributes.Name
 
 /** Main entry point to the Scripting execution engine */
 object Main:
@@ -63,7 +64,6 @@ object Main:
 
     val cpPaths = classpathEntries.map { _.toString.toUrl }
 
-    import java.util.jar.Attributes.Name
     val cpString:String = cpPaths.distinct.mkString(" ")
     val manifestAttributes:Seq[(Name, String)] = Seq(
       (Name.MANIFEST_VERSION, "1.0"),
@@ -71,7 +71,7 @@ object Main:
       (Name.CLASS_PATH, cpString),
     )
     val jarArchive = JarArchive.open(dotty.tools.io.Path(jarPath), create = true)
-    // TODO
+    // TODO once we've removed the Context from there...
     /*val writer = FileWriters.FileWriter(jarArchive, manifestAttributes*)
     try
       dotty.tools.io.Directory(outDir).list.foreach(f => writer.writeFile(f.name, f.toFile.inputStream()))

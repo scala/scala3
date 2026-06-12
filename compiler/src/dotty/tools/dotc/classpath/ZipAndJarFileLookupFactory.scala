@@ -28,12 +28,10 @@ sealed trait ZipAndJarFileLookupFactory {
     if ctx.settings.YdisableFlatCpCaching.value || jFile == null then
       createForZipFile(zipFile, jFile, release)
     else
-      createUsingCache(zipFile, jFile, release)
+      cache.getOrCreate(jFile.toPath, () => createForZipFile(zipFile, jFile, release))
 
   protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath
 
-  private def createUsingCache(zipFile: AbstractFile, jFile: File, release: Option[String]): ClassPath =
-    cache.getOrCreate(jFile.toPath, () => createForZipFile(zipFile, jFile, release))
 }
 
 /**
@@ -158,6 +156,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
 object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveSourcePath(zipFile: File) extends ZipArchiveFileLookup[SourceFileEntry] {
 
+    // TODO fix this
     def release: Option[String] = None
 
     override def sources(inPackage: String): Seq[SourceFileEntry] = files(inPackage)

@@ -6,7 +6,7 @@ package config
 import scala.annotation.internal.sharable
 
 import java.io.IOException
-import java.util.jar.Attributes.{ Name => AttributeName }
+import java.util.jar.Attributes
 import java.nio.charset.StandardCharsets
 
 /** Loads `compiler.properties` from the jar. */
@@ -16,7 +16,7 @@ object Properties extends PropertiesTrait {
 
   /** Scala manifest attributes.
    */
-  @sharable val ScalaCompilerVersion: AttributeName = new AttributeName("Scala-Compiler-Version")
+  @sharable val ScalaCompilerVersion: Attributes.Name = new Attributes.Name("Scala-Compiler-Version")
 }
 
 trait PropertiesTrait {

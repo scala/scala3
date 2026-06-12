@@ -19,6 +19,7 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
     val classNames = files.flatMap { file =>
       file.ext match
         case FileExtension.Jar =>
+          // TODO centralize handling of this + tasty printer, it's trying to do the same thing?
           JarArchive.open(Path(file.path), create = false).allFileNames()
             .map(_.stripPrefix("/")) // change paths from absolute to relative
             .filter(e => Path.fileExtension(e).isTasty && !fromTastyIgnoreList(e.replace("/", File.separator)))

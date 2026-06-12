@@ -151,7 +151,7 @@ object FileWriters {
 
   private final class JarEntryWriter(file: AbstractFile, extraManifest: Seq[(Attributes.Name, String)], compressionLevel: Int) extends FileWriter {
     //keep these imports local - avoid confusion with scala naming
-    import java.util.jar.Attributes.Name.{MANIFEST_VERSION, MAIN_CLASS}
+    import java.util.jar.Attributes.Name.MANIFEST_VERSION
     import java.util.jar.{JarOutputStream, Manifest}
 
     private val storeOnly = compressionLevel == Deflater.NO_COMPRESSION

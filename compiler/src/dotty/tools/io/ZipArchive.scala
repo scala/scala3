@@ -110,6 +110,7 @@ abstract class ZipArchive(override val jpath: JPath | Null, release: Option[Stri
 
   def close(): Unit
 }
+// TODO: remove 'release' and JAR features; switch callers who need it to explicitly pick between JarFile and ZipFile
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArchive(jpath, release) {
   private def openZipFile(): ZipFile = try {

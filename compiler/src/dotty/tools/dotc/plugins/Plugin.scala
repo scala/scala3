@@ -144,6 +144,7 @@ object Plugin {
         if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
         else fromFile(is, jarp)
 
+      // TODO switch to our JarArchive
       val fileEntry = new java.util.jar.JarEntry(PluginFile)
       val jarFile = new JarFile(jarp.jpath.toFile)
       Try(read(jarFile.getInputStream(fileEntry)))
