@@ -26,6 +26,7 @@ object JarArchive {
     open(path, create = true)
   }
 
+  // TODO change this to include a version
   /** Create a jar file. */
   def open(path: Path, create: Boolean = false): JarArchive = {
     require(path.ext.isJar)

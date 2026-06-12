@@ -24,13 +24,6 @@ import scala.collection.mutable
 object ZipArchive {
   private[io] val closeZipFile: Boolean = sys.props.get("scala.classpath.closeZip").exists(_.toBoolean)
 
-  /**
-   * @param   file  a File
-   * @return  A ZipArchive if `file` is a readable zip file, otherwise null.
-   */
-  def fromFile(file: File): FileZipArchive = fromPath(file.jpath)
-  def fromPath(jpath: JPath): FileZipArchive = new FileZipArchive(jpath, release = None)
-
   private def dirName(path: String)  = splitPath(path, front = true)
   private def baseName(path: String) = splitPath(path, front = false)
   private def splitPath(path0: String, front: Boolean): String = {
@@ -52,12 +45,11 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
   self =>
 
   override def underlyingSource: Option[ZipArchive] = Some(this)
-  def isDirectory: Boolean = true
-  def lookupName(name: String, directory: Boolean): AbstractFile = unsupported()
-  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = unsupported()
-  def output: OutputStream    = unsupported()
-  def container: AbstractFile = unsupported()
-  def absolute: AbstractFile  = unsupported()
+  override def isDirectory: Boolean = true
+  override def lookupName(name: String, directory: Boolean): AbstractFile = unsupported()
+  override def output: OutputStream    = unsupported()
+  override def container: AbstractFile = unsupported()
+  override def absolute: AbstractFile  = unsupported()
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   sealed abstract class Entry(path: String, val parent: Entry | Null) extends VirtualFile(baseName(path), path) {
@@ -108,7 +100,7 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
 }
 // TODO: remove 'release' and JAR features; switch callers who need it to explicitly pick between JarFile and ZipFile
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArchive(jpath) {
+final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends ZipArchive(jpath) {
   private def openZipFile(): ZipFile = try {
     release match {
       case Some(r) if file.nn.getName.endsWith(".jar") =>

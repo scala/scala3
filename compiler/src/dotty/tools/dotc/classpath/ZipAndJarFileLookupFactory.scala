@@ -21,14 +21,14 @@ sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
   def create(zipFile: AbstractFile)(using Context): ClassPath =
-    val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
+    val release = ctx.settings.javaOutputVersion.value
     val jFile = zipFile.file
     if ctx.settings.YdisableFlatCpCaching.value || jFile == null then
       createForZipFile(zipFile, jFile, release)
     else
       cache.getOrCreate(jFile.toPath, () => createForZipFile(zipFile, jFile, release))
 
-  protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath
+  protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: String): ClassPath
 
 }
 
@@ -37,7 +37,7 @@ sealed trait ZipAndJarFileLookupFactory {
  * It should be the only way of creating them as it provides caching.
  */
 object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveClassPath(zipFile: File, override val release: Option[String])
+  private case class ZipArchiveClassPath(zipFile: File, override val release: String)
     extends ZipArchiveFileLookup[BinaryFileEntry] {
 
     override def findClassFile(className: String): Option[AbstractFile] =
@@ -52,7 +52,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
       file.exists && (file.ext.isTasty || (file.ext.isClass && !file.hasSiblingTasty))
   }
 
-  override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =
+  override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: String): ClassPath =
     if (jFile == null) throw new IllegalArgumentException(s"Abstract files which don't have an underlying file are not supported. There was $zipFile")
     else ZipArchiveClassPath(jFile, release)
 }
@@ -62,20 +62,16 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  * It should be the only way of creating them as it provides caching.
  */
 object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveSourcePath(zipFile: File) extends ZipArchiveFileLookup[SourceFileEntry] {
-
-    // TODO fix this
-    def release: Option[String] = None
-
+  private case class ZipArchiveSourcePath(zipFile: File, override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
     override def sources(inPackage: String): Seq[SourceFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntry = SourceFileEntry(file)
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.ext.isSourceExtension
   }
 
-  override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =
+  override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: String): ClassPath =
     assert(jFile != null, "Zip file in ZipAndJarSourcePathFactory cannot be null")
-    ZipArchiveSourcePath(jFile)
+    ZipArchiveSourcePath(jFile, release)
 }
 
 final class FileBasedCache[T] {
