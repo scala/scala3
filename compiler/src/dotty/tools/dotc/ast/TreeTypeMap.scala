@@ -306,13 +306,7 @@ class TreeTypeMap(
       if cache == null then
         cache = util.EqHashMap[Type, Type]()
         myMapTypeCache = cache
-      val hit = cache.lookup(tp)
-      if hit != null then
-        mapTypeMruKey = tp
-        mapTypeMruValue = hit
-        return hit
-      val res = computeMapType(tp)
-      cache.update(tp, res)
+      val res = cache.getOrElseUpdate(tp, computeMapType(tp))
       mapTypeMruKey = tp
       mapTypeMruValue = res
       res
