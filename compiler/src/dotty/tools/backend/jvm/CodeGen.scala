@@ -42,16 +42,15 @@ class CodeGen(impl: BCodeSyncAndTry) {
           val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
           genTastyAndSetAttributes(sym, tastyAttrNode)
 
-        def registerGeneratedClass(classNode: ClassNode | Null, isMirror: Boolean): Unit =
+        def registerGeneratedClass(classNode: ClassNode | Null): Unit =
           if classNode ne null then
             generatedClasses += GeneratedClass(classNode,
               position = sym.srcPos.sourcePos,
-              isMirror = isMirror,
               onFileCreated = onFileCreated(classNode, sym, ctx.compilationUnit.source)
             )
 
-        registerGeneratedClass(mainClassNode, isMirror = false)
-        registerGeneratedClass(mirrorClassNode, isMirror = true)
+        registerGeneratedClass(mainClassNode)
+        registerGeneratedClass(mirrorClassNode)
       catch
         case ex: TypeError =>
           report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
