@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import dotty.tools.backend.jvm.opt.OptimizerIssue
+
 import java.nio.channels.ClosedByInterruptException
 import java.util.concurrent.*
 import scala.collection.mutable.ListBuffer
@@ -44,10 +46,10 @@ private[jvm] object GeneratedClassHandler {
     new AsyncWritingClassHandler(postProcessor, javaExecutor)
   }
 
-  def withGlobalOptimizations(handler: GeneratedClassHandler): GeneratedClassHandler =
-    new GlobalOptimisingGeneratedClassHandler(handler)
+  def withGlobalOptimizations(handler: GeneratedClassHandler, issueSink: OptimizerIssue => Unit): GeneratedClassHandler =
+    new GlobalOptimisingGeneratedClassHandler(handler, issueSink)
 
-  private class GlobalOptimisingGeneratedClassHandler(underlying: GeneratedClassHandler) extends GeneratedClassHandler {
+  private class GlobalOptimisingGeneratedClassHandler(underlying: GeneratedClassHandler, issueSink: OptimizerIssue => Unit) extends GeneratedClassHandler {
     override val postProcessor: PostProcessor = underlying.postProcessor
 
     private val generatedUnits = ListBuffer.empty[GeneratedCompilationUnit]
@@ -57,7 +59,7 @@ private[jvm] object GeneratedClassHandler {
     def complete(): List[(Throwable, String)] = {
       val allGeneratedUnits = generatedUnits.result()
       generatedUnits.clear()
-      postProcessor.runGlobalOptimizations(allGeneratedUnits)
+      postProcessor.runGlobalOptimizations(allGeneratedUnits, issueSink)
       allGeneratedUnits.foreach(underlying.process)
       underlying.complete()
     }
