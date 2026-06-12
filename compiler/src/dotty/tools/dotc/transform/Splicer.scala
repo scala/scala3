@@ -4,6 +4,7 @@ package transform
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
+import java.util.IdentityHashMap
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
@@ -89,32 +90,90 @@ object Splicer {
   /** Checks that no symbol that was generated within the macro expansion has an out of scope reference */
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
-      private var locals = Set.empty[Symbol]
+      private final val LocalStackInitial = 16
+      private final val LocalSetThreshold = 32
+      private var localSyms = new Array[Symbol](LocalStackInitial)
+      private var localCount = 0
+      private var localCounts: IdentityHashMap[Symbol, java.lang.Integer] | Null = null
+
+      private def growLocals(): Unit =
+        val expanded = new Array[Symbol](localSyms.length * 2)
+        Array.copy(localSyms, 0, expanded, 0, localSyms.length)
+        localSyms = expanded
+
+      private def addLocalCount(counts: IdentityHashMap[Symbol, java.lang.Integer], sym: Symbol): Unit =
+        val count = counts.get(sym)
+        counts.put(sym, java.lang.Integer.valueOf(if count == null then 1 else count.intValue + 1))
+
+      private def removeLocalCount(counts: IdentityHashMap[Symbol, java.lang.Integer], sym: Symbol): Unit =
+        val count = counts.get(sym)
+        if count != null then
+          if count.intValue == 1 then counts.remove(sym)
+          else counts.put(sym, java.lang.Integer.valueOf(count.intValue - 1))
+
+      private def promoteLocalCounts(): Unit =
+        val counts = new IdentityHashMap[Symbol, java.lang.Integer](localCount)
+        var i = 0
+        while i < localCount do
+          addLocalCount(counts, localSyms(i))
+          i += 1
+        localCounts = counts
+
+      private def restoreLocals(lastCount: Int): Unit =
+        val counts = localCounts
+        var i = lastCount
+        if counts != null then
+          while i < localCount do
+            removeLocalCount(counts, localSyms(i))
+            localSyms(i) = NoSymbol
+            i += 1
+        else
+          while i < localCount do
+            localSyms(i) = NoSymbol
+            i += 1
+        localCount = lastCount
+        if localCount < LocalSetThreshold then localCounts = null
+
       private def markSymbol(sym: Symbol)(using Context): Unit =
-          locals = locals + sym
+        if sym.exists then
+          if localCount == localSyms.length then growLocals()
+          localSyms(localCount) = sym
+          localCount += 1
+          val counts = localCounts
+          if counts != null then addLocalCount(counts, sym)
+          else if localCount >= LocalSetThreshold then promoteLocalCounts()
       private def markDef(tree: Tree)(using Context): Unit = tree match {
         case tree: DefTree => markSymbol(tree.symbol)
         case _ =>
       }
       def traverse(tree: Tree)(using Context): Unit =
-        def traverseOver(lastEntered: Set[Symbol]) =
+        def traverseOver(lastEntered: Int) =
           try traverseChildren(tree)
-          finally locals = lastEntered
+          finally restoreLocals(lastEntered)
         tree match
           case tree: Ident if isEscapedVariable(tree.symbol) =>
             val sym = tree.symbol
             report.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.srcPos)
           case Block(stats, _) =>
-            val last = locals
+            val last = localCount
             stats.foreach(markDef)
             traverseOver(last)
           case CaseDef(pat, guard, body) =>
-            val last = locals
+            val last = localCount
             tpd.patVars(pat).foreach(markSymbol)
             traverseOver(last)
           case _ =>
             markDef(tree)
             traverseChildren(tree)
+      private def containsLocal(sym: Symbol): Boolean =
+        val counts = localCounts
+        if counts != null then counts.containsKey(sym)
+        else
+          var i = localCount - 1
+          while i >= 0 do
+            if localSyms(i) eq sym then return true
+            i -= 1
+          false
       private def isEscapedVariable(sym: Symbol)(using Context): Boolean =
         sym.exists && !sym.is(Package)
         && sym.owner.ownersIterator.exists(x =>
@@ -124,7 +183,7 @@ object Splicer {
             !ctx.owner.ownersIterator.contains(x)
           }
         )
-        && !locals.contains(sym) // symbol is not in current scope
+        && !containsLocal(sym) // symbol is not in current scope
     }.traverse(tree)
     tree
 
