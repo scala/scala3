@@ -376,16 +376,18 @@ class TreeTypeMap(
       val tree2 = if treeMapOnly then tree1 else withMappedType(tree1)
       tree2 match {
         case id: Ident =>
-          if needsSelect(id.tpe) then
-            try ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
-            catch case ex: TypeError => super.transform(id)
-          else
-            super.transform(id)
+          id.tpe match
+            case tpe: TermRef if (tpe.prefix ne NoPrefix) && needsSelect(tpe) =>
+              try ref(tpe).withSpan(id.span)
+              catch case ex: TypeError => super.transform(id)
+            case _ =>
+              super.transform(id)
         case sel: Select =>
-          if needsIdent(sel.tpe) then
-            ref(sel.tpe.asInstanceOf[TermRef]).withSpan(sel.span)
-          else
-            super.transform(sel)
+          sel.tpe match
+            case tpe: TermRef if (tpe.prefix eq NoPrefix) && needsIdent(tpe) =>
+              ref(tpe).withSpan(sel.span)
+            case _ =>
+              super.transform(sel)
         case app @ Apply(fun, args) =>
           val appCtx = sourceCtx(app)
           if app.tpe.isError then app
