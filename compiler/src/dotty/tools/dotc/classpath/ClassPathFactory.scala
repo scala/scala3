@@ -3,11 +3,11 @@
  */
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import dotty.tools.io.ClassPath
+import dotty.tools.io.{AbstractFile, ClassPath, JarArchive, VirtualDirectory}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.LogicalPackage
+
 import java.nio.file.Files
 
 /**
@@ -67,7 +67,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       if scala.util.Properties.propOrFalse("scala.expandjavacp") then
         for
           file <- files
-          a <- ClassPath.expandManifestPath(file.absolutePath)
+          a <- JarArchive.expandManifestPath(file.absolutePath)
           path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield

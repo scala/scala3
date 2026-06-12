@@ -31,8 +31,7 @@ class OutputDirs {
   private def checkDir(dir: AbstractFile | Null, name: String, allowJar: Boolean = false): AbstractFile = (
     if ((dir ne null) && dir.isDirectory)
       dir
-    // was:      else if (allowJar && dir == null && Path.isJarOrZip(name, false))
-    else if (allowJar && (dir eq null) && Jar.isJarOrZip(File(name), false))
+    else if (allowJar && (dir eq null) && File(name).ext.isJarOrZip)
       new PlainFile(Path(name))
     else
       throw new FatalError(name + " does not exist or is not a directory"))

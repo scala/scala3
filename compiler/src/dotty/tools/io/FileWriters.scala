@@ -15,6 +15,7 @@ import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths, StandardOp
 import java.nio.file.attribute.FileAttribute
 import java.util
 import java.util.concurrent.ConcurrentHashMap
+import java.util.jar.Attributes
 import java.util.zip.CRC32
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
@@ -51,7 +52,7 @@ object FileWriters {
     def apply(output: AbstractFile): TastyWriter =
       // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
-      new SingleTastyWriter(FileWriter(output, None))
+      new SingleTastyWriter(FileWriter(output, Seq.empty))
 
     private final class SingleTastyWriter(underlying: FileWriter) extends TastyWriter {
 
@@ -88,10 +89,14 @@ object FileWriters {
     def apply(output: AbstractFile, jarManifestMainClass: Option[String], jarCompressionLevel: Int, dumpClassesPath: Option[AbstractFile]): ClassfileWriter = {
       // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
-      val basicClassWriter = new SingleClassWriter(FileWriter(output, jarManifestMainClass, jarCompressionLevel))
+      val manifest = jarManifestMainClass match
+        case None => Seq.empty
+        case Some(c) => Seq((Attributes.Name.MAIN_CLASS, c))
+
+      val basicClassWriter = new SingleClassWriter(FileWriter(output, manifest, jarCompressionLevel))
       dumpClassesPath match
         case None => basicClassWriter
-        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, None))
+        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty))
     }
 
     private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {
@@ -130,7 +135,7 @@ object FileWriters {
   }
 
   object FileWriter {
-    def apply(file: AbstractFile, jarManifestMainClass: Option[String], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter =
+    def apply(file: AbstractFile, jarManifest: Seq[(Attributes.Name, String)], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter =
       if file.isInstanceOf[JarArchive] then
         // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
         // created using `AbstractFile.bufferedOutputStream` instead of JarWriter
@@ -138,13 +143,13 @@ object FileWriters {
           throw new IllegalStateException("No underlying source for jar")
         }
         assert(file.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
-        new JarEntryWriter(jarFile, jarManifestMainClass, jarCompressionLevel)
+        new JarEntryWriter(jarFile, jarManifest, jarCompressionLevel)
       else if file.isVirtual then new VirtualFileWriter(file)
       else if file.isDirectory then new DirEntryWriter(file.file.nn.toPath)
       else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
-  private final class JarEntryWriter(file: AbstractFile, mainClass: Option[String], compressionLevel: Int) extends FileWriter {
+  private final class JarEntryWriter(file: AbstractFile, extraManifest: Seq[(Attributes.Name, String)], compressionLevel: Int) extends FileWriter {
     //keep these imports local - avoid confusion with scala naming
     import java.util.jar.Attributes.Name.{MANIFEST_VERSION, MAIN_CLASS}
     import java.util.jar.{JarOutputStream, Manifest}
@@ -157,7 +162,7 @@ object FileWriters {
       val attrs = manifest.getMainAttributes
       attrs.put(MANIFEST_VERSION, "1.0")
       attrs.put(ScalaCompilerVersion, versionNumberString)
-      mainClass.foreach(c => attrs.put(MAIN_CLASS, c))
+      extraManifest.foreach { case (a, v) => attrs.put(a, v) }
 
       val jar = new JarOutputStream(new BufferedOutputStream(new FileOutputStream(file.file), 64000), manifest)
       jar.setLevel(compressionLevel)

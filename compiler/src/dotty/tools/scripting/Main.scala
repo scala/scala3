@@ -3,6 +3,7 @@ package dotty.tools.scripting
 import java.io.File
 import java.nio.file.{Path, Paths}
 import dotty.tools.dotc.config.Properties.isWin
+import dotty.tools.io.{FileWriters, JarArchive}
 
 /** Main entry point to the Scripting execution engine */
 object Main:
@@ -69,13 +70,13 @@ object Main:
       (Name.MAIN_CLASS, mainClassName),
       (Name.CLASS_PATH, cpString),
     )
-    import dotty.tools.io.{Jar, Directory}
-    val jar = new Jar(jarPath)
-    val writer = jar.jarWriter(manifestAttributes*)
+    val jarArchive = JarArchive.open(dotty.tools.io.Path(jarPath), create = true)
+    // TODO
+    /*val writer = FileWriters.FileWriter(jarArchive, manifestAttributes*)
     try
-      writer.writeAllFrom(Directory(outDir))
+      dotty.tools.io.Directory(outDir).list.foreach(f => writer.writeFile(f.name, f.toFile.inputStream()))
     finally
-      writer.close()
+      writer.close()*/
   end writeJarfile
 
   def pathsep: String = sys.props("path.separator").nn

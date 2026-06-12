@@ -10,7 +10,6 @@ package io
 import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.util.regex.PatternSyntaxException
 import File.pathSeparator
-import Jar.isJarOrZip
 import dotc.classpath.{BinaryFileEntry, PackageEntry, SourceFileEntry}
 
 /**
@@ -44,7 +43,7 @@ object ClassPath {
 
     /* Get all subdirectories, jars, zips out of a directory. */
     def lsDir(dir: Directory, filt: String => Boolean = _ => true) =
-      dir.list.filter(x => filt(x.name) && (x.isDirectory || isJarOrZip(x))).map(_.path).toList
+      dir.list.filter(x => filt(x.name) && (x.isDirectory || JarArchive.isJarOrZip(x))).map(_.path).toList
 
     if (pattern == "*") lsDir(Directory("."))
     // On Windows the JDK supports forward slash or backslash in classpath entries
@@ -66,28 +65,6 @@ object ClassPath {
   def expandPath(path: String, expandStar: Boolean = true): List[String] =
     if (expandStar) split(path).flatMap(expandS)
     else split(path)
-
-  /** Expand manifest jar classpath entries: these are either urls, or paths
-   *  relative to the location of the jar.
-   */
-  def expandManifestPath(jarPath: String): List[URL] = {
-    val file = File(jarPath)
-    if (!file.isFile) return Nil
-
-    val baseDir = file.parent
-    new Jar(file).classPathElements map (elem =>
-      specToURL(elem, baseDir) getOrElse (baseDir / elem).toURL
-    )
-  }
-
-  private def specToURL(spec: String, basedir: Directory): Option[URL] =
-    try
-      val uri = new URI(spec)
-      if uri.isAbsolute() then Some(uri.toURL())
-      else
-        Some(basedir.resolve(Path(spec)).toURL)
-    catch
-      case _: MalformedURLException | _: URISyntaxException => None
 }
 
 trait ClassRepresentation {
