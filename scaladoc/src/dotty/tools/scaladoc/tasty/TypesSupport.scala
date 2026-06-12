@@ -547,6 +547,7 @@ trait TypesSupport:
       case ReachCapability(c)     => emitCapability(c, skipThisTypePrefix) :+ Keyword("*")
       case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
+      case ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case t @ ThisType(tpe)      =>
         // Render `this` for self-references and `EnclosingClass.this` otherwise.
         // We deliberately call `inner` without `inCC` in scope so the enclosing
@@ -584,7 +585,7 @@ trait TypesSupport:
 
   // Determines whether a capture set reference should be rendered in the current context.
   // Some capabilities (like `this` in a pure class) are elided. We need to handle all
-  // capability wrappers (reach `c*`, read-only `c.rd`, classifier `.only[C]`) by
+  // capability wrappers (reach `c*`, read-only `c.rd`, classifier `.only[C]` and `.except[C]`) by
   // recursing into the underlying capability, and always render root capabilities
   // (`cap`/`any`) and `fresh`.
   private def isCapturedInContext(using Quotes)(ref: reflect.TypeRepr)(using elideThis: reflect.ClassDef): Boolean =
@@ -595,6 +596,7 @@ trait TypesSupport:
       case ReachCapability(c)     => isCapturedInContext(c)
       case ReadOnlyCapability(c)  => isCapturedInContext(c)
       case OnlyCapability(c, _)   => isCapturedInContext(c)
+      case ExceptCapability(c, _) => isCapturedInContext(c)
       case ThisType(tr)           => !elideThis.symbol.typeRef.isPureClass(elideThis)
       case t                      => !t.isPureClass(elideThis)
 
