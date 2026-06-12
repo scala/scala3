@@ -872,9 +872,12 @@ class Inliner(val call: tpd.Tree)(using Context):
     case tpe: NamedType =>
       tpe.designator match
         case sym: Symbol => paramProxy.getOrElse(sym, default)
-        case _ => paramProxyByType.getOrElse(tpe, default)
+        case _ =>
+          if paramProxyByType.isEmpty then default
+          else paramProxyByType.getOrElse(tpe, default)
     case _ =>
-      paramProxyByType.getOrElse(tpe, default)
+      if paramProxyByType.isEmpty then default
+      else paramProxyByType.getOrElse(tpe, default)
 
   private inline def getParamProxy(tree: Ident)(using Context): Option[Type] =
     val sym = tree.symbol
