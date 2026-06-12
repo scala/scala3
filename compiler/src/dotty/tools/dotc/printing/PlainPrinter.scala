@@ -462,6 +462,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
     case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
+    case Excluded(c1, cls) => toTextCapability(c1) ~ s".except[${nameString(cls)}]"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalAny => "any"
     case GlobalFresh => "fresh"
