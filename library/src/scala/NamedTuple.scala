@@ -89,7 +89,7 @@ object NamedTuple:
   type Drop[X <: AnyNamedTuple, N <: Int] =
     NamedTuple[Tuple.Drop[Names[X], N], Tuple.Drop[DropNames[X], N]]
 
-  /** The pair type `(Take(X, N), Drop[X, N]). */
+  /** The pair type `(Take[X, N], Drop[X, N]). */
   type Split[X <: AnyNamedTuple, N <: Int] = (Take[X, N], Drop[X, N])
 
   /** The type of the concatenation of two tuples `X` and `Y`. */
@@ -97,7 +97,7 @@ object NamedTuple:
     NamedTuple[Tuple.Concat[Names[X], Names[Y]], Tuple.Concat[DropNames[X], DropNames[Y]]]
 
   /** The type of the named tuple `X` mapped with the type-level function `F`.
-   *  If `X = (n1 : T1, ..., ni : Ti)` then `Map[X, F] = `(n1 : F[T1], ..., ni : F[Ti])`.
+   *  If `X = (n1 : T1, ..., ni : Ti)` then `Map[X, F] = (n1 : F[T1], ..., ni : F[Ti])`.
    */
   type Map[X <: AnyNamedTuple, F[_ <: Tuple.Union[DropNames[X]]]] =
     NamedTuple[Names[X], Tuple.Map[DropNames[X], F]]
