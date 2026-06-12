@@ -1,4 +1,4 @@
-name: Scoverage Nightly
+name: Scoverage
 
 on:
   workflow_dispatch:
