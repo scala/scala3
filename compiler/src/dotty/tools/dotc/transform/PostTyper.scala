@@ -149,6 +149,35 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private var noCheckNews: Set[New] = Set()
 
+    private var cleanupRetainsCache: util.EqHashMap[Type, Type] | Null = null
+    private var cleanupRetainsLastFrom: Type | Null = null
+    private var cleanupRetainsLastTo: Type | Null = null
+
+    private def cleanupRetains(tp: Type)(using Context): Type =
+      if tp eq cleanupRetainsLastFrom then cleanupRetainsLastTo.asInstanceOf[Type]
+      else
+        val cache = cleanupRetainsCache
+        val cleaned =
+          if cache == null then
+            val cleaned = CleanupRetains()(tp)
+            val lastFrom = cleanupRetainsLastFrom
+            if lastFrom != null then
+              val fresh = new util.EqHashMap[Type, Type]
+              fresh.update(lastFrom.asInstanceOf[Type], cleanupRetainsLastTo.asInstanceOf[Type])
+              fresh.update(tp, cleaned)
+              cleanupRetainsCache = fresh
+            cleaned
+          else
+            val cached = cache.lookup(tp)
+            if cached != null then cached
+            else
+              val cleaned = CleanupRetains()(tp)
+              cache.update(tp, cleaned)
+              cleaned
+        cleanupRetainsLastFrom = tp
+        cleanupRetainsLastTo = cleaned
+        cleaned
+
     def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
       seenUnrolledMethods.getOrElseUpdate(method, {
         val isCtor = method.isConstructor
@@ -637,7 +666,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val tree1 = cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
           // The pickling of UnApply trees uses the tpe of the tree,
           // so we need to clean retains from it here
-          tree1.withType(transformAnnotsIn(CleanupRetains()(tree1.tpe)))
+          tree1.withType(transformAnnotsIn(cleanupRetains(tree1.tpe)))
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
@@ -742,7 +771,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if sym.isType && !sym.name.is(WildcardParamName) then
             Checking.checkGoodBounds(sym)
           // Cleanup retains from the info of the Bind symbol
-          sym.copySymDenotation(info = transformAnnotsIn(CleanupRetains()(sym.info))).installAfter(thisPhase)
+          sym.copySymDenotation(info = transformAnnotsIn(cleanupRetains(sym.info))).installAfter(thisPhase)
           super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
@@ -774,7 +803,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
+          val tpe = if tree.isInferred then cleanupRetains(tree.tpe) else tree.tpe
           tree.withType(transformAnnotsIn(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
