@@ -4980,7 +4980,10 @@ object Types extends TypeUtils {
       def mapArgs(args: List[Type]): List[Type] = args match
         case args @ (arg :: rest) => args.derivedCons(op(arg), mapArgs(rest))
         case nil => nil
-      derivedAppliedType(op(tycon), mapArgs(args))
+      val tycon1 = op(tycon)
+      val args1 = mapArgs(args)
+      if (tycon1 eq tycon) && (args1 eq args) then this
+      else derivedAppliedType(tycon1, args1)
 
     inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
       def foldArgs(x: T, args: List[Type]): T = args match
