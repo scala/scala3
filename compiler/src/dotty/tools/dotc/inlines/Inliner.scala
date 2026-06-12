@@ -727,6 +727,21 @@ class Inliner(val call: tpd.Tree)(using Context):
 
   protected def hasOpaqueProxies = opaqueProxies.nonEmpty
 
+  private var myMayNeedOpaqueValueArgScan = 0 // 0 = unknown, 1 = no, 2 = yes
+
+  private def mayNeedOpaqueValueArgScan(using Context): Boolean =
+    myMayNeedOpaqueValueArgScan match
+      case 1 => false
+      case 2 => true
+      case _ =>
+        var owner = inlinedMethod.owner
+        var result = false
+        while !result && owner.exists do
+          if owner.containsOpaques then result = true
+          else owner = owner.owner
+        myMayNeedOpaqueValueArgScan = if result then 2 else 1
+        result
+
   /** Map first halves of opaqueProxies pairs to second halves, using =:= as equality */
   private def mapRef(ref: TermRef): Option[TermRef] =
     opaqueProxies.collectFirst {
@@ -832,13 +847,17 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  map them to their opaque proxies.
    */
   private def mapOpaquesInValueArg(arg: Tree)(using Context): Tree =
-    val argType = arg.tpe.widenDealias
-    addOpaqueProxies(argType, arg.span, forThisProxy = false)
-    if opaqueProxies.nonEmpty then
-      val mappedType = mapOpaques.typeMap(argType)
-      if mappedType ne argType then arg.cast(AndType(arg.tpe, mappedType))
+    val scanForNewProxies = mayNeedOpaqueValueArgScan
+    if !scanForNewProxies && opaqueProxies.isEmpty then arg
+    else
+      val argType = arg.tpe.widenDealias
+      if scanForNewProxies then
+        addOpaqueProxies(argType, arg.span, forThisProxy = false)
+      if opaqueProxies.nonEmpty then
+        val mappedType = mapOpaques.typeMap(argType)
+        if mappedType ne argType then arg.cast(AndType(arg.tpe, mappedType))
+        else arg
       else arg
-    else arg
 
   private def canElideThis(tpe: ThisType): Boolean =
     inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls)
