@@ -579,6 +579,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeOnlyAnnot(qid: Tree)(using Context) =
     New(AppliedTypeTree(scalaAnnotationInternalDot(tpnme.onlyCapability), qid :: Nil), Nil :: Nil)
 
+  def makeExceptAnnot(qid: Tree)(using Context) =
+    New(AppliedTypeTree(scalaAnnotationInternalDot(tpnme.exceptCapability), qid :: Nil), Nil :: Nil)
+
   def makeConsumeAnnot()(using Context): Tree =
     New(scalaCapsInternalDot(tpnme.consume), Nil :: Nil)
 

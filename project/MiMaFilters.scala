@@ -13,6 +13,8 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
         // IArray integration with Scala Collections:
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.BuildFrom.buildFromIArray"),
+        // new annotation encoding capture checking's `x.except[C]` capabilities
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

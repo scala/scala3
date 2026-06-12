@@ -126,6 +126,18 @@ object CheckCaptures:
                 |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
             ann.srcPos)
         check(ref)
+      case ExceptCapability(ref, cls) =>
+        if !cls.isClassifiedCapabilityClass then
+          // `ref` can itself carry an `.only` qualifier; show it as a capability
+          // if possible instead of in its raw annotated form.
+          val refStr =
+            try ref.toCapability.showAsCapability
+            catch case _: IllegalCaptureRef => ref.showRef
+          report.error(
+            em"""$refStr.except[${cls.name}] is not well-formed since $cls is not a classifier class.
+                |A classifier class is a class extending `caps.Capability` and directly extending `caps.Classifier`.""",
+            ann.srcPos)
+        check(ref)
       case elem =>
         report.error(em"$elem is not a legal element of a capture set", ann.srcPos)
     ann.retainedSet.retainedElementsRaw.foreach(check)
