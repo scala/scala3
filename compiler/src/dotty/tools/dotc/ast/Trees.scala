@@ -1533,6 +1533,12 @@ object Trees {
      */
     protected def inlineContext(tree: Inlined)(using Context): Context = ctx
 
+    /** Like `inlineContext`, but also enters `source`. Typed trees override
+     *  this to avoid a separate source-only context for inlined expansions.
+     */
+    protected def inlineContext(tree: Inlined, source: SourceFile)(using Context): Context =
+      inlineContext(tree)(using ctx.withSource(source))
+
     /** The context to use when mapping or accumulating over a tree */
     def localCtx(tree: Tree)(using Context): Context
 
@@ -1728,7 +1734,13 @@ object Trees {
             && ((tree.source `eq` ctx.source) || !tree.source.exists))
           x
         else if ((tree.source `ne` ctx.source) && tree.source.exists)
-          foldOver(x, tree)(using ctx.withSource(tree.source))
+          tree match
+            case tree @ Inlined(call, bindings, expansion) =>
+              val source = tree.source
+              Stats.record(s"TreeAccumulator.foldOver/$getClass")
+              this(this(x, bindings)(using ctx.withSource(source)), expansion)(using inlineContext(tree, source))
+            case _ =>
+              foldOver(x, tree)(using ctx.withSource(tree.source))
         else {
           Stats.record(s"TreeAccumulator.foldOver/$getClass")
           tree match {

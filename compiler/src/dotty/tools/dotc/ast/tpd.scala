@@ -1518,7 +1518,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
    *  We assume parameters are never nested inside parameters.
    */
-  override def inlineContext(tree: Inlined)(using Context): Context = {
+  private def freshInlineContext(tree: Inlined)(using Context): FreshContext = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldICIndex = ctx.propertyIndex(InlinedCalls)
     val oldIC =
@@ -1536,6 +1536,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if oldIC.isEmpty then ctx.fresh.setProperties(InlinedCalls, newIC, InlinedTrees, new Counter)
     else ctx.fresh.replacePropertyAt(oldICIndex, InlinedCalls, newIC)
   }
+
+  override def inlineContext(tree: Inlined)(using Context): Context =
+    freshInlineContext(tree)
+
+  override protected def inlineContext(tree: Inlined, source: SourceFile)(using Context): Context =
+    val ctx1 = freshInlineContext(tree).setSource(source)
+    if ctx1.compilationUnit eq NoCompilationUnit then
+      ctx1.setCompilationUnit(CompilationUnit(source, mustExist = false)(using ctx1))
+    ctx1
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
    */
