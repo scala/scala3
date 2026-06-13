@@ -624,8 +624,8 @@ object Inferencing {
   }
 
   def hasCaptureConversionArg(tp: Type)(using Context): Boolean = tp match
-    case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
     case FlexibleType(hi) => hasCaptureConversionArg(hi)
+    case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
     case _ => false
 }
 
