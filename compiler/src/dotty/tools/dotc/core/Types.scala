@@ -6040,6 +6040,8 @@ object Types extends TypeUtils {
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
+    private[core] var myWildcard: WildcardType | Null = null
+
     assert(lo.isInstanceOf[TermType], lo)
     assert(hi.isInstanceOf[TermType], hi)
 
@@ -6365,7 +6367,16 @@ object Types extends TypeUtils {
           apply(bounds)
         else
           result
-      else unique(CachedWildcardType(bounds))
+      else if bounds.hash == NotCached then
+        unique(CachedWildcardType(bounds))
+      else
+        val result = bounds.myWildcard
+        if result == null then
+          val wildcard = unique(CachedWildcardType(bounds))
+          bounds.myWildcard = wildcard
+          wildcard
+        else
+          result
     /** A wildcard matching any type of the same kind as `tp`. */
     def sameKindAs(tp: Type)(using Context): WildcardType =
       apply(TypeBounds.emptySameKindAs(tp))
