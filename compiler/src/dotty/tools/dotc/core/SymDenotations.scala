@@ -1977,9 +1977,19 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import util.EqHashMap
+    import util.{EqHashMap, GenericHashMap}
 
     // ----- caches -------------------------------------------------------
+
+    private inline val MaxBaseTypeCachePresizeEntries = 8192
+    private inline val MaxMemberCachePresizeEntries = 256
+
+    private def cacheInitialCapacityForEntries(entries: Int): Int =
+      if entries <= GenericHashMap.DenseLimit then GenericHashMap.DenseLimit * 2
+      else entries * 2
+
+    private def cappedCacheInitialCapacity(entries: Int, maxEntries: Int): Int =
+      cacheInitialCapacityForEntries(if entries > maxEntries then maxEntries else entries)
 
     private var myTypeParams: List[TypeSymbol] | Null = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
@@ -2052,7 +2062,14 @@ object SymDenotations {
 
     private def promotedMemberCache(using Context): EqHashMap.HashedOnly[Name, PreDenotation] =
       if myMemberCachePeriod != ctx.period || myMemberCache == null then
-        myMemberCache = EqHashMap.HashedOnly()
+        val oldSize = if myMemberCache == null then 0 else myMemberCache.nn.size
+        val predictedSize =
+          if oldSize > 0 then oldSize
+          else info match
+            case cinfo: ClassInfo => cinfo.decls.size
+            case _ => 0
+        myMemberCache = EqHashMap.HashedOnly(
+          cappedCacheInitialCapacity(predictedSize, MaxMemberCachePresizeEntries))
         myMemberCachePeriod = ctx.period
       myMemberCache.nn
 
@@ -2141,7 +2158,9 @@ object SymDenotations {
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
-        myBaseTypeCache = new BaseTypeMap()
+        val oldSize = if myBaseTypeCache == null then 0 else myBaseTypeCache.nn.size
+        myBaseTypeCache = new BaseTypeMap(
+          cappedCacheInitialCapacity(oldSize, MaxBaseTypeCachePresizeEntries))
         myBaseTypeCachePeriod = ctx.period
         myBaseTypeCacheKey = null
         myBaseTypeCacheValue = null
