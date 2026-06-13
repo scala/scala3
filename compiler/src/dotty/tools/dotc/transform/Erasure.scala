@@ -626,13 +626,13 @@ object Erasure {
       tree1 match
         case tree1: Ident if tree1.isTerm =>
           // Record references to term-owned mutable variables, so that
-          // `CapturedVars.prepareForUnit` can skip its collection walk for units
-          // without any. Erasure runs after every phase that can grant `Mutable`
-          // to a term-owned symbol visibly to that walk, and the walk traverses
-          // exactly the trees produced here.
+          // `CapturedVars.prepareForUnit` can compute the captured set without
+          // re-traversing the unit. Erasure runs after every phase that can grant
+          // `Mutable` to a term-owned symbol visibly to that computation, and
+          // the computation sees exactly the trees produced here.
           val sym = tree1.symbol
           if sym.isMutableVar && sym.owner.isTerm then
-            ctx.compilationUnit.hasMutableLocalRefs = true
+            ctx.compilationUnit.recordMutableLocalRef(sym, ctx.owner.enclosingMethod)
         case _ =>
       tree1
 

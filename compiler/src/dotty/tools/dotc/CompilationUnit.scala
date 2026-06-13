@@ -95,10 +95,21 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    *  runs after the last phase that can grant `Mutable` to a term-owned symbol before
    *  the mega-phase group containing `CapturedVars` (grants made inside that group are
    *  invisible to `CapturedVars.prepareForUnit`, which runs before the group's
-   *  transforms). `CapturedVars` uses this to skip its per-unit collection walk:
-   *  without such a reference no variable can be captured.
+   *  transforms). `CapturedVars` uses these references to compute its captured set
+   *  without re-traversing the unit.
    */
   var hasMutableLocalRefs: Boolean = false
+
+  private var myMutableLocalRefs: List[(Symbol, Symbol)] = Nil
+
+  /** Mutable local variable references seen in the erased tree, paired with the
+   *  enclosing method at the reference site.
+   */
+  def mutableLocalRefs: List[(Symbol, Symbol)] = myMutableLocalRefs
+
+  def recordMutableLocalRef(sym: Symbol, refEnclosingMethod: Symbol): Unit =
+    hasMutableLocalRefs = true
+    myMutableLocalRefs = (sym, refEnclosingMethod) :: myMutableLocalRefs
 
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsCaptureChecking: Boolean = false
