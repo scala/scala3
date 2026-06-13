@@ -1965,7 +1965,34 @@ object Trees {
               case Thicket(_) => flatten(tree1 :: Nil)
               case _ => if (tree1 eq tree) trees else tree1 :: Nil
           case _ =>
-            flatten(trees mapConserve (transform(_)))
+            var remaining = trees
+            var buf: ListBuffer[Tree] | Null = null
+            var sawThicket = false
+            while remaining.nonEmpty do
+              val tree = remaining.head
+              val tree1 = transform(tree)
+              tree1 match
+                case _: Thicket => sawThicket = true
+                case _ =>
+              val buf1 = buf
+              if buf1 == null then
+                if tree1 ne tree then
+                  val buf2 = new ListBuffer[Tree]
+                  var prefix = trees
+                  while prefix ne remaining do
+                    buf2 += prefix.head
+                    prefix = prefix.tail
+                  buf2 += tree1
+                  buf = buf2
+              else
+                buf1 += tree1
+              remaining = remaining.tail
+            val buf1 = buf
+            if buf1 == null then
+              if sawThicket then flatten(trees) else trees
+            else
+              val result = buf1.toList
+              if sawThicket then flatten(result) else result
       def transformSub[Tr <: Tree](tree: Tr)(using Context): Tr =
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
