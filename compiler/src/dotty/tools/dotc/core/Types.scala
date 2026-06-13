@@ -3211,7 +3211,7 @@ object Types extends TypeUtils {
   object ConstantType {
     def apply(value: Constant)(using Context): ConstantType = {
       assertUnerased()
-      unique(new CachedConstantType(value))
+      ctx.uniques.enterIfNew(value)
     }
   }
 
@@ -3841,7 +3841,7 @@ object Types extends TypeUtils {
   object ExprType {
     def apply(resultType: Type)(using Context): ExprType = {
       assertUnerased()
-      unique(new CachedExprType(resultType))
+      ctx.uniques.enterIfNewExprType(resultType)
     }
   }
 
@@ -5936,7 +5936,7 @@ object Types extends TypeUtils {
     def make(underlying: Type, annots: List[Annotation])(using Context): Type =
       annots.foldLeft(underlying)(apply(_, _))
     def apply(parent: Type, annot: Annotation)(using Context): AnnotatedType =
-      unique(CachedAnnotatedType(parent, annot))
+      ctx.uniques.enterIfNew(parent, annot)
   end AnnotatedType
 
   // Special type objects and classes -----------------------------------------------------

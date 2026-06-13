@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types.*, Contexts.*, util.Stats.*, Hashable.*, Names.*
+import Types.*, Contexts.*, util.Stats.*, Hashable.*, Names.*, Constants.*, Annotations.*
 import config.Config
 import Symbols.Symbol
 import Decorators.*
@@ -10,9 +10,100 @@ import WeakHashSet.{Entry as WeakEntry}
 import scala.annotation.tailrec
 import scala.util.hashing.{MurmurHash3 => hashing}
 
-class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
+/** A weak hash-consing table for generic unique types (TypeBounds, prototypes, ...).
+ *  Aggregate tasks such as Scaladoc can create many short-lived ContextBases
+ *  before a run boundary, so cached types must be eligible for GC before reset.
+ */
+class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity * 2) with Hashable:
+  private val cachedConstantTypeHashSeed = classOf[CachedConstantType].hashCode
+  private val cachedExprTypeHashSeed = classOf[CachedExprType].hashCode
+  private val cachedAnnotatedTypeHashSeed = classOf[CachedAnnotatedType].hashCode
+
+  private inline def recordKeyedCaching(h: Int, clazz: Class[?]): Unit =
+    if h == NotCached then
+      record("uncached-types")
+      record(s"uncached: $clazz")
+    else
+      record("cached-types")
+      record(s"cached: $clazz")
+
   override def hash(x: Type): Int = x.hash
   override def isEqual(x: Type, y: Type) = x.eql(y)
+
+  def enterIfNew(value: Constant)(using Context): ConstantType =
+    val h = finishHash(hashing.mix(cachedConstantTypeHashSeed, value.hashCode), 1)
+    if monitored then recordKeyedCaching(h, classOf[CachedConstantType])
+    def newType = new CachedConstantType(value)
+    if h == NotCached then newType
+    else
+      Stats.record(statsItem("put"))
+      removeStaleEntries()
+      val bucket = index(h)
+      val oldHead = table(bucket)
+
+      @tailrec
+      def linkedListLoop(entry: WeakEntry[Type] | Null): ConstantType = entry match
+        case null => addEntryAt(bucket, newType, h, oldHead).asInstanceOf[ConstantType]
+        case _ =>
+          if entry.hash == h then
+            entry.get match
+              case e: ConstantType if value == e.value => e
+              case _ => linkedListLoop(entry.tail)
+          else linkedListLoop(entry.tail)
+
+      linkedListLoop(oldHead)
+    end if
+  end enterIfNew
+
+  def enterIfNewExprType(resultType: Type)(using Context): ExprType =
+    val h = finishHash(null, cachedExprTypeHashSeed, 0, resultType)
+    if monitored then recordKeyedCaching(h, classOf[CachedExprType])
+    def newType = new CachedExprType(resultType)
+    if h == NotCached then newType
+    else
+      Stats.record(statsItem("put"))
+      removeStaleEntries()
+      val bucket = index(h)
+      val oldHead = table(bucket)
+
+      @tailrec
+      def linkedListLoop(entry: WeakEntry[Type] | Null): ExprType = entry match
+        case null => addEntryAt(bucket, newType, h, oldHead).asInstanceOf[ExprType]
+        case _ =>
+          if entry.hash == h then
+            entry.get match
+              case e: ExprType if resultType eq e.resType => e
+              case _ => linkedListLoop(entry.tail)
+          else linkedListLoop(entry.tail)
+
+      linkedListLoop(oldHead)
+    end if
+  end enterIfNewExprType
+
+  def enterIfNew(parent: Type, annot: Annotation)(using Context): AnnotatedType =
+    val h = finishHash(null, hashing.mix(cachedAnnotatedTypeHashSeed, annot.hash), 1, parent)
+    if monitored then recordKeyedCaching(h, classOf[CachedAnnotatedType])
+    def newType = new CachedAnnotatedType(parent, annot)
+    if h == NotCached then newType
+    else
+      Stats.record(statsItem("put"))
+      removeStaleEntries()
+      val bucket = index(h)
+      val oldHead = table(bucket)
+
+      @tailrec
+      def linkedListLoop(entry: WeakEntry[Type] | Null): AnnotatedType = entry match
+        case null => addEntryAt(bucket, newType, h, oldHead).asInstanceOf[AnnotatedType]
+        case _ =>
+          if entry.hash == h then
+            entry.get match
+              case e: AnnotatedType if (parent eq e.parent) && annot.eql(e.annot) => e
+              case _ => linkedListLoop(entry.tail)
+          else linkedListLoop(entry.tail)
+
+      linkedListLoop(oldHead)
+    end if
+  end enterIfNew
 
 /** Defines operation `unique` for hash-consing types.
  *  Also defines specialized hash sets for hash consing uniques of a specific type.
