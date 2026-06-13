@@ -1626,6 +1626,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           while refs.nonEmpty do
             updateRefCount(refs.head, 2) // can't be inlined, so make sure refCount is at least 2
             refs = refs.tail
+
       // Descent-guard traverser: stops descending once `activeRefCounts == 0`.
       // Once every tracked binding's refCount has saturated at 2, all retain/inline
       // decisions are final and immutable, so visiting further nodes cannot change them.
@@ -1633,6 +1634,18 @@ class Inliner(val call: tpd.Tree)(using Context):
       // RefTree is processed (its own ref may saturate the last count) before descending.
       // One reused traverser across `countRefs(tree)` + the bindings — allocation-neutral.
       val refCounter = new TreeTraverser {
+        private def traverseTrees(trees: List[Tree])(using Context): Unit =
+          var rest = trees
+          while activeRefCounts != 0 && rest.nonEmpty do
+            traverse(rest.head)
+            rest = rest.tail
+
+        private def traverseParamss(paramss: List[ParamClause])(using Context): Unit =
+          var rest = paramss
+          while activeRefCounts != 0 && rest.nonEmpty do
+            traverseTrees(rest.head)
+            rest = rest.tail
+
         def traverse(tree: Tree)(using Context): Unit =
           if activeRefCounts != 0 then
             tree match
@@ -1642,7 +1655,142 @@ class Inliner(val call: tpd.Tree)(using Context):
               case t @ (_: New | _: TypeTree) =>
                 updateTermRefCounts(t)
               case _ =>
-            if activeRefCounts != 0 then traverseChildren(tree)
+            if activeRefCounts != 0 then
+              tree match
+                case Ident(_) | This(_) | Literal(_) | TypeTree() =>
+                case Select(qualifier, _) =>
+                  traverse(qualifier)
+                case Super(qual, _) =>
+                  traverse(qual)
+                case Apply(fun, args) =>
+                  traverse(fun)
+                  traverseTrees(args)
+                case TypeApply(fun, args) =>
+                  traverse(fun)
+                  traverseTrees(args)
+                case New(tpt) =>
+                  traverse(tpt)
+                case Typed(expr, tpt) =>
+                  traverse(expr)
+                  traverse(tpt)
+                case NamedArg(_, arg) =>
+                  traverse(arg)
+                case Assign(lhs, rhs) =>
+                  traverse(lhs)
+                  traverse(rhs)
+                case Block(stats, expr) =>
+                  traverseTrees(stats)
+                  traverse(expr)
+                case If(cond, thenp, elsep) =>
+                  traverse(cond)
+                  traverse(thenp)
+                  traverse(elsep)
+                case Closure(env, meth, tpt) =>
+                  traverseTrees(env)
+                  traverse(meth)
+                  traverse(tpt)
+                case Match(selector, cases) =>
+                  traverse(selector)
+                  traverseTrees(cases)
+                case CaseDef(pat, guard, body) =>
+                  traverse(pat)
+                  traverse(guard)
+                  traverse(body)
+                case Labeled(bind, expr) =>
+                  traverse(bind)
+                  traverse(expr)
+                case Return(expr, from) =>
+                  traverse(expr)
+                  traverse(from)
+                case WhileDo(cond, body) =>
+                  traverse(cond)
+                  traverse(body)
+                case Try(block, handler, finalizer) =>
+                  traverse(block)
+                  traverseTrees(handler)
+                  traverse(finalizer)
+                case SeqLiteral(elems, elemtpt) =>
+                  traverseTrees(elems)
+                  traverse(elemtpt)
+                case Inlined(_, bindings, expansion) =>
+                  traverseTrees(bindings)
+                  traverse(expansion)
+                case SingletonTypeTree(ref) =>
+                  traverse(ref)
+                case RefinedTypeTree(tpt, refinements) =>
+                  traverse(tpt)
+                  traverseTrees(refinements)
+                case AppliedTypeTree(tpt, args) =>
+                  traverse(tpt)
+                  traverseTrees(args)
+                case LambdaTypeTree(tparams, body) =>
+                  traverseTrees(tparams)
+                  traverse(body)
+                case TermLambdaTypeTree(params, body) =>
+                  traverseTrees(params)
+                  traverse(body)
+                case MatchTypeTree(bound, selector, cases) =>
+                  traverse(bound)
+                  traverse(selector)
+                  traverseTrees(cases)
+                case ByNameTypeTree(result) =>
+                  traverse(result)
+                case TypeBoundsTree(lo, hi, alias) =>
+                  traverse(lo)
+                  traverse(hi)
+                  traverse(alias)
+                case Bind(_, body) =>
+                  traverse(body)
+                case Alternative(trees) =>
+                  traverseTrees(trees)
+                case UnApply(fun, implicits, patterns) =>
+                  traverse(fun)
+                  traverseTrees(implicits)
+                  traverseTrees(patterns)
+                case vdef: ValDef =>
+                  traverse(vdef.tpt)
+                  traverse(vdef.rhs)
+                case ddef: DefDef =>
+                  traverseParamss(ddef.paramss)
+                  traverse(ddef.tpt)
+                  traverse(ddef.rhs)
+                case TypeDef(_, rhs) =>
+                  traverse(rhs)
+                case template: Template if template.derived.isEmpty =>
+                  traverse(template.constr)
+                  traverseTrees(template.parents)
+                  traverse(template.self)
+                  traverseTrees(template.body)
+                case Import(expr, _) =>
+                  traverse(expr)
+                case Export(expr, _) =>
+                  traverse(expr)
+                case PackageDef(pid, stats) =>
+                  traverse(pid)
+                  traverseTrees(stats)
+                case Annotated(arg, annot) =>
+                  traverse(arg)
+                  traverse(annot)
+                case Thicket(ts) =>
+                  traverseTrees(ts)
+                case Quote(body, tags) =>
+                  traverse(body)
+                  traverseTrees(tags)
+                case Splice(expr) =>
+                  traverse(expr)
+                case QuotePattern(bindings, body, quotes) =>
+                  traverseTrees(bindings)
+                  traverse(body)
+                  traverse(quotes)
+                case SplicePattern(body, typeargs, args) =>
+                  traverse(body)
+                  traverseTrees(typeargs)
+                  traverseTrees(args)
+                case Hole(_, _, args, content) =>
+                  traverseTrees(args)
+                  traverse(content)
+                case _ =>
+                  traverseChildren(tree)
       }
       def countRefs(tree: Tree) =
         if activeRefCounts != 0 then refCounter.traverse(tree)
