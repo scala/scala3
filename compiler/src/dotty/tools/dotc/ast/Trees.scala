@@ -465,6 +465,12 @@ object Trees {
     type ThisTree[+T <: Untyped] = Ident[T]
     def qualifier: Tree[T] = genericEmptyTree
 
+    override def symbol(using Context): Symbol = typeOpt match
+      case tpe: NamedType =>
+        val s = tpe.cachedSymbolOrNull
+        if s != null then s else denot.symbol
+      case _ => denot.symbol
+
     def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
