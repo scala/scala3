@@ -285,10 +285,77 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
     def traverse(tree: Tree)(using Context) =
       try
         process(tree)
-        traverseChildren(tree)
+        traverseChildrenFast(tree)
       catch case ex: Exception =>
         println(i"$ex while traversing $tree")
         throw ex
+
+    private def traverseList(trees: List[Tree])(using Context): Unit =
+      var remaining = trees
+      while remaining.nonEmpty do
+        traverse(remaining.head)
+        remaining = remaining.tail
+
+    private def traverseParamss(paramss: List[ParamClause])(using Context): Unit =
+      var remaining = paramss
+      while remaining.nonEmpty do
+        remaining.head.foreach(traverse)
+        remaining = remaining.tail
+
+    private def traverseChildrenFast(tree: Tree)(using Context): Unit =
+      if (tree.source `ne` ctx.source) && tree.source.exists then
+        traverseChildrenSameSource(tree)(using ctx.withSource(tree.source))
+      else
+        traverseChildrenSameSource(tree)
+
+    private def traverseChildrenSameSource(tree: Tree)(using Context): Unit =
+      tree match
+        case Ident(_) | Literal(_) | This(_) | TypeTree() | EmptyTree =>
+        case Select(qualifier, _) =>
+          traverse(qualifier)
+        case Super(qual, _) =>
+          traverse(qual)
+        case Apply(fun, args) =>
+          traverse(fun)
+          traverseList(args)
+        case TypeApply(fun, args) =>
+          traverse(fun)
+          traverseList(args)
+        case New(tpt) =>
+          traverse(tpt)
+        case Typed(expr, tpt) =>
+          traverse(expr)
+          traverse(tpt)
+        case Assign(lhs, rhs) =>
+          traverse(lhs)
+          traverse(rhs)
+        case Block(stats, expr) =>
+          traverseList(stats)
+          traverse(expr)
+        case If(cond, thenp, elsep) =>
+          traverse(cond)
+          traverse(thenp)
+          traverse(elsep)
+        case Return(expr, from) =>
+          traverse(expr)
+          traverse(from)
+        case tree @ ValDef(_, tpt, _) =>
+          inContext(localCtx(tree)) {
+            traverse(tpt)
+            traverse(tree.rhs)
+          }
+        case tree @ DefDef(_, paramss, tpt, _) =>
+          inContext(localCtx(tree)) {
+            traverseParamss(paramss)
+            traverse(tpt)
+            traverse(tree.rhs)
+          }
+        case tree @ TypeDef(_, rhs) =>
+          inContext(localCtx(tree)) {
+            traverse(rhs)
+          }
+        case _ =>
+          traverseChildren(tree)
 
   /** Compute final free variables map `fvs by closing over caller dependencies. */
   private def computeFreeVars()(using Context): Unit =
