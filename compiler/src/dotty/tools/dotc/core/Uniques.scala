@@ -223,8 +223,11 @@ object Uniques:
       page
 
     private def markBucketOccupied(bucket: Int): Unit =
+      markBucketOccupied(bucket, bucket >>> PageBits)
+
+    private def markBucketOccupied(bucket: Int, pageIndex: Int): Unit =
       val wordIndex = (bucket & PageMask) >>> OccupancyWordBits
-      val page = occupancyPages(bucket >>> PageBits).nn
+      val page = occupancyPages(pageIndex).nn
       page(wordIndex) = page(wordIndex) | (1L << (bucket & OccupancyWordMask))
 
     private def markBucketEmpty(bucket: Int): Unit =
@@ -235,12 +238,15 @@ object Uniques:
           val wordIndex = (bucket & PageMask) >>> OccupancyWordBits
           page(wordIndex) = page(wordIndex) & ~(1L << (bucket & OccupancyWordMask))
 
-    private def bucketHead(bucket: Int): AppliedEntry | Null =
-      val pageIndex = bucket >>> PageBits
+    private inline def bucketPage(pageIndex: Int): BucketPage | Null =
       if pageIndex >= pages.length then null
-      else
-        val page = pages(pageIndex)
-        if page == null then null else page(bucket & PageMask)
+      else pages(pageIndex)
+
+    private inline def bucketHead(bucket: Int, page: BucketPage | Null): AppliedEntry | Null =
+      if page == null then null else page(bucket & PageMask)
+
+    private def bucketHead(bucket: Int): AppliedEntry | Null =
+      bucketHead(bucket, bucketPage(bucket >>> PageBits))
 
     private def bucketHead_=(bucket: Int, head: AppliedEntry | Null): Unit =
       ensurePage(bucket)(bucket & PageMask) = head
@@ -349,10 +355,12 @@ object Uniques:
           pagedThreshold = computePagedThreshold()
           true
 
-    private def addPagedEntryAt(bucket: Int, elem: AppliedType, elemHash: Int, oldHead: AppliedEntry | Null): AppliedType =
+    private def addPagedEntryAt(bucket: Int, pageIndex: Int, page: BucketPage | Null, elem: AppliedType, elemHash: Int, oldHead: AppliedEntry | Null): AppliedType =
       Stats.record(statsItem("addEntryAt"))
-      bucketHead_=(bucket, new WeakEntry(elem, elemHash, oldHead, queue))
-      if oldHead == null then markBucketOccupied(bucket)
+      val entry = new WeakEntry(elem, elemHash, oldHead, queue)
+      if page == null then ensurePage(bucket)(bucket & PageMask) = entry
+      else page(bucket & PageMask) = entry
+      if oldHead == null then markBucketOccupied(bucket, pageIndex)
       count += 1
       while count > pagedThreshold do
         if !skipEmptySplitBuckets() then splitOneBucket()
@@ -385,11 +393,13 @@ object Uniques:
         removeStaleEntries()
         val h = hash(elem)
         val bucket = bucketIndex(h)
-        val oldHead = bucketHead(bucket)
+        val pageIndex = bucket >>> PageBits
+        val page = bucketPage(pageIndex)
+        val oldHead = bucketHead(bucket, page)
 
         @tailrec
         def linkedListLoop(entry: AppliedEntry | Null): AppliedType = entry match
-          case null => addPagedEntryAt(bucket, elem, h, oldHead)
+          case null => addPagedEntryAt(bucket, pageIndex, page, elem, h, oldHead)
           case _ =>
             if entry.hash == h then
               val entryElem = entry.get
@@ -497,12 +507,14 @@ object Uniques:
         Stats.record(statsItem("put"))
         removeStaleEntries()
         val bucket = bucketIndex(h)
-        val oldHead = bucketHead(bucket)
+        val pageIndex = bucket >>> PageBits
+        val page = bucketPage(pageIndex)
+        val oldHead = bucketHead(bucket, page)
         val candidateArgsEqHash = argsEqHash
 
         @tailrec
         def linkedListLoop(entry: AppliedEntry | Null): AppliedType = entry match
-          case null                    => addPagedEntryAt(bucket, newType(candidateArgsEqHash), h, oldHead)
+          case null                    => addPagedEntryAt(bucket, pageIndex, page, newType(candidateArgsEqHash), h, oldHead)
           case _                       =>
             if entry.hash == h then
               val e = entry.get
@@ -535,12 +547,14 @@ object Uniques:
         Stats.record(statsItem("put"))
         removeStaleEntries()
         val bucket = bucketIndex(h)
-        val oldHead = bucketHead(bucket)
+        val pageIndex = bucket >>> PageBits
+        val page = bucketPage(pageIndex)
+        val oldHead = bucketHead(bucket, page)
         val candidateArgsEqHash = argsEqHash
 
         @tailrec
         def linkedListLoop(entry: AppliedEntry | Null): AppliedType = entry match
-          case null                    => addPagedEntryAt(bucket, newType(candidateArgsEqHash), h, oldHead)
+          case null                    => addPagedEntryAt(bucket, pageIndex, page, newType(candidateArgsEqHash), h, oldHead)
           case _                       =>
             if entry.hash == h then
               val e = entry.get
@@ -578,14 +592,16 @@ object Uniques:
         Stats.record(statsItem("put"))
         removeStaleEntries()
         val bucket = bucketIndex(h)
-        val oldHead = bucketHead(bucket)
+        val pageIndex = bucket >>> PageBits
+        val page = bucketPage(pageIndex)
+        val oldHead = bucketHead(bucket, page)
         // Pre-filter probe: compare a cheap identity-hash of args
         // before falling into the eqElements list walk.
         val candidateArgsEqHash = argsEqHash
 
         @tailrec
         def linkedListLoop(entry: AppliedEntry | Null): AppliedType = entry match
-          case null                    => addPagedEntryAt(bucket, newType(candidateArgsEqHash), h, oldHead)
+          case null                    => addPagedEntryAt(bucket, pageIndex, page, newType(candidateArgsEqHash), h, oldHead)
           case _                       =>
             if entry.hash == h then
               val e = entry.get
