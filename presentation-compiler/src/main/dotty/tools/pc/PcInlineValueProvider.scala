@@ -20,7 +20,7 @@ import org.eclipse.lsp4j as l
 final class PcInlineValueProvider(
     driver: InteractiveDriver,
     val params: OffsetParams
-) extends WithSymbolSearchCollector[Option[Occurence]](driver, params):
+) extends WithSymbolSearchCollector[Option[Occurrence]](driver, params):
 
   // We return a result or an error
   def getInlineTextEdits(): Either[String, List[l.TextEdit]] =
@@ -90,26 +90,26 @@ final class PcInlineValueProvider(
       tree: Tree | EndMarker,
       pos: SourcePosition,
       sym: Option[Symbol]
-  ): Option[Occurence] =
+  ): Option[Occurrence] =
     tree match
       case tree: Tree =>
         val (adjustedPos, _) = pos.adjust(text)
-        Some(Occurence(tree, parent, adjustedPos))
+        Some(Occurrence(tree, parent, adjustedPos))
       case _ => None
 
   def defAndRefs(): Either[String, (Definition, List[Reference])] =
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-    val allOccurences = result().flatten
+    val allOccurrences = result().flatten
     for
-      definition <- allOccurences
-        .collectFirst { case Occurence(defn: ValDef, _, pos) =>
+      definition <- allOccurrences
+        .collectFirst { case Occurrence(defn: ValDef, _, pos) =>
           DefinitionTree(defn, pos)
         }
         .toRight(Errors.didNotFindDefinition)
       path = Interactive.pathTo(unit.tpdTree, definition.tree.rhs.span)(using newctx)
       indexedContext = IndexedContext(definition.tree.namePos, path, newctx)
       symbols = symbolsUsedInDefn(definition.tree.rhs, indexedContext)
-      references <- getReferencesToInline(definition, allOccurences, symbols)
+      references <- getReferencesToInline(definition, allOccurrences, symbols)
     yield
       val (deleteDefinition, refsEdits) = references
 
@@ -220,13 +220,13 @@ final class PcInlineValueProvider(
 
   private def getReferencesToInline(
       definition: DefinitionTree,
-      allOccurences: List[Occurence],
+      allOccurrences: List[Occurrence],
       symbols: Set[Symbol]
   ): Either[String, (Boolean, List[Reference])] =
     val defIsLocal = definition.tree.symbol.ownersIterator
       .drop(1)
       .exists(e => e.isTerm)
-    def allreferences = allOccurences.filterNot(_.isDefn)
+    def allreferences = allOccurrences.filterNot(_.isDefn)
     def inlineAll() =
       makeRefsEdits(allreferences, symbols, definition).map((true, _))
     if definition.tree.sourcePos.toLsp.encloses(position)
@@ -254,12 +254,12 @@ final class PcInlineValueProvider(
       pad.result()
 
   private def makeRefsEdits(
-      refs: List[Occurence],
+      refs: List[Occurrence],
       symbols: Set[Symbol],
       definition: DefinitionTree
   ): Either[String, List[Reference]] =
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-    def buildRef(occurrence: Occurence): Either[String, Reference] =
+    def buildRef(occurrence: Occurrence): Either[String, Reference] =
       val path =
         Interactive.pathTo(unit.tpdTree, occurrence.pos.span)(using newctx)
       val indexedContext = IndexedContext(pos, path, newctx)
@@ -302,7 +302,7 @@ final class PcInlineValueProvider(
 
 end PcInlineValueProvider
 
-case class Occurence(tree: Tree, parent: Option[Tree], pos: SourcePosition):
+case class Occurrence(tree: Tree, parent: Option[Tree], pos: SourcePosition):
   def isDefn =
     tree match
       case _: ValDef => true

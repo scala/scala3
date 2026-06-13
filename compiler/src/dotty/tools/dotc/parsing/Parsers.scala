@@ -5089,7 +5089,7 @@ object Parsers {
 
         // See test 17579. We allow `final` on `given` because these can be
         // translated to class definitions, for which `final` is allowed but
-        // redundant--there is a seperate warning for this.
+        // redundant--there is a separate warning for this.
         if isDclIntro && in.token != GIVEN then syntaxError(FinalLocalDef())
 
         tmplDef(start, mods)

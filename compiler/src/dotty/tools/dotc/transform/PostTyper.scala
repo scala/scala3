@@ -407,7 +407,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *  clean retains annotations from such types. But for an overriding symbol the
      *  retains annotations come from the explicitly declared parent types, so should
      *  be kept.
-     *  TODO: If the overriden type is an InferredType, we should probably clean retains
+     *  TODO: If the overridden type is an InferredType, we should probably clean retains
      *  from both types as well.
      */
     private def makeOverrideTypeDeclared(symbol: Symbol, tpt: Tree)(using Context): Tree =
