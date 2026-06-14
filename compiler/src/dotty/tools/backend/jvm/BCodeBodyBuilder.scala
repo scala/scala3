@@ -788,7 +788,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           // scala/bug#10290: qual can be `this.$outer()` (not just `this`), so we call genLoad (not just ALOAD_0)
           val superQualTK = genLoad(superQual)
           stack.push(superQualTK)
-          genLoadArguments(args, paramTKs(app))
+          genLoadArguments(args, if args.isEmpty then Nil else paramTKs(app))
           stack.pop()
           // The receiver in bytecode should be based on the call site qualifier type,
           // instead of method declaration owner class
@@ -826,7 +826,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
               bc.dup(generatedType)
               stack.push(rt)
               stack.push(rt)
-              genLoadArguments(args, paramTKs(app))
+              genLoadArguments(args, if args.isEmpty then Nil else paramTKs(app))
               stack.pop(2)
               genCallMethod(ctor, InvokeStyle.Special, app)
 
@@ -864,7 +864,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             val savedStackSize = stack.recordSize()
             if invokeStyle.hasInstance then
               stack.push(genLoadQualifier(fun))
-            genLoadArguments(args, paramTKs(app))
+            genLoadArguments(args, if args.isEmpty then Nil else paramTKs(app))
             stack.restoreSize(savedStackSize)
 
             val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
