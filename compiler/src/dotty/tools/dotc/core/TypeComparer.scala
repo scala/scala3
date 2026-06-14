@@ -1232,13 +1232,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // first (e.g. a `scala.compiletime.ops` AppliedType reducing to a
       // ConstantType whose base does exist), so a normalizable class-headed
       // LHS must NOT take the skip — guard with `!underlyingNormalizable`.
-      def misses(tp: TypeRef): Boolean =
+      // The hole is only reachable on the AppliedType arm: a bare `TypeRef`'s
+      // `underlyingNormalizable` is always NoType (`stripped`/`stripLazyRef`
+      // are identity for a `TypeRef`, which is neither a MatchType nor an
+      // AppliedType), so the guard is dead there and is dropped to spare the
+      // `stripped` + `stripLazyRef` + match on every bare-TypeRef miss.
+      def misses(tp: TypeRef, applied: Boolean): Boolean =
         val cls1 = tp.symbol
-        cls1.isClass && !cls1.derivesFrom(cls2) && !tp1.underlyingNormalizable.exists
+        cls1.isClass && !cls1.derivesFrom(cls2)
+          && (!applied || !tp1.underlyingNormalizable.exists)
 
       tp1 match
-        case tp1: TypeRef => misses(tp1)
-        case AppliedType(tycon1: TypeRef, _) => misses(tycon1)
+        case tp1: TypeRef => misses(tp1, applied = false)
+        case AppliedType(tycon1: TypeRef, _) => misses(tycon1, applied = true)
         case _ => false
 
     def tryBaseTypeOrSkipStaticMiss(cls2: Symbol) =
