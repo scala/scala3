@@ -173,7 +173,7 @@ class C extends A, B:
 ```
 This syntax is supported for inline traits. Note however that as inline traits are converted to pure interfaces it is not possible to make a direct call to the
 method on A or B. Furthermore if we allowed this, specialization would be lost. Therefore, overridden methods are inlined into the inline receiver with a mangled name,
-e.g. `A$$foo$`, `B$$foo` and the `override def foo` in `C` will delegate to one of these methods. Super calls to non-overridden methods are also supported.
+e.g. `A$$foo`, `B$$foo` and the `override def foo` in `C` will delegate to one of these methods. Super calls to non-overridden methods are also supported.
 These are transformed to point directly to the corresponding inlined methods with no need for name mangling.
 
 However, inline traits may not contain `super` references to classes or non-inline traits. This is because `super` references in scala may only reference
@@ -319,7 +319,7 @@ class B extends A[Int](100):
 
 [5]
 Self types are supported but are not inlined. We argue this is desirable as it ensures that the behaviour of inline traits
-with self types mirrors that of ordinary traits with self types. Inlining of self types would effectively remove any restictions that
+with self types mirrors that of ordinary traits with self types. Inlining of self types would effectively remove any restrictions that
 these self types seek to impose because the subclass would automatically have a matching self type to that of the parent class. This 
 would prevent an error from being thrown, irrespective of whether the subclass implements the desired traits.
 Therefore, when using self types on inline traits, the behaviour observed is the following (as in ordinary traits) e.g.:

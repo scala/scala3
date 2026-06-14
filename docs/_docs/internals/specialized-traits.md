@@ -217,7 +217,7 @@ In the other case, specialization waits until all the types are known, except fo
 inline trait Bar[T: Specialized] extends Foo[T, Int], Foo$sp$Any$Int
 inline trait Foo$sp$Any$Int extends Foo[Any, Int]
 inline trait Foo$sp$Boolean$Int extends Foo[Boolean, Int]
-inline trait Bar$sp$Boolean extends Bar[String], Foo$sp$Boolean$Int
+inline trait Bar$sp$Boolean extends Bar[Int], Foo$sp$Boolean$Int
 class Baz extends Foo, Bar, Foo$sp$Boolean$Int, Bar$sp$Boolean
 ```
 
