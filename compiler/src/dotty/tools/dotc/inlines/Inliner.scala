@@ -912,6 +912,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           case _ =>
             None
 
+      val select = untpd.cpy.Select(tree)(qual1, tree.name)
       val resNoReduce =
         if tree.symbol.isAllOf(DeferredInline) && reselectedType.exists then
           concreteImplementation(reselectedType, tree.symbol) match
@@ -919,11 +920,11 @@ class Inliner(val call: tpd.Tree)(using Context):
               val implementationType = reselectedType match
                 case reselectedType: NamedType => reselectedType.prefix.select(tree.name, implementation)
                 case _ => reselectedType
-              assignType(untpd.cpy.Select(tree)(qual1, tree.name), implementationType)
+              select.withType(implementationType)
             case None =>
-              untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+              select.withType(tree.typeOpt)
         else
-          untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+          select.withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
       if reducedProjection.isType then
         //if the projection leads to a typed tree then we stop reduction
