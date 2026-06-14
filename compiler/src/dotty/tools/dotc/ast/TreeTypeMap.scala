@@ -381,13 +381,21 @@ class TreeTypeMap(
               try ref(tpe).withSpan(id.span)
               catch case ex: TypeError => super.transform(id)
             case _ =>
-              super.transform(id)
-        case sel: Select =>
+              id
+        case sel @ Select(qualifier, name) =>
           sel.tpe match
             case tpe: TermRef if (tpe.prefix eq NoPrefix) && needsIdent(tpe) =>
               ref(tpe).withSpan(sel.span)
             case _ =>
-              super.transform(sel)
+              val selCtx = sourceCtx(sel)
+              if sel.tpe.isError then sel
+              else cpy.Select(sel)(transform(qualifier)(using selCtx), name)(using selCtx)
+        case ths: This =>
+          ths
+        case sup @ Super(qual, mix) =>
+          val supCtx = sourceCtx(sup)
+          if sup.tpe.isError then sup
+          else cpy.Super(sup)(transform(qual)(using supCtx), mix)(using supCtx)
         case app @ Apply(fun, args) =>
           val appCtx = sourceCtx(app)
           if app.tpe.isError then app
@@ -432,6 +440,10 @@ class TreeTypeMap(
           val loopCtx = sourceCtx(loop)
           if loop.tpe.isError then loop
           else cpy.WhileDo(loop)(transform(cond)(using loopCtx), transform(body)(using loopCtx))(using loopCtx)
+        case ret @ Return(expr, from) =>
+          val retCtx = sourceCtx(ret)
+          if ret.tpe.isError then ret
+          else cpy.Return(ret)(transform(expr)(using retCtx), transformSub(from)(using retCtx))(using retCtx)
         case tr @ Try(block, cases, finalizer) =>
           val tryCtx = sourceCtx(tr)
           if tr.tpe.isError then tr
@@ -452,6 +464,10 @@ class TreeTypeMap(
           val attCtx = sourceCtx(att)
           if att.tpe.isError then att
           else cpy.AppliedTypeTree(att)(transform(tpt)(using attCtx), transform(args)(using attCtx))(using attCtx)
+        case mtt @ MatchTypeTree(bound, selector, cases) =>
+          val mttCtx = sourceCtx(mtt)
+          if mtt.tpe.isError then mtt
+          else cpy.MatchTypeTree(mtt)(transform(bound)(using mttCtx), transform(selector)(using mttCtx), transformSub(cases)(using mttCtx))(using mttCtx)
         case bnt @ ByNameTypeTree(result) =>
           val bntCtx = sourceCtx(bnt)
           if bnt.tpe.isError then bnt
@@ -466,6 +482,10 @@ class TreeTypeMap(
           else cpy.Alternative(alt)(transform(trees)(using altCtx))(using altCtx)
         case lit @ Literal(Constant(tpe: Type)) =>
           cpy.Literal(lit)(Constant(mapType(tpe)))
+        case lit: Literal =>
+          lit
+        case tpt @ TypeTree() =>
+          tpt
         case vdef: ValDef =>
           val res = super.transform(vdef).asInstanceOf[ValDef]
           noteTransformedMemberDef(res)
@@ -500,6 +520,24 @@ class TreeTypeMap(
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
+        case bind @ Bind(name, body) =>
+          val bindCtx = sourceCtx(bind)
+          if bind.tpe.isError then bind
+          else cpy.Bind(bind)(name, transform(body)(using bindCtx))(using bindCtx)
+        case unap @ UnApply(fun, implicits, patterns) =>
+          val unapCtx = sourceCtx(unap)
+          if unap.tpe.isError then unap
+          else cpy.UnApply(unap)(transform(fun)(using unapCtx), transform(implicits)(using unapCtx), transform(patterns)(using unapCtx))(using unapCtx)
+        case ann @ Annotated(arg, annot) =>
+          val annCtx = sourceCtx(ann)
+          if ann.tpe.isError then ann
+          else cpy.Annotated(ann)(transform(arg)(using annCtx), transform(annot)(using annCtx))(using annCtx)
+        case thicket @ Thicket(trees) =>
+          val thicketCtx = sourceCtx(thicket)
+          if thicket.tpe.isError then thicket
+          else
+            val trees1 = transform(trees)(using thicketCtx)
+            if trees1 eq trees then thicket else Thicket(trees1)(using thicketCtx.source)
         case tree1 =>
           super.transform(tree1)
       }
