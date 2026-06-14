@@ -356,20 +356,41 @@ object Substituters:
 
   /** An approximating substitution that can handle wildcards in the `to` list */
   final class SubstApproxMap(from: List[Symbol], to: List[Type])(using Context) extends ApproximatingTypeMap {
+    private inline val ThisTypeSubst = 1
+    private inline val TermRefSubst = 2
+    private inline val TypeRefSubst = 4
+
+    private val substKindMask: Int =
+      var mask = 0
+      var fs = from
+      var ts = to
+      while fs.nonEmpty && ts.nonEmpty do
+        val sym = fs.head
+        if sym.isClass then mask |= ThisTypeSubst | TypeRefSubst
+        else if sym.originDenotation.name.isTypeName then mask |= TypeRefSubst
+        else mask |= TermRefSubst
+        fs = fs.tail
+        ts = ts.tail
+      mask
+
+    private inline def maySubstNamed(tp: NamedType): Boolean =
+      (substKindMask & (if tp.isTerm then TermRefSubst else TypeRefSubst)) != 0
+
     def apply(tp: Type): Type = tp match {
       case tp: NamedType =>
-        val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty && ts.nonEmpty) {
-          if (fs.head eq sym)
-            return ts.head match {
-              case TypeBounds(lo, hi) => range(lo, hi)
-              case tp1 => tp1
-            }
-          fs = fs.tail
-          ts = ts.tail
-        }
+        if maySubstNamed(tp) then
+          val sym = tp.symbol
+          var fs = from
+          var ts = to
+          while (fs.nonEmpty && ts.nonEmpty) {
+            if (fs.head eq sym)
+              return ts.head match {
+                case TypeBounds(lo, hi) => range(lo, hi)
+                case tp1 => tp1
+              }
+            fs = fs.tail
+            ts = ts.tail
+          }
         if (tp.prefix `eq` NoPrefix) tp else derivedSelect(tp, apply(tp.prefix))
       case _: ThisType | _: BoundType =>
         tp
