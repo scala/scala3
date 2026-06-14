@@ -2751,6 +2751,28 @@ object SymDenotations {
                 i += 1
               if ok then denots else null
           case _ => null
+      /** The early-out subset of the linearized fast path for the
+       *  `ownDenots.exists` case: when the whole-array inherited bloom proves
+       *  no base class declares `name`, nothing is inherited, so the recursive
+       *  `collectFromParentDenots` parent walk (which starts from `ownDenots`
+       *  and unions in per-parent inherited members, all empty here) leaves
+       *  `ownDenots` unchanged. Return it directly. Returns `null` to fall
+       *  through to `collectFromInfo` when the bloom is set (a base may
+       *  declare `name`, so the full recursive fold is still required), when
+       *  the linearization does not apply (`baseScopes == null`), or for a
+       *  non-`ClassInfo` info. This reuses the SAME inherited-only bloom and
+       *  the SAME null-gate as `collectLinearizedNoOwn`, so it carries the
+       *  same correctness guarantee; the `-1L` synth sentinel keeps the bit
+       *  set for synthesizing base scopes and so forces the recursive path.
+       */
+      def collectLinearizedWithOwn(): PreDenotation | Null =
+        info match
+          case cinfo: ClassInfo =>
+            val baseScopes = linearizedBaseScopes(cinfo)
+            if baseScopes == null then null
+            else if (myLinearizedBaseScopesBloom & memberNameBloomBit(name)) == 0L then ownDenots
+            else null
+          case _ => null
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
         case p :: ps =>
           val denots1 = collect(denots, ps)
@@ -2799,6 +2821,27 @@ object SymDenotations {
               val denots1 = collectFromInfo()
               assert(denots.exists == denots1.exists,
                 s"linearized/recursive inconsistency: linearized: $denots, recursive: $denots1, name = $name, owner = $this")
+            denots
+          case null => collectFromInfo()
+      else if ownDenots.exists && !is(PackageClass) && !is(Package) then
+        // The class declares its own member of `name`. The dominant outcome is
+        // that no base class also declares `name` (no override), in which case
+        // the recursive `collectFromParentDenots` re-walk leaves `ownDenots`
+        // unchanged. `collectLinearizedWithOwn` detects that via the same
+        // inherited bloom and returns `ownDenots` in one AND+compare. As with
+        // the no-own path the bloom read forces a base's `info.decls`, so a
+        // still-completing base is guarded the same way: on a `CyclicReference`
+        // (or any bloom-set / null-linearization case) fall back to the
+        // provisional-safe `collectFromInfo`.
+        val fast =
+          try collectLinearizedWithOwn()
+          catch case _: CyclicReference => null
+        fast match
+          case denots: PreDenotation =>
+            if Config.checkCacheMembersNamed then
+              val denots1 = collectFromInfo()
+              assert(denots.exists == denots1.exists,
+                s"linearized/recursive inconsistency (own): linearized: $denots, recursive: $denots1, name = $name, owner = $this")
             denots
           case null => collectFromInfo()
       else collectFromInfo()
