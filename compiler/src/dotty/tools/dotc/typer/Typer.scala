@@ -4868,7 +4868,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     def adaptNoArgsOther(wtp: Type, functionExpected: => Boolean): Tree = {
-      val implicitFun = defn.isContextFunctionType(wtp) && !untpd.isContextualClosure(tree)
+      // `isContextFunctionType` strips + dealiases `wtp` (a hot `dealias` caller via
+      // `asContextFunctionType`); `implicitFun` is consulted at exactly one site below,
+      // `if canInsertApply && (implicitFun || caseCompanion)`. Because `&&` short-circuits,
+      // `implicitFun` is never read when `canInsertApply` is false (`ctx.isAfterTyper` /
+      // `ctx.isInlineContext` / `Mode.Pattern` / apply-/singleton-/lhs-proto), which is the
+      // re-typing majority on this workload. Make it a `def` (mirroring the sibling
+      // `def caseCompanion` and the accepted `ifpt` gate above) so the dealias walk runs only
+      // when `canInsertApply` holds. Behaviour-identical: a pure Boolean with no side effects,
+      // recomputing the same value when reached.
+      def implicitFun = defn.isContextFunctionType(wtp) && !untpd.isContextualClosure(tree)
       def caseCompanion =
           functionExpected && {
             val sym = tree.symbol
