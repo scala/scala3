@@ -597,23 +597,7 @@ class C extends B
 ```
 We consider the fact that the location of the inlined `foo` method changes with only a simple
 addition of `Specialized` to be inconsistent / confusing. Furthermore it would violate the rule
-that ordinary traits may not extend inline traits, and causes problems with partial specialization:
-```scala
-// (1)
-inline trait A[T: Specialized, D: Specialized]:
-  def foo: T
-  def bar: D
-inline trait B[S: Specialized] extends A[S, Int]
-trait C extends B[Char]
-
-// would expand to:
-trait A$sp$S$Int[S: Specialized] extends A[S, Int]: // (Ignoring the fact that Specialized may not be used on ordinary traits).
-  def foo: S
-  def bar: Int
-inline trait B[W: Specialized] extends A$sp$S$Int[W]
-trait C extends B[Char]
-```
-The definitions are stuck in `A$sp$S$Int$` because it is not inline. This means we can never usefully specialize on `W` even though it is declared `Specialized`. 
+that ordinary traits may not extend specialized traits.
 
 Because we make the generated traits inline, we modify the behaviour of inline traits relative to the original semantics from Timothée's thesis, such that inline traits extended by other inline traits are still inlined (instead of inlining only at the first ordinary class extending the family of inline traits). This is necessary so that `A$sp$S$Int` can be made inline and still contain the specialized declarations which we need when we use it as an interface. The original argument for only inlining at the bottom of the hierarchy was to reduce code generation, and that this was sufficient when we only have inline traits, however the additional code generation is only linear in the number of traits in the sequence (*and limited to the interfaces since the implementations are pruned*) as we do not inline multiple copies. We consider this acceptable in order to implement specialized.
 
