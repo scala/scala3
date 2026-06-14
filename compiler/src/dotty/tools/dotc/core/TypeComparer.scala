@@ -4169,7 +4169,9 @@ object TypeComparer {
   type CoveredStatus = CoveredStatus.Repr
 
   def topLevelSubType(tp1: Type, tp2: Type)(using Context): Boolean =
-    comparing(_.topLevelSubType(tp1, tp2))
+    if tp2 eq NoType then false
+    else if (tp2 eq tp1) || (tp2 eq WildcardType) then true
+    else comparing(_.topLevelSubType(tp1, tp2))
 
   def necessarySubType(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.necessarySubType(tp1, tp2))
@@ -4178,13 +4180,17 @@ object TypeComparer {
     comparing(_.isSubType(tp1, tp2))
 
   def isSameType(tp1: Type, tp2: Type)(using Context): Boolean =
-    comparing(_.isSameType(tp1, tp2))
+    if tp1 eq NoType then false
+    else if tp1 eq tp2 then true
+    else comparing(_.isSameType(tp1, tp2))
 
   def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.isSubTypeWhenFrozen(tp1, tp2))
 
   def testSubType(tp1: Type, tp2: Type)(using Context): CompareResult =
-    comparing(_.testSubType(tp1, tp2))
+    if tp2 eq NoType then CompareResult.Fail(Nil)
+    else if (tp2 eq tp1) || (tp2 eq WildcardType) then CompareResult.OK
+    else comparing(_.testSubType(tp1, tp2))
 
   def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.isSameTypeWhenFrozen(tp1, tp2))
