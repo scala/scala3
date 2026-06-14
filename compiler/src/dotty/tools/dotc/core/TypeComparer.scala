@@ -1218,20 +1218,31 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def isPlainStaticClassRef(tp: TypeRef, cls: Symbol) =
       cls.isStatic && isPlainStaticClassPrefix(tp.prefix, cls)
 
-    def staticClassBaseTypeMiss(cls2: Symbol): Boolean =
-      cls2.isStatic && {
-        def misses(tp: TypeRef): Boolean =
-          val cls1 = tp.symbol
-          cls1.isClass && isPlainStaticClassRef(tp, cls1) && !cls1.derivesFrom(cls2)
+    def classHeadedBaseTypeMiss(cls2: Symbol): Boolean =
+      // For a class-headed `tp1`, `tp1.baseType(cls2)` folds over the same
+      // `baseClassSet` that `derivesFrom` consults (SymDenotations.baseTypeOf
+      // `computeTypeRef`), prefix-independently. So `!cls1.derivesFrom(cls2)`
+      // strictly implies `baseType(cls2) == NoType`, and we can skip the full
+      // baseType walk (the dominant `nonExprBaseType -> baseTypeOf -> recur`
+      // chain) straight to `fourthTry`. This generalizes the former
+      // static-only `staticClassBaseTypeMiss` guard (accepted 1cb2ebb5db6) to
+      // all class-headed LHS.
+      //
+      // Exception (the `tryNormalize` hole): `baseTypeOf` normalizes `tp1`
+      // first (e.g. a `scala.compiletime.ops` AppliedType reducing to a
+      // ConstantType whose base does exist), so a normalizable class-headed
+      // LHS must NOT take the skip — guard with `!underlyingNormalizable`.
+      def misses(tp: TypeRef): Boolean =
+        val cls1 = tp.symbol
+        cls1.isClass && !cls1.derivesFrom(cls2) && !tp1.underlyingNormalizable.exists
 
-        tp1 match
-          case tp1: TypeRef => misses(tp1)
-          case AppliedType(tycon1: TypeRef, _) => misses(tycon1)
-          case _ => false
-      }
+      tp1 match
+        case tp1: TypeRef => misses(tp1)
+        case AppliedType(tycon1: TypeRef, _) => misses(tycon1)
+        case _ => false
 
     def tryBaseTypeOrSkipStaticMiss(cls2: Symbol) =
-      if staticClassBaseTypeMiss(cls2) then fourthTry else tryBaseType(cls2)
+      if classHeadedBaseTypeMiss(cls2) then fourthTry else tryBaseType(cls2)
     def tryBaseType(cls2: Symbol) =
       val base = nonExprBaseType(tp1, cls2)
       if base.exists && (base ne tp1)
