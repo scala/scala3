@@ -67,12 +67,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     lastContainsAndTp = null
     lastContainsAndConstraint = null
     lastContainsAndGadt = null
-    lastGadt = null
     lastFrozenSubTypeConstraint = null
-    lastTypeVarInstanceVar = null
-    lastTypeVarInstanceConstraint = null
-    lastTypeVarInstanceOrigin = null
-    lastTypeVarInstance = NoType
     atomCacheActive = false
     if Config.checkTypeComparerReset then checkReset()
 
@@ -136,10 +131,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     assert(approx == ApproxState.Fresh)
     assert(leftRoot == null)
     assert(frozenGadt == false)
-    assert(lastTypeVarInstanceVar == null)
-    assert(lastTypeVarInstanceConstraint == null)
-    assert(lastTypeVarInstanceOrigin == null)
-    assert(lastTypeVarInstance eq NoType)
     assert(atomCacheActive == false)
 
   /** Record that GADT bounds of `sym` were used in a subtype check.
