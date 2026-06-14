@@ -36,6 +36,15 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity: Int = MaxTupleArity
+
+  /*
+   * RuntimeNothingClass and RuntimeNullClass exist at run-time only.
+   * They are the run-time manifestation (in method signatures only)
+   * of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
+   * Therefore, when NothingClass or NullClass are to be emitted, a mapping is needed.
+   */
+  val RuntimeNothingName: String = "scala.runtime.Nothing$"
+  val RuntimeNullName: String = "scala.runtime.Null$"
 }
 
 /** A class defining symbols and types of standard definitions
@@ -483,6 +492,9 @@ class Definitions {
     enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parents)
   }
   def NullType: TypeRef = NullClass.typeRef
+
+  @tu lazy val RuntimeNothingClass: Symbol = requiredClass(RuntimeNothingName)
+  @tu lazy val RuntimeNullClass: Symbol = requiredClass(RuntimeNullName)
 
   @tu lazy val InvokerModule = requiredModule("scala.runtime.coverage.Invoker")
   @tu lazy val InvokedMethodRef = InvokerModule.requiredMethodRef("invoked")
@@ -1126,6 +1138,7 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
+  @tu lazy val ParamAliasAnnot: ClassSymbol = requiredClass("scala.caps.internal.paramAlias")
   @tu lazy val InferredAnnot = requiredClass("scala.caps.internal.inferred")
   @tu lazy val DeclaredAnnot = requiredClass("scala.caps.internal.declared")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
@@ -1486,7 +1499,7 @@ class Definitions {
   )
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
   private val compiletimePackageStringTypes: Set[Name] = Set(
-    tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt
+    tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt, tpnme.LT, tpnme.GT, tpnme.LE, tpnme.GE
   )
   private val compiletimePackageOpTypes: Set[Name] =
     Set(tpnme.S, tpnme.From)
@@ -1722,7 +1735,7 @@ class Definitions {
     RootRef(() => ScalaPackageVal.termRef)
 
   private val PredefImportFns: RootRef =
-    RootRef(() => ScalaPredefModule.termRef, isPredef=true)
+    RootRef(() => ScalaPredefModule.termRef)
 
   @tu private lazy val YimportsImportFns: List[RootRef] = ctx.settings.Yimports.value.map { name =>
     val denot =
@@ -2013,27 +2026,6 @@ class Definitions {
   def adjustForBoxedUnit(cls: ClassSymbol, parents: List[Type]): List[Type] =
     if (isBoxedUnitClass(cls)) parents.filter(_.typeSymbol != JavaSerializableClass)
     else parents
-
-  private val HasProblematicGetClass: Set[Name] = Set(
-    tpnme.AnyVal, tpnme.Byte, tpnme.Short, tpnme.Char, tpnme.Int, tpnme.Long, tpnme.Float, tpnme.Double,
-    tpnme.Unit, tpnme.Boolean)
-
-  /** When typing a primitive value class or AnyVal, we ignore the `getClass`
-   *  member: it's supposed to be an override of the `getClass` defined on `Any`,
-   *  but in dotty `Any#getClass` is polymorphic so it ends up being an overload.
-   *  This is especially problematic because it means that when writing:
-   *
-   *    1.asInstanceOf[Int & AnyRef].getClass
-   *
-   *  the `getClass` that returns `Class[Int]` defined in Int can be selected,
-   *  but this call is specified to return `classOf[Integer]`, see
-   *  tests/run/t5568.scala.
-   *
-   *  FIXME: remove all the `getClass` methods defined in the standard library
-   *  so we don't have to hot-patch it like this.
-   */
-  def hasProblematicGetClass(className: Name): Boolean =
-    HasProblematicGetClass.contains(className)
 
   @tu lazy val assumedTransparentNames: Map[Name, Set[Symbol]] =
     // we should do a more through sweep through it then.

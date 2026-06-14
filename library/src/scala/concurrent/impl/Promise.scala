@@ -68,6 +68,7 @@ private[concurrent] object Promise {
     /** Compresses this chain and returns the currently known root of this chain of Links.
      *
      *  @param owner the `DefaultPromise` that owns this link, used to complete it if the root is already resolved
+     *  @return the root `DefaultPromise` of the dependency chain, or `owner` (after completing it with the resolved value) if the chain has already been completed
      */
     final def promise(owner: DefaultPromise[T]): DefaultPromise[T] = {
       val c = get()
@@ -79,6 +80,7 @@ private[concurrent] object Promise {
      *  @param current the `DefaultPromise` most recently read from this link's atomic reference
      *  @param target the `DefaultPromise` currently being inspected while traversing the chain
      *  @param owner the `DefaultPromise` that owns this link, used to complete it if the root is already resolved
+     *  @return the root `DefaultPromise` reachable from `target`, or `owner` if the root was already completed
      */
     @inline @tailrec private final def compressed(current: DefaultPromise[T], target: DefaultPromise[T], owner: DefaultPromise[T]): DefaultPromise[T] = {
       val value = target.get()
@@ -98,6 +100,7 @@ private[concurrent] object Promise {
    *
    *  @tparam T the type of the value contained in the `Try`
    *  @param value the `Try` to resolve, must not be null
+   *  @return the original `Try` for a `Success` or non-fatal `Failure`; a `Success` containing the extracted value when the failure is a `NonLocalReturnControl`; otherwise, for a fatal `ControlThrowable`, `InterruptedException`, or `Error`, a `Failure` wrapping the throwable in an `ExecutionException`
    */
   // requireNonNull is paramount to guard against null completions
   private final def resolve[T](value: Try[T]): Try[T] =
@@ -232,6 +235,7 @@ private[concurrent] object Promise {
      *  @tparam U the result type of the callback function
      *  @param func the callback function to invoke when the future completes
      *  @param executor the `ExecutionContext` used to run the callback
+     *  @return a function which, when invoked, unregisters the callback so it will not be called when this future completes
      */
     private[concurrent] final def onCompleteWithUnregister[U](func: Try[T] => U)(implicit executor: ExecutionContext): () => Unit = {
       val t = new Transformation[T, Unit](Xform_onComplete, func, executor)
@@ -332,6 +336,9 @@ private[concurrent] object Promise {
      *  to the root promise when linking two promises together.
      *
      *  @tparam C the specific subtype of `Callbacks[T]` being dispatched or added
+     *  @param state the current state of this promise's atomic reference, as previously read by the caller
+     *  @param callbacks the callbacks to dispatch immediately if this promise is already completed, or to add to the pending list otherwise
+     *  @return the `callbacks` argument, returned unchanged to allow chaining
      */
     @tailrec private final def dispatchOrAddCallbacks[C <: Callbacks[T]](state: AnyRef, callbacks: C): C =
       if (state.isInstanceOf[Try[?]]) {

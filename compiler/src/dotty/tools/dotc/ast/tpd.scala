@@ -15,7 +15,6 @@ import Spans.*
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
-import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -559,7 +558,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
+      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Nil else elemtp :: Nil)
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -1212,7 +1211,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureHasSym(sym: Symbol)(using Context): Unit =
       if sym.exists && sym != tree.symbol then
         typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
-        tree.overwriteType(NamedType(sym.owner.thisType, sym.asTerm.name, sym.denot))
+        tree.overwriteType(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
@@ -1373,13 +1372,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] | Null = uninitialized
+    private var myTrees: List[Tree] | Null = null
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
       if (ctx.settings.YretainTrees.value) {
-        if (myTrees == null) myTrees = computeRootTrees
-        myTrees.uncheckedNN
+        initialize(myTrees, myTrees = _, computeRootTrees)
       }
       else computeRootTrees
 

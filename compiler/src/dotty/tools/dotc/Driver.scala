@@ -79,29 +79,26 @@ class Driver {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
-    MacroClassLoader.init(ictx)
-    Positioned.init(using ictx)
 
     inContext(ictx):
       if !ctx.settings.XdropComments.value || ctx.settings.XreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
-      fileNamesOrNone.map: fileNames =>
-        val files = fileNames.map(ctx.getFile)
-        (files, fromTastySetup(files))
-      .tap: _ =>
-        if !ctx.settings.Yreporter.isDefault then
-          ctx.settings.Yreporter.value match
-          case "help" =>
-          case reporterClassName =>
-            try
-              Class.forName(reporterClassName).getDeclaredConstructor().newInstance() match
+      fileNamesOrNone.map(fileNames =>
+        MacroClassLoader.init(ictx)
+        Positioned.init
+        if !ctx.settings.Yreporter.isDefault && ctx.settings.Yreporter.value != "help" then
+          try
+            Class.forName(ctx.settings.Yreporter.value).getDeclaredConstructor().newInstance() match
               case userReporter: Reporter =>
                 ictx.setReporter(userReporter)
-              case badReporter => report.error:
-                em"Not a reporter: ${ctx.settings.Yreporter.value}"
-            catch case e: ReflectiveOperationException => report.error:
-              em"Could not create reporter ${ctx.settings.Yreporter.value}: ${e}"
+              case badReporter =>
+                report.error(em"Not a reporter: ${ctx.settings.Yreporter.value}")
+          catch case e: ReflectiveOperationException =>
+            report.error(em"Could not create reporter ${ctx.settings.Yreporter.value}: $e")
+        val files = fileNames.map(ctx.getFile)
+        (files, fromTastySetup(files))
+      )
   }
 
   /** Setup extra classpath of tasty and jar files */

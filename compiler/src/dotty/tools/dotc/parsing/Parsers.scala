@@ -224,9 +224,8 @@ object Parsers {
       isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
     def isConsume =
       isIdent(nme.consume) && ccEnabled //\&& in.isSoftModifierInParamModifierPosition
-    def isSimpleLiteral =
-      simpleLiteralTokens.contains(in.token)
-      || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
+    def isNegatedNumber = isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
+    def isSimpleLiteral = simpleLiteralTokens.contains(in.token) || isNegatedNumber
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
@@ -554,7 +553,13 @@ object Parsers {
             // into a capturing type in the typer.
             syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
             errorTree
-          case Some(f) =>
+          case Some(f: FunctionWithMods) if f.mods.is(Impure) && ccEnabled =>
+            syntaxError(
+              em"""Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled.
+                  |Workaround: introduce an empty term-parameter list right after the type binder, e.g. `[A] => () -> B => C`.""",
+              arrowOffset)
+            errorTree
+          case _ =>
             PolyFunction(tparams, body)
 
 /* --------------- PLACEHOLDERS ------------------------------------------- */
@@ -1406,9 +1411,7 @@ object Parsers {
      */
     def simpleLiteral(): Tree =
       if isIdent(nme.raw.MINUS) then
-        val start = in.offset
-        in.nextToken()
-        literal(negOffset = start, inTypeOrSingleton = true)
+        literal(start = in.skipToken(), inTypeOrSingleton = true)
       else
         literal(inTypeOrSingleton = true)
 
@@ -1417,15 +1420,18 @@ object Parsers {
      *                      |  symbolLiteral
      *                      |  ‘null’
      *
-     *  @param negOffset   The offset of a preceding `-' sign, if any.
-     *                     If the literal is not negated, negOffset == in.offset.
+     *  @param start   The offset of a preceding `-' sign, if any.
+     *                 If the literal is not negated, start == in.offset.
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+    def literal(start: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
       def literalOf(token: Token): Tree = {
-        val isNegated = negOffset < in.offset
+        val isNegated = start < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal.nn)
-        def digits = if (isNegated) "-" + digits0 else digits0
+        def digits = if isNegated then "-" + digits0 else digits0
         if !inTypeOrSingleton then
+          if isNegated && start < in.offset - 1 then
+            warning(IllegalLiteral(), start)
+            patch(Span(start, in.offset + in.strVal.nn.length), "-" + in.strVal.nn.trim)
           token match {
             case INTLIT  => return Number(digits, NumberKind.Whole(in.base))
             case DECILIT => return Number(digits, NumberKind.Decimal)
@@ -1460,15 +1466,15 @@ object Parsers {
         val t = in.token match {
           case STRINGLIT | STRINGPART =>
             val value = in.strVal.nn
-            atSpan(negOffset, negOffset, negOffset + value.length) { Literal(Constant(value)) }
+            atSpan(start, start, start + value.length) { Literal(Constant(value)) }
           case _ =>
             syntaxErrorOrIncomplete(IllegalLiteral())
-            atSpan(negOffset) { Literal(Constant(null)) }
+            atSpan(start) { Literal(Constant(null)) }
         }
         in.nextToken()
         t
       }
-      else atSpan(negOffset) {
+      else atSpan(start) {
         if (in.token == QUOTEID)
           val inName = in.name.nn
           if ((staged & StageKind.Spliced) != 0 && Chars.isIdentifierStart(inName(0))) {
@@ -1506,13 +1512,16 @@ object Parsers {
       }
     }
 
+    private val interpolatorsFromAny = Set(nme.toString_, nme.hashCode_, nme.getClass_, nme.synchronized_, nme.eq, nme.ne)
+
     private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
       val segmentBuf = new ListBuffer[Tree]
-      val interpolator = in.name
+      val interpolator = in.name.nn
+      val startOffset = in.charOffset
       val isTripleQuoted =
-        in.charOffset + 1 < in.buf.length &&
-        in.buf(in.charOffset) == '"' &&
-        in.buf(in.charOffset + 1) == '"'
+        startOffset + 1 < in.buf.length &&
+        in.buf(startOffset) == '"' &&
+        in.buf(startOffset + 1) == '"'
       in.nextToken()
       def nextSegment(literalOffset: Offset) =
         segmentBuf += Thicket(
@@ -1542,9 +1551,11 @@ object Parsers {
         nextSegment(in.offset + offsetCorrection)
         offsetCorrection = 0
       if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
+        segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
 
-      InterpolatedString(interpolator.nn, segmentBuf.toList)
+      if interpolatorsFromAny(interpolator) then
+        report.warning(UseOfAnyMethodAsInterpolator(interpolator), source.atSpan(Span(startOffset, in.charOffset)))
+      InterpolatedString(interpolator, segmentBuf.toList)
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
@@ -1942,7 +1953,8 @@ object Parsers {
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
-    def refinedType() = refinedTypeRest(withType())
+    def refinedType(inPatternType: Boolean = false): Tree =
+      refinedTypeRest(withType(inPatternType))
 
     /** Disambiguation: a `^` is treated as a postfix operator meaning `^{any}`
      *  if followed by `{`, `->`, or `?->`,
@@ -1981,10 +1993,19 @@ object Parsers {
     }
 
     /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
+     *
+     *  `inPatternType` indicates that this type appears in a typed pattern
+     *  position (such as `case x: A with B =>` or `case given A with B =>`).
+     *  The pattern grammar here is `PatVar ':' RefinedType` (not `InfixType`),
+     *  so `with` is accepted but `&` is not. When the `-rewrite` flag is also
+     *  set, the textual `with -> &` patch on its own would therefore produce
+     *  code that no longer parses; in that case we additionally wrap the whole
+     *  rewritten `WithType` in parentheses, turning `A with B` into `(A & B)`.
      */
-    def withType(): Tree = withTypeRest(annotType())
+    def withType(inPatternType: Boolean = false): Tree =
+      withTypeRest(annotType(), inPatternType)
 
-    def withTypeRest(t: Tree): Tree =
+    def withTypeRest(t: Tree, inPatternType: Boolean = false): Tree =
       if in.token == WITH then
         val withOffset = in.offset
         in.nextToken()
@@ -1998,7 +2019,11 @@ object Parsers {
             MigrationVersion.WithOperator)
           if MigrationVersion.WithOperator.needsPatch then
             patch(source, withSpan, "&")
-          atSpan(startOffset(t)) { makeAndType(t, withType()) }
+          val rest = withType()
+          if MigrationVersion.WithOperator.needsPatch && inPatternType then
+            patch(source, Span(t.span.start, t.span.start), "(")
+            patch(source, Span(rest.span.end, rest.span.end), ")")
+          atSpan(startOffset(t)) { makeAndType(t, rest) }
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
@@ -2393,7 +2418,7 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then rejectWildcardType(refinedType())
+      else if location.inPattern then rejectWildcardType(refinedType(inPatternType = true))
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -2705,7 +2730,7 @@ object Parsers {
      *        case x2 => "b"
      *     }
      * This issue is avoided by dropping the `InCase` region when parsing match clause,
-     * since `Indetented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
+     * since `Indented :+ Indented :+ ...` now allows handleNewLine to insert two outdents.
      * Note that this _could_ break previous code which relied on matches within guards
      * being considered as a separate region without explicit indentation.
      */
@@ -2832,14 +2857,15 @@ object Parsers {
      */
     val prefixExpr: Location => Tree = location =>
       if in.token == IDENTIFIER && nme.raw.isUnary(in.name)
-         && in.canStartExprTokens.contains(in.lookahead.token)
+        && {
+          val lookahead = in.lookahead
+          in.canStartExprTokens.contains(lookahead.token) && lookahead.lineOffset < 0
+        }
       then
-        val start = in.offset
-        val op = termIdent()
-        if (op.name == nme.raw.MINUS && isNumericLit)
-          simpleExprRest(literal(start), location, canApply = true)
+        if isNegatedNumber then
+          simpleExprRest(literal(start = in.skipToken()), location, canApply = true)
         else
-          atSpan(start) { PrefixOp(op, simpleExpr(location)) }
+          atSpan(in.offset) { PrefixOp(termIdent(), simpleExpr(location)) }
       else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
@@ -2917,6 +2943,14 @@ object Parsers {
       if (canApply) argumentStart()
       in.token match
         case DOT =>
+          t match
+            case Number(n, _) if n(0) == '-' =>
+              val start = t.span.start
+              val span = Span(start, in.lastOffset)
+              warning(IllegalLiteral(), start)
+              unpatch(ctx.compilationUnit.source, span)
+              patch(span, s"($n)")
+            case _ =>
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
@@ -3432,9 +3466,8 @@ object Parsers {
      */
     def simplePattern(): Tree = in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
-        simpleRef() match
-          case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
-          case t => simplePatternRest(t)
+        if isNegatedNumber then literal(start = in.skipToken())
+        else simplePatternRest(simpleRef())
       case USCORE =>
         wildcardIdent()
       case LPAREN =>
@@ -3446,7 +3479,7 @@ object Parsers {
       case GIVEN =>
         atSpan(in.offset) {
           val givenMod = atSpan(in.skipToken())(Mod.Given())
-          val typed = Typed(Ident(nme.WILDCARD), refinedType())
+          val typed = Typed(Ident(nme.WILDCARD), refinedType(inPatternType = true))
           Bind(nme.WILDCARD, typed).withMods(addMod(Modifiers(), givenMod))
         }
       case _ =>
@@ -3513,9 +3546,7 @@ object Parsers {
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
-          case nme.into =>
-            Feature.checkPreviewFeature("`into`", in.sourcePos())
-            Mod.Into()
+          case nme.into => Mod.Into()
           case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.update if Feature.ccEnabled => Mod.Update()
         }
@@ -4365,7 +4396,7 @@ object Parsers {
           case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ if (staged & StageKind.QuotedPattern) != 0
-              || sourceVersion.enablesNewGivens && in.isColon =>
+              || (sourceVersion.enablesNewGivens && in.isColon && !mods.is(Opaque)) =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))

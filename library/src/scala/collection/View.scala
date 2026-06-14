@@ -26,6 +26,8 @@ import caps.unsafe.unsafeAssumePure
  *  or when the view is converted to a strict collection type (using the `to` operation).
  *  @define coll view
  *  @define Coll `View`
+ *
+ *  @tparam A the element type of the view
  */
 trait View[+A] extends Iterable[A] with IterableOps[A, View, View[A]] with IterableFactoryDefaults[A, View] with Serializable {
 

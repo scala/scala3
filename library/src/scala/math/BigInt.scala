@@ -66,6 +66,7 @@ object BigInt {
    *  representation of a BigInt into a BigInt.
    *
    *  @param x the two's-complement big-endian binary representation of a `BigInt`
+   *  @return the `BigInt` represented by the given byte array
    */
   def apply(x: Array[Byte]): BigInt =
     apply(new BigInteger(x))
@@ -85,8 +86,9 @@ object BigInt {
    *  with the specified bitLength.
    *
    *  @param bitlength the bit length of the generated probable prime `BigInt`
-   *  @param certainty a measure of the uncertainty that the caller is willing to tolerate: the probability of primality exceeds `(1 - 1/2 ^ certainty)`
+   *  @param certainty a measure of the uncertainty that the caller is willing to tolerate: the probability of primality exceeds `(1 - 1/2 ^ certainty)`. The execution time is proportional to the value of this parameter.
    *  @param rnd the source of randomness used to generate the candidate
+   *  @return a randomly generated positive `BigInt` that is probably prime with the specified bit length
    */
   def apply(bitlength: Int, certainty: Int, rnd: scala.util.Random): BigInt =
     apply(new BigInteger(bitlength, certainty, rnd.self))
@@ -94,8 +96,9 @@ object BigInt {
   /** Constructs a randomly generated BigInt, uniformly distributed over the
    *  range `0` to `(2 ^ numBits - 1)`, inclusive.
    *
-   *  @param numbits the number of random bits used to generate the `BigInt`
+   *  @param numbits the maximum bit length of the generated `BigInt`; the result is uniformly distributed over `0` to `(2 ^ numbits - 1)`, inclusive
    *  @param rnd the source of randomness used for the generation
+   *  @return a randomly generated `BigInt` uniformly distributed over `0` to `(2 ^ numbits - 1)`, inclusive
    */
   def apply(numbits: Int, rnd: scala.util.Random): BigInt =
     apply(new BigInteger(numbits, rnd.self))
@@ -103,6 +106,7 @@ object BigInt {
   /** Translates the decimal String representation of a BigInt into a BigInt.
    *
    *  @param x the decimal string representation of the `BigInt`
+   *  @return the `BigInt` parsed from the given decimal string
    */
   def apply(x: String): BigInt =
     apply(new BigInteger(x))
@@ -112,6 +116,7 @@ object BigInt {
    *
    *  @param x the string representation of the `BigInt` in the specified radix
    *  @param radix the radix to use when parsing `x`
+   *  @return the `BigInt` parsed from `x` using the specified `radix`
    */
   def apply(x: String, radix: Int): BigInt =
     apply(new BigInteger(x, radix))
@@ -119,6 +124,7 @@ object BigInt {
   /** Translates a `java.math.BigInteger` into a BigInt.
    *
    *  @param x the `java.math.BigInteger` value to convert
+   *  @return a `BigInt` with the same value as `x`
    */
   def apply(x: BigInteger): BigInt = {
     if (x.bitLength <= 63) {
@@ -138,12 +144,14 @@ object BigInt {
   /** Implicit conversion from `Int` to `BigInt`.
    *
    *  @param i the `Int` value to convert
+   *  @return a `BigInt` with the same value as `i`
    */
   implicit def int2bigInt(i: Int): BigInt = apply(i)
 
   /** Implicit conversion from `Long` to `BigInt`.
    *
    *  @param l the `Long` value to convert
+   *  @return a `BigInt` with the same value as `l`
    */
   implicit def long2bigInt(l: Long): BigInt = apply(l)
 
@@ -155,6 +163,7 @@ object BigInt {
   /** Implicit conversion from `java.math.BigInteger` to `scala.BigInt`.
    *
    *  @param x the `java.math.BigInteger` value to convert
+   *  @return a `scala.BigInt` with the same value as `x`, or `null` if `x` is `null`
    */
   implicit def javaBigInteger2bigInt(x: BigInteger): BigInt = mapNull(x, apply(x))
 
@@ -168,6 +177,7 @@ object BigInt {
    *
    *  @param a the first non-negative operand
    *  @param b the second non-negative operand
+   *  @return the greatest common divisor of `a` and `b`, or `0` if both are `0`
    */
   private def longGcd(a: Long, b: Long): Long = {
     // both a and b must be >= 0
@@ -324,6 +334,7 @@ final class BigInt private (
   /** Compares this BigInt with the specified BigInt for equality.
    *
    *  @param that the `BigInt` to compare against
+   *  @return `true` if this `BigInt` has the same value as `that`, `false` otherwise
    */
   def equals(that: BigInt): Boolean =
     if (this.longEncoding)
@@ -334,6 +345,7 @@ final class BigInt private (
   /** Compares this BigInt with the specified BigInt
    *
    *  @param that the `BigInt` to compare against
+   *  @return a negative number if `this` is less than `that`, zero if equal, or a positive number if greater
    */
   def compare(that: BigInt): Int =
     if (this.longEncoding) {
@@ -478,6 +490,7 @@ final class BigInt private (
   /** Returns the greatest common divisor of abs(this) and abs(that)
    *
    *  @param that the other value for computing the greatest common divisor
+   *  @return the greatest common divisor of `abs(this)` and `abs(that)` (defined as `0` when both are `0`)
    */
   def gcd(that: BigInt): BigInt =
     if (this.longEncoding) {
@@ -504,6 +517,7 @@ final class BigInt private (
   /** Returns a BigInt whose value is (this mod that).
    *  This method differs from `%` in that it always returns a non-negative BigInt.
    *  @param that A positive number
+   *  @return a non-negative `BigInt` whose value is `this mod that`
    */
   def mod(that: BigInt): BigInt =
     if (this.longEncoding && that.longEncoding && that._long > 0) {
@@ -534,7 +548,7 @@ final class BigInt private (
   /** Returns a BigInt whose value is
    *  (<tt>this</tt> raised to the power of <tt>exp</tt> modulo <tt>m</tt>).
    *
-   *  @param exp the exponent
+   *  @param exp the exponent; if negative, this operation uses the modular inverse of `this`, so `this` and `m` must be relatively prime
    *  @param m the modulus, must be positive
    */
   def modPow(exp: BigInt, m: BigInt): BigInt = BigInt(this.bigInteger.modPow(exp.bigInteger, m.bigInteger))
@@ -631,6 +645,7 @@ final class BigInt private (
     } else this.bigInteger.bitCount()
 
   /** Returns true if this BigInt is probably prime, false if it's definitely composite.
+   *
    *  @param certainty  a measure of the uncertainty that the caller is willing to tolerate:
    *                    if the call returns true the probability that this BigInt is prime
    *                    exceeds (1 - 1/2 ^ certainty).
@@ -705,6 +720,7 @@ final class BigInt private (
    *
    *  @param end the end value of the range (inclusive)
    *  @param step the distance between elements (defaults to 1)
+   *  @return the inclusive `NumericRange` from this to `end`
    */
   def to(end: BigInt, step: BigInt = BigInt(1)): NumericRange.Inclusive[BigInt] = Range.BigInt.inclusive(this, end, step)
 

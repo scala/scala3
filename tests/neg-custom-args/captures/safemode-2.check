@@ -1,6 +1,6 @@
--- Error: tests/neg-custom-args/captures/safemode-2.scala:8:15 ---------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/safemode-2.scala:8:22 ---------------------------------------------------------
 8 |  val x = caps.unsafe.unsafeErasedValue[String] // error
-  |          ^^^^^^^^^^^
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |          Cannot refer to object unsafe in package scala.caps from safe code since it is unavailable in safe mode
 -- Error: tests/neg-custom-args/captures/safemode-2.scala:10:2 ---------------------------------------------------------
 10 |  @caps.unsafe.untrackedCaptures var y = 1 // error

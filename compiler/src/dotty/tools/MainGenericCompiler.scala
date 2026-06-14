@@ -129,6 +129,6 @@ object MainGenericCompiler {
           properArgs
           ++ List("-script", settings.targetScript)
           ++ settings.scriptArgs
-        scripting.Main.main(properArgs.toArray)
+        scripting.Main.main(fullArgs.toArray)
   end main
 }

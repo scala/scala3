@@ -69,7 +69,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   private var myUnits: List[CompilationUnit] = Nil
   private var myUnitsCached: List[CompilationUnit] = Nil
-  private var myFiles: Set[AbstractFile] = uninitialized
+  private var myFiles: Set[AbstractFile] = Set.empty
 
   // `@nowarn` annotations by source file, populated during typer
   private val mySuppressions: mutable.LinkedHashMap[SourceFile, ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
@@ -318,6 +318,9 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    */
   var ccEnabledSomewhere = Feature.ccEnabledBySetting(using ictx)
 
+  /** If -explain-cycles is set, a trace of cyclic reference dependencies, otherwise null */
+  var cyclicReferenceTrace: CyclicReference.Trace | Null = null
+
   private var myEnrichedErrorMessage = false
 
   def compile(files: List[AbstractFile]): Unit =
@@ -440,7 +443,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
-      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
+      cyclicReferenceTrace = new CyclicReference.Trace()
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     val cancelAsyncTasty: () => Unit =

@@ -1,4 +1,3 @@
-// scalajs: --skip
 //Test java runtime reflection access to @Runtime annotations on method parameters.
 @main def Test =
   def check(actual: Int)(expect: Int)(msg: => String): Unit =

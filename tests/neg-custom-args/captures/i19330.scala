@@ -13,7 +13,7 @@ class Bar extends Foo:
 
 def foo(x: Foo): x.T =
   val leaked = usingLogger[x.T]: l =>  // error
-    val t: () => Logger^ = () => l // error
+    val t: () => Logger^ = () => l // sep error
     t: x.T // error
   leaked
 

@@ -42,8 +42,8 @@ class Jar(file: File) {
 
   import Jar.*
 
-  lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
-  lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
+  private lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
+  private lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
 
   def mainClass: Option[String]     = manifest.flatMap(_.attrs.get(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
@@ -156,7 +156,14 @@ object Jar {
   // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
   // for some ideas.
   private val ZipMagicNumber = List[Byte](80, 75, 3, 4)
-  private def magicNumberIsZip(f: Path) = f.isFile && (f.toFile.bytes().take(4).toList == ZipMagicNumber)
+  private def magicNumberIsZip(f: Path) = f.isFile && {
+    val in = f.toFile.inputStream()
+    try
+      val first4 = in.readNBytes(4)
+      first4.toList == ZipMagicNumber
+    finally
+      in.close()
+  }
 
   def isJarOrZip(f: Path): Boolean = isJarOrZip(f, true)
   def isJarOrZip(f: Path, examineFile: Boolean): Boolean =

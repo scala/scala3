@@ -17,9 +17,9 @@ import language.experimental.captureChecking
 
 Requires the import above:
 ```scala
-import language.experimental.captureChecking
 import language.experimental.separationChecking
 ```
+This will implicitly enable capture checking as well.
 
 ### SBT Project Template
 

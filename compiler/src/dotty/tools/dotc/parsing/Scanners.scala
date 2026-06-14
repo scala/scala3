@@ -19,6 +19,7 @@ import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
 import config.MigrationVersion
 import reporting.*
+import cc.SafeRefs
 
 import java.util.Objects
 import dotty.tools.dotc.reporting.Message.rewriteNotice
@@ -146,8 +147,11 @@ object Scanners {
      *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
     def finishNamedToken(idtoken: Token, target: TokenData): Unit =
-      target.name = termName(litBuf.chars, 0, litBuf.length)
+      val name = termName(litBuf.chars, 0, litBuf.length)
+      target.name = name
       litBuf.clear()
+      if name.contains('$') && Feature.safeEnabled && !SafeRefs.allowDollarIn(name) then
+        report.error(em"Identifier may not contain '$$' in safe mode", sourcePos())
       target.token = idtoken
       if idtoken == IDENTIFIER then
         val converted = toToken(target.name.nn)
@@ -161,9 +165,9 @@ object Scanners {
       strVal = litBuf.toString
       litBuf.clear()
 
-    @inline def isNumberSeparator(c: Char): Boolean = c == '_'
+    inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
-    @inline def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
+    def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
@@ -917,21 +921,7 @@ object Scanners {
             putChar('/')
             getOperatorRest()
           }
-        case '0' =>
-          def fetchLeadingZero(): Unit = {
-            nextChar()
-            ch match {
-              case 'x' | 'X' => base = 16 ; nextChar()
-              case 'b' | 'B' => base = 2  ; nextChar()
-              case _         => base = 10 ; putChar('0')
-            }
-            if (base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0)
-              error(em"invalid literal number")
-          }
-          fetchLeadingZero()
-          getNumber()
-        case '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
-          base = 10
+        case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
           getNumber()
         case '`' =>
           getBackquotedIdent()
@@ -1504,9 +1494,21 @@ object Scanners {
       if (isIdentifierPart(ch) && ch >= ' ')
         error(em"Invalid literal number")
 
-    /** Read a number into strVal and set base
-    */
-    protected def getNumber(): Unit = {
+    /** Read a number into strVal and set base and token.
+     */
+    def getNumber(): Unit = {
+      def checkNumberChar() =
+        if !isNumberSeparator(ch) && digit2int(ch, base) < 0 then
+          error(em"invalid literal number")
+      if ch == '0' then
+        nextChar()
+        ch match
+          case 'x' | 'X' => base = 16; nextChar(); checkNumberChar()
+          case 'b' | 'B' => base =  2; nextChar(); checkNumberChar()
+          case _         => base = 10; putChar('0')
+      else
+        base = 10
+
       while (isNumberSeparator(ch) || digit2int(ch, base) >= 0) {
         putChar(ch)
         nextChar()
@@ -1529,9 +1531,7 @@ object Scanners {
           token = LONGLIT
         case _ =>
       }
-
       checkNoTrailingSeparator()
-
       setStrVal()
     }
 

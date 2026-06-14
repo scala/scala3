@@ -10,7 +10,7 @@ import java.nio.file.Files
 import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 
 import scala.annotation.tailrec
-import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation, FileZipArchive, ManifestResources}
+import dotty.tools.io.{AbstractFile, ClassPath, FileZipArchive, ManifestResources}
 import dotty.tools.dotc.core.Contexts.*
 import FileUtils.*
 
@@ -42,20 +42,18 @@ sealed trait ZipAndJarFileLookupFactory {
  */
 object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveClassPath(zipFile: File, override val release: Option[String])
-    extends ZipArchiveFileLookup[BinaryFileEntry]
-    with NoSourcePaths {
+    extends ZipArchiveFileLookup[BinaryFileEntry] {
 
-    override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] =
+    override def findClassFile(className: String): Option[AbstractFile] =
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
-      val pkgName = PackageName(pkg)
-      file(pkgName, simpleClassName + ".class").map(c => (c.file, (if findModule then file(pkgName, "module-info.class") else None).map(_.file)))
+      file(pkg, simpleClassName + ".class").map(_.file)
 
-    override private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = files(inPackage)
+    override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: FileZipArchive#Entry): BinaryFileEntry = BinaryFileEntry(file)
 
     override protected def isRequiredFileType(file: AbstractFile): Boolean =
-      file.isTasty || (file.isClass && !file.hasSiblingTasty)
+      file.exists && (file.ext.isTasty || (file.ext.isClass && !file.hasSiblingTasty))
   }
 
   /**
@@ -65,16 +63,16 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
    * with a particularly prepared scala-library.jar. It should have all classes listed in the manifest like e.g. this entry:
    * Name: scala/Function2$mcFJD$sp.class
    */
-  private case class ManifestResourcesClassPath(file: ManifestResources) extends ClassPath with NoSourcePaths {
-    override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
+  private case class ManifestResourcesClassPath(file: ManifestResources) extends ClassPath {
+    override def findClassFile(className: String): Option[AbstractFile] = {
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
-      val clss = classes(PackageName(pkg))
-      clss.find(_.name == simpleClassName).map(c => (c.file, (if findModule then clss.find(_.name == "module-info") else None).map(_.file)))
+      val clss = classes(pkg)
+      clss.find(_.name == simpleClassName).map(_.file)
     }
 
-    override def asClassPathStrings: Seq[String] = Seq(file.path)
-
-    override def asURLs: Seq[URL] = file.toURLs()
+    override def asURLs: Seq[URL] = file.toURL match
+      case null => Seq.empty
+      case nonNull => Seq(nonNull)
 
     import ManifestResourcesClassPath.PackageFileInfo
     import ManifestResourcesClassPath.PackageInfo
@@ -120,20 +118,19 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
       packages
     }
 
-    override private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry] = cachedPackages.get(inPackage.dottedString) match {
+    override def packages(inPackage: String): Seq[PackageEntry] = cachedPackages.get(inPackage) match {
       case None => Seq.empty
       case Some(PackageFileInfo(_, subpackages)) =>
-        subpackages.map(packageFile => PackageEntryImpl(inPackage.entryName(packageFile.name)))
+        subpackages.map(packageFile => PackageEntry(PackageNameUtils.entryName(inPackage, packageFile.name)))
     }
 
-    override private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = cachedPackages.get(inPackage.dottedString) match {
+    override def classes(inPackage: String): Seq[BinaryFileEntry] = cachedPackages.get(inPackage) match {
       case None => Seq.empty
       case Some(PackageFileInfo(pkg, _)) =>
-        (for (file <- pkg if file.isClass) yield ClassFileEntry(file)).toSeq
+        (for (file <- pkg if file.exists && file.ext.isClass) yield ClassFileEntry(file)).toSeq
     }
 
-    override private[dotty] def hasPackage(pkg: PackageName) = cachedPackages.contains(pkg.dottedString)
-    override private[dotty] def list(inPackage: PackageName): ClassPathEntries = ClassPathEntries(packages(inPackage), classes(inPackage))
+    override def hasPackage(pkg: String) = cachedPackages.contains(pkg)
   }
 
   private object ManifestResourcesClassPath {
@@ -159,18 +156,14 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  * It should be the only way of creating them as it provides caching.
  */
 object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
-  private case class ZipArchiveSourcePath(zipFile: File)
-    extends ZipArchiveFileLookup[SourceFileEntry]
-    with NoClassPaths {
+  private case class ZipArchiveSourcePath(zipFile: File) extends ZipArchiveFileLookup[SourceFileEntry] {
 
     def release: Option[String] = None
 
-    override def asSourcePathString: String = asClassPathString
-
-    override private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = files(inPackage)
+    override def sources(inPackage: String): Seq[SourceFileEntry] = files(inPackage)
 
     override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntry = SourceFileEntry(file)
-    override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isScalaOrJavaSource
+    override protected def isRequiredFileType(file: AbstractFile): Boolean = file.ext.isSourceExtension
   }
 
   override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =

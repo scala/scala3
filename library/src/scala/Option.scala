@@ -248,7 +248,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @param ev evidence that `Null` is a subtype of `A1`
    *  @return the option's value if nonempty, or `null` if empty
    */
-  @inline final def orNull: A | Null = this.getOrElse(null)
+  @inline final def orNull[A1 >: A | Null]: A1 = this.getOrElse(null)
   
   // for binary and TASTy backwards compatibility 
   @deprecated @inline protected final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)

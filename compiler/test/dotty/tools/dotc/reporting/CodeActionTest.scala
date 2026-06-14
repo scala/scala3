@@ -303,6 +303,220 @@ class CodeActionTest extends DottyTest:
       ctxx = ctxx
       )
 
+  @Test def insertMissingSingleMethodToNonEmptyClass =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def bbb = 2
+          |}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def bbb = 2
+          |  def name: String = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodsFromMultipleSources =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal with Car {
+          |}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal with Car {
+          |  def name: String = ???
+          |  def wheels: Int = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodIntoEmptyClassWithBrackets =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def name: String = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodIntoEmptyClassWithoutBrackets =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal {
+          |  def name: String = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodIntoNonEmptyClassWithBraclessSyntax =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal:
+          |  def bbb = 2
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal:
+          |  def bbb = 2
+          |  def name: String = ???
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def insertMissingMethodsIntoMultilineClassDefinition =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal 
+          |               with Car {
+          |}
+          |""".stripMargin,
+         title = "Add missing methods",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |trait Car {
+          |  def wheels: Int
+          |}
+          |class Dog extends Animal 
+          |               with Car {
+          |  def name: String = ???
+          |  def wheels: Int = ???
+          |}
+          |""".stripMargin,
+          afterPhase= "erasure"
+      )
+
+  @Test def makeClassAbstract =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |class Dog extends Animal
+          |""".stripMargin,
+        title = "Make `Dog` abstract",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |abstract class Dog extends Animal
+          |""".stripMargin,
+        afterPhase = "erasure"
+      )
+
+  @Test def makeClassAbstractKeepsModifiers =
+    checkCodeAction(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |sealed class Dog extends Animal
+          |""".stripMargin,
+        title = "Make `Dog` abstract",
+      expected =
+        """trait Animal {
+          |  def name: String
+          |}
+          |abstract sealed class Dog extends Animal
+          |""".stripMargin,
+        afterPhase = "erasure"
+      )
+
+  @Test def noMakeAbstractForCaseClass =
+    assertNoActionWithTitle(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |case class Dog() extends Animal
+          |""".stripMargin,
+      title = "Make `Dog` abstract",
+      afterPhase = "erasure"
+    )
+
+  @Test def noMakeAbstractForFinalClass =
+    assertNoActionWithTitle(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |final class Dog extends Animal
+          |""".stripMargin,
+      title = "Make `Dog` abstract",
+      afterPhase = "erasure"
+    )
+
+  @Test def noMakeAbstractForObject =
+    assertNoActionWithTitle(
+      code =
+        """trait Animal {
+          |  def name: String
+          |}
+          |object Dog extends Animal
+          |""".stripMargin,
+      title = "Make `Dog$` abstract",
+      afterPhase = "erasure"
+    )
+
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =
@@ -318,11 +532,10 @@ class CodeActionTest extends DottyTest:
 
     val diagnostic = diagnostics.head
     val actions = diagnostic.msg.actions.toList
-    assertEquals("Expected exactly one action", 1, actions.size)
-
-    // TODO account for more than 1 action
-    val action = actions.head
-    assertEquals(action.title, title)
+    val action = actions.find(_.title == title).getOrElse:
+      assertFailed(
+        s"Expected an action titled '$title', but found: " +
+          (if actions.isEmpty then "none" else actions.map(a => s"'${a.title}'").mkString(", ")))
     val patches = action.patches.toList
     if patches.nonEmpty then
       patches.reduceLeft: (p1, p2) =>
@@ -337,3 +550,14 @@ class CodeActionTest extends DottyTest:
       start + patch.replacement + ending
 
     assertEquals(expected, result)
+
+  private def assertNoActionWithTitle(code: String, title: String, afterPhase: String = "typer", ctxx: Context = newContext) =
+    ctx = ctxx
+    val runCtx = checkCompile(afterPhase, code) { (_, _) => () }
+    val diagnostics = runCtx.reporter.removeBufferedMessages
+    assertEquals("Expected exactly one diagnostic", 1, diagnostics.size)
+    val actions = diagnostics.head.msg.actions.toList
+    assert(
+      !actions.exists(_.title == title),
+      s"Did not expect action '$title', but it was offered. Found: ${actions.map(_.title).mkString(", ")}"
+    )

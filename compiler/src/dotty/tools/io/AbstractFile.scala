@@ -81,7 +81,7 @@ object AbstractFile {
  *
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-abstract class AbstractFile extends Iterable[AbstractFile] {
+abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc.interfaces.AbstractFile {
 
   /** Returns the name of this abstract file. */
   def name: String
@@ -122,6 +122,10 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   } catch {
     case _: UnsupportedOperationException => null
   }
+
+  /** Adapts `file` to the `dotty.tools.dotc.interfaces.AbstractFile` interface */
+  def jfile: java.util.Optional[JFile] =
+    java.util.Optional.ofNullable(file)
 
   /** Returns the underlying Path if any and null otherwise. */
   def jpath: JPath | Null

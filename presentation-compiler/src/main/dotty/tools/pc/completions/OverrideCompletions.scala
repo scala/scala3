@@ -8,7 +8,6 @@ import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.PresentationCompilerConfig.OverrideDefFormat
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.tpd.Tree
@@ -20,7 +19,6 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
@@ -54,7 +52,7 @@ object OverrideCompletions:
       config: PresentationCompilerConfig,
       autoImportsGen: AutoImportsGenerator,
       fallbackName: Option[String]
-  )(using ReportContext): List[CompletionValue] =
+  ): List[CompletionValue] =
     import indexedContext.ctx
     val clazz = td.symbol.asClass
     val syntheticCoreMethods: Set[Name] =
@@ -134,7 +132,7 @@ object OverrideCompletions:
       driver: InteractiveDriver,
       search: SymbolSearch,
       config: PresentationCompilerConfig
-  )(using ReportContext): ju.List[l.TextEdit] =
+  ): ju.List[l.TextEdit] =
     object FindTypeDef:
       def unapply(path: List[Tree])(using Context): Option[TypeDef] = path match
         // class <<Foo>> extends ... {}
@@ -163,7 +161,7 @@ object OverrideCompletions:
         // case class <<Foo>>(a: Int) extends ...
         // if there is no companion object Foo, td would be Foo$
         // we have to look for defininion of Foo class
-        case (dd: DefDef) :: (t: Template) :: (td: TypeDef) :: parent :: _
+        case (dd: DefDef) :: (_: Template) :: (_: TypeDef) :: parent :: _
             if dd.symbol.decodedName == "apply" =>
           fallbackFromParent(
             parent: Tree,
@@ -225,7 +223,7 @@ object OverrideCompletions:
       config: PresentationCompilerConfig
   )(
       defn: TargetDef
-  )(using Context, ReportContext): List[l.TextEdit] =
+  )(using Context): List[l.TextEdit] =
     def calcIndent(
         defn: TargetDef,
         decls: List[Symbol],
@@ -326,7 +324,7 @@ object OverrideCompletions:
 
       val shouldCompleteBraces = decls.isEmpty && hasBracesOrColon(text, defn).isEmpty
 
-      val (startIndent, indent, lastIndent) =
+      val (_, indent, lastIndent) =
         calcIndent(defn, decls, source, text, shouldCompleteBraces)
 
       // If there're declarations in the class/object to implement e.g.
@@ -400,7 +398,7 @@ object OverrideCompletions:
       config: PresentationCompilerConfig,
       autoImportsGen: AutoImportsGenerator,
       shouldAddOverrideKwd: Boolean
-  )(using Context, ReportContext): CompletionValue.Override =
+  )(using Context): CompletionValue.Override =
     val renames = AutoImport.renameConfigMap(config)
     val printer = ShortenedTypePrinter(
       search,

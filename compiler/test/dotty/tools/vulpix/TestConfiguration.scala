@@ -80,14 +80,14 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions ++ silenceOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
+  val commonOptions = noYcheckCommonOptions ++ yCheckOptions ++ silenceOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
   val withCompilerOptions =
-    defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+    defaultOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
   lazy val withReplOptions =
     defaultOptions.withRunClasspath(replClassPath)
   lazy val withStagingOptions =
@@ -105,9 +105,12 @@ object TestConfiguration {
     "-Yprint-pos-syms"
   )
   val picklingWithCompilerOptions =
-    picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+    picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
   val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
+
+  val oldSyntax = defaultOptions `and` "-old-syntax"
+  val newSyntax = defaultOptions `and` "-new-syntax"
 
   /** Default target of the generated class files */
   private def defaultTarget: String = "17"

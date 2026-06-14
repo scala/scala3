@@ -247,7 +247,7 @@ object ScalaRunTime {
     def useOwnToString(x: Any) = x match {
       // Range/NumericRange have a custom toString to avoid walking a gazillion elements
       case _: Range | _: NumericRange[?] => true
-      // Sorted collections to the wrong thing (for us) on iteration - ticket #3493
+      // Sorted collections do the wrong thing (for us) on iteration - ticket #3493
       case _: SortedOps[?, ?]  => true
       // StringBuilder(a, b, c) and similar not so attractive
       case _: StringView | _: StringOps | _: StringBuilder => true

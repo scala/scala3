@@ -1,11 +1,11 @@
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{ClassPath, ClassRepresentation}
+import dotty.tools.io.ClassPath
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import FileUtils.*
 import java.net.{URI, URL}
 
-case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[BinaryFileEntry] with NoSourcePaths {
+case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
   type F = AbstractFile
 
   // From AbstractFileClassLoader
@@ -34,28 +34,21 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   def isPackage(f: AbstractFile): Boolean = f.isPackage
 
   // mimic the behavior of the old nsc.util.DirectoryClassPath
-  def asURLs: Seq[URL] = Seq(new URI(dir.name).toURL)
-  def asClassPathStrings: Seq[String] = Seq(dir.path)
+  override def asURLs: Seq[URL] = Seq(new URI(dir.name).toURL)
 
-  override def findClassFileAndModuleFile(className: String, findModule: Boolean): Option[(AbstractFile, Option[AbstractFile])] = {
+  override def findClassFile(className: String): Option[AbstractFile] = {
     val pathSeq = FileUtils.dirPath(className).split(java.io.File.separator)
     val parentDir = lookupPath(dir)(pathSeq.init.toSeq, directory = true)
     if parentDir == null then None
     else
-      val classFile = lookupPath(parentDir)(pathSeq.last + ".class" :: Nil, directory = false)
-      if classFile == null then
-        None
-      else
-        val optModuleFile =
-          if findModule then Option(lookupPath(parentDir)("module-info.class" :: Nil, directory = false))
-          else None
-        Some((classFile, optModuleFile))
+      Option(lookupPath(parentDir)(pathSeq.last + ".class" :: Nil, directory = false))
   }
 
-  private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = files(inPackage)
+  override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
 
   protected def createFileEntry(file: AbstractFile): BinaryFileEntry = BinaryFileEntry(file)
 
-  protected def isMatchingFile(f: AbstractFile): Boolean =
-    f.isTasty || (f.isClass && !f.hasSiblingTasty)
+  protected def isMatchingFile(f: AbstractFile): Boolean = {
+    f.exists && (f.ext.isTasty || (f.ext.isClass && !f.hasSiblingTasty))
+  }
 }

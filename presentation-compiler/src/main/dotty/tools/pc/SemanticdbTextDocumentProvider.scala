@@ -1,11 +1,9 @@
 package dotty.tools.pc
 
-import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import scala.meta.internal.mtags.MD5
 import scala.util.Properties
 
 import dotty.tools.dotc.interactive.InteractiveDriver

@@ -231,7 +231,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
         case hashSet: HashSet[A] =>
           if (hashSet.isEmpty) this else {
             val newRootNode = rootNode.diff(hashSet.rootNode, 0)
-            if (newRootNode.size == 0) HashSet.empty else newHashSetOrThis(rootNode.diff(hashSet.rootNode, 0))
+            if (newRootNode.size == 0) HashSet.empty else newHashSetOrThis(newRootNode)
           }
         case hashSet: collection.mutable.HashSet[A] =>
           val iter = hashSet.nodeIterator
@@ -1611,7 +1611,7 @@ private final class BitmapIndexedSetNode[A](
               val leftNode = getNode(leftNodeIdx)
               val updated = leftNode.updated(
                 element = bm.getPayload(rightDataIdx),
-                originalHash = bm.getHash(rightDataIdx),
+                originalHash = rightOriginalHash,
                 hash = improve(rightOriginalHash),
                 shift = nextShift
               )

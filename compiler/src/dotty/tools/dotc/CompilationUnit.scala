@@ -32,7 +32,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
   def typedAsJava =
     val ext = source.file.ext
-    ext.isJavaOrTasty && (ext.isJava || tastyInfo.exists(_.attributes.isJava))
+    ext.isJava || ext.isTasty && tastyInfo.exists(_.attributes.isJava)
 
   def tastyInfo: Option[TastyInfo] =
     val local = info

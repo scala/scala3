@@ -16,6 +16,7 @@ import dotty.tools.dotc.sbt.interfaces.ProgressCallback
 import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
+import config.*
 import core.*, core.Decorators.*
 import Contexts.*, Names.*, NameOps.*, Symbols.*, SymDenotations.*, Trees.*, Types.*
 import Denotations.staticRef
@@ -23,9 +24,23 @@ import classpath.*
 import reporting.*
 import util.*
 
+private class InteractiveContextBase(precomputedSourcePackages: Option[LogicalPackage]) extends ContextBase {
+
+  override protected def newPlatform(using Context): Platform =
+      if (settings.scalajs.value) new SJSPlatform(precomputedSourcePackages)
+      else new JavaPlatform(precomputedSourcePackages)
+
+}
+
 /** A Driver subclass designed to be used from IDEs */
-class InteractiveDriver(val settings: List[String]) extends Driver {
+class InteractiveDriver(
+    val settings: List[String],
+    val logicalRootPackage: Option[LogicalPackage] = None
+) extends Driver {
   import tpd.*
+
+  override protected def initCtx: Context =
+    new InteractiveContextBase(logicalRootPackage).initialCtx
 
   override def sourcesRequired: Boolean = false
 

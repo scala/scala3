@@ -4,7 +4,6 @@ package core
 
 import Periods.*
 import Contexts.*
-import dotty.tools.backend.jvm.GenBCode
 import DenotTransformers.*
 import Denotations.*
 import Decorators.*
@@ -254,7 +253,6 @@ object Phases {
     private var myMixinPhase: Phase = uninitialized
     private var myCountOuterAccessesPhase: Phase = uninitialized
     private var myFlattenPhase: Phase = uninitialized
-    private var myGenBCodePhase: Phase = uninitialized
     private var myCheckCapturesPhase: Phase = uninitialized
 
     private var myCheckCapturesPhaseId: PhaseId = -2
@@ -287,7 +285,6 @@ object Phases {
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
-    final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
     final def checkCapturesPhaseId: PhaseId = myCheckCapturesPhaseId
 
@@ -320,7 +317,6 @@ object Phases {
       myFlattenPhase = phaseOfClass(classOf[Flatten])
       myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
       myGettersPhase = phaseOfClass(classOf[Getters])
-      myGenBCodePhase = phaseOfClass(classOf[GenBCode])
       myCheckCapturesPhase = phaseOfClass(classOf[CheckCaptures])
     }
 
@@ -580,7 +576,6 @@ object Phases {
   def mixinPhase(using Context): Phase                  = ctx.base.mixinPhase
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
-  def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
   def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
   def checkCapturesPhaseId(using Context): PhaseId      = ctx.base.checkCapturesPhaseId
 

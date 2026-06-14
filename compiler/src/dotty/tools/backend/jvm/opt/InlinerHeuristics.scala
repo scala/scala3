@@ -22,19 +22,20 @@ import scala.tools.asm.Type
 import scala.tools.asm.tree.MethodNode
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendUtils
 import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
-import PostProcessorFrontendAccess.Lazy
 import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
+import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.report
 
-class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils, byteCodeRepository: BCodeRepository, callGraph: CallGraph, ts: CoreBTypes) {
+class InlinerHeuristics(ppa: PostProcessorFrontendAccess, optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
+                        callGraph: CallGraph, ts: OptimizerKnownBTypes,
+                        settings: OptimizerSettings) {
 
-  private lazy val inlineSourceMatcher: Lazy[InlineSourceMatcher] = ppa.perRunLazy(new InlineSourceMatcher(ppa.compilerSettings.optInlineFrom))
+  private lazy val inlineSourceMatcher: InlineSourceMatcher = new InlineSourceMatcher(settings.optInlineFrom)
 
-  def canInlineFromSource(sourceFilePath: Option[String], calleeDeclarationClass: InternalName): Boolean = {
-    inlineSourceMatcher.get.allowFromSources && sourceFilePath.isDefined ||
-    inlineSourceMatcher.get.allow(calleeDeclarationClass)
+  private def canInlineFromSource(sourceFilePath: Option[String], calleeDeclarationClass: InternalName): Boolean = {
+    inlineSourceMatcher.allowFromSources && sourceFilePath.isDefined ||
+    inlineSourceMatcher.allow(calleeDeclarationClass)
   }
 
   /**
@@ -47,31 +48,31 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     // classpath. In order to get only the callsites being compiled, we start at the map of
     // compilingClasses in the byteCodeRepository.
     val compilingMethods = for {
-      ((classNode, _), _) <- byteCodeRepository.compilingClasses.get.valuesIterator
+      ((classNode, _), _) <- byteCodeRepository.compilingClasses.valuesIterator
       methodNode          <- classNode.methods.iterator.asScala
     } yield methodNode
 
     compilingMethods.map(methodNode => {
       var requests = Set.empty[InlineRequest]
-      callGraph.callsites.get(methodNode).valuesIterator foreach {
+      callGraph.callsites(methodNode).valuesIterator foreach {
         case callsite @ KnownCallsite(_, _, _, Callee(callee, _, _, _, _, _, _, callsiteWarning), _, _, _, pos, _, _) =>
           inlineRequest(callsite) match {
             case Some(Right(req)) => requests += req
 
             case Some(Left(w)) =>
-              if (w.emitWarning(ppa.compilerSettings)) {
-                ppa.optimizerWarning(em"${w.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
+              if (w.emitWarning(settings)) {
+                ppa.optimizerWarning(em"${w.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), callsite.callsitePosition)
               }
 
             case None =>
-              if (callsiteWarning.exists(_.emitWarning(ppa.compilerSettings))) {
-                ppa.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", BackendUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
+              if (callsiteWarning.exists(_.emitWarning(settings))) {
+                ppa.optimizerWarning(em"there was a problem determining if method ${callee.name} can be inlined: \n${callsiteWarning.get.toString}", OptimizerUtils.siteString(callsite.callsiteClass.internalName, callsite.callsiteMethod.name), pos)
               }
           }
 
         case callsite @ UnknownCallsite(ins, meth, clas, pos, _, warning) =>
-          if (warning.emitWarning(ppa.compilerSettings)) {
-            ppa.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", BackendUtils.siteString(clas.internalName, meth.name), pos)
+          if (warning.emitWarning(settings)) {
+            ppa.optimizerWarning(em"failed to determine if ${ins.name} should be inlined:\n${warning.toString}", OptimizerUtils.siteString(clas.internalName, meth.name), pos)
           }
       }
       (methodNode, requests)
@@ -174,7 +175,7 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
         case Some(w) =>
           Some(Left(w))
         case None =>
-          Some(Right(InlineRequest(callsite, reason, ppa.compilerSettings.optLogInline.isEmpty, ppa.compilerSettings.optInlineHeuristics == "everything")))
+          Some(Right(InlineRequest(callsite, reason, settings.optLogInline.isEmpty, settings.optInlineHeuristics == "everything")))
       }
     }
 
@@ -183,12 +184,12 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
     // or aliases, because otherwise it's too confusing for users looking at generated code, they will
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
-      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && backendUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
+      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
 
     if (isGeneratedForwarder) None
     else {
       val callee = callsite.callee
-      ppa.compilerSettings.optInlineHeuristics match {
+      settings.optInlineHeuristics match {
         case "everything" =>
           requestIfCanInline(callsite, AnnotatedInline)
 
@@ -216,26 +217,26 @@ class InlinerHeuristics(ppa: PostProcessorFrontendAccess, backendUtils: BackendU
             else None
 
           def shouldInlineArrayOp =
-            if (BackendUtils.isRuntimeArrayLoadOrUpdate(callsite.callsiteInstruction) && callsite.argInfos.get(1).contains(StaticallyKnownArray)) Some(KnownArrayOp)
+            if (AnalysisUtils.isRuntimeArrayLoadOrUpdate(callsite.callsiteInstruction) && callsite.argInfos.get(1).contains(StaticallyKnownArray)) Some(KnownArrayOp)
             else None
 
           def shouldInlineForwarder = Option {
             // In general, we cannot inline calls to methods that contain private calls here.
             // However (scala-dev#618) we should inline them if they call something that is itself trivial, as it will also be inlined.
-            val calleeCallsites = callGraph.callsites.get(callee.callee)
+            val calleeCallsites = callGraph.callsites(callee.callee)
             val allowPrivateCalls = calleeCallsites.size == 1 && (calleeCallsites.head match
               case (_, nestedCallsite: KnownCallsite) =>
-                backendUtils.looksLikeForwarderOrFactoryOrTrivial(
+                optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(
                   nestedCallsite.callee.callee,
                   nestedCallsite.callee.calleeDeclarationClass.internalName,
                   allowPrivateCalls = false
                 ) > 0
               case _ => false
             )
-            val forwarderKind = backendUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
+            val forwarderKind = optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
             if (forwarderKind < 0)
               null
-            else if (BCodeUtils.isSyntheticMethod(callee.callee) || BackendUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
+            else if (BCodeUtils.isSyntheticMethod(callee.callee) || AnalysisUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
               SyntheticForwarder
             else forwarderKind match {
               case 1 => TrivialMethod

@@ -15,15 +15,16 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:7:18 ----------------------------------
 7 |  val _: C => C = a // error
   |                  ^
-  |                Found:    (a : (x: C) ->{any} C)
-  |                Required: C^ ->{any²} C^²
+  |               Found:    (a : (x: C) ->{any} C^{fresh})
+  |               Required: C^ ->{any²} C^²
   |
-  |                Note that capability `any` cannot flow into capture set {any²}.
+  |               Note that capability `any` cannot flow into capture set {any²}.
   |
-  |                where:    ^    refers to the root capability caps.any
-  |                          ^²   refers to a root capability classified as SharedCapability in the type of value _$2
-  |                          any  is a root capability in the type of value a
-  |                          any² is a root capability in the type of value _$2
+  |               where:    ^     refers to the root capability caps.any
+  |                         ^²    refers to a root capability classified as SharedCapability in the type of value _$2
+  |                         any   is a root capability in the type of value a
+  |                         any²  is a root capability in the type of value _$2
+  |                         fresh is a root capability associated with the result type of (x: C^): C^{fresh}
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:9:29 ----------------------------------
@@ -42,7 +43,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scoped-caps2.scala:15:18 ---------------------------------
 15 |  val _: C -> C = a // error
    |                  ^
-   |                  Found:    (a : (x: C) -> C)
+   |                  Found:    (a : (x: C) -> C^{fresh})
    |                  Required: C^ -> C^{any}
    |
    |                  Note that capability `fresh` cannot flow into capture set {any}

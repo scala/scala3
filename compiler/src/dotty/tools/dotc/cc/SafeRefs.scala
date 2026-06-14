@@ -7,23 +7,23 @@ import Symbols.*
 import Annotations.*
 import util.Spans.NoSpan
 import util.{Property, SrcPos}
-import Contexts.Context
+import Contexts.{Context, ctx}
 import Constants.Constant
 import Decorators.*
 import ast.tpd.*
 import SymDenotations.*
 import Flags.*
 import Types.*
-import config.Feature
+import Names.Name
+import NameOps.isReplWrapperName
 import config.Printers.capt
-import typer.ProtoTypes.SelectionProto
 
 /** Check whether references from safe mode should be allowed */
 object SafeRefs {
 
   val assumedSafePackages = List(
     "scala", "scala.runtime", "scala.collection.immutable", "scala.compiletime.ops",
-    "scala.math", "scala.util", "java.math", "java.time",
+    "scala.math", "scala.util", "scala.caps", "java.math", "java.time",
     "java.util.function", "java.util.regex", "java.util.stream"
   )
 
@@ -56,7 +56,7 @@ object SafeRefs {
    *  Once we have an updated ccException in the bootstrap compiler, we could add annotations
    *  to library classes manually, as long as these library classes are capture checked.
    */
-  def init()(using Context): Unit =
+  def init()(using Context): Unit = {
     assumeSafe("scala.Predef", except = List("print", "println", "printf"))
     assumeSafe("scala.runtime.coverage.Invoker")
     assumeSafe("scala.reflect.ClassTag")
@@ -172,21 +172,77 @@ object SafeRefs {
     rejectSafe("scala.runtime.LazyFloat")
     rejectSafe("scala.runtime.LazyDouble")
     rejectSafe("scala.runtime.LazyUnit")
+  }
+
+  /** Allow name in safe mode even though it contains `$` characters */
+  def allowDollarIn(name: Name)(using Context): Boolean =
+    name.isReplWrapperName && ctx.mode.is(Mode.Interactive)
 
   private def fail(sym: Symbol, reason: String, pos: SrcPos)(using Context) =
     report.error(em"Cannot refer to ${sym.sanitizedDescription}${sym.showExtendedLocation} from safe code since $reason", pos)
     false
 
   private def checkNotRejected(sym: Symbol, pos: SrcPos)(using Context): Boolean =
-    if !sym.exists then true
-    else sym.getAnnotation(defn.RejectSafeAnnot) match
+    !sym.exists || sym.is(Package) || sym.getAnnotation(defn.RejectSafeAnnot).match
       case Some(annot) =>
         val message = annot.argumentConstantString(0).getOrElse("")
-          fail(sym, if message.nonEmpty then message else i"it is tagged @rejectSafe", pos)
+        fail(sym, if message.nonEmpty then message else i"it is tagged @rejectSafe", pos)
       case _ =>
-        sym.owner.is(Package) || checkNotRejected(sym.owner, pos)
+        checkNotRejected(sym.owner, pos)
 
-  def checkSafe(tree: Tree, pt: Type)(using Context): Unit = {
+  /** Check that all nodes of given tree for the following conditions.
+   *   - No reference to a symbol under a @rejectSafe annotation
+   *   - All references to static symbols are assumed safe: This means
+   *     they have been compiled in safe mode, or have an @assumeSafe
+   *     annotation or are owned by a symbol with an @assumeSafe annotation.
+   *   - No reference to a user-defined annotation which is marked @rejectSafe
+   */
+  object checker extends TreeTraverser:
+    private var checkTypes = false
+    def traverse(tree: Tree)(using Context) =
+      val sym = tree.symbol
+      tree match
+        case tree: Ident =>
+          checkNotRejected(sym, tree.srcPos)
+          val isStatic = tree.tpe match
+            case NamedType(prefix, _) =>
+              prefix.dealias match
+                case prefix: ThisType => prefix.cls.isStatic
+                case prefix: TermRef => prefix.symbol.isStatic
+                case _ => sym.isStatic
+            case _ => sym.isStatic
+          // if sym is not static it is local, a parameter, or comes from another symbol,
+          // which has been checked
+          if isStatic && (checkTypes || sym.isTerm) then
+            checkSafe(sym, tree)
+        case tree: Select =>
+          checkNotRejected(sym, tree.srcPos)
+          if sym.isStatic && (checkTypes || sym.isTerm)
+          then checkSafe(sym, tree)
+          else traverseChildren(tree)
+        case New(tpt) =>
+          val saved = checkTypes
+          checkTypes = true
+          try traverse(tpt)
+          finally checkTypes = saved
+        case Inlined(call, _, _) =>
+          traverse(call)
+        case tree: MemberDef if !sym.is(Synthetic) =>
+          for ann <- sym.annotations do
+            checkSafeAnnot(ann, sym.srcPos)
+          traverseChildren(tree)
+        case tree: TypeApply if sym == defn.Any_asInstanceOf =>
+          report.error(em"Cannot use asInstanceOf in safe mode", tree.srcPos)
+        case Annotated(arg, annot) =>
+          checkNotRejected(annot.symbol, annot.srcPos.orElse(tree.srcPos))
+          traverseChildren(arg)
+        case tree: Import =>
+          // skip imports, we want to be able to wildcard import from an unsafe
+          // object as long as all used members are @assumeSafe
+        case _ =>
+          traverseChildren(tree)
+
+  def checkSafe(sym: Symbol, tree: Tree)(using Context): Unit = {
 
     def isSafe(sym: Symbol): Boolean =
       if !sym.exists then false
@@ -196,62 +252,15 @@ object SafeRefs {
         sym.hasAnnotation(defn.AssumeSafeAnnot)
         || isSafe(if sym.is(ModuleVal) then sym.moduleClass else sym.owner)
 
-    val sym = tree match
-      case tree: New => tree.tpt.tpe.classSymbol
-      case tree: RefTree => tree.symbol
-
-    def checkLater =
-      sym.isTerm && !sym.is(Method) && pt.match
-        case pt: PathSelectionProto => pt.selector.isStatic
-        case _: SelectionProto => true
-        case _ => false
-
-    def isStatic = tree match
-      case tree: Ident =>
-        // Idents might refer to inherited symbols of static objects.
-        // in this case we need to check whether the prefix is static
-        // For Selects this is not an issue since we have already checked
-        // the qualifier for safety. safemode-pkg-inherit.scala is a test case.
-        tree.tpe match
-          case NamedType(prefix, _) =>
-            prefix.dealias match
-              case prefix: ThisType => prefix.cls.isStatic
-              case prefix: TermRef => prefix.symbol.isStatic
-              case _ => sym.isStatic
-          case _ => sym.isStatic
-      case _ => sym.isStatic
-
-    if Feature.safeEnabled
-        && sym.exists
-        && !sym.is(Package)
-        && checkNotRejected(sym, tree.srcPos)
-        && !checkLater
-        && isStatic // if it's not static it is local, a parameter, or comes from another symbol,
-                   // which has been checked
-        && !isSafe(sym)
-    then
+    if sym.exists && !sym.is(Package) && !isSafe(sym) then
       fail(sym, "it is neither compiled in safe mode nor tagged with @assumedSafe", tree.srcPos)
     else
-      capt.println(i"checked safe $tree, $sym, $checkLater")
+      capt.println(i"checked safe $tree, $sym")
   }
 
   private def checkSafeAnnot(ann: Annotation, pos: SrcPos)(using Context): Unit =
     val span = ann.tree.span
     // Skip compiler inserted annotations that have no or zero extent span.
     if !span.exists || span.isZeroExtent then return
-    var errpos = ann.tree.srcPos
-    if !pos.sourcePos.exists then errpos = pos
-    checkNotRejected(ann.symbol, errpos)
-
-  def checkSafeAnnots(sym: Symbol)(using Context): Unit =
-    if Feature.safeEnabled && !sym.is(Synthetic) then
-      for ann <- sym.annotations do
-        checkSafeAnnot(ann, sym.srcPos)
-
-  def checkSafeAnnotsInType(tree: Tree)(using Context): Unit =
-    def checkAnnotatedType(tp: Type) = tp match
-      case AnnotatedType(tp, ann) => checkSafeAnnot(ann, tree.srcPos)
-      case _ =>
-    if Feature.safeEnabled then
-      tree.tpe.foreachPart(checkAnnotatedType(_))
+    checkNotRejected(ann.symbol, ann.tree.srcPos)
 }

@@ -110,15 +110,12 @@ object TypeErasure:
         case tp: TypeVar if !tp.isInstantiated => -2
         case _ => -1
 
-  def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
-    if (defn.specialErasure.contains(cls))
-      return defn.specialErasure(cls).uncheckedNN
-    if (cls.owner == defn.ScalaPackageClass) {
-      if (cls == defn.UnitClass)
-        return defn.BoxedUnitClass
-    }
-    cls
-  }
+  def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol =
+    defn.specialErasure.get(cls) match
+      case Some(se) => se
+      case None =>
+        if cls.owner == defn.ScalaPackageClass && cls == defn.UnitClass then defn.BoxedUnitClass
+        else cls
 
   /** A predicate that tests whether a type is a legal erased type. Only asInstanceOf and
    *  isInstanceOf may have types that do not satisfy the predicate.
@@ -233,6 +230,15 @@ object TypeErasure:
     valueErasure(tp) match
       case ErasedValueType(_, underlying) => erasure(underlying)
       case etp => etp
+
+  /** Rewrite a `JavaArrayType` (the post-erasure representation of `T[]`) to its
+   *  source-level Scala `Array[T]` form. Other types are returned unchanged. Used
+   *  when an erased type has to flow back into a tree where only Scala-level types
+   *  are valid, e.g. the type argument of a class literal.
+   */
+  def escapeJavaArray(tp: Type)(using Context): Type = tp match
+    case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
+    case _                     => tp
 
   def sigName(tp: Type, sourceLanguage: SourceLanguage)(using Context): TypeName = {
     val normTp = tp.translateFromRepeated(toArray = sourceLanguage.isJava)
@@ -482,7 +488,7 @@ object TypeErasure:
     if compareErasedGlb(tp1, tp2) <= 0 then tp1 else tp2
 
   /** Overload of `erasedGlb` to compare more than two types at once. */
-  def erasedGlb(tps: List[Type])(using Context): Type =
+  def erasedGlb(tps: Iterable[Type])(using Context): Type =
     tps.min(using (a,b) => compareErasedGlb(a, b))
 
   /** A comparison function that induces a total order on erased types,
@@ -1018,17 +1024,22 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     // constructor method should not be semi-erased.
     if semiEraseVCs && isConstructor && !tp.isInstanceOf[MethodOrPoly] then
       erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName).eraseResult(tp)
-    else tp match
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym eq defn.UnitClass) sym.typeRef
-        else apply(tp)
-      case tp: AppliedType =>
-        val sym = tp.tycon.typeSymbol
-        if (sym.isClass && !erasureDependsOnArgs(sym)) eraseResult(tp.tycon)
-        else apply(tp)
-      case _ =>
-        apply(tp)
+    else if tp =:= defn.UnitType then
+      // This should always be UnitType. However, there is one exception: if we
+      // are computing the erasure of a Scala 2 symbol whose result type is a
+      // Scala.js pseudo-union type, we must preserve the pseudo-union.
+      // Typical example: js.undefined, which returns a `Unit | Nothing`.
+      if ctx.settings.scalajs.value && isSymbol && sourceLanguage.isScala2 then
+        apply(tp) match {
+          case erased if erased.isRef(JSDefinitions.jsdefn.PseudoUnionClass) =>
+            erased
+          case _ =>
+            defn.UnitType
+        }
+      else
+        defn.UnitType
+    else
+      apply(tp)
 
   /** The name of the type as it is used in `Signature`s.
    *

@@ -1,0 +1,20 @@
+-- Error: tests/neg-custom-args/captures/sep-leak-problem.scala:14:14 --------------------------------------------------
+14 |  val t1 = t0.get // error
+   |           ^^^^^^
+   |           Local reach capability x* leaks into capture scope of method useBoxedAsync.
+   |           You could try to abstract the capabilities referred to by x* in a capset variable.
+-- Error: tests/neg-custom-args/captures/sep-leak-problem.scala:17:45 --------------------------------------------------
+17 |def useBoxedAsync1(x: Box[Async^]): Unit = x.get.read() // error
+   |                                           ^^^^^
+   |                          Local reach capability x.get* leaks into capture scope of method useBoxedAsync1.
+   |                          You could try to abstract the capabilities referred to by x.get* in a capset variable.
+-- Error: tests/neg-custom-args/captures/sep-leak-problem.scala:33:15 --------------------------------------------------
+33 |    val t1 = x.get // error
+   |             ^^^^^
+   |             Local reach capability x.get* leaks into capture scope of an enclosing function.
+   |             You could try to abstract the capabilities referred to by x.get* in a capset variable.
+-- Error: tests/neg-custom-args/captures/sep-leak-problem.scala:40:52 --------------------------------------------------
+40 |  val f: Box[Async^] => Unit = (x:  Box[Async^]) => useBoxedAsync(x) // error
+   |                                                    ^^^^^^^^^^^^^
+   |                              Local reach capability x* leaks into capture scope of an enclosing function.
+   |                              You could try to abstract the capabilities referred to by x* in a capset variable.

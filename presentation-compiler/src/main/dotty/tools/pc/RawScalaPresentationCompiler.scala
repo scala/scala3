@@ -8,8 +8,6 @@ import java.util as ju
 
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-import scala.meta.internal.metals.CompilerVirtualFileParams
-import scala.meta.internal.metals.PcQueryContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.EmptySymbolSearch
@@ -75,9 +73,8 @@ case class RawScalaPresentationCompiler(
     val defaultFlags = List("-color:never")
     val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
     val classpathFlags = List("-classpath", classpath.mkString(File.pathSeparator))
-    val sourcePathFiles = sourcePath.get().asScala
-    val sourcePathFlags = if sourcePathFiles.size > 0 && config.sourcePathMode() != SourcePathMode.DISABLED then
-      List("-Ylogical-package-loading", "-sourcepath", sourcePathFiles.mkString(File.pathSeparator))
+    val sourcePathFlags = if config.sourcePathMode() != SourcePathMode.DISABLED then
+      List("-Ylogical-package-loading")
     else Nil
     filteredOptions ++
       defaultFlags ++
@@ -85,7 +82,8 @@ case class RawScalaPresentationCompiler(
       classpathFlags ++
       sourcePathFlags
 
-  lazy val driver: InteractiveDriver = CachingDriver(driverSettings)
+  lazy val driver: InteractiveDriver =
+    CachingDriver(driverSettings, sourcePath, semanticdbFileManager, config.sourcePathMode())
 
   override def codeAction[T](
       params: OffsetParams,
@@ -156,7 +154,7 @@ case class RawScalaPresentationCompiler(
     CompletionProvider(
       search,
       driver,
-      () => InteractiveDriver(driverSettings),
+      () => InteractiveDriver(driverSettings, driver.logicalRootPackage),
       params,
       config,
       buildTargetIdentifier,

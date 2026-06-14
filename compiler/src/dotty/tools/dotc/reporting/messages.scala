@@ -37,7 +37,6 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 import Message.{Disambiguation, Note}
-import dotty.tools.dotc.util.SimpleIdentitySet
 
 /**  Messages
   *  ========
@@ -96,13 +95,14 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
       "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
     else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
 
-  protected def context: String = ex.optTrace match
-    case Some(trace) =>
+  protected def context: String =
+    val trace = ex.optTrace
+    if trace != null then
       s"\n\nThe error occurred while trying to ${
         trace.map(identity) // map with identity will turn Context ?=> String elements to String elements
           .mkString("\n  which required to ")
       }$debugInfo"
-    case None =>
+    else
       "\n\n Run with -explain-cyclic for more details."
 end CyclicMsg
 
@@ -3898,3 +3898,50 @@ final class IllegalIdentifier(name: Name)(using Context) extends SyntaxMsg(Illeg
          |
          |The prohibition against explicit `$$` may be ignored by enclosing the identifier in backquotes
          |at the definition site."""
+
+class ConcreteClassHasUnimplementedMethods(
+    clazz: ClassSymbol,
+    missingMethods: List[Symbol],
+    addendum: String,
+    methodActions: List[CodeAction])(using Context)
+extends Message(ConcreteClassHasUnimplementedMethodsID), NoDisambiguation:
+
+  def kind = MessageKind.Declaration
+
+  private def showDecl(sym: Symbol)(using Context): String =
+    sym.asSeenFrom(clazz.thisType).mapInfo(_.withCleanParamNames).showDcl
+
+  private def prelude(using Context): String =
+    if clazz.isAnonymousClass || clazz.is(Module) then "object creation impossible"
+    else if clazz.is(Synthetic) then "instance cannot be created"
+    else s"$clazz needs to be abstract"
+
+  private def renderMissingMethods(using Context): List[String] =
+    val grouped = missingMethods.groupBy(_.owner).toList
+    grouped.sortBy(_._1.name).map { case (owner, members) =>
+      val sigs = members.sortBy(_.name).map(s => s"- ${showDecl(s)}")
+      s"""Members declared in ${owner.fullName}:
+         |${sigs.mkString("\n")}""".stripMargin
+    }
+
+  def msg(using Context) = missingMethods match
+    case single :: Nil =>
+      val notDefined = s"${showDecl(single)} in ${single.owner.showLocated} is not defined"
+      s"$prelude, since $notDefined$addendum"
+    case _ =>
+      s"""$prelude, since it has ${missingMethods.size} unimplemented members.
+         |
+         |${renderMissingMethods.mkString("\n\n")}""".stripMargin
+
+  def explain(using Context) = ""
+  override def actions(using Context) = methodActions
+
+class UseOfAnyMethodAsInterpolator(interpolator: Name)(using Context)
+  extends Message(UseOfAnyMethodAsInterpolatorID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Interpolator $interpolator resolves to a method from Any"
+  def explain(using Context) =
+    i"""String interpolation resolves to methods calls on ${hl("StringContext")},
+       |which can target methods declared by ${hl("Any")} such as ${hl(i"$interpolator")}.
+       |This is unlikely to be what you intended."""
+}

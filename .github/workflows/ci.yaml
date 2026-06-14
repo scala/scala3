@@ -126,7 +126,7 @@ jobs:
 
       # Extract the release tag
       - name: Extract the release tag
-        run : echo "RELEASE_TAG='${GITHUB_REF#*refs/tags/}'" >> $GITHUB_ENV
+        run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
       - name: Check compiler version
         shell: bash
@@ -276,5 +276,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.13
+      - uses: VirtusLab/scala-cli-setup@v1.14
       - run: scala-cli format --check
