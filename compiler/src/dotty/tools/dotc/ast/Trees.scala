@@ -499,7 +499,7 @@ object Trees {
       case _ => denotSlowPath
 
     private def denotSlowPath(using Context): Denotation = typeOpt match
-      case ConstantType(_) if ConstFold.foldedUnops.contains(name) =>
+      case ConstantType(_) if ConstFold.isFoldedUnop(name) =>
         // Recover the denotation of a constant-folded selection
         qualifier.typeOpt.member(name).atSignature(Signature.NotAMethod, name)
       case tpe => tpe.stripped match
