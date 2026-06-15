@@ -592,7 +592,7 @@ class ReplDriver(settings: Array[String],
       state
 
     case JarCmd(path) =>
-      val jarFile = AbstractFile.getDirectory(path)
+      val jarFile = AbstractFile.getDirectory(path, state.context.settings.javaOutputVersion.value(using state.context))
       if (jarFile == null)
         out.println(s"""Cannot add "$path" to classpath.""")
         state
