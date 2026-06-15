@@ -262,7 +262,7 @@ object ClassfileParser {
   }
 }
 
-class ClassfileParser(
+final class ClassfileParser(
     classfile: AbstractFile,
     classRoot: ClassDenotation,
     moduleRoot: ClassDenotation)(ictx: Context) {
@@ -270,16 +270,16 @@ class ClassfileParser(
   import ClassfileConstants.*
   import ClassfileParser.*
 
-  protected val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
+  private val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
 
-  protected val instanceScope: MutableScope = newScope(0) // the scope of all instance definitions
-  protected val staticScope: MutableScope = newScope(0)   // the scope of all static definitions
-  protected var pool: ConstantPool = uninitialized        // the classfile's constant pool
+  private val instanceScope: MutableScope = newScope(0) // the scope of all instance definitions
+  private val staticScope: MutableScope = newScope(0)   // the scope of all static definitions
+  private var pool: ConstantPool = uninitialized        // the classfile's constant pool
 
-  protected var currentClassName: SimpleName = uninitialized // JVM name of the current class
-  protected var classTParams: Map[Name, Symbol] = Map()
+  private var currentClassName: SimpleName = uninitialized // JVM name of the current class
+  private var classTParams: Map[Name, Symbol] = Map()
 
-  private var Scala2UnpicklingMode = Mode.Scala2Unpickling
+  private val Scala2UnpicklingMode = Mode.Scala2Unpickling
   private var classfileVersion: Header.Version = Header.Version.Unknown
 
   classRoot.info = NoLoader().withDecls(instanceScope)
@@ -597,7 +597,7 @@ class ClassfileParser(
     }
     // Warning: sigToType contains nested completers which might be forced in a later run!
     // So local methods need their own ctx parameters.
-    def sig2type(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean, isParent: Boolean = false)(using Context): Type = {
+    def sig2type(skiptvs: Boolean, isParent: Boolean = false)(using Context): Type = {
       val tag = sig(index); index += 1
       (tag: @switch) match {
         case 'L' =>
@@ -623,16 +623,16 @@ class ClassfileParser(
                     case variance @ ('+' | '-' | '*') =>
                       index += 1
                       variance match {
-                        case '+' => TypeBounds.upper(sig2type(tparams, skiptvs))
+                        case '+' => TypeBounds.upper(sig2type(skiptvs))
                         case '-' =>
-                          val argTp = sig2type(tparams, skiptvs)
+                          val argTp = sig2type(skiptvs)
                           // Interpret `sig2type` returning `Any` as "no bounds";
                           // morally equivalent to TypeBounds.empty, but we're representing Java code, so use FromJavaObjectType as the upper bound
                           if (argTp.typeSymbol == defn.AnyClass) TypeBounds.upper(defn.FromJavaObjectType)
                           else TypeBounds(argTp, defn.FromJavaObjectType)
                         case '*' => TypeBounds.upper(defn.FromJavaObjectType)
                       }
-                    case _ => sig2type(tparams, skiptvs, isParent)
+                    case _ => sig2type(skiptvs, isParent)
                   }
                   if (argsBuf != null) argsBuf += arg
                 }
@@ -658,7 +658,7 @@ class ClassfileParser(
           tpe
         case ARRAY_TAG =>
           while ('0' <= sig(index) && sig(index) <= '9') index += 1
-          val elemtp = sig2type(tparams, skiptvs)
+          val elemtp = sig2type(skiptvs)
           defn.ArrayOf(elemtp.translateJavaArrayElementType)
         case '(' =>
           def isMethodEnd(i: Int) = sig(i) == ')'
@@ -690,21 +690,21 @@ class ClassfileParser(
             paramtypes += {
               if isRepeatedParam(index) then
                 index += 1
-                val elemType = sig2type(tparams, skiptvs = false)
+                val elemType = sig2type(skiptvs = false)
                 // `ElimRepeated` is responsible for correctly erasing this.
                 defn.RepeatedParamType.appliedTo(elemType)
               else
-                sig2type(tparams, skiptvs = false)
+                sig2type(skiptvs = false)
             }
 
           index += 1
-          val restype = sig2type(tparams, skiptvs = false)
+          val restype = sig2type(skiptvs = false)
           MethodType(paramnames.toList, paramtypes.toList, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
           if (skiptvs) defn.AnyType
-          else tparams.get(n).orElse(classTParams.get(n)) match
+          else tparams.get(n) match
             case Some(tp) => tp.typeRef
             case None =>
               // Generic type parameters can be declared in the parent class's type signature, e.g., `class Y$1 extends Y<T>`,
@@ -714,7 +714,7 @@ class ClassfileParser(
                 owner, n, owner.typeParamCreationFlags,
                 typeParamCompleter(index), coord = indexCoord(index))
               if (owner.isClass) owner.asClass.enter(s)
-              classTParams += (n -> s)
+              tparams += (n -> s)
               s.typeRef
         case tag =>
           constantTagToType(tag)
@@ -727,7 +727,7 @@ class ClassfileParser(
       while (sig(index) == ':') {
         index += 1
         if (sig(index) != ':') { // guard against empty class bound
-          val tp = sig2type(tparams, skiptvs)
+          val tp = sig2type(skiptvs)
           if (!skiptvs)
             ts += cook(tp)
         }
@@ -759,12 +759,12 @@ class ClassfileParser(
     val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
-        sig2type(tparams, skiptvs = false)
+        sig2type(skiptvs = false)
       else {
         classTParams = tparams
         val parents = new ListBuffer[Type]()
         while (index < end)
-          parents += sig2type(tparams, skiptvs = false, isParent = true) // here the variance doesn't matter
+          parents += sig2type(skiptvs = false, isParent = true) // here the variance doesn't matter
         TempClassInfoType(parents.toList, instanceScope, owner)
       }
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)
