@@ -94,8 +94,6 @@ object Versions {
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.25-M25"
 
-  val mtagsVersion = "1.6.7"
-
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {
     case class ScalaVersion(minor: Int, patch: Int, isRC: Boolean)
