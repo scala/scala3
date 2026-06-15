@@ -41,18 +41,12 @@ object Path {
     else name.substring(0, i)
   }
 
-  def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs.filter(_.isFile).map(_.toFile)
-
-  def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
-
   def apply(path: String): Path = apply(new java.io.File(path).toPath)
   def apply(jpath: JPath): Path = try {
     if (Files.isRegularFile(jpath)) new File(jpath)
     else if (Files.isDirectory(jpath)) new Directory(jpath)
     else new Path(jpath)
   } catch { case ex: SecurityException => new Path(jpath) }
-
-  private[io] def fail(msg: String): Nothing = throw FileOperationException(msg)
 }
 import Path.*
 
@@ -173,15 +167,12 @@ class Path private[io] (val jpath: JPath) {
   def length: Long = Files.size(jpath)
 
   // creations
-  def createDirectory(force: Boolean = true, failIfExists: Boolean = false): Directory = {
-    val res = tryCreate(if (force) Files.createDirectories(jpath) else Files.createDirectory(jpath))
-    if (!res && failIfExists && exists) fail("Directory '%s' already exists." format name)
-    else if (isDirectory) toDirectory
+  def createDirectory(): Directory = {
+    try Files.createDirectories(jpath)
+    catch case _: FileAlreadyExistsException => ()
+    if (isDirectory) toDirectory
     else new Directory(jpath)
   }
-
-  private def tryCreate(create: => JPath): Boolean =
-    try { create; true } catch { case _: FileAlreadyExistsException => false }
 
   // deletions
   def delete(): Unit =
