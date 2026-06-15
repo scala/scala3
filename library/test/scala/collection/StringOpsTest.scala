@@ -151,7 +151,7 @@ class StringOpsTest {
     // Edge cases:
     assertSameElements("a,b,,,".split(','), Array("a", "b"))
     assertSameElements("".split(','), Array(""))
-    assertSameElements(",,,".split(','), Array.empty)
+    assertSameElements(",,,".split(','), Array.empty[String])
   }
 
   @Test def splitBySurrogateCharExamples: Unit = {
