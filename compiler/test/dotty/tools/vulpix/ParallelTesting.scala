@@ -597,6 +597,15 @@ trait ParallelTesting extends RunnerOrchestration:
       addToLast(barLine(start = false))
       diagnostics.reverse
 
+    /** Older compilers don't support `-coverage-out` or `-Ycheck:instrumentCoverage`. */
+    private def stripCoverageOptions(flags: TestFlags): TestFlags =
+      def loop(opts: List[String]): List[String] = opts match
+        case "-coverage-out" :: _ :: tail => loop(tail)
+        case flag :: tail if flag.startsWith("-Ycheck:") && flag.contains("instrumentCoverage") => loop(tail)
+        case other :: tail => other :: loop(tail)
+        case Nil => Nil
+      flags.copy(options = loop(flags.options.toList).toArray)
+
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
       def artifactClasspath(organizationName: String, moduleName: String) =
         import coursier._
@@ -617,7 +626,8 @@ trait ParallelTesting extends RunnerOrchestration:
       val scalacClasspath = artifactClasspath("org.scala-lang", "scala3-compiler_3")
 
       val pageWidth = TestConfiguration.pageWidth - 20
-      val flags1 = flags.copy(defaultClassPath = stdlibClasspath)
+      val flags1 = stripCoverageOptions(flags)
+        .copy(defaultClassPath = stdlibClasspath)
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
         .and("-pagewidth", pageWidth.toString)
