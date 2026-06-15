@@ -5412,7 +5412,7 @@ object Types extends TypeUtils {
           // Always apply the legacy algorithm under -source:3.3 and below
           LegacyPatMat(cas, null)
         case cas: HKTypeLambda =>
-          val defn.MatchCase(pat, body) = cas.resultType.stripAnnots.runtimeChecked
+          val defn.MatchCase(pat, body) = cas.resultType: @unchecked
           val missing = checkCapturesPresent(cas, pat)
           if !missing.isEmpty then
             MissingCaptures(cas, missing)
@@ -5422,8 +5422,6 @@ object Types extends TypeUtils {
                 SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
               case err: MatchTypeCaseError =>
                 LegacyPatMat(cas, err)
-        case cas: AnnotatedType =>
-          analyze(cas.parent)
         case _ =>
           val defn.MatchCase(pat, body) = cas: @unchecked
           SubTypeTest(cas, pat, body)
