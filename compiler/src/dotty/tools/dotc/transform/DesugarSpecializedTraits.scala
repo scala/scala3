@@ -497,7 +497,8 @@ end DesugarSpecializedTraits
             (i.e. typically on this iteration) ("new")
            - Those we found prior to that call, that were thus installed by it or previously
 
-  Invariant: (newImplementationSymbols ∪ implementationSymbols) ⊆ (interfaceSymbols ∪ newInterfaceSymbols).
+  Invariant: (newImplementationSymbols ∪ implementationSymbols) ⊆ (interfaceSymbols ∪ newInterfaceSymbols) except for the "erased" implementations
+      class Foo$impl which correspond to the ordinary erased interface Foo which is not stored.
 */
 
 object SpecializedTraitCache:
