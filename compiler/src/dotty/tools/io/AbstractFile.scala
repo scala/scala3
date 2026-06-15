@@ -172,6 +172,11 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator: Iterator[AbstractFile]
 
+  /** Returns all subfiles of all subdirectories of this abstract directory, including itself. */
+  def deepIterator: Iterator[AbstractFile] =
+    if isDirectory then iterator.flatMap(_.deepIterator)
+    else Iterator.single(this)
+
   /** Drill down through subdirs looking for the target, as in lookupName.
    *  Ths target name is the last of parts.
    */

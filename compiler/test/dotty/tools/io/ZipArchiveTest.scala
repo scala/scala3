@@ -5,7 +5,6 @@ import scala.language.unsafeNulls
 import java.io.IOException
 import java.net.{URI, URL, URLClassLoader}
 import java.nio.file.{Files, Path, Paths}
-import java.util.jar.{Attributes, Manifest, JarEntry, JarOutputStream}
 
 import org.junit.Assert.*
 import org.junit.Test

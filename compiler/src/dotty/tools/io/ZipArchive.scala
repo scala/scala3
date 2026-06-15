@@ -98,7 +98,6 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
 
   def close(): Unit
 }
-// TODO: remove 'release' and JAR features; switch callers who need it to explicitly pick between JarFile and ZipFile
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends ZipArchive(jpath) {
   private def openZipFile(): ZipFile = try {
@@ -130,7 +129,6 @@ final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends
     override def sizeOption: Option[Int] = Some(size) // could be stale
   }
 
-  // TODO might this be the cause of the issue about jar on windows?
   // keeps a file handle open to ZipFile, which forbids file mutation
   // on Windows, and leaks memory on all OS (typically by stopping
   // classloaders from being garbage collected). But is slightly

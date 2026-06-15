@@ -9,7 +9,6 @@ import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream
 import java.util.Properties
-import java.util.jar.JarFile
 import scala.util.{Failure, Success, Try}
 import scala.annotation.nowarn
 
@@ -144,17 +143,15 @@ object Plugin {
         if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
         else fromFile(is, jarp)
 
-      // TODO switch to our JarArchive
-      val fileEntry = new java.util.jar.JarEntry(PluginFile)
-      val jarFile = new JarFile(jarp.jpath.toFile)
-      Try(read(jarFile.getInputStream(fileEntry)))
+      val jarArchive = JarArchive.open(jarp)
+      Try(read(jarArchive.fileNamed(PluginFile).input))
     }
 
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
       d.files.toList
-        .sortBy(_.name)
         .filter(JarArchive.isJarOrZip(_))
+        .sortBy(_.name)
         .map(j => (j, loadDescriptionFromJar(j)))
 
     type PDResults = List[Try[(String, ClassLoader)]]

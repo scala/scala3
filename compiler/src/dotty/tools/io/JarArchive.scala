@@ -12,8 +12,6 @@ import scala.jdk.CollectionConverters.*
 class JarArchive private (val jarPath: Path, root: Directory) extends PlainDirectory(root) {
   def close(): Unit = this.synchronized(jpath.getFileSystem().close())
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
-  def allFileNames(): Iterator[String] =
-    java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)
 
   override def toString: String = jarPath.toString
 }
@@ -26,7 +24,6 @@ object JarArchive {
     open(path, create = true)
   }
 
-  // TODO change this to include a version
   /** Create a jar file. */
   def open(path: Path, create: Boolean = false): JarArchive = {
     require(path.ext.isJar)
