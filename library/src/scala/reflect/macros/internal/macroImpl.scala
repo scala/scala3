@@ -28,5 +28,7 @@ import scala.language.`2.13`
  *
  *  To lessen the weirdness we define this annotation as `private[scala]`.
  *  It will not prevent pickling, but it will prevent application developers (and scaladocs) from seeing the annotation.
+ *
+ *  @param referenceToMacroImpl the typechecked reference to the macro implementation method, as produced by `typedMacroBody`. Typed as `Any` because the concrete tree type is not available in scala-library.
  */
 private[scala] final class macroImpl(val referenceToMacroImpl: Any) extends scala.annotation.StaticAnnotation

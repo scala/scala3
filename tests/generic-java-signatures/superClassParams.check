@@ -1,4 +1,4 @@
-B: A<java.lang.Object>
+B: A<java.lang.Integer>
 C: A<java.lang.String>
-D: A<java.util.List<java.lang.Object>>
+D: A<java.util.List<java.lang.Integer>>
 E: A<java.util.List<java.lang.String>>

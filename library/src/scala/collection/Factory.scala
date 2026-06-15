@@ -93,7 +93,9 @@ trait IterableFactory[+CC[_]] extends Serializable, caps.Pure {
   def from[A](source: IterableOnce[A]^): CC[A]^{source}
 
   /** An empty $coll.
+   *
    *  @tparam A      the type of the ${coll}'s elements
+   *  @return an empty $coll of type `CC[A]`
    */
   def empty[A]: CC[A]
 
@@ -415,6 +417,7 @@ trait MapFactory[+CC[_, _]] extends Serializable { self: MapFactory[CC] =>
    *
    *  @tparam K the type of the keys
    *  @tparam V the type of the values
+   *  @return an empty map of type `CC[K, V]`
    */
   def empty[K, V]: CC[K, V]
 
@@ -423,6 +426,7 @@ trait MapFactory[+CC[_, _]] extends Serializable { self: MapFactory[CC] =>
    *  @tparam K the type of the keys
    *  @tparam V the type of the values
    *  @param it the source collection of key-value pairs
+   *  @return a new map of type `CC[K, V]` containing the bindings from `it`
    */
   def from[K, V](it: IterableOnce[(K, V)]^): CC[K, V]^{it}
 
@@ -431,6 +435,7 @@ trait MapFactory[+CC[_, _]] extends Serializable { self: MapFactory[CC] =>
    *  @tparam K the type of the keys
    *  @tparam V the type of the values
    *  @param elems the key-value pairs to include in the map
+   *  @return a new map of type `CC[K, V]` containing the given `elems`
    */
   def apply[K, V](elems: (K, V)*): CC[K, V] = from(elems)
 
@@ -438,6 +443,7 @@ trait MapFactory[+CC[_, _]] extends Serializable { self: MapFactory[CC] =>
    *
    *  @tparam K the type of the keys
    *  @tparam V the type of the values
+   *  @return a new `Builder` that accepts key-value pairs and produces a `CC[K, V]`
    */
   def newBuilder[K, V]: Builder[(K, V), CC[K, V]]
 
@@ -445,6 +451,7 @@ trait MapFactory[+CC[_, _]] extends Serializable { self: MapFactory[CC] =>
    *
    *  @tparam K the type of the keys
    *  @tparam V the type of the values
+   *  @return a `Factory` that builds a `CC[K, V]` from a collection of key-value pairs
    */
   implicit def mapFactory[K, V]: Factory[(K, V), CC[K, V]] = MapFactory.toFactory(this)
 }
@@ -746,14 +753,14 @@ object ClassTagIterableFactory {
 /**
  *  @tparam CC Collection type constructor (e.g. `ArraySeq`)
  */
-trait ClassTagSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] extends ClassTagIterableFactory[CC] {
+trait ClassTagSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure] extends ClassTagIterableFactory[CC] {
   import SeqFactory.UnapplySeqWrapper
   final def unapplySeq[A](x: CC[A] @uncheckedVariance): UnapplySeqWrapper[A] = new UnapplySeqWrapper(x) // TODO is uncheckedVariance sound here?
 }
 
 object ClassTagSeqFactory {
   @SerialVersionUID(3L)
-  class Delegate[CC[A] <: SeqOps[A, Seq, Seq[A]]](delegate: ClassTagSeqFactory[CC])
+  class Delegate[CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure](delegate: ClassTagSeqFactory[CC])
     extends ClassTagIterableFactory.Delegate[CC](delegate) with ClassTagSeqFactory[CC]
 
   /** A SeqFactory that uses ClassTag.Any as the evidence for every element type. This may or may not be
@@ -764,7 +771,7 @@ object ClassTagSeqFactory {
     extends ClassTagIterableFactory.AnyIterableDelegate[CC](delegate) with SeqFactory[CC]
 }
 
-trait StrictOptimizedClassTagSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] extends ClassTagSeqFactory[CC] {
+trait StrictOptimizedClassTagSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]] & caps.Pure] extends ClassTagSeqFactory[CC] {
 
   override def fill[A : ClassTag](n: Int)(elem: => A): CC[A] = {
     val b = newBuilder[A]

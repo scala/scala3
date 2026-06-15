@@ -12,7 +12,7 @@ object Versions {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.4-RC3"
+  val referenceVersion = "3.9.0-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -50,7 +50,8 @@ object Versions {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimental
    */
-  val expectedTastyVersion = "28.10-experimental-1"
+  // TODO: temporary downgraded to 28.9-exp-1 to allow consuming 3.9.0-RC reference compiler. Increment to 28.10-exp-1 when 3.9.0 is released and before 3.10.0-RC1 is published
+  val expectedTastyVersion = "28.9-experimental-1"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
@@ -87,7 +88,7 @@ object Versions {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.8.0" // TODO: update to 3.9.0 when released
+  val mimaPreviousDottyVersion = "3.9.0-RC1" // TODO: update to 3.9.0 when released
 
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.14.0"

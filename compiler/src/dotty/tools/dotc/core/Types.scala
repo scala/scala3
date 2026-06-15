@@ -624,10 +624,11 @@ object Types extends TypeUtils {
      *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
-    final def classSymbol(using Context): Symbol = this match
+    final def classSymbol(using Context): ClassSymbol | NoSymbol.type = this match
       case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol
+        tp.symbol match
+          case classSym: ClassSymbol => classSym
+          case _ => tp.superType.classSymbol
       case tp: TypeProxy =>
         tp.superType.classSymbol
       case tp: ClassInfo =>
@@ -872,7 +873,7 @@ object Types extends TypeUtils {
           NoDenotation
       }
       def goRec(tp: RecType) =
-        // TODO: change tp.parent to nullable or other values
+        // this can be called while we're initializing `tp.parent`, at which point it's null
         if ((tp.parent: Type | Null) == null) NoDenotation
         else if (tp eq pre) go(tp.parent)
         else
@@ -2429,7 +2430,9 @@ object Types extends TypeUtils {
      *  current run.
      */
     def denotationIsCurrent(using Context): Boolean =
-      lastDenotation != null && lastDenotation.uncheckedNN.validFor.runId == ctx.runId
+      lastDenotation match
+        case null => false
+        case ld => ld.validFor.runId == ctx.runId
 
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
      *
@@ -4880,9 +4883,9 @@ object Types extends TypeUtils {
     def paramInfo: binder.PInfo    = binder.paramInfos(paramNum)
 
     override def underlying(using Context): Type = {
-      // TODO: update paramInfos's type to nullable
+      // This can be called while we're initializing `binder.paramInfos`, at which point it's null
       val infos: List[Type] | Null = binder.paramInfos
-      if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
+      if (infos == null) NoType
       else infos(paramNum)
     }
 
@@ -5063,11 +5066,13 @@ object Types extends TypeUtils {
     private[core] def permanentInst = inst
     private[core] def setPermanentInst(tp: Type): Unit =
       inst = tp
-      if tp.exists && owningState != null then
-        val owningState1 = owningState.uncheckedNN.get
-        if owningState1 != null then
-          owningState1.ownedVars -= this
-          owningState = null // no longer needed; null out to avoid a memory leak
+      owningState match
+        case os: WeakReference[TyperState] if tp.exists =>
+          val owningState1 = os.get
+          if owningState1 != null then
+            owningState1.ownedVars -= this
+            owningState = null // no longer needed; null out to avoid a memory leak
+        case _ => ()
 
     private[core] def resetInst(ts: TyperState): Unit =
       assert(inst.exists)
@@ -5124,7 +5129,7 @@ object Types extends TypeUtils {
         assert(currentEntry.bounds.contains(tp),
           i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
 
-      if ((ctx.typerState eq owningState.nn.get.uncheckedNN) && !TypeComparer.subtypeCheckInProgress)
+      if ((ctx.typerState eq owningState.nn.get) && !TypeComparer.subtypeCheckInProgress)
         setPermanentInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
@@ -6115,7 +6120,7 @@ object Types extends TypeUtils {
             val args1 = args.zipWithConserve(tparams):
               case (arg @ TypeBounds(lo, hi), tparam) =>
                 val v = vmap.computedVariance(tparam)
-                if v.uncheckedNN < 0 then lo
+                if v != null && v < 0 then lo
                 else hi
               case (arg, _) => arg
             tp.derivedAppliedType(tycon, args1)

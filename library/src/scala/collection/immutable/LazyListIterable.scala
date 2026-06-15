@@ -286,7 +286,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     if (lazyState eq EmptyMarker) null else Uninitialized
 
   // when `_head eq Uninitialized`
-  //   - `lazySate: () => LazyListIterable[A]`
+  //   - `lazyState: () => LazyListIterable[A]`
   //   - MidEvaluation while evaluating lazyState
   // when `_head ne Uninitialized`
   //   - `null` if this is an empty lazy list
@@ -480,7 +480,7 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
         case coll                        => eagerHeadFromIterator(coll.iterator)
       }
       else eagerCons(head, tail lazyAppendedAll suffix)
-    }
+    }.asInstanceOf // CC cannot figure out correct type
 
   /** @inheritdoc
    *
@@ -1289,7 +1289,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         iRef    = i                      // iRef.elem    = i
       }
       rest
-    }
+    }.asInstanceOf // CC cannot figure out correct type
   }
 
   private def dropWhileImpl[A](ll: LazyListIterable[A]^, p: A => Boolean): LazyListIterable[A]^{ll, p} = {
@@ -1302,7 +1302,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         restRef = rest                          // restRef.elem = rest
       }
       rest
-    }
+    }.asInstanceOf // CC cannot figure out correct type
   }
 
   private def takeRightImpl[A](ll: LazyListIterable[A]^, n: Int): LazyListIterable[A]^{ll} = {
@@ -1330,7 +1330,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
       }
       // `rest` is the last `n` elements (or all of them)
       rest
-    }
+    }.asInstanceOf // CC cannot figure out correct type
   }
 
   /** An alternative way of building and matching lazy lists using LazyListIterable.cons(hd, tl). */
@@ -1474,7 +1474,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         case Some((elem, state)) => eagerCons(elem, unfold(state)(f))
         case None                => Empty
       }
-    }
+    }.asInstanceOf // CC cannot figure out correct type
 
   /** Unlike LazyList, the builder returned by this method will eagerly evaluate all elements
    *  passed to it in `addAll`.
@@ -1483,7 +1483,8 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
    *  @tparam A the type of the ${coll}’s elements
    *  @return A builder for $Coll objects.
    */
-  def newBuilder[A]: Builder[A, LazyListIterable[A]] = (new collection.mutable.ListBuffer[A]).mapResult(from)
+  def newBuilder[A]: Builder[A, LazyListIterable[A]] =
+    (new collection.mutable.ListBuffer[A]).mapResult(from).asInstanceOf // CC cannot figure out correct type
 
   private class LazyIterator[+A](private var lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
     override def hasNext: Boolean = !lazyList.isEmpty

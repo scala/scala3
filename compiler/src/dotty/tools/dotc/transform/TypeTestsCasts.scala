@@ -292,7 +292,7 @@ object TypeTestsCasts {
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
           else if (testCls.isPrimitiveValueClass)
             unbox(expr.ensureConforms(defn.ObjectType), testType)
-          else if (isDerivedValueClass(testCls))
+          else if (testType.widen.isErasedValueType || isDerivedValueClass(testCls))
             expr // adaptToType in Erasure will do the necessary type adaptation
           else if (testCls eq defn.NothingClass) {
             // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.

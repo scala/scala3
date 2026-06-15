@@ -10,8 +10,9 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.ast.Trees.Select
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.core.Phases
 
-import scala.annotation.threadUnsafe
+import scala.annotation.constructorOnly
 
 /** Scala primitive operations are represented as methods in `Any` and
  *  `AnyVal` subclasses. Here we demultiplex them by providing a mapping
@@ -30,10 +31,10 @@ import scala.annotation.threadUnsafe
  *
  * Inspired from the `scalac` compiler.
  */
-class ScalaPrimitives(ictx: Context) {
+class ScalaPrimitives(using @constructorOnly initCtx: Context) {
   import dotty.tools.backend.ScalaPrimitivesOps.*
 
-  @threadUnsafe private lazy val primitives: ReadOnlyMap[Symbol, Int] = init
+  private val primitives: ReadOnlyMap[Symbol, Int] = init
 
   /** Return the code for the given symbol. */
   def getPrimitive(sym: Symbol): Int = {
@@ -49,8 +50,7 @@ class ScalaPrimitives(ictx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(app: Apply, tpe: Type): Int = {
-    given Context = ictx
+  def getPrimitive(app: Apply, tpe: Type)(using Context): Int = {
     val fun = app.fun.symbol
     val code = app.fun match {
       case Select(_, nme.primitive.arrayLength) =>
@@ -117,14 +117,13 @@ class ScalaPrimitives(ictx: Context) {
   }
 
   /** Initialize the primitive map */
-  private def init: ReadOnlyMap[Symbol, Int]  = {
+  private def init(using Context): ReadOnlyMap[Symbol, Int] = atPhase(Phases.flattenPhase) {
 
-    given Context = ictx
     val primitives = MutableSymbolMap[Int](512)
 
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {
-      assert(!primitives.contains(s), "Duplicate primitive " + s)
+      assert(!primitives.contains(s), s"Duplicate primitive for code $code: $s")
       primitives(s) = code
     }
 
@@ -397,10 +396,9 @@ class ScalaPrimitives(ictx: Context) {
   def isPrimitive(sym: Symbol): Boolean =
     primitives.contains(sym)
 
-  def isPrimitive(fun: Tree): Boolean =
-    given Context = ictx
+  def isPrimitive(fun: Tree)(using Context): Boolean =
     primitives.contains(fun.symbol)
-    || (fun.symbol == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}}
+    || (fun.symbol == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}
         && {
           fun match
             case Select(_, nme.clone_) => false // but array.clone is NOT a primitive op.

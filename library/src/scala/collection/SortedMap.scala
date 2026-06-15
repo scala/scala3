@@ -75,6 +75,8 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    *  @tparam K2 the type of the keys in the resulting sorted map
    *  @tparam V2 the type of the values in the resulting sorted map
    *  @param it the iterable of key-value pairs to convert into a sorted map
+   *  @param ordering the ordering used to sort the keys of the resulting sorted map
+   *  @return a new sorted map containing the key-value pairs from `it`, ordered by `ordering`
    */
   @`inline` protected final def sortedMapFromIterable[K2, V2](it: Iterable[(K2, V2)]^)(implicit ordering: Ordering[K2]): CC[K2, V2] = sortedMapFactory.from(it)
 
@@ -205,6 +207,7 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
    *  @tparam K2 the type of the keys in the returned sorted map
    *  @tparam V2 the type of the values in the returned sorted map
    *  @param pf     the partial function which filters and maps the $coll.
+   *  @param ordering the ordering to use for the keys of the returned sorted map
    *  @return       a new $coll resulting from applying the given partial function
    *                `pf` to each element on which it is defined and collecting the results.
    *                The order of the elements is preserved.

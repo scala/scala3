@@ -659,7 +659,7 @@ class TreeUnpickler(reader: TastyReader,
         if (flags.is(Module)) adjustModuleCompleter(completer, name) else completer
       val coord = coordAt(start)
       val sym =
-        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
+        roots.find(root => root.exists && (root.owner eq ctx.owner) && root.name == name) match {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.symbol.coord = coord

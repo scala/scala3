@@ -8,13 +8,13 @@ public scala.Option Foo.bar3(scala.Option)
 public scala.Option<SBox> Foo.bar3(scala.Option<SBox>)
 ---
 public scala.Option Foo.bar4(scala.Option)
-public scala.Option<Box<java.lang.Object>> Foo.bar4(scala.Option<Box<java.lang.Object>>)
+public scala.Option<Box<java.lang.Integer>> Foo.bar4(scala.Option<Box<java.lang.Integer>>)
 ---
 public scala.Option Foo.bar5(scala.Option)
 public scala.Option<Box<java.lang.String>> Foo.bar5(scala.Option<Box<java.lang.String>>)
 ---
 public scala.Option Foo.bar6(scala.Option)
-public scala.Option<Arr<java.lang.Object>> Foo.bar6(scala.Option<Arr<java.lang.Object>>)
+public scala.Option<Arr<java.lang.Integer>> Foo.bar6(scala.Option<Arr<java.lang.Integer>>)
 ---
 public scala.Option Foo.bar7(scala.Option)
 public scala.Option<Arr<java.lang.String>> Foo.bar7(scala.Option<Arr<java.lang.String>>)
@@ -59,13 +59,13 @@ public static scala.Option Foo.sbar3(scala.Option)
 public static scala.Option<SBox> Foo.sbar3(scala.Option<SBox>)
 ---
 public static scala.Option Foo.sbar4(scala.Option)
-public static scala.Option<Box<java.lang.Object>> Foo.sbar4(scala.Option<Box<java.lang.Object>>)
+public static scala.Option<Box<java.lang.Integer>> Foo.sbar4(scala.Option<Box<java.lang.Integer>>)
 ---
 public static scala.Option Foo.sbar5(scala.Option)
 public static scala.Option<Box<java.lang.String>> Foo.sbar5(scala.Option<Box<java.lang.String>>)
 ---
 public static scala.Option Foo.sbar6(scala.Option)
-public static scala.Option<Arr<java.lang.Object>> Foo.sbar6(scala.Option<Arr<java.lang.Object>>)
+public static scala.Option<Arr<java.lang.Integer>> Foo.sbar6(scala.Option<Arr<java.lang.Integer>>)
 ---
 public static scala.Option Foo.sbar7(scala.Option)
 public static scala.Option<Arr<java.lang.String>> Foo.sbar7(scala.Option<Arr<java.lang.String>>)

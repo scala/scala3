@@ -18,7 +18,7 @@ def bad(): Unit =
 
   var escaped: File^{backdoor*} = null
   withFile("hello.txt"): f =>
-    escaped = boom.use(f) // error: separation
+    escaped = boom.use(f) // sep error
       // was boom.use: (x: File^) -> File^{backdoor*}, it is a selection so reach capabilities are allowed
       // f: File^, so there is no reach capabilities
 

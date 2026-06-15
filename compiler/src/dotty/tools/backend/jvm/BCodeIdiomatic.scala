@@ -2,12 +2,13 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
+import dotty.tools.backend.jvm.opt.CallGraph
 import scala.tools.asm
-import scala.annotation.switch
+import scala.annotation.tailrec
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.util.NoSourcePosition
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -16,88 +17,31 @@ import dotty.tools.dotc.core.Contexts.Context
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic {
+trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
+  private val debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
+  final val emitSource = debugLevel >= 1
+  final val emitLines = debugLevel >= 2
+  final val emitVars = debugLevel >= 3
 
-  def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit
+  private def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
+     callGraph.foreach(_.recordCallsitePosition(m, pos match {
+      case p: Positioned => p.sourcePos
+      case null => NoSourcePosition
+    }))
 
-  val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
-  val INSTANCE_CONSTRUCTOR_NAME = "<init>"
-
-  val EMPTY_STRING_ARRAY   = Array.empty[String]
-  val EMPTY_INT_ARRAY      = Array.empty[Int]
-  val EMPTY_LABEL_ARRAY    = Array.empty[asm.Label]
-  val EMPTY_BTYPE_ARRAY    = Array.empty[BType]
-
-  /* can-multi-thread */
-  final def mkArrayB(xs: List[BType]): Array[BType] = {
-    if (xs.isEmpty) { return EMPTY_BTYPE_ARRAY }
-    val a = new Array[BType](xs.size); xs.copyToArray(a); a
-  }
-  /* can-multi-thread */
-  final def mkArrayS(xs: List[String]): Array[String] = {
-    if (xs.isEmpty) { return EMPTY_STRING_ARRAY }
-    val a = new Array[String](xs.size); xs.copyToArray(a); a
-  }
-  /* can-multi-thread */
-  final def mkArrayL(xs: List[asm.Label]): Array[asm.Label] = {
-    if (xs.isEmpty) { return EMPTY_LABEL_ARRAY }
-    val a = new Array[asm.Label](xs.size); xs.copyToArray(a); a
-  }
-
-  /*
-   * can-multi-thread
-   */
-  final def mkArrayReverse(xs: List[String]): Array[String] = {
-    val len = xs.size
-    if (len == 0) { return EMPTY_STRING_ARRAY }
-    val a = new Array[String](len)
-    var i = len - 1
-    var rest = xs
-    while (rest.nonEmpty) {
-      a(i) = rest.head
-      rest = rest.tail
-      i -= 1
-    }
-    a
-  }
-
-  /*
-   * can-multi-thread
-   */
-  final def mkArrayReverse(xs: List[Int]): Array[Int] = {
-    val len = xs.size
-    if (len == 0) { return EMPTY_INT_ARRAY }
-    val a = new Array[Int](len)
-    var i = len - 1
-    var rest = xs
-    while (rest.nonEmpty) {
-      a(i) = rest.head
-      rest = rest.tail
-      i -= 1
-    }
-    a
-  }
-
-  /* Just a namespace for utilities that encapsulate MethodVisitor idioms.
-   *  In the ASM world, org.objectweb.asm.commons.InstructionAdapter plays a similar role,
-   *  but the methods here allow choosing when to transition from ICode to ASM types
-   *  (including not at all, e.g. for performance).
-   */
   abstract class JCodeMethodN {
 
     def jmethod: asm.tree.MethodNode
 
     import asm.Opcodes
 
-    final def emit(opc: Int): Unit = { jmethod.visitInsn(opc) }
-
     /*
      * can-multi-thread
      */
     final def genPrimitiveNot(kind: BType): Unit =
       if (kind.isIntSizedType) {
-        emit(Opcodes.ICONST_M1)
-        emit(Opcodes.IXOR)
+        jmethod.visitInsn(Opcodes.ICONST_M1)
+        jmethod.visitInsn(Opcodes.IXOR)
       } else if (kind == LONG) {
         jmethod.visitLdcInsn(java.lang.Long.valueOf(-1))
         jmethod.visitInsn(Opcodes.LXOR)
@@ -114,22 +58,22 @@ trait BCodeIdiomatic {
       import ScalaPrimitivesOps.{ AND, OR, XOR }
 
       ((op, kind): @unchecked) match {
-        case (AND, LONG) => emit(Opcodes.LAND)
-        case (AND, INT)  => emit(Opcodes.IAND)
+        case (AND, LONG) => jmethod.visitInsn(Opcodes.LAND)
+        case (AND, INT)  => jmethod.visitInsn(Opcodes.IAND)
         case (AND, _)    =>
-          emit(Opcodes.IAND)
+          jmethod.visitInsn(Opcodes.IAND)
           if (kind != BOOL) { emitT2T(INT, kind) }
 
-        case (OR, LONG) => emit(Opcodes.LOR)
-        case (OR, INT)  => emit(Opcodes.IOR)
+        case (OR, LONG) => jmethod.visitInsn(Opcodes.LOR)
+        case (OR, INT)  => jmethod.visitInsn(Opcodes.IOR)
         case (OR, _) =>
-          emit(Opcodes.IOR)
+          jmethod.visitInsn(Opcodes.IOR)
           if (kind != BOOL) { emitT2T(INT, kind) }
 
-        case (XOR, LONG) => emit(Opcodes.LXOR)
-        case (XOR, INT)  => emit(Opcodes.IXOR)
+        case (XOR, LONG) => jmethod.visitInsn(Opcodes.LXOR)
+        case (XOR, INT)  => jmethod.visitInsn(Opcodes.IXOR)
         case (XOR, _) =>
-          emit(Opcodes.IXOR)
+          jmethod.visitInsn(Opcodes.IXOR)
           if (kind != BOOL) { emitT2T(INT, kind) }
       }
 
@@ -143,22 +87,22 @@ trait BCodeIdiomatic {
       import ScalaPrimitivesOps.{ LSL, ASR, LSR }
 
       ((op, kind): @unchecked) match {
-        case (LSL, LONG) => emit(Opcodes.LSHL)
-        case (LSL, INT)  => emit(Opcodes.ISHL)
+        case (LSL, LONG) => jmethod.visitInsn(Opcodes.LSHL)
+        case (LSL, INT)  => jmethod.visitInsn(Opcodes.ISHL)
         case (LSL, _) =>
-          emit(Opcodes.ISHL)
+          jmethod.visitInsn(Opcodes.ISHL)
           emitT2T(INT, kind)
 
-        case (ASR, LONG) => emit(Opcodes.LSHR)
-        case (ASR, INT)  => emit(Opcodes.ISHR)
+        case (ASR, LONG) => jmethod.visitInsn(Opcodes.LSHR)
+        case (ASR, INT)  => jmethod.visitInsn(Opcodes.ISHR)
         case (ASR, _) =>
-          emit(Opcodes.ISHR)
+          jmethod.visitInsn(Opcodes.ISHR)
           emitT2T(INT, kind)
 
-        case (LSR, LONG) => emit(Opcodes.LUSHR)
-        case (LSR, INT)  => emit(Opcodes.IUSHR)
+        case (LSR, LONG) => jmethod.visitInsn(Opcodes.LUSHR)
+        case (LSR, INT)  => jmethod.visitInsn(Opcodes.IUSHR)
         case (LSR, _) =>
-          emit(Opcodes.IUSHR)
+          jmethod.visitInsn(Opcodes.IUSHR)
           emitT2T(INT, kind)
       }
 
@@ -173,12 +117,12 @@ trait BCodeIdiomatic {
       recipe: String,
       argTypes: Seq[asm.Type],
       constants: Seq[String],
-      ts: WellKnownBTypes
+      bTypes: KnownBTypes
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
-        asm.Type.getMethodDescriptor(ts.StringRef.toASMType, argTypes*),
-        ts.jliStringConcatFactoryMakeConcatWithConstantsHandle,
+        asm.Type.getMethodDescriptor(bTypes.StringRef.toASMType, argTypes*),
+        bTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants)*
       )
     }
@@ -207,7 +151,7 @@ trait BCodeIdiomatic {
           case FLOAT  => opcs(5)
           case DOUBLE => opcs(6)
         }
-        if (chosen != -1) { emit(chosen) }
+        if (chosen != -1) { jmethod.visitInsn(chosen) }
       }
 
       if (from == to) { return }
@@ -226,25 +170,25 @@ trait BCodeIdiomatic {
         case FLOAT  =>
           import asm.Opcodes.{ F2L, F2D, F2I }
           to match {
-            case LONG    => emit(F2L)
-            case DOUBLE  => emit(F2D)
-            case _       => emit(F2I); emitT2T(INT, to)
+            case LONG    => jmethod.visitInsn(F2L)
+            case DOUBLE  => jmethod.visitInsn(F2D)
+            case _       => jmethod.visitInsn(F2I); emitT2T(INT, to)
           }
 
         case LONG   =>
           import asm.Opcodes.{ L2F, L2D, L2I }
           to match {
-            case FLOAT   => emit(L2F)
-            case DOUBLE  => emit(L2D)
-            case _       => emit(L2I); emitT2T(INT, to)
+            case FLOAT   => jmethod.visitInsn(L2F)
+            case DOUBLE  => jmethod.visitInsn(L2D)
+            case _       => jmethod.visitInsn(L2I); emitT2T(INT, to)
           }
 
         case DOUBLE =>
           import asm.Opcodes.{ D2L, D2F, D2I }
           to match {
-            case FLOAT   => emit(D2F)
-            case LONG    => emit(D2L)
-            case _       => emit(D2I); emitT2T(INT, to)
+            case FLOAT   => jmethod.visitInsn(D2F)
+            case LONG    => jmethod.visitInsn(D2L)
+            case _       => jmethod.visitInsn(D2I); emitT2T(INT, to)
           }
 
         case _ => throw new IllegalArgumentException("Unsupported from type for T2T: " + from)
@@ -257,7 +201,7 @@ trait BCodeIdiomatic {
     // can-multi-thread
     final def iconst(cst: Int): Unit = {
       if (cst >= -1 && cst <= 5) {
-        emit(Opcodes.ICONST_0 + cst)
+        jmethod.visitInsn(Opcodes.ICONST_0 + cst)
       } else if (cst >= java.lang.Byte.MIN_VALUE && cst <= java.lang.Byte.MAX_VALUE) {
         jmethod.visitIntInsn(Opcodes.BIPUSH, cst)
       } else if (cst >= java.lang.Short.MIN_VALUE && cst <= java.lang.Short.MAX_VALUE) {
@@ -270,7 +214,7 @@ trait BCodeIdiomatic {
     // can-multi-thread
     final def lconst(cst: Long): Unit = {
       if (cst == 0L || cst == 1L) {
-        emit(Opcodes.LCONST_0 + cst.asInstanceOf[Int])
+        jmethod.visitInsn(Opcodes.LCONST_0 + cst.asInstanceOf[Int])
       } else {
         jmethod.visitLdcInsn(java.lang.Long.valueOf(cst))
       }
@@ -280,7 +224,7 @@ trait BCodeIdiomatic {
     final def fconst(cst: Float): Unit = {
       val bits: Int = java.lang.Float.floatToIntBits(cst)
       if (bits == 0L || bits == 0x3f800000 || bits == 0x40000000) { // 0..2
-        emit(Opcodes.FCONST_0 + cst.asInstanceOf[Int])
+        jmethod.visitInsn(Opcodes.FCONST_0 + cst.asInstanceOf[Int])
       } else {
         jmethod.visitLdcInsn(java.lang.Float.valueOf(cst))
       }
@@ -290,11 +234,14 @@ trait BCodeIdiomatic {
     final def dconst(cst: Double): Unit = {
       val bits: Long = java.lang.Double.doubleToLongBits(cst)
       if (bits == 0L || bits == 0x3ff0000000000000L) { // +0.0d and 1.0d
-        emit(Opcodes.DCONST_0 + cst.asInstanceOf[Int])
+        jmethod.visitInsn(Opcodes.DCONST_0 + cst.asInstanceOf[Int])
       } else {
         jmethod.visitLdcInsn(java.lang.Double.valueOf(cst))
       }
     }
+
+    final def nullconst(): Unit =
+      jmethod.visitInsn(Opcodes.ACONST_NULL)
 
     // can-multi-thread
     final def newarray(elem: BType): Unit = {
@@ -353,7 +300,7 @@ trait BCodeIdiomatic {
       emitInvoke(Opcodes.INVOKEVIRTUAL, owner, name, desc, itf = false, pos)
     }
 
-    def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
+    private def emitInvoke(opcode: Int, owner: String, name: String, desc: String, itf: Boolean, pos: Positioned | Null)(using Context): Unit = {
       val node = new MethodInsnNode(opcode, owner, name, desc, itf)
       jmethod.instructions.add(node)
       recordCallsitePosition(node, pos)
@@ -379,7 +326,7 @@ trait BCodeIdiomatic {
 
     // can-multi-thread
     final def emitRETURN(tk: BType): Unit = {
-      if (tk == UNIT) { emit(Opcodes.RETURN) }
+      if (tk == UNIT) { jmethod.visitInsn(Opcodes.RETURN) }
       else            { emitTypeBased(JCodeMethodN.returnOpcodes, tk)      }
     }
 
@@ -387,50 +334,33 @@ trait BCodeIdiomatic {
      *
      * can-multi-thread
      */
-    final def emitSWITCH(keys: Array[Int], branches: Array[asm.Label], defaultBranch: asm.Label, minDensity: Double): Unit = {
-      assert(keys.length == branches.length)
+    final def emitSWITCH(unsortedKeysAndBranches: List[(Int, asm.Label)], defaultBranch: asm.Label, minDensity: Double): Unit = {
+      val keysAndBranches = unsortedKeysAndBranches.sortBy(_._1)
+
+      // check for duplicate keys to avoid "VerifyError: unsorted lookupswitch" (SI-6011)
+      @tailrec
+      def scan(lst: List[(Int, asm.Label)], prev: Int): Unit = lst match {
+        case (n, _) :: tl if n == prev => throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+        case (n, _) :: tl => scan(tl, n)
+        case _ => ()
+      }
 
       // For empty keys, it makes sense emitting LOOKUPSWITCH with defaultBranch only.
       // Similar to what javac emits for a switch statement consisting only of a default case.
-      if (keys.length == 0) {
-        jmethod.visitLookupSwitchInsn(defaultBranch, keys, branches)
-        return
-      }
+      keysAndBranches match
+        case Nil =>
+          jmethod.visitLookupSwitchInsn(defaultBranch, Array.empty[Int], Array.empty[asm.Label])
+          return
+        case (n, _) :: tl =>
+          scan(tl, n)
 
-      // sort `keys` by increasing key, keeping `branches` in sync. TODO FIXME use quicksort
-      var i = 1
-      while (i < keys.length) {
-        var j = 1
-        while (j <= keys.length - i) {
-          if (keys(j) < keys(j - 1)) {
-            val tmp     = keys(j)
-            keys(j)     = keys(j - 1)
-            keys(j - 1) = tmp
-            val tmpL        = branches(j)
-            branches(j)     = branches(j - 1)
-            branches(j - 1) = tmpL
-          }
-          j += 1
-        }
-        i += 1
-      }
-
-      // check for duplicate keys to avoid "VerifyError: unsorted lookupswitch" (SI-6011)
-      i = 1
-      while (i < keys.length) {
-        if (keys(i-1) == keys(i)) {
-          throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
-        }
-        i += 1
-      }
-
-      val keyMin = keys(0)
-      val keyMax = keys(keys.length - 1)
+      val keyMin = keysAndBranches.head._1
+      val keyMax = keysAndBranches.last._1
 
       val isDenseEnough: Boolean = {
         /* Calculate in long to guard against overflow. TODO what overflow? */
         val keyRangeD: Double = (keyMax.asInstanceOf[Long] - keyMin + 1).asInstanceOf[Double]
-        val klenD:     Double = keys.length
+        val klenD:     Double = keysAndBranches.length
         val kdensity:  Double = klenD / keyRangeD
 
         kdensity >= minDensity
@@ -440,21 +370,31 @@ trait BCodeIdiomatic {
         // use a table in which holes are filled with defaultBranch.
         val keyRange    = keyMax - keyMin + 1
         val newBranches = new Array[asm.Label](keyRange)
-        var oldPos = 0
+        var remainingKeysAndBranches = keysAndBranches
         var i = 0
         while (i < keyRange) {
           val key = keyMin + i
-          if (keys(oldPos) == key) {
-            newBranches(i) = branches(oldPos)
-            oldPos += 1
+          if (remainingKeysAndBranches.head._1 == key) {
+            newBranches(i) = remainingKeysAndBranches.head._2
+            remainingKeysAndBranches = remainingKeysAndBranches.tail
           } else {
             newBranches(i) = defaultBranch
           }
           i += 1
         }
-        assert(oldPos == keys.length, "emitSWITCH")
+        assert(remainingKeysAndBranches.isEmpty, "emitSWITCH")
         jmethod.visitTableSwitchInsn(keyMin, keyMax, defaultBranch, newBranches*)
       } else {
+        val len = keysAndBranches.length
+        val keys = new Array[Int](len)
+        val branches = new Array[asm.Label](len)
+        var remainingKeysAndBranches = keysAndBranches
+        var idx = 0
+        while remainingKeysAndBranches.nonEmpty do
+          keys(idx) = remainingKeysAndBranches.head._1
+          branches(idx) = remainingKeysAndBranches.head._2
+          remainingKeysAndBranches = remainingKeysAndBranches.tail
+          idx = idx + 1
         jmethod.visitLookupSwitchInsn(defaultBranch, keys, branches)
       }
     }
@@ -463,7 +403,7 @@ trait BCodeIdiomatic {
     // don't make private otherwise inlining will suffer
 
     // can-multi-thread
-    final def emitVarInsn(opc: Int, idx: Int, tk: BType): Unit = {
+    private final def emitVarInsn(opc: Int, idx: Int, tk: BType): Unit = {
       assert((opc == Opcodes.ILOAD) || (opc == Opcodes.ISTORE), opc)
       jmethod.visitVarInsn(tk.typedOpcode(opc), idx)
     }
@@ -471,7 +411,7 @@ trait BCodeIdiomatic {
     // ---------------- array load and store ----------------
 
     // can-multi-thread
-    final def emitTypeBased(opcs: Array[Int], tk: BType): Unit = {
+    private final def emitTypeBased(opcs: Array[Int], tk: BType): Unit = {
       assert(tk != UNIT, tk)
       val opc = {
         if (tk.isRef) { opcs(0) }
@@ -490,13 +430,13 @@ trait BCodeIdiomatic {
           }
         }
       }
-      emit(opc)
+      jmethod.visitInsn(opc)
     }
 
     // ---------------- primitive operations ----------------
 
      // can-multi-thread
-    final def emitPrimitive(opcs: Array[Int], tk: BType): Unit = {
+    private final def emitPrimitive(opcs: Array[Int], tk: BType): Unit = {
       val opc = {
         // using `asm.Type.SHORT` instead of `BType.SHORT` because otherwise "warning: could not emit switch for @switch annotated match"
         tk match {
@@ -506,24 +446,24 @@ trait BCodeIdiomatic {
           case _      => opcs(0)
         }
       }
-      emit(opc)
+      jmethod.visitInsn(opc)
     }
 
     // can-multi-thread
-    final def drop(tk: BType): Unit = { emit(if (tk.isWideType) Opcodes.POP2 else Opcodes.POP) }
+    final def drop(tk: BType): Unit = { jmethod.visitInsn(if (tk.isWideType) Opcodes.POP2 else Opcodes.POP) }
 
     // can-multi-thread
     final def dropMany(size: Int): Unit = {
       var s = size
       while s >= 2 do
-        emit(Opcodes.POP2)
+        jmethod.visitInsn(Opcodes.POP2)
         s -= 2
       if s > 0 then
-        emit(Opcodes.POP)
+        jmethod.visitInsn(Opcodes.POP)
     }
 
     // can-multi-thread
-    final def dup(tk: BType): Unit =  { emit(if (tk.isWideType) Opcodes.DUP2 else Opcodes.DUP) }
+    final def dup(tk: BType): Unit =  { jmethod.visitInsn(if (tk.isWideType) Opcodes.DUP2 else Opcodes.DUP) }
 
     // ---------------- type checks and casts ----------------
 
@@ -569,54 +509,4 @@ trait BCodeIdiomatic {
 
   } // end of object JCodeMethodN
 
-  // ---------------- adapted from scalaPrimitives ----------------
-
-  /* Given `code` reports the src TypeKind of the coercion indicated by `code`.
-   * To find the dst TypeKind, `ScalaPrimitivesOps.generatedKind(code)` can be used.
-   *
-   * can-multi-thread
-   */
-  final def coercionFrom(code: Int): BType = {
-    import ScalaPrimitivesOps.*
-    (code: @switch) match {
-      case B2B | B2C | B2S | B2I | B2L | B2F | B2D => BYTE
-      case S2B | S2S | S2C | S2I | S2L | S2F | S2D => SHORT
-      case C2B | C2S | C2C | C2I | C2L | C2F | C2D => CHAR
-      case I2B | I2S | I2C | I2I | I2L | I2F | I2D => INT
-      case L2B | L2S | L2C | L2I | L2L | L2F | L2D => LONG
-      case F2B | F2S | F2C | F2I | F2L | F2F | F2D => FLOAT
-      case D2B | D2S | D2C | D2I | D2L | D2F | D2D => DOUBLE
-    }
-  }
-
-  /* If code is a coercion primitive, the result type.
-   *
-   * can-multi-thread
-   */
-  final def coercionTo(code: Int): BType = {
-    import ScalaPrimitivesOps.*
-    (code: @switch) match {
-      case B2B | C2B | S2B | I2B | L2B | F2B | D2B => BYTE
-      case B2C | C2C | S2C | I2C | L2C | F2C | D2C => CHAR
-      case B2S | C2S | S2S | I2S | L2S | F2S | D2S => SHORT
-      case B2I | C2I | S2I | I2I | L2I | F2I | D2I => INT
-      case B2L | C2L | S2L | I2L | L2L | F2L | D2L => LONG
-      case B2F | C2F | S2F | I2F | L2F | F2F | D2F => FLOAT
-      case B2D | C2D | S2D | I2D | L2D | F2D | D2D => DOUBLE
-    }
-  }
-
-  implicit class InsnIterMethodNode(mnode: asm.tree.MethodNode) {
-    @`inline` final def foreachInsn(f: (asm.tree.AbstractInsnNode) => Unit): Unit = { mnode.instructions.foreachInsn(f) }
-  }
-
-  implicit class InsnIterInsnList(lst: asm.tree.InsnList) {
-
-    @`inline` final def foreachInsn(f: (asm.tree.AbstractInsnNode) => Unit): Unit = {
-      val insnIter = lst.iterator()
-      while (insnIter.hasNext) {
-        f(insnIter.next())
-      }
-    }
-  }
 }

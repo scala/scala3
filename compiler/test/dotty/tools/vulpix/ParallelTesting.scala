@@ -1684,7 +1684,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     assert(!flags.options.contains(bestEffortFlag), "Best effort compilation flag should not be added manually")
 
     val outDir = new JFile(defaultOutputDir, testGroup.name)
-    val sourceDir = new JFile(f)
+    val sourceDir = TestSources.getPath(f).toFile
     checkRequirements(f, sourceDir, outDir)
 
     val (dirsStep1, filteredPicklingFiles) = compilationTargets(sourceDir, picklingFilter)

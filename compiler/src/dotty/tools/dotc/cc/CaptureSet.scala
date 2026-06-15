@@ -136,10 +136,9 @@ sealed abstract class CaptureSet extends Showable:
    *  does not contain a ResultCap?
    */
   final def containsGlobalOrLocalCap(using Context) =
-    !containsResultCapability
-    && elems.exists: elem =>
+    elems.exists: elem =>
       elem.core match
-        case _: GlobalCap => true
+        case GlobalAny => true
         case _: LocalCap => true
         case _ => false
 
@@ -316,7 +315,7 @@ sealed abstract class CaptureSet extends Showable:
         try
           that.tryInclude(elems, this) && addDependent(that)
         catch case ex: AssertionError =>
-          println(i"err while subcap $this <:< $that")
+          println(i"error while subcap $this <:< $that")
           throw ex
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other

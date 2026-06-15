@@ -2,7 +2,6 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
 import scala.tools.asm
 import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
@@ -36,7 +35,7 @@ import dotty.tools.dotc.config.ScalaSettingsProperties
  *  @version 1.0
  *
  */
-trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) extends BCodeIdiomatic {
+trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
 
   // OK to cache because it won't change across Contexts
   private var cachedClassfileVersion: Int | Null = null
@@ -205,7 +204,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
     }
 
     private def emitArgument(av:   AnnotationVisitor,
-                             name: String,
+                             name: String | Null,
                              arg:  Tree)(using Context): Unit = {
       val narg = normalizeArgument(arg)
       // Transformation phases are not run on annotation trees, so we need to run
@@ -215,9 +214,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         case Literal(const @ Constant(_)) =>
           const.tag match {
             case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
-            case StringTag =>
-              assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
-              av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
+            case StringTag => av.visit(name, const.stringValue)
             case ClazzTag => av.visit(name, bTypeLoader.bTypeFromType(TypeErasure.erasure(const.typeValue)).toASMType)
           }
         case Ident(nme.WILDCARD) =>
@@ -359,10 +356,9 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
 
               // there might be a getter created after erasure by the mixin phase,
               // and if so we must use the information that the mixin phase stored for it.
-              // However, we can't do this if the result is a primitive, since field generic signatures can only be reference types (JVMS §4.7.9.1)
               val mixinGetter = atPhase(mixinPhase.next) { sym.getter }
               if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
-                case Some(ExprType(genericInfo)) if !genericInfo.isPrimitiveValueType => return genericInfo // since we're looking for the getter, we get an ExprType
+                case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
                 case _ => ()
 
           owner.denot.thisType.memberInfo(sym)
@@ -419,7 +415,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         mirrorMethodName,
         mdesc,
         jgensig,
-        mkArrayS(thrownExceptions)
+        if thrownExceptions.isEmpty then null else thrownExceptions.toArray
       )
 
       emitAnnotations(mirrorMethod, others)
@@ -550,6 +546,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
 
   /* builder of mirror classes */
   class JMirrorBuilder extends JCommonBuilder {
+    private val EMPTY_STRING_ARRAY = Array.empty[String]
 
     /* Generate a mirror class for a top-level module. A mirror class is a class
      *  containing only static methods that forward to the corresponding method
@@ -574,11 +571,11 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
         bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,
-        bTypes.ObjectRef.internalName,
+        ClassBType.javaLangObjectInternalName,
         EMPTY_STRING_ARRAY
       )
 
-      if (BackendUtils.emitSource) {
+      if (emitSource) {
         mirrorClass.visitSource("" + ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
       }
 
@@ -649,7 +646,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
       val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
       if (erasedMemberType =:= sym.denot.info)
         val gensig = getGenericSignatureHelper(sym, moduleClass, memberTpe)
-        if gensig == null || descriptor.contentEquals(gensig) then null
+        if gensig == null || (descriptor != null && descriptor.contentEquals(gensig)) then null
         else gensig.toString
       else null
     else null

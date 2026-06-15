@@ -9,7 +9,8 @@ import scala.collection.mutable.ListBuffer
 
 object SnippetExpectations:
   // Mirrors the compiler test suite (ParallelTesting.scala): space after `//` is optional.
-  // Only `// error` and `// warn` are supported; `// anypos-*` is rejected.
+  // A line marked `// error` / `// warn` must produce at least one such diagnostic;
+  // the exact count is not checked. `// anypos-*` is rejected.
   private val annotation =
     raw"""// *(anypos-)?(error|warn)\b""".r
 
@@ -39,11 +40,6 @@ object SnippetExpectations:
 
     def description: String =
       s"${level.text.toLowerCase} on line ${sourceLine.fold(relativeLine + 1)(_ + 1)}"
-
-    // Matching is line-based only; column position is not checked.
-    // Diagnostic message content is intentionally ignored.
-    def matches(observed: ObservedDiagnostic): Boolean =
-      observed.message.level == level && sourceLine == observed.sourceLine
 
   case class Parsed(
     expectations: Seq[ExpectedDiagnostic],
@@ -77,27 +73,30 @@ object SnippetExpectations:
         summary +: observed.map(o =>
           SnippetCompilerMessage(o.message.position, s"Unexpected ${describeObserved(o)}", MessageLevel.Error))
     else
-      val matched = Array.fill(observed.size)(false)
+      // Line-based: a line marked `// error` / `// warn` must carry at least one
+      // such diagnostic, and lines without a marker must carry none. Counts are
+      // not checked (one marker covers a line that produces several), and matching
+      // is by line only -- columns and message text are ignored.
       val errors = ListBuffer.empty[SnippetCompilerMessage]
+      val expectedLines = expectations.map(_.sourceLine).toSet
+      val observedLines = observed.map(_.sourceLine).toSet
 
-      for expectation <- expectations.sortBy(_.relativeLine) do
-        observed.indices.find(i => !matched(i) && expectation.matches(observed(i))) match
-          case Some(i) => matched(i) = true
-          case None =>
-            errors += SnippetCompilerMessage(
-              expectation.position(sourceFile), s"Unfulfilled expectation: ${expectation.description}", MessageLevel.Error)
+      for expectation <- expectations.distinctBy(_.sourceLine).sortBy(_.relativeLine) do
+        if !observedLines.contains(expectation.sourceLine) then
+          errors += SnippetCompilerMessage(
+            expectation.position(sourceFile), s"Unfulfilled expectation: ${expectation.description}", MessageLevel.Error)
 
-      for i <- observed.indices if !matched(i) do
+      for o <- observed if !expectedLines.contains(o.sourceLine) do
         errors += SnippetCompilerMessage(
-          observed(i).message.position, s"Unexpected ${describeObserved(observed(i))}", MessageLevel.Error)
+          o.message.position, s"Unexpected ${describeObserved(o)}", MessageLevel.Error)
 
       if errors.isEmpty then Nil
       else
         val summary =
-          if expectations.size != observed.size then
-            s"Wrong number of ${levelName}s encountered when compiling snippet\nexpected: ${expectations.size}, actual: ${observed.size}"
-          else
+          if observed.exists(o => !expectedLines.contains(o.sourceLine)) then
             s"${level.text}s found on incorrect row numbers when compiling snippet"
+          else
+            s"Expected ${levelName}s not found when compiling snippet"
         SnippetCompilerMessage(None, summary, MessageLevel.Error) +: errors.toSeq
 
   private def describeObserved(o: ObservedDiagnostic): String =

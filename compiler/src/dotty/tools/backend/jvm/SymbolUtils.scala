@@ -1,14 +1,31 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.core.Flags.*
-
 import dotty.tools.dotc.core.*
 import Contexts.*
 import Symbols.*
 import Phases.*
 import NameKinds.{LazyBitMapName, LazyLocalName}
+import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Types.MethodType
 
 object SymbolUtils:
+  def traitSuperAccessorName(sym: Symbol)(using Context): String =
+    val nameString = sym.javaSimpleName
+    if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
+    else nameString + "$"
+
+  def makeStatifiedDefSymbol(origSym: TermSymbol, name: TermName)(using Context): TermSymbol =
+    val info = origSym.info match
+      case mt: MethodType =>
+        MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
+    origSym.copy(
+      name = name.toTermName,
+      flags = Method | JavaStatic,
+      info = info
+    ).asTerm
+
   given symExtensions: AnyRef with
     extension (sym: Symbol)
       /** Fields of static modules will be static at backend

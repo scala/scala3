@@ -182,7 +182,7 @@ class SnippetCompilerTest {
   }
 
   @Test
-  def inlineExpectationCountMismatchesUseNegTestWording: Unit = {
+  def inlineExpectationUnfulfilledWhenAnnotatedLineHasNoError: Unit = {
     val snippet =
       """|val x = 1.missing // error
          |val y = 1 + 1 // error
@@ -191,8 +191,7 @@ class SnippetCompilerTest {
     val result = runTest(snippet, SnippetCompilerArg(SCFlags.Compile, verifyDiagnostics = true))
     assertFailedCompilation(result)
     assertEquals(2, result.messages.count(_.level == MessageLevel.Error))
-    assertTrue(result.messages.exists(_.message.contains("Wrong number of errors encountered when compiling snippet")))
-    assertTrue(result.messages.exists(_.message.contains("expected: 2, actual: 1")))
+    assertTrue(result.messages.exists(_.message.contains("Expected errors not found when compiling snippet")))
     assertTrue(result.messages.exists(_.message.contains("Unfulfilled expectation: error on line 2")))
   }
 
@@ -253,16 +252,10 @@ class SnippetCompilerTest {
   }
 
   @Test
-  def multilineInlineExpectationsAreChecked: Unit = {
+  def inlineErrorAnnotationMatchesMultipleErrorsOnLine: Unit = {
     val snippet =
-      """|import language.experimental.captureChecking
-         |import caps.*
-         |
-         |trait File extends SharedCapability
-         |def withFile[T](path: String)(block: File^ => T): T = ???
-         |
-         |withFile[() => File^]("test.txt"): f =>
-         |  () => f  // error // error // error
+      """|def f(a: Int, b: Int, c: Int): Int = a + b + c
+         |f(undefinedA, undefinedB, undefinedC) // error
          |""".stripMargin
 
     assertSuccessfulCompilation(runTest(snippet, SnippetCompilerArg(SCFlags.Fail, verifyDiagnostics = true)))

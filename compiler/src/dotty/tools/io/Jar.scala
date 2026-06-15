@@ -42,8 +42,8 @@ class Jar(file: File) {
 
   import Jar.*
 
-  lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
-  lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
+  private lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
+  private lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
 
   def mainClass: Option[String]     = manifest.flatMap(_.attrs.get(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */

@@ -29,6 +29,8 @@ object init:
    *  `C(a = Cold)` for the argument `c` of the method `build`. Consequently,
    *  the checker will issue a warning for the method call `c.a.square()` because
    *  it is forbidden to call methods or access fields on cold values.
+   *
+   *  @param height the maximum height (depth of the abstract object tree) to which the argument value is widened
    */
   @experimental
   final class widen(height: Int) extends StaticAnnotation
@@ -55,6 +57,10 @@ object init:
    *  Therefore, the field `box1.value` and `box2.value` points to both instances of `C` and `D`. Consequently,
    *  the method call `box1.value.foo()` will be invalid, because it reaches `A.m`, which is not yet initialized.
    *  The explicit context annotation solves the problem.
+   *
+   *  @tparam T the type of the value computed within the region
+   *  @param v the expression to evaluate within a fresh region context
+   *  @return the value `v` unchanged at runtime; at the checker level, mutable fields within this region receive distinct abstract representations
    */
   @experimental
   def region[T](v: T): T = v

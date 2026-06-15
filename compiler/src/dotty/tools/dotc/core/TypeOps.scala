@@ -823,29 +823,32 @@ object TypeOps:
       var prefixTVar: Type | Null = null
       def apply(tp: Type): Type = tp match {
         case tp: TermRef if singletons.contains(tp.symbol) =>
-          prefixTVar = singletons(tp.symbol) // e.g. tests/pos/i19031.ci-reg2.scala, keep out
-          prefixTVar.uncheckedNN
+          val v = singletons(tp.symbol) // e.g. tests/pos/i19031.ci-reg2.scala, keep out
+          prefixTVar = v
+          v
         case ThisType(tref) if !tref.symbol.isStaticOwner =>
           val symbol = tref.symbol
           val compatibleSingleton = singletons.valuesIterator.find(_.underlying.derivesFrom(symbol))
           if singletons.contains(symbol) then
-            prefixTVar = singletons(symbol) // e.g. tests/pos/i16785.scala, keep Outer.this
-            prefixTVar.uncheckedNN
+            val v = singletons(symbol) // e.g. tests/pos/i16785.scala, keep Outer.this
+            prefixTVar = v
+            v
           else if compatibleSingleton.isDefined then
-            prefixTVar = compatibleSingleton.get
-            prefixTVar.uncheckedNN
+            val v = compatibleSingleton.get
+            prefixTVar = v
+            v
           else if symbol.is(Module) then
             TermRef(this(tref.prefix), symbol.sourceModule)
           else if (prefixTVar != null)
             this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType)))
-          else {
+          else
             prefixTVar = WildcardType  // prevent recursive call from assigning it
             // e.g. tests/pos/i15029.more.scala, create a TypeVar for `Instances`' B, so we can disregard `Ints`
             val tvars = tref.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
             val tref2 = this(tref.applyIfParameterized(tvars))
-            prefixTVar = newTypeVar(TypeBounds.upper(tref2), DepParamName.fresh(tref.name))
-            prefixTVar.uncheckedNN
-          }
+            val v = newTypeVar(TypeBounds.upper(tref2), DepParamName.fresh(tref.name))
+            prefixTVar = v
+            v
         case tp => mapOver(tp)
       }
     }

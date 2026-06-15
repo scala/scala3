@@ -23,6 +23,8 @@ import scala.collection.{IntStepper, Stepper}
 /** Implements `Stepper` on a `String` where you step through chars packed into `Int`.
  *
  *  @param underlying the `String` to step through
+ *  @param _i0 the starting char index (inclusive) into the string
+ *  @param _iN the ending char index (exclusive) into the string
  */
 private[collection] final class CharStringStepper(underlying: String, _i0: Int, _iN: Int)
 extends IndexedStepperBase[IntStepper, CharStringStepper](_i0, _iN)

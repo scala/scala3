@@ -511,6 +511,53 @@ extension (tp: Type)
     if tp.isArrayUnderStrictMut then defn.Caps_Unscoped
     else tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
+  /** The classifiers of all terminal capabilities in the span capture set of `tp` */
+  def embeddedLocalCaps(using Context): List[Capability] =
+    tp.spanCaptureSet.elems.filter(_.core.isInstanceOf[LocalCap]).toList
+
+  /** If classifier `clsfier` exists: A localCap instance with this classifier,
+   *  possibly wrapped in a readOnly.
+   */
+  def impliedCaptures(clsfier: Symbol, contributing: List[Symbol], readOnly: => Boolean)(using Context): CaptureSet =
+    clsfier match
+    case clsfier: ClassSymbol =>
+      val lcap = LocalCap(Origin.NewInstance(tp, contributing))
+      if clsfier != defn.AnyClass then
+        lcap.hiddenSet.adoptClassifier(clsfier)
+      (if readOnly then lcap.readOnly else lcap).singletonCaptureSet
+    case _ =>
+      CaptureSet.empty
+
+  /** Does this (methodic) type have `any` in the span capture set of its
+   *  result type?
+   */
+  def hasCapInResult(using Context): Boolean =
+    val (mt: MethodicType) = tp.stripPoly.runtimeChecked
+    mt.resType.spanCaptureSet.containsGlobalOrLocalCap
+
+  /** The implied captures of a lambda that come from its result type.
+   *  This is the set that needs to be added to a lambda type to ensure
+   *  monotonicity of function types.
+   */
+  def impliedLambdaCaptures(using Context): CaptureSet = tp match
+    case tp: PolyType =>
+      tp.resType.impliedLambdaCaptures
+    case tp: MethodicType =>
+      val localCaps = tp.resType.embeddedLocalCaps
+      val impliedClr = localCaps
+        .map(_.classifier)
+        .collect:
+          case cl: ClassSymbol => cl
+        .commonAncestor
+      tp.impliedCaptures(impliedClr, Nil, localCaps.forall(_.isReadOnly))
+        .showing(i"implied lambda captures of $tp = $result", capt)
+    case RefinedType(_, rname, rinfo) if rname == nme.apply =>
+      rinfo.impliedLambdaCaptures
+    case CapturingType(parent, _) =>
+      parent.impliedLambdaCaptures
+    case _ =>
+      CaptureSet.empty
+
 extension (tp: MethodOrPoly)
   /** A method marks an existential scope unless it is the prefix of a curried method */
   def marksExistentialScope(using Context): Boolean =
@@ -574,12 +621,8 @@ extension (cls: ClassSymbol) {
       ccState.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
         .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
 
-    def commonAncestor(clss: List[ClassSymbol]): Symbol =
-      if clss.isEmpty then NoSymbol
-      else clss.reduce(greatestClassifier)
-
     /** The implied classifier of the LocalCap of the class instance, derived from
-     *    - the clasifiers of the LocalCaps in the span capture sets of all fields
+     *    - the classifiers of the LocalCaps in the span capture sets of all fields
      *    - the implied classifiers of the parent classes
      *    - if `cls` is a stateful class, the classifier of `cls` itself
      *  @return The implied classidier, or NoSymbol is there is no LocalCap
@@ -588,7 +631,7 @@ extension (cls: ClassSymbol) {
     def impliedClassifier(cls: Symbol): Symbol = cls match
       case cls: ClassSymbol =>
         val fieldClassifiers =
-          knownFields(cls).flatMap(classifiersOfLocalCapsInType)
+          knownFields(cls).flatMap(classifiersOfLocalCapsInInfo)
         val parentClassifiers =
           cls.parentSyms.map(impliedClassifier).collect:
             case cl: ClassSymbol => cl
@@ -596,7 +639,7 @@ extension (cls: ClassSymbol) {
           if cls.typeRef.isStatefulType(varsOnly = true)
           then cls.classifier :: Nil
           else Nil
-        commonAncestor(fieldClassifiers ++ parentClassifiers ++ stateClassifiers)
+        (fieldClassifiers ++ parentClassifiers ++ stateClassifiers).commonAncestor
       case _ => NoSymbol
 
     def contributingFields(cls: Symbol): List[Symbol] = cls match
@@ -606,24 +649,11 @@ extension (cls: ClassSymbol) {
         ownFields ++ parentFields
       case _ => Nil
 
-    def maybeRO(ref: Capability, fields: List[Symbol]) =
-      if !cls.typeRef.isStatefulType() && fields.forall(allLocalCapsInTypeAreRO)
-      then ref.readOnly
-      else ref
-
-    def localCap(fields: List[Symbol]) =
-      LocalCap(Origin.NewInstance(core, fields))
-
     val impliedClr = impliedClassifier(cls)
     val contributing = contributingFields(cls)
-    val impliedSet = impliedClr match
-      case impliedClr: ClassSymbol =>
-        val result = localCap(contributing)
-        if impliedClr != defn.AnyClass then
-          result.hiddenSet.adoptClassifier(impliedClr)
-        maybeRO(result, contributing).singletonCaptureSet
-      case _ =>
-        CaptureSet.empty
+    def readOnly =
+      !cls.typeRef.isStatefulType() && contributing.forall(allLocalCapsInTypeAreRO)
+    val impliedSet = core.impliedCaptures(impliedClr, contributing, readOnly)
     (impliedSet, contributing)
   }
 
@@ -859,16 +889,12 @@ extension (sym: Symbol) {
    *  enclosing class.
    */
   def memberCaps(using Context): List[Capability] =
-    if sym.contributesLocalCapsToClass then
-      sym.info.spanCaptureSet.elems
-        .filter(_.isTerminalCapability)
-        .toList
-    else Nil
+    if sym.contributesLocalCapsToClass then sym.info.embeddedLocalCaps else Nil
 
   /** The classifiers of all terminal capabilities comntributed by this symbol
    *  to the capture set of the enclosing class.
    */
-  def classifiersOfLocalCapsInType(using Context): List[ClassSymbol] =
+  def classifiersOfLocalCapsInInfo(using Context): List[ClassSymbol] =
     memberCaps.map(_.classifier).collect:
       case cl: ClassSymbol => cl
 
@@ -899,6 +925,10 @@ extension (tp: AnnotatedType) {
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
 }
+
+extension (clss: List[ClassSymbol])
+  def commonAncestor(using Context): Symbol =
+    if clss.isEmpty then NoSymbol else clss.reduce(greatestClassifier)
 
 /** A prototype that indicates selection */
 class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) extends typer.ProtoTypes.WildcardSelectionProto
