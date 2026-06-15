@@ -954,7 +954,7 @@ object Scanners {
               case _ =>
                 error(em"unclosed character literal")
 
-          if lookaheadChar() == '\'' then
+          if lookaheadChar() == '\'' && featureEnabled(Feature.dedentedStringLiterals) then
             delimChar = '\''
             delimCount = 1
             fetchString()

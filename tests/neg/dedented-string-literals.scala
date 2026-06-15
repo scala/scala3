@@ -1,4 +1,4 @@
-// Test error cases for dedented string literals
+import language.experimental.dedentedStringLiterals
 
 object DedentedStringErrors {
   val noNewlineAfterOpen = '''content on same line // error: dedented string literal must start with newline after opening quotes

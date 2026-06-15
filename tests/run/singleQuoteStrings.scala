@@ -1,3 +1,5 @@
+import language.experimental.dedentedStringLiterals
+
 @main def Test =
 
   val plain = '''

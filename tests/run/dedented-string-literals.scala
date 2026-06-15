@@ -1,3 +1,4 @@
+import language.experimental.dedentedStringLiterals
 import scala.compiletime.constValue
 
 @scala.annotation.compileTimeOnly('''
