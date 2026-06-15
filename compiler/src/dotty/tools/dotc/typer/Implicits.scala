@@ -253,10 +253,16 @@ object Implicits:
                 else tp
               case _ => tp
 
+        // The accessibility check (`isAccessible`) is deferred to the very end:
+        // `candidateKind` returns a non-None kind only when the conjunction
+        // {kind != None, !quickIncompatible, isCompatible, isAccessible} holds, and
+        // that conjunction commutes (the kind/quickIncompatible/isCompatible checks
+        // read types, while isAccessible reads symbol flags/info/prefix; no predicate
+        // observes another's mutation). Running isAccessible last means the
+        // `isAccessibleFrom -> accessBoundary -> isAbsent` walk is skipped for every
+        // candidate that already fails one of the cheaper checks.
         var ckind =
-          if !isAccessible(ref) then
-            Candidate.None
-          else pt match {
+          pt match {
             case pt: ViewProto =>
               viewCandidateKind(ref.widen, pt.argType, pt.resType)
             case _: ValueTypeOrProto =>
@@ -279,6 +285,8 @@ object Implicits:
           val refNorm = normalize(refAdjusted, pt)
           Stats.record("eligible check matches")
           if (!NoViewsAllowed.isCompatible(refNorm, ptNorm))
+            ckind = Candidate.None
+          else if !isAccessible(ref) then
             ckind = Candidate.None
         }
         ckind
