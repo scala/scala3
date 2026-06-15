@@ -99,5 +99,3 @@ class SpecializeInlineTraits extends MiniPhase {
 object SpecializeInlineTraits:
   val name: String = "specializeInlineTraits"
   val description: String = "inline the code of inline traits"
-
-  private[transform] def newInnerClassName(name: Name): name.ThisName = name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX
