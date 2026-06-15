@@ -1,0 +1,20 @@
+-- Error: tests/neg/singleQuoteStrings.scala:3:10 ----------------------------------------------------------------------
+3 |  val a = '' // error
+  |          ^
+  |          empty character literal (use '\'' for single quote)
+-- Error: tests/neg/singleQuoteStrings.scala:6:4 -----------------------------------------------------------------------
+6 |    '' // error
+  |    ^
+  |    empty character literal (use '\'' for single quote)
+-- Error: tests/neg/singleQuoteStrings.scala:5:9 -----------------------------------------------------------------------
+5 |    world! // error
+  |         ^
+  |         end of statement expected but identifier found
+-- Error: tests/neg/singleQuoteStrings.scala:8:11 ----------------------------------------------------------------------
+8 |  val b = s'' // error
+  |           ^
+  |           empty character literal (use '\'' for single quote)
+-- Error: tests/neg/singleQuoteStrings.scala:10:4 ----------------------------------------------------------------------
+10 |    ''  // error
+   |    ^
+   |    empty character literal (use '\'' for single quote)

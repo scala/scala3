@@ -1,0 +1,44 @@
+-- Error: tests/neg/singleQuoteStrings-2.scala:3:18 --------------------------------------------------------------------
+3 |  val a = '''     '''  // error // error
+  |                  ^
+  |                  Dedented string literal must start with newline after opening quotes
+-- Error: tests/neg/singleQuoteStrings-2.scala:3:12 --------------------------------------------------------------------
+3 |  val a = '''     '''  // error // error
+  |            ^
+  |            Last line of dedented string literal must contain only whitespace before closing delimiter
+-- Error: tests/neg/singleQuoteStrings-2.scala:5:18 --------------------------------------------------------------------
+5 |  val b = '''     !   // error
+  |                  ^
+  |                  Dedented string literal must start with newline after opening quotes
+-- Error: tests/neg/singleQuoteStrings-2.scala:10:4 --------------------------------------------------------------------
+10 |    moo          // error
+   |    ^
+   |    Line in dedented string literal must be indented at least as much as the closing delimiter
+   |    This indent   : 4 spaces
+   |    Closing indent: 6 spaces
+-- Error: tests/neg/singleQuoteStrings-2.scala:15:4 --------------------------------------------------------------------
+15 |    !'''           // error
+   |    ^
+   |    Last line of dedented string literal must contain only whitespace before closing delimiter
+-- Error: tests/neg/singleQuoteStrings-2.scala:17:18 -------------------------------------------------------------------
+17 |  val e = '''     ${"hi"} '''  // error // error
+   |                  ^
+   |                  Dedented string literal must start with newline after opening quotes
+-- Error: tests/neg/singleQuoteStrings-2.scala:17:24 -------------------------------------------------------------------
+17 |  val e = '''     ${"hi"} '''  // error // error
+   |                        ^
+   |                      Last line of dedented string literal must contain only whitespace before closing delimiter
+-- Error: tests/neg/singleQuoteStrings-2.scala:19:19 -------------------------------------------------------------------
+19 |  val f = ''''     !   // error
+   |                   ^
+   |                   Dedented string literal must start with newline after opening quotes
+-- Error: tests/neg/singleQuoteStrings-2.scala:25:4 --------------------------------------------------------------------
+25 |    $e               // error
+   |    ^
+   |    Line in dedented string literal must be indented at least as much as the closing delimiter
+   |    This indent   : 4 spaces
+   |    Closing indent: 6 spaces
+-- Error: tests/neg/singleQuoteStrings-2.scala:30:4 --------------------------------------------------------------------
+30 |    !'''         // error
+   |    ^
+   |    Last line of dedented string literal must contain only whitespace before closing delimiter

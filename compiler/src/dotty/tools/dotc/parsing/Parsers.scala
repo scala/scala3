@@ -20,6 +20,7 @@ import ast.{Positioned, Trees}
 import ast.Trees.*
 import StdNames.*
 import util.Spans.*
+import util.chaining.*
 import Constants.*
 import Symbols.NoSymbol
 import ScriptParsers.*
@@ -30,10 +31,8 @@ import reporting.*
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
-import config.SourceVersion
-import dotty.tools.dotc.config.MigrationVersion
-import dotty.tools.dotc.util.chaining.*
-import dotty.tools.dotc.config.Feature.ccEnabled
+import config.{SourceVersion, MigrationVersion}
+import Chars.isWhitespace
 
 object Parsers {
 
@@ -223,7 +222,7 @@ object Parsers {
     def isErased =
       isIdent(nme.erased) && in.erasedEnabled && in.isSoftModifierInParamModifierPosition
     def isConsume =
-      isIdent(nme.consume) && ccEnabled //\&& in.isSoftModifierInParamModifierPosition
+      isIdent(nme.consume) && Feature.ccEnabled
     def isNegatedNumber = isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
     def isSimpleLiteral = simpleLiteralTokens.contains(in.token) || isNegatedNumber
     def isLiteral = literalTokens contains in.token
@@ -553,7 +552,7 @@ object Parsers {
             // into a capturing type in the typer.
             syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
             errorTree
-          case Some(f: FunctionWithMods) if f.mods.is(Impure) && ccEnabled =>
+          case Some(f: FunctionWithMods) if f.mods.is(Impure) && Feature.ccEnabled =>
             syntaxError(
               em"""Implementation restriction: polymorphic function types cannot wrap impure function types if capture checking is enabled.
                   |Workaround: introduce an empty term-parameter list right after the type binder, e.g. `[A] => () -> B => C`.""",
@@ -1424,6 +1423,7 @@ object Parsers {
      *                 If the literal is not negated, start == in.offset.
      */
     def literal(start: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+
       def literalOf(token: Token): Tree = {
         val isNegated = start < in.offset
         def digits0 = in.removeNumberSeparators(in.strVal.nn)
@@ -1447,7 +1447,12 @@ object Parsers {
           case FLOATLIT                       => lit(floatFromDigits(digits))
           case DOUBLELIT | DECILIT | EXPOLIT  => lit(doubleFromDigits(digits))
           case CHARLIT                        => lit(in.strVal.nn.head)
-          case STRINGLIT | STRINGPART         => lit(in.strVal.nn)
+          case STRINGLIT if !inStringInterpolation =>
+            var str = in.strVal.nn
+            if in.delimChar == '\'' then str = trim(str, start + in.delimCount)
+            lit(str)
+          case STRINGLIT | STRINGPART
+                                              => lit(in.strVal.nn)
           case TRUE                           => lit(true)
           case FALSE                          => lit(false)
           case NULL                           => lit(null)
@@ -1550,12 +1555,140 @@ object Parsers {
       while (in.token == STRINGPART)
         nextSegment(in.offset + offsetCorrection)
         offsetCorrection = 0
-      if (in.token == STRINGLIT)
+      var delimChar = '"'
+      if in.token == STRINGLIT then
+        delimChar = in.delimChar
         segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
 
       if interpolatorsFromAny(interpolator) then
         report.warning(UseOfAnyMethodAsInterpolator(interpolator), source.atSpan(Span(startOffset, in.charOffset)))
-      InterpolatedString(interpolator, segmentBuf.toList)
+
+      var segments = segmentBuf.toList
+      if delimChar == '\'' then segments = trim(segments)
+      InterpolatedString(interpolator, segments)
+    }
+
+    /** Trimming '''-enclosed strings */
+    object trim {
+
+      private case class Cut(val offset: Int, val length: Int)
+
+      private def shorten(cs: Array[Char], cuts: List[Cut]): Array[Char] =
+        val totalCutSize = cuts.map(_.length).sum
+        if totalCutSize > cs.length then
+          // happens for empty '''-enclosed literals since the \n is counted twice
+          new Array[Char](0)
+        else
+          val target = new Array[Char](cs.length - totalCutSize)
+          def recur(cuts: List[Cut], fromIdx: Int, toIdx: Int): Unit = cuts match
+            case Nil =>
+              val len = cs.length - fromIdx
+              assert(len == target.length - toIdx, i"len = $len, remaining = ${target.length - toIdx}")
+              Array.copy(cs, fromIdx, target, toIdx, len)
+            case Cut(offset, length) :: cuts1 =>
+              val len = offset - fromIdx
+              Array.copy(cs, fromIdx, target, toIdx, len)
+              recur(cuts1, offset + length, toIdx + len)
+          recur(cuts, 0, 0)
+          target
+
+      /** Trim the start of a '''-literal, up to and including the first \n.
+       *  This must be all whitespace.
+       */
+      private def trimStart(cs: Array[Char], strOffset: Int): List[Cut] =
+        var i = 0
+        while i < cs.length && isWhitespace(cs(i)) do i += 1
+        if i < cs.length && cs(i) == Chars.LF then
+          Cut(0, i + 1) :: Nil
+        else
+          syntaxError(em"Dedented string literal must start with newline after opening quotes", strOffset + i)
+          Nil
+
+      /** Trim the end of a '''-literal, up to and including the last \n.
+       *  This must be all whitespace.
+       */
+      private def trimEnd(cs: Array[Char], strOffset: Int): List[Cut] =
+        var i = cs.length - 1
+        while i >= 0 && isWhitespace(cs(i)) do i -= 1
+        if i >= 0 && cs(i) == Chars.LF then
+          Cut(i, cs.length - i) :: Nil
+        else
+          syntaxError(
+            em"Last line of dedented string literal must contain only whitespace before closing delimiter",
+            strOffset + i)
+          Nil
+
+      /** Trim the IndentWidth prefix from all starts of lines.
+       *  Error if a line does not start with at least IndentWidth.
+       */
+      private def trimLeft(cs: Array[Char], width: IndentWidth, strOffset: Int): List[Cut] =
+        def checkCut(cut: Cut): Boolean =
+          if cut.length < 0 then
+            var i = cut.offset
+            while isWhitespace(cs(i)) do i += 1
+            if cs(i) != Chars.LF then // lines consisting only of whitespace are ignored
+              syntaxError(
+                em"""Line in dedented string literal must be indented at least as much as the closing delimiter
+                    |This indent   : ${in.indentWidth(i, cs)}
+                    |Closing indent: $width""",
+                strOffset + i)
+          cut.length > 0
+        (0 until cs.length)
+          .filter(i => cs(i) == Chars.LF)
+          .map(i => Cut(i + 1, width.advance(cs, i + 1)))
+          .filter(checkCut)
+          .toList
+
+      /** The indentation width of the last line in `cs` (i.e. what comes before the closing `'''`).
+       */
+      def lastIndent(cs: Array[Char]): IndentWidth =
+        in.indentWidth(cs.length, cs)
+
+      /** Trim a non-interpolated '''-enclosed string `str`.
+       *  The string without leading quotes starts at `strOffset`.
+       */
+      def apply(str: String, strOffset: Int): String =
+        val cs = str.toCharArray()
+        val cuts =
+          trimStart(cs, strOffset)
+          ++ trimLeft(cs, lastIndent(cs), strOffset).dropRight(1) // last trimLeft overlaps with trimEnd
+          ++ trimEnd(cs, strOffset)
+        new String(shorten(cs, cuts))
+
+      /** Trim a '''-enclosed interpolated string literal with `trees` representing the parts
+       *  that are not interpolated.
+       */
+      def apply(trees: List[Tree]): List[Tree] =
+        val ts = trees.toArray
+        val css = ts.map:
+            case Thicket(lit :: _) => lit
+            case lit => lit
+          .collect:
+            case Literal(Constant(str: String)) => str.toCharArray
+        if ts.length > 0 && css.length == ts.length then
+          val last = ts.length - 1
+          val width = lastIndent(css(last))
+          val result =
+            for i <- 0 to last yield
+              val segment = ts(i)
+              val cs = css(i)
+              val strOffset = segment.span.start
+              val startCuts = if i == 0 then trimStart(cs, strOffset) else Nil
+              var leftCuts = trimLeft(cs, width, strOffset)
+              if i == last then
+                leftCuts = leftCuts.dropRight(1) // last trimLeft overlaps with trimEnd
+              val endCuts = if i == last then trimEnd(cs, strOffset) else Nil
+              val trimmed = shorten(cs, startCuts ++ leftCuts ++ endCuts)
+              if trimmed.length == cs.length then segment
+              else
+                def trimmedLit(lit: Tree) =
+                  cpy.Literal(lit)(Constant(new String(trimmed)))
+                segment match
+                  case Thicket(lit :: rest) => Thicket(trimmedLit(lit) :: rest)
+                  case lit => trimmedLit(lit)
+          result.toList
+        else
+          trees
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
