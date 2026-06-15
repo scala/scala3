@@ -28,7 +28,6 @@ import scala.jdk.CollectionConverters.*
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object Path {
-  def isExtensionJarOrZip(jpath: JPath): Boolean = fileExtension(jpath.getFileName.toString).isJarOrZip
   def fileExtension(name: String): FileExtension = {
     val i = name.lastIndexOf('.')
     if (i < 0) FileExtension.Empty
@@ -63,8 +62,6 @@ import Path.*
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class Path private[io] (val jpath: JPath) {
-  val separator: Char = java.io.File.separatorChar
-  val separatorStr: String = java.io.File.separator
 
   // conversions
   def toFile: File = new File(jpath)
@@ -108,9 +105,6 @@ class Path private[io] (val jpath: JPath) {
   def normalize: Path = new Path(jpath.normalize)
 
   def resolve(other: Path): Path = new Path(jpath.resolve(other.jpath))
-  def relativize(other: Path): Path = new Path(jpath.relativize(other.jpath))
-
-  def segments: List[String] = (path split separator).toList filterNot (_.length == 0)
 
   /**
    * @return The path of the parent directory, or root if path is already root
@@ -145,7 +139,7 @@ class Path private[io] (val jpath: JPath) {
   }
   def parents: List[Directory] = {
     val p = parent
-    if p.isSame(this) then Nil else p :: p.parents
+    if p.toCanonical == this.toCanonical then Nil else p :: p.parents
   }
 
   def ext: FileExtension = Path.fileExtension(name)
@@ -166,29 +160,17 @@ class Path private[io] (val jpath: JPath) {
     if dropExtension eq name0 then addExtension(ext)
     else new Path(jpath.resolveSibling(dropExtension + "." + ext))
 
-  // conditionally execute
-  def ifFile[T](f: File => T): Option[T] = if (isFile) Some(f(toFile)) else None
-  def ifDirectory[T](f: Directory => T): Option[T] = if (isDirectory) Some(f(toDirectory)) else None
-
   // Boolean tests
-  def canRead: Boolean = Files.isReadable(jpath)
-  def canWrite: Boolean = Files.isWritable(jpath)
   def exists: Boolean = try Files.exists(jpath)  catch { case ex: SecurityException => false }
   def isFile: Boolean = try Files.isRegularFile(jpath)  catch { case ex: SecurityException => false }
   def isDirectory: Boolean =
     try Files.isDirectory(jpath)
     catch { case ex: SecurityException => jpath.toString == "." }
   def isAbsolute: Boolean = jpath.isAbsolute()
-  def isEmpty: Boolean = path.length == 0
 
   // Information
   def lastModified: FileTime = Files.getLastModifiedTime(jpath)
   def length: Long = Files.size(jpath)
-
-  // Boolean path comparisons
-  def endsWith(other: Path): Boolean = segments endsWith other.segments
-  def isSame(other: Path): Boolean = toCanonical == other.toCanonical
-  def isFresher(other: Path): Boolean = lastModified.compareTo(other.lastModified) > 0
 
   // creations
   def createDirectory(force: Boolean = true, failIfExists: Boolean = false): Directory = {
@@ -196,13 +178,6 @@ class Path private[io] (val jpath: JPath) {
     if (!res && failIfExists && exists) fail("Directory '%s' already exists." format name)
     else if (isDirectory) toDirectory
     else new Directory(jpath)
-  }
-  def createFile(failIfExists: Boolean = false): File = {
-    val res = tryCreate(Files.createFile(jpath))
-    Files.createFile(jpath)
-    if (!res && failIfExists && exists) fail("File '%s' already exists." format name)
-    else if (isFile) toFile
-    else new File(jpath)
   }
 
   private def tryCreate(create: => JPath): Boolean =

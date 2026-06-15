@@ -40,7 +40,7 @@ object AbstractFile {
    */
   def getDirectory(path: Path, jarVersion: String): AbstractFile | Null =
     if (path.isDirectory) new PlainFile(path)
-    else if (path.isFile && Path.isExtensionJarOrZip(path.jpath)) new FileZipArchive(path.jpath, Some(jarVersion))
+    else if (path.isFile && path.ext.isJarOrZip) new FileZipArchive(path.jpath, Some(jarVersion))
     else null
 
   /**
