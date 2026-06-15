@@ -104,7 +104,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends
   private def openZipFile(): ZipFile = try {
     release match {
       case Some(r) if file.nn.getName.endsWith(".jar") =>
-        new JarFile(file, true, ZipFile.OPEN_READ, Runtime.Version.parse(r))
+        new JarFile(file, true, ZipFile.OPEN_READ, if r == "" then Runtime.version() else Runtime.Version.parse(r))
       case _ =>
         new ZipFile(file)
     }
