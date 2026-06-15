@@ -3657,17 +3657,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val packageObjectName = desugar.packageObjectName(ctx.source)
           val topLevelClassSymbol = pkg.moduleClass.info.decls.lookup(packageObjectName.moduleClassName)
           topLevelClassSymbol.ensureCompleted()
-          // When sibling files in this package come from the classpath (TASTy),
-          // force their `<src>$package` classes now to avoid cross-unit cycles
-          // as in #25894: otherwise the first lookup on this package (e.g. an
-          // import qualifier at the top of this file) forces them during the
-          // import's completer, and their unpickling can chain through source
-          // exports back to the import itself.
+          // Force the `<src>$package` classes of the sibling files in this
+          // package now to avoid cross-unit cycles as in #25894 / #26340:
+          // otherwise the first lookup on this package (e.g. an import qualifier
+          // at the top of this file) forces them during the import's completer,
+          // and resolving their exports can chain back to the import itself.
+          // This must cover both classpath (TASTy) siblings and sibling source
+          // units recompiled in the same run (#26340): a top-level `export` in
+          // any of them is the link that closes the cycle, so pre-resolving them
+          // all through the regular member path breaks it. We skip any package
+          // object that is already being completed to avoid forcing a cycle.
           if !pkg.isEffectiveRoot && pkg != defn.EmptyPackageVal then
             pkg.moduleClass.denot match
               case pcd: SymDenotations.PackageClassDenotation =>
                 for pobj <- pcd.packageObjs do
-                  if pobj.symbol.isDefinedInBinary then
+                  if !pobj.symbol.isCompleting then
                     pobj.symbol.ensureCompleted()
               case _ =>
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
