@@ -52,7 +52,8 @@ object Versions {
    */
   // TODO: temporary downgraded to 28.9-exp-1 to allow consuming 3.9.0-RC reference compiler. Increment to 28.10-exp-1 when 3.9.0 is released and before 3.10.0-RC1 is published
   val expectedTastyVersion = "28.9-experimental-1"
-  checkReleasedTastyVersion()
+  // TODO: Restore the check once we're bootstrapped on stable 3.9, breaks the nightly releases
+  if (!referenceVersion.startsWith("3.9.0-RC")) checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
