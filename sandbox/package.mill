@@ -1,0 +1,15 @@
+package build.sandbox
+
+import scala3build.*
+
+import mill.*
+
+trait SandboxScalajs extends CrossScala3Module, Scala3JsModule:
+  def moduleDeps = Seq(
+    build.`library-js`()
+  )
+
+  object test extends Scala3JsTests
+
+object scalajs extends SandboxScalajs, CrossHelper[SandboxScalajs]:
+  object `non-bootstrapped` extends SandboxScalajs, CrossHelper.NonBootstrapped

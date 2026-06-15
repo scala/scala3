@@ -1,0 +1,241 @@
+package build.compiler
+
+import scala3build.*
+
+import mainargs.arg
+import mill.*
+import mill.api.BuildCtx
+import mill.scalalib.*
+import org.scalajs.ir.ScalaJSVersions
+
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.text.SimpleDateFormat
+import java.util.{Arrays, TimeZone}
+
+trait Compiler extends CrossScala3Module:
+  outer =>
+  def moduleDeps = Seq(
+    build.interfaces,
+    build.library.`library-3`(),
+    build.tasty()
+  )
+  def mainSources = Task.Source("src")
+  def nonBootstrappedSources = Task.Source("src-non-bootstrapped")
+
+  def testResources = Task.Sources("test-resources")
+
+  /**
+   * Sources of scalajs-ir, pprint, fansi, and sourcecode, post-processed and ready to be compiled from the Scala 3 build
+   */
+  def shadedSources = Task {
+
+    def csDep(org: String, name: String, version: String): coursier.Dependency =
+      coursier.Dependency(
+        coursier.Module(coursier.Organization(org), coursier.ModuleName(name), Map.empty),
+        coursier.version.VersionConstraint(version)
+      )
+
+    val shadedDeps = Seq(
+      csDep("org.scala-js", "scalajs-ir_2.13", ScalaJSVersions.current),
+      csDep("com.lihaoyi", "pprint_3", "0.9.3"),
+      csDep("com.lihaoyi", "fansi_3", "0.5.1"),
+      csDep("com.lihaoyi", "sourcecode_3", "0.4.4")
+    )
+
+    // Define patches as a map from search text to replacement text
+    val patches = Map(
+      "import scala" -> "import _root_.scala",
+      " scala.collection." -> " _root_.scala.collection.",
+      "def apply(c: Char): Trie[T]" -> "def apply(c: Char): Trie[T] | Null",
+      "var head: Iterator[T] = null" -> "var head: Iterator[T] | Null = null",
+      "if (head != null && head.hasNext) true" -> "if (head != null && head.nn.hasNext) true",
+      "head.next()" -> "head.nn.next()",
+      "abstract class Walker" -> "@scala.annotation.nowarn abstract class Walker",
+      "object TPrintLowPri" -> "@scala.annotation.nowarn object TPrintLowPri",
+      "x.toString match{" -> "scala.runtime.ScalaRunTime.stringOf(x) match{"
+    )
+
+    val sourceJars = build.interfaces.defaultResolver().classpath(
+      shadedDeps.map(_.withTransitive(false)),
+      sources = true
+    )
+    for (jar <- sourceJars)
+      os.unzip(jar.path, Task.dest)
+
+    val patchUsageCounter = scala.collection.mutable.Map(patches.keys.map(_ -> 0).toSeq*)
+    val scalaJsSourcesPrefix = Task.dest / "org/scalajs"
+    for (f <- os.walk(Task.dest) if os.isFile(f) && f.last.endsWith(".scala")) {
+      val isScalaJsStuff = f.startsWith(scalaJsSourcesPrefix)
+      val lines = os.read.lines(f).toList
+      val updatedLines = Shading.replacePackage(Shading.insertUnsafeNullsImport(lines)) {
+        case "org.scalajs.ir" => "dotty.tools.sjs.ir"
+      }
+      var text = updatedLines.mkString(System.lineSeparator())
+      if (!isScalaJsStuff && f.last != "CollectionName.scala") {
+        text = "package dotty.shaded" + System.lineSeparator() + text
+
+        // Apply patches and count usage
+        for ((search, replacement) <- patches if text.contains(search)) {
+          text = text.replace(search, replacement)
+          patchUsageCounter(search) += 1
+        }
+      }
+      os.write.over(f, text)
+    }
+
+    // Assert that all patches were applied at least once
+    val unappliedPatches = patchUsageCounter.filter(_._2 == 0).keys
+    if (unappliedPatches.nonEmpty)
+      Task.fail(s"Patches were not applied: ${unappliedPatches.mkString(", ")}")
+    else
+      PathRef(Task.dest)
+  }
+
+  def sources = Task {
+    val baseSources = super.sources()
+    assert(baseSources.exists(_.path == mainSources().path))
+    baseSources
+  }
+  def generatedSources = Task {
+    super.generatedSources() ++ Seq(shadedSources())
+  }
+  def resources =
+    if (Util.isBsp)
+      super.resources
+    else
+      Task {
+        super.resources() ++ Seq(compilerPropertiesResources())
+      }
+
+  def compilerPropertiesResources = Task(persistent = true) {
+    val file = Task.dest / "compiler.properties"
+    val dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss")
+    dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
+    val contents =
+      s"""version.number=${build.interfaces.publishVersion()}
+         |maven.version.number=${build.interfaces.publishVersion()}
+         |git.hash=${VersionUtil.gitHash}
+         |copyright.string=Copyright 2002-${Util.currentYear}, LAMP/EPFL
+       """.stripMargin.getBytes(StandardCharsets.UTF_8)
+
+    if (!os.isFile(file) || !Arrays.equals(os.read.bytes(file), contents))
+      os.write.over(file, contents)
+
+    for (f <- os.list(Task.dest) if f != file)
+      os.remove.all(f)
+
+    PathRef(Task.dest)
+  }
+
+  def mvnDeps = Seq(
+    mvn"org.scala-lang.modules:scala-asm:9.9.0-scala-1",
+    mvn"org.scala-sbt:compiler-interface:1.12.0"
+  )
+
+  def scalacOptions = Task {
+    super.scalacOptions() ++ Seq(
+      // Original comment: Note: bench/profiles/projects.yml should be updated accordingly.
+      "-Yexplicit-nulls",
+      "-Wsafe-init",
+      // Silence `using` clause warnings in the scalajs-ir sources
+      "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
+      // Silence AnyRefMap deprecation warnings in the scalajs-ir sources
+      "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated:s",
+    )
+  }
+
+  def manifest = super.manifest().add(
+    "Git-Hash" -> VersionUtil.gitHash
+  )
+
+  def mainClass = Some("dotty.tools.dotc.Main")
+
+  def isCoreModule = true
+
+  object test extends Scala3Tests:
+    def compileResources = Task {
+      super.compileResources() ++ outer.testResources()
+    }
+    def mvnDeps = Seq(
+      mvn"io.get-coursier:coursier_2.13:2.1.24".exclude(("org.scala-lang", "scala-library"))
+    )
+
+    def testArgsDefault = Task {
+      val bootstrapOnlyArgs = if (mode == Mode.NonBootstrapped) Seq("--exclude-categories=dotty.BootstrappedOnlyTests") else Nil
+      val extraArgs = Seq(
+        "--run-listener=dotty.tools.ContextEscapeDetector",
+        "--exclude-categories=dotty.VulpixMetaTests"
+      )
+      super.testArgsDefault() ++ bootstrapOnlyArgs ++ extraArgs
+    }
+
+    /**
+     * Arguments to pass to the JVM running compiler tests
+     *
+     * This sets a number of build-related Java properties, so that
+     * the tests know about artifacts built or pulled by the Scala 3 build.
+     */
+    def compilerTestForkArgs = Task {
+      val compilerClassPath = outer.compileClasspath().map(_.path)
+      def artifactFor(moduleName: String): os.Path =
+        compilerClassPath
+          .iterator
+          .filter(os.isFile)
+          .filter(_.last.endsWith(".jar"))
+          .find(_.last.startsWith(moduleName + "-"))
+          .getOrElse {
+            Task.fail(s"No JAR found for $moduleName in compiler class path $compilerClassPath")
+          }
+
+      Seq(
+        s"-Ddotty.tests.dottyCompilerManagedSources=${mainSources().path}",
+        s"-Ddotty.tests.classes.dottyInterfaces=${build.interfaces.jar().path}",
+        s"-Ddotty.tests.classes.dottyCompiler=${outer.jar().path}",
+        s"-Ddotty.tests.classes.tastyCore=${build.tasty().jar().path}",
+        s"-Ddotty.tests.classes.compilerInterface=${artifactFor("compiler-interface")}",
+        s"-Ddotty.tests.classes.scalaLibrary=${build.library().runClasspath().map(_.path).filter(os.exists).mkString(File.pathSeparator)}",
+        s"-Ddotty.tests.classes.scalaAsm=${artifactFor("scala-asm")}",
+        s"-Ddotty.tests.classes.dottyStaging=${build.staging().jar().path}",
+        s"-Ddotty.tests.classes.dottyTastyInspector=${build.`tasty-inspector`().jar().path}",
+        s"-Ddotty.tools.dotc.semanticdb.test=${BuildCtx.workspaceRoot / "tests/semanticdb"}"
+      )
+    }
+
+    def forkArgs: T[Seq[String]] = Task {
+      super.forkArgs() ++ compilerTestForkArgs()
+    }
+
+  /**
+   * By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*, excluding tests tagged with dotty.SlowTests.
+   */
+  def testCompilation(
+    @arg(doc = "runs tests in dotty.tools.dotc.FromTastyTests")
+    fromTasty: Boolean = false,
+    @arg(doc = "override the checkfiles that did not match with the current output")
+    updateCheckfiles: Boolean = false,
+    @arg(doc = "re-run only failed tests")
+    failed: Boolean = false,
+    @arg(doc = "enable Scoverage instrumentation phase for compilation tests")
+    enableCoveragePhase: Boolean = false,
+    coverage: Boolean = false,
+    @arg(doc = "substring of the path of the tests file")
+    filter: Args
+  ): Task.Command[Unit] = {
+    val testSuite =
+      if (fromTasty) "dotty.tools.dotc.FromTastyTests"
+      else if (coverage) "dotty.tools.dotc.coverage.*"
+      else "dotty.tools.dotc.*CompilationTests"
+    val testArgs = Seq(testSuite, "--", "--exclude-categories=dotty.SlowTests") ++
+      (if (updateCheckfiles) Seq("-Ddotty.tests.updateCheckfiles=TRUE") else Nil) ++
+      (if (failed) Seq("-Ddotty.tests.rerunFailed=TRUE") else Nil) ++
+      (if (enableCoveragePhase) Seq("-Ddotty.tests.instrumentCoverage=TRUE") else Nil) ++
+      (if (filter.value.nonEmpty) Seq(s"-Ddotty.tests.filter=${filter.value.mkString(" ")}") else Nil)
+
+    Task.Command[Unit] {
+      test.testOnly(testArgs*)()
+    }
+  }
+
+object `package` extends Compiler, CrossHelper[Compiler]:
+  object `non-bootstrapped` extends Compiler, CrossHelper.NonBootstrapped

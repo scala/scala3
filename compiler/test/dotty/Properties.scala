@@ -78,7 +78,7 @@ object Properties {
   /** compiler-interface jar */
   def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")
 
-  /** scala-library jar */
+  /** scala-library jars */
   def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
 
   // TODO: Remove this once we migrate the test suite

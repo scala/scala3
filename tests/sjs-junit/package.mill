@@ -1,0 +1,279 @@
+package build.tests.`sjs-junit`
+
+import scala3build.*
+
+import coursier.cache.Cache
+import coursier.util.Artifact
+import mill.*
+import mill.scalajslib.api.Report
+import mill.scalajslib.*
+import mill.scalalib.*
+import org.scalajs.ir.ScalaJSVersions
+import org.scalajs.linker.interface as sjs
+
+import java.nio.file.AtomicMoveNotSupportedException
+import java.util.UUID
+
+// definition of the sjs-unit module
+trait SjsUnit extends Cross.Module[Customization] with Scala3Module with Scala3JsModule {
+  def mode: Mode
+  def customization = crossValue
+
+  override def enableWebAssembly =
+    customization == Customization.LatestESVersionWebAssembly
+
+  def moduleDeps = Seq(
+    build.`library-js`()(using mode)
+  )
+  def mvnDeps = Seq(
+    mvn"org.scala-js:scalajs-junit-test-runtime_2.13:${ScalaJSVersions.current}"
+      .exclude(("org.scala-lang", "scala-library"))
+  )
+
+  def scalaJSConfig = Task.Anon {
+    val config = super.scalaJSConfig()
+      .withSemantics(TestSuiteLinkerOptions.semantics)
+    customization match {
+      case Customization.ESM => config.withModuleKind(sjs.ModuleKind.ESModule)
+      case Customization.LatestESVersion | Customization.LatestESVersionWebAssembly => config.withESFeatures(_.withESVersion(sjs.ESVersion.ES2021))
+      case Customization.Default => config
+    }
+  }
+
+  def scalacOptions = Task {
+    super.scalacOptions().filter { opt =>
+      opt != "-Werror" && opt != "-deprecation" && opt != "-Yexplicit-nulls"
+    } ++
+    Seq(
+      "-Ycheck:prepjsinterop,explicitJSClasses,addLocalJSFakeNews"
+    )
+  }
+
+  def buildInfoSources = Task {
+
+    val linkerConfig = scalaJSConfig()
+
+    val moduleKind0 = linkerConfig.moduleKind
+    val sems = linkerConfig.semantics
+
+    val useClosure = // isFullLinkJS &&
+      moduleKind0 != sjs.ModuleKind.ESModule
+
+    ConstantHolderGenerator.generate(
+      Task.dest.toIO,
+      "org.scalajs.testsuite.utils.BuildInfo",
+      "scalaVersion" -> scalaVersion(),
+      "hasSourceMaps" -> false, //DottyJSPlugin.wantSourceMaps.value (original sbt build comment)
+      "isNoModule" -> (moduleKind0 == sjs.ModuleKind.NoModule),
+      "isESModule" -> (moduleKind0 == sjs.ModuleKind.ESModule),
+      "isCommonJSModule" -> (moduleKind0 == sjs.ModuleKind.CommonJSModule),
+      "usesClosureCompiler" -> useClosure,
+      "hasMinifiedNames" -> (useClosure || scalaJSMinify()),
+      "compliantAsInstanceOfs" -> (sems.asInstanceOfs == sjs.CheckedBehavior.Compliant),
+      "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == sjs.CheckedBehavior.Compliant),
+      "compliantArrayStores" -> (sems.arrayStores == sjs.CheckedBehavior.Compliant),
+      "compliantNegativeArraySizes" -> (sems.negativeArraySizes == sjs.CheckedBehavior.Compliant),
+      "compliantNullPointers" -> (sems.nullPointers == sjs.CheckedBehavior.Compliant),
+      "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == sjs.CheckedBehavior.Compliant),
+      "compliantModuleInit" -> (sems.moduleInit == sjs.CheckedBehavior.Compliant),
+      "productionMode" -> sems.productionMode,
+      "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
+      "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
+      "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly
+    )
+
+    PathRef(Task.dest)
+  }
+
+  def generatedSources = Task {
+    super.generatedSources() ++ Seq(buildInfoSources()) ++
+      // add sources from the Scala.js repo
+      os.walk(build.tests.`sjs-junit`.scalaJsSources().path / "test-suite/js/src/main/scala")
+        .filter(_.last.endsWith(".scala"))
+        .filter(!_.last.startsWith("Typechecking"))
+        .filter(os.isFile)
+        .map(PathRef(_)) ++
+      os.walk(build.tests.`sjs-junit`.scalaJsSources().path / "junit-async/js/src/main/scala")
+        .filter(_.last.endsWith(".scala"))
+        .filter(os.isFile)
+        .map(PathRef(_))
+  }
+
+  trait SjsUnitTests extends Scala3JsTests { self =>
+    def generatedSources = Task {
+
+      // add some test sources from the Scala.js repo
+
+      val linkerConfig = self.scalaJSConfig()
+
+      val moduleKind = linkerConfig.moduleKind
+      val hasModules: Boolean = moduleKind != sjs.ModuleKind.NoModule
+      val hasAsyncAwait: Boolean = linkerConfig.esFeatures.esVersion >= sjs.ESVersion.ES2017
+      val isWebAssembly: Boolean = linkerConfig.experimentalUseWebAssembly
+
+      val testSuiteDir = build.tests.`sjs-junit`.scalaJsSources().path / "test-suite"
+      def scalaFilesUnder(dir: os.SubPath): Seq[os.Path] =
+        os.walk(testSuiteDir / dir)
+          .filter(_.last.endsWith(".scala"))
+          .filter(os.isFile)
+      def scalaFilesIf(cond: Boolean, dir: os.SubPath): Seq[os.Path] =
+        if (cond) scalaFilesUnder(dir) else Nil
+
+      val extra = Seq(
+        scalaFilesUnder("shared/src/test/scala")
+          .filter(_.last != "ReflectiveCallTest.scala") // Original comment: uses many forms of structural calls that are not allowed in Scala 3 anymore
+          .filter(_.last != "UTF16Test.scala") // Original comment: refutable pattern match
+          .filter(_.last != "CharsetTest.scala") // Original comment: bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
+          .filter(_.last != "ClassDiffersOnlyInCaseTest.scala"), // Original comment: looks like the Scala 3 compiler itself does not deal with that
+        // scalaFilesUnder("shared/src/test/require-sam"),
+        // scalaFilesUnder("shared/src/test/require-jdk8"),
+        // scalaFilesUnder("shared/src/test/require-jdk7"),
+        scalaFilesUnder("js/src/test/scala")
+          .filter(_.last != "StackTraceTest.scala") // Original comment: would require `npm install source-map-support`
+          .filter(_.last != "UnionTypeTest.scala"), // Original comment: requires the Scala 2 macro defined in Typechecking*.scala
+        // scalaFilesUnder("js/src/test/require-2.12"),
+        scalaFilesUnder("js/src/test/require-new-target"),
+        // scalaFilesUnder("js/src/test/require-sam"),
+        scalaFilesUnder("js/src/test/scala-new-collections"),
+        scalaFilesIf(!hasModules, "js/src/test/require-no-modules"),
+        scalaFilesIf(hasModules, "js/src/test/require-modules"),
+        scalaFilesIf(hasModules && !linkerConfig.closureCompiler && !isWebAssembly, "js/src/test/require-multi-modules"),
+        scalaFilesIf(moduleKind == sjs.ModuleKind.ESModule, "js/src/test/require-dynamic-import"),
+        scalaFilesIf(moduleKind == sjs.ModuleKind.ESModule, "js/src/test/require-esmodule"),
+        scalaFilesIf(hasAsyncAwait, "js/src/test/require-async-await"),
+        scalaFilesIf(hasAsyncAwait && isWebAssembly, "js/src/test/require-orphan-await")
+      )
+      super.generatedSources() ++ extra.flatten.map(PathRef(_))
+    }
+    def scalacOptions = super.scalacOptions() ++ Seq(
+      "-scalajs-genStaticForwardersForNonTopLevelObjects"
+    )
+
+    def testModuleInitializers = Task.Anon {
+      super.testModuleInitializers() ++ TestSuiteLinkerOptions.moduleInitializers
+    }
+
+    def scalaJsTestInputs = Task.Anon {
+      val resourceDir = build.tests.`sjs-junit`.scalaJsSources().path / "test-suite/js/src/test/resources"
+      val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toNIO
+      org.scalajs.jsenv.Input.Script(f) +: super.scalaJsTestInputs()
+    }
+
+    def fastLinkJSTest = Task {
+
+      // The Scala.js test sources use @JSImport with paths like "../test-classes/modules-test.js",
+      // which are relative to the linker output directory. We need to copy the JS resource files
+      // to a "test-classes" sibling directory.
+
+      val report = super.fastLinkJSTest()
+
+      val newReportDest = Task.dest / "modules"
+      System.err.println(s"Copying ${report.dest.path} to $newReportDest")
+      os.copy(report.dest.path, newReportDest)
+
+      val destParent = newReportDest / os.up
+      assert(destParent.startsWith(Task.dest))
+
+      val resourcesStuff = {
+        val testDir = build.tests.`sjs-junit`.scalaJsSources().path / "test-suite/js/src/test"
+        def jsFilesUnder(dir: os.SubPath): Seq[os.Path] =
+          os.walk(testDir / dir)
+            .filter(_.last.endsWith(".js"))
+            .filter(os.isFile)
+
+        val common = jsFilesUnder("resources")
+
+        val moduleSpecific = self.scalaJSConfig().moduleKind match {
+          case sjs.ModuleKind.NoModule       => Nil
+          case sjs.ModuleKind.CommonJSModule => jsFilesUnder("resources-commonjs")
+          case sjs.ModuleKind.ESModule       => jsFilesUnder("resources-esmodule")
+        }
+
+        common ++ moduleSpecific
+      }
+
+      val testClassesDir = destParent / "test-classes"
+      os.makeDir.all(testClassesDir)
+      for (f <- resourcesStuff) {
+        System.err.println(s"Copying $f to ${testClassesDir / f.last}")
+        os.copy(f, testClassesDir / f.last)
+      }
+
+      // Node.js needs a package.json with {"type": "module"} to treat .js files
+      // as ESM. Without it, fail-load.js is loaded as CJS and gets cached in a
+      // broken state after the first failed import, causing subsequent dynamic
+      // imports of modules that depend on it to silently succeed instead of fail.
+      if (self.scalaJSConfig().moduleKind == sjs.ModuleKind.ESModule)
+        os.write(destParent / "package.json", """{"type": "module"}""" + System.lineSeparator())
+
+      Report(report.publicModules, PathRef(newReportDest))
+    }
+  }
+  object test extends SjsUnitTests
+}
+
+trait NonBootstrappedSjsUnit extends SjsUnit {
+  def mode = Mode.NonBootstrapped
+  def moduleDir: os.Path = super.moduleDir / os.up
+}
+
+trait BootstrappedSjsUnit extends SjsUnit {
+  def mode = Mode.Bootstrapped
+}
+
+object `package` extends Cross[BootstrappedSjsUnit](Customization.allValues) {
+  object `non-bootstrapped` extends Cross[NonBootstrappedSjsUnit](Customization.allValues)
+
+  // no need to have a copy of this one for each cross-matrix entry, so it's factored here
+
+  /** Scala.js sources obtained via GitHub */
+  def scalaJsSources = Task {
+    val ver = ScalaJSVersions.current
+    val cache = Cache.default
+    val archive = cache.file(Artifact(s"https://github.com/scala-js/scala-js/archive/refs/tags/v$ver.zip"))
+      .run.unsafeRun(true)(using cache.ec)
+      .left.map(ex => throw ex)
+      .map(os.Path(_))
+      .merge
+
+    System.err.println(s"Unzipping $archive")
+    val tmpDir = Task.dest / "__tmp"
+    os.unzip(archive, tmpDir)
+
+    val dir = os.list(tmpDir) match {
+      case Seq(dir) if os.isDir(dir) => dir
+      case other =>
+        Task.fail(s"Unexpected root files in $archive: $other")
+    }
+    for (f <- os.list(dir))
+      os.move.into(f, Task.dest)
+
+    os.remove(dir)
+    os.remove(tmpDir)
+
+    PathRef(Task.dest)
+  }
+}
+
+/** How to build the the Scala.js module */
+enum Customization:
+  case Default
+  case ESM
+  case LatestESVersion
+  case LatestESVersionWebAssembly
+
+object Customization:
+  lazy val allValues = Seq(
+    Customization.Default,
+    Customization.ESM,
+    Customization.LatestESVersion,
+    Customization.LatestESVersionWebAssembly
+  )
+
+  given Cross.ToSegments[Customization] =
+    new Cross.ToSegments({
+      case Customization.Default => List("default")
+      case Customization.ESM => List("esm")
+      case Customization.LatestESVersion => List("latest-es-version")
+      case Customization.LatestESVersionWebAssembly => List("latest-es-version-wasm")
+    })

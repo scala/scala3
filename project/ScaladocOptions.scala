@@ -1,3 +1,5 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 object ScaladocOptions {
   def scalacOptionsDocSettings(includeExternalMappings: Boolean = true) = {
     val extMap = Seq("-external-mappings:" +

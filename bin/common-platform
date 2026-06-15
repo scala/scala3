@@ -21,6 +21,7 @@ esac
 unset DIST_PROJECT DIST_DIR
 
 if [[ ${cygwin-} || ${mingw-} || ${msys-} ]]; then
+  DIST_MILL_PROJECT="win-x86_64"
   DIST_PROJECT="dist-win-x86_64"
   DIST_DIR="dist/win-x86_64"
 else
@@ -40,23 +41,28 @@ else
   if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "Linux" ]; then
     if [[ "$ARCH_NORM" == "unknown" ]]; then
       echo >&2 "unknown Linux CPU architecture, defaulting to JVM launcher"
+      DIST_MILL_PROJECT="jvm"
       DIST_PROJECT="dist"
       DIST_DIR="dist"
     else
+      DIST_MILL_PROJECT="linux-$ARCH_NORM"
       DIST_PROJECT="dist-linux-$ARCH_NORM"
       DIST_DIR="dist/linux-$ARCH_NORM"
     fi
   elif [ "$(uname)" == "Darwin" ]; then
     if [[ "$ARCH_NORM" == "unknown" ]]; then
       echo >&2 "unknown Darwin CPU architecture, defaulting to JVM launcher"
+      DIST_MILL_PROJECT="jvm"
       DIST_PROJECT="dist"
       DIST_DIR="dist"
     else
+      DIST_MILL_PROJECT="mac-$ARCH_NORM"
       DIST_PROJECT="dist-mac-$ARCH_NORM"
       DIST_DIR="dist/mac-$ARCH_NORM"
     fi
   else
     echo >&2 "unknown OS, defaulting to JVM launcher"
+    DIST_MILL_PROJECT="jvm"
     DIST_PROJECT="dist"
     DIST_DIR="dist"
   fi

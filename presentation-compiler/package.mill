@@ -1,0 +1,169 @@
+package build.`presentation-compiler`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+trait PresentationCompiler extends CrossScala3Module:
+  def moduleDeps = Seq(
+    build.compiler()
+  )
+
+  /** Expected library run class path - for source generation, this doesn't actually compile the library */
+  def libraryPrecomputedRunClasspath: T[Seq[String]] =
+    build.library().precomputedRunClasspath
+  /** Expected PC test cases JAR path - for source generation, this doesn't actually compile the test cases */
+  def pcTestCasesPrecomputedJarPath: T[String] = Task {
+    (build.`presentation-compiler-testcases`().jarPath(Task.dest) / "out.jar").toString
+  }
+  def libraryRunClasspath: T[Seq[PathRef]] =
+    Task {
+      build.library()
+        .runClasspath()
+        .filter(ref => os.exists(ref.path))
+    }
+  def pcTestCasesJar: T[PathRef] =
+    build.`presentation-compiler-testcases`().jar
+
+  def buildInfoSources = Task {
+    val dir = Task.dest
+    os.write(
+      dir / "dotty/tools/pc/buildinfo/BuildInfo.scala",
+      s"""package dotty.tools.pc.buildinfo
+         |
+         |object BuildInfo {
+         |  def scalaVersion = "${scalaVersion()}"
+         |}
+         |""".stripMargin,
+      createFolders = true
+    )
+    PathRef(dir)
+  }
+
+  /** Sources of the mtags-shared module, post-processed to be compiled in the Scala 3 build */
+  def mtagsSharedSources = Task {
+    val srcPath = defaultResolver().classpath(
+      Seq(mvn"org.scalameta:mtags-shared_${Versions.scala2Version}:${Versions.mtagsVersion}".dep.withTransitive(false)),
+      sources = true
+    )
+    assert(srcPath.length == 1, "Expected a single source JAR")
+    val srcJar = srcPath.head.path
+    os.unzip(srcJar, Task.dest)
+
+    for (f <- os.walk(Task.dest) if os.isFile(f) && f.last.endsWith(".scala")) {
+      val lines = os.read.lines(f).toList
+      val updatedLines = Shading.insertUnsafeNullsImport(Shading.replaceProtobuf(lines))
+      os.write.over(f, updatedLines.mkString(System.lineSeparator()))
+    }
+
+    PathRef(Task.dest)
+  }
+
+  def generatedSources = Task {
+    super.generatedSources() ++ Seq(mtagsSharedSources(), buildInfoSources())
+  }
+
+  def mvnDeps = Seq(
+    mvn"org.lz4:lz4-java:1.8.0",
+    mvn"io.get-coursier:interface:1.0.29-M4"
+      // temporary, until this is fixed in coursier/interface
+      .exclude(("org.scala-lang", "scala-library")),
+    mvn"org.scalameta:mtags-interfaces:${Versions.mtagsVersion}",
+    mvn"com.google.guava:guava:33.6.0-jre"
+  )
+  def scalacOptions = super.scalacOptions() ++ Seq(
+    "-Yexplicit-nulls", "-Wsafe-init",
+    "-Wconf:src=.*/scala/meta/internal/.*:s"
+  )
+
+  object test extends Scala3Tests:
+    // Without this, it seems Mill puts some abstract classes in discovered test classes,
+    // and then complains at runtime that it cannot instantiate them
+    def discoverTestsWithZinc = true
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.`presentation-compiler-testcases`(),
+      build.compiler().test
+    )
+    def generatedSources = Task {
+      super.generatedSources() ++ Seq(testBuildInfoSources())
+    }
+
+    private def scalaJSScalalibExpectedPath = Task.Anon {
+      build.`library-js`().jarPath(Task.dest) / build.`library-js`().jarName()
+    }
+
+    def ideTestsScalaJSClasspath = Task {
+      def findArtifact(deps: Seq[PathRef], name: String): String =
+        deps
+          .map(_.path)
+          .find(_.last.startsWith(name))
+          .getOrElse {
+            Task.fail(s"Artifact for $name not found in $deps")
+          }
+          .toString
+      val externalJSCommonDeps = build.`scaladoc-js`.common().resolvedMvnDeps()
+      val scalaJSCommonDom = findArtifact(externalJSCommonDeps, "scalajs-dom_sjs1_3")
+      val externalJSDeps = build.`library-js`().resolvedMvnDeps()
+      val scalaJSLibrary = findArtifact(externalJSDeps, "scalajs-library_2.13")
+      val scalaJSJavalib = findArtifact(externalJSDeps, "scalajs-javalib")
+      val scalaJSScalalib = scalaJSScalalibExpectedPath().toString
+      Seq[String](scalaJSLibrary, scalaJSJavalib, scalaJSScalalib, scalaJSCommonDom)
+    }
+
+    def testBuildInfoSources = Task {
+      val dir = Task.dest
+      val tq = "\"\"\""
+      val testDepCp = libraryPrecomputedRunClasspath() :+ pcTestCasesPrecomputedJarPath()
+      os.write(
+        dir / "dotty/tools/pc/tests/buildinfo/BuildInfo.scala",
+        s"""package dotty.tools.pc.tests.buildinfo
+           |
+           |import java.io.File
+           |
+           |object BuildInfo {
+           |  def scalaVersion = "${scalaVersion()}"
+           |  def ideTestsDependencyClasspath = ${testDepCp.map(p => s"new File($tq$p$tq)").mkString("Seq[File](", ", ", ")")}
+           |  def ideTestsScalaJSClasspath = ${ideTestsScalaJSClasspath().map(p => s"new File($tq$p$tq)").mkString("Seq[File](", ", ", ")")}
+           |}
+           |""".stripMargin,
+        createFolders = true
+      )
+      PathRef(dir)
+    }
+
+    def mvnDeps = Seq(
+      mvn"org.hamcrest:hamcrest-core:1.3"
+    )
+
+    // We ensure here that the pre-computed class paths match their actual values
+    def runClasspath = Task {
+      val precomputedScalaJsScalaLib = scalaJSScalalibExpectedPath()
+      val actualScalaJsScalaLib = build.`library-js`().jar().path
+      if (precomputedScalaJsScalaLib != actualScalaJsScalaLib)
+        Task.fail(
+          "Scala.js scala library path calculation mismatch: " +
+          s"pre-computed value $precomputedScalaJsScalaLib differs from actual value $actualScalaJsScalaLib"
+        )
+
+      val precomputedLibrary = libraryPrecomputedRunClasspath().map(os.Path(_))
+      val actualLibrary = libraryRunClasspath().map(_.path)
+      if (precomputedLibrary.filter(os.exists) != actualLibrary.filter(os.exists))
+        Task.fail(
+          "Standard library class path calculation mismatch: " +
+          s"pre-computed value $precomputedLibrary differs from actual value $actualLibrary"
+        )
+
+      val precomputedPcTestCases = os.Path(pcTestCasesPrecomputedJarPath())
+      val actualPcTestCases = pcTestCasesJar().path
+      if (precomputedPcTestCases != actualPcTestCases)
+        Task.fail(
+          "PC testcases class path calculation mismatch: " +
+          s"pre-computed value $precomputedPcTestCases differs from actual value $actualPcTestCases"
+        )
+
+      super.runClasspath()
+    }
+
+object `package` extends PresentationCompiler, CrossHelper[PresentationCompiler]:
+  object `non-bootstrapped` extends PresentationCompiler, CrossHelper.NonBootstrapped

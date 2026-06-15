@@ -1,0 +1,13 @@
+package build.`tasty-inspector`
+
+import scala3build.*
+
+import mill.*
+
+trait TastyInspector extends CrossScala3Module:
+  def compileModuleDeps = Seq(
+    build.compiler()
+  )
+
+object `package` extends TastyInspector, CrossHelper[TastyInspector]:
+  object `non-bootstrapped` extends TastyInspector, CrossHelper.NonBootstrapped
