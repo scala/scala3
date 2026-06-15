@@ -17,6 +17,7 @@ import core.classfile.ClassfileConstants
 import java.lang.StringBuilder
 
 import scala.collection.mutable.ListBuffer
+import scala.annotation.tailrec
 
 /** Helper object to generate generic java signatures, as defined in
  *  the Java Virtual Machine Specification, §4.3.4
