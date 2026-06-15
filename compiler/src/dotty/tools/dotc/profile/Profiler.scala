@@ -181,7 +181,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     else
       val filename = ctx.settings.YprofileTrace.value
       // Compilation units requiring multi-stage compilation (macros) would create a new profiler instances
-      // We need to store the traces in the seperate file to prevent overriding its content.
+      // We need to store the traces in the separate file to prevent overriding its content.
       // Alternatives: sharing ChromeTrace instance between all runs / manual concatation after all runs are done
       // FIXME: The first assigned runId is equal to 2 instead of 1 (InitialRunId).
       // Fix me when bug described in Compiler.runId is resolved by removing +/- 1 adjustments

@@ -2598,7 +2598,7 @@ object Build {
     .settings(
       Windows / name := "scala",
       // Windows/version is used to create ProductInfo - it requires a version without any -RC suffixes
-      // If not explicitly overriden it would try to use `dottyVersion` assigned to `dist-win-x86_64/version`
+      // If not explicitly overridden it would try to use `dottyVersion` assigned to `dist-win-x86_64/version`
       Windows / version    := developedVersion,
       Windows / mappings   := (Universal / mappings).value,
       Windows / packageBin := (Windows / packageBin).dependsOn(republish).value,

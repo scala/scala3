@@ -1306,7 +1306,7 @@ class CompletionTest {
           |
           |val quux = new Quux:
           |  def aaa: Foo = ???
-          |  def bbb: Bar = ??? // overriden signature
+          |  def bbb: Bar = ??? // overridden signature
           |  def ccc(s: String): String = ???
           |  def ccc(i: Int): Int = ??? // overloaded
           |  private def ddd(): Boolean = ???
@@ -1346,7 +1346,7 @@ class CompletionTest {
           |
           |val quux = new Quux:
           |  def aaa: Foo = ???
-          |  def bbb: Bar = ??? // overriden signature
+          |  def bbb: Bar = ??? // overridden signature
           |  def ccc(s: String): String = ???
           |  def ccc(i: Int): Int = ??? // overloaded
           |  private def ddd(): Boolean = ???
