@@ -1523,10 +1523,6 @@ object Parsers {
       val segmentBuf = new ListBuffer[Tree]
       val interpolator = in.name.nn
       val startOffset = in.charOffset
-      val isTripleQuoted =
-        startOffset + 1 < in.buf.length &&
-        in.buf(startOffset) == '"' &&
-        in.buf(startOffset + 1) == '"'
       in.nextToken()
       def nextSegment(literalOffset: Offset) =
         segmentBuf += Thicket(
@@ -1551,8 +1547,8 @@ object Parsers {
               }
             })
 
-      var offsetCorrection = if isTripleQuoted then 3 else 1
-      while (in.token == STRINGPART)
+      var offsetCorrection = in.delimCount
+      while in.token == STRINGPART do
         nextSegment(in.offset + offsetCorrection)
         offsetCorrection = 0
       var delimChar = '"'
