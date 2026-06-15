@@ -168,7 +168,7 @@ object Build {
     // Prevent sbt from rewriting our dependencies
     scalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(false))),
 
-    libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+    libraryDependencies += Dependencies.sbtJunitInterface % Test,
 
     // If someone puts a source file at the root (e.g., for manual testing),
     // don't pick it up as part of any project.
@@ -693,8 +693,8 @@ object Build {
       Compile / resourceDirectory := baseDirectory.value / "resources",
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
-        ("org.scala-sbt" %% "zinc-apiinfo" % "1.12.0" % Test).cross(CrossVersion.for3Use2_13),
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        (Dependencies.sbtZincApiInfo % Test).cross(CrossVersion.for3Use2_13),
+        Dependencies.sbtJunitInterface % Test,
       ),
       // Exclude the transitive dependencies from `zinc-apiinfo` that causes issues at the moment
       excludeDependencies ++= Seq(
@@ -798,8 +798,8 @@ object Build {
       Compile / resourceDirectory := baseDirectory.value / "resources",
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
-        ("org.scala-sbt" %% "zinc-apiinfo" % "1.12.0" % Test).cross(CrossVersion.for3Use2_13),
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        (Dependencies.sbtZincApiInfo % Test).cross(CrossVersion.for3Use2_13),
+        Dependencies.sbtJunitInterface % Test,
         ),
       // Packaging configuration of `scala3-sbt-bridge`
       Compile / packageBin / publishArtifact := true,
@@ -901,15 +901,15 @@ object Build {
       Test    / publishArtifact := false,
       publish / skip := false,
       libraryDependencies ++= Seq(
-        "org.jline" % "jline-reader" % "4.0.14",
-        "org.jline" % "jline-terminal" % "4.0.14",
-        "org.jline" % "jline-terminal-jni" % "4.0.14",
-        "com.lihaoyi" %% "pprint"     % "0.9.3",
-        "com.lihaoyi" %% "fansi"      % "0.5.1",
-        "com.lihaoyi" %% "sourcecode" % "0.4.4",
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "io.get-coursier" % "interface" % "1.0.29-M4", // used by the REPL for dependency resolution
-        "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
+        Dependencies.jlineReader,
+        Dependencies.jlineTerminal,
+        Dependencies.jlineTerminalJni,
+        Dependencies.pprint,
+        Dependencies.fansi,
+        Dependencies.sourcecode,
+        Dependencies.sbtJunitInterface % Test,
+        Dependencies.coursierInterface, // used by the REPL for dependency resolution
+        Dependencies.usingDirectives, // used by the REPL for parsing magic comments
       ),
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
@@ -1032,8 +1032,8 @@ object Build {
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
+        Dependencies.sbtJunitInterface % Test,
+        Dependencies.scalaCheck % Test
       ),
       // We do not want to list any dependency for the stdlib
       pomPostProcess := { (node: XmlNode) =>
@@ -1122,8 +1122,8 @@ object Build {
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.scalacheck" %% "scalacheck" % "1.19.0" % Test
+        Dependencies.sbtJunitInterface % Test,
+        Dependencies.scalaCheck % Test
       ),
       // We do not want to list any dependency for the stdlib
       pomPostProcess := { (node: XmlNode) =>
@@ -1237,8 +1237,8 @@ object Build {
           || file._2.endsWith("UnitOps.tasty")         || file._2.endsWith("UnitOps.class") || file._2.endsWith("UnitOps$.class")
           || file._2.endsWith("AnonFunctionXXL.tasty") || file._2.endsWith("AnonFunctionXXL.class"))
       },
-      libraryDependencies += ("org.scala-js" %% "scalajs-library" % scalaJSVersion % Provided).cross(CrossVersion.for3Use2_13),
-      libraryDependencies += ("org.scala-js" % "scalajs-javalib" % scalaJSVersion),
+      libraryDependencies += (Dependencies.scalaJsLibrary % Provided).cross(CrossVersion.for3Use2_13),
+      libraryDependencies += (Dependencies.scalaJsJavalib),
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala-library",
       autoScalaLibrary := false,
@@ -1319,7 +1319,7 @@ object Build {
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-non-bootstrapped",
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        Dependencies.sbtJunitInterface % Test,
       ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
@@ -1361,7 +1361,7 @@ object Build {
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
       // Add all the project's external dependencies
       libraryDependencies ++= Seq(
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        Dependencies.sbtJunitInterface % Test,
       ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
@@ -1410,10 +1410,10 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
-        Dependencies.compilerInterface,
-        ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
+        Dependencies.sbtJunitInterface % Test,
+        Dependencies.asm,
+        Dependencies.sbtCompilerInterface,
+        (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
@@ -1453,7 +1453,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+        (Dependencies.scalaJsIr % "sourcedeps").cross(CrossVersion.for3Use2_13),
       // Silence `using` clause warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
@@ -1546,10 +1546,10 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1",
-        Dependencies.compilerInterface,
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
-        ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
+        Dependencies.asm,
+        Dependencies.sbtCompilerInterface,
+        Dependencies.sbtJunitInterface % Test,
+        (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
       ),
       // Specify the default entry point of the compiler
       Compile / mainClass := Some("dotty.tools.dotc.Main"),
@@ -1577,7 +1577,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+        (Dependencies.scalaJsIr % "sourcedeps").cross(CrossVersion.for3Use2_13),
       // Silence `using` clause warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
@@ -1680,10 +1680,10 @@ object Build {
       Test / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // All the dependencies needed by the doctool
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.9.2.3",
-        "org.jsoup" % "jsoup" % "1.22.2", // Needed to process .html files for static site
-        Dependencies.`jackson-dataformat-yaml`,
-        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+        Dependencies.liqp,
+        Dependencies.jsoup, // Needed to process .html files for static site
+        Dependencies.jacksonDataformatYaml,
+        Dependencies.sbtJunitInterface % Test,
       ),
       Compile / scalacOptions += "-experimental",
       // Packaging configuration of the stdlib
@@ -1955,12 +1955,12 @@ object Build {
   lazy val presentationCompilerSettings = {
     Seq(
       libraryDependencies ++= Seq(
-        "org.lz4" % "lz4-java" % "1.8.1",
-        "io.get-coursier" % "interface" % "1.0.29-M4",
-        "org.scalameta" % "mtags-interfaces" % mtagsVersion,
-        "com.google.guava" % "guava" % "33.6.0-jre",
+        Dependencies.lz4,
+        Dependencies.coursierInterface,
+        Dependencies.mtagsInterfaces,
+        Dependencies.guava,
       ),
-      libraryDependencies += ("org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion % SourceDeps),
+      libraryDependencies += (Dependencies.mtagsShared % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       publishLocal := publishLocal.dependsOn( // It is best to publish all together. It is not rare to make changes in both compiler / presentation compiler and it can get misaligned
@@ -2017,8 +2017,8 @@ object Build {
     settings(commonBootstrappedSettings).
     settings(
       libraryDependencies ++= Seq(
-        "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0",
-        Dependencies.`jackson-databind`
+        Dependencies.lsp4j,
+        Dependencies.jacksonDatabind
       ),
       // Exclude the dependency that is resolved transively, the stdlib
       // is a project dependency instead
@@ -2129,7 +2129,7 @@ object Build {
 
       // We need JUnit in the Compile configuration
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
+        (Dependencies.scalaJsJunitTestRuntime).cross(CrossVersion.for3Use2_13),
 
       (Compile / sourceGenerators) += Def.task {
         import org.scalajs.linker.interface.CheckedBehavior
@@ -2297,8 +2297,8 @@ object Build {
       (Test / resourceDirectory)       := baseDirectory.value / "test-resources",
       scalaVersion := (`scala3-compiler-bootstrapped` / scalaVersion).value,
       libraryDependencies ++= Seq(
-        "org.scala-js" %% "scalajs-linker" % scalaJSVersion % Test cross CrossVersion.for3Use2_13,
-        "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0" % Test cross CrossVersion.for3Use2_13,
+        Dependencies.scalaJsLinker % Test cross CrossVersion.for3Use2_13,
+        Dependencies.scalaJsEnvNodeJs % Test cross CrossVersion.for3Use2_13,
       ),
 
       // Change the baseDirectory when running the tests
@@ -2380,7 +2380,7 @@ object Build {
     dependsOn(`scala3-library-sjs`).
     settings(
       commonBootstrappedSettings,
-      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.1"))
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
     enablePlugins(DottyJSPlugin).
@@ -2399,7 +2399,7 @@ object Build {
       commonBootstrappedSettings,
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
-      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.1")
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
     )
 
   def generateDocumentation(configTask: Def.Initialize[Task[GenerationConfig]]) =
