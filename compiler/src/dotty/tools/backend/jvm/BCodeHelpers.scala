@@ -294,9 +294,12 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       if (toDenot(annot.tree.tpe.typeSymbol).hasAnnotation(annotationRetentionAttr))
         retentionPolicyOf(annot) == annotationRetentionRuntimeAttr
       else {
-        // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
-        // annotation is emitted with visibility `RUNTIME`
-        // dotty bug: #389
+        // The Java parser now reads `@Retention` meta-annotations on `@interface` declarations,
+        // so this branch is only reached for Java annotations that genuinely declare no
+        // `@Retention`. The JLS defaults such annotations to `CLASS` retention; dotty instead
+        // currently emits them as `RUNTIME` visible, inherited from the SI-8926 default. This
+        // is existing behavior, not a guaranteed contract — aligning with the JLS would be a
+        // valid future change. See scala/scala3#389.
         true
       }
 
