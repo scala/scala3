@@ -73,7 +73,7 @@ object JarArchive {
         case _: MalformedURLException | _: URISyntaxException => None
 
     val file = File(jarPath)
-    if !file.exists then
+    if !file.isFile then
       return Nil
 
     val baseDir = file.parent
