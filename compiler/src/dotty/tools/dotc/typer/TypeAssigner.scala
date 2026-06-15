@@ -443,7 +443,7 @@ trait TypeAssigner {
           case pt: PolyType =>
             pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
         val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
-        // Gross hack to support boostrapping with 3.8.4:
+        // Gross hack to support bootstrapping with 3.8.4:
         // PickleQuotes expected a quote closure to be of FunctionN form.
         // This is now fixed, but 3.8.4 still has the old behavior. So we cannot
         // generate closures with RefinedTypes under 3.8.4.
@@ -458,7 +458,7 @@ trait TypeAssigner {
         // expose its user-written parameter names as a dependent function
         // type, so they print and appear in capture sets as written. We do
         // this only for closures that actually carry meaningful names
-        // originating from user source .
+        // originating from user source.
         val keepsParamNamesUnderCC =
           Feature.ccEnabled
           && !ctx.erasedTypes                       // RefinedType is invalid after erasure
