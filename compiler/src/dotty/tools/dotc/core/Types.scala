@@ -817,7 +817,14 @@ object Types extends TypeUtils {
      *  contains private members, also look for shadowed non-private implicits.
      */
     def implicitMembersNamed(name: Name)(using Context): List[SingleDenotation] =
-      val d = member(name)
+      implicitAltsOf(member(name), name)
+
+    /** The implicit alternatives selected from an already-resolved member denotation `d`
+     *  (the result of `member(name)`). If there are none and `d` contains private members,
+     *  also look for shadowed non-private implicits. Shared by `implicitMembersNamed` and
+     *  the receiver-hoisted gather in `implicitMembers`.
+     */
+    private def implicitAltsOf(d: Denotation, name: Name)(using Context): List[SingleDenotation] =
       val alts = d.altsWith(_.isOneOf(GivenOrImplicitVal))
       if alts.isEmpty && d.hasAltWith(_.symbol.is(Private)) then
         nonPrivateMember(name).altsWith(_.isOneOf(GivenOrImplicitVal))
@@ -1162,9 +1169,66 @@ object Types extends TypeUtils {
     /** The set of implicit term members of this type */
     final def implicitMembers(using Context): List[TermRef] = {
       record("implicitMembers")
-      memberDenots(implicitFilter,
-          (name, buf) => buf ++= implicitMembersNamed(name))
-        .toList.map(d => TermRef(this, d.symbol.asTerm))
+      // The receiver `this` and the prefix derived from it by `memberBasedOnFlags`
+      // are loop-invariant across all names looked up by an `implicitMembers` call.
+      // For receivers that `findMember`'s `go` peels deterministically (independent of
+      // `name`/`pre`) to a single `ClassDenotation` — the dominant companion-`TermRef`
+      // case — we resolve that `ClassDenotation` and the prefix ONCE, then look up each
+      // name directly via `cd.findMember(name, pre, ...)`. This is the exact terminal call
+      // `member(name)` reaches per name (`member` -> `memberBasedOnFlags` -> `pre =
+      // widenIfUnstable` -> `findMember(name, pre)` -> `go(this)` -> `cd.findMember(...)`),
+      // so the resulting denotation — and hence the `TermRef(this, sym)` built from it — is
+      // identical; only the per-name receiver re-peel + prefix recomputation is removed.
+      // For any receiver shape `go`'s result depends on (And/Or/Refined/self-typed `This`/
+      // overloaded `TermRef`/...), we leave `cd` null and fall back to the per-name `member()`.
+      val buf = mutable.ListBuffer[SingleDenotation]()
+      val cd = implicitScopeClassDenot
+      if cd != null then
+        val pre = this match
+          case tp: ClassInfo => tp.appliedRef
+          case _ => widenIfUnstable
+        for name <- memberNames(implicitFilter) do
+          buf ++= implicitAltsOf(cd.findMember(name, pre, EmptyFlags, EmptyFlags), name)
+      else
+        for name <- memberNames(implicitFilter) do buf ++= implicitMembersNamed(name)
+      buf.toList.map(d => TermRef(this, d.symbol.asTerm))
+    }
+
+    /** If `findMember`'s `go(this)` peels this receiver — independently of the looked-up
+     *  `name` and the prefix — down to a single `ClassDenotation` whose `findMember` is the
+     *  terminal call (with no further post-transformation of the result), return that
+     *  `ClassDenotation`; otherwise return `null`. This mirrors exactly the `name`-independent
+     *  structural arms of `go`, so for every receiver it accepts, looking each name up via the
+     *  returned `cd.findMember(name, pre, ...)` is byte-equivalent to per-name `member(name)`.
+     */
+    private def implicitScopeClassDenot(using Context): ClassDenotation | Null = {
+      @tailrec def peel(tp: Type): ClassDenotation | Null = tp match
+        case tp: TermRef =>
+          val denot = tp.denot
+          if denot.isOverloaded then null
+          else
+            val next = denot.info match
+              case mt: MethodType
+              if mt.paramInfos.isEmpty && denot.symbol.is(StableRealizable) => mt.resultType
+              case tp1 => tp1
+            peel(next)
+        case tp: TypeRef =>
+          tp.denot match
+            case d: ClassDenotation => d
+            case d => peel(d.info)
+        case tp: AppliedType =>
+          tp.tycon match
+            case tc: TypeRef if tc.symbol.isClass =>
+              tc.denot match
+                case d: ClassDenotation => d
+                case d => peel(d.info)
+            case _ => null
+        case tp: ClassInfo => tp.cls.classDenot
+        // The remaining `go` arms (ThisType/RefinedType/RecType/TypeParamRef/SuperType/
+        // MatchType/AndType/OrType/non-class TypeProxy/...) either depend on `name`/`pre`
+        // or post-transform the looked-up denotation, so they are not hoistable here.
+        case _ => null
+      peel(this)
     }
 
     /** The set of member classes of this type */
