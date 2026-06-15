@@ -4,7 +4,7 @@ package parsing
 
 import scala.annotation.tailrec
 import scala.annotation.threadUnsafe as tu
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import scala.collection.immutable.BitSet
 import util.{SourceFile, SourcePosition, NoSourcePosition, SrcPos}
 import Tokens.*
@@ -1415,7 +1415,7 @@ object Parsers {
         literal(inTypeOrSingleton = true)
 
     /** Literal           ::=  SimpleLiteral
-     *                      |  processedStringLiteral
+     *                      |  interpolatedString
      *                      |  symbolLiteral
      *                      |  ‘null’
      *
@@ -1520,48 +1520,51 @@ object Parsers {
     private val interpolatorsFromAny = Set(nme.toString_, nme.hashCode_, nme.getClass_, nme.synchronized_, nme.eq, nme.ne)
 
     private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
-      val segmentBuf = new ListBuffer[Tree]
+      val segmentBuf = new ArrayBuffer[Tree]
       val interpolator = in.name.nn
       val startOffset = in.charOffset
       in.nextToken()
+
+      def interpolationExpr() = atSpan(in.offset):
+        if in.token == IDENTIFIER then
+          termIdent()
+        else if in.token == USCORE && inPattern then
+          in.nextToken()
+          Ident(nme.WILDCARD)
+        else if in.token == THIS then
+          in.nextToken()
+          This(EmptyTypeIdent)
+        else if in.token == LBRACE then
+          if inPattern then Block(Nil, inBraces(pattern()))
+          else expr()
+        else
+          report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
+          EmptyTree
+
       def nextSegment(literalOffset: Offset) =
         segmentBuf += Thicket(
-            literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
-            atSpan(in.offset) {
-              if (in.token == IDENTIFIER)
-                termIdent()
-              else if (in.token == USCORE && inPattern) {
-                in.nextToken()
-                Ident(nme.WILDCARD)
-              }
-              else if (in.token == THIS) {
-                in.nextToken()
-                This(EmptyTypeIdent)
-              }
-              else if (in.token == LBRACE)
-                if (inPattern) Block(Nil, inBraces(pattern()))
-                else expr()
-              else {
-                report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
-                EmptyTree
-              }
-            })
+          literal(literalOffset, inPattern = inPattern, inStringInterpolation = true),
+          interpolationExpr())
 
       var offsetCorrection = in.delimCount
       while in.token == STRINGPART do
         nextSegment(in.offset + offsetCorrection)
         offsetCorrection = 0
-      var delimChar = '"'
+
       if in.token == STRINGLIT then
-        delimChar = in.delimChar
+        val dedentWidth =
+          if in.delimChar == '\''
+          then trim.lastIndent(in.strVal.nn.toCharArray)
+          else null
         segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
+        if dedentWidth != null then
+          for i <- 0 until segmentBuf.length do
+            segmentBuf(i) = trim(segmentBuf(i), dedentWidth, isFirst = i == 0, isLast = i == segmentBuf.length - 1)
 
       if interpolatorsFromAny(interpolator) then
         report.warning(UseOfAnyMethodAsInterpolator(interpolator), source.atSpan(Span(startOffset, in.charOffset)))
 
-      var segments = segmentBuf.toList
-      if delimChar == '\'' then segments = trim(segments)
-      InterpolatedString(interpolator, segments)
+      InterpolatedString(interpolator, segmentBuf.toList)
     }
 
     /** Trimming '''-enclosed strings */
@@ -1569,11 +1572,10 @@ object Parsers {
 
       private case class Cut(val offset: Int, val length: Int)
 
-      private def shorten(cs: Array[Char], cuts: List[Cut]): Array[Char] =
+      private def shorten(cs: Array[Char], cuts: List[Cut]): String =
         val totalCutSize = cuts.map(_.length).sum
         if totalCutSize > cs.length then
-          // happens for empty '''-enclosed literals since the \n is counted twice
-          new Array[Char](0)
+          "" // happens for empty '''-enclosed literals since the \n is counted twice
         else
           val target = new Array[Char](cs.length - totalCutSize)
           def recur(cuts: List[Cut], fromIdx: Int, toIdx: Int): Unit = cuts match
@@ -1586,7 +1588,7 @@ object Parsers {
               Array.copy(cs, fromIdx, target, toIdx, len)
               recur(cuts1, offset + length, toIdx + len)
           recur(cuts, 0, 0)
-          target
+          new String(target)
 
       /** Trim the start of a '''-literal, up to and including the first \n.
        *  This must be all whitespace.
@@ -1640,51 +1642,29 @@ object Parsers {
       def lastIndent(cs: Array[Char]): IndentWidth =
         in.indentWidth(cs.length, cs)
 
+      private def trimAll(cs: Array[Char], width: IndentWidth, strOffset: Int,
+                          isFirst: Boolean, isLast: Boolean): String =
+        val startCuts = if isFirst then trimStart(cs, strOffset) else Nil
+        var leftCuts = trimLeft(cs, width, strOffset)
+        if isLast then
+          leftCuts = leftCuts.dropRight(1) // last trimLeft overlaps with trimEnd
+        val endCuts = if isLast then trimEnd(cs, strOffset) else Nil
+        shorten(cs, startCuts ++ leftCuts ++ endCuts)
+
       /** Trim a non-interpolated '''-enclosed string `str`.
        *  The string without leading quotes starts at `strOffset`.
        */
       def apply(str: String, strOffset: Int): String =
         val cs = str.toCharArray()
-        val cuts =
-          trimStart(cs, strOffset)
-          ++ trimLeft(cs, lastIndent(cs), strOffset).dropRight(1) // last trimLeft overlaps with trimEnd
-          ++ trimEnd(cs, strOffset)
-        new String(shorten(cs, cuts))
+        trimAll(cs, lastIndent(cs), strOffset, isFirst = true, isLast = true)
 
-      /** Trim a '''-enclosed interpolated string literal with `trees` representing the parts
-       *  that are not interpolated.
-       */
-      def apply(trees: List[Tree]): List[Tree] =
-        val ts = trees.toArray
-        val css = ts.map:
-            case Thicket(lit :: _) => lit
-            case lit => lit
-          .collect:
-            case Literal(Constant(str: String)) => str.toCharArray
-        if ts.length > 0 && css.length == ts.length then
-          val last = ts.length - 1
-          val width = lastIndent(css(last))
-          val result =
-            for i <- 0 to last yield
-              val segment = ts(i)
-              val cs = css(i)
-              val strOffset = segment.span.start
-              val startCuts = if i == 0 then trimStart(cs, strOffset) else Nil
-              var leftCuts = trimLeft(cs, width, strOffset)
-              if i == last then
-                leftCuts = leftCuts.dropRight(1) // last trimLeft overlaps with trimEnd
-              val endCuts = if i == last then trimEnd(cs, strOffset) else Nil
-              val trimmed = shorten(cs, startCuts ++ leftCuts ++ endCuts)
-              if trimmed.length == cs.length then segment
-              else
-                def trimmedLit(lit: Tree) =
-                  cpy.Literal(lit)(Constant(new String(trimmed)))
-                segment match
-                  case Thicket(lit :: rest) => Thicket(trimmedLit(lit) :: rest)
-                  case lit => trimmedLit(lit)
-          result.toList
-        else
-          trees
+      /** Trim part of '''-enclosed interpolated string literal */
+      def apply(tree: Tree, width: IndentWidth, isFirst: Boolean, isLast: Boolean): Tree = tree match
+        case Thicket(lit :: rest) =>
+          Thicket(apply(lit, width, isFirst, isLast) :: rest)
+        case Literal(Constant(str: String)) =>
+          val trimmed = trimAll(str.toCharArray, width, tree.span.start, isFirst, isLast)
+          cpy.Literal(tree)(Constant(trimmed))
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
