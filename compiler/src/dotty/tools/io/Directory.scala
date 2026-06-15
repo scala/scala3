@@ -15,12 +15,6 @@ import java.nio.file.{Files, Paths}
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object Directory {
-  import scala.util.Properties.userDir
-
-  def Current: Option[Directory] =
-    if (userDir == "") None
-    else Some(apply(userDir).normalize)
-
   def inTempDirectory[T](fn: Directory => T): T = {
     val temp = Directory(Files.createTempDirectory("temp"))
     try fn(temp)
@@ -60,14 +54,4 @@ class Directory(jpath: JPath) extends Path(jpath) {
 
   override def walkFilter(cond: Path => Boolean): Iterator[Path] =
     list.filter(cond).flatMap(_.walkFilter(cond))
-
-  def deepFiles: Iterator[File] = Path.onlyFiles(deepList())
-
-  /** If optional depth argument is not given, will recurse
-   *  until it runs out of contents.
-   */
-  def deepList(depth: Int = -1): Iterator[Path] =
-    if (depth < 0) list ++ dirs.flatMap(_.deepList(depth))
-    else if (depth == 0) Iterator.empty
-    else list ++ dirs.flatMap(_.deepList(depth - 1))
 }
