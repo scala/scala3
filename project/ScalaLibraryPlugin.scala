@@ -16,8 +16,6 @@ import com.spotify.missinglink.Conflict
 import sbtcompat.PluginCompat.*
 import xsbti.FileConverter
 
-import dotty.tools.tasty.TastyHeaderUnpickler
-
 object ScalaLibraryPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
