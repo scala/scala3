@@ -175,7 +175,7 @@ class StringOpsTest {
     // Should skip the low surrogate because it belongs to a valid pair
     assertSameElements(s"a${pair}b".split(low), Array(s"a${pair}b"))
 
-    // CRITICAL EDGE CASE: Over-trimming recovery
+    // Edge case: Over-trimming recovery
     // The while loop initially trims the trailing `low` char. 
     // However, because it's preceded by a `high` char, it forms a valid pair and MUST be restored.
     assertSameElements(s"a${pair}".split(low), Array(s"a${pair}"))
