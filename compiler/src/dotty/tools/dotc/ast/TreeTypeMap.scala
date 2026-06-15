@@ -134,7 +134,7 @@ class TreeTypeMap(
           res.symbol.transformAnnotations {
             case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))
             case ann => ann
-          } 
+          }
           res
         case tdef @ LambdaTypeTree(tparams, body) =>
           val (tmap1, tparams1) = transformDefs(tparams)
