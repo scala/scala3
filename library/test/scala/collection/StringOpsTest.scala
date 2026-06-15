@@ -139,4 +139,45 @@ class StringOpsTest {
     do
       assertSameElements(s.split(separator), s.split(s"$separator"))
   }
+
+  @Test def splitByCharExamples: Unit = {
+    assertSameElements("a,b,c".split(','), Array("a", "b", "c"))
+
+    assertSameElements("abc".split(','), Array("abc"))
+
+    assertSameElements(",a,b".split(','), Array("", "a", "b"))
+    assertSameElements("a,,b".split(','), Array("a", "", "b"))
+
+    // Edge cases:
+    assertSameElements("a,b,,,".split(','), Array("a", "b"))
+    assertSameElements("".split(','), Array(""))
+    assertSameElements(",,,".split(','), Array.empty)
+  }
+
+  @Test def splitBySurrogateCharExamples: Unit = {
+    val high = '\uD83D' // High surrogate
+    val low  = '\uDE00' // Low surrogate
+    val pair = "\uD83D\uDE00" // Valid surrogate pair
+
+    // --- HIGH SURROGATE SPLITS ---
+    
+    // Basic isolated high surrogate split
+    assertSameElements(s"a${high}b".split(high), Array("a", "b"))
+
+    // Should skip the high surrogate because it belongs to a valid pair
+    assertSameElements(s"a${pair}b".split(high), Array(s"a${pair}b"))
+
+    // --- LOW SURROGATE SPLITS ---
+    
+    // Basic isolated low surrogate split
+    assertSameElements(s"a${low}b".split(low), Array("a", "b"))
+
+    // Should skip the low surrogate because it belongs to a valid pair
+    assertSameElements(s"a${pair}b".split(low), Array(s"a${pair}b"))
+
+    // CRITICAL EDGE CASE: Over-trimming recovery
+    // The while loop initially trims the trailing `low` char. 
+    // However, because it's preceded by a `high` char, it forms a valid pair and MUST be restored.
+    assertSameElements(s"a${pair}".split(low), Array(s"a${pair}"))
+  }
 }
