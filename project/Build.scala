@@ -985,14 +985,12 @@ object Build {
       moduleName    := "scala2-library",
       scalaVersion  := Versions.scala2Version,
       version       := scalaVersion.value,
-      // Remove Scala 3 specific settings (and the unused params one, which is an issue that should be fixed in the 2.x stdlib)
-      scalacOptions --= Seq(
-        // "--java-output-version:17",
-        "-Yexplicit-nulls",
-        "-Wsafe-init",
-        "-Wunused:params"
-      ),
-      scalacOptions ++= Seq(
+      // This project uses Scala 2.13; replace inherited Scala 3 ThisBuild scalacOptions entirely.
+      Compile / scalacOptions := Seq(
+        "-feature",
+        "-deprecation",
+        "-unchecked",
+        "-encoding", "UTF8",
         "-release:17",
         s"-sourcepath:${(Compile / sourceDirectory).value}",
         "-opt:local", // Important: local optimization are fine, inlining is prohibited!
