@@ -1361,7 +1361,6 @@ object Scanners {
             nextChar()
             emptyString()
         else
-          assert(delimChar == '"') // fetchString is only called with leading "''".
           stringPart()
       else
         nextChar()
@@ -1374,7 +1373,6 @@ object Scanners {
           else
             emptyString()
         else
-          assert(delimChar == '"') // fetchString is only called with leading "''".
           getStringLit()
 
     def fetchStringPart(r: InString) =

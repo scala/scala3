@@ -1,4 +1,3 @@
-// scalajs: --skip
 @main def Test =
 
   val plain = '''
@@ -7,7 +6,7 @@
     '''
   println(s"[$plain]")
 
-  val foo = 3.0
+  val foo = 3.5
 
   val interpolated = s'''
     $foo is

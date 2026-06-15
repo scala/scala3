@@ -1,13 +1,13 @@
 [hello
 world!]
-[3.0 is
+[3.5 is
 three]
 [this is a
 ''' string]
 [this is a
-''' string 3.0]
+''' string 3.5]
 ["
     this is a
-    ''' string 3.0
+    ''' string 3.5
     "]
 []
