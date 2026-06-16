@@ -6,7 +6,7 @@ import scala.language.unsafeNulls
 
 import java.io.{File as JFile, PrintStream}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, NoSuchFileException, Paths}
+import java.nio.file.{AccessDeniedException, Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
@@ -1273,10 +1273,19 @@ trait ParallelTesting extends RunnerOrchestration:
 
     private def delete(file: JFile): Unit = {
       if (file.isDirectory) listFilesOrEmpty(file).foreach(delete)
-      try Files.delete(file.toPath)
-      catch {
-        case _: NoSuchFileException => // already deleted, everything's fine
-      }
+      def tryDelete(retries: Int): Unit =
+        try Files.delete(file.toPath)
+        catch {
+          case _: NoSuchFileException => // already deleted, everything's fine
+          case _: AccessDeniedException if retries > 0 =>
+            // On Windows, files may be temporarily locked by other processes
+            Thread.sleep(50)
+            tryDelete(retries - 1)
+          case _: AccessDeniedException =>
+            // If still locked after retries, mark for deletion on JVM exit
+            file.deleteOnExit()
+        }
+      tryDelete(retries = 3)
     }
   }
 
