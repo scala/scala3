@@ -1,23 +1,52 @@
-import caps.{any, Classifier, Control, SharedCapability}
+import caps.{any, Classifier, Control, SharedCapability, Unscoped}
 
-trait C extends SharedCapability, Classifier
-trait C1 extends C, Classifier
+// A classifier hierarchy:   SharedCapability        ExclusiveCapability
+//                            /          \                  |
+//                        Control       IOCap            Unscoped
+//                                        |
+//                                      NetCap
+trait IOCap  extends SharedCapability, Classifier
+trait NetCap extends IOCap, Classifier
+class Label  extends Control
+class Net    extends NetCap
+class Uns    extends Unscoped
 
-class Label extends Control
+def widening(c: Object^): Unit =
+  // {c.except[C]} <: {c}
+  val x1: Object^{c.except[IOCap]} = ???
+  val y1: Object^{c}               = x1
 
-def test(c: Object^): Unit =
-  val x1: Object^{c.except[C1]} = ???
-  val y1: Object^{c} = x1            // {c.except[C1]} <: {c}
-  val x2: Object^{c.only[C].except[C1]} = ???
-  val y2: Object^{c.only[C]} = x2    // {c.only[C].except[C1]} <: {c.only[C]}
-  val y3: Object^{c} = x2            // ... and transitively {c.only[C].except[C1]} <: {c}
-  val x3: Object^{c.except[C1].rd} = ???
-  val y4: Object^{c.rd} = x3         // {c.except[C1].rd} <: {c.rd}
-  val x4: Object^{c.except[C]} = ???
-  val y5: Object^{c.except[C1]} = x4 // {c.except[C]} <: {c.except[C1]} since C1 extends C
+def monotonicity(c: Object^): Unit =
+  // excluding a larger subtree yields a smaller capture set:
+  // {c.except[IOCap]} <: {c.except[NetCap]}   since NetCap extends IOCap
+  val x: Object^{c.except[IOCap]}  = ???
+  val y: Object^{c.except[NetCap]} = x
 
-def testEmpty(l: Label^): Unit =
-  // The exclusion removes everything `l` could capture, so the
-  // capture set {l.except[Control]} is known to be empty.
-  val x: Object^{l.except[Control]} = ???
-  val y: Object = x
+def onlyThenExcept(c: Object^): Unit =
+  // {c.only[IOCap].except[NetCap]} <: {c.only[IOCap]} <: {c}
+  val x: Object^{c.only[IOCap].except[NetCap]} = ???
+  val y: Object^{c.only[IOCap]}                = x
+  val z: Object^{c}                            = x
+
+def readOnlyComposition(c: Object^): Unit =
+  // {c.except[IOCap].rd} <: {c.rd}
+  val x: Object^{c.except[IOCap].rd} = ???
+  val y: Object^{c.rd}               = x
+
+def unrelatedExclusionIsVacuous(c: Object^): Unit =
+  // Control is unrelated to IOCap, so excluding it from c.only[IOCap] removes
+  // nothing: {c.only[IOCap].except[Control]} =:= {c.only[IOCap]}.
+  val a: Object^{c.only[IOCap]}                 = ???
+  val b: Object^{c.only[IOCap].except[Control]} = a
+  val c2: Object^{c.only[IOCap]}                = b
+
+def excludingAnAncestor(l: Label^): Unit =
+  // Label is a Control, which extends SharedCapability; excluding SharedCapability
+  // removes everything Label could be, so {l.except[SharedCapability]} is empty.
+  val x: Object^{l.except[SharedCapability]} = ???
+  val y: Object                              = x
+
+def unscopedIsDisjointFromShared(u: Uns^): Unit =
+  // Unscoped and SharedCapability are unrelated branches, so the exclusion keeps u.
+  val x: Object^{u.except[SharedCapability]} = ???
+  val y: Object^{u}                          = x
