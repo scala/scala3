@@ -8,6 +8,7 @@ import scala.util.Properties
 
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.semanticdb
+import dotty.tools.dotc.semanticdb.TextDocument
 import dotty.tools.dotc.util.SourceFile
 
 class SemanticdbTextDocumentProvider(
@@ -19,6 +20,12 @@ class SemanticdbTextDocumentProvider(
       uri: URI,
       sourceCode: String
   ): Array[Byte] =
+    textDocumentData(uri, sourceCode).toByteArray
+
+  def textDocumentData(
+      uri: URI,
+      sourceCode: String
+  ): TextDocument =
     val filePath = Paths.get(uri).nn
     val validCode = removeMagicImports(sourceCode, filePath)
     driver.run(
@@ -36,6 +43,6 @@ class SemanticdbTextDocumentProvider(
       }
       .getOrElse(filePath.toString())
 
-    semanticdb.textDocumentBytes(tree, path.nn, sourceCode)(using driver.currentCtx)
+    semanticdb.textDocument(tree, path.nn, sourceCode)(using driver.currentCtx)
 
 end SemanticdbTextDocumentProvider

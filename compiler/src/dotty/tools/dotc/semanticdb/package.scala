@@ -22,9 +22,13 @@ package object semanticdb {
 
   /** Serializes a SemanticDB text document as bytes for the given tree, path, and textual source code. */
   def textDocumentBytes(tree: tpd.Tree, path: String, sourceCode: String)(using Context): Array[Byte] =
+    textDocument(tree, path, sourceCode).toByteArray
+
+  /** Creates a SemanticDB text document for the given tree, path, and textual source code. */
+  def textDocument(tree: tpd.Tree, path: String, sourceCode: String)(using Context): TextDocument =
     val extractor = ExtractSemanticDB.Extractor()
     extractor.traverse(tree)
-    val document = TextDocument(
+    TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = path,
@@ -33,11 +37,6 @@ package object semanticdb {
       symbols = extractor.symbolInfos.toList,
       occurrences = extractor.occurrences.toList
     )
-    val byteStream = new ByteArrayOutputStream()
-    val out = SemanticdbOutputStream.newInstance(byteStream)
-    document.writeTo(out)
-    out.flush()
-    byteStream.toByteArray.nn
 
   /** Gets SemanticDB symbols from the given name. */
   def symbolsFromName(sym: String)(using ctx: Context): List[Symbol] =
