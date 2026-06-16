@@ -9,6 +9,16 @@ object MiMaFilters {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
       Versions.mimaPreviousDottyVersion -> Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.freeze"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.package#package.cap"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.Function1$UnliftOps$"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.jdk.Accumulator$AccumulatorFactoryShape$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.safe"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$safe$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language.safeNulls"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$safeNulls$"),
         // new feature: CanEqual support for NamedTuple
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
         // IArray integration with Scala Collections:

@@ -70,7 +70,7 @@ private[collection] object RedBlackTree {
       } else tree.black
     }
     /** Creates a new balanced tree where `newLeft` replaces `tree.left`.
-     *  tree and newLeft are never null 
+     *  tree and newLeft are never null
      *
      *  @tparam A1 the key type of the tree
      *  @tparam B the original value type of the tree
@@ -120,7 +120,7 @@ private[collection] object RedBlackTree {
       }
     }
     /** Creates a new balanced tree where `newRight` replaces `tree.right`.
-     *  tree and newRight are never null 
+     *  tree and newRight are never null
      *
      *  @tparam A1 the key type of the tree
      *  @tparam B the original value type of the tree

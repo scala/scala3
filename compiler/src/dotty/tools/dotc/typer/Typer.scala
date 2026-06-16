@@ -1343,8 +1343,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (untpd.isWildcardStarArg(tree)) {
 
       def fromRepeated(pt: Type): Type = pt match
-        case pt: FlexibleType =>
-          pt.derivedFlexibleType(fromRepeated(pt.hi))
+        case pt @ FlexibleType(hi) =>
+          FlexibleType.derivedFlexibleType(pt, fromRepeated(hi))
         case _ =>
           if ctx.mode.isQuotedPattern then
             // FIXME(#8680): Quoted patterns do not support Array repeated arguments
@@ -1669,8 +1669,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+        val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
+        // Discard a `then` value that only *conforms* to `Unit` (e.g. a Java
+        // `FlexibleType[Unit]`, as returned by `Map[K, Unit].put`) so the branch is
+        // actually `Unit`. Otherwise `assignType(If)`'s lub (used when the tree is
+        // unpickled or rebuilt) recomputes the `if` to `lub(FlexibleType[Unit], Unit) =
+        // FlexibleType[Unit]` and disagrees with the `Unit` hardcoded here, breaking TASTY
+        // pickling round-trips. (The previous `FlexibleType` representation hid this: being
+        // a freshly-allocated proxy rather than a hash-consed `AppliedType`, it failed the
+        // `eq` check in `TypedTreeCopier.If`, forcing that copier to recompute the `if` to
+        // the same lub the unpickler uses.)
+        val thenp1 =
+          if FlexibleType.isInstance(thenp0.tpe.widenExpr)
+          then tpd.Block(thenp0 :: Nil, tpd.unitLiteral.withSpan(tree.span.endPos))
+          else thenp0
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
@@ -1991,8 +2004,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val t1 = instantiatableTypeVar(tp.tp1)
         if t1.exists then t1
         else instantiatableTypeVar(tp.tp2)
-      case tp: FlexibleType =>
-        instantiatableTypeVar(tp.hi)
+      case FlexibleType(hi) =>
+        instantiatableTypeVar(hi)
       case tp: TypeVar if isConstrainedByFunctionType(tp) =>
         // Only instantiate if the type variable is constrained by function types
         tp
@@ -2007,8 +2020,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case SAMType(_, _) => true
         case tp: AndOrType =>
           containsFunctionType(tp.tp1) || containsFunctionType(tp.tp2)
-        case tp: FlexibleType =>
-          containsFunctionType(tp.hi)
+        case FlexibleType(hi) =>
+          containsFunctionType(hi)
         case _ => false
       containsFunctionType(bounds.lo) || containsFunctionType(bounds.hi)
 

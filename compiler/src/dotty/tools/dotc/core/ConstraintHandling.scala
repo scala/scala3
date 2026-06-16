@@ -715,8 +715,8 @@ trait ConstraintHandling {
       tp.rebind(tp.parent.hardenUnions)
     case tp: HKTypeLambda =>
       tp.derivedLambdaType(resType = tp.resType.hardenUnions)
-    case tp: FlexibleType =>
-      tp.derivedFlexibleType(tp.hi.hardenUnions)
+    case tp @ FlexibleType(hi) =>
+      FlexibleType.derivedFlexibleType(tp, hi.hardenUnions)
     case tp: OrType =>
       val tp1 = tp.stripNull(stripFlexibleTypes = false)
       if tp1 ne tp then tp.derivedOrType(tp1.hardenUnions, defn.NullType, soft = false)

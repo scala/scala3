@@ -436,6 +436,17 @@ class Definitions {
     newPermanentSymbol(OpsPackageClass, tpnme.FromJavaObject, JavaDefined, TypeAlias(ObjectType)).entered
   def FromJavaObjectType: TypeRef = FromJavaObjectSymbol.typeRef
 
+  @tu lazy val FlexibleTypeSymbol: TypeSymbol =
+    newPermanentSymbol(ScalaPackageClass, tpnme.FlexibleType, EmptyFlags, TypeBounds(
+      HKTypeLambda(TypeBounds.empty :: Nil)(
+        tl => OrNull(tl.paramRefs(0))
+      ),
+      HKTypeLambda(TypeBounds.empty :: Nil)(
+        tl => tl.paramRefs(0)
+      )
+    )).entered
+  def FlexibleTypeType: TypeRef = FlexibleTypeSymbol.typeRef
+
   @tu lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType: TypeRef = AnyRefAlias.typeRef
 
@@ -1979,8 +1990,8 @@ class Definitions {
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 @ PolyFunctionOf(mt: MethodType) if mt.isContextualMethod =>
         tp1
-      case tp: FlexibleType =>
-        asContextFunctionType(tp.hi)
+      case FlexibleType(hi) =>
+        asContextFunctionType(hi)
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType

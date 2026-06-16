@@ -552,8 +552,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(using Context): List[Type] = self.stripped match
+    case FlexibleType(hi) => hi.argInfos
     case AppliedType(tycon, args) => args
-    case tp: FlexibleType => tp.underlying.argInfos
     case _ => Nil
 
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.

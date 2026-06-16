@@ -926,7 +926,7 @@ object SpaceEngine {
     case tp: SingletonType                          => toUnderlying(tp.underlying)
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
-    case tp: FlexibleType                           => tp.derivedFlexibleType(toUnderlying(tp.underlying))
+    case tp @ FlexibleType(hi)                      => FlexibleType.derivedFlexibleType(tp, toUnderlying(hi))
     case _                                          => tp
   })
 
@@ -1070,7 +1070,7 @@ object SpaceEngine {
 
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
-    val isNullable = selTyp.isInstanceOf[FlexibleType] || selTyp.classSymbol.isNullableClass
+    val isNullable = FlexibleType.isInstance(selTyp) || selTyp.classSymbol.isNullableClass
     val targetSpace = trace(i"targetSpace($selTyp)"):
       if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))

@@ -1052,6 +1052,13 @@ trait Implicits:
     // This is done to check whether such types might plausibly be comparable to each other.
     val lift = new TypeMap {
       def apply(t: Type): Type = t match {
+        case FlexibleType(hi) =>
+          // Keep the flexible wrapper (it admits null), but lift the underlying
+          // type to its upper bound like any other abstract type. Mapping the
+          // flexible type with `mapOver` instead would lift its tycon to the
+          // tycon's upper bound and collapse the flexible type entirely, losing
+          // the nullability information.
+          FlexibleType.derivedFlexibleType(t, apply(hi))
         case t: TypeRef =>
           t.info match {
             case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)

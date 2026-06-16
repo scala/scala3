@@ -1967,9 +1967,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.subst(from, to)
 
         def typeArgs: List[TypeRepr] = self match
+          // `FlexibleType` is an `AppliedType` here (opaque alias is transparent in this
+          // scope), so check it via the dotc-level extractor to avoid `case AppliedType`.
+          case _ if Types.FlexibleType.isInstance(self) => Types.FlexibleType.unapply(self).get.typeArgs
           case AppliedType(_, args) => args
           case AnnotatedType(parent, _) => parent.typeArgs
-          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
@@ -2459,24 +2461,28 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(x: NoPrefix): true = true
     end NoPrefix
 
-    type FlexibleType = dotc.core.Types.FlexibleType
+    // A flexible type is represented as an `AppliedType` over the synthetic
+    // `<FlexibleType>` symbol. We use an opaque type so that `FlexibleType` is
+    // nominally distinct from `AppliedType`, otherwise the two `TypeTest`s would
+    // be indistinguishable and `case FlexibleType(_)` could match plain applied types.
+    opaque type FlexibleType <: TypeRepr = dotc.core.Types.AppliedType
 
     object FlexibleTypeTypeTest extends TypeTest[TypeRepr, FlexibleType]:
       def unapply(x: TypeRepr): Option[FlexibleType & x.type] = x match
-        case x: (Types.FlexibleType & x.type) => Some(x)
+        case x: (Types.AppliedType & x.type) if Types.FlexibleType.isInstance(x) => Some(x)
         case _ => None
     end FlexibleTypeTypeTest
 
     object FlexibleType extends FlexibleTypeModule:
-      def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp)
-      def unapply(x: FlexibleType): Some[TypeRepr] = Some(x.hi)
+      def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp).asInstanceOf[FlexibleType]
+      def unapply(x: FlexibleType): Some[TypeRepr] = Some(Types.FlexibleType.unapply(x).get)
     end FlexibleType
 
     given FlexibleTypeMethods: FlexibleTypeMethods with
       extension (self: FlexibleType)
-        def underlying: TypeRepr = self.hi
-        def lo: TypeRepr = self.lo
-        def hi: TypeRepr = self.hi
+        def underlying: TypeRepr = Types.FlexibleType.unapply(self).get
+        def lo: TypeRepr = Types.OrNull(Types.FlexibleType.unapply(self).get)
+        def hi: TypeRepr = Types.FlexibleType.unapply(self).get
       end extension
     end FlexibleTypeMethods
 

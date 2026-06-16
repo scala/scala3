@@ -35,7 +35,6 @@ import org.eclipse.lsp4j.CompletionItem
 import org.eclipse.lsp4j.CompletionItemKind
 import org.eclipse.lsp4j.CompletionList
 import org.eclipse.lsp4j.InsertTextFormat
-import org.eclipse.lsp4j.InsertTextMode
 import org.eclipse.lsp4j.Range as LspRange
 import org.eclipse.lsp4j.TextEdit
 
@@ -81,6 +80,7 @@ class CompletionProvider(
       case Some(unit) =>
         val newctx = ctx.fresh
           .setCompilationUnit(unit)
+          .setSettings(ctx.settings.YhideFlexibleTypes.updateIn(ctx.settingsState.reinitializedCopy(), true))
           .setProfiler(Profiler()(using ctx))
           .withPhase(Phases.typerPhase(using ctx))
         val tpdPath0 = Interactive.pathTo(unit.tpdTree, pos.span)(using newctx)

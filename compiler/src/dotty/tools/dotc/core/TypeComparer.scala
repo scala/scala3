@@ -650,6 +650,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
 
     def thirdTry: Boolean = tp2 match {
+      case FlexibleType(hi2) =>
+        recur(tp1, OrNull(hi2))
       case tp2 @ AppliedType(tycon2, args2) =>
         compareAppliedType2(tp2, tycon2, args2)
       case tp2: NamedType =>
@@ -917,8 +919,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareClassInfo
-      case tp2: FlexibleType =>
-        recur(tp1, tp2.lo)
       case _ =>
         fourthTry
     }
@@ -979,6 +979,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       else fourthTry
 
     def fourthTry: Boolean = tp1 match {
+      case FlexibleType(hi1) =>
+        recur(hi1, tp2)
       case tp1: TypeRef =>
         tp1.info match {
           case info1 @ TypeBounds(lo1, hi1) =>
@@ -1127,8 +1129,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
-      case tp1: FlexibleType =>
-        recur(tp1.hi, tp2)
       case _ =>
         false
     }
@@ -1283,6 +1283,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     /** Subtype test for the hk application `tp2 = tycon2[args2]`.
      */
     def compareAppliedType2(tp2: AppliedType, tycon2: Type, args2: List[Type]): Boolean = {
+      if (FlexibleType.isInstance(tp2.widen)) return false
       val tparams = tycon2.typeParams
       if (tparams.isEmpty) return false // can happen for ill-typed programs, e.g. neg/tcpoly_overloaded.scala
 
@@ -1290,6 +1291,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
       def isMatchingApply(tp1: Type): Boolean = tp1.widen match {
+        case FlexibleType(_) => false
         case tp1 @ AppliedType(tycon1, args1) =>
           // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
           // `TypeApplications#appliedTo` already takes care of dealiasing type
@@ -1410,6 +1412,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        */
       def canInstantiate(tycon2: TypeParamRef): Boolean = {
         def appOK(tp1base: Type) = tp1base match {
+          case FlexibleType(_) => false
           case tp1base: AppliedType =>
             compareAppliedTypeParamRef(tycon2, args2, tp1base, fromBelow = true)
           case _ => false
@@ -1502,9 +1505,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     /** Subtype test for the application `tp1 = tycon1[args1]`.
      */
     def compareAppliedType1(tp1: AppliedType, tycon1: Type, args1: List[Type]): Boolean =
+      if (FlexibleType.isInstance(tp1.widen)) return false
       tycon1 match {
         case param1: TypeParamRef =>
           def canInstantiate = tp2 match {
+            case FlexibleType(_) => false
             case tp2base: AppliedType =>
               compareAppliedTypeParamRef(param1, args1, tp2base, fromBelow = false)
             case _ =>
