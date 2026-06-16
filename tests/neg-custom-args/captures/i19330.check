@@ -6,10 +6,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:17:4 ----------------------------------------
 17 |    t: x.T // error
    |    ^
-   |    Found:    () ->{t} Logger^{t*}
+   |    Found:    (t : () => Logger^)
    |    Required: x.T
    |
-   |    Note that capability `t` cannot flow into capture set {}.
+   |    Note that capability `t` cannot flow into capture set {any}.
+   |
+   |    where:    =>  refers to a root capability in the type of value t
+   |              ^   refers to a root capability in the type of value t
+   |              any is the root capability caps.any
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:22:22 ---------------------------------------

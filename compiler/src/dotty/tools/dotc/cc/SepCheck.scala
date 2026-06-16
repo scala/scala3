@@ -314,7 +314,7 @@ object SepCheck:
     /** Deduct `sym` and `sym*` from `refs` */
     private def deductSymRefs(sym: Symbol)(using Context): Refs =
       val ref = sym.termRef
-      if ref.isTrackableRef then refs.deduct(SimpleIdentitySet(ref, ref.reach))
+      if ref.isTrackableRef then refs - ref
       else refs
 
   end extension
@@ -651,11 +651,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           consumeError(ref, loc, tree.srcPos)
   end checkUse
 
-  /** If `tp` denotes some version of a singleton capability `x.type` the set `{x, x*}`
+  /** If `tp` denotes some version of a singleton capability `x.type` the set `{x}`
    *  otherwise the empty set.
    */
   def explicitRefs(tp: Type)(using Context): Refs = tp match
-    case tp: (TermRef | ThisType) if tp.isTrackableRef => SimpleIdentitySet(tp, tp.reach)
+    case tp: (TermRef | ThisType) if tp.isTrackableRef => tp.singletonCaptureSet.elems
     case AnnotatedType(parent, _) => explicitRefs(parent)
     case AndType(tp1, tp2) => explicitRefs(tp1) ++ explicitRefs(tp2)
     case OrType(tp1, tp2) => explicitRefs(tp1) ** explicitRefs(tp2)
@@ -695,7 +695,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             if currentOwner.enclosingMethodOrClassOrObject.isProperlyContainedIn(refSym.enclosingMethodOrClassOrObject) then
               report.error(em"""Separation failure: $descr non-local $refSym""", pos)
             else if refSym.is(TermParam)
-              && !refSym.isConsumeParam
+              && !refSym.isConsume
               && currentOwner.isContainedIn(refSym.owner)
             then
               badParams += refSym
@@ -937,15 +937,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val argMap = mtpsWithArgs.toMap
     val deps = mutable.LinkedHashMap[Tree, List[Tree]]().withDefaultValue(Nil)
 
-    def argOfDep(dep: Capability): Option[Tree] =
-      dep.stripReach match
-        case dep: TermParamRef =>
-          Some(argMap(dep.binder)(dep.paramNum))
-        case dep: ThisType if dep.cls == fn.symbol.owner =>
-          val Select(qual, _) = fn: @unchecked // TODO can we use fn instead?
-          Some(qual)
-        case _ =>
-          None
+    def argOfDep(dep: Capability): Option[Tree] = dep match
+      case dep: TermParamRef =>
+        Some(argMap(dep.binder)(dep.paramNum))
+      case dep: ThisType if dep.cls == fn.symbol.owner =>
+        val Select(qual, _) = fn: @unchecked // TODO can we use fn instead?
+        Some(qual)
+      case _ =>
+        None
 
     def recordDeps(formal: Type, actual: Tree) =
       def captures = formal.captureSet
@@ -1053,7 +1052,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if !isUnsafeAssumeSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
-        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsumeParam =>
+        case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsume =>
           traverseChildren(tree)
           checkConsumedRefs(
               spanCaptures(qual).directFootprint.nonPeaks, qual.nuType,

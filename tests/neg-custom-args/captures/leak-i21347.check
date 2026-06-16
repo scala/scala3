@@ -1,7 +1,15 @@
--- Error: tests/neg-custom-args/captures/leak-i21347.scala:4:15 --------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leak-i21347.scala:4:15 -----------------------------------
 4 |  ops.foreach: op => // error
   |               ^
-  |               Local reach capability ops* leaks into capture scope of method runOpsAlt.
-  |               You could try to abstract the capabilities referred to by ops* in a capset variable.
+  |Found:    (op: () ->{any} Unit) ->{any²} Unit
+  |Required: (() ->{any²} Unit) => Unit
+  |
+  |Note that capability `any²` cannot flow into capture set {any}.
+  |
+  |where:    =>   refers to a root capability created in method runOpsAlt when checking argument to parameter f of method foreach
+  |          any  is the root capability caps.any
+  |          any² is a root capability in the type of parameter ops
   |
 5 |    op()
+  |
+  | longer explanation available when compiling with `-explain`

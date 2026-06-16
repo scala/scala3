@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 trait Future[+T]:
   def await: T
@@ -7,13 +6,13 @@ trait Future[+T]:
 trait Channel[T]:
   def read(): Either[Nothing, T]
 
-class Collector[T](val futures: Seq[Future[T]^]):
-  val results: Channel[Future[T]^{futures*}] = ???
+class Collector[T, c^](val futures: Seq[Future[T]^{c}]):
+  val results: Channel[Future[T]^{c}] = ???
 end Collector
 
 extension [T, C^](fs: Seq[Future[T]^{C}])
   def awaitAll =
-    val collector: Collector[T]{val futures: Seq[Future[T]^{C}]}
+    val collector: Collector[T, C]{val futures: Seq[Future[T]^{C}]}
        = Collector(fs)
     // val ch = collector.results // also errors
     val fut: Future[T]^{C} = collector.results.read().right.get // error

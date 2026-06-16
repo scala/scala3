@@ -1046,7 +1046,6 @@ class Definitions {
     @tu lazy val Caps_Stateful: ClassSymbol = requiredClass("scala.caps.Stateful")
     @tu lazy val Caps_Unscoped: ClassSymbol = requiredClass("scala.caps.Unscoped")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
-    @tu lazy val Caps_Read: ClassSymbol = requiredClass("scala.caps.Read")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val CapsInternalModule: Symbol = requiredModule("scala.caps.internal")
     @tu lazy val Caps_erasedValue: Symbol = CapsInternalModule.requiredMethod("erasedValue")
@@ -1118,8 +1117,6 @@ class Definitions {
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.unsafe.untrackedCaptures")
-  @tu lazy val UseAnnot: ClassSymbol = requiredClass("scala.caps.use")
-  @tu lazy val ReserveAnnot: ClassSymbol = requiredClass("scala.caps.reserve")
   @tu lazy val AssumeSafeAnnot: ClassSymbol = requiredClass("scala.caps.assumeSafe")
   @tu lazy val RejectSafeAnnot: ClassSymbol = requiredClass("scala.caps.rejectSafe")
   @tu lazy val ConsumeAnnot: ClassSymbol = requiredClass("scala.caps.internal.consume")
@@ -1137,7 +1134,6 @@ class Definitions {
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
-  @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
   @tu lazy val ParamAliasAnnot: ClassSymbol = requiredClass("scala.caps.internal.paramAlias")
   @tu lazy val InferredAnnot = requiredClass("scala.caps.internal.inferred")
   @tu lazy val DeclaredAnnot = requiredClass("scala.caps.internal.declared")
@@ -1164,13 +1160,13 @@ class Definitions {
   @tu lazy val NonBeanMetaAnnots: Set[Symbol] =
     Set(FieldMetaAnnot, GetterMetaAnnot, ParamMetaAnnot, SetterMetaAnnot, CompanionClassMetaAnnot, CompanionMethodMetaAnnot)
   @tu lazy val NonBeanParamAccessorAnnots: Set[Symbol] =
-    Set(PublicInBinaryAnnot, UseAnnot, ConsumeAnnot)
+    Set(PublicInBinaryAnnot, ConsumeAnnot)
   @tu lazy val MetaAnnots: Set[Symbol] =
     NonBeanMetaAnnots + BeanGetterMetaAnnot + BeanSetterMetaAnnot
 
   // Set of annotations that are not printed in types except under -Yprint-debug
   @tu lazy val SilentAnnots: Set[Symbol] =
-    Set(InlineParamAnnot, ErasedParamAnnot, SilentIntoAnnot, UseAnnot, ConsumeAnnot, InferredAnnot)
+    Set(InlineParamAnnot, ErasedParamAnnot, SilentIntoAnnot, ConsumeAnnot, InferredAnnot)
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
@@ -2050,10 +2046,10 @@ class Definitions {
   @tu lazy val ccExperimental: Set[Symbol] = Set(
     CapsModule, CapsModule.moduleClass, PureClass,
     /* Caps_Classifier, Caps_SharedCapability, Caps_Control, -- already stable */
-    Caps_ExclusiveCapability, Caps_Mutable, Caps_Read, Caps_Unscoped, Caps_Stateful,
+    Caps_ExclusiveCapability, Caps_Mutable, Caps_Unscoped, Caps_Stateful,
     Caps_Shared, RequiresCapabilityAnnot,
     Caps_any, Caps_fresh, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass,
-    ConsumeAnnot, UseAnnot, ReserveAnnot, AssumeSafeAnnot, RejectSafeAnnot,
+    ConsumeAnnot, AssumeSafeAnnot, RejectSafeAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass, Caps_freeze, Caps_Var,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)

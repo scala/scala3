@@ -4125,7 +4125,7 @@ object Types extends TypeUtils {
             tp match
               case CapturingType(parent, refs) =>
                 val status1 = (compute(status, parent, theAcc) /: refs.elems):
-                  (s, ref) => ref.stripReach match
+                  (s, ref) => ref match
                     case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, TrueDeps)
                     case tp => combine(s, compute(status, tp.coreType, theAcc))
                 if refs.isConst || forParams // We assume capture set variables in parameters don't generate param dependencies
@@ -4198,7 +4198,7 @@ object Types extends TypeUtils {
     def nonDependentResultApprox(using Context): Type =
       if isResultDependent then
         object dropDependencies extends ApproximatingTypeMap {
-          def apply(tp: Type) = tp match {
+          def apply(tp: Type) = tp match
             case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
             case CapturingType(_, _) =>
@@ -4212,13 +4212,6 @@ object Types extends TypeUtils {
               else
                 parent1
             case _ => mapOver(tp)
-          }
-          override def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
-            case Reach(c1) =>
-              apply(c1) match
-                case tp1a: ObjectCapability if tp1a.isTrackableRef => tp1a.reach
-                case _ => GlobalAny
-            case _ => super.mapCapability(c, deep)
         }
         dropDependencies(resultType)
       else resultType
@@ -4330,8 +4323,6 @@ object Types extends TypeUtils {
       if param.is(Erased) then
         paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
       // Copy `@use` and `@consume` annotations from parameter symbols to the type.
-      if param.hasAnnotation(defn.UseAnnot) then
-        paramType = addAnnotation(paramType, defn.UseAnnot, param)
       if param.hasAnnotation(defn.ConsumeAnnot) then
         paramType = addAnnotation(paramType, defn.ConsumeAnnot, param)
       paramType
@@ -6249,8 +6240,8 @@ object Types extends TypeUtils {
     def inverse: BiTypeMap
 
     /** A restriction of this map to a function on tracked Capabilities */
-    override def mapCapability(c: Capability, deep: Boolean): Capability =
-      super.mapCapability(c, deep) match
+    override def mapCapability(c: Capability): Capability =
+      super.mapCapability(c) match
         case c1: Capability => c1
         case (cs, _) => assert(false, i"bimap $toString should map $c to a capability, but result = $cs")
 
@@ -6367,7 +6358,11 @@ object Types extends TypeUtils {
       case _ =>
         null
 
-    def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
+    /** Map capability `c` with this type map.
+     *  @return  Either a the mapped capability, or a captureset containing mapped capabilities,
+     *           together with a boolen indicating whether the map is exact, rather than approximated.
+     */
+    def mapCapability(c: Capability): Capability | (CaptureSet, Boolean) = c match
       case c @ LocalCap(prefix) =>
         // If `pre` is not a path, transform it to a path starting with a skolem TermRef.
         // We create at most one such skolem per LocalCap/context owner pair.
@@ -6386,33 +6381,25 @@ object Types extends TypeUtils {
                 skolem
         c.derivedLocalCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
-      case Reach(c1) =>
-        mapCapability(c1, deep = true)
       case Restricted(c1, cls) =>
         mapCapability(c1) match
           case c2: Capability => c2.restrict(cls)
           case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
       case ReadOnly(c1) =>
-        assert(!deep)
         mapCapability(c1) match
           case c2: Capability => c2.readOnly
           case (cs: CaptureSet, exact) => (cs.readOnly, exact)
       case Maybe(c1) =>
-        assert(!deep)
         mapCapability(c1) match
           case c2: Capability => c2.maybe
           case (cs: CaptureSet, exact) => (cs.maybe, exact)
       case ref: CoreCapability =>
         val tp1 = apply(ref)
         val ref1 = toTrackableRef(tp1)
-        if ref1 != null then
-          if deep then ref1.reach
-          else ref1
+        if ref1 != null then ref1
         else
           val isLiteral = tp1.typeSymbol == defn.Caps_CapSet
-          val cs =
-            if deep && !isLiteral then CaptureSet.ofTypeDeeply(tp1)
-            else CaptureSet.ofType(tp1, followResult = false)
+          val cs = CaptureSet.ofType(tp1, followResult = false)
           (cs, isLiteral)
 
     /** Utility method. Maps the supertype of a type proxy. Returns the
