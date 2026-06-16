@@ -161,7 +161,7 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  characterLiteral
                     |  stringLiteral
 Literal           ::=  SimpleLiteral
-                    |  interpolatedStringLiteral
+                    |  interpolatedString
                     |  symbolLiteral
                     |  ‘null’
 

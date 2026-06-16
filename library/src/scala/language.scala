@@ -378,6 +378,11 @@ object language {
      */
     @compileTimeOnly("`safe` can only be used at compile time in import statements")
     object safe
+
+    /** Experimental support for dedented string literals (SIP 72)
+     */
+    @compileTimeOnly("`dedentedStringLiterals` can only be used at compile time in import statements")
+    object dedentedStringLiterals
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

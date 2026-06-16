@@ -41,6 +41,7 @@ object Feature:
   val subCases = experimental("subCases")
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
   val safe = experimental("safe")
+  val dedentedStringLiterals = experimental("dedentedStringLiterals")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -79,6 +80,7 @@ object Feature:
     (subCases, "Enable experimental match expressions with sub-cases"),
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
     (safe, "Require safe mode"),
+    (dedentedStringLiterals, "Enable experimental dedented string literals"),
   )
 
   // legacy language features from Scala 2 that are no longer supported.
