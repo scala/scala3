@@ -18,6 +18,7 @@ import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.EmptyCancelToken
 import scala.meta.internal.metals.PcQueryContext
+import scala.meta.internal.metals.Report
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.CompilerAccess
@@ -357,6 +358,14 @@ case class ScalaPresentationCompiler(
           docsBuffer += doc
         catch
           case NonFatal(_) =>
+            val report =
+              Report(
+                "empty-semanticdb-text-document",
+                s"""|file: ${fileParam.uri().toString()}
+                    |""".stripMargin,
+                s"${fileParam.uri().toString()}"
+              )
+            reportContext.unsanitized.create(() => report, /*ifVerbose =*/ true)
             docsBuffer += TextDocument.defaultInstance.withUri(fileParam.uri().toString())
     docsBuffer.toSeq
 
