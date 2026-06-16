@@ -530,7 +530,7 @@ case class ScalaPresentationCompiler(
       EmptyCancelToken
     ) { access =>
       val driver = access.compiler()
-      DiagnosticProvider(driver, params).diagnostics().asJava
+      DiagnosticProvider(driver, params).diagnostics(localOnly = true).asJava
     }(using params.toQueryContext)
 
   override def didClose(uri: URI): Unit =

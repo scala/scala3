@@ -338,7 +338,7 @@ case class RawScalaPresentationCompiler(
     SignatureHelpProvider.signatureHelp(driver, params, search)
 
   override def didChange(params: VirtualFileParams): ju.List[l.Diagnostic] =
-    DiagnosticProvider(driver, params).diagnostics().asJava
+    DiagnosticProvider(driver, params).diagnostics(localOnly = true).asJava
 
   override def didClose(uri: URI): Unit =
     driver.close(uri)
