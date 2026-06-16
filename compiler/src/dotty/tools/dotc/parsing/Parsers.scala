@@ -1525,18 +1525,18 @@ object Parsers {
       val startOffset = in.charOffset
       in.nextToken()
 
-      def interpolationExpr() = atSpan(in.offset):
+      def interpolationExpr() =
         if in.token == IDENTIFIER then
-          termIdent()
+          atSpan(in.offset)(termIdent())
         else if in.token == USCORE && inPattern then
           in.nextToken()
-          Ident(nme.WILDCARD)
+          atSpan(in.offset)(Ident(nme.WILDCARD))
         else if in.token == THIS then
           in.nextToken()
-          This(EmptyTypeIdent)
+          atSpan(in.offset)(This(EmptyTypeIdent))
         else if in.token == LBRACE then
-          if inPattern then Block(Nil, inBraces(pattern()))
-          else expr()
+          if inPattern then atSpan(in.offset)(Block(Nil, inBraces(pattern())))
+          else atSpan(in.offset)(expr())
         else
           report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
           EmptyTree
