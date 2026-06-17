@@ -150,7 +150,7 @@ import BCodeUtils.*
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
 class LocalOpt(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner,
-               ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+               ts: KnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                settings: OptimizerSettings) {
 
   import LocalOptImpls.*

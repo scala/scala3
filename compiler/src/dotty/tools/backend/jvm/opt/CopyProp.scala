@@ -26,7 +26,7 @@ import BCodeUtils.*
 
 import scala.tools.asm
 
-class CopyProp(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
+class CopyProp(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner, ts: KnownBTypes, settings: OptimizerSettings) {
 
   private val modulesAllowSkipInitialization =
     if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
