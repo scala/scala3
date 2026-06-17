@@ -1520,7 +1520,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case mt: MethodType if mt.paramInfos.isEmpty && mt.resultType.typeSymbol.is(Module) =>
           ref(mt.resultType.typeSymbol.sourceModule)
         case _ =>
-          ref(prefix)
+          val psym = prefix.symbol
+          if ctx.erasedTypes && psym.is(Module) && psym.isStatic then
+            // After erasure (i.e. when generating code), reference a statically
+            // reachable module through its own (static) path rather than through
+            // `prefix`, whose own prefix may be a `this` that is not addressable here --
+            // e.g. when the module is reached via the self type of a trait, `prefix` is
+            // `Trait.this.Module`, and building an outer path to `Trait.this` fails.
+            // The simplification is only sound for code generation, so it is guarded by
+            // `ctx.erasedTypes` to leave earlier purity/stability analysis untouched.
+            // See i24936.
+            ref(psym)
+          else
+            ref(prefix)
     case TermRef(prefix: ThisType, _) =>
       This(prefix.cls)
     case _ =>
