@@ -796,6 +796,12 @@ object SpaceEngine {
   def satisfiable(sp: Space)(using Context): Boolean = {
     def impossible: Nothing = throw new AssertionError("`satisfiable` only accepts flattened space.")
 
+    def getLeaves(sp: Space): List[Type] = sp match {
+      case Prod(_, _, ss) => ss.flatMap(getLeaves)
+      case t: Typ => List(t.tp)
+      case _ => impossible
+    }
+
     def genConstraint(space: Space): List[(Type, Type)] = space match {
       case Prod(tp, unappTp, ss) =>
         val tps = signature(unappTp, tp, ss.length)
@@ -808,7 +814,7 @@ object SpaceEngine {
       case _ => impossible
     }
 
-    def checkConstraint(constrs: List[(Type, Type)])(using Context): Boolean = {
+    def checkConstraint(constrs: List[(Type, Type)], leaves: List[Type])(using Context): Boolean = {
       val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
       val typeParamMap = new TypeMap() {
         override def apply(tp: Type): Type = tp match {
@@ -819,9 +825,32 @@ object SpaceEngine {
       }
 
       constrs.forall { case (tp1, tp2) => typeParamMap(tp1) <:< typeParamMap(tp2) }
+      && {
+        val constraint = ctx.typerState.constraint
+
+        val instantiateTVars = new TypeMap {
+          override def apply(tp: Type): Type = tp match {
+            case tvar: TypeVar =>
+              val inst = tvar.instanceOpt
+              if inst.exists then inst
+              else if constraint.entry(tvar.origin).exists then
+                val bounds = TypeComparer.fullBounds(tvar.origin)
+                if bounds.lo =:= bounds.hi then bounds.lo
+                else tvar
+              else tvar
+            case tp => mapOver(tp)
+          }
+        }
+
+        leaves.forall { leaf =>
+          val inst = instantiateTVars(typeParamMap(leaf))
+          inst.existsPart(_.isInstanceOf[TypeVar])
+            || simplify(Typ(inst, decomposed = false)) != Empty
+        }
+      }
     }
 
-    checkConstraint(genConstraint(sp))(using ctx.fresh.setNewTyperState())
+    checkConstraint(genConstraint(sp), getLeaves(sp))(using ctx.fresh.setNewTyperState())
   }
 
   /** Display spaces.  Used for printing uncovered spaces in the in-exhaustive error message. */
