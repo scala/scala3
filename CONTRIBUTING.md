@@ -49,6 +49,7 @@ You may also find the ["Compiler Academy"](https://www.youtube.com/channel/UCIH0
 - Don't make stylistic changes based on your personal taste that make pull requests harder to review
 - Don't open pull requests you cannot explain even if they pass tests, such as "don't call this method on those inputs because it crashes"
   (one can accidentally introduce unsoundness this way, and special cases are generally not the way to go)
+- Don't justify a pull request purely with "the tests pass", we also care about maintainability, and we will never cover 100% of edge cases in tests
 - Don't try to fix `TODO`s or `FIXME`s in the codebase without a deep understanding of their context
   (remember, if they took 5 minutes to fix, the person writing them would most likely have fixed them instead of adding a comment)
 - Don't ask general questions such as "how does a compiler work" or "what is JVM bytecode", these are better answered by existing resources

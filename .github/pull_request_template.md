@@ -7,7 +7,7 @@ Fixes #XYZ
 
 ## Have you relied on LLM-based tools in this contribution?
 
-<!-- Pick one; refer to https://github.com/scala/scala3/blob/main/LLM_POLICY.md for details -->
+<!-- Pick one; "running tests" is not enough; refer to https://github.com/scala/scala3/blob/main/LLM_POLICY.md for details -->
 
 Yes, and I checked the output by ...
 No

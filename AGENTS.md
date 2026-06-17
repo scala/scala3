@@ -10,6 +10,8 @@ This file provides guidance to AI coding agents when working with code in this r
 
 Dotty is the Scala 3 compiler (`dotc`). It compiles Scala source code into JVM bytecode (and optionally Scala.js IR). The compiler is itself written in Scala 3.
 
+We care about maintainability. "The tests pass" is not enough to justify that a change is good.
+
 ## Build Commands
 
 Use `sbt --client` (sbt with native thin client) to run commands. This keeps an sbt server running for faster subsequent invocations.
