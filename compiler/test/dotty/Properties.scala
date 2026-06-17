@@ -3,7 +3,7 @@ package dotty
 import java.nio.file.*
 import java.util.regex.{Matcher, Pattern}
 
-/** Runtime properties from defines or environmnent */
+/** Runtime properties from defines or environment */
 object Properties {
 
   /** If property is unset or FALSE we consider it `false` */
@@ -26,9 +26,6 @@ object Properties {
 
   /** Enable Scoverage instrumentation for compilation tests */
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
-
-  /** Extra directory containing sources for the compiler */
-  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces").nn
@@ -67,12 +64,6 @@ object Properties {
       .map(suffix =>
         asm.replaceAll("asm", "asm" + suffix)
           .replaceFirst(Pattern.quote(sep + "asm" + suffix + sep), Matcher.quoteReplacement(sep + "asm" + sep)))
-
-  /** jline-terminal jar */
-  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal").nn
-
-  /** jline-reader jar */
-  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader").nn
 
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib").nn
