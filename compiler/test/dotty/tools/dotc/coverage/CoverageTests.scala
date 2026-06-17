@@ -202,9 +202,6 @@ class CoverageTests:
     }
 
 object CoverageTests extends ParallelTesting:
-  import scala.concurrent.duration.*
-
-  def maxDuration = 30.seconds
   def numberOfWorkers = 1
 
   given summaryReport: SummaryReporting = SummaryReport()

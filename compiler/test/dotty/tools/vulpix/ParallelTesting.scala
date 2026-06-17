@@ -1860,11 +1860,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       case Array("-encoding", encoding) => Charset.forName(encoding)
     }.getOrElse(StandardCharsets.UTF_8)
 
-  /** checks if the current process is being debugged */
-  def isUserDebugging: Boolean =
-    val mxBean = ManagementFactory.getRuntimeMXBean
-    mxBean.getInputArguments.asScala.exists(_.contains("jdwp"))
-
 object ParallelTesting:
 
   def defaultOutputDirName: String = "out" + JFile.separator

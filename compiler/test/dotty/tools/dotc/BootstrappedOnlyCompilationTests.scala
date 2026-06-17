@@ -210,9 +210,6 @@ class BootstrappedOnlyCompilationTests {
 }
 
 object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 100.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
 
   implicit val summaryReport: SummaryReporting = new SummaryReport

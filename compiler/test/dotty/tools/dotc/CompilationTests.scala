@@ -452,9 +452,6 @@ class CompilationTests {
 }
 
 object CompilationTests extends ParallelTesting with CoverageSupport {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 45.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
 
   given summaryReport: SummaryReporting = new SummaryReport

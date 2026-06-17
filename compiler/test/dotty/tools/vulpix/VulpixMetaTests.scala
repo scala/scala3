@@ -23,7 +23,6 @@ class VulpixMetaTests {
 }
 
 object VulpixMetaTests extends ParallelTesting {
-  def maxDuration = 1.seconds
   // Ensure maximum reproducibility.
   def numberOfWorkers = 1
 
