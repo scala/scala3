@@ -20,7 +20,7 @@ keeping the maintainers’ workload manageable.
 The following rules are non-negotiable and necessary for a contribution to be considered.
 
 - All interactions (issues, pull requests, discussions, etc.) must be 100% human-written.
-  Pasting LLM-generated text is not allowed, you must rewrite it in your own words to ensure you understand it.
+  LLM-generated text has to be processed and understood by a human, pasting LLM outputs verbatim is not allowed.
 - The author of the contribution is responsible for every line of code, comment, documentation, test or decision
   contained in it, regardless if it was done by hand or generated automatically by tooling.
 - Any potential changes to requirements from a bug tracker issue must be discussed under the issue, not suggested in a PR.
