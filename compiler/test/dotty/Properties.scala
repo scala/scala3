@@ -4,7 +4,7 @@ import scala.language.unsafeNulls
 
 import java.nio.file.*
 
-/** Runtime properties from defines or environmnent */
+/** Runtime properties from defines or environment */
 object Properties {
 
   /** If property is unset or FALSE we consider it `false` */
@@ -27,9 +27,6 @@ object Properties {
 
   /** Enable Scoverage instrumentation for compilation tests */
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
-
-  /** Extra directory containing sources for the compiler */
-  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
@@ -60,12 +57,6 @@ object Properties {
 
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
-
-  /** jline-terminal jar */
-  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal")
-
-  /** jline-reader jar */
-  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
 
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
