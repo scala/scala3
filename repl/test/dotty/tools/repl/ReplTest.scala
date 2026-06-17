@@ -113,9 +113,9 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         println(s"Wrote updated script file to $checkFile")
         None
       else
-        println(dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
+        val diff = dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL))
 
-        Some(s"Error in script $name, expected output did not match actual")
+        Some(s"Error in script $name, expected output did not match actual:\n$diff")
     end if
   }
 

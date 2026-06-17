@@ -25,7 +25,7 @@ class ReplCompilerTests extends ReplTest:
     initially {
       run("import scala.collection.*")
     } andThen {
-      println(lines().mkString("* ", "\n  * ", ""))
+      assertEquals(0, lines().length)
     }
   }
 
