@@ -2,8 +2,8 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{PrintStream, File as JFile}
-import java.lang.management.ManagementFactory
+
+import java.io.{File as JFile, PrintStream}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
@@ -23,9 +23,8 @@ import dotc.report
 import dotc.interfaces.Diagnostic.{ERROR, WARNING}
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
-import dotc.util.{NoSourcePosition, SourceFile, SourcePosition, Spans}
-import io.{AbstractFile, Directory, PlainDirectory}
-import util.chaining.*
+import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
+import io.AbstractFile
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
