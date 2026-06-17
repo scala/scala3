@@ -50,15 +50,15 @@ inline trait VecSpecialized[T: {Specialized, Numeric2}](elems: Array[T]):
 
 @State(Scope.Benchmark)
 class Arrays:
-  var arr1 = Array.fill(100_000_000) {math.round(math.random().floatValue * 4)}
-  var arr2 = Array.fill(100_000_000) {math.round(math.random().floatValue * 4)}
+  val arr1 = Array.fill(100_000_000) {math.round(math.random().floatValue * 4)}
+  val arr2 = Array.fill(100_000_000) {math.round(math.random().floatValue * 4)}
   val target = arr1.zip(arr2).map((x, y) => x * y).fold(0)(_ + _)
-  
+
 @State(Scope.Benchmark)
 @BenchmarkMode(Array(Mode.AverageTime))
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Warmup(iterations = 5, time = 100, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 15, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 15, time = 10, timeUnit = TimeUnit.SECONDS)
 @Fork(1)
 class VecBench:
   @Benchmark
@@ -79,15 +79,12 @@ class VecBench:
     val y = new VecSpecialized[Int](arr.arr2) {}
     assert(x.scalarProduct(y) == arr.target)
 
-// You can really see the impact of Specialized on the interface usage here
-// Remove Specialized and see that the generated code gets much more boxing and unboxing
-// which slows it down substantially. 
 inline trait Numeric2[T: Specialized]:
   def fromInt(x: Int): T
   def plus(x: T, y: T): T
   def times(x: T, y: T): T
 
-implicit object IntIsIntegral extends Numeric2[Int]:
+implicit object IntIsNumeric extends Numeric2[Int]:
   override def fromInt(x: Int): Int = x
   override def plus(x: Int, y: Int): Int = x + y
   override def times(x: Int, y: Int): Int = x * y
