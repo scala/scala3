@@ -44,9 +44,6 @@ trait RunnerOrchestration:
    */
   def maxDuration: Duration
 
-  /** Destroy and respawn process after each test */
-  def safeMode: Boolean
-
   /** Open JDI connection for testing the debugger */
   def debugMode: Boolean = false
 
@@ -221,7 +218,7 @@ trait RunnerOrchestration:
     private def withRunner(op: Runner => Status)(using SummaryReporting): Status =
       val runner = getRunner()
       val status = op(runner)
-      if safeMode || !status.isSuccess then
+      if !status.isSuccess then
         discardRunner(runner)
       else
         freeRunner(runner)

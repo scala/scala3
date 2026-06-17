@@ -205,10 +205,7 @@ object CoverageTests extends ParallelTesting:
 
   def maxDuration = 30.seconds
   def numberOfWorkers = 1
-
-  def safeMode = Properties.testsSafeMode
   def testFilter = Properties.testsFilter
-  def isInteractive = SummaryReport.isInteractive
   def updateCheckFiles = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
 
