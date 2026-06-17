@@ -40,7 +40,6 @@ class BestEffortOptionsTests {
 }
 
 object BestEffortOptionsTests extends ParallelTesting {
-  def maxDuration = 45.seconds
   def numberOfWorkers = Runtime.getRuntime.availableProcessors()
 
   implicit val summaryReport: SummaryReporting = new SummaryReport

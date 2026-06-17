@@ -25,9 +25,6 @@ class DebugTests:
     ).checkDebug()
 
 object DebugTests extends ParallelTesting:
-  def maxDuration =
-    // Increase the timeout when the user is debugging the tests
-    if isUserDebugging then 3.hours else 45.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   override def debugMode = true
 
@@ -55,7 +52,7 @@ object DebugTests extends ParallelTesting:
         ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
       try debugMain(testSource.runClassPath): debuggee =>
         val jdiPort = debuggee.readJdiPort()
-        val debugger = Debugger(jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
+        val debugger = Debugger(jdiPort, expressionEvaluator, testTimeout/* , verbose = true */)
         // configure the breakpoints before starting the debuggee
         val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }.distinct
         for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)

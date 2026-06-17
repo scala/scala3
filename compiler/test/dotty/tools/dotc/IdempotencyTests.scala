@@ -65,9 +65,6 @@ class IdempotencyTests {
 }
 
 object IdempotencyTests extends ParallelTesting {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 30.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
 
   implicit val summaryReport: SummaryReporting = new SummaryReport

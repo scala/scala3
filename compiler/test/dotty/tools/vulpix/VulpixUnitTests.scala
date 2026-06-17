@@ -93,8 +93,6 @@ class VulpixUnitTests:
         .checkRuns()
 
 object VulpixUnitTests extends ParallelTesting:
-  import scala.concurrent.duration.*
-  def maxDuration = 3.seconds
   def numberOfWorkers = 5
 
   @tearDown

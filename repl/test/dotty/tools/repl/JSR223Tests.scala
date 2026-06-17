@@ -6,8 +6,6 @@ import org.junit.AfterClass
 
 import vulpix.*
 
-import scala.concurrent.duration._
-
 final class JSR223Tests:
 
   import JSR223Tests.{*, given}
@@ -26,7 +24,6 @@ object JSR223Tests extends ParallelTesting:
 
   given report: SummaryReporting = new SummaryReport
 
-  def maxDuration = 100.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
 
   @AfterClass def tearDown(): Unit = {
