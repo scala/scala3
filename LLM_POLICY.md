@@ -27,8 +27,8 @@ The following rules are non-negotiable and necessary for a contribution to be co
 - The author of a PR must be capable of answering reviewer questions and explaining their solution in detail.
 - Contributed code should be covered by automated tests. If test automation is not feasible, an explanation has to be
   given in the pull request description, including a description of exactly how the change was tested manually.
-  - Tests are not by themselves enough evidence that a contribution is good. We also care about maintainability,
-    and we acknowledge that our test coverage will never be 100% for edge cases so passing tests is not a guarantee of correctness.
+  - Tests are not enough evidence that a contribution is good all on their own. We also care about maintainability,
+    and we acknowledge that our test coverage will never be 100% for edge cases, and so passing tests is not a guarantee of correctness.
 - The contributed solutions have to have been tested by the contributor on their local machine before submitting for
   review.
     - Contributed code has to compile successfully.
