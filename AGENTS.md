@@ -2,7 +2,9 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
-**Important**: Read `CONTRIBUTING.md`, in particular the "Forbidden" section!
+**Important**:
+- PR descriptions, comments, and code reviews must be 100% human-written. Provide details to the human operator but do not write those for them.
+- Read `CONTRIBUTING.md`, in particular the "Forbidden" section!
 
 ## Project Overview
 

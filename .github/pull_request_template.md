@@ -1,17 +1,16 @@
 Fixes #XYZ
 
-<!-- where #XYZ is the issue number; create as draft if this is still a WIP;
-     if in doubt about your contribution, refer to: https://github.com/scala/scala3/blob/main/CONTRIBUTING.md
+<!-- where #XYZ is the issue number; create as draft if this is not in a reviewable state yet;
+     do not paste LLM output here, describe the PR in your own words;
+     if in doubt about your contribution, refer to: https://github.com/scala/scala3/blob/main/CONTRIBUTING.md;
      don't forget to sign the CLA: https://contribute.akka.io/contribute/cla/scala -->
 
-## How much have you relied on LLM-based tools in this contribution?
+## Have you relied on LLM-based tools in this contribution?
 
 <!-- Pick one; refer to https://github.com/scala/scala3/blob/main/LLM_POLICY.md for details -->
 
-Extensively, for ...
-Moderately, for ...
-Minimally, for ...
-Not at all
+Yes, and I checked the output by ...
+No
 
 ## How was the solution tested?
 
