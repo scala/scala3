@@ -25,8 +25,9 @@ import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
+import OptimizerUtils.*
 
-class ClosureOptimizer(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker,
+class ClosureOptimizer(indyTracker: IndyLambdaImplTracker,
                        byteCodeRepository: BCodeRepository, callGraph: OptimizerCallGraph,
                        ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                        settings: OptimizerSettings) {
@@ -299,9 +300,9 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaIm
         if (invokeArgTypes(i) == implMethodArgTypes(i)) {
           res(i) = None
         } else if (isPrimitiveType(implMethodArgTypes(i)) && invokeArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(optimizerUtils.getScalaUnbox(implMethodArgTypes(i)))
+          res(i) = Some(ts.getScalaUnbox(implMethodArgTypes(i)))
         } else if (isPrimitiveType(invokeArgTypes(i)) && implMethodArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(optimizerUtils.getScalaBox(invokeArgTypes(i)))
+          res(i) = Some(ts.getScalaBox(invokeArgTypes(i)))
         } else {
           assert(!isPrimitiveType(invokeArgTypes(i)), invokeArgTypes(i))
           assert(!isPrimitiveType(implMethodArgTypes(i)), implMethodArgTypes(i))
@@ -386,12 +387,12 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaIm
       if (isPrimitiveType(invocationReturnType) && bodyReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
           if (invocationReturnType.getSort == Type.VOID) getPop(1)
-          else optimizerUtils.getScalaUnbox(invocationReturnType)
+          else ts.getScalaUnbox(invocationReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else if (isPrimitiveType(bodyReturnType) && invocationReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
-          if (bodyReturnType.getSort == Type.VOID) optimizerUtils.getBoxedUnit
-          else optimizerUtils.getScalaBox(bodyReturnType)
+          if (bodyReturnType.getSort == Type.VOID) ts.getBoxedUnit
+          else ts.getScalaBox(bodyReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else {
         // see comment of that method

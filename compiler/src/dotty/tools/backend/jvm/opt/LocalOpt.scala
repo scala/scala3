@@ -24,6 +24,7 @@ import scala.tools.asm.tree.analysis.Frame
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
+import OptimizerUtils.*
 
 /**
  * Optimizations within a single method. Certain optimizations enable others, for example removing
@@ -149,14 +150,14 @@ import BCodeUtils.*
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner,
-               ts: KnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+class LocalOpt(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner,
+               ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                settings: OptimizerSettings) {
 
   import LocalOptImpls.*
 
-  private val boxUnbox = new BoxUnbox(optimizerUtils, callGraph, ts)
-  private val copyProp = new CopyProp(optimizerUtils, indyTracker, callGraph, inliner, ts, settings)
+  private val boxUnbox = new BoxUnbox(callGraph, ts)
+  private val copyProp = new CopyProp(indyTracker, callGraph, inliner, ts, settings)
 
   /**
    * Remove unreachable instructions from all (non-abstract) methods and apply various other
@@ -382,7 +383,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracke
    */
   private def nullnessOptimizations(method: MethodNode, ownerClassName: InternalName): Boolean = {
     Limits.sizeOKForNullness(method) && {
-      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, optimizerUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+      lazy val nullnessAnalyzer = new NullnessAnalyzer(method, ownerClassName, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
       // When running nullness optimizations the method may still have unreachable code. Analyzer
       // frames of unreachable instructions are `null`.
@@ -440,7 +441,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracke
           }
 
         case mi: MethodInsnNode =>
-          if (optimizerUtils.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
+          if (ts.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
             toReplace(mi) = List(
               getPop(1),
               loadZeroForTypeSort(Type.getReturnType(mi.desc).getSort))
@@ -573,7 +574,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracke
     }
 
     lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(method, owner)
-    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, optimizerUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
+    lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, ts.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
     // cannot remove instructions while iterating, it gets the analysis out of synch (indexed by instructions)
     val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]

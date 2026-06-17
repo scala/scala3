@@ -284,11 +284,10 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
                                            callGraph: OptimizerCallGraph, indyTracker: IndyLambdaImplTracker,
                                            bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(classBTypeCache, bTypes) {
   private val optSettings         = new OptimizerSettings()
-  private val optimizerUtils      = new OptimizerUtils(bTypes)
-  private val closureOptimizer    = new ClosureOptimizer(optimizerUtils, indyTracker, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
+  private val closureOptimizer    = new ClosureOptimizer(indyTracker, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(byteCodeRepository, callGraph, bTypes, optSettings)
   private val inliner             = new InlinerImpl(indyTracker, callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(optimizerUtils, indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+  private val localOpt            = new LocalOpt(indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
     // add classes to the bytecode repo before building the call graph: the latter needs to
