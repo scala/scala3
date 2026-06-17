@@ -25,8 +25,9 @@ import dotty.tools.backend.jvm.opt.InlinerHeuristics.*
 import dotty.tools.backend.jvm.BCodeUtils.{isStrictfpMethod, isSynchronizedMethod}
 import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.report
+import OptimizerUtils.*
 
-class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCodeRepository,
+class InlinerHeuristics(byteCodeRepository: BCodeRepository,
                         callGraph: OptimizerCallGraph, ts: OptimizerKnownBTypes,
                         settings: OptimizerSettings) {
 
@@ -183,7 +184,7 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
     // or aliases, because otherwise it's too confusing for users looking at generated code, they will
     // write a small test method and think the inliner doesn't work correctly.
     val isGeneratedForwarder =
-      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
+      BCodeUtils.isSyntheticMethod(callsite.callsiteMethod) && ts.looksLikeForwarderOrFactoryOrTrivial(callsite.callsiteMethod, callsite.callsiteClass.internalName, allowPrivateCalls = true) > 0
 
     if (isGeneratedForwarder) None
     else {
@@ -225,14 +226,14 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
             val calleeCallsites = callGraph.getCallsites(callee.callee)
             val allowPrivateCalls = calleeCallsites.size == 1 && (calleeCallsites.head match
               case nestedCallsite: KnownCallsite =>
-                optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(
+                ts.looksLikeForwarderOrFactoryOrTrivial(
                   nestedCallsite.callee.callee,
                   nestedCallsite.callee.calleeDeclarationClass.internalName,
                   allowPrivateCalls = false
                 ) > 0
               case _ => false
             )
-            val forwarderKind = optimizerUtils.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
+            val forwarderKind = ts.looksLikeForwarderOrFactoryOrTrivial(callee.callee, callee.calleeDeclarationClass.internalName, allowPrivateCalls)
             if (forwarderKind < 0)
               null
             else if (BCodeUtils.isSyntheticMethod(callee.callee) || AnalysisUtils.isMixinForwarder(callee.callee, callee.calleeDeclarationClass))
