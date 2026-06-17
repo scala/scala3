@@ -72,10 +72,7 @@ object IdempotencyTests extends ParallelTesting {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 30.seconds
-  def numberOfWorkers = 5
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
+  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {

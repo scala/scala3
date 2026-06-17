@@ -96,9 +96,6 @@ object VulpixUnitTests extends ParallelTesting:
   import scala.concurrent.duration.*
   def maxDuration = 3.seconds
   def numberOfWorkers = 5
-  def testFilter = Nil
-  def updateCheckFiles: Boolean = false
-  def failedTests = None
 
   @tearDown
   def tearDown() = cleanup()

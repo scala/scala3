@@ -26,9 +26,6 @@ object VulpixMetaTests extends ParallelTesting {
   def maxDuration = 1.seconds
   // Ensure maximum reproducibility.
   def numberOfWorkers = 1
-  def testFilter = Nil // Run all the tests.
-  def updateCheckFiles: Boolean = false
-  def failedTests = None
 
   @AfterClass
   def tearDown() = this.cleanup()

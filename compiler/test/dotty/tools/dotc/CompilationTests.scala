@@ -456,9 +456,6 @@ object CompilationTests extends ParallelTesting with CoverageSupport {
 
   def maxDuration = 45.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
 
   given summaryReport: SummaryReporting = new SummaryReport
 

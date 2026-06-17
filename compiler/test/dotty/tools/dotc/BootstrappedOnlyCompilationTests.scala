@@ -214,9 +214,6 @@ object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSup
 
   def maxDuration = 100.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {

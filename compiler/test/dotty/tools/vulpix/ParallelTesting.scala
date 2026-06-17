@@ -41,18 +41,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   import ParallelTesting.*
   import Status.{Failure, Success, Timeout}
 
-  /** A list of strings which is used to filter which tests to run, if `Nil` will run
-   *  all tests. All absolute paths that contain any of the substrings in `testFilter`
-   *  will be run
-   */
-  def testFilter: List[String]
-
-  /** Tests should override the checkfiles with the current output */
-  def updateCheckFiles: Boolean
-
-  /** Contains a list of failed tests to run, if list is empty no tests will run */
-  def failedTests: Option[List[String]]
-
   protected def testPlatform: TestPlatform = TestPlatform.JVM
 
   /** A test source whose files or directory of files is to be compiled
@@ -242,7 +230,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           files.exists(f => SeparateCompilationSource.HasCompilerVersion.matches(f.getName))
 
   protected def shouldReRun(testSource: TestSource): Boolean =
-    failedTests.forall(rerun => testSource match {
+    TestReporter.lastRunFailedTests.forall(rerun => testSource match {
       case JointCompilationSource(_, files, _, _, _, _) =>
         rerun.exists(filter => files.exists(file => file.getPath.contains(filter)))
       case SeparateCompilationSource(_, dir, _, _) =>
@@ -296,7 +284,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
      */
     final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String], reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       for (msg <- FileDiff.check(testSource.title, actual, checkFile.getPath)) {
-        if (updateCheckFiles) {
+        if (Properties.testsUpdateCheckfile) {
           FileDiff.dump(checkFile.toPath.toString, actual)
           echo("Updated checkfile: " + checkFile.getPath)
         } else {
@@ -402,12 +390,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     /** All testSources left after filtering out */
     private val filteredSources =
       val filteredByName =
-        if (testFilter.isEmpty) testSources
+        if (Properties.testsFilter.isEmpty) testSources
         else testSources.filter {
           case JointCompilationSource(_, files, _, _, _, _) =>
-            testFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
+            Properties.testsFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
           case SeparateCompilationSource(_, dir, _, _) =>
-            testFilter.exists(dir.getPath.contains)
+            Properties.testsFilter.exists(dir.getPath.contains)
         }
       filteredByName.filterNot(shouldSkipTestSource(_)).filter(shouldReRun(_))
 
@@ -808,11 +796,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         else reportPassed()
       else
         val groupInfo = testSources.map(_.group).distinct.mkString(",")
-        if testFilter.isEmpty then
+        if Properties.testsFilter.isEmpty then
           reportFailed()
           addFailedTest(FailedTestInfo(groupInfo, "No tests available under target - erroneous test?"))
         else
-          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${testFilter.mkString(",")}" in test"""))
+          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${Properties.testsFilter.mkString(",")}" in test"""))
 
       this
     }
@@ -1622,9 +1610,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
 
-    val filteredFiles = testFilter match
-      case _ :: _ => files.filter(f => testFilter.exists(f.getPath.contains))
-      case _      => Nil
+    val filteredFiles = Properties.testsFilter match
+      case Nil      => Nil
+      case _ => files.filter(f => Properties.testsFilter.exists(f.getPath.contains))
 
     class JointCompilationSourceFromTasty(
        name: String,
