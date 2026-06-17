@@ -92,8 +92,6 @@ final class SummaryReport extends SummaryReporting {
 
   /** Both echoes the summary to stdout and prints to file */
   override def echoSummary(): Unit = {
-    import SummaryReport.*
-
     val rep = new StringBuilder
     rep.append(
       s"""|
@@ -112,7 +110,7 @@ final class SummaryReport extends SummaryReporting {
 
     // If we're compiling locally, we don't need to see instructions on how to
     // reproduce failures on stdout, only a pointer to the log file.
-    if (isInteractive) {
+    if (!Properties.isRunByCI) {
       println(rep.toString)
       skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.foreach(println)
       if (failed > 0) println {
@@ -129,7 +127,7 @@ final class SummaryReport extends SummaryReporting {
     reproduceInstructions.asScala.foreach(rep.append)
 
     // If we're on the CI, we want everything
-    if (!isInteractive) println(rep.toString)
+    if (Properties.isRunByCI) println(rep.toString)
 
     TestReporter.logPrintln(rep.toString)
   }
@@ -144,10 +142,6 @@ final class SummaryReport extends SummaryReporting {
     it.foreach(msg => TestReporter.logPrint(removeColors(msg)))
     TestReporter.logFlush()
   }
-}
-
-object SummaryReport {
-  val isInteractive = Properties.testsInteractive && !Properties.isRunByCI
 }
 
 case class FailedTestInfo(title: String, extra: String)

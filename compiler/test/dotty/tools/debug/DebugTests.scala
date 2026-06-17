@@ -29,8 +29,6 @@ object DebugTests extends ParallelTesting:
     // Increase the timeout when the user is debugging the tests
     if isUserDebugging then 3.hours else 45.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests

@@ -110,8 +110,6 @@ object TastyBootstrapTests extends ParallelTesting {
 
   def maxDuration = 45.seconds
   def numberOfWorkers = Runtime.getRuntime.availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests

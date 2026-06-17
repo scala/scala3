@@ -41,11 +41,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   import ParallelTesting.*
   import Status.{Failure, Success, Timeout}
 
-  /** If the running environment supports an interactive terminal, each `Test`
-   *  will be run with a progress bar and real time feedback
-   */
-  def isInteractive: Boolean
-
   /** A list of strings which is used to filter which tests to run, if `Nil` will run
    *  all tests. All absolute paths that contain any of the substrings in `testFilter`
    *  will be run
@@ -774,7 +769,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
         val timer = new Timer()
-        val logProgress = isInteractive && !suppressAllOutput
+        val logProgress = !Properties.isRunByCI && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)

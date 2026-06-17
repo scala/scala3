@@ -25,9 +25,6 @@ object Properties {
       Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
     }
 
-  /** Tests should run interactive? */
-  val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
-
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define
    */
@@ -43,13 +40,6 @@ object Properties {
    *  issued
    */
   val testsNoRun: Boolean = sys.props.get("dotty.tests.norun").isDefined
-
-  /** Should Unit tests run in safe mode?
-   *
-   *  For run tests this means that we respawn child JVM processes after each
-   *  test, so that they are never reused.
-   */
-  val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
 
   /** Enable Scoverage instrumentation for compilation tests */
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
