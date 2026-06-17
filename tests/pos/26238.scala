@@ -1,8 +1,5 @@
 object toplevel {
 
-@deprecated("pls work this out")
-def ??? = scala.Predef.`???`
-
 import util.ChainingOps.{*, given}
 
 object S {
@@ -39,27 +36,12 @@ def defaultIntParser
 
 } // S.
 
-System.err.println(Math.random() )
-
-System.err.println(Math.random() )
-
 locally :
-  System.err.println(Math.random() )
-
-  // given S.ParserFlatMapOp.ISpcNdInvariant
-  // = (new S.ParserFlatMapOp.ISpcNdInvariant {}).asInstanceOf
-
-  /* run locally you might see something like say "unexpected tree for type application" or the like.. 😒 */
-  /* commented out, the whole code would compile and run like it should.. */
   locally :
     for
       r1 <- S.defaultIntParser
       r2 <- S.defaultIntParser
     yield { 5 }
   .toString()
-
-System.err.println(s"done.")
-
-System.err.println(Math.random() )
 
 }
