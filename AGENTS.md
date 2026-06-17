@@ -3,7 +3,7 @@
 This file provides guidance to AI coding agents when working with code in this repository.
 
 **Important**:
-- PR descriptions, comments, and code reviews must be 100% human-written. Provide details to the human operator but do not write those for them.
+- All AI-assisted contributions, including  code, PR/issue descriptions, comments, and code reviews, must comply with the [LLM usage policy](LLM_POLICY.md) . **Important**: state LLM usage clearly in descriptions, commit messages, etc.
 - Read `CONTRIBUTING.md`, in particular the "Forbidden" section!
 
 ## Project Overview
