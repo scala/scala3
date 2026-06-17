@@ -7,23 +7,12 @@ import java.nio.file.*
 /** Runtime properties from defines or environmnent */
 object Properties {
 
-  /** If property is unset or "TRUE" we consider it `true` */
-  private def propIsNullOrTrue(name: String): Boolean = {
-    val prop = System.getProperty(name)
-    prop == null || prop == "TRUE"
-  }
-
   /** If property is unset or FALSE we consider it `false` */
   private def propIsTrue(name: String): Boolean =
     sys.props.getOrElse(name, "FALSE") == "TRUE"
 
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
-
-  val testCache: Path =
-    sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
-      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
-    }
 
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define
@@ -35,11 +24,6 @@ object Properties {
 
   /** Tests should override the checkfiles with the current output */
   val testsUpdateCheckfile: Boolean = propIsTrue("dotty.tests.updateCheckfiles")
-
-  /** When set, the run tests are only compiled - not run, a warning will be
-   *  issued
-   */
-  val testsNoRun: Boolean = sys.props.get("dotty.tests.norun").isDefined
 
   /** Enable Scoverage instrumentation for compilation tests */
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")

@@ -925,36 +925,22 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
   protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    private var didAddNoRunWarning = false
-    protected def addNoRunWarning() = if (!didAddNoRunWarning) {
-      didAddNoRunWarning = true
-      summaryReport.addStartingMessage {
-        """|WARNING
-           |-------
-           |Run and debug tests were only compiled, not run - this is due to the `dotty.tests.norun`
-           |property being set
-           |""".stripMargin
-      }
-    }
-
     private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       import testSource.{allToolArgs, runClassPath, title}
-      if Properties.testsNoRun then addNoRunWarning()
-      else
-        runMain(runClassPath, allToolArgs) match
-          case Success(output) =>
-            for file <- checkFile if file.exists do
-              diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
-          case Failure("") =>
-            echo(s"Test '$title' failed with no output")
-            failTestSource(testSource)
-          case Failure(output) =>
-            echo(s"Test '$title' failed with output:")
-            echo(output)
-            failTestSource(testSource)
-          case Timeout =>
-            echo(s"failed because test '$title' timed out")
-            failTestSource(testSource, TimeoutFailure(title))
+      runMain(runClassPath, allToolArgs) match
+        case Success(output) =>
+          for file <- checkFile if file.exists do
+            diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
+        case Failure("") =>
+          echo(s"Test '$title' failed with no output")
+          failTestSource(testSource)
+        case Failure(output) =>
+          echo(s"Test '$title' failed with output:")
+          echo(output)
+          failTestSource(testSource)
+        case Timeout =>
+          echo(s"failed because test '$title' timed out")
+          failTestSource(testSource, TimeoutFailure(title))
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
