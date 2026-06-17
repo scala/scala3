@@ -225,14 +225,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       this.leftRoot = tp1
     }
     else this.approx = a
-    try recur(tp1, tp2)
-    catch {
-      case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
-    }
-    finally {
+    try
+      ctx.handleRecursive("subtype", () => i"$tp1 <:< $tp2", weight = 2):
+        recur(tp1, tp2)
+    finally
       this.approx = savedApprox
       this.leftRoot = savedLeftRoot
-    }
   }
 
   def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, ApproxState.Fresh)
@@ -3340,18 +3338,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || (cannotBeNothing(tp1) || cannotBeNothing(tp2))
       }
 
-    args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
-      (arg1, arg2, tparam) =>
-        val v = tparam.paramVarianceSign
-        if (v > 0)
-          covariantDisjoint(arg1, arg2, tparam)
-        else if (v < 0)
-          // Contravariant case: a value where this type parameter is
-          // instantiated to `Any` belongs to both types.
-          false
-        else
-          invariantDisjoint(arg1, arg2, tparam)
-    }
+    ctx.handleRecursive("are args provably disjoint for", cls):
+      args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
+        (arg1, arg2, tparam) =>
+          val v = tparam.paramVarianceSign
+          if (v > 0)
+            covariantDisjoint(arg1, arg2, tparam)
+          else if (v < 0)
+            // Contravariant case: a value where this type parameter is
+            // instantiated to `Any` belongs to both types.
+            false
+          else
+            invariantDisjoint(arg1, arg2, tparam)
+      }
   end provablyDisjointTypeArgs
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)

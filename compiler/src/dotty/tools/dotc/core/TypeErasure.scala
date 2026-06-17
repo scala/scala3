@@ -936,10 +936,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else if sourceLanguage.isScala2 && (elemtp.hiBound.isNullType || elemtp.hiBound.isNothingType) then
       JavaArrayType(defn.ObjectType)
     else
-      try erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
-        case _: WildcardType => WildcardType
-        case elem => JavaArrayType(elem)
-      catch case ex: Throwable => handleRecursive("erase array type", tp.show, ex)
+      ctx.handleRecursive("erase array type", tp):
+        erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
+          case _: WildcardType => WildcardType
+          case elem => JavaArrayType(elem)
   }
 
   private def erasePair(tp: Type)(using Context): Type = {

@@ -32,7 +32,7 @@ object TypeOps:
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = {
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = ctx.handleRecursive("checking 'as seen from' for", () => i"$tp from $pre and $cls"):
     pre match {
       case pre: QualSkolemType =>
         // When a selection has an unstable qualifier, the qualifier type gets
@@ -52,9 +52,7 @@ object TypeOps:
         Stats.record("asSeenFrom skolem prefix required")
       case _ =>
     }
-
     new AsSeenFromMap(pre, cls).apply(tp)
-  }
 
   /** The TypeMap handling the asSeenFrom */
   class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap {
@@ -130,7 +128,7 @@ object TypeOps:
     pre.isStable || !ctx.phase.isTyper && ctx.mode.is(Mode.ImplicitsEnabled)
 
   /** Implementation of Types#simplified */
-  def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = {
+  def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = ctx.handleRecursive("simplify", tp) {
     def mapOver = (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
     tp match {
       case tp: NamedType =>
@@ -472,7 +470,7 @@ object TypeOps:
       case _ => true
 
     override def apply(tp: Type): Type =
-      try
+      ctx.handleRecursive("traversing for avoiding local references", tp):
         tp match
           case tp: TermRef if toAvoid(tp) =>
             tp.info.widenExpr.dealiasKeepRefiningAnnots match {
@@ -504,7 +502,6 @@ object TypeOps:
             mapOver(tl)
           case _ =>
             super.apply(tp)
-      catch case ex: Throwable => handleRecursive("traversing for avoiding local references", s"${tp.show}", ex)
     end apply
 
     /** Three deviations from standard derivedSelect:
@@ -790,7 +787,7 @@ object TypeOps:
       val singletons = util.HashMap[Symbol, SingletonType]()
       val gadtSyms = new mutable.ListBuffer[Symbol]
 
-      def traverse(tp: Type) = try
+      def traverse(tp: Type) = ctx.handleRecursive("traverseTp2", tp):
         val tpd = tp.dealias
         if tpd ne tp then traverse(tpd)
         else tp match
@@ -809,7 +806,6 @@ object TypeOps:
             traverseChildren(tp.info)
           case _ =>
             traverseChildren(tp)
-      catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
     TraverseTp2.traverse(tp2)
     val singletons = TraverseTp2.singletons
     val gadtSyms   = TraverseTp2.gadtSyms.toList

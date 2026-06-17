@@ -26,3 +26,4 @@ sub-cases-exhaustivity.scala
 sub-cases-reachability.scala
 tailrec.scala
 traitParams.scala
+i17132.min.scala
