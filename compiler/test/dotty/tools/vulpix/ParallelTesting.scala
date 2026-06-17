@@ -5,7 +5,6 @@ package vulpix
 import scala.language.unsafeNulls
 
 import java.io.{File as JFile, PrintStream}
-import java.lang.management.ManagementFactory
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
@@ -16,8 +15,6 @@ import scala.collection.mutable, mutable.ArrayBuffer, mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
-import scala.util.control.NonFatal
-import scala.util.matching.Regex
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
 
 import dotc.{Compiler, Driver}
@@ -29,7 +26,6 @@ import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
-import util.chaining.*
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
