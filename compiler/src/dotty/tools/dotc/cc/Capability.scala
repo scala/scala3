@@ -1058,7 +1058,7 @@ object Capabilities:
         case t @ AnnotatedType(parent, ann: RetainingAnnotation)
         if ann.isStrict && ann.toCaptureSet.elems.exists(_.core.isInstanceOf[GlobalCap]) =>
           // Applying `this` can cause infinite recursion in some cases during printing.
-          // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
+          // scalac -Vprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
           mapOver(CapturingType(this(parent), ann.toCaptureSet))
         case t @ AnnotatedType(parent, ann) =>
           t.derivedAnnotatedType(this(parent), ann)

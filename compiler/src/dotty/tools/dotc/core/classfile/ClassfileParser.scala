@@ -20,6 +20,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.AbstractFile
 import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
+import dotty.tools.dotc.config.Printers
 
 import scala.compiletime.uninitialized
 
@@ -911,7 +912,7 @@ final class ClassfileParser(
         else {
           val newType = sigToType(sig, sym, isVarargs)
           if (ctx.debug && ctx.verbose)
-            println("" + sym + "; signature = " + sig + " type = " + newType)
+            Printers.debug.println("" + sym + "; signature = " + sig + " type = " + newType)
           newType
         }
 

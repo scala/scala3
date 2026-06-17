@@ -36,7 +36,7 @@ object TestConfiguration {
 
   val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
 
-  val withCompilerClasspath = mkClasspath(List(
+  lazy val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
     Properties.compilerInterface,
@@ -57,20 +57,6 @@ object TestConfiguration {
     Properties.scalaJSLibrary,
   ))
 
-  lazy val replClassPath =
-    withCompilerClasspath + File.pathSeparator + mkClasspath(List(
-      Properties.dottyRepl,
-      Properties.jlineTerminal,
-      Properties.jlineReader,
-      Properties.fansi,
-      Properties.pprint,
-      Properties.sourcecode,
-      Properties.scalaXml
-  ))
-
-  lazy val replWithStagingClasspath = 
-    replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
-
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
@@ -86,10 +72,8 @@ object TestConfiguration {
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
-  val withCompilerOptions =
+  lazy val withCompilerOptions =
     defaultOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
-  lazy val withReplOptions =
-    defaultOptions.withRunClasspath(replClassPath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =
@@ -104,7 +88,7 @@ object TestConfiguration {
     "-Yprint-pos",
     "-Yprint-pos-syms"
   )
-  val picklingWithCompilerOptions =
+  lazy val picklingWithCompilerOptions =
     picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
   val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
