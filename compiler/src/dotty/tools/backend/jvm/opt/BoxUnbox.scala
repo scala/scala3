@@ -649,7 +649,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: K
       val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - numArgs)
       if (receiverProds.size == 1) {
         val prod = receiverProds.head
-        if (optimizerUtils.isPredefLoad(prod) && prodCons.consumersOfOutputsFrom(prod) == Set(mi)) return Some(prod)
+        if (OptimizerUtils.isPredefLoad(prod) && prodCons.consumersOfOutputsFrom(prod) == Set(mi)) return Some(prod)
       }
       None
     }

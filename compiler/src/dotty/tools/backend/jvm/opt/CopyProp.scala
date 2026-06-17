@@ -29,7 +29,7 @@ import scala.tools.asm
 class CopyProp(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner, ts: KnownBTypes, settings: OptimizerSettings) {
 
   private val modulesAllowSkipInitialization =
-    if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
+    if settings.optAllowSkipCoreModuleInit then OptimizerUtils.modulesAllowSkipInitialization else Set.empty
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an
@@ -478,7 +478,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, indyTracker: IndyLambdaImplTracke
               val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
             } else if (optimizerUtils.isScalaUnbox(methodInsn)) {
-              val tp = optimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
+              val tp = OptimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
               val boxTp = ts.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
