@@ -16,180 +16,180 @@ import org.objectweb.asm.{Handle, Opcodes, Type}
 /**
  * This component hosts tools and utilities used in the optimizer that require access to an `OptimizerKnownBTypes` instance.
  */
-class OptimizerUtils(val ts: OptimizerKnownBTypes) {
-
-  def isScalaBox(insn: MethodInsnNode): Boolean =
-    insn.owner == ClassBType.scalaRuntimeBoxesRunTimeInternalName && {
-      val args = asm.Type.getArgumentTypes(insn.desc)
-      args.length == 1 && (OptimizerUtils.primitiveAsmTypeSortToBType.get(args(0).getSort) match
-        case Some(prim) => 
-          val MethodNameAndType(name, tp) = ts.srBoxesRuntimeBoxToMethods(prim)
-          name == insn.name && tp.descriptor == insn.desc
-        case None => false)
-    }
-
-  def getScalaBox(primitiveType: asm.Type): MethodInsnNode = {
-    val bType = OptimizerUtils.primitiveAsmTypeSortToBType(primitiveType.getSort)
-    val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeBoxToMethods(bType)
-    new MethodInsnNode(Opcodes.INVOKESTATIC, ClassBType.scalaRuntimeBoxesRunTimeInternalName, name, methodBType.descriptor, /*itf =*/ false)
-  }
-
-  def getScalaUnbox(primitiveType: asm.Type): MethodInsnNode = {
-    val bType = OptimizerUtils.primitiveAsmTypeSortToBType(primitiveType.getSort)
-    val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeUnboxToMethods(bType)
-    new MethodInsnNode(Opcodes.INVOKESTATIC, ClassBType.scalaRuntimeBoxesRunTimeInternalName, name, methodBType.descriptor, /*itf =*/ false)
-  }
-
-  def isScalaUnbox(insn: MethodInsnNode): Boolean = {
-    insn.owner == ClassBType.scalaRuntimeBoxesRunTimeInternalName && (OptimizerUtils.primitiveAsmTypeSortToBType.get(asm.Type.getReturnType(insn.desc).getSort) match {
-      case Some(prim) =>
-        val MethodNameAndType(name, tp) = ts.srBoxesRuntimeUnboxToMethods(prim)
-        name == insn.name && tp.descriptor == insn.desc
-      case _ => false
-    })
-  }
-
-  private def calleeInMap(insn: MethodInsnNode, map: Map[InternalName, MethodNameAndType]): Boolean = map.get(insn.owner) match {
-    case Some(MethodNameAndType(name, tp)) => insn.name == name && insn.desc == tp.descriptor
-    case _ => false
-  }
-
-  def isJavaBox(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.javaBoxMethods)
-  def isJavaUnbox(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.javaUnboxMethods)
-
-  def isPredefAutoBox(insn: MethodInsnNode): Boolean = {
-    insn.owner == OptimizerUtils.predefInternalName && (ts.predefAutoBoxMethods.get(insn.name) match {
-      case Some(tp) => insn.desc == tp.descriptor
-      case _ => false
-    })
-  }
-
-  def isPredefAutoUnbox(insn: MethodInsnNode): Boolean = {
-    insn.owner == OptimizerUtils.predefInternalName && (ts.predefAutoUnboxMethods.get(insn.name) match {
-      case Some(tp) => insn.desc == tp.descriptor
-      case _ => false
-    })
-  }
-
-  def getBoxedUnit: FieldInsnNode =
-    new FieldInsnNode(Opcodes.GETSTATIC, ts.srBoxedUnitRef.internalName, "UNIT", ts.srBoxedUnitRef.descriptor)
-
-  def isBoxedUnit(insn: AbstractInsnNode): Boolean = {
-    insn.getOpcode == Opcodes.GETSTATIC && {
-      val fi = insn.asInstanceOf[FieldInsnNode]
-      fi.owner == ts.srBoxedUnitRef.internalName && fi.name == "UNIT" && fi.desc == ts.srBoxedUnitRef.descriptor
-    }
-  }
-
-  def isRefCreate(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefCreateMethods)
-  def isRefZero(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefZeroMethods)
-
-  def isPrimitiveBoxConstructor(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.primitiveBoxConstructors)
-  def isRuntimeRefConstructor(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefConstructors)
-  def isTupleConstructor(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.tupleClassConstructors)
-  def isTupleApply(insn: MethodInsnNode): Boolean = insn.owner.startsWith("scala/Tuple") && insn.owner.endsWith("$") && insn.name == "apply"
-
-  def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
-
-  def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean =
-    insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && OptimizerUtils.sideEffectFreeConstructors(ts)((insn.owner, insn.desc))
-
-  def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
-    insn.getOpcode == Opcodes.NEW && {
-      val ti = insn.asInstanceOf[TypeInsnNode]
-      OptimizerUtils.classesOfSideEffectFreeConstructors(ts)(ti.desc)
-    }
-  }
-
-  def isSideEffectFreeCall(mi: MethodInsnNode): Boolean = {
-    isScalaBox(mi) ||  // not Scala unbox, it may CCE
-      isJavaBox(mi) || // not Java unbox, it may NPE
-      isSideEffectFreeConstructorCall(mi) ||
-      AnalysisUtils.isClassTagApply(mi) ||
-      OptimizerUtils.isStdLibModuleAlias(mi)
-  }
-
-  // methods that are known to return a non-null result
-  def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
-    isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || AnalysisUtils.isClassTagApply(mi) ||
-      isTupleApply(mi) || OptimizerUtils.isStdLibModuleAlias(mi)
-  }
-
-  /**
-   * Identify forwarders, aliases, anonfun\$adapted methods, bridges, trivial methods (x + y), etc
-   * Returns
-   * -1 : no match
-   * 1 : trivial (no method calls), but not field getters
-   * 2 : factory
-   * 3 : forwarder with boxing adaptation
-   * 4 : generic forwarder / alias
-   *
-   * TODO: should delay some checks to `canInline` (during inlining)
-   * problem is: here we don't have access to the callee / accessed field, so we can't check accessibility
-   *   - INVOKESPECIAL is not the only way to call private methods, INVOKESTATIC is also possible
-   *   - the body of the callee can change between here (we're in inliner heuristics) and the point
-   *     when we actually inline it (code may have been inlined into the callee)
-   *   - methods accessing a public field could be inlined. on the other hand, methods accessing a private
-   *     static field should not be inlined.
-   */
-  def looksLikeForwarderOrFactoryOrTrivial(method: MethodNode, owner: InternalName, allowPrivateCalls: Boolean): Int = {
-    val paramTypes = Type.getArgumentTypes(method.desc)
-    val numPrimitives = paramTypes.count(_.getSort < Type.ARRAY) + (if (Type.getReturnType(method.desc).getSort < Type.ARRAY) 1 else 0)
-
-    val maxSize =
-      3 + // forwardee call, return
-        paramTypes.length + // param load
-        numPrimitives * 2 + // box / unbox call, for example Predef.int2Integer
-        paramTypes.length + 2 // some slack: +1 for each parameter, receiver, return value. allow things like casts.
-
-    if (method.instructions.iterator.asScala.count(_.getOpcode > 0) > maxSize) return -1
-
-    var numBoxConv = 0
-    var numCallsOrNew = 0
-    var callMi: MethodInsnNode | Null = null
-    val it = method.instructions.iterator
-    while (it.hasNext && numCallsOrNew < 2) {
-      val i = it.next()
-      val t = i.getType
-      if (t == AbstractInsnNode.METHOD_INSN) {
-        val mi = i.asInstanceOf[MethodInsnNode]
-        if (OptimizerUtils.isStdLibModuleAlias(mi)) {
-          // allow method calls that return well-known modules, they are removed in `eliminatePushPop`
-        } else if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
-          // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
-          numCallsOrNew = 2 // stop here: don't inline forwarders with a private or super call
-        } else {
-          if (isScalaBox(mi) || isScalaUnbox(mi) || isPredefAutoBox(mi) || isPredefAutoUnbox(mi) || isJavaBox(mi) || isJavaUnbox(mi))
-            numBoxConv += 1
-          else {
-            numCallsOrNew += 1
-            callMi = mi
-          }
-        }
-      } else if (OptimizerUtils.nonForwarderInstructionTypes(t)) {
-        if (i.getOpcode == Opcodes.GETSTATIC) {
-          if (!allowPrivateCalls && owner == i.asInstanceOf[FieldInsnNode].owner) {
-            numCallsOrNew = 2 // stop here: not forwarder or trivial
-          }
-        } else {
-          numCallsOrNew = 2 // stop here: not forwarder or trivial
-        }
-      }
-    }
-    if (numCallsOrNew > 1 || numBoxConv > paramTypes.length + 1) -1
-    else if (numCallsOrNew == 0) if (numBoxConv == 0) 1 else 3
-    else if (callMi.nn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) 2 // if numCallsOrNew > 0 then callMi is nonnull
-    else if (numBoxConv > 0) 3
-    else 4
-  }
-}
-
-object OptimizerUtils {
+object OptimizerUtils:
   // Contains methods that get instances of various standard library modules, such as `Either$`, `Range$`, etc.
   private val ScalaPackageObject = "scala/package$"
   private val PredefModule = "scala/Predef$"
 
   private val predefInternalName = "scala/Predef"
+
+  extension (ts: OptimizerKnownBTypes) {
+
+    def isScalaBox(insn: MethodInsnNode): Boolean =
+      insn.owner == ClassBType.scalaRuntimeBoxesRunTimeInternalName && {
+        val args = asm.Type.getArgumentTypes(insn.desc)
+        args.length == 1 && (primitiveAsmTypeSortToBType.get(args(0).getSort) match
+          case Some(prim) =>
+            val MethodNameAndType(name, tp) = ts.srBoxesRuntimeBoxToMethods(prim)
+            name == insn.name && tp.descriptor == insn.desc
+          case None => false)
+      }
+
+    def getScalaBox(primitiveType: asm.Type): MethodInsnNode = {
+      val bType = primitiveAsmTypeSortToBType(primitiveType.getSort)
+      val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeBoxToMethods(bType)
+      new MethodInsnNode(Opcodes.INVOKESTATIC, ClassBType.scalaRuntimeBoxesRunTimeInternalName, name, methodBType.descriptor, /*itf =*/ false)
+    }
+
+    def getScalaUnbox(primitiveType: asm.Type): MethodInsnNode = {
+      val bType = primitiveAsmTypeSortToBType(primitiveType.getSort)
+      val MethodNameAndType(name, methodBType) = ts.srBoxesRuntimeUnboxToMethods(bType)
+      new MethodInsnNode(Opcodes.INVOKESTATIC, ClassBType.scalaRuntimeBoxesRunTimeInternalName, name, methodBType.descriptor, /*itf =*/ false)
+    }
+
+    def isScalaUnbox(insn: MethodInsnNode): Boolean = {
+      insn.owner == ClassBType.scalaRuntimeBoxesRunTimeInternalName && (primitiveAsmTypeSortToBType.get(asm.Type.getReturnType(insn.desc).getSort) match {
+        case Some(prim) =>
+          val MethodNameAndType(name, tp) = ts.srBoxesRuntimeUnboxToMethods(prim)
+          name == insn.name && tp.descriptor == insn.desc
+        case _ => false
+      })
+    }
+
+    private def calleeInMap(insn: MethodInsnNode, map: Map[InternalName, MethodNameAndType]): Boolean = map.get(insn.owner) match {
+      case Some(MethodNameAndType(name, tp)) => insn.name == name && insn.desc == tp.descriptor
+      case _ => false
+    }
+
+    def isJavaBox(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.javaBoxMethods)
+    def isJavaUnbox(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.javaUnboxMethods)
+
+    def isPredefAutoBox(insn: MethodInsnNode): Boolean = {
+      insn.owner == predefInternalName && (ts.predefAutoBoxMethods.get(insn.name) match {
+        case Some(tp) => insn.desc == tp.descriptor
+        case _ => false
+      })
+    }
+
+    def isPredefAutoUnbox(insn: MethodInsnNode): Boolean = {
+      insn.owner == predefInternalName && (ts.predefAutoUnboxMethods.get(insn.name) match {
+        case Some(tp) => insn.desc == tp.descriptor
+        case _ => false
+      })
+    }
+
+    def getBoxedUnit: FieldInsnNode =
+      new FieldInsnNode(Opcodes.GETSTATIC, ts.srBoxedUnitRef.internalName, "UNIT", ts.srBoxedUnitRef.descriptor)
+
+    def isBoxedUnit(insn: AbstractInsnNode): Boolean = {
+      insn.getOpcode == Opcodes.GETSTATIC && {
+        val fi = insn.asInstanceOf[FieldInsnNode]
+        fi.owner == ts.srBoxedUnitRef.internalName && fi.name == "UNIT" && fi.desc == ts.srBoxedUnitRef.descriptor
+      }
+    }
+
+    def isRefCreate(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefCreateMethods)
+    def isRefZero(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefZeroMethods)
+
+    def isPrimitiveBoxConstructor(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.primitiveBoxConstructors)
+    def isRuntimeRefConstructor(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.srRefConstructors)
+    def isTupleConstructor(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.tupleClassConstructors)
+    def isTupleApply(insn: MethodInsnNode): Boolean = insn.owner.startsWith("scala/Tuple") && insn.owner.endsWith("$") && insn.name == "apply"
+
+    def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
+
+    def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean = {
+      insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors(ts)((insn.owner, insn.desc))
+    }
+
+    def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
+      insn.getOpcode == Opcodes.NEW && {
+        val ti = insn.asInstanceOf[TypeInsnNode]
+        classesOfSideEffectFreeConstructors(ts)(ti.desc)
+      }
+    }
+
+    def isSideEffectFreeCall(mi: MethodInsnNode): Boolean = {
+      isScalaBox(mi) || // not Scala unbox, it may CCE
+        isJavaBox(mi) || // not Java unbox, it may NPE
+        isSideEffectFreeConstructorCall(mi) ||
+        AnalysisUtils.isClassTagApply(mi) ||
+        isStdLibModuleAlias(mi)
+    }
+
+    // methods that are known to return a non-null result
+    def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
+      isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || AnalysisUtils.isClassTagApply(mi) ||
+        isTupleApply(mi) || isStdLibModuleAlias(mi)
+    }
+
+    /**
+     * Identify forwarders, aliases, anonfun\$adapted methods, bridges, trivial methods (x + y), etc
+     * Returns
+     * -1 : no match
+     * 1 : trivial (no method calls), but not field getters
+     * 2 : factory
+     * 3 : forwarder with boxing adaptation
+     * 4 : generic forwarder / alias
+     *
+     * TODO: should delay some checks to `canInline` (during inlining)
+     * problem is: here we don't have access to the callee / accessed field, so we can't check accessibility
+     *   - INVOKESPECIAL is not the only way to call private methods, INVOKESTATIC is also possible
+     *   - the body of the callee can change between here (we're in inliner heuristics) and the point
+     *     when we actually inline it (code may have been inlined into the callee)
+     *   - methods accessing a public field could be inlined. on the other hand, methods accessing a private
+     *     static field should not be inlined.
+     */
+    def looksLikeForwarderOrFactoryOrTrivial(method: MethodNode, owner: InternalName, allowPrivateCalls: Boolean): Int = {
+      val paramTypes = Type.getArgumentTypes(method.desc)
+      val numPrimitives = paramTypes.count(_.getSort < Type.ARRAY) + (if (Type.getReturnType(method.desc).getSort < Type.ARRAY) 1 else 0)
+
+      val maxSize =
+        3 + // forwardee call, return
+          paramTypes.length + // param load
+          numPrimitives * 2 + // box / unbox call, for example Predef.int2Integer
+          paramTypes.length + 2 // some slack: +1 for each parameter, receiver, return value. allow things like casts.
+
+      if (method.instructions.iterator.asScala.count(_.getOpcode > 0) > maxSize) return -1
+
+      var numBoxConv = 0
+      var numCallsOrNew = 0
+      var callMi: MethodInsnNode | Null = null
+      val it = method.instructions.iterator
+      while (it.hasNext && numCallsOrNew < 2) {
+        val i = it.next()
+        val t = i.getType
+        if (t == AbstractInsnNode.METHOD_INSN) {
+          val mi = i.asInstanceOf[MethodInsnNode]
+          // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
+          if (isStdLibModuleAlias(mi)) {
+            // allow method calls that return well-known modules, they are removed in `eliminatePushPop`
+          } else if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
+            numCallsOrNew = 2 // stop here: don't inline forwarders with a private or super call
+          } else {
+            if (isScalaBox(mi) || isScalaUnbox(mi) || isPredefAutoBox(mi) || isPredefAutoUnbox(mi) || isJavaBox(mi) || isJavaUnbox(mi))
+              numBoxConv += 1
+            else {
+              numCallsOrNew += 1
+              callMi = mi
+            }
+          }
+        } else if (nonForwarderInstructionTypes(t)) {
+          if (i.getOpcode == Opcodes.GETSTATIC) {
+            if (!allowPrivateCalls && owner == i.asInstanceOf[FieldInsnNode].owner)
+              numCallsOrNew = 2 // stop here: not forwarder or trivial
+          } else {
+            numCallsOrNew = 2 // stop here: not forwarder or trivial
+          }
+        }
+      }
+      if (numCallsOrNew > 1 || numBoxConv > paramTypes.length + 1) -1
+      else if (numCallsOrNew == 0) if (numBoxConv == 0) 1 else 3
+      else if (callMi.nn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) 2 // if numCallsOrNew > 0 then callMi is nonnull
+      else if (numBoxConv > 0) 3
+      else 4
+    }
+  }
 
   def isPredefLoad(insn: AbstractInsnNode): Boolean = AnalysisUtils.isModuleLoad(insn, _ == predefInternalName)
 
@@ -322,5 +322,3 @@ object OptimizerUtils {
     sideEffectFreeConstructors(ts)
     _classesOfSideEffectFreeConstructors
   }
-
-}
