@@ -50,6 +50,7 @@ given contribution from the maintainers’ perspective.
   useful aid for code reviewers.
 - Do not open pull requests without the intention of answering code reviews and pushing it to its completion.
 - Do not forward code review questions and other discussion to an LLM.
+- Do not contribute large volumes of LLM-generated code all at once. Try to scope them down to something digestible for code reviewers.
 
 # Examples
 
