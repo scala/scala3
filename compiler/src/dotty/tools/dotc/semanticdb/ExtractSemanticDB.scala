@@ -567,10 +567,20 @@ private[semanticdb] object ExtractSemanticDB:
       else
         Span(span.start)
 
-      if namePresentInSource(sym, span, treeSource) || sym.isAnonymousClass then
+      if namePresentInSource(sym, span, treeSource)
+        || sym.isAnonymousClass
+        || isPositionedMainEntryPoint(sym, span)
+      then
         registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symkinds)
+
+    /** A generated main entry point may be anchored on a source span that does
+     *  not contain its name, so `namePresentInSource` is false and no
+     *  occurrence is emitted. Still emit one for such entry points so tooling
+     *  can locate them, restricted to runnable main classes. */
+    private def isPositionedMainEntryPoint(sym: Symbol, span: Span)(using Context): Boolean =
+      span.hasLength && ctx.platform.hasMainMethod(sym)
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
