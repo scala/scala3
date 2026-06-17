@@ -69,7 +69,7 @@ class CoverageTests:
 
       val targetFile = targetDir.resolve(s"scoverage.coverage")
 
-      if updateCheckFiles then
+      if Properties.testsUpdateCheckfile then
         Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
       else
         val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
@@ -84,7 +84,7 @@ class CoverageTests:
         // if that is not the case then this will have to be adjusted
         val targetMeasurementFile = findMeasurementFile(targetDir)
 
-        if updateCheckFiles then
+        if Properties.testsUpdateCheckfile then
           Files.copy(targetMeasurementFile, expectMeasurementFile, StandardCopyOption.REPLACE_EXISTING)
 
         else
@@ -205,9 +205,6 @@ object CoverageTests extends ParallelTesting:
 
   def maxDuration = 30.seconds
   def numberOfWorkers = 1
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
 
   given summaryReport: SummaryReporting = SummaryReport()
   @AfterClass def tearDown(): Unit =
