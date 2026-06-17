@@ -26,7 +26,7 @@ import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.BCodeUtils.*
 import dotty.tools.dotc.core.StdNames.nme
 
-final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: OptimizerKnownBTypes) {
+final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: KnownBTypes) {
 
   /**
    * Eliminate box-unbox pairs within `method`. Such appear commonly after closure elimination:
@@ -676,7 +676,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
       def transitiveSupertypes(clsbt: ClassBType): Set[ClassBType] =
         (clsbt.info.superClass ++ clsbt.info.interfaces).flatMap(transitiveSupertypes).toSet + clsbt
 
-      ts.boxedClasses.map { bc =>
+      ts.boxedClassOfPrimitive.values.map { bc =>
         bc.internalName -> (transitiveSupertypes(bc).map(_.internalName) + bc.internalName)
       }.toMap
     }
@@ -738,7 +738,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
     private def refClass(mi: MethodInsnNode): InternalName = mi.owner
     private def loadZeroValue(refZeroCall: MethodInsnNode): List[AbstractInsnNode] = List(loadZeroForTypeSort(optimizerUtils.runtimeRefClassBoxedType(refZeroCall.owner).getSort))
 
-    private val refSupertypes = Set(ts.jiSerializableRef, ts.ObjectRef).map(_.internalName)
+    private val refSupertypes = Set("java/io/Serializable", ClassBType.javaLangObjectInternalName)
 
     def checkRefCreation(insn: AbstractInsnNode, expectedKind: Option[Ref], prodCons: ProdConsAnalyzer): Option[(BoxCreation, Ref)] = {
       def checkKind(mi: MethodInsnNode): Option[Ref] = expectedKind match {
