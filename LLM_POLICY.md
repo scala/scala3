@@ -59,7 +59,7 @@ given contribution from the maintainers’ perspective.
 - The author of the contribution understands every line of code they contributed and can explain how it works and what
   purpose it serves.
 - The code fulfills the requirements of the issue in the bug tracker it is meant to solve.
-- The code is well documented and covered with tests.
+- The code is well scoped, well documented and covered with tests.
 - The solution is clearly of high quality, regardless if it was coded manually or generated automatically.
 
 #### A contribution is likely to be rejected with a warning, if:
