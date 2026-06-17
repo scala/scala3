@@ -3,7 +3,7 @@ package dotty.tools.backend.jvm
 import dotty.tools.backend.jvm.opt.{Callsite, ClosureInstantiation}
 import dotty.tools.dotc.util.SourcePosition
 
-import scala.tools.asm.tree.{InvokeDynamicInsnNode, MethodInsnNode, MethodNode}
+import org.objectweb.asm.tree.{InvokeDynamicInsnNode, MethodInsnNode, MethodNode}
 
 /**
  * Basics of a call graph: only the parts needed to emit code and do local optimizations.
