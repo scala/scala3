@@ -1,22 +1,14 @@
 package dotty.tools.backend.jvm
 
-import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.report
-import dotty.tools.dotc.core.*
-import dotty.tools.dotc.interfaces.CompilerCallback
-import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, OptimizerCallGraph, OptimizerKnownBTypes}
-import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.io.*
-
-import scala.annotation.stableNull
-import scala.collection.mutable
-import scala.compiletime.uninitialized
+import dotty.tools.backend.jvm.opt.*
+import dotty.tools.dotc.{CompilationUnit, report}
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.io.JarArchive
 
 /**
- * GenBCode has 3 parts:
+ * Code generation has 3 parts:
  * 1. Translating trees to Java bytecode
  * 2. Optimizing the bytecode, if the user requested it
  * 3. Emitting the bytecode to class files.
@@ -25,67 +17,47 @@ import scala.compiletime.uninitialized
  * Parts 2 and 3 do not require a Context and can be parallelized.
  *
  * It is crucial that parts 2 and 3 do not accidentally depend on a Context,
- * which is why we have abstractions to hide it such as OptimizerSettings.
+ * which is why we have abstractions to eagerly fetch data from it such as OptimizerSettings.
  */
-class GenBCode extends Phase { self =>
+final class GenBCode extends Phase:
   override def phaseName: String = GenBCode.name
   override def description: String = GenBCode.description
-  override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
+  override def isRunnable(using ctx: Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  private var _initialized: Boolean = false
-  private var _codeGen: CodeGen = uninitialized
-  private var _postProcessor: PostProcessor = uninitialized
-  private var _generatedClassHandler: GeneratedClassHandler = uninitialized
+  private var codeGen: CodeGen | Null = null
+  private def getCodeGen()(using ctx: Context): CodeGen = codeGen match
+    case null =>
+      val primitives = ScalaPrimitives()
+      val classBTypeCache = new ClassBType.Cache()
+      val gen =
+        if ctx.settings.optInlineEnabled || ctx.settings.optAnyEnabled then
+          val byteCodeRepository = new BCodeRepository(ctx.platform.classPath)
+          val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, classBTypeCache)
+          val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, Some(bTypesFromClassfile))
+          val knownBTypes = new OptimizerKnownBTypes(bTypeLoader)
+          val callGraph = new OptimizerCallGraph(byteCodeRepository, bTypesFromClassfile)
+          val bc = BCode(knownBTypes, bTypeLoader, primitives, callGraph)
+          val optSettings = new OptimizerSettings()
+          val closureOptimizer = new ClosureOptimizer(byteCodeRepository, callGraph, knownBTypes, bTypesFromClassfile, optSettings)
+          val heuristics = new InlinerHeuristics(byteCodeRepository, callGraph, knownBTypes, optSettings)
+          val globalOpt = new GlobalOptimizer(callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+          val localOpt = new LocalOptimizer(callGraph, globalOpt, knownBTypes, bTypesFromClassfile, optSettings)
+          CodeGen(this, bc, Some(localOpt), Some(globalOpt))
+        else
+          val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
+          val knownBTypes = new KnownBTypes(bTypeLoader)
+          val bc = BCode(knownBTypes, bTypeLoader, primitives, DisabledCallGraph)
+          CodeGen(this, bc, None, None)
+      codeGen = gen
+      gen
+    case cg => cg
 
-  private def ensureInit()(using Context): Unit =
-    if _initialized then
-      return
-    def createClassHandler(postProcessor: PostProcessor) = ctx.settings.YbackendParallelism.value match {
-      case 1 => GeneratedClassHandler.serial(postProcessor)
-      case maxThreads =>
-        // The thread pool queue is limited in size. When it's full, the `CallerRunsPolicy` causes
-        // a new task to be executed on the main thread, which provides back-pressure.
-        // The queue size is large enough to ensure that running a task on the main thread does
-        // not take longer than to exhaust the queue for the backend workers.
-        val queueSize = ctx.settings.YbackendWorkerQueue.valueSetByUser.getOrElse(maxThreads * 2)
-        GeneratedClassHandler.parallel(postProcessor, maxThreads, queueSize, this, ctx.profiler)
-    }
-    val primitives = new ScalaPrimitives()
-    val classBTypeCache = new ClassBType.Cache()
-    if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
-      val byteCodeRepository = new BCodeRepository(ctx.platform.classPath)
-      val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, classBTypeCache)
-      val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, Some(bTypesFromClassfile))
-      val knownBTypes = new OptimizerKnownBTypes(bTypeLoader)
-      val callGraph = new OptimizerCallGraph(byteCodeRepository, bTypesFromClassfile)
-      _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, knownBTypes)
-      _generatedClassHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(_postProcessor), i => report.optimizerWarning(i.msg, i.site, i.pos))
-      object impl extends BCodeIdiomatic(callGraph), BCodeSkelBuilder(knownBTypes), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives), BCodeSyncAndTry
-      _codeGen = new CodeGen(impl)
-    else
-      val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, None)
-      val knownBTypes = new KnownBTypes(bTypeLoader)
-      _postProcessor = new PostProcessor(classBTypeCache, knownBTypes)
-      _generatedClassHandler = createClassHandler(_postProcessor)
-      object impl extends BCodeIdiomatic(DisabledCallGraph), BCodeSkelBuilder(knownBTypes), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives), BCodeSyncAndTry
-      _codeGen = new CodeGen(impl)
-    _initialized = true
+  protected override def run(using ctx: Context): Unit =
+    getCodeGen().addCompilationUnit()
 
-  protected def run(using Context): Unit =
-    ensureInit()
-    _generatedClassHandler.process(_codeGen.genUnit())
-    ctx.compilerCallback match
-      case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
-      case null => ()
-
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] =
     try
-      val result = super.runOn(units)
-      if _initialized then
-        for (exn, f) <- _generatedClassHandler.complete() do
-          report.error(em"Error while emitting $f\n${exn.getMessage}")
-          exn.printStackTrace()
-      result
+      super.runOn(units)
     finally
       ctx.settings.outputDir.value match
         case jar: JarArchive =>
@@ -95,13 +67,10 @@ class GenBCode extends Phase { self =>
             report.error("Cannot suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
           jar.close()
         case _ => ()
-      if _initialized then
-        _postProcessor.close()
-        _generatedClassHandler.close()
-  }
-}
+      codeGen match
+        case null => () // no compilation units, that's OK
+        case cg => cg.finish()
 
-object GenBCode {
+object GenBCode:
   val name: String = "genBCode"
   val description: String = "generate JVM bytecode"
-}
