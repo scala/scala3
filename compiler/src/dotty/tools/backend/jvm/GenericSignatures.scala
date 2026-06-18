@@ -226,9 +226,13 @@ object GenericSignatures {
                 // value classes cannot appear as generic arguments
                 jsig(res, vcBoxing = ValueClassBoxing.Box)
           case _ =>
-            boxedSig(tp.widenDealias.widenNullaryMethod)
+            val typeSym = tp.typeSymbol
+            if typeSym.isTypeParam then
+              typeParamSig(typeSym.name)
+            else
               // `tp` might be a singleton type referring to a getter.
               // Hence the widenNullaryMethod.
+              boxedSig(tp.widenDealias.widenNullaryMethod)
         }
 
       pre.widenDealias match {
