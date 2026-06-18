@@ -80,7 +80,7 @@ class CodeGen(impl: BCodeSyncAndTry) {
           buffer.writeUncompressedLong(hi)
           buffer.bytes
 
-        val dataAttr = impl.createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
+        val dataAttr = BCodeUtils.createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
         store.visitAttribute(dataAttr)
       }
 
