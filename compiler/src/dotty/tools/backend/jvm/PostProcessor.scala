@@ -243,8 +243,6 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
    *  It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
    */
   private final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags) {
-    private val objectRef = bTypeLoader.classBTypeFromSymbol(defn.ObjectClass)
-
     /**
      * This method is used by asm when computing stack map frames.
      */
@@ -253,7 +251,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
       // i.e., have been loaded either from symbols or from class files.
       val a = bTypeLoader.previouslyConstructedClassBType(inameA).get
       val b = bTypeLoader.previouslyConstructedClassBType(inameB).get
-      val lub = a.jvmWiseLUB(b, objectRef)
+      val lub = a.jvmWiseLUB(b, bTypes.ObjectRef)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
@@ -261,14 +259,13 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
   }
 }
 
-final class PostProcessorWithOptimizations(frontendAccess: PostProcessorFrontendAccess,
-                                           byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
+final class PostProcessorWithOptimizations(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
                                            callGraph: CallGraph, optimizerUtils: OptimizerUtils,
                                            bTypeLoader: BTypeLoader, bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(bTypeLoader, bTypes) {
   private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(frontendAccess, optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new Inliner(frontendAccess, optimizerUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val closureOptimizer    = new ClosureOptimizer(optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
+  private val inliner             = new Inliner(optimizerUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
   private val localOpt            = new LocalOpt(optimizerUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
@@ -283,10 +280,7 @@ final class PostProcessorWithOptimizations(frontendAccess: PostProcessorFrontend
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
-    if ctx.settings.optInlineEnabled then
-      inliner.runInlinerAndClosureOptimizer()
-    else // we're only called if either optInlineEnabled or ctx.settings.optClosureInvocations
-      closureOptimizer.rewriteClosureApplyInvocations(None, scala.collection.mutable.Map.empty)
+    inliner.runInlinerAndClosureOptimizer(i => report.optimizerWarning(i.msg, i.site, i.pos))
   }
 
   protected override def runLocalOptimizations(classNode: ClassNode): Unit =
