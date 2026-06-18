@@ -6,18 +6,14 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.FileWriters
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators.em
 
+import org.objectweb.asm
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
-import dotty.tools.dotc.report
-import dotty.tools.io.PlainFile.toPlainFile
 
-import java.nio.file.{Files, Paths}
 import scala.annotation.constructorOnly
 import scala.collection.mutable
-import org.objectweb.asm
 import scala.util.chaining.scalaUtilChainingOps
 
 /**
@@ -28,13 +24,8 @@ import scala.util.chaining.scalaUtilChainingOps
  */
 class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(using @constructorOnly initctx: Context) {
 
-  private val dumpClassesPath =
-    initctx.settings.Xdumpclasses.valueSetByUser
-      .map(p => Paths.get(p))
-      .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
-      .map(_.toPlainFile)
   private val classfileWriter: FileWriters.ClassfileWriter =
-    FileWriters.ClassfileWriter(initctx.settings.outputDir.value, initctx.settings.XmainClass.valueSetByUser, initctx.settings.XjarCompressionLevel.value, dumpClassesPath)
+    FileWriters.ClassfileWriter(initctx.settings.outputDir.value, initctx.settings.XmainClass.valueSetByUser, initctx.settings.XjarCompressionLevel.value, initctx.settings.Xdumpclasses.value)
 
   final def sendToDisk(clazz: GeneratedClass): Unit = {
     val classNode = clazz.classNode
@@ -60,34 +51,6 @@ class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(usin
   final def close(): Unit =
     classfileWriter.close()
 
-<<<<<<< HEAD
-  private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass): Unit = {
-    val name = clazz.classNode.name
-    val lowerCaseJavaName = name.toLowerCase
-    val clsPos = clazz.position
-    caseInsensitively.putIfAbsent(lowerCaseJavaName, (name, clsPos)) match {
-      case null => ()
-      case (dupName, dupPos) =>
-        // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
-        val ((pos1, pos2), (name1, name2)) =
-          if (name < dupName) ((clsPos, dupPos), (name, dupName))
-          else ((dupPos, clsPos), (dupName, name))
-        val locationAddendum =
-          if pos1.source.path == pos2.source.path then ""
-          else s" (defined in ${pos2.source.name})"
-        def nicify(name: String): String = name.replace('/', '.')
-        if name1 == name2 then
-          report.error(
-            em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
-        else
-          report.warning(
-            em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
-                |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
-    }
-  }
-
-=======
->>>>>>> 5496c345c0 (Stop capturing a Context in PostProcessor)
   private def setInnerClasses(classNode: ClassNode): Unit = {
     classNode.innerClasses.nn.clear()
     val (declared, referred) = collectNestedClasses(classNode)
