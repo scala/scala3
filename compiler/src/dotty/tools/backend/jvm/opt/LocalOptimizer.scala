@@ -150,9 +150,9 @@ import OptimizerUtils.*
  * Note on updating the call graph: whenever an optimization eliminates a callsite or a closure
  * instantiation, we eliminate the corresponding entry from the call graph.
  */
-class LocalOpt(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner,
-               ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
-               settings: OptimizerSettings) {
+final class LocalOptimizer(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner,
+                           ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+                           settings: OptimizerSettings) {
 
   import LocalOptImpls.*
 
@@ -166,7 +166,7 @@ class LocalOpt(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner
    * @param clazz The class whose methods are optimized
    * @return      `true` if unreachable code was eliminated in some method, `false` otherwise.
    */
-  def methodOptimizations(clazz: ClassNode): Boolean = {
+  def run(clazz: ClassNode): Boolean = {
     clazz.methods.asScala.foldLeft(false) {
       case (changed, method) => methodOptimizations(method, clazz.name) || changed
     }

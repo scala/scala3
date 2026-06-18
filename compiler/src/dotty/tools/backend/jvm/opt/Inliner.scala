@@ -28,16 +28,19 @@ import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
 abstract class Inliner {
-  def run(issueSink: OptimizerIssue => Unit): Unit
   def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit
 }
 
-final class InlinerImpl(indyTracker: IndyLambdaImplTracker,
-                        callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-                        heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
-                        settings: OptimizerSettings) extends Inliner {
+final class GlobalOptimizer(indyTracker: IndyLambdaImplTracker,
+                            callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+                            heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
+                            settings: OptimizerSettings) extends Inliner {
+  def run(classNodesAndSourcePaths: Iterable[(ClassNode, String)], issueSink: OptimizerIssue => Unit): Unit = {
+    // add classes to the bytecode repo before building the call graph: the latter needs to
+    // look up classes and methods in the code repo.
+    for (c, p) <- classNodesAndSourcePaths do byteCodeRepository.add(c, p)
+    for (c, _) <- classNodesAndSourcePaths do callGraph.addClass(c)
 
-  override def run(issueSink: OptimizerIssue => Unit): Unit = {
     var round = 0
     var changedByInliner = Iterable.empty[MethodNode]
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
@@ -963,8 +966,6 @@ final class InlinerImpl(indyTracker: IndyLambdaImplTracker,
 }
 
 object DisabledInliner extends Inliner {
-  override def run(issueSink: OptimizerIssue => Unit): Unit =
-    ()
   override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit =
     ()
 }

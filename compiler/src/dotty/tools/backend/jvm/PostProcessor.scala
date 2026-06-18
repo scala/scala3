@@ -144,25 +144,15 @@ final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, by
   private val optSettings         = new OptimizerSettings()
   private val closureOptimizer    = new ClosureOptimizer(indyTracker, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
   private val heuristics          = new InlinerHeuristics(byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new InlinerImpl(indyTracker, callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+  private val inliner             = new GlobalOptimizer(indyTracker, callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOptimizer(indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit], issueSink: OptimizerIssue => Unit): Unit = {
-    // add classes to the bytecode repo before building the call graph: the latter needs to
-    // look up classes and methods in the code repo.
-    for u <- generatedUnits
-        c <- u.classes
-    do
-      byteCodeRepository.add(c.classNode, u.sourcePath)
-    for u <- generatedUnits
-        c <- u.classes
-    do
-      callGraph.addClass(c.classNode)
-    inliner.run(issueSink)
+    inliner.run(generatedUnits.flatMap(u => u.classes.map(c => (c.classNode, u.sourcePath))), issueSink)
   }
 
   protected override def runLocalOptimizations(classNode: ClassNode): Unit =
-    localOpt.methodOptimizations(classNode)
+    localOpt.run(classNode)
 }
 
 case class GeneratedClass(

@@ -19,7 +19,7 @@ import scala.annotation.tailrec
 import scala.tools.asm
 import scala.tools.asm.tree.ClassNode
 
-final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
+final class BTypeLoader(primitives: ScalaPrimitives, val cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
 
   /** Maps special symbols, including primitive types, to their corresponding BType. */
   // It's OK to cache this because all Contexts that go through here share their defns.
