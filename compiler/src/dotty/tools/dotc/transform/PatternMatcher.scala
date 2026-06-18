@@ -432,7 +432,8 @@ object PatternMatcher {
                     else if isGenericTuple(getResult.info) then
                       val elemTypes = getResult.info.tupleElementTypes.getOrElse(Nil)
                       val selectors = elemTypes.zipWithIndex.map { (tp, i) =>
-                        tupleApp(i, ref(getResult)).cast(tp)
+                        val tree = tupleApp(i, ref(getResult))
+                        if i == elemTypes.length - 1 then tree.cast(tp) else tree
                       }
                       unapplyProductSeqPlan(selectors, args)
                     else { 
