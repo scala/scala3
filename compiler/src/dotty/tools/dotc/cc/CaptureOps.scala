@@ -68,9 +68,11 @@ extension (tp: Type)
     case ReadOnlyCapability(tp1) =>
       tp1.toCapability.readOnly
     case OnlyCapability(tp1, cls) =>
-      tp1.toCapability.restrict(cls)
+      if cls.isTopClassifier then tp1.toCapability // identity projection
+      else tp1.toCapability.restrict(cls)
     case ExceptCapability(tp1, cls) =>
-      tp1.toCapability.exclude(cls)
+      if cls.isTopClassifier then tp1.toCapability.restrict(defn.NothingClass) // empty projection
+      else tp1.toCapability.exclude(cls)
     case ref: TermRef if ref.isCapsAnyRef =>
       GlobalAny
     case ref: TermRef if ref.isCapsFreshRef =>
@@ -110,6 +112,8 @@ extension (tp: Type)
       elem match
         case CapturingType(parent, refs) if parent.derivesFromCapSet =>
           refs.elems.toList
+        case ExceptCapability(_, cls) if cls.isTopClassifier =>
+          Nil // empty projection
         case _ =>
           elem.toCapability :: Nil
 
@@ -543,6 +547,11 @@ extension (cls: ClassSymbol) {
 
   def isClassifiedCapabilityClass(using Context): Boolean =
     cls.derivesFromCapability && cls.parentSyms.contains(defn.Caps_Classifier)
+
+  /** The top of the classifier tree (`Any` or `caps.Capability`): not a classifier
+   *  class, but usable as a projection argument: `only[top]` = identity, `except[top]` = empty. */
+  def isTopClassifier(using Context): Boolean =
+    cls == defn.AnyClass || cls == defn.Caps_Capability
 
   def classifier(using Context): ClassSymbol =
     if cls.derivesFromCapability then
