@@ -7,7 +7,7 @@ import typer.{TyperPhase, RefChecks}
 import parsing.Parser
 import Phases.Phase
 import transform.*
-import backend.jvm.GenBCode
+import backend.jvm.{GenBCode, GenBCode2}
 import localopt.{StringInterpolatorOpt, DropForMap}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -149,7 +149,7 @@ class Compiler {
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
     List(new backend.sjs.GenSJSIR) :: // Generate .sjsir files for Scala.js (not enabled by default)
-    List(new GenBCode) ::             // Generate JVM bytecode
+    List(new GenBCode2) ::             // Generate JVM bytecode
     Nil
 
   // TODO: Initially InitialRunId - 1, so that the first nextRunId call would return InitialRunId

@@ -20,7 +20,7 @@ import scala.annotation.tailrec
 import scala.tools.asm
 import scala.tools.asm.tree.ClassNode
 
-final class BTypeLoader(primitives: ScalaPrimitives, cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
+final class BTypeLoader(primitives: ScalaPrimitives, val cache: ClassBType.Cache, inlineInfoLoader: Option[InlineInfoLoader]) {
 
   // Cache only for `classBTypeFromSymbol`, since it is heavily called.
   // Its values are all also values of the main cache.

@@ -58,20 +58,6 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     cachedClassfileVersion.nn
 
   /*
-   * can-multi-thread
-   */
-  def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
-    new asm.Attribute(name) {
-      override def write(classWriter: ClassWriter, code: Array[Byte],
-        codeLength: Int, maxStack: Int, maxLocals: Int): asm.ByteVector = {
-        val byteVector = new asm.ByteVector(len)
-        byteVector.putByteArray(b, offset, len)
-        byteVector
-      }
-    }
-  }
-
-  /*
    * Custom attribute (JVMS 4.7.1) "ScalaSig" used as marker only
    * i.e., the pickle is contained in a custom annotation, see:
    *   (1) `addAnnotations()`,
@@ -100,14 +86,14 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
      * can-multi-thread
      */
     def pickleMarkerLocal(using Context) = {
-      createJAttribute(nme.ScalaSignatureATTR.toString, versionPickle.bytes, 0, versionPickle.writeIndex)
+      BCodeUtils.createJAttribute(nme.ScalaSignatureATTR.toString, versionPickle.bytes, 0, versionPickle.writeIndex)
     }
 
     /*
      * can-multi-thread
      */
     def pickleMarkerForeign(using Context) = {
-      createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
+      BCodeUtils.createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
     }
   } // end of trait BCPickles
 
