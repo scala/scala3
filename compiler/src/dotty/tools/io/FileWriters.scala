@@ -20,11 +20,6 @@ import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import scala.collection.mutable
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
-import dotty.tools.dotc.reporting.Message
-import dotty.tools.dotc.report
 
 import scala.annotation.constructorOnly
 import java.util.concurrent.atomic.AtomicReference
@@ -59,7 +54,7 @@ object FileWriters {
   }
 
   object TastyWriter {
-    def apply(output: AbstractFile)(using Context): TastyWriter =
+    def apply(output: AbstractFile): TastyWriter =
       // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
       new SingleTastyWriter(FileWriter(output, None))
@@ -96,10 +91,10 @@ object FileWriters {
   }
 
   object ClassfileWriter {
-    def apply(output: AbstractFile, jarManifestMainClass: Option[String], dumpClassesPath: Option[AbstractFile])(using Context): ClassfileWriter = {
+    def apply(output: AbstractFile, jarManifestMainClass: Option[String], jarCompressionLevel: Int, dumpClassesPath: Option[AbstractFile]): ClassfileWriter = {
       // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
-      val basicClassWriter = new SingleClassWriter(FileWriter(output, jarManifestMainClass))
+      val basicClassWriter = new SingleClassWriter(FileWriter(output, jarManifestMainClass, jarCompressionLevel))
       dumpClassesPath match
         case None => basicClassWriter
         case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, None))
@@ -141,19 +136,17 @@ object FileWriters {
   }
 
   object FileWriter {
-    def apply(file: AbstractFile, jarManifestMainClass: Option[String])(using Context): FileWriter =
-      if (file.isInstanceOf[JarArchive]) {
-        val jarCompressionLevel = ctx.settings.jarCompressionLevel
+    def apply(file: AbstractFile, jarManifestMainClass: Option[String], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter =
+      if file.isInstanceOf[JarArchive] then
         // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
         // created using `AbstractFile.bufferedOutputStream` instead of JarWriter
-        val jarFile = file.underlyingSource.getOrElse{
+        val jarFile = file.underlyingSource.getOrElse {
           throw new IllegalStateException("No underlying source for jar")
         }
         assert(file.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
         new JarEntryWriter(jarFile, jarManifestMainClass, jarCompressionLevel)
-      }
-      else if (file.isVirtual) new VirtualFileWriter(file)
-      else if (file.isDirectory) new DirEntryWriter(file.file.nn.toPath)
+      else if file.isVirtual then new VirtualFileWriter(file)
+      else if file.isDirectory then new DirEntryWriter(file.file.nn.toPath)
       else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
@@ -222,7 +215,7 @@ object FileWriters {
         catch {
           case e: FileAlreadyExistsException =>
             // `createDirectories` reports this exception if `parent` is an existing symlink to a directory
-            // but that's fine for us (and common enough, `scalac -d /tmp` on mac targets symlink).
+            // but that's fine for us (and common enough, `scalac -d /tmp` on Mac targets symlink).
             if (!Files.isDirectory(parent))
               throw new FileConflictException(s"Can't create directory $parent; there is an existing (non-directory) file in its path", e)
         }
@@ -235,7 +228,7 @@ object FileWriters {
     }
 
     // the common case is that we are creating a new file, and on MS Windows the create and truncate is expensive
-    // because there is not an options in the windows API that corresponds to this so the truncate is applied as a separate call
+    // because there is not an options in the Windows API that corresponds to this so the truncate is applied as a separate call
     // even if the file is new.
     // as this is rare, it's best to always try to create a new file, and it that fails, then open with truncate if that fails
 
@@ -274,8 +267,8 @@ object FileWriters {
       val components = path.split('/')
       var dir = base
       for i <- 0 until components.length - 1 do
-        dir = ensureDirectory(dir).subdirectoryNamed(components(i).toString)
-      ensureDirectory(dir).fileNamed(components.last.toString)
+        dir = ensureDirectory(dir).subdirectoryNamed(components(i))
+      ensureDirectory(dir).fileNamed(components.last)
     }
 
     private def writeBytes(outFile: AbstractFile, bytes: Array[Byte]): Unit = {
