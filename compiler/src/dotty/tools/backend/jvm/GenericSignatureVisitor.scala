@@ -138,6 +138,9 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
       case '[' =>
         if (isBaseType(current)) skip()
         else referenceTypeSignature()
+
+      case '!' =>
+        referenceTypeSignature()
     }
 
     private def typeParameters(): Unit = if (current == '<') {

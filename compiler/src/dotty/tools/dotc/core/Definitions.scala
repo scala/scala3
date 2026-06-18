@@ -1179,7 +1179,7 @@ class Definitions {
   // The annotation from jspecify is designed to be used on types only; however, it is common to use it
   // on fields and method parameters required by some frameworks, so we need to recognize annotations
   // form `AnnotatedType` as well as from `Symbol`.
-  @tu lazy val NotNullAnnots: List[ClassSymbol] = getClassesIfDefined(
+  @tu lazy val NotNullAnnots: List[ClassSymbol] = NonNullAnnot :: getClassesIfDefined(
     "javax.annotation.Nonnull" ::
     "javax.validation.constraints.NotNull" ::
     "jakarta.annotation.Nonnull" ::
