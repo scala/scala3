@@ -6,19 +6,14 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.FileWriters
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators.em
 
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
 import dotty.tools.backend.jvm.opt.*
-import dotty.tools.dotc.report
-import dotty.tools.io.PlainFile.toPlainFile
 
-import java.nio.file.{Files, Paths}
 import scala.annotation.constructorOnly
 import scala.collection.mutable
 import scala.tools.asm
-import scala.util.chaining.scalaUtilChainingOps
 
 /**
  * Implements late stages of the backend, i.e.,
@@ -28,13 +23,8 @@ import scala.util.chaining.scalaUtilChainingOps
  */
 class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(using @constructorOnly initctx: Context) {
 
-  private val dumpClassesPath =
-    initctx.settings.Xdumpclasses.valueSetByUser
-      .map(p => Paths.get(p))
-      .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
-      .map(_.toPlainFile)
   private val classfileWriter: FileWriters.ClassfileWriter =
-    FileWriters.ClassfileWriter(initctx.settings.outputDir.value, initctx.settings.XmainClass.valueSetByUser, initctx.settings.XjarCompressionLevel.value, dumpClassesPath)
+    FileWriters.ClassfileWriter(initctx.settings.outputDir.value, initctx.settings.XmainClass.valueSetByUser, initctx.settings.XjarCompressionLevel.value, initctx.settings.Xdumpclasses.value)
 
   final def sendToDisk(clazz: GeneratedClass): Unit = {
     val classNode = clazz.classNode
