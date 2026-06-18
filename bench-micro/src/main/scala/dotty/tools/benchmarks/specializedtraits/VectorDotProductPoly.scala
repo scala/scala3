@@ -72,14 +72,14 @@ inline trait VecSpecialized[T: {Specialized, NumericSpecialized}](elems: Array[T
 
 @State(Scope.Benchmark)
 class Arrays:
-  val arr1Int = Array.fill(10_000_000) {math.round(math.random().floatValue * 4)}
-  val arr2Int = Array.fill(10_000_000) {math.round(math.random().floatValue * 4)}
+  val arr1Int = Array.fill(100_000) {math.round(math.random().floatValue * 4)}
+  val arr2Int = Array.fill(100_000) {math.round(math.random().floatValue * 4)}
 
-  val arr1Float = Array.fill(10_000_000) {math.random().floatValue * 10}
-  val arr2Float = Array.fill(10_000_000) {math.random().floatValue * 10}
+  val arr1Float = Array.fill(100_000) {math.random().floatValue * 10}
+  val arr2Float = Array.fill(100_000) {math.random().floatValue * 10}
 
-  val arr1Double = Array.fill(10_000_000) {math.random() * 5}
-  val arr2Double = Array.fill(10_000_000) {math.random() * 5}
+  val arr1Double = Array.fill(100_000) {math.random() * 5}
+  val arr2Double = Array.fill(100_000) {math.random() * 5}
 
   val targetInt = arr1Int.zip(arr2Int).map((x, y) => x * y).fold(0)(_ + _)
   val targetFloat = arr1Float.zip(arr2Float).map((x, y) => x * y).fold(0F)(_ + _)
