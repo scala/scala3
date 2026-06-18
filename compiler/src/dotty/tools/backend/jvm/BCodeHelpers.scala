@@ -57,22 +57,8 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       cachedClassfileVersion = target.toInt + (Opcodes.V17 - 17)
     cachedClassfileVersion.nn
 
-  /*
-   * can-multi-thread
-   */
-  def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
-    new asm.Attribute(name) {
-      override def write(classWriter: ClassWriter, code: Array[Byte],
-        codeLength: Int, maxStack: Int, maxLocals: Int): asm.ByteVector = {
-        val byteVector = new asm.ByteVector(len)
-        byteVector.putByteArray(b, offset, len)
-        byteVector
-      }
-    }
-  }
-
   def createScalaJAttribute()(using Context): asm.Attribute = {
-    createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
+    BCodeUtils.createJAttribute(nme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
   }
 
   object BCAnnotGen:
