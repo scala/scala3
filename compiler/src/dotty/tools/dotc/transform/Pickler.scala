@@ -243,7 +243,7 @@ class Pickler extends Phase {
   private val executor = Executor[Array[Byte]]()
 
   private def useExecutor(using Context) =
-    Pickler.ParallelPickling && !ctx.isBestEffort && !ctx.settings.YtestPickler.value
+    Pickler.ParallelPickling && !ctx.isBestEffort && !ctx.settings.YtestPickler.value && !ctx.settings.YprintTasty.value
 
   private def printerContext(isOutline: Boolean)(using Context): Context =
     if isOutline then ctx.fresh.setPrinterFn(OutlinePrinter(_))
@@ -259,6 +259,40 @@ class Pickler extends Phase {
   private def computeInternalName(cls: ClassSymbol)(using Context): String =
     if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX)
     else cls.binaryClassName
+
+  // This can be called inside a Future in a background thread, it must not capture a Context
+  def computePickled(pickler: TastyPickler, treePkl: TreePickler, 
+                     tree: Tree, unit: CompilationUnit, internalName: String, attributes: Attributes,
+                     reference: String/*ctx.settings.sourceroot.value*/, dropComments: Boolean/*ctx.settings.XdropComments.value*/): Array[Byte] =
+    serialized.run { scratch =>
+      treePkl.compactify(scratch)
+      if tree.span.exists then
+        PositionPickler.picklePositions(
+          pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
+          unit.source, tree :: Nil,
+          scratch.positionBuffer, scratch.pickledIndices)
+
+      if !dropComments then
+        CommentPickler.pickleComments(
+          pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
+          scratch.commentBuffer)
+
+      AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
+
+      val pickled = pickler.assembleParts()
+
+      def rawBytes = // not needed right now, but useful to print raw format.
+        pickled.iterator.grouped(10).toList.zipWithIndex.map {
+          case (row, i) => s"${i}0: ${row.mkString(" ")}"
+        }
+
+      // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+
+      if fastDoAsyncTasty then
+        serialized.commit(internalName, pickled)
+
+      pickled
+    }
 
   protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
@@ -310,62 +344,28 @@ class Pickler extends Phase {
             false
       Profile.current.recordTasty(treePkl.buf.length)
 
-      val positionWarnings = new mutable.ListBuffer[Message]()
-      def reportPositionWarnings() = positionWarnings.foreach(report.warning(_))
-
       val internalName = if fastDoAsyncTasty then computeInternalName(cls) else ""
 
-      def computePickled(): Array[Byte] = inContext(ctx.fresh) {
-        serialized.run { scratch =>
-          treePkl.compactify(scratch)
-          if tree.span.exists then
-            val reference = ctx.settings.sourceroot.value
-            PositionPickler.picklePositions(
-                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
-                unit.source, tree :: Nil, positionWarnings,
-                scratch.positionBuffer, scratch.pickledIndices)
-
-          if !ctx.settings.XdropComments.value then
-            CommentPickler.pickleComments(
-                pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
-                scratch.commentBuffer)
-
-          AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
-
-          val pickled = pickler.assembleParts()
-
-          def rawBytes = // not needed right now, but useful to print raw format.
-            pickled.iterator.grouped(10).toList.zipWithIndex.map {
-              case (row, i) => s"${i}0: ${row.mkString(" ")}"
-            }
-
-          // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-          if ctx.settings.YprintTasty.value || pickling != noPrinter then
-            println(i"**** pickled info of $cls")
-            println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false))
-            println(i"**** end of pickled info of $cls")
-
-          if fastDoAsyncTasty then
-            serialized.commit(internalName, pickled)
-
-          pickled
-        }
-      }
-
       if successful then
+        val sourceroot = ctx.settings.sourceroot.value
+        val dropComments = ctx.settings.XdropComments.value
+        // must not depend on a Context as it's passed to the executor, so we fetch settings before
+        def doComputePickled() =
+          computePickled(pickler, treePkl, tree, unit, internalName, attributes, sourceroot, dropComments)
         /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
          *  either computes the pickled data in a future or eagerly before constructing the
          *  function value.
          */
         val demandPickled: () => Array[Byte] =
           if useExecutor then
-            val futurePickled = executor.schedule(computePickled)
-            () =>
-              try futurePickled.force.get
-              finally reportPositionWarnings()
+            val futurePickled = executor.schedule(doComputePickled)
+            () => futurePickled.force.get
           else
-            val pickled = computePickled()
-            reportPositionWarnings()
+            val pickled = doComputePickled()
+            if ctx.settings.YprintTasty.value || pickling != noPrinter then
+              println(i"**** pickled info of $cls")
+              println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false))
+              println(i"**** end of pickled info of $cls")
             if ctx.settings.YtestPickler.value then
               pickledBytes(cls) = (unit, pickled)
               if ctx.settings.YtestPicklerCheck.value then
