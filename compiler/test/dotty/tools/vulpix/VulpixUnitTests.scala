@@ -93,14 +93,7 @@ class VulpixUnitTests:
         .checkRuns()
 
 object VulpixUnitTests extends ParallelTesting:
-  import scala.concurrent.duration.*
-  def maxDuration = 3.seconds
   def numberOfWorkers = 5
-  def safeMode = sys.env.get("SAFEMODE").isDefined
-  def isInteractive = !sys.env.contains("DOTTY_CI_RUN")
-  def testFilter = Nil
-  def updateCheckFiles: Boolean = false
-  def failedTests = None
 
   @tearDown
   def tearDown() = cleanup()

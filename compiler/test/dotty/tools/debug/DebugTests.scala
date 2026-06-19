@@ -25,15 +25,7 @@ class DebugTests:
     ).checkDebug()
 
 object DebugTests extends ParallelTesting:
-  def maxDuration =
-    // Increase the timeout when the user is debugging the tests
-    if isUserDebugging then 3.hours else 45.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
   override def debugMode = true
 
   given summaryReport: SummaryReporting = new SummaryReport
@@ -54,35 +46,22 @@ object DebugTests extends ParallelTesting:
       verifyDebug(testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
 
     private def verifyDebug(dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      if Properties.testsNoRun then addNoRunWarning()
-      else
-        val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file")).toPath
-        val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
-        val expressionEvaluator =
-          ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
-        try debugMain(testSource.runClassPath): debuggee =>
-          val jdiPort = debuggee.readJdiPort()
-          val debugger = Debugger(jdiPort, expressionEvaluator, maxDuration/* , verbose = true */)
-          // configure the breakpoints before starting the debuggee
+      val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file")).toPath
+      val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
+      val expressionEvaluator =
+        ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)
+      val status =
+        try debugMain(testSource.runClassPath, expressionEvaluator): (debugger, debuggee) =>
           val breakpoints = debugSteps.map(_.step).collect { case b: DebugStep.Break => b }.distinct
           for b <- breakpoints do debugger.configureBreakpoint(b.className, b.line)
-          try
-            debuggee.launch()
-            playDebugSteps(debugger, debugSteps/* , verbose = true */)
-            val status = debuggee.exit()
-            reportDebuggeeStatus(testSource, status)
-          finally
-            // closing the debugger must be done at the very end so that the
-            // 'Listening for transport dt_socket at address: <port>' message is ready to be read
-            // by the next DebugTest
-            debugger.dispose()
+          debuggee.launch()
+          playDebugSteps(debugger, debugSteps/* , verbose = true */)
         catch
           case DebugStepException(message, location) =>
-            echo(s"\n[error] Debug step failed: $location\n" + message)
-            failTestSource(testSource)
-          case e: IOException =>
-            // FIXME: Handle this kind of failure, do not just make the test pass.
-            echo(s"\n[warn] Ignoring failed debug test due to unexpected error: ${e.getMessage()}")
+            Failure(s"Debug step failed: $location\n" + message)
+          case e: Exception =>
+            Failure(s"Debug test failed due to unexpected error: ${e.getMessage}")
+      reportDebuggeeStatus(testSource, status)
     end verifyDebug
 
     private def playDebugSteps(debugger: Debugger, steps: Seq[DebugStepAssert[?]], verbose: Boolean = false): Unit =

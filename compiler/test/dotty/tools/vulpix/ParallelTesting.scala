@@ -5,7 +5,6 @@ package vulpix
 import scala.language.unsafeNulls
 
 import java.io.{File as JFile, PrintStream}
-import java.lang.management.ManagementFactory
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
@@ -16,8 +15,6 @@ import scala.collection.mutable, mutable.ArrayBuffer, mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
-import scala.util.control.NonFatal
-import scala.util.matching.Regex
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
 
 import dotc.{Compiler, Driver}
@@ -29,7 +26,6 @@ import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
-import util.chaining.*
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -40,23 +36,6 @@ import util.chaining.*
 trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   import ParallelTesting.*
   import Status.{Failure, Success, Timeout}
-
-  /** If the running environment supports an interactive terminal, each `Test`
-   *  will be run with a progress bar and real time feedback
-   */
-  def isInteractive: Boolean
-
-  /** A list of strings which is used to filter which tests to run, if `Nil` will run
-   *  all tests. All absolute paths that contain any of the substrings in `testFilter`
-   *  will be run
-   */
-  def testFilter: List[String]
-
-  /** Tests should override the checkfiles with the current output */
-  def updateCheckFiles: Boolean
-
-  /** Contains a list of failed tests to run, if list is empty no tests will run */
-  def failedTests: Option[List[String]]
 
   protected def testPlatform: TestPlatform = TestPlatform.JVM
 
@@ -247,7 +226,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           files.exists(f => SeparateCompilationSource.HasCompilerVersion.matches(f.getName))
 
   protected def shouldReRun(testSource: TestSource): Boolean =
-    failedTests.forall(rerun => testSource match {
+    TestReporter.lastRunFailedTests.forall(rerun => testSource match {
       case JointCompilationSource(_, files, _, _, _, _) =>
         rerun.exists(filter => files.exists(file => file.getPath.contains(filter)))
       case SeparateCompilationSource(_, dir, _, _) =>
@@ -301,7 +280,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
      */
     final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String], reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       for (msg <- FileDiff.check(testSource.title, actual, checkFile.getPath)) {
-        if (updateCheckFiles) {
+        if (Properties.testsUpdateCheckfile) {
           FileDiff.dump(checkFile.toPath.toString, actual)
           echo("Updated checkfile: " + checkFile.getPath)
         } else {
@@ -407,12 +386,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     /** All testSources left after filtering out */
     private val filteredSources =
       val filteredByName =
-        if (testFilter.isEmpty) testSources
+        if (Properties.testsFilter.isEmpty) testSources
         else testSources.filter {
           case JointCompilationSource(_, files, _, _, _, _) =>
-            testFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
+            Properties.testsFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
           case SeparateCompilationSource(_, dir, _, _) =>
-            testFilter.exists(dir.getPath.contains)
+            Properties.testsFilter.exists(dir.getPath.contains)
         }
       filteredByName.filterNot(shouldSkipTestSource(_)).filter(shouldReRun(_))
 
@@ -774,7 +753,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
         val timer = new Timer()
-        val logProgress = isInteractive && !suppressAllOutput
+        val logProgress = !Properties.isRunByCI && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
@@ -813,11 +792,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         else reportPassed()
       else
         val groupInfo = testSources.map(_.group).distinct.mkString(",")
-        if testFilter.isEmpty then
+        if Properties.testsFilter.isEmpty then
           reportFailed()
           addFailedTest(FailedTestInfo(groupInfo, "No tests available under target - erroneous test?"))
         else
-          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${testFilter.mkString(",")}" in test"""))
+          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${Properties.testsFilter.mkString(",")}" in test"""))
 
       this
     }
@@ -942,36 +921,22 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
   protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
-    private var didAddNoRunWarning = false
-    protected def addNoRunWarning() = if (!didAddNoRunWarning) {
-      didAddNoRunWarning = true
-      summaryReport.addStartingMessage {
-        """|WARNING
-           |-------
-           |Run and debug tests were only compiled, not run - this is due to the `dotty.tests.norun`
-           |property being set
-           |""".stripMargin
-      }
-    }
-
     private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       import testSource.{allToolArgs, runClassPath, title}
-      if Properties.testsNoRun then addNoRunWarning()
-      else
-        runMain(runClassPath, allToolArgs) match
-          case Success(output) =>
-            for file <- checkFile if file.exists do
-              diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
-          case Failure("") =>
-            echo(s"Test '$title' failed with no output")
-            failTestSource(testSource)
-          case Failure(output) =>
-            echo(s"Test '$title' failed with output:")
-            echo(output)
-            failTestSource(testSource)
-          case Timeout =>
-            echo(s"failed because test '$title' timed out")
-            failTestSource(testSource, TimeoutFailure(title))
+      runMain(runClassPath, allToolArgs) match
+        case Success(output) =>
+          for file <- checkFile if file.exists do
+            diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
+        case Failure("") =>
+          echo(s"Test '$title' failed with no output")
+          failTestSource(testSource)
+        case Failure(output) =>
+          echo(s"Test '$title' failed with output:")
+          echo(output)
+          failTestSource(testSource)
+        case Timeout =>
+          echo(s"failed because test '$title' timed out")
+          failTestSource(testSource, TimeoutFailure(title))
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
@@ -1627,9 +1592,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
 
-    val filteredFiles = testFilter match
-      case _ :: _ => files.filter(f => testFilter.exists(f.getPath.contains))
-      case _      => Nil
+    val filteredFiles = Properties.testsFilter match
+      case Nil      => Nil
+      case _ => files.filter(f => Properties.testsFilter.exists(f.getPath.contains))
 
     class JointCompilationSourceFromTasty(
        name: String,
@@ -1890,11 +1855,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     flags.options.sliding(2).collectFirst {
       case Array("-encoding", encoding) => Charset.forName(encoding)
     }.getOrElse(StandardCharsets.UTF_8)
-
-  /** checks if the current process is being debugged */
-  def isUserDebugging: Boolean =
-    val mxBean = ManagementFactory.getRuntimeMXBean
-    mxBean.getInputArguments.asScala.exists(_.contains("jdwp"))
 
 object ParallelTesting:
 
