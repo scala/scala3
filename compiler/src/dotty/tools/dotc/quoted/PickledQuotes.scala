@@ -223,11 +223,9 @@ object PickledQuotes {
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
-      val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
       PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
-        ctx.compilationUnit.source, tree :: Nil, positionWarnings)
-      positionWarnings.foreach(report.warning(_))
+        ctx.compilationUnit.source, tree :: Nil)
 
     val pickled = pickler.assembleParts()
     quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
