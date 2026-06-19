@@ -1,0 +1,10 @@
+//> using options -language:experimental.captureChecking
+scala> import caps.*
+scala> trait IO extends SharedCapability, Classifier
+// defined trait IO
+scala> def f(x: Object^): Object^{x.except[Control]} = ???
+def f(x: Object^): Object^{x.except[Control]}
+scala> def g(x: Object^): Object^{x.only[IO]} = ???
+def g(x: Object^): Object^{x.only[IO]}
+scala> def widen(x: Object^): Object^{x} = f(x)
+def widen(x: Object^): Object^{x}
