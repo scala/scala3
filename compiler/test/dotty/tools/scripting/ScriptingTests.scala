@@ -2,8 +2,6 @@ package dotty
 package tools
 package scripting
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.Path
 
@@ -58,7 +56,7 @@ class ScriptingTests:
 
       sys.props("script.path") = scriptFile.absPath
       val mainArgs: Array[String] = Array(
-        "-classpath", TestConfiguration.basicClasspath.toString,
+        "-classpath", TestConfiguration.basicClasspath,
         "-script", scriptFile.toString,
       ) ++ scriptArgs
 
@@ -139,7 +137,7 @@ class ScriptingTests:
     val expectedJar = script2jar(scriptFile)
     sys.props("script.path") = scriptFile.absPath
     val mainArgs: Array[String] = Array(
-      "-classpath", TestConfiguration.basicClasspath.toString,
+      "-classpath", TestConfiguration.basicClasspath,
       "-save",
       "-script", scriptFile.toString,
       "-compile-only"

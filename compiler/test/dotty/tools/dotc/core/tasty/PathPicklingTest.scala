@@ -1,26 +1,17 @@
 package dotty.tools.dotc.core.tasty
 
-import scala.language.unsafeNulls
-
-import java.io.{File => JFile, ByteArrayOutputStream, IOException}
-import java.nio.file.{Files, NoSuchFileException, Paths}
+import java.io.{File => JFile}
+import java.nio.file.{Files, NoSuchFileException}
 
 import scala.sys.process.*
 
 import org.junit.Test
-import org.junit.Assert.{assertEquals, assertTrue, assertFalse, fail}
+import org.junit.Assert.{assertTrue, assertFalse}
 
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.{Driver, Main}
-import dotty.tools.dotc.decompiler
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
-import dotty.tools.dotc.core.Mode
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.{Directory, File, Path, JarArchive}
+import dotty.tools.io.{Path, JarArchive}
 
 import dotty.tools.vulpix.TestConfiguration
 

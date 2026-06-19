@@ -2,15 +2,9 @@ package dotty.tools.backend.jvm
 
 import dotty.DottyBytecodeTest
 
-import scala.language.unsafeNulls
-import org.junit.Assert.*
 import org.junit.Test
 
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
 import scala.tools.asm.Opcodes
-import scala.jdk.CollectionConverters.*
 import Opcodes.*
 
 class LabelBytecodeTests extends DottyBytecodeTest {
@@ -155,7 +149,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = dir.lookupName("Test.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 
