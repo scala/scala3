@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.collection.generic.{IsIterable, IsSeq}
 
 extension [Repr](repr: Repr)(using iter: IsIterable[Repr])

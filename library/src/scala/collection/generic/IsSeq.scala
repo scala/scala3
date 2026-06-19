@@ -18,7 +18,6 @@ import language.experimental.captureChecking
 import caps.unsafe.untrackedCaptures
 
 import scala.reflect.ClassTag
-import scala.annotation.experimental
 
 /** Type class witnessing that a collection representation type `Repr` has
  *  elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
@@ -112,7 +111,6 @@ object IsSeq {
         }
     }
 
-  @experimental
   given iarrayIsSeq[A0 : ClassTag]: (IsSeq[IArray[A0]] { type A = A0; type C = IArray[A0] }) =
     new IsSeq[IArray[A0]] {
       type A = A0
