@@ -544,7 +544,6 @@ trait TypesSupport:
   private def emitCapability(using Quotes)(ref: reflect.TypeRepr, skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
     ref match
-      case ReachCapability(c)     => emitCapability(c, skipThisTypePrefix) :+ Keyword("*")
       case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
@@ -593,7 +592,6 @@ trait TypesSupport:
     ref match
       case t if t.isCaptureRoot   => true
       case t if t.isFreshCap      => true
-      case ReachCapability(c)     => isCapturedInContext(c)
       case ReadOnlyCapability(c)  => isCapturedInContext(c)
       case OnlyCapability(c, _)   => isCapturedInContext(c)
       case ExceptCapability(c, _) => isCapturedInContext(c)
