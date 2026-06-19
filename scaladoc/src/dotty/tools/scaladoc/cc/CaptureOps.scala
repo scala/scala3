@@ -26,14 +26,8 @@ object CaptureDefs:
     qctx.reflect.Symbol.requiredClass("scala.caps.Mutable")
   def Caps_SharedCapability(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.caps.SharedCapability")
-  def UseAnnot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredClass("scala.caps.use")
   def ConsumeAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.caps.internal.consume")
-  def ReachCapabilityAnnot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.reachCapability")
-  def RootCapabilityAnnot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredClass("scala.caps.internal.rootCapability")
   def ReadOnlyCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.readOnlyCapability")
   def RequiresCapabilityAnnot(using qctx: Quotes) =
@@ -58,7 +52,6 @@ object CaptureDefs:
   def ContextFunction1(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.ContextFunction1")
 
-  val useAnnotFullName: String = "scala.caps.use.<init>"
   val consumeAnnotFullName: String = "scala.caps.consume.<init>"
   val ccImportSelector = "captureChecking"
   val captureRootName = "any"
@@ -73,9 +66,6 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
   /** This symbol is one of `retains`, `retainsCap`, or `retainsByName` */
   def isRetainsLike: Boolean =
     ann.isRetains || ann == CaptureDefs.retainsByName
-
-  def isReachCapabilityAnnot: Boolean =
-    ann == CaptureDefs.ReachCapabilityAnnot
 
   def isReadOnlyCapabilityAnnot: Boolean =
     ann == CaptureDefs.ReadOnlyCapabilityAnnot
@@ -181,15 +171,6 @@ object CCImport:
   end unapply
 end CCImport
 
-object ReachCapability:
-  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
-    import qctx.reflect._
-    ty match
-      case AnnotatedType(base, Apply(Select(New(annot), _), Nil)) if annot.symbol.isReachCapabilityAnnot =>
-        Some(base)
-      case _ => None
-end ReachCapability
-
 object ReadOnlyCapability:
   def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
     import qctx.reflect._
@@ -235,7 +216,6 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
       case t @ ThisType(_)           => include(t)
       case t @ TermRef(_, _)         => include(t)
       case t @ ParamRef(_, _)        => include(t)
-      case t @ ReachCapability(_)    => include(t)
       case t @ ReadOnlyCapability(_) => include(t)
       case t @ OnlyCapability(_, _)  => include(t)
       case t @ ExceptCapability(_, _) => include(t)
