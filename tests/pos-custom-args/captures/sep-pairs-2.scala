@@ -15,7 +15,7 @@ def twoRefs2(): Pair[Ref^, Ref^] =
   val p = Pair(Ref(), Ref())
   Pair(p.fst, p.snd)
 
-def twoRefs3(): Pair[Ref^, Ref^] = // error but should work
+def twoRefs3(): Pair[Ref^, Ref^] = // ok after reach drop, was error
   val p = Pair(Ref(), Ref())
   p
 

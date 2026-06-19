@@ -2160,7 +2160,7 @@ class Namer { typer: Typer =>
   )(using Context): Type =
     /** Is this member tracked? This is true if it is marked as `tracked` or if
      *  it overrides a `tracked` member. To account for the later, `isTracked`
-     *  is overriden to `true` as a side-effect of computing `inherited`.
+     *  is overridden to `true` as a side-effect of computing `inherited`.
      */
     var isTracked: Boolean = sym.is(Tracked)
 

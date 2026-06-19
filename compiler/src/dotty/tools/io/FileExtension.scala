@@ -18,6 +18,9 @@ enum FileExtension(val toLowerCase: String):
   /** represents an empty file extension. */
   def isEmpty: Boolean = this == Empty
 
+  /** the full extension including a leading dot */
+  val withDot: String = "." + toLowerCase
+
   override def toString: String = toLowerCase
 
   /** represents `".tasty"` */
@@ -40,6 +43,8 @@ enum FileExtension(val toLowerCase: String):
   def isJarOrZip: Boolean = isJar || isZip
   /** represents `".scala"` or `".java"` */
   def isSourceExtension: Boolean = isScala || isJava
+  /** represents `".class"` or `".tasty"` */
+  def isScalaBinary: Boolean = isClass || isTasty
 
 object FileExtension:
 

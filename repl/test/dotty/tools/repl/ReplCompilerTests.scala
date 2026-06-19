@@ -25,7 +25,7 @@ class ReplCompilerTests extends ReplTest:
     initially {
       run("import scala.collection.*")
     } andThen {
-      println(lines().mkString("* ", "\n  * ", ""))
+      assertEquals(0, lines().length)
     }
   }
 
@@ -905,7 +905,7 @@ class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.st
       def deepTree(depth: Int): Tree
       deepTree(300)""")
 
-class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-preview", "-Xprint:pickler")):
+class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-preview", "-Vprint:pickler")):
   override val redirectOutput = true
   @Test def i23408: Unit = initially:
     run("""

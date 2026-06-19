@@ -18,12 +18,6 @@ object PathResolver {
   // security exceptions.
   import AccessControl.*
 
-  def firstNonEmpty(xs: String*): String = xs find (_ != "") getOrElse ""
-
-  /** Map all classpath elements to absolute paths and reconstruct the classpath.
-   */
-  def makeAbsolute(cp: String): String = ClassPath.map(cp, x => Path(x).toAbsolute.path)
-
   /** pretty print class path
    */
   def ppcp(s: String): String = split(s) match {
@@ -34,7 +28,7 @@ object PathResolver {
 
   /** Values found solely by inspecting environment or property variables.
    */
-  object Environment {
+  private object Environment {
     private def searchForBootClasspath = {
       import scala.jdk.CollectionConverters.*
       val props = System.getProperties
@@ -163,7 +157,7 @@ object PathResolver {
 
       pr.result match {
         case cp: AggregateClassPath =>
-          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asClassPathStrings}")
+          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asURLs}")
       }
     }
 }

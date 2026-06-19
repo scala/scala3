@@ -39,8 +39,7 @@ import collection.immutable
  *               |                      +-- SetCapability -----+-- TypeRef
  *               |                                             +-- TypeParamRef
  *               |
- *               +-- DerivedCapability -+-- Reach
- *                                      +-- Only
+ *               +-- DerivedCapability -+-- Only
  *                                      +-- ReadOnly
  *                                      +-- Maybe
  *
@@ -106,40 +105,22 @@ object Capabilities:
 
   /** The readonly capability `x.rd`. We have {x.rd} <: {x}.
    *
-   *  Read-only capabilities cannot wrap maybe capabilities
-   *  but they can wrap reach capabilities. We have
-   *      (x?).readOnly = (x.rd)?
+   *  Read-only capabilities cannot wrap maybe capabilities.
    */
-  case class ReadOnly(underlying: CoreCapability | RootCapability | Reach | Restricted)
+  case class ReadOnly(underlying: CoreCapability | RootCapability | Restricted)
   extends DerivedCapability:
     def newLikeThis(c: Capability) = ReadOnly(c.asInstanceOf)
 
   /** The restricted capability `x.only[C]`. We have {x.only[C]} <: {x}.
    *
-   *  Restricted capabilities cannot wrap maybe capabilities or read-only capabilities
-   *  but they can wrap reach capabilities. We have
+   *  Restricted capabilities cannot wrap maybe capabilities or read-only capabilities.
+   *  We have
    *      (x?).restrict[T] = (x.restrict[T])?
    *      (x.rd).restrict[T] = (x.restrict[T]).rd
    */
-  case class Restricted(underlying: CoreCapability | RootCapability | Reach, cls: ClassSymbol)
+  case class Restricted(underlying: CoreCapability | RootCapability, cls: ClassSymbol)
   extends DerivedCapability:
     def newLikeThis(c: Capability) = Restricted(c.asInstanceOf, cls)
-
-  /** If `x` is a capability, its reach capability `x*`. `x*` stands for all
-   *  capabilities reachable through `x`.
-   *  We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
-   *  is the union of all capture sets that appear in covariant position in the
-   *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
-   *  are unrelated.
-   *
-   *  Reach capabilities cannot wrap read-only capabilities or maybe capabilities.
-   *  We have
-   *      (x?).reach        = (x.reach)?
-   *      (x.rd).reach      = (x.reach).rd
-   *      (x.only[T]).reach = (x*).only[T]
-   */
-  case class Reach(underlying: ObjectCapability) extends DerivedCapability:
-    def newLikeThis(c: Capability) = Reach(c.asInstanceOf)
 
   /** A class for the global root capabilities referenced as `caps.any` and `caps.fresh`.
    *  They do not subsume other capabilities, except in arguments of `withCapAsRoot` calls.
@@ -149,7 +130,6 @@ object Capabilities:
     override val maybe = Maybe(this)
     override val readOnly = ReadOnly(this)
     override def restrict(cls: ClassSymbol)(using Context) = Restricted(this, cls)
-    override def reach = unsupported("caps.any.reach")
     override def singletonCaptureSet(using Context) = CaptureSet.universal
     override def captureSetOfInfo(using Context) = singletonCaptureSet
     override def cached[C <: DerivedCapability](newRef: C): C = unsupported("cached")
@@ -334,7 +314,7 @@ object Capabilities:
   end ResultCap
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
-   *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
+   *  as well as three kinds of AnnotatedTypes representing readOnly, only, and maybe capabilities.
    *  If there are several annotations they come with an order:
    *  `*` first, `.only` next, `.rd` next, `?` last.
    */
@@ -371,7 +351,7 @@ object Capabilities:
     def readOnly: ReadOnly | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.readOnly)
       case self: ReadOnly => self
-      case self: (CoreCapability | RootCapability | Reach | Restricted) => cached(ReadOnly(self))
+      case self: (CoreCapability | RootCapability | Restricted) => cached(ReadOnly(self))
 
     def restrict(cls: ClassSymbol)(using Context): Restricted | ReadOnly | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.restrict(cls))
@@ -380,14 +360,7 @@ object Capabilities:
         val combinedCls = leastClassifier(prevCls, cls)
         if combinedCls == prevCls then self
         else cached(Restricted(ref1, combinedCls))
-      case self: (CoreCapability | RootCapability | Reach) => cached(Restricted(self, cls))
-
-    def reach: Reach | Restricted | ReadOnly | Maybe = this match
-      case Maybe(ref1) => Maybe(ref1.reach)
-      case ReadOnly(ref1) => ReadOnly(ref1.reach.asInstanceOf[Reach | Restricted])
-      case Restricted(ref1, cls) => Restricted(ref1.reach.asInstanceOf[Reach], cls)
-      case self: Reach => self
-      case self: ObjectCapability => cached(Reach(self))
+      case self: (CoreCapability | RootCapability) => cached(Restricted(self, cls))
 
     /** Is this a maybe reference of the form `x?`? */
     final def isMaybe(using Context): Boolean = this ne stripMaybe
@@ -411,11 +384,6 @@ object Capabilities:
       case self: ResultCap => self.origin.classifier
       case _ => NoSymbol
 
-    /** Is this a reach reference of the form `x*` or a readOnly or maybe variant
-     *  of a reach reference?
-     */
-    final def isReach(using Context): Boolean = this ne stripReach
-
     final def stripMaybe(using Context): Capability = this match
       case Maybe(ref1) => ref1
       case _ => this
@@ -434,13 +402,6 @@ object Capabilities:
 
     final def stripRestricted(using Context): Capability =
       stripRestricted(defn.NothingClass)
-
-    final def stripReach(using Context): Capability = this match
-      case Reach(ref1) => ref1
-      case ReadOnly(ref1) => ref1.stripReach.readOnly
-      case Restricted(ref1, cls) => ref1.stripReach.restrict(cls)
-      case Maybe(ref1) => ref1.stripReach.maybe
-      case _ => this
 
     /** Is this reference a root capability or a derived version of one?
      *  These capabilities have themselves as their captureSetOfInfo.
@@ -594,7 +555,6 @@ object Capabilities:
 
     /** Tests whether the capability derives from capability class `cls`. */
     def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = this match
-      case Reach(ref1) => ref1.widen.derivesFromCapTraitDeeply(cls)
       case self: DerivedCapability => self.underlying.derivesFromCapTrait(cls)
       case self: CoreCapability => self.superType.derivesFromCapTrait(cls)
       case _ => false
@@ -660,8 +620,6 @@ object Capabilities:
             ref1.transClassifiers
           case Maybe(ref1) =>
             ref1.transClassifiers
-          case Reach(_) =>
-            captureSetOfInfo.transClassifiers
           case self: CoreCapability =>
             if self.derivesFromCapability then toClassifiers(self.inheritedClassifier)
             else captureSetOfInfo.transClassifiers
@@ -685,8 +643,6 @@ object Capabilities:
           ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
           ref1.tryClassifyAs(cls)
-        case Reach(_) =>
-          captureSetOfInfo.tryClassifyAs(cls)
         case self: CoreCapability =>
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)
@@ -784,7 +740,6 @@ object Capabilities:
           this.subsumes(y.cls.sourceModule.termRef)
         case _ => false
       || this.match
-          case Reach(x1) => x1.subsumes(y.stripReach)
           case Restricted(x1, cls) => y.isKnownClassifiedAs(cls) && x1.subsumes(y)
           case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
           case x: TypeRef if assumedContainsOf(x).contains(y) => true
@@ -886,10 +841,6 @@ object Capabilities:
         || y.match
             case y @ TermRef(ypre: Capability, _) =>
               recur(x, ypre)
-            case Reach(y1) =>
-              x match
-                case Reach(x1) => recur(x1, y1)
-                case _ => false
             case Maybe(y1) =>
               x match
                 case Maybe(x1) => recur(x1, y1)
@@ -947,7 +898,6 @@ object Capabilities:
         c match
           case _: ReadOnly => ReadOnlyCapability(c1)
           case Restricted(_, cls) => OnlyCapability(c1, cls)
-          case _: Reach => ReachCapability(c1)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
 
@@ -1108,7 +1058,7 @@ object Capabilities:
         case t @ AnnotatedType(parent, ann: RetainingAnnotation)
         if ann.isStrict && ann.toCaptureSet.elems.exists(_.core.isInstanceOf[GlobalCap]) =>
           // Applying `this` can cause infinite recursion in some cases during printing.
-          // scalac -Xprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
+          // scalac -Vprint:all tests/pos/i23885/S_1.scala tests/pos/i23885/S_2.scala
           mapOver(CapturingType(this(parent), ann.toCaptureSet))
         case t @ AnnotatedType(parent, ann) =>
           t.derivedAnnotatedType(this(parent), ann)
@@ -1117,9 +1067,9 @@ object Capabilities:
         case _ =>
           mapFollowingAliases(t)
 
-    override def mapCapability(c: Capability, deep: Boolean): Capability = c match
+    override def mapCapability(c: Capability): Capability = c match
       case GlobalAny => LocalCap(origin)
-      case _ => super.mapCapability(c, deep)
+      case _ => super.mapCapability(c)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
       case next: Inverse => assert(false); Some(IdentityTypeMap)
@@ -1132,9 +1082,9 @@ object Capabilities:
         case t @ CapturingType(_, refs) => mapOver(t)
         case _ => mapFollowingAliases(t)
 
-      override def mapCapability(c: Capability, deep: Boolean): Capability = c match
+      override def mapCapability(c: Capability): Capability = c match
         case _: LocalCap => GlobalAny
-        case _ => super.mapCapability(c, deep)
+        case _ => super.mapCapability(c)
 
       def inverse = thisMap
       override def toString = thisMap.toString + ".inverse"
@@ -1181,7 +1131,7 @@ object Capabilities:
           if t.binder == this.binder then paramSyms(t.paramNum).termRef else t
         case _ => mapOver(t)
 
-    override def mapCapability(c: Capability, deep: Boolean): Capability = c match
+    override def mapCapability(c: Capability): Capability = c match
       case r: ResultCap if r.binder == this.binder =>
         resultToAny.get(r) match
           case Some(f) => f
@@ -1191,7 +1141,7 @@ object Capabilities:
             anyToResult(f) = r
             f
       case _ =>
-        super.mapCapability(c, deep)
+        super.mapCapability(c)
 
     class Inverse extends BiTypeMap:
       def apply(t: Type): Type =
@@ -1201,7 +1151,7 @@ object Capabilities:
             binder.paramRefs(paramSyms.indexOf(t.symbol))
           case _ => mapOver(t)
 
-      override def mapCapability(c: Capability, deep: Boolean): Capability = c match
+      override def mapCapability(c: Capability): Capability = c match
         case f: LocalCap if f.owner == sym =>
           anyToResult.get(f) match
             case Some(r) => r
@@ -1210,7 +1160,7 @@ object Capabilities:
               resultToAny(r) = f
               anyToResult(f) = r
               r
-        case _ => super.mapCapability(c, deep)
+        case _ => super.mapCapability(c)
 
       def inverse = thisMap
       override def toString = thisMap.toString + ".inverse"
@@ -1239,7 +1189,7 @@ object Capabilities:
         case _ =>
           mapOver(t)
 
-      override def mapCapability(c: Capability, deep: Boolean) = c match
+      override def mapCapability(c: Capability) = c match
         case c @ ResultCap(binder) =>
           if localBinders.contains(binder) then c // keep bound references
           else
@@ -1249,7 +1199,7 @@ object Capabilities:
               lc.hiddenSet.markSolved(provisional = false)
               lc
             seen.getOrElseUpdate(c, localCapSkolem) // map free references to LocalCap
-        case _ => super.mapCapability(c, deep)
+        case _ => super.mapCapability(c)
     end subst
 
     subst(tp)
@@ -1268,7 +1218,7 @@ object Capabilities:
 
     def apply(t: Type) = mapOver(t)
 
-    override def mapCapability(c: Capability, deep: Boolean) = c match
+    override def mapCapability(c: Capability) = c match
       case c: LocalCap =>
         if variance >= 0 then
           if sym.exists && !c.ccOwner.isContainedIn(sym) then
@@ -1282,7 +1232,7 @@ object Capabilities:
       case GlobalFresh =>
         ResultCap(mt) // if variance <= 0 we leave the fresh to be flagged later
       case _ =>
-        super.mapCapability(c, deep)
+        super.mapCapability(c)
 
       //.showing(i"mapcap $t = $result")
     override def toString = "toVar"
@@ -1290,7 +1240,7 @@ object Capabilities:
     object inverse extends BiTypeMap:
       def apply(t: Type) = mapOver(t)
 
-      override def mapCapability(c: Capability, deep: Boolean) = c match
+      override def mapCapability(c: Capability) = c match
         case c @ ResultCap(`mt`) =>
           val primary = c.primaryResultCap
           primary.origin match
@@ -1301,7 +1251,7 @@ object Capabilities:
             case origin: LocalCap =>
               origin
         case _ =>
-          super.mapCapability(c, deep)
+          super.mapCapability(c)
 
       def inverse = ToResult.this
       override def toString = "toVar.inverse"
@@ -1313,12 +1263,12 @@ object Capabilities:
    */
   class RetractResult(rcs: SimpleIdentitySet[ResultCap])(using Context) extends TypeMap:
     def apply(t: Type) = mapOver(t)
-    override def mapCapability(c: Capability, deep: Boolean) = c match
+    override def mapCapability(c: Capability) = c match
       case c: ResultCap if rcs.exists(_.primaryResultCap == c.primaryResultCap) =>
         c.primaryResultCap.origin match
           case origin: LocalCap => origin
           case _ => c
-      case _ => super.mapCapability(c, deep)
+      case _ => super.mapCapability(c)
 
   /** Replace all occurrences of `caps.any` or LocalCap in parts of this type by an existentially bound
    *  variable bound by `mt`. Stop at function or method types since these have been mapped before.

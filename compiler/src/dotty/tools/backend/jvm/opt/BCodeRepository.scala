@@ -299,8 +299,8 @@ class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
   private def parseClass(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     try
       val fullName = internalName.replace('/', '.')
-      optimizerClassPath.findClassFileAndModuleFile(fullName) match
-        case Some(classFile, moduleFile) =>
+      optimizerClassPath.findClassFile(fullName) match
+        case Some(classFile) =>
           val classNode = new ClassNode1
           val classReader = new ClassReader(classFile.toByteArray)
           // Passing the InlineInfoAttributePrototype makes the ClassReader invoke the specific `read`
@@ -317,7 +317,7 @@ class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
           //   https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.11
           //   https://jcp.org/aboutJava/communityprocess/final/jsr045/index.html
           removeLineNumbersAndAddLMFImplMethods(classNode)
-          val moduleNode = moduleFile.map(f =>
+          val moduleNode = optimizerClassPath.findClassFile("module-info.class").map(f =>
             val node = new ClassNode1
             val moduleReader = new ClassReader(f.toByteArray)
             moduleReader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)

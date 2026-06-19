@@ -49,12 +49,13 @@
    |
    |  Hidden set of current argument        : {c}
    |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {f*}
-   |  Footprint set of function prefix      : {f*, c}
+   |  Capture set of function prefix        : {f, fresh}
+   |  Footprint set of function prefix      : {f, c}
    |  The two sets overlap at               : {c}
    |
-   |where:    ^  refers to a root capability in the type of parameter c
-   |          ^² refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply
+   |where:    ^     refers to a root capability in the type of parameter c
+   |          ^²    refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply
+   |          fresh is a root capability associated with the result type of (x$0: Object^³): Object^{fresh}
 -- Error: tests/neg-custom-args/captures/sep-use2.scala:27:8 -----------------------------------------------------------
 27 |    { f(c) } // error
    |        ^
@@ -66,9 +67,10 @@
    |
    |  Hidden set of current argument        : {c}
    |  Hidden footprint of current argument  : {c}
-   |  Capture set of function prefix        : {f*}
-   |  Footprint set of function prefix      : {f*, c}
+   |  Capture set of function prefix        : {f, fresh}
+   |  Footprint set of function prefix      : {f, c}
    |  The two sets overlap at               : {c}
    |
-   |where:    ^  refers to a root capability in the type of parameter c
-   |          ^² refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply
+   |where:    ^     refers to a root capability in the type of parameter c
+   |          ^²    refers to a root capability created in value x4 when checking argument to parameter x$0 of method apply
+   |          fresh is a root capability associated with the result type of (x$0: Object^³): Object^{fresh}

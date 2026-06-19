@@ -16,6 +16,7 @@ i19955b.scala
 i20053b.scala
 i2146.scala
 i23489.scala
+i25830-external.scala
 i8900a3.scala
 lazyVals_c3.0.0.scala
 lazyVals_c3.1.0.scala
@@ -25,3 +26,4 @@ sub-cases-exhaustivity.scala
 sub-cases-reachability.scala
 tailrec.scala
 traitParams.scala
+optimizer-warnings.scala

@@ -309,7 +309,7 @@ class SettingsTests:
       val args = List(s"-testOutput:${file.toString}")
       val summary = processArguments(args, processAll = true)
 
-      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
+      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overridden")
 
   @Test def `Output setting respects previous setting`: Unit =
     val result = Using.resources(

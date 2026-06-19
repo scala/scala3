@@ -28,8 +28,7 @@ import BCodeUtils.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.ast.Positioned
 
-class CallGraph(frontendAccess: PostProcessorFrontendAccess,
-                byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
+class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
 
   /**
    * The call graph contains the callsites in the program being compiled.
@@ -175,16 +174,15 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
               declarationClassBType <- bTypesFromClassfile.classBTypeFromClassNode(declarationClassNode, declarationModuleNode)
             } yield {
               val info = analyzeCallsite(method, declarationClassBType, call, paramTps, calleeSourceFilePath, definingClass)
-              import info._
               Callee(
                 callee = method,
                 calleeDeclarationClass = declarationClassBType,
-                isStaticallyResolved = isStaticallyResolved,
-                sourceFilePath = sourceFilePath,
-                annotatedInline = annotatedInline,
-                annotatedNoInline = annotatedNoInline,
+                isStaticallyResolved = info.isStaticallyResolved,
+                sourceFilePath = info.sourceFilePath,
+                annotatedInline = info.annotatedInline,
+                annotatedNoInline = info.annotatedNoInline,
                 samParamTypes = info.samParamTypes,
-                calleeInfoWarning = warning)
+                calleeInfoWarning = info.warning)
             }
           }
 
@@ -418,9 +416,12 @@ class CallGraph(frontendAccess: PostProcessorFrontendAccess,
                   warning = warning)
 
       case None =>
-        val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc,
-                                              calleeDeclarationClassBType.info.inlineInfo.warning)
-        CallsiteInfo(warning = Some(warning))
+        if OptimizerUtils.isSCoverage(calleeDeclarationClassBType.internalName) then
+          CallsiteInfo(warning = None)
+        else
+          val warning = MethodInlineInfoMissing(calleeDeclarationClassBType.internalName, calleeMethodNode.name, calleeMethodNode.desc,
+                                                calleeDeclarationClassBType.info.inlineInfo.warning)
+          CallsiteInfo(warning = Some(warning))
     }
   }
 }

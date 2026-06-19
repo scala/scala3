@@ -1049,15 +1049,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
-          if isCaptureCheckingOrSetup then
-            tp1
-              .match
-                case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
-                  CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
-                case _ =>
-                  tp1w
-              .withReachCaptures(tp1)
-          else tp1w
+          tp1 match
+            case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
+              CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
+            case _ =>
+              tp1w
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
@@ -4011,7 +4007,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 }
 
 /** A type comparer that can record traces of subtype operations
- *  @param short  if true print only failing forward traces; never print succesful
+ *  @param short  if true print only failing forward traces; never print successful
  *                subtraces; never print backtraces starting with `<==`.
  */
 class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeComparer(initctx) {

@@ -161,7 +161,7 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  characterLiteral
                     |  stringLiteral
 Literal           ::=  SimpleLiteral
-                    |  interpolatedStringLiteral
+                    |  interpolatedString
                     |  symbolLiteral
                     |  ‘null’
 
@@ -236,7 +236,7 @@ TypeBound         ::=  Type
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
 CaptureSet        ::=  '{' CaptureRef {',' CaptureRef} '}'                      -- under captureChecking
-CaptureRef        ::=  { SimpleRef '.' } SimpleRef ['*'] [CapFilter] ['.' 'rd'] -- under captureChecking
+CaptureRef        ::=  { SimpleRef '.' } SimpleRef [CapFilter] ['.' 'rd']       -- under captureChecking
 CapFilter         ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
 ```
 

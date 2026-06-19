@@ -49,6 +49,7 @@ You may also find the ["Compiler Academy"](https://www.youtube.com/channel/UCIH0
 - Don't make stylistic changes based on your personal taste that make pull requests harder to review
 - Don't open pull requests you cannot explain even if they pass tests, such as "don't call this method on those inputs because it crashes"
   (one can accidentally introduce unsoundness this way, and special cases are generally not the way to go)
+- Don't justify a pull request purely with "the tests pass", we also care about maintainability, and we will never cover 100% of edge cases in tests
 - Don't try to fix `TODO`s or `FIXME`s in the codebase without a deep understanding of their context
   (remember, if they took 5 minutes to fix, the person writing them would most likely have fixed them instead of adding a comment)
 - Don't ask general questions such as "how does a compiler work" or "what is JVM bytecode", these are better answered by existing resources
@@ -58,9 +59,12 @@ You may also find the ["Compiler Academy"](https://www.youtube.com/channel/UCIH0
 
 ## Forbidden
 
-**Do not look at the source code of the Oracle JDK or OpenJDK** when working on anything related to the JVM backend!
-This is for license considerations: these JDKs are under a GPL-based license, which is not compatible with our Apache 2.0 license.
-It is also recommended not to look at any other JDK implementation (such as Apache Harmony), to minimize the chance of copyright debate.
+- **Do not look at the source code of the Oracle JDK or OpenJDK** when working on anything related to the JVM backend!
+  This is for license considerations: these JDKs are under a GPL-based license, which is not compatible with our Apache 2.0 license.
+  It is also recommended not to look at any other JDK implementation (such as Apache Harmony), to minimize the chance of copyright debate.
+- **Do not paste LLM output into a PR description, comment, or code review**. Rewrite it in your own words instead to ensure you understand it.
+  This includes LLM code reviews; if you use such a tool and it finds a bug, you are welcome to report it in a comment,
+  but only if you understand the bug and can explain it without copy-pasting the tool's output.
 
 ## Maintainers
 
@@ -92,7 +96,7 @@ Principal areas of the compiler and internal team members responsible for their 
 - Standard library: @lrytz, @SethTisue, @natsukagami, @noti0na1 
 
 **Tooling**
-- REPL:
+- REPL: @SolalPirelli
 - Runner/CLI: @Gedochao, (@tgodzik)
 - IDE: @tgodzik, @zielinsky
 - Scaladoc: (@Florian3k)
@@ -108,7 +112,7 @@ Principal areas of the compiler and internal team members responsible for their 
 - CI: @WojciechMazur
 - Community Build: @WojciechMazur
 - Open Community Build: @WojciechMazur
-- Vulpix:
+- Vulpix: @SolalPirelli
 - Benchmarks: @mbovel
 - Releases: @WojciechMazur (Scala 3 Next), @tgodzik (Scala 3.3 LTS)
 

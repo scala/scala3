@@ -1027,7 +1027,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[Tree])(using Context): Tree =
-      if targs.isEmpty then tree else TypeApply(tree, targs)
+      if targs.isEmpty then tree else tree match
+        case Block(stmts, expr) if stmts.nonEmpty => Block(stmts, TypeApply(expr, targs))
+        case _ => TypeApply(tree, targs)
 
     /** Apply to `()` unless tree's widened type is parameterless */
     def ensureApplied(using Context): Tree =

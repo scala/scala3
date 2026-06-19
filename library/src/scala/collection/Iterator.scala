@@ -1220,7 +1220,7 @@ object Iterator extends IterableFactory[Iterator] {
         @tailrec def merge(): Unit =
           if (current.isInstanceOf[ConcatIterator[?]]) {
             val c = current.asInstanceOf[ConcatIterator[A]^{from}]
-            current = c.current
+            current = c.current.asInstanceOf
             currentHasNextChecked = c.currentHasNextChecked
             if (c.tail != null) {
               if (last == null) last = c.last

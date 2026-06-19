@@ -162,7 +162,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
   def pageContent(page: Page, parents: Vector[Link]): AppliedTag
 
   /**
-   * Method to be overriden by concrete renderer to render single page
+   * Method to be overridden by concrete renderer to render single page
    */
   def renderPage(page: Page, parents: Vector[Link]): Seq[String] =
     val newParents = parents :+ page.link

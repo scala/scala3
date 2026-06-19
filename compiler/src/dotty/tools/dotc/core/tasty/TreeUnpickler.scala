@@ -1393,7 +1393,7 @@ class TreeUnpickler(reader: TastyReader,
        *  Otherwise, adapt calls where class has only using clauses from old to new scheme.
        *  or class has mixed using clauses and other clauses.
        *  Old: leading (), new: nothing, or trailing () if all clauses are using clauses.
-       *  This is neccessary so that we can read pre-3.2 Tasty correctly. There,
+       *  This is necessary so that we can read pre-3.2 Tasty correctly. There,
        *  constructor calls use the old scheme, but constructor definitions already
        *  use the new scheme, since they are reconstituted with normalizeIfConstructor.
        */
