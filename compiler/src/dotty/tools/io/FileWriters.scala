@@ -199,7 +199,6 @@ object FileWriters {
   private final class DirEntryWriter(base: Path) extends FileWriter {
     import DirEntryWriter.*
     private val builtPaths = new ConcurrentHashMap[Path, java.lang.Boolean]()
-    private val noAttributes = Array.empty[FileAttribute[?]]
 
     private def ensureDirForPath(baseDir: Path, filePath: Path): Unit = {
       import java.lang.Boolean.TRUE
@@ -259,6 +258,7 @@ object FileWriters {
   }
 
   private object DirEntryWriter {
+    private val noAttributes = Array.empty[FileAttribute[?]]
     private val isWindows = scala.util.Properties.isWin
     private val windowsSpecialPaths = raw"(?i)CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]".r
 
