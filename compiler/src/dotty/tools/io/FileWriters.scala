@@ -19,12 +19,6 @@ import java.util.zip.CRC32
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import scala.collection.mutable
-
-import scala.annotation.constructorOnly
-import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.ConcurrentModificationException
 
 object FileWriters {
   private def classRelativePath(className: String, suffix: String): String =
@@ -155,9 +149,9 @@ object FileWriters {
     import java.util.jar.Attributes.Name.{MANIFEST_VERSION, MAIN_CLASS}
     import java.util.jar.{JarOutputStream, Manifest}
 
-    val storeOnly = compressionLevel == Deflater.NO_COMPRESSION
+    private val storeOnly = compressionLevel == Deflater.NO_COMPRESSION
 
-    val jarWriter: JarOutputStream = {
+    private val jarWriter: JarOutputStream = {
       import scala.util.Properties.*
       val manifest = new Manifest
       val attrs = manifest.getMainAttributes
@@ -171,7 +165,7 @@ object FileWriters {
       jar
     }
 
-    lazy val crc = new CRC32
+    private lazy val crc = new CRC32
 
     override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = this.synchronized {
       val entry = new ZipEntry(relativePath)
@@ -203,14 +197,15 @@ object FileWriters {
   }
 
   private final class DirEntryWriter(base: Path) extends FileWriter {
-    val builtPaths = new ConcurrentHashMap[Path, java.lang.Boolean]()
-    val noAttributes = Array.empty[FileAttribute[?]]
-    private val isWindows = scala.util.Properties.isWin
+    import DirEntryWriter.*
+    private val builtPaths = new ConcurrentHashMap[Path, java.lang.Boolean]()
+    private val noAttributes = Array.empty[FileAttribute[?]]
 
     private def ensureDirForPath(baseDir: Path, filePath: Path): Unit = {
       import java.lang.Boolean.TRUE
       val parent = filePath.getParent
       if (!builtPaths.containsKey(parent)) {
+        parent.iterator.forEachRemaining(checkName)
         try Files.createDirectories(parent, noAttributes*)
         catch {
           case e: FileAlreadyExistsException =>
@@ -225,45 +220,64 @@ object FileWriters {
           current = current.getParent
         }
       }
+      checkName(filePath.getFileName)
     }
 
     // the common case is that we are creating a new file, and on MS Windows the create and truncate is expensive
     // because there is not an options in the Windows API that corresponds to this so the truncate is applied as a separate call
     // even if the file is new.
     // as this is rare, it's best to always try to create a new file, and it that fails, then open with truncate if that fails
-
     private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
     override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val path = base.resolve(relativePath)
-      ensureDirForPath(base, path)
-      val os = if (isWindows) {
-        try FileChannel.open(path, fastOpenOptions)
-        catch {
-          case _: FileAlreadyExistsException => FileChannel.open(path, fallbackOpenOptions)
-        }
-      } else FileChannel.open(path, fallbackOpenOptions)
+      try {
+        ensureDirForPath(base, path)
+        val os = if (isWindows) {
+          try FileChannel.open(path, fastOpenOptions)
+          catch {
+            case _: FileAlreadyExistsException => FileChannel.open(path, fallbackOpenOptions)
+          }
+        } else FileChannel.open(path, fallbackOpenOptions)
 
-      try os.write(ByteBuffer.wrap(bytes), 0L)
-      catch {
-        case ex: ClosedByInterruptException =>
-          try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
-          catch { case _: java.io.IOException => () }
-          throw ex
+        try os.write(ByteBuffer.wrap(bytes), 0L)
+        catch {
+          case ex: ClosedByInterruptException =>
+            try Files.deleteIfExists(path) // don't leave an empty of half-written classfile around after an interrupt
+            catch { case _: java.io.IOException => () }
+            throw ex
+        }
+        os.close()
+      } catch {
+        case e: IOException => throw new IOException(s"Error writing $path: ${e.getClass.getName}: ${e.getMessage}", e)
       }
-      os.close()
       AbstractFile.getFile(path).nn // we just wrote to it so it better still exist
     }
 
     override def close(): Unit = ()
   }
 
+  private object DirEntryWriter {
+    private val isWindows = scala.util.Properties.isWin
+    private val windowsSpecialPaths = raw"(?i)CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]".r
+
+    // Otherwise users will get an obscure error when trying to create a file
+    private def checkName(component: Path): Unit = if (isWindows) {
+      val name = component.toString
+      for
+        prefix <- windowsSpecialPaths.findPrefixOf(name)
+        if prefix.length == name.length || name(prefix.length) == '.'
+      do
+        throw new IOException(s"Path component is special Windows device: $name")
+    }
+  }
+
   private final class VirtualFileWriter(base: AbstractFile) extends FileWriter {
     private def getFile(base: AbstractFile, path: String): AbstractFile = {
       def ensureDirectory(dir: AbstractFile): AbstractFile =
         if (dir.isDirectory) dir
-        else throw new FileConflictException(s"${base.path}/${path}: ${dir.path} is not a directory")
+        else throw new FileConflictException(s"${base.path}/$path: ${dir.path} is not a directory")
       val components = path.split('/')
       var dir = base
       for i <- 0 until components.length - 1 do
