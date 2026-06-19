@@ -8,30 +8,34 @@ import Decorators.*
 import tasty.*
 import config.Printers.{noPrinter, pickling}
 import config.Feature
+
 import java.io.PrintStream
-import io.FileWriters.{TastyWriter, ReadOnlyContext}
-import StdNames.{str, nme}
+import io.FileWriters.TastyWriter
+import StdNames.{nme, str}
 import Periods.*
 import Phases.*
 import Symbols.*
 import Flags.Module
-import reporting.{ThrowingReporter, Profile, Message}
+import reporting.{Message, Profile, ThrowingReporter}
 import collection.mutable
 import util.concurrent.Executor
+
 import compiletime.uninitialized
-import dotty.tools.io.{JarArchive, AbstractFile}
+import dotty.tools.io.{AbstractFile, JarArchive}
 import dotty.tools.dotc.printing.OutlinePrinter
+
 import scala.annotation.constructorOnly
 import scala.concurrent.Promise
-import dotty.tools.dotc.transform.Pickler.writeSigFilesAsync
-
-import dotty.tools.io.FileWriters.{EagerReporter, BufferingReporter}
+import dotty.tools.dotc.transform.Pickler.*
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.util.chaining.*
+
 import scala.concurrent.ExecutionContext
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import java.nio.file.Files
+import java.util.ConcurrentModificationException
 
 object Pickler {
   val name: String = "pickler"
@@ -174,6 +178,118 @@ object Pickler {
     def this(dest: AbstractFile)(using @constructorOnly ctx: ReadOnlyContext) = this(TastyWriter(dest))
 
     export writer.{writeTasty, close}
+
+
+  sealed trait DelayedReporter {
+    def hasErrors: Boolean
+    def error(message: Context ?=> Message, position: SourcePosition): Unit
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit
+    def log(message: String): Unit
+
+    final def toBuffered: Option[BufferingReporter] = this match
+      case buffered: BufferingReporter =>
+        if buffered.hasReports then Some(buffered) else None
+      case _: EagerReporter => None
+
+    def error(message: Context ?=> Message): Unit = error(message, NoSourcePosition)
+    def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
+    final def exception(reason: Context ?=> Message, throwable: Throwable): Unit =
+      error({
+        val trace = throwable.getStackTrace().mkString("\n  ")
+        em"An unhandled exception was thrown in the compiler while\n  ${reason.message}.\n${throwable}\n  $trace"
+      }, NoSourcePosition)
+  }
+
+  final class EagerReporter(using captured: Context) extends DelayedReporter:
+    private var _hasErrors = false
+
+    def hasErrors: Boolean = _hasErrors
+
+    def error(message: Context ?=> Message, position: SourcePosition): Unit =
+      report.error(message, position)
+      _hasErrors = true
+
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit =
+      report.warning(message, position)
+
+    def log(message: String): Unit = report.echo(message)
+
+  enum Report:
+    case Error(message: Context => Message, position: SourcePosition)
+    case Warning(message: Context => Message, position: SourcePosition)
+    case Log(message: String)
+
+  final class BufferingReporter extends DelayedReporter {
+    // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
+    // We could use a listBuffer etc - but that would be extra allocation in the common case
+    // buffered logs are updated atomically.
+
+    private val _bufferedReports = AtomicReference(List.empty[Report])
+    private val _hasErrors = AtomicBoolean(false)
+
+
+    /** Atomically record that an error occurred */
+    private def recordError(): Unit =
+      _hasErrors.set(true)
+
+    /** Atomically add a report to the log */
+    private def recordReport(report: Report): Unit =
+      _bufferedReports.getAndUpdate(report :: _)
+
+    /** atomically extract and clear the buffered reports, must only be called at a synchronization point. */
+    def resetReports(): List[Report] =
+      val curr = _bufferedReports.get()
+      if curr.nonEmpty && !_bufferedReports.compareAndSet(curr, Nil) then
+        throw ConcurrentModificationException("concurrent modification of buffered reports")
+      else curr
+
+    def hasErrors: Boolean = _hasErrors.get()
+    def hasReports: Boolean = _bufferedReports.get().nonEmpty
+
+    def error(message: Context ?=> Message, position: SourcePosition): Unit =
+      recordReport(Report.Error({case given Context => message}, position))
+      recordError()
+
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit =
+      recordReport(Report.Warning({case given Context => message}, position))
+
+    def log(message: String): Unit =
+      recordReport(Report.Log(message))
+  }
+
+  trait ReadOnlySettings:
+    def jarCompressionLevel: Int
+    def debug: Boolean
+
+  trait ReadOnlyRun:
+    def suspendedAtTyperPhase: Boolean
+
+  trait ReadOnlyContext:
+    val run: ReadOnlyRun
+    val settings: ReadOnlySettings
+    val reporter: DelayedReporter
+
+  trait BufferedReadOnlyContext extends ReadOnlyContext:
+    val reporter: BufferingReporter
+
+  object ReadOnlyContext:
+    def readSettings(using ctx: Context): ReadOnlySettings = new:
+      val jarCompressionLevel = ctx.settings.XjarCompressionLevel.value
+      val debug = ctx.settings.Ydebug.value
+
+    def readRun(using ctx: Context): ReadOnlyRun = new:
+      val suspendedAtTyperPhase = ctx.run.nn.suspendedAtTyperPhase
+
+    def buffered(using Context): BufferedReadOnlyContext = new:
+      val settings = readSettings
+      val reporter = BufferingReporter()
+      val run = readRun
+
+    def eager(using Context): ReadOnlyContext = new:
+      val settings = readSettings
+      val reporter = EagerReporter()
+      val run = readRun
+
 }
 
 /** This phase pickles trees */

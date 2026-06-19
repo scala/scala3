@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Decorators.em
 import scala.tools.asm.{ClassWriter, Handle}
 import scala.tools.asm.tree.{ClassNode, InvokeDynamicInsnNode}
 import dotty.tools.backend.jvm.opt.*
-import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.report
 import dotty.tools.io.PlainFile.toPlainFile
 
@@ -28,7 +27,6 @@ import scala.util.chaining.scalaUtilChainingOps
  */
 class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context) {
 
-  given FileWriters.ReadOnlyContext = FileWriters.ReadOnlyContext.eager
   private val classfileWriter: FileWriters.ClassfileWriter = {
     val dumpClassesPath =
       ctx.settings.Xdumpclasses.valueSetByUser
@@ -36,7 +34,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
         .filter(path => Files.exists(path).tap(ok => if !ok then report.error(em"Output dir does not exist: ${path.toString}")))
         .map(_.toPlainFile)
 
-    FileWriters.ClassfileWriter(ctx.settings.outputDir.value, ctx.settings.XmainClass.valueSetByUser, dumpClassesPath)
+    FileWriters.ClassfileWriter(ctx.settings.outputDir.value, ctx.settings.XmainClass.valueSetByUser, ctx.settings.XjarCompressionLevel.value, dumpClassesPath)
   }
 
   private type ClassnamePosition = (String, SourcePosition)
