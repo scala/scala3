@@ -14,12 +14,38 @@ env:
   DOTTY_CI_RUN: true
 
 jobs:
-  specification:
+
+  # Gate on docs/_spec/ changes so PRs that don't touch the spec skip this workflow.
+  # Non-PR events (push, workflow_dispatch, merge_group) always run.
+  changes:
+    name: Detect spec changes
     runs-on: ubuntu-latest
-    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]'))  ||
-        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
-        github.event_name == 'push' ||
-        github.event_name == 'merge_group'
+    outputs:
+      spec: ${{ steps.filter.outputs.spec }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: filter
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            FILES=$(git diff --name-only "$BASE" HEAD)
+            echo "spec=$(echo "$FILES" | grep -qE '^(docs/_spec/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          else
+            echo "spec=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  specification:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name != 'pull_request' || needs.changes.outputs.spec == 'true') &&
+      ((github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
+       (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+       github.event_name == 'push' ||
+       github.event_name == 'merge_group')
     defaults:
       run:
         working-directory: ./docs/_spec

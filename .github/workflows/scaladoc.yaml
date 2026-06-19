@@ -13,15 +13,48 @@ permissions:
   contents: read
 
 jobs:
-  build:
+
+  # Gate downstream jobs on what directories the PR touches.
+  # Non-PR events (push, merge_group) always run everything.
+  changes:
+    name: Detect changes
     runs-on: ubuntu-latest
-    if: "github.event_name == 'merge_group'
-         || (    github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip docs]')
-         )
-         || contains(github.event.ref, 'scaladoc')
-         || contains(github.event.ref, 'main')"
+    outputs:
+      scaladoc: ${{ steps.filter.outputs.scaladoc }}
+      docs: ${{ steps.filter.outputs.docs }}
+      error_codes: ${{ steps.filter.outputs.error_codes }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: filter
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            FILES=$(git diff --name-only "$BASE" HEAD)
+
+            echo "scaladoc=$(echo "$FILES" | grep -qE '^(scaladoc/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "docs=$(echo "$FILES" | grep -qE '^(docs/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "error_codes=$(echo "$FILES" | grep -qE '^(docs/_docs/reference/error-codes/|project/|.*\.sbt$)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          else
+            echo "scaladoc=true" >> "$GITHUB_OUTPUT"
+            echo "docs=true" >> "$GITHUB_OUTPUT"
+            echo "error_codes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: |
+      (needs.changes.outputs.scaladoc == 'true' || needs.changes.outputs.docs == 'true') &&
+      (github.event_name == 'merge_group'
+       || (    github.event_name == 'pull_request'
+         && !contains(github.event.pull_request.body, '[skip ci]')
+         && !contains(github.event.pull_request.body, '[skip docs]')
+       )
+       || contains(github.event.ref, 'scaladoc')
+       || contains(github.event.ref, 'main'))
 
     steps:
       - name: Git Checkout
@@ -67,6 +100,8 @@ jobs:
           path: scaladoc/output/scala3
 
   validate-docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -144,6 +179,8 @@ jobs:
         run: true # ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test
 
   check-error-code-snippets:
+    needs: changes
+    if: needs.changes.outputs.error_codes == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

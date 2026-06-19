@@ -21,6 +21,11 @@ on:
       - 'release-**'
       - 'lts-**'
   pull_request:
+    # Doc-only PRs skip this workflow.
+    paths-ignore:
+      - 'docs/**'
+      - 'changelogs/**'
+      - '**.md'
   merge_group:
   workflow_dispatch:
 
