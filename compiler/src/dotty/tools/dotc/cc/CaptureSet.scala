@@ -1744,12 +1744,11 @@ object CaptureSet:
 
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
-    case Restricted(c1, cls) =>
-      if cls == defn.NothingClass then CaptureSet.empty
-      else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
-    case c @ Excluded(c1, cls) =>
+    case c @ Classified(c1, only, except) =>
       if c.isKnownEmpty then CaptureSet.empty
-      else c1.captureSetOfInfo.exclude(cls)
+      else
+        val cs0 = if only == defn.AnyClass then c1.captureSetOfInfo else c1.captureSetOfInfo.restrict(only)
+        except.foldLeft(cs0)((s, e) => s.exclude(e))
     case ReadOnly(c1) =>
       c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>
