@@ -26,6 +26,9 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList$MidEvaluation$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.LazyList.<clinit>"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyListIterable"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterable$MidEvaluation$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.LazyListIterable.<clinit>"),
 
       )
     )
