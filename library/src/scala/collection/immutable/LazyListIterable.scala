@@ -22,6 +22,7 @@ import java.lang.{StringBuilder => JStringBuilder}
 
 import scala.annotation.tailrec
 import scala.collection.generic.SerializeEnd
+import scala.collection.immutable.LazyListIterableBase.InRace
 import scala.collection.mutable.{Builder, ReusableBuilder, StringBuilder}
 import scala.language.implicitConversions
 import scala.runtime.Statics
@@ -264,7 +265,7 @@ import caps.unsafe.untrackedCaptures
  */
 @SerialVersionUID(4L)
 final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarker.type | (() => LazyListIterable[A]^) /* EmptyMarker.type | () => LazyListIterable[A] */)
-  extends Iterable[A]
+  extends LazyListIterableBase[A](if (lazyState eq LazyListIterable.EmptyMarker) null else lazyState)
     with collection.SeqOps[A, LazyListIterable, LazyListIterable[A]]
     with IterableFactoryDefaults[A, LazyListIterable]
     with Serializable { self: LazyListIterable[A]^ =>
@@ -275,56 +276,86 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
   private def this(head: A, tail: LazyListIterable[A]^) = {
     this(LazyListIterable.EmptyMarker)
     _head = head
-    _tail = caps.unsafe.unsafeAssumePure(tail) // SAFETY: we initialize LazyListIterable capturing tail
+    setRawTail(caps.unsafe.unsafeAssumePure(tail)) // SAFETY: we initialize LazyListIterable capturing tail
   }
 
-  // used to synchronize lazy state evaluation
-  // after initialization (`_head ne Uninitialized`)
+  // `_head` and `_tail` are used to synchronize lazy state evaluation.
+  //
+  // initially, `_head` is `Uninitialized`. after initialization, `_head` holds:
   //   - `null` if this is an empty lazy list
-  //   - `head: A` otherwise (can be `null`, `_tail == null` is used to test emptiness)
+  //   - `head: A` otherwise (can be the `null` value, `_tail == null` is used to test emptiness)
+  //
+  // `_tail` (declared in `LazyListIterableBase`) can hold the following values:
+  //   - when `_head eq Uninitialized`
+  //     - `lazyState: () => LazyListIterable[A]`
+  //     - while evaluating `lazyState`: the evaluating `Thread`
+  //     - if multiple threads attempt initialization: an `InRace` instance
+  //   - when `_head ne Uninitialized`
+  //     - `null` if this is an empty lazy list
+  //     - `tail: LazyListIterable[A]` otherwise
   @volatile private var _head: Any /* Uninitialized | A */ =
     if (lazyState eq EmptyMarker) null else Uninitialized
 
-  // when `_head eq Uninitialized`
-  //   - `lazyState: () => LazyListIterable[A]`
-  //   - MidEvaluation while evaluating lazyState
-  // when `_head ne Uninitialized`
-  //   - `null` if this is an empty lazy list
-  //   - `tail: LazyListIterable[A]` otherwise
-  private var _tail: AnyRef^{this} | Null /* () => LazyListIterable[A] | MidEvaluation.type | LazyListIterable[A] | Null */ =
-    if (lazyState eq EmptyMarker) null else lazyState
-
   private def rawHead: Any = _head
-  private def rawTail: AnyRef^{this} | Null = _tail
 
   @inline private def isEvaluated: Boolean = _head.asInstanceOf[AnyRef] ne Uninitialized
 
-  private def initState(): Unit = synchronized {
-    if (!isEvaluated) {
-      // if it's already mid-evaluation, we're stuck in an infinite
-      // self-referential loop (also it's empty)
-      if (_tail eq MidEvaluation)
-        throw new RuntimeException(
-          "LazyListIterable evaluation depends on its own result (self-reference); see docs for more info")
+  private def initState(): Unit = {
+    def selfRef(): Nothing =
+      // if it's already mid-evaluation, we're stuck in an infinite self-referential loop (also it's empty)
+      throw new RuntimeException(
+        "LazyListIterable evaluation depends on its own result (self-reference); see docs for more info")
 
-      val fun = _tail.asInstanceOf[() ->{this} LazyListIterable[A]^{this}]
-      _tail = MidEvaluation
-      val l =
-        // `fun` returns a LazyListIterable that represents the state (head/tail) of `this`. We call `l.evaluated` to ensure
-        // `l` is initialized, to prevent races when reading `rawTail` / `rawHead` below.
-        // Often, lazy lists are created with `newLL(eagerCons(...))` so `l` is already initialized, but `newLL` also
-        // accepts non-evaluated lazy lists.
-        try fun().evaluated
-        // restore `fun` in finally so we can try again later if an exception was thrown (similar to lazy val)
-        finally _tail = fun
-      _tail = l.rawTail
-      _head = l.rawHead
+    while (!isEvaluated) {
+      rawTail match {
+        case t: Thread =>
+          if (LazyListIterableBase.isCurrentThread(t)) selfRef()
+          val ir = InRace(t)
+          if (_tailUpdater.compareAndSet(this, t, ir))
+            ir.await()
+        // loop on lost CAS
+
+        case ir: InRace =>
+          if (LazyListIterableBase.isCurrentThread(ir.owner)) selfRef()
+          ir.await()
+
+        case fun: Function0[_]^{this} =>
+          // use the current thread as marker that `fun` is being evaluated.
+          // this way, there is no allocation in the common case where there's no race.
+          // if multiple threads attempt to initialize a LazyList, an `InRace` instance is created to coordinate.
+          if (_tailUpdater.compareAndSet(this, fun, Thread.currentThread)) {
+            var ex: Throwable | Null = null
+            // `fun` returns a LazyList that represents the state (head/tail) of `this`. We call `evaluated` to ensure
+            // the result is initialized, to prevent races when reading `rawTail` / `rawHead` below.
+            // Often, lazy lists are created with `newLL(eagerCons(...))` so `l` is already initialized, but `newLL`
+            // also accepts non-evaluated lazy lists.
+            val l = try fun.asInstanceOf[() ->{this} LazyListIterable[A]^{this}].apply().evaluated catch {
+              case t: Throwable =>
+                ex = t
+                null
+            }
+            // update `_tail` before `_head`, because `_head` is used to test `isEvaluated`
+            val newTail = if (ex == null) l.nn.rawTail else fun
+            val sentinel = _tailUpdater.getAndSet(this, newTail)
+            if (ex == null) _head = l.nn.rawHead
+            sentinel match {
+              case ir: InRace => ir.countDown()
+              case _ =>
+            }
+            if (ex != null) throw ex.nn
+          }
+          // loop on lost CAS
+
+        case _ =>
+          // loop when _tail is a LazyList but _head is still `Uninitialized`
+          // could call `Thread.onSpinWait()` on JDK 9+
+      }
     }
   }
 
   @tailrec private def evaluated: LazyListIterable[A]^{this} =
     if (isEvaluated) {
-      if (_tail == null) Empty
+      if (rawTail == null) Empty
       else this
     } else {
       initState()
@@ -1183,10 +1214,12 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   // def kount(): Unit = k += 1
 
   private object Uninitialized extends Serializable
-  private object MidEvaluation
   private object EmptyMarker
 
   private val Empty: LazyListIterable[Nothing] = new LazyListIterable(EmptyMarker)
+
+  // lazy val to break cycle (Predef -> scala.package -> val LazyList -> makeTailUpdater -> Predef.classOf)
+  private lazy val _tailUpdater: LazyListIterableBase.TailUpdater = Empty.makeTailUpdater
 
   /** Creates a new LazyListIterable.
    *
