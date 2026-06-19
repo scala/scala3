@@ -3,8 +3,6 @@ import reflect.ClassTag
 
 import language.experimental.captureChecking
 
-import scala.annotation.experimental
-
 import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape, Factory}
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.{ArrayBuilder, Builder}
@@ -16,13 +14,9 @@ opaque type IArray[+T] = Array[? <: T]
  */
 object IArray:
 
-  // OLD style implicit conversion so no import is needed at use-site.
-  // once `into` feature is made stable, we could make `Factory` an `into` trait, and
-  // change this to the new style `given Conversion`.
   /** Provides an implicit conversion from the IArray object to a collection Factory */
-  @experimental
-  implicit def convertIArrayToFactory[A : ClassTag](@annotation.unused asFactory: IArray.type): Factory[A, IArray[A]] =
-    Factory.IArrayFactory[A]
+  given convertIArrayToFactory: [A : ClassTag] => Conversion[IArray.type, Factory[A, IArray[A]]] =
+    _ => Factory.IArrayFactory[A]
 
   /** The selection operation on an immutable array.
    *

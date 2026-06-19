@@ -21,7 +21,6 @@ import scala.language.implicitConversions
 import scala.collection.mutable.Builder
 import scala.annotation.unchecked.uncheckedVariance
 import scala.reflect.ClassTag
-import scala.annotation.experimental
 
 /** A factory that builds a collection of type `C` with elements of type `A`.
  *
@@ -32,7 +31,7 @@ import scala.annotation.experimental
  *  @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
  *  @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
  */
-trait Factory[-A, +C] extends Any { self: Factory[A, C] =>
+into trait Factory[-A, +C] extends Any { self: Factory[A, C] =>
 
   /**
    *  @param it the source of elements to include in the collection
@@ -71,9 +70,7 @@ object Factory {
     def newBuilder: Builder[A, Array[A]] = mutable.ArrayBuilder.make[A]
   }
 
-  @experimental
   given IArrayFactory[A: ClassTag]: Factory[A, IArray[A]] = {
-    @experimental
     @SerialVersionUID(3L)
     class ConcreteIArrayFactory[A: ClassTag] extends Factory[A, IArray[A]] with Serializable {
       def fromSpecific(it: IterableOnce[A]^): IArray[A] = IArray.from(it)

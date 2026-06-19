@@ -1,4 +1,9 @@
-//> using options -experimental
+//> using options -feature -Werror
+//                ^^^^^^^^
+//                |        ^^^^^^^^
+//                |        |
+//                |        ensure error warnings
+//                ensure warning for implicit conversions
 
 import scala.collection.Factory
 
