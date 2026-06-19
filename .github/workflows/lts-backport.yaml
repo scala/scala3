@@ -20,7 +20,7 @@ jobs:
           private-key: ${{ secrets.SCALA_APP_PRIVATE_KEY }}
           owner: scala
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
