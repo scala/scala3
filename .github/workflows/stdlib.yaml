@@ -306,7 +306,7 @@ jobs:
       - name: Scala.js JUnit tests with latest ES version
         run: ./project/scripts/sbt ";sjsJUnitTests/clean ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToLatestESVersion ;sjsJUnitTests/test"
       - name: Scala.js JUnit tests with WebAssembly
-        run: ./project/scripts/sbt ";sjsJUnitTests/clean ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToLatestESVersion ;set Global/enableWebAssembly := true; sjsJUnitTests/test"
+        run: ./project/scripts/sbt ";sjsJUnitTests/clean ;set Global/enableWebAssembly := true; sjsJUnitTests/test"
   # TODO Scala.js on Windows
 
   test-repl:
