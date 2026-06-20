@@ -4147,7 +4147,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           given util.SourceFile = tree.source
           val tparams = varPatDefs.map: (td, rhs) =>
-            untpd.TypeDef(rhs.name.toTypeName, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.EmptyTree)).withSpan(td.span)
+            untpd.TypeDef(rhs.name.toTypeName, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.EmptyTree)).withFlags(Param).withSpan(td.span)
           untpd.AppliedTypeTree(untpd.LambdaTypeTree(tparams, tree), varPatDefs.map(_.rhs))
       case _ => tree
 
