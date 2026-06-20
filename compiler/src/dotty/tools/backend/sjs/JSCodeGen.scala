@@ -2543,7 +2543,7 @@ class JSCodeGen()(using genCtx: Context) {
       val fieldsObjValue = {
         js.JSObjectConstr(privateFieldDefs.toList.map { fdef =>
           implicit val pos = fdef.pos
-          js.StringLiteral(fdef.name.name.nameString) -> jstpe.zeroOf(fdef.ftpe)
+          anonJSClassFieldIdentToStringLiteral(fdef.name) -> jstpe.zeroOf(fdef.ftpe)
         })
       }
       val definePrivateFieldsObj = {
@@ -4800,7 +4800,7 @@ class JSCodeGen()(using genCtx: Context) {
       } else if (sym.owner.isAnonymousClass) {
         js.JSSelect(
             js.JSSelect(qual, genPrivateFieldsSymbol()),
-            encodeFieldSymAsStringLiteral(sym))
+            encodeAnonJSClassFieldSymAsStringLiteral(sym))
       } else {
         js.JSPrivateSelect(qual, encodeFieldSym(sym))
       }
