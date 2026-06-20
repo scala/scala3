@@ -1981,6 +1981,16 @@ object Build {
     .settings(
       commonBootstrappedSettings,
       bspEnabled := enableBspAllProjects,
+      // Compile these fixtures with a sourceroot pointing at their own `src`
+      // dir, so the source path baked into TASTy (SOURCEFILEattr) is relative
+      // to `src` (e.g. `tests/macros/Foo.scala`) and does NOT resolve from the
+      // test working directory (the repo root). This makes the module behave
+      // like a real distributed dependency: available as TASTy only, with no
+      // source on disk. `SourceFile.content()` is then empty for these symbols,
+      // matching what the presentation compiler sees for classpath deps.
+      Compile / scalacOptions ++= Seq(
+        "-sourceroot", ((Compile / scalaSource).value).getAbsolutePath
+      ),
     )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
