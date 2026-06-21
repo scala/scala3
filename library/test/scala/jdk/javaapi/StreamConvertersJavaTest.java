@@ -56,7 +56,7 @@ public class StreamConvertersJavaTest {
     @Test
     public void mapConvertersTest() {
         Stream<Tuple2<String, String>> msss = StreamConverters.asJavaSeqStream(mss);
-        assertEquals("aaabbb", msss.reduce("", (x, y) -> x + y._1 + y._2, (x, y) -> x + y));
+        assertEquals("aaabbb", msss.reduce("", (x, y) -> x + y._1() + y._2(), (x, y) -> x + y));
 
         Stream<String> mssks = StreamConverters.asJavaParKeyStream(mss);
         assertEquals("ab", mssks.reduce("", (x, y) -> x + y));
@@ -65,7 +65,7 @@ public class StreamConvertersJavaTest {
         assertEquals("aabb", mssvs.reduce("", (x, y) -> x + y));
 
         Stream<Tuple2<Float, Integer>> mfis = StreamConverters.asJavaParStream(mfi);
-        assertEquals(6.0, mfis.reduce(0f, (x, y) -> x + y._1 + y._2, Float::sum), 0.1);
+        assertEquals(6.0, mfis.reduce(0f, (x, y) -> x + y._1() + y._2(), Float::sum), 0.1);
 
         Stream<Float> mfiks = StreamConverters.asJavaSeqKeyStream(mfi);
         assertEquals(3.0, mfiks.reduce(0f, Float::sum), 0.1);

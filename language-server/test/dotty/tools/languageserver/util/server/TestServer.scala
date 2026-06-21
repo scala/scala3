@@ -116,7 +116,7 @@ class TestServer(testFolder: Path, projects: List[Project]) {
   }
 
   private def dependencyClasspath(project: Project): Seq[String] = {
-    BuildInfo.ideTestsDependencyClasspath.map(_.getAbsolutePath) ++
+    Seq(Path.of(BuildInfo.ideTestsDependencyClasspath).toAbsolutePath.toString) ++
       project.dependsOn.flatMap { dep =>
         classDirectory(dep, wipe = false).toString +: dependencyClasspath(dep)
       }
