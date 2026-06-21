@@ -589,6 +589,11 @@ class Definitions {
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
 
+  @tu lazy val VectorModule: Symbol            = requiredModule("scala.collection.immutable.Vector")
+  // Soft lookup: only present in a `scala-library` whose `Seq` defaults to `Vector`.
+  // Absent in the stock 2.13 stdlib, in which case the `Seq(...)` optimization is skipped.
+  @tu lazy val Vector_fromArrayUnsafe: Symbol  = VectorModule.info.member(termName("fromArrayUnsafe")).symbol
+
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
     @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
 

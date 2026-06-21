@@ -208,34 +208,41 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
       """.stripMargin
   }
 
-  @Test def testSeqApplyAvoidsIntermediateArray = {
-    checkApplyAvoidsIntermediateArray("Seq"):
-      """import scala.collection.immutable.{ ::, Nil }
-        |class Foo {
-        |  def meth1: Seq[String] = Seq("1", "2", "3")
-        |  def meth2: Seq[String] = new ::("1", new ::("2", new ::("3", Nil)))
-        |}
-      """.stripMargin
-  }
+  // `scala.Seq` now defaults to constructing `Vector`s, so `Seq(a, b, c)` is no longer
+  // rewritten to a cons-cell `List` literal. Instead it is built directly via
+  // `Vector.fromArrayUnsafe`, which takes ownership of the backing array — avoiding the
+  // intermediate `ArraySeq` wrapper and the dispatch inside `Vector.from`. The former
+  // `testSeqApplyAvoidsIntermediateArray{,2,3}` tests asserted the removed cons rewrite
+  // and have been replaced by the checks below.
 
-  @Test def testSeqApplyAvoidsIntermediateArray2 = {
-    checkApplyAvoidsIntermediateArray("scala.collection.immutable.Seq"):
-      """import scala.collection.immutable.{ ::, Seq, Nil }
-        |class Foo {
-        |  def meth1: Seq[String] = Seq("1", "2", "3")
-        |  def meth2: Seq[String] = new ::("1", new ::("2", new ::("3", Nil)))
-        |}
-    """.stripMargin
-  }
+  @Test def testSeqApplyBuildsVectorDirectly =
+    checkSeqApplyBuildsVectorDirectly("import scala.collection.immutable.Seq")
 
-  @Test def testSeqApplyAvoidsIntermediateArray3 = {
-    checkApplyAvoidsIntermediateArray("scala.collection.Seq"):
-      """import scala.collection.immutable.{ ::, Nil }, scala.collection.Seq
-        |class Foo {
-        |  def meth1: Seq[String] = Seq("1", "2", "3")
-        |  def meth2: Seq[String] = new ::("1", new ::("2", new ::("3", Nil)))
-        |}
-    """.stripMargin
+  @Test def testScalaSeqApplyBuildsVectorDirectly =
+    checkSeqApplyBuildsVectorDirectly("") // `scala.Seq`
+
+  @Test def testCollectionSeqApplyBuildsVectorDirectly =
+    checkSeqApplyBuildsVectorDirectly("import scala.collection.Seq")
+
+  private def checkSeqApplyBuildsVectorDirectly(imp: String) = {
+    val source =
+      s"""$imp
+         |class Foo {
+         |  def test: Seq[String] = Seq("1", "2", "3")
+         |}
+       """.stripMargin
+    checkBCode(source) { dir =>
+      val clsNode = loadClassNode(dir.lookupName("Foo.class", directory = false).nn.input)
+      val invoked = instructionsFromMethod(getMethod(clsNode, "test")).collect {
+        case Invoke(_, owner, name, _, _) => s"$owner.$name"
+      }
+      assert(invoked.contains("scala/collection/immutable/Vector$.fromArrayUnsafe"),
+        s"expected a Vector.fromArrayUnsafe call, got: $invoked")
+      assert(!invoked.exists(_.contains("wrapRefArray")),
+        s"Seq(...) should not build an intermediate wrapped array, got: $invoked")
+      assert(!invoked.exists(_.toLowerCase.contains("arrayseq")),
+        s"Seq(...) should not build an intermediate ArraySeq, got: $invoked")
+    }
   }
 
   @Test def testListApplyAvoidsIntermediateArray_max1 = {

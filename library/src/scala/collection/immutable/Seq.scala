@@ -42,9 +42,18 @@ transparent trait SeqOps[+A, +CC[B] <: caps.Pure, +C] extends Any with collectio
  */
 @SerialVersionUID(3L)
 object Seq extends SeqFactory.Delegate[Seq](List) {
+  // `scala.Seq` defaults to constructing `Vector`s rather than `List`s.
+  // We keep `List` as the `Delegate` parent so that the collection hierarchy's
+  // initialization order (in `Definitions`) is unchanged, and override the
+  // public factory entry points to build `Vector`s instead. We deliberately do
+  // not override `newBuilder`: doing so perturbs the inferred capture set of the
+  // repeated-parameter `Seq` type and breaks override checking of varargs
+  // methods elsewhere (e.g. `Map.+`). `fill`/`tabulate`, which build via
+  // `newBuilder`, therefore still produce `List`s.
+  override def apply[A](elems: A*): Seq[A] = Vector.from(elems)
   override def from[E](it: IterableOnce[E]^): Seq[E] = it match {
     case s: Seq[E @unchecked] => s
-    case _ => super.from(it)
+    case _ => Vector.from(it)
   }
 }
 

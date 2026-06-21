@@ -43,10 +43,21 @@ class ArrayApply extends MiniPhase {
           tree
 
     else tree match
+      // A `Seq(...)` whose target `scala-library` defaults `Seq` to `Vector` (and so provides
+      // `Vector.fromArrayUnsafe`) is built directly as a `Vector`. `List(...)`, and `Seq(...)`
+      // against the stock 2.13 stdlib (where `Seq` defaults to `List`), are built as cons cells.
       case SeqApplyArgs(elems) if transformListApplyBudget > 0 || elems.isEmpty =>
-        val consed = elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
-          New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
-        consed.cast(tree.tpe)
+        if !isListApply(tree) && defn.Vector_fromArrayUnsafe.exists then
+          // Seq(a, b, c) ~> Vector.fromArrayUnsafe([a, b, c]): builds the backing array directly
+          // and wraps it into a `Vector1`, avoiding the intermediate `ArraySeq` wrapper and the
+          // dispatch inside `Vector.from`.
+          val arr = JavaSeqLiteral(elems.map(_.ensureConforms(defn.ObjectType)), TypeTree(defn.ObjectType))
+          ref(defn.Vector_fromArrayUnsafe).appliedTo(arr).cast(tree.tpe)
+        else
+          // List(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil)))
+          val consed = elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
+            New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
+          consed.cast(tree.tpe)
       case _ => tree
 
   private def isArrayModuleApply(sym: Symbol)(using Context): Boolean =
@@ -62,7 +73,7 @@ class ArrayApply extends MiniPhase {
       case _ => false
 
   private def isSeqApply(tree: Tree)(using Context): Boolean =
-    isListApply(tree) || tree.symbol == defn.SeqModule_apply && appliedCore(tree).match
+    isListApply(tree) || (tree.symbol == defn.SeqModule_apply || tree.symbol.name == nme.apply) && appliedCore(tree).match
       case Select(qual, _) =>
         val sym = qual.symbol
         sym == defn.SeqModule

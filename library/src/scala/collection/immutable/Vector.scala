@@ -67,6 +67,22 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
 
   def newBuilder[A]: ReusableBuilder[A, Vector[A]] = new VectorBuilder[A]
 
+  /** Wraps `xs` into a `Vector`, taking ownership of the array: the caller must not
+   *  mutate `xs` or otherwise retain a reference to it afterwards.
+   *
+   *  This is primarily an entry point for the compiler's `Seq(...)` / `Vector(...)`
+   *  literal optimization, which builds a fresh `Array[AnyRef]` of boxed elements and
+   *  would otherwise pay for an intermediate `ArraySeq` wrapper and a copy in `from`.
+   *  For the small arrays produced there (length `<= WIDTH`) this allocates a single
+   *  `Vector1` directly around `xs`.
+   */
+  def fromArrayUnsafe[A](xs: Array[AnyRef]): Vector[A] = {
+    val len = xs.length
+    if (len == 0) Vector0
+    else if (len <= WIDTH) new Vector1[A](xs)
+    else from(ArraySeq.unsafeWrapArray(xs).asInstanceOf[ArraySeq[A]])
+  }
+
   /** Creates a Vector with the same element at each index.
    *
    *  Unlike `fill`, which takes a by-name argument for the value and can thereby
