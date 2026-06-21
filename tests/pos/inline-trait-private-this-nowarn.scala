@@ -1,3 +1,1 @@
-//> using options -Werror
-
-inline trait CellSpecialized[T](private var x: T)
+inline trait CellSpecialized[T](private[this] var x: T)
