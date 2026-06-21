@@ -4,6 +4,7 @@ package typer
 
 import core.*
 import Run.SubPhase
+import Decorators.*
 import Phases.*
 import Contexts.*
 import Symbols.*
@@ -77,10 +78,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
           newCtx
 
     val unitContexts0 = runSubPhase(Indexing) {
-      for
-        unitContext <- unitContexts
-        if enterSyms(using unitContext)
-      yield unitContext
+      unitContexts.filterConserve(unitContext => enterSyms(using unitContext))
     }
 
     ctx.base.parserPhase match {
@@ -94,19 +92,13 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     }
 
     val unitContexts1 = runSubPhase(Typechecking) {
-      for
-        unitContext <- unitContexts0
-        if typeCheck(using unitContext)
-      yield unitContext
+      unitContexts0.filterConserve(unitContext => typeCheck(using unitContext))
     }
 
     record("total trees after typer", ast.Trees.ntrees)
 
     val unitContexts2 = runSubPhase(CheckingJava) {
-      for
-        unitContext <- unitContexts1
-        if javaCheck(using unitContext) // after typechecking to avoid cycles
-      yield unitContext
+      unitContexts1.filterConserve(unitContext => javaCheck(using unitContext)) // after typechecking to avoid cycles
     }
     val newUnits = unitContexts2.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)
