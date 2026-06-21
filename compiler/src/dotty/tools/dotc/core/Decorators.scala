@@ -316,7 +316,15 @@ object Decorators {
 
   extension [T <: AnyRef](xs: Vector[T])
     def derivedCons(x1: T, xs1: Vector[T]) =
-      if xs.nonEmpty && (xs.head eq x1) && xs.tail == xs1 then xs else x1 +: xs1
+      def sameTail =
+        val len = xs.length
+        if xs1.length != len - 1 then false
+        else
+          var i = 1
+          while i < len && xs(i) == xs1(i - 1) do
+            i += 1
+          i == len
+      if xs.nonEmpty && (xs.head eq x1) && sameTail then xs else x1 +: xs1
 
   extension (sc: StringContext)
 
