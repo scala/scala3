@@ -156,7 +156,9 @@ object projects:
     baseCommand = s"sourcecode.jvm[$compilerVersion]",
     ignoreDocs = true,
   ) {
-    override val testCommand = s"$baseCommand.test.run"
+    // Keep main-source coverage, but skip test macros that structurally inspect
+    // compiler-internal method parameter clauses as Lists.
+    override val testCommand = s"$baseCommand.compile"
   }
 
   lazy val oslib = MillCommunityProject(
