@@ -907,7 +907,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             val candidates = tp.denot.alternatives.filter(alt =>
               isConcreteImplementationOf(alt.symbol, overridden))
             candidates match
-              case candidate :: Nil => Some(candidate)
+              case candidate +: Vector() => Some(candidate)
               case _ => None
           case _ =>
             None

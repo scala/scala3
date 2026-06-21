@@ -223,6 +223,7 @@ object PickledQuotes {
     treePkl.pickle(tree +: Vector())
     treePkl.compactify()
     if tree.span.exists then
+      val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
       PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
         ctx.compilationUnit.source, tree +: Vector(), positionWarnings)
