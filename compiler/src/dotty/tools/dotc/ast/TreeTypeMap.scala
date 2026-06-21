@@ -57,11 +57,15 @@ class TreeTypeMap(
    *  by the corresponding `This(newOwner)`.
    */
   private val mapOwnerThis = new TypeMap {
-    private def mapPrefix(from: Vector[Symbol], to: Vector[Symbol], tp: Type): Type = (from: @unchecked) match {
-      case Vector() => tp
-      case (cls: ClassSymbol) +: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
-      case _ +: from1 => mapPrefix(from1, to.tail, tp)
-    }
+    private def mapPrefix(from: Vector[Symbol], to: Vector[Symbol], tp: Type): Type =
+      var result = tp
+      var i = 0
+      while i < from.length do
+        from(i) match
+          case cls: ClassSymbol => result = result.substThis(cls, to(i).thisType)
+          case _ =>
+        i += 1
+      result
     def apply(tp: Type): Type = tp match {
       case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
       case _ => mapOver(tp)
@@ -77,18 +81,17 @@ class TreeTypeMap(
   end mapType
 
   private def updateDecls(prevStats: Vector[Tree], newStats: Vector[Tree]): Unit =
-    if (prevStats.isEmpty) assert(newStats.isEmpty)
-    else {
-      prevStats.head match {
+    assert(prevStats.length == newStats.length)
+    var i = 0
+    while i < prevStats.length do
+      prevStats(i) match
         case pdef: MemberDef =>
           val prevSym = pdef.symbol
-          val newSym = newStats.head.symbol
+          val newSym = newStats(i).symbol
           val newCls = newSym.owner.asClass
           if (prevSym != newSym) newCls.replace(prevSym, newSym)
         case _ =>
-      }
-      updateDecls(prevStats.tail, newStats.tail)
-    }
+      i += 1
 
   def transformInlined(tree: Inlined)(using Context): Tree =
     val Inlined(call, bindings, expanded) = tree

@@ -1676,10 +1676,6 @@ object Scanners {
         case r: Indented => !r.isOutermost && r.outer.nn.commasExpectedInEnclosing
         case _ => false
 
-    def toList: List[Region] =
-      val outer = this.outer
-      this :: (if outer == null then Nil else outer.toList)
-
     def toVector: Vector[Region] =
       val outer = this.outer
       this +: (if outer == null then Vector() else outer.toVector)

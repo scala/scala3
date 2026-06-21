@@ -25,7 +25,6 @@ import Errors.*
 import Trace.*
 import Util.*
 
-import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly

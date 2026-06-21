@@ -4743,10 +4743,7 @@ object Types extends TypeUtils {
     }
 
     inline def map(inline op: Type => Type)(using Context) =
-      def mapArgs(args: Vector[Type]): Vector[Type] = args match
-        case args @ (arg +: rest) => args.derivedCons(op(arg), mapArgs(rest))
-        case nil => nil
-      derivedAppliedType(op(tycon), mapArgs(args))
+      derivedAppliedType(op(tycon), args.mapconserve(op))
 
     inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
       def foldArgs(x: T, args: Vector[Type]): T = args match
