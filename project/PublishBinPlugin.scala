@@ -5,7 +5,7 @@ import java.nio.file.{ FileAlreadyExistsException, Files }
 import sbt.given
 import sbt.Keys.*
 import sbt.internal.librarymanagement.IvyXml
-import sbtcompat.PluginCompat.{toFile, toFileRef}
+import sbt.{toFile, toFileRef}
 import xsbti.{FileConverter, HashedVirtualFileRef}
 
 /** This local plugin provides ways of publishing just the binary jar. */
@@ -24,13 +24,13 @@ object PublishBinPlugin extends AutoPlugin {
   override val projectSettings: Seq[Def.Setting[?]] = Def.settings(
     publishLocalBin := Classpaths.publishOrSkip(publishLocalBinConfig, publishLocal / skip).value,
     publishLocalBinConfig := Def.uncached {
-      implicit val conv: FileConverter = fileConverter.value
+      given FileConverter = fileConverter.value
       Classpaths.publishConfig(
         false, // publishMavenStyle.value,
         Classpaths.deliverPattern(crossTarget.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-        (publishLocalBin / packagedArtifacts).value.toVector.map { case (a, f) => a -> toFile(f) },
+        (publishLocalBin / packagedArtifacts).value.toVector.map { case (a, f) => a -> f.toFile },
         (publishLocalBin / checksums).value.toVector,
         logging = ivyLoggingLevel.value,
         overwrite = isSnapshot.value
@@ -59,13 +59,13 @@ object PublishBinPlugin extends AutoPlugin {
       .value
     ),
     dummyDoc := Def.uncached {
-      implicit val conv: FileConverter = fileConverter.value
+      given FileConverter = fileConverter.value
       val dummyFile = streams.value.cacheDirectory / "doc.jar"
       try {
         Files.createDirectories(dummyFile.toPath.getParent)
         Files.createFile(dummyFile.toPath)
       } catch { case _: FileAlreadyExistsException => }
-      toFileRef(dummyFile)
+      dummyFile.toFileRef
     },
     dummyDoc / packagedArtifact := Def.uncached(
       (Compile / packageDoc / artifact).value -> dummyDoc.value

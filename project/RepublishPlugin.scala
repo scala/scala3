@@ -8,7 +8,7 @@ import sbt.PublishBinPlugin
 import sbt.PublishBinPlugin.autoImport.*
 import sbt.io.Using
 import sbt.util.CacheImplicits.*
-import sbtcompat.PluginCompat.toFile
+import sbt.{toFile, toFileRef}
 import xsbti.FileConverter
 
 import java.nio.file.Files
@@ -373,7 +373,7 @@ object RepublishPlugin extends AutoPlugin {
       val publishAllLocalBin = deps.map({ d => ((d / publishLocalBin / packagedArtifacts)) }).join
       val resolveId = deps.map({ d => ((d / projectID)) }).join
       Def.task {
-        implicit val conv: FileConverter = fileConverter.value
+        given FileConverter = fileConverter.value
         val published = publishAllLocalBin.value
         val ids = resolveId.value
 
@@ -391,11 +391,10 @@ object RepublishPlugin extends AutoPlugin {
           var jarOrNull: File = null
           var pomOrNull: File = null
           as.foreach({ case (a, f) =>
-            val file = toFile(f)
             if (a.`type` == "jar") {
-              jarOrNull = file
+              jarOrNull = f.toFile
             } else if (a.`type` == "pom") {
-              pomOrNull = file
+              pomOrNull = f.toFile
             }
           })
           assert(jarOrNull != null, s"Could not find jar for ${id}")
@@ -484,3 +483,4 @@ object RepublishPlugin extends AutoPlugin {
     },
   )
 }
+

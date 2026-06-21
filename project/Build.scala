@@ -32,8 +32,6 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 import scala.xml.{Node => XmlNode, NodeSeq => XmlNodeSeq, _}
 import scala.xml.transform.{RewriteRule, RuleTransformer}
 
-import sbtcompat.PluginCompat.{toFile, toFiles, toFileRef, artifactStr, parseArtifactStrAttribute}
-
 import xsbti.{FileConverter, HashedVirtualFileRef, VirtualFileRef}
 
 import sbt.Result.{Inc, Value}
@@ -281,18 +279,18 @@ object Build {
   lazy val bootstrappedScalaInstanceSettings = Def.settings(
     managedScalaInstance := false,
     scalaInstance := {
-      implicit val conv: FileConverter = fileConverter.value
-      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(toFile(_)).toSet
+      given FileConverter = fileConverter.value
+      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.toFile).toSet
 
       // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
       // just directories containing classfiles because sbt maintains a cache of
       // compiler instances. This cache is invalidated based on timestamps
       // however this is only implemented on jars, directories are never
       // invalidated.
-      val tastyCore = toFile((`tasty-core-nonbootstrapped` / Compile / packageBin).value)
-      val scalaLibrary = toFile((`scala-library-nonbootstrapped` / Compile / packageBin).value)
-      val scala3Interfaces = toFile((`scala3-interfaces` / Compile / packageBin).value)
-      val scala3Compiler = toFile((`scala3-compiler-nonbootstrapped` / Compile / packageBin).value)
+      val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value.toFile
+      val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value.toFile
+      val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value.toFile
+      val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.toFile
 
       Compiler.makeScalaInstance(
         dottyNonBootstrappedVersion,
@@ -316,9 +314,9 @@ object Build {
     // in the `scalaInstance` of the `doc` task which allows us to run
     // `scala3-library-bootstrapped/doc` for example.
     Compile / doc / scalaInstance := {
-      implicit val conv: FileConverter = fileConverter.value
-      val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(toFile(_))
-      val scalaDoc = toFile((LocalProject("scaladoc") / Compile / packageBin).value)
+      given FileConverter = fileConverter.value
+      val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.toFile)
+      val scalaDoc = (LocalProject("scaladoc") / Compile / packageBin).value.toFile
       val docJars = Array(scalaDoc) ++ externalDeps
 
       val base = scalaInstance.value
@@ -361,19 +359,19 @@ object Build {
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
-      implicit val conv: FileConverter = fileConverter.value
-      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(toFile(_)).toSet
+      given FileConverter = fileConverter.value
+      val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.toFile).toSet
 
       // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
       // just directories containing classfiles because sbt maintains a cache of
       // compiler instances. This cache is invalidated based on timestamps
       // however this is only implemented on jars, directories are never
       // invalidated.
-      val tastyCore = toFile((`tasty-core-nonbootstrapped` / Compile / packageBin).value)
-      val scala3Library = toFile((`scala3-library-nonbootstrapped` / Compile / packageBin).value)
-      val scalaLibrary = toFile((`scala-library-nonbootstrapped` / Compile / packageBin).value)
-      val scala3Interfaces = toFile((`scala3-interfaces` / Compile / packageBin).value)
-      val scala3Compiler = toFile((`scala3-compiler-nonbootstrapped` / Compile / packageBin).value)
+      val tastyCore = (`tasty-core-nonbootstrapped` / Compile / packageBin).value.toFile
+      val scala3Library = (`scala3-library-nonbootstrapped` / Compile / packageBin).value.toFile
+      val scalaLibrary = (`scala-library-nonbootstrapped` / Compile / packageBin).value.toFile
+      val scala3Interfaces = (`scala3-interfaces` / Compile / packageBin).value.toFile
+      val scala3Compiler = (`scala3-compiler-nonbootstrapped` / Compile / packageBin).value.toFile
 
       val libraryJars = Array(scala3Library, scalaLibrary)
       val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ externalCompilerDeps
@@ -424,21 +422,26 @@ object Build {
       customMimaReportBinaryIssues("MiMaFilters.Interfaces"),
     )
 
+  private def parseArtifactStrAttribute(str: String): sbt.librarymanagement.Artifact =
+    import sbt.librarymanagement.LibraryManagementCodec.ArtifactFormat
+    import sjsonnew.support.scalajson.unsafe.*
+    Converter.fromJsonUnsafe[sbt.librarymanagement.Artifact](Parser.parseUnsafe(str))
+
   /** Find an artifact with the given `name` in `classpath` */
-  def findArtifact(classpath: Def.Classpath, name: String, conv: FileConverter): File =
+  def findArtifact(classpath: Def.Classpath, name: String)(using conv: FileConverter): File =
     classpath
       .find { entry =>
         entry.get(artifactStr).map(parseArtifactStrAttribute).exists(_.name == name)
       }
-      .map(entry => toFile(entry)(using conv))
+      .map(_.toFile)
       .getOrElse(throw new MessageOnlyException(s"Artifact for $name not found in $classpath"))
 
   /** Like `findArtifact` but returns the absolute path of the entry as a string */
-  def findArtifactPath(classpath: Def.Classpath, name: String, conv: FileConverter): String =
-    findArtifact(classpath, name, conv).getAbsolutePath
+  def findArtifactPath(classpath: Def.Classpath, name: String)(using conv: FileConverter): String =
+    findArtifact(classpath, name).getAbsolutePath
 
   def pkgPath(ref: HashedVirtualFileRef)(using conv: FileConverter): String =
-    toFile(ref).getAbsolutePath
+    ref.toFile.getAbsolutePath
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
     val (beforeCp, fromCp) = args.span(_ != "-classpath")
@@ -462,7 +465,7 @@ object Build {
     libraryProject: ProjectReference,
     withCompilerDeps: Def.Initialize[Task[Seq[String]]]
   ): Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
-    implicit val conv: FileConverter = fileConverter.value
+    given FileConverter = fileConverter.value
     val log = streams.value.log
     val stdlib = pkgPath((libraryProject / Compile / packageBin).value)
     val args: List[String] = spaceDelimited("<arg>").parsed.toList
@@ -496,15 +499,15 @@ object Build {
    *  @param compilerProject  the compiler project providing the compiler jar and dependency classpath
    */
   def withCompilerClasspath(compilerProject: ProjectReference): Def.Initialize[Task[Seq[String]]] = Def.task {
-    implicit val conv: FileConverter = fileConverter.value
+    given FileConverter = fileConverter.value
     val externalDeps = (compilerProject / Runtime / externalDependencyClasspath).value
     val dottyCompiler = pkgPath((compilerProject / Compile / packageBin).value)
     val dottyInterfaces = pkgPath((`scala3-interfaces` / Compile / packageBin).value)
     val dottyStaging = pkgPath((`scala3-staging` / Compile / packageBin).value)
     val dottyTastyInspector = pkgPath((`scala3-tasty-inspector` / Compile / packageBin).value)
     val tastyCore = pkgPath((`tasty-core-bootstrapped` / Compile / packageBin).value)
-    val asm = findArtifactPath(externalDeps, "scala-asm", conv)
-    val compilerInterface = findArtifactPath(externalDeps, "compiler-interface", conv)
+    val asm = findArtifactPath(externalDeps, "scala-asm")
+    val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
     Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
   }
 
@@ -519,7 +522,7 @@ object Build {
     libraryProject: ProjectReference,
     withCompilerDeps: Def.Initialize[Task[Seq[String]]]
   ): Def.Initialize[InputTask[Unit]] = Def.inputTask {
-    implicit val conv: FileConverter = fileConverter.value
+    given FileConverter = fileConverter.value
     val args: List[String] = spaceDelimited("<arg>").parsed.toList
     val scalaLib = pkgPath((libraryProject / Compile / packageBin).value)
     def run(args: List[String]): Unit = {
@@ -682,8 +685,8 @@ object Build {
       // than it needs to be. A non-bootstrapped REPL project would speed this up.
       buildQuick := Def.uncached {
         val _ = (`scala3-repl` / Compile / compile).value
-        implicit val conv: FileConverter = fileConverter.value
-        val cp = (`scala3-repl` / Compile / fullClasspath).value.map(f => toFile(f).getAbsolutePath).mkString(File.pathSeparator)
+        given FileConverter = fileConverter.value
+        val cp = (`scala3-repl` / Compile / fullClasspath).value.map(f => f.toFile.getAbsolutePath).mkString(File.pathSeparator)
         IO.write(baseDirectory.value / "bin" / ".cp", cp)
         streams.value.log.info(s"Wrote classpath to bin/.cp — use bin/scalacQ and bin/replQ")
       },
@@ -932,7 +935,8 @@ object Build {
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
       // Needed for the JSR223 tests which are "run" tests
-      Test / javaOptions += s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
+      Test / javaOptions += Def.uncached:
+        s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
       run / fork := true,
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       excludeDependencies += "org.scala-lang" % "scala-library",
@@ -1013,8 +1017,8 @@ object Build {
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       scala2LibraryClasspath := Def.uncached {
-        implicit val conv: FileConverter = fileConverter.value
-        Vector(toFile((`scala2-library` / Compile / packageBin).value))
+        given FileConverter = fileConverter.value
+        Vector((`scala2-library` / Compile / packageBin).value.toFile)
       },
       // Generate library.properties, used by scala.util.Properties
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
@@ -1106,8 +1110,8 @@ object Build {
       mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
       scala2LibraryClasspath := Def.uncached {
-        implicit val conv: FileConverter = fileConverter.value
-        Vector(toFile((`scala2-library` / Compile / packageBin).value))
+        given FileConverter = fileConverter.value
+        Vector((`scala2-library` / Compile / packageBin).value.toFile)
       },
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
@@ -1430,7 +1434,7 @@ object Build {
       managedScalaInstance := false,
       fetchedScalaInstanceSettings,
       scalaCompilerBridgeBin := Def.uncached {
-        implicit val conv: FileConverter = fileConverter.value
+        given FileConverter = fileConverter.value
         val lm = dependencyResolution.value
         val log = streams.value.log
         val version = scalaVersion.value
@@ -1438,7 +1442,7 @@ object Build {
         val comp = lm.retrieve("org.scala-lang" % "scala3-sbt-bridge" %
           version, scalaModuleInfo = None, retrieveDir, log)
           .fold(w => throw w.resolveException, identity)
-        Vector(toFileRef(comp(0)))
+        Vector(comp(0).toFileRef)
       },
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
@@ -1504,7 +1508,7 @@ object Build {
         "--run-listener=dotty.tools.ContextEscapeDetector", "--exclude-categories=dotty.BootstrappedOnlyTests",
       ),
       Test / javaOptions ++= Def.uncached {
-        implicit val conv: FileConverter = fileConverter.value
+        given FileConverter = fileConverter.value
         val log = streams.value.log
         val managedSrcDir = {
           // Populate the directory
@@ -1518,9 +1522,9 @@ object Build {
           s"-Ddotty.tests.classes.dottyInterfaces=${pkgPath((`scala3-interfaces` / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.dottyCompiler=${pkgPath((ThisProject / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.tastyCore=${pkgPath((`tasty-core-nonbootstrapped` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface", conv)}",
+          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-nonbootstrapped` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm", conv)}",
+          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
@@ -1635,7 +1639,7 @@ object Build {
         "--run-listener=dotty.tools.ContextEscapeDetector",
       ),
       Test / javaOptions ++= Def.uncached {
-        implicit val conv: FileConverter = fileConverter.value
+        given FileConverter = fileConverter.value
         val log = streams.value.log
         val managedSrcDir = {
           // Populate the directory
@@ -1649,10 +1653,10 @@ object Build {
           s"-Ddotty.tests.classes.dottyInterfaces=${pkgPath((`scala3-interfaces` / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.dottyCompiler=${pkgPath((ThisProject / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.tastyCore=${pkgPath((`tasty-core-bootstrapped` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface", conv)}",
+          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-bootstrapped` / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.scalaJSScalalib=${pkgPath((`scala-library-sjs` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm", conv)}",
+          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
           s"-Ddotty.tests.classes.dottyStaging=${pkgPath((LocalProject("scala3-staging") / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.dottyTastyInspector=${pkgPath((LocalProject("scala3-tasty-inspector") / Compile / packageBin).value)}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
@@ -1951,13 +1955,13 @@ object Build {
         testCasesLib :: dottyLib :: Nil
       },
       ideTestsScalaJSClasspath := Def.uncached {
-        implicit val conv: FileConverter = fileConverter.value
+        given FileConverter = fileConverter.value
         val externalJSCommonDeps = (`scaladoc-js-common`  / Compile / externalDependencyClasspath).value
-        val scalaJSCommonDom = findArtifact(externalJSCommonDeps, "scalajs-dom_sjs1_3", conv)
+        val scalaJSCommonDom = findArtifact(externalJSCommonDeps, "scalajs-dom_sjs1_3")
         val externalJSDeps = (`scala-library-sjs` / Compile / externalDependencyClasspath).value
-        val scalaJSLibrary = findArtifact(externalJSDeps, "scalajs-library_2.13", conv)
-        val scalaJSJavalib = findArtifact(externalJSDeps, "scalajs-javalib", conv)
-        val scalaJSScalalib = toFile((`scala-library-sjs` / Compile / packageBin).value)
+        val scalaJSLibrary = findArtifact(externalJSDeps, "scalajs-library_2.13")
+        val scalaJSJavalib = findArtifact(externalJSDeps, "scalajs-javalib")
+        val scalaJSScalalib = (`scala-library-sjs` / Compile / packageBin).value.toFile
         scalaJSLibrary :: scalaJSJavalib :: scalaJSScalalib :: scalaJSCommonDom :: Nil
       },
       Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
@@ -2337,7 +2341,7 @@ object Build {
 
       javaOptions ++= (`scala3-compiler-bootstrapped` / javaOptions).value,
       javaOptions ++= Def.uncached {
-        implicit val conv: FileConverter = fileConverter.value
+        given FileConverter = fileConverter.value
         val externalJSDeps = (`scala-library-sjs` / Compile / externalDependencyClasspath).value
 
         val managedSrcDir = {
@@ -2354,13 +2358,13 @@ object Build {
           s"-Ddotty.tests.classes.dottyInterfaces=${pkgPath((`scala3-interfaces` / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.dottyCompiler=${pkgPath((`scala3-compiler-bootstrapped` / Compile / packageBin).value)}",
           s"-Ddotty.tests.classes.tastyCore=${pkgPath((`tasty-core-bootstrapped` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface", conv)}",
+          s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${pkgPath((`scala-library-bootstrapped` / Compile / packageBin).value)}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm", conv)}",
+          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
           "-Ddotty.tests.classes.scalaJSScalalib=" + pkgPath((`scala-library-sjs` / Compile / packageBin).value),
-          "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib", conv),
-          "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13", conv),
+          "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
+          "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
       // Configure to use the non-bootstrapped compiler
@@ -2573,43 +2577,43 @@ object Build {
     Universal / packageBin := Def.uncached((Universal / packageBin).dependsOn(republish).value),
     Universal / packageZipTarball := Def.uncached(
       Def.task {
-        implicit val conv: FileConverter = fileConverter.value
+        given FileConverter = fileConverter.value
         val archiveFile = (Universal / packageZipTarball).dependsOn(republish).value
-        val file = toFile(archiveFile)
+        val file = archiveFile.toFile
         val renamedFile = file.getParentFile / file.getName.replaceAll("\\.tgz$", ".tar.gz")
         IO.move(file, renamedFile)
-        toFileRef(renamedFile)
+        renamedFile.toFileRef
       }.value
     ),
     // ========
     Universal / mappings ++= Def.uncached(
       Def.task {
-        implicit val conv: FileConverter = fileConverter.value
-        directory(dist.base / "bin").map { case (f, p) => toFileRef(f) -> p }
+        given FileConverter = fileConverter.value
+        directory(dist.base / "bin").map { case (f, p) => f.toFileRef -> p }
       }.value
     ),
     Universal / mappings ++= Def.uncached(
       Def.task {
-        implicit val conv: FileConverter = fileConverter.value
-        directory(republishRepo.value / "maven2").map { case (f, p) => toFileRef(f) -> p }
+        given FileConverter = fileConverter.value
+        directory(republishRepo.value / "maven2").map { case (f, p) => f.toFileRef -> p }
       }.value
     ),
     Universal / mappings ++= Def.uncached(
       Def.task {
-        implicit val conv: FileConverter = fileConverter.value
-        directory(republishRepo.value / "lib").map { case (f, p) => toFileRef(f) -> p }
+        given FileConverter = fileConverter.value
+        directory(republishRepo.value / "lib").map { case (f, p) => f.toFileRef -> p }
       }.value
     ),
     Universal / mappings ++= Def.uncached(
       Def.task {
-        implicit val conv: FileConverter = fileConverter.value
-        directory(republishRepo.value / "libexec").map { case (f, p) => toFileRef(f) -> p }
+        given FileConverter = fileConverter.value
+        directory(republishRepo.value / "libexec").map { case (f, p) => f.toFileRef -> p }
       }.value
     ),
     Universal / mappings += Def.uncached(
       Def.task {
-        implicit val conv: FileConverter = fileConverter.value
-        toFileRef(republishRepo.value / "VERSION") -> "VERSION"
+        given FileConverter = fileConverter.value
+        (republishRepo.value / "VERSION").toFileRef -> "VERSION"
       }.value
     ),
     // ========
@@ -2777,21 +2781,21 @@ object Build {
     Test / sources := Seq(),
     Test / resources := Seq(),
     Compile / packageBin := Def.uncached {
-      implicit val conv: FileConverter = fileConverter.value
+      given FileConverter = fileConverter.value
       val ref = (Compile / packageBin).value
-      validateJarIsEmpty(toFile(ref))
+      validateJarIsEmpty(ref.toFile)
       ref
     },
     Compile / packageSrc := Def.uncached {
-      implicit val conv: FileConverter = fileConverter.value
+      given FileConverter = fileConverter.value
       val ref = (Compile / packageSrc).value
-      validateJarIsEmpty(toFile(ref))
+      validateJarIsEmpty(ref.toFile)
       ref
     },
     Compile / packageDoc := Def.uncached {
-      implicit val conv: FileConverter = fileConverter.value
+      given FileConverter = fileConverter.value
       val ref = (Compile / packageDoc).value
-      validateJarIsEmpty(toFile(ref))
+      validateJarIsEmpty(ref.toFile)
       ref
     },
   )
@@ -2817,7 +2821,7 @@ object ScaladocConfigs {
   }
 
   lazy val Scala3 = Def.task {
-    implicit val conv: FileConverter = fileConverter.value
+    given FileConverter = fileConverter.value
     ScaladocConfigs0.Scala3(
       version.value,
       (ThisBuild/baseDirectory).value.toPath,
