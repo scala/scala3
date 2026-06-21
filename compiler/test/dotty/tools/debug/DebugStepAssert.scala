@@ -45,48 +45,48 @@ private[debug] object DebugStepAssert:
     val allLines = readLines(checkFile.toFile)
 
     @tailrec
-    def loop(lines: List[String], acc: List[DebugStepAssert[?]]): List[DebugStepAssert[?]] =
+    def loop(lines: Vector[String], acc: Vector[DebugStepAssert[?]]): Vector[DebugStepAssert[?]] =
       given location: CheckFileLocation = CheckFileLocation(checkFile, allLines.size - lines.size + 1)
-      lines match
-        case Nil => acc.reverse
-        case break(className: String, lineStr: String) :: tail =>
+      (lines: @unchecked) match
+        case Vector() => acc.reverse
+        case break(className: String, lineStr: String) +: tail =>
           val breakpointLine = lineStr.toInt
           val step = DebugStepAssert(Break(className, breakpointLine), checkClassAndLine(className, breakpointLine))
-          loop(tail, step :: acc)
-        case step(pattern: String) :: tail =>
+          loop(tail, step +: acc)
+        case step(pattern: String) +: tail =>
           val step = DebugStepAssert(Step, checkLineOrMethod(pattern))
-          loop(tail, step :: acc)
-        case next(pattern: String) :: tail =>
+          loop(tail, step +: acc)
+        case next(pattern: String) +: tail =>
           val step = DebugStepAssert(Next, checkLineOrMethod(pattern))
-          loop(tail, step :: acc)
-        case eval(expr: String) :: tail0 =>
+          loop(tail, step +: acc)
+        case eval(expr: String) +: tail0 =>
           val (assertion, tail1) = parseEvalAssertion(tail0)
           val step = DebugStepAssert(Eval(expr), assertion)
-          loop(tail1, step :: acc)
-        case multiLineEval() :: tail0 =>
+          loop(tail1, step +: acc)
+        case multiLineEval() +: tail0 =>
           val (exprLines, tail1) = tail0.span(_.startsWith("  "))
           val expr = exprLines.map(s => s.stripPrefix("  ")).mkString("\n")
           val (assertion, tail2) = parseEvalAssertion(tail1)
           val step = DebugStepAssert(Eval(expr), assertion)
-          loop(tail2, step :: acc)
-        case trailing() :: tail => loop(tail, acc)
-        case invalid :: tail =>
+          loop(tail2, step +: acc)
+        case trailing() +: tail => loop(tail, acc)
+        case invalid +: tail =>
           throw new Exception(s"Cannot parse debug step: $invalid ($location)")
 
-    def parseEvalAssertion(lines: List[String]): (Either[String, String] => Unit, List[String]) =
+    def parseEvalAssertion(lines: Vector[String]): (Either[String, String] => Unit, Vector[String]) =
       given location: CheckFileLocation = CheckFileLocation(checkFile, allLines.size - lines.size + 1)
-      lines match
-        case Nil => throw new Exception(s"Missing result or error")
-        case trailing() :: tail => parseEvalAssertion(tail)
-        case result(expected: String) :: tail => (checkResult(expected), tail)
-        case error(expected: String) :: tail => (checkError(Seq(expected)), tail)
-        case multiLineError() :: tail0 =>
+      (lines: @unchecked) match
+        case Vector() => throw new Exception(s"Missing result or error")
+        case trailing() +: tail => parseEvalAssertion(tail)
+        case result(expected: String) +: tail => (checkResult(expected), tail)
+        case error(expected: String) +: tail => (checkError(Seq(expected)), tail)
+        case multiLineError() +: tail0 =>
           val (expected, tail1) = tail0.span(_.startsWith("  "))
           (checkError(expected.map(_.stripPrefix("  "))), tail1)
-        case invalid :: _ =>
+        case invalid +: _ =>
           throw new Exception(s"Cannot parse as result or error: $invalid ($location)")
 
-    loop(allLines, Nil)
+    loop(allLines, Vector())
   end parseCheckFile
 
   private def checkClassAndLine(className: String, breakpointLine: Int)(using CheckFileLocation)(location: Location): Unit =

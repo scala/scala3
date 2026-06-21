@@ -100,7 +100,7 @@ object Semantic:
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: Vector[Value]) extends Ref:
 
     /** If a warm value is in the process of populating parameters, class bodies are not executed. */
     private var populatingParams: Boolean = false
@@ -146,7 +146,7 @@ object Semantic:
    *
    * It comes from `if` expressions.
    */
-  case class RefSet(refs: List[Fun | Ref]) extends Value
+  case class RefSet(refs: Vector[Fun | Ref]) extends Value
 
   // end of value definition
 
@@ -400,12 +400,12 @@ object Semantic:
      * Revert the cache to previous state.
      */
     def abort()(using Cache.Data): Unit
-    def errors: List[Error]
+    def errors: Vector[Error]
 
   object Reporter:
     class BufferedReporter extends Reporter:
       private val buf = new mutable.ArrayBuffer[Error]
-      def errors = buf.toList
+      def errors = buf.toVector
       def report(err: Error) = buf += err
 
     class TryBufferedReporter(backup: Cache.Data) extends BufferedReporter with TryReporter:
@@ -426,14 +426,14 @@ object Semantic:
       reporter
 
     /** Stop on first error */
-    def stopEarly(fn: Reporter ?=> Unit): List[Error] =
+    def stopEarly(fn: Reporter ?=> Unit): Vector[Error] =
       val reporter: Reporter = new StopEarlyReporter
 
       try
         fn(using reporter)
-        Nil
+        Vector()
       catch case ex: ErrorFound =>
-        ex.error :: Nil
+        ex.error +: Vector()
 
     def hasErrors(fn: Reporter ?=> Unit)(using Cache.Data): Boolean =
       val backup = cache.backup()
@@ -491,15 +491,15 @@ object Semantic:
       case (_, Cold) => Cold
 
       case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) =>
-        if a == b then a else RefSet(a :: b :: Nil)
+        if a == b then a else RefSet(a +: b +: Vector())
 
       case (a: (Fun | Warm | ThisRef), RefSet(refs)) =>
         if refs.exists(_ == a) then b: Value // fix pickling test
-        else RefSet(a :: refs)
+        else RefSet(a +: refs)
 
       case (RefSet(refs), b: (Fun | Warm | ThisRef)) =>
         if refs.exists(_ == b) then a: Value // fix pickling test
-        else RefSet(b :: refs)
+        else RefSet(b +: refs)
 
       case (RefSet(refs1), RefSet(refs2)) =>
         val diff = refs2.filter(ref => refs1.forall(_ != ref))
@@ -523,7 +523,7 @@ object Semantic:
       if values.isEmpty then Hot
       else values.reduce { (v1, v2) => v1.join(v2) }
 
-    def widenArgs: Contextual[List[Value]] = values.map(_.widenArg).toList
+    def widenArgs: Contextual[Vector[Value]] = values.map(_.widenArg).toVector
 
 
   extension (ref: Ref)
@@ -650,7 +650,7 @@ object Semantic:
           refs.map(_.select(field, receiver)).join
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+    def call(meth: Symbol, args: Vector[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       def promoteArgs(): Contextual[Unit] = args.foreach(_.promote)
 
       def isSyntheticApply(meth: Symbol) =
@@ -686,7 +686,7 @@ object Semantic:
               // or that does not contain T as a component.
               if isWithinBounds && !otherParamContains then
                 tryReporter.abort()
-                Nil
+                Vector()
               else
                 tryReporter.errors
             case _ => tryReporter.errors
@@ -792,9 +792,9 @@ object Semantic:
       }
     }
 
-    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+    def callConstructor(ctor: Symbol, args: Vector[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       // init "fake" param fields for parameters of primary and secondary constructors
-      def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
+      def addParamsAsFields(args: Vector[Value], ref: Ref, ctorDef: DefDef) =
         val params = ctorDef.termParamss.flatten.map(_.symbol)
         assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size + ", ctor = " + ctor.show)
         for (param, value) <- params.zip(args) do
@@ -817,7 +817,7 @@ object Semantic:
               extendTrace(cls.defTree) { init(tpl, ref, cls) }
             else
               val initCall = ddef.getRhs match
-                case Block(call :: _, _) => call
+                case Block(call +: _, _) => call
                 case call => call
               extendTrace(ddef) { eval(initCall, ref, cls) }
             end if
@@ -848,8 +848,8 @@ object Semantic:
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-      def tryLeak(warm: Warm, nonHotOuterClass: Symbol, argValues: List[Value]): Contextual[Value] =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: Vector[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+      def tryLeak(warm: Warm, nonHotOuterClass: Symbol, argValues: Vector[Value]): Contextual[Value] =
         val argInfos2 = args.zip(argValues).map { (argInfo, v) => argInfo.copy(value = v) }
         val errors = Reporter.stopEarly {
           given Trace = Trace.empty
@@ -982,7 +982,7 @@ object Semantic:
       }
     }
 
-    def nonInitFields(): Contextual[List[Symbol]] =
+    def nonInitFields(): Contextual[Vector[Symbol]] =
       val obj = ref.objekt
       ref.klass.baseClasses.flatMap { klass =>
         if klass.hasSource then
@@ -992,7 +992,7 @@ object Semantic:
             && !obj.hasField(member)
           }
         else
-          Nil
+          Vector()
       }
 
   end extension
@@ -1070,7 +1070,7 @@ object Semantic:
      *  reports a warning to avoid expensive checks.
      *
      */
-    def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
+    def tryPromote(msg: String): Contextual[Vector[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val obj = warm.objekt
 
       def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
@@ -1128,8 +1128,8 @@ object Semantic:
         doPromote(warm.klass, subClass = warm.klass, subClassSegmentHot = false)
       }
 
-      if errors.isEmpty then Nil
-      else UnsafePromotion(msg, errors.head)(trace) :: Nil
+      if errors.isEmpty then Vector()
+      else UnsafePromotion(msg, errors.head)(trace) +: Vector()
     }
 
   end extension
@@ -1185,7 +1185,7 @@ object Semantic:
   /**
    * Check the specified concrete classes
    */
-  def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
+  def checkClasses(classes: Vector[ClassSymbol])(using Context): Unit =
     given Cache.Data()
     given TreeCache.CacheData()
     for classSym <- classes if isConcreteClass(classSym) && !classSym.isStaticObject do
@@ -1227,11 +1227,11 @@ object Semantic:
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Ref, klass: ClassSymbol): Contextual[List[Value]] =
+  def eval(exprs: Vector[Tree], thisV: Ref, klass: ClassSymbol): Contextual[Vector[Value]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Ref, klass: ClassSymbol): Contextual[List[ArgInfo]] =
+  def evalArgs(args: Vector[Arg], thisV: Ref, klass: ClassSymbol): Contextual[Vector[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
       val res =
@@ -1242,7 +1242,7 @@ object Semantic:
 
       argInfos += new ArgInfo(res, trace.add(arg.tree))
     }
-    argInfos.toList
+    argInfos.toVector
 
   /** Handles the evaluation of different expressions
    *
@@ -1372,7 +1372,7 @@ object Semantic:
         eval(expr, thisV, klass)
 
       case If(cond, thenp, elsep) =>
-        eval(cond :: thenp :: elsep :: Nil, thisV, klass).join
+        eval(cond +: thenp +: elsep +: Vector(), thisV, klass).join
 
       case Annotated(arg, annot) =>
         if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Hot
@@ -1392,7 +1392,7 @@ object Semantic:
         }
 
       case WhileDo(cond, body) =>
-        eval(cond :: body :: Nil, thisV, klass)
+        eval(cond +: body +: Vector(), thisV, klass)
         Hot
 
       case Labeled(_, expr) =>
@@ -1411,7 +1411,7 @@ object Semantic:
         eval(bindings, thisV, klass)
         withTrace(trace2) { eval(expansion, thisV, klass) }
 
-      case Thicket(List()) =>
+      case Thicket(Vector()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
         Hot
 
@@ -1555,7 +1555,7 @@ object Semantic:
     // Tasks is used to schedule super constructor calls.
     // Super constructor calls are delayed until all outers are set.
     type Tasks = mutable.ArrayBuffer[() => Unit]
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], tasks: Tasks): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: Vector[ArgInfo], tasks: Tasks): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass)
@@ -1583,7 +1583,7 @@ object Semantic:
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, Nil, tasks)
+        superCall(tref, tref.classSymbol.primaryConstructor, Vector(), tasks)
 
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
@@ -1623,7 +1623,7 @@ object Semantic:
             // The parameter check of traits comes late in the mixin phase.
             // To avoid crash we supply hot values for erroneous parent calls.
             // See tests/neg/i16438.scala.
-            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot, Trace.empty))
+            val args: Vector[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot, Trace.empty))
             extendTrace(superParent) {
               superCall(tref, ctor, args, tasks)
             }

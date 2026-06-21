@@ -41,24 +41,24 @@ class InlineReducer(inliner: Inliner)(using Context):
    *             - whether the instance creation is precomputed or by-name
    */
   private object NewInstance {
-    def unapply(tree: Tree)(using Context): Option[(Symbol, List[Tree], List[Tree], Boolean)] = {
-      def unapplyLet(bindings: List[Tree], expr: Tree) =
+    def unapply(tree: Tree)(using Context): Option[(Symbol, Vector[Tree], Vector[Tree], Boolean)] = {
+      def unapplyLet(bindings: Vector[Tree], expr: Tree) =
         unapply(expr) map {
-          case (cls, reduced, prefix, precomputed) => (cls, reduced, bindings ::: prefix, precomputed)
+          case (cls, reduced, prefix, precomputed) => (cls, reduced, bindings ++ prefix, precomputed)
         }
       tree match {
         case Apply(fn, args) =>
           fn match {
             case Select(New(tpt), nme.CONSTRUCTOR) =>
-              Some((tpt.tpe.classSymbol, args, Nil, false))
+              Some((tpt.tpe.classSymbol, args, Vector(), false))
             case TypeApply(Select(New(tpt), nme.CONSTRUCTOR), _) =>
-              Some((tpt.tpe.classSymbol, args, Nil, false))
+              Some((tpt.tpe.classSymbol, args, Vector(), false))
             case _ =>
               val meth = fn.symbol
               if (meth.name == nme.apply &&
                   meth.flags.is(Synthetic) &&
                   meth.owner.linkedClass.is(Case))
-                Some(meth.owner.linkedClass, args, Nil, false)
+                Some(meth.owner.linkedClass, args, Vector(), false)
               else None
           }
         case Typed(inner, _) =>
@@ -109,7 +109,7 @@ class InlineReducer(inliner: Inliner)(using Context):
             // newInstance is evaluated in place, need to reflect side effects of
             // arguments in the order they were written originally
             def collectImpure(from: Int, end: Int) =
-              (from until end).filterNot(i => isElideableExpr(args(i))).toList.map(args)
+              (from until end).filterNot(i => isElideableExpr(args(i))).toVector.map(args)
             val leading = collectImpure(0, idx)
             val trailing = collectImpure(idx + 1, args.length)
             val argInPlace =
@@ -117,7 +117,7 @@ class InlineReducer(inliner: Inliner)(using Context):
               else
                 def argsSpan = trailing.map(_.span).foldLeft(arg.span)(_.union(_))
                 letBindUnless(TreeInfo.Pure, arg)(Block(trailing, _).withSpan(argsSpan))
-            val blockSpan = (prefix ::: leading).map(_.span).foldLeft(argInPlace.span)(_.union(_))
+            val blockSpan = (prefix ++ leading).map(_.span).foldLeft(argInPlace.span)(_.union(_))
             finish(seq(prefix, seq(leading, argInPlace)).withSpan(blockSpan))
           }
         }
@@ -152,12 +152,12 @@ class InlineReducer(inliner: Inliner)(using Context):
    *  for the pattern-bound variables and the RHS of the selected case.
    *  Returns `None` if no case was selected.
    */
-  type MatchRedux = Option[(List[MemberDef], Tree)]
+  type MatchRedux = Option[(Vector[MemberDef], Tree)]
 
   /** Same as MatchRedux, but also includes a boolean
    *  that is true if the guard can be checked at compile time.
    */
-  type MatchReduxWithGuard = Option[(List[MemberDef], Tree, Boolean)]
+  type MatchReduxWithGuard = Option[(Vector[MemberDef], Tree, Boolean)]
 
   /** Reduce an inline match
     *   @param     mtch          the match tree
@@ -169,7 +169,7 @@ class InlineReducer(inliner: Inliner)(using Context):
     *   @return    optionally, if match can be reduced to a matching case: A pair of
     *              bindings for all pattern-bound variables and the RHS of the case.
     */
-  def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: List[CaseDef], typer: Typer)(using Context): MatchRedux = {
+  def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: Vector[CaseDef], typer: Typer)(using Context): MatchRedux = {
 
     val isImplicit = scrutinee.isEmpty
 
@@ -317,9 +317,9 @@ class InlineReducer(inliner: Inliner)(using Context):
           unapp.tpe.widen match {
             case mt: MethodType if mt.paramInfos.length == 1 =>
 
-              def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
-                case (Nil, Nil) => true
-                case (pat :: pats1, selector :: selectors1) =>
+              def reduceSubPatterns(pats: Vector[Tree], selectors: Vector[Tree]): Boolean = (pats, selectors) match {
+                case (Vector(), Vector()) => true
+                case (pat +: pats1, selector +: selectors1) =>
                   val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenInlineScrutinee).asTerm
                   adjustErased(elem, selector)
                   val rhs = constToLiteral(selector)
@@ -380,7 +380,7 @@ class InlineReducer(inliner: Inliner)(using Context):
     def reduceCase(cdef: CaseDef): MatchReduxWithGuard = {
       val caseBindingMap = new mutable.ListBuffer[(Symbol, MemberDef)]()
 
-      def substBindings(bindings: List[(Symbol, MemberDef)]): (List[MemberDef], List[Symbol], List[Symbol]) =
+      def substBindings(bindings: Vector[(Symbol, MemberDef)]): (Vector[MemberDef], Vector[Symbol], Vector[Symbol]) =
         val (from, to) = bindings.collect { case (sym, bnd) if sym.exists => (sym, bnd.symbol) }.unzip
         to.foreach(sym => sym.info = sym.info.substSym(from, to))
         val substituted = bindings.map { case (sym, bnd) => bnd.subst(from, to) }
@@ -389,14 +389,14 @@ class InlineReducer(inliner: Inliner)(using Context):
       for binding <- scrutineeBinding do caseBindingMap += ((NoSymbol, binding))
       val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
       if (reducePattern(caseBindingMap, scrutineeRef, cdef.pat)(using gadtCtx)) {
-        val (caseBindings, from, to) = substBindings(caseBindingMap.toList)
+        val (caseBindings, from, to) = substBindings(caseBindingMap.toVector)
         val (guardOK, canReduceGuard) =
           if cdef.guard.isEmpty then (true, true)
           else stripInlined(typer.typed(cdef.guard.subst(from, to), defn.BooleanType)) match {
             case ConstantValue(v: Boolean) => (v, true)
             case _ => (false, false)
           }
-        if !canReduceGuard then Some((List.empty, EmptyTree, false))
+        if !canReduceGuard then Some((Vector.empty, EmptyTree, false))
         else if !guardOK then None
         else cdef.body.subst(from, to) match
           case t: SubMatch => // a sub match of an inline match is also inlined
@@ -407,9 +407,9 @@ class InlineReducer(inliner: Inliner)(using Context):
       else None
     }
 
-    def recur(cases: List[CaseDef]): MatchRedux = cases match {
-      case Nil => None
-      case cdef :: cases1 =>
+    def recur(cases: Vector[CaseDef]): MatchRedux = (cases: @unchecked) match {
+      case Vector() => None
+      case cdef +: cases1 =>
         reduceCase(cdef) match
           case None => recur(cases1)
           case r @ Some((caseBindings, rhs, canReduceGuard)) if canReduceGuard => Some((caseBindings, rhs))

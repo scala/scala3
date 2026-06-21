@@ -7,6 +7,7 @@ import scala.annotation.tailrec
 import dotty.tools.DottyTest
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.core.Contexts.FreshContext
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.Locale
 
@@ -102,13 +103,13 @@ class TraceNameManglingTest extends DottyTest {
       val source = SourceFile.virtual(filename, code)
       val c = compilerWithChecker(afterPhase) { (_, _) => () }
       val run = c.newRun
-      run.compileSources(List(source))
+      run.compileSources(Vector(source))
       run.runContext
     assert(!runCtx.reporter.hasErrors, "compilation failed")
     val outfile = ctx.settings.YprofileTrace.value
     checkEvents:
       scala.io.Source
-        .fromFile(outfile)
+        .fromFile(outfile, StandardCharsets.UTF_8.name())
         .getLines()
         .collect:
           case s"""${_}"cat":"${category}","name":${name},"ph":${_}""" =>

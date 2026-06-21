@@ -358,7 +358,7 @@ object Symbols extends SymUtils {
         val targets = root.collectSubTrees:
           case tree: DefDef if tree.symbol == denot.symbol => methPart(tree.rhs).tpe
         targets.match
-          case (tp: NamedType) :: _ => tp.symbol.sourceSymbol
+          case (tp: NamedType) +: _ => tp.symbol.sourceSymbol
           case _                    => this
       else if denot.is(Synthetic) then
         val linked = denot.linkedClass
@@ -609,7 +609,7 @@ object Symbols extends SymUtils {
       owner: Symbol,
       name: TypeName,
       flags: FlagSet,
-      parents: List[TypeRef],
+      parents: Vector[TypeRef],
       decls: Scope,
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
@@ -627,7 +627,7 @@ object Symbols extends SymUtils {
       owner: Symbol,
       name: TypeName,
       flags: FlagSet,
-      parentTypes: List[Type],
+      parentTypes: Vector[Type],
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
@@ -649,10 +649,10 @@ object Symbols extends SymUtils {
       owner: Symbol,
       name: TypeName,
       flags: FlagSet,
-      parentTypes: Symbol => List[Type],
+      parentTypes: Symbol => Vector[Type],
       selfInfo: Type,
       privateWithin: Symbol,
-      annotations: List[Tree],
+      annotations: Vector[Tree],
       coord: Coord,
       compUnitInfo: CompilationUnitInfo | Null)(using Context): ClassSymbol = {
     def completer = new LazyType {
@@ -669,7 +669,7 @@ object Symbols extends SymUtils {
   }
 
   def newRefinedClassSymbol(coord: Coord = NoCoord)(using Context): ClassSymbol =
-    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, newScope, coord = coord)
+    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Vector(), newScope, coord = coord)
 
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
@@ -708,7 +708,7 @@ object Symbols extends SymUtils {
       name: TermName,
       modFlags: FlagSet,
       clsFlags: FlagSet,
-      parents: List[TypeRef],
+      parents: Vector[TypeRef],
       decls: Scope,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
@@ -727,7 +727,7 @@ object Symbols extends SymUtils {
       name: TermName,
       modFlags: FlagSet,
       clsFlags: FlagSet,
-      parentTypes: List[Type],
+      parentTypes: Vector[Type],
       decls: Scope,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
@@ -753,7 +753,7 @@ object Symbols extends SymUtils {
       name: TermName,
       modFlags: FlagSet,
       clsFlags: FlagSet,
-      parentTypes: ClassSymbol => List[Type],
+      parentTypes: ClassSymbol => Vector[Type],
       decls: Scope,
       privateWithin: Symbol,
       coord: Coord,
@@ -793,7 +793,7 @@ object Symbols extends SymUtils {
     newCompleteModuleSymbol(
       owner, name,
       modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
-      Nil, decls)
+      Vector(), decls)
 
   /** Define a new symbol associated with a Bind or pattern wildcard and, by default, make it gadt narrowable. */
   def newPatternBoundSymbol(
@@ -814,7 +814,7 @@ object Symbols extends SymUtils {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, compilation unit = $compUnitInfo")
-    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toVector.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
@@ -849,8 +849,8 @@ object Symbols extends SymUtils {
   def newConstructor(
       cls: ClassSymbol,
       flags: FlagSet,
-      paramNames: List[TermName],
-      paramTypes: List[Type],
+      paramNames: Vector[TermName],
+      paramTypes: Vector[Type],
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord)(using Context): TermSymbol =
     newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
@@ -861,7 +861,7 @@ object Symbols extends SymUtils {
 
   /** Create an empty default constructor symbol for given class `cls`. */
   def newDefaultConstructor(cls: ClassSymbol)(using Context): TermSymbol =
-    newConstructor(cls, EmptyFlags, Nil, Nil)
+    newConstructor(cls, EmptyFlags, Vector(), Vector())
 
   def newLazyImplicit(info: Type, coord: Coord = NoCoord)(using Context): TermSymbol =
     newSymbol(ctx.owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
@@ -879,9 +879,9 @@ object Symbols extends SymUtils {
    */
   def newTypeParams(
     owner: Symbol,
-    names: List[TypeName],
+    names: Vector[TypeName],
     flags: FlagSet,
-    boundsFn: List[TypeRef] => List[Type])(using Context): List[TypeSymbol] = {
+    boundsFn: Vector[TypeRef] => Vector[Type])(using Context): Vector[TypeSymbol] = {
 
     val tparamBuf = new mutable.ListBuffer[TypeSymbol]
     val trefBuf = new mutable.ListBuffer[TypeRef]
@@ -891,8 +891,8 @@ object Symbols extends SymUtils {
       tparamBuf += tparam
       trefBuf += TypeRef(owner.thisType, tparam)
     }
-    val tparams = tparamBuf.toList
-    val bounds = boundsFn(trefBuf.toList)
+    val tparams = tparamBuf.toVector
+    val bounds = boundsFn(trefBuf.toVector)
     for (tparam, bound) <- tparams.lazyZip(bounds) do
       tparam.info = bound
     tparams
@@ -916,13 +916,13 @@ object Symbols extends SymUtils {
    *  Do not copy any symbols if all attributes of all symbols stay the same
    *  and mapAlways is false.
    */
-  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
+  def mapSymbols(originals: Vector[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): Vector[Symbol] =
     if (originals.forall(sym =>
         (ttmap.mapType(sym.info) eq sym.info) &&
         !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
       originals
     else {
-      val copies: List[Symbol] = for (original <- originals) yield
+      val copies: Vector[Symbol] = for (original <- originals) yield
         val odenot = original.denot
         original.copy(
           owner = ttmap.mapOwner(odenot.owner),
@@ -990,16 +990,16 @@ object Symbols extends SymUtils {
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TermSymbols:
-    def unapply(xs: List[Symbol])(using Context): Option[List[TermSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => None
-      case _ => Some(xs.asInstanceOf[List[TermSymbol]])
+    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TermSymbol]] = xs match
+      case (x: Symbol) +: _ if x.isType => None
+      case _ => Some(xs.asInstanceOf[Vector[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TypeSymbols:
-    def unapply(xs: List[Symbol])(using Context): Option[List[TypeSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
+    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TypeSymbol]] = xs match
+      case (x: Symbol) +: _ if x.isType => Some(xs.asInstanceOf[Vector[TypeSymbol]])
       case _ => None
 
   type DontUseSymbolOnSymbol
@@ -1033,10 +1033,10 @@ object Symbols extends SymUtils {
     staticRef(path.toTypeName, generateStubs = false)
       .disambiguate(_.isClass).symbol
 
-  /** Get a List of ClassSymbols which are either defined in current compilation
+  /** Get a Vector of ClassSymbols which are either defined in current compilation
    *  run or present on classpath.
    */
-  def getClassesIfDefined(paths: List[PreName])(using Context): List[ClassSymbol] =
+  def getClassesIfDefined(paths: Vector[PreName])(using Context): Vector[ClassSymbol] =
     paths.map(getClassIfDefined).filter(_.exists).map(_.asInstanceOf[ClassSymbol])
 
   /** Get ClassSymbol if package is either defined in current compilation run

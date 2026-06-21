@@ -314,7 +314,7 @@ class ReplDriver(settings: Array[String],
 
   /** Add a language feature to rootCtx so subsequent parses and compilations see it. */
   private def enableLanguageFeature(feature: String): Unit =
-    val summary = rootCtx.settings.processArguments(List(s"-language:$feature"), true, rootCtx.settingsState)
+    val summary = rootCtx.settings.processArguments(Vector(s"-language:$feature"), true, rootCtx.settingsState)
     rootCtx = rootCtx.fresh.setSettings(summary.sstate)
 
   /** Detect global language imports in parsed trees and enable them in rootCtx
@@ -341,7 +341,7 @@ class ReplDriver(settings: Array[String],
   protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
     if expr.startsWith(":") then
       ParseResult.commands.collect {
-        case command if command._1.startsWith(expr) => Completion(command._1, "", List())
+        case command if command._1.startsWith(expr) => Completion(command._1, "", Vector())
       }
     else
       given state: State = newRun(state0)
@@ -355,9 +355,9 @@ class ReplDriver(settings: Array[String],
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
           try
-            Completion.completions(srcPos)._2
+            Completion.completions(srcPos)._2.toList
           catch case NonFatal(_) =>
-            List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
+            List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Vector()))
         }
         .getOrElse(Nil)
   end completions
@@ -390,7 +390,7 @@ class ReplDriver(settings: Array[String],
   /** Compile `parsed` trees and evolve `state` in accordance */
   private def compile(parsed: Parsed, istate: State): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
-      case PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
+      case PackageDef(_, Vector(obj: untpd.ModuleDef)) => obj.name.moduleClassName
       case _ => nme.NO_NAME
     }
 
@@ -566,7 +566,7 @@ class ReplDriver(settings: Array[String],
       else
         out.println("Resetting REPL state.")
 
-      resetToInitial(tokens)
+      resetToInitial(tokens.toList)
       initialState
 
     case Imports =>

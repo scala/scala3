@@ -122,14 +122,14 @@ object Flags {
     def firstBit: Int = java.lang.Long.numberOfTrailingZeros(x.bits & ~KINDFLAGS)
 
     /** The  list of non-empty names of flags with given index idx that are set in the given flag set */
-    private def flagString(idx: Int): List[String] =
-      if ((x.bits & (1L << idx)) == 0) Nil
+    private def flagString(idx: Int): Vector[String] =
+      if ((x.bits & (1L << idx)) == 0) Vector()
       else {
         def halfString(kind: Int) =
           if ((x.bits & (1L << kind)) != 0) flagName(idx)(kind) else ""
         val termFS = halfString(TERMindex)
         val typeFS = halfString(TYPEindex)
-        val strs = termFS :: (if (termFS == typeFS) Nil else typeFS :: Nil)
+        val strs = termFS +: (if (termFS == typeFS) Vector() else typeFS +: Vector())
         strs filter (_.nonEmpty)
       }
 

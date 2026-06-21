@@ -186,7 +186,7 @@ class ScriptingTests:
       if scriptFile.getName.endsWith(extension)
       name = scriptFile.getName.dropExtension
       scriptArgs = argss.getOrElse(name, Array.empty[String])
-    yield scriptFile -> scriptArgs).toList.sortBy { (file, args) => file.getName }
+    yield scriptFile -> scriptArgs).toVector.sortBy { (file, args) => file.getName }
 
   def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
     import scala.sys.process.*

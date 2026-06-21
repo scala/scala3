@@ -28,7 +28,7 @@ class HashMapTest:
   def newEmpty: Unit =
     val m = HashMap[Id, Int]()
     assert(m.size == 0)
-    assert(m.iterator.toList == Nil)
+    assert(m.iterator.toVector == Vector())
 
   @Test
   def update: Unit =
@@ -97,7 +97,7 @@ class HashMapTest:
   @Test
   def iterator: Unit =
     val m = fullMap()
-    assert(m.iterator.toList.sorted == List(id1 -> 1,id2 -> 2))
+    assert(m.iterator.toVector.sorted == Vector(id1 -> 1,id2 -> 2))
 
   @Test
   def clear: Unit =
@@ -132,6 +132,6 @@ class HashMapTest:
       m
 
     assert(m.size == 1 && m(id2) == 29 && m(id2_2) == 29)
-    assert(m.keysIterator.toList.head eq id2) // does not replace id2 with id2_2
+    assert(m.keysIterator.toVector.head eq id2) // does not replace id2 with id2_2
   end universalEquality
 

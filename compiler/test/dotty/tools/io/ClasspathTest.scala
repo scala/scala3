@@ -28,7 +28,7 @@ class ClasspathTest {
       val compilerLib = s"${if isWindows then "dist-win-x86_64" else "dist"}/target/pack/lib"
       val libdir = Paths.get(compilerLib).toFile
       if libdir.exists then
-        val libjarFiles = libdir.listFiles.toList.take(5)
+        val libjarFiles = libdir.listFiles.toVector.take(5)
         try
           for src <- libjarFiles do
             val dest = Paths.get(s"$outDir/${src.getName}")
@@ -67,7 +67,7 @@ class ClasspathTest {
 
   private def deleteFile(target: File): Unit =
     if target.isDirectory then
-      for member <- target.listFiles.toList
+      for member <- target.listFiles.toVector
       do deleteFile(member)
     target.delete()
   end deleteFile

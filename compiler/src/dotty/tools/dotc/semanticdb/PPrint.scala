@@ -79,7 +79,7 @@ private[semanticdb] class SymbolInformationPrinter (symtab: PrinterSymtab):
         case UNKNOWN_KIND | Unrecognized(_) => sb.append("unknown ")
       sb.append(s"${info.displayName}${info.prefixBeforeTpe}${pprint(info.signature)}")
       info.overriddenSymbols match
-        case Nil => ()
+        case Vector() => ()
         case all => sb.append(s" <: ${all.mkString(", ")}")
       sb.toString
 
@@ -129,11 +129,11 @@ private[semanticdb] class SymbolInformationPrinter (symtab: PrinterSymtab):
             sb.append(s" = ${pprint(lo)}")
           } else {
             lo match
-              case TypeRef(Type.Empty, "scala/Nothing#", Nil) => ()
+              case TypeRef(Type.Empty, "scala/Nothing#", Vector()) => ()
               case lo => sb.append(s" >: ${pprint(lo)}")
             hi match
-              case TypeRef(Type.Empty, "scala/Any#", Nil) => ()
-              case TypeRef(Type.Empty, "java/lang/Object#", Nil) => ()
+              case TypeRef(Type.Empty, "scala/Any#", Vector()) => ()
+              case TypeRef(Type.Empty, "java/lang/Object#", Vector()) => ()
               case hi => sb.append(s" <: ${pprint(hi)}")
           }
           sb.toString
@@ -260,16 +260,16 @@ private[semanticdb] class SymbolInformationPrinter (symtab: PrinterSymtab):
         case ProtectedWithinAccess(ssym) =>
           s"protected[${ssym}] "
     extension (scope: Scope)
-      private def infos: List[SymbolInformation] =
+      private def infos: Vector[SymbolInformation] =
         if (scope.symlinks.nonEmpty)
-          scope.symlinks.map(symbol => SymbolInformation(symbol = symbol)).toList
+          scope.symlinks.map(symbol => SymbolInformation(symbol = symbol)).toVector
         else
-          scope.hardlinks.toList
+          scope.hardlinks.toVector
 
     extension (scope: Option[Scope])
-      private def infos: List[SymbolInformation] = scope match {
+      private def infos: Vector[SymbolInformation] = scope match {
         case Some(s) => s.infos
-        case None => Nil
+        case None => Vector()
       }
   end InfoPrinter
 end SymbolInformationPrinter

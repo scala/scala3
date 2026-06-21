@@ -263,12 +263,15 @@ class VectorTest {
     assertSame(m, Vector.apply(m*))
   }
 
-  @Test def factoryReuseArraySet(): Unit = {
+  @Test def factoryDoesNotReuseArraySeqUnsafeArray(): Unit = {
     val arraySeq = ArraySeq[AnyRef]("a", "b")
     val vectorFromArraySeq = Vector.from(arraySeq)
     val prefix1Field = classOf[Vector[?]].getDeclaredField("prefix1")
     prefix1Field.setAccessible(true)
-    assertSame(arraySeq.unsafeArray, prefix1Field.get(vectorFromArraySeq))
+    val unsafeArray = arraySeq.unsafeArray.asInstanceOf[Array[AnyRef]]
+    assertNotSame(unsafeArray, prefix1Field.get(vectorFromArraySeq))
+    unsafeArray(0) = "mutated"
+    assertEquals(Vector[AnyRef]("a", "b"), vectorFromArraySeq)
   }
 
   @Test def checkSearch(): Unit = SeqTests.checkSearch(Vector(0 to 1000*), 15,  implicitly[Ordering[Int]])

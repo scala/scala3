@@ -65,7 +65,7 @@ object Interactive {
     tree.isInstanceOf[NamedDefTree]
 
   /** The type of the closest enclosing tree with a type containing position `pos`. */
-  def enclosingType(trees: List[SourceTree], pos: SourcePosition)(using Context): Type = {
+  def enclosingType(trees: Vector[SourceTree], pos: SourcePosition)(using Context): Type = {
     val path = pathTo(trees, pos)
     if (path.isEmpty) NoType
     else path.head.tpe
@@ -73,12 +73,12 @@ object Interactive {
 
   /** The closest enclosing tree with a symbol containing position `pos`, or the `EmptyTree`.
    */
-  def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(using Context): Tree =
+  def enclosingTree(trees: Vector[SourceTree], pos: SourcePosition)(using Context): Tree =
     enclosingTree(pathTo(trees, pos))
 
   /** The closest enclosing tree with a symbol, or the `EmptyTree`.
    */
-  def enclosingTree(path: List[Tree])(using Context): Tree =
+  def enclosingTree(path: Vector[Tree])(using Context): Tree =
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
 
   /**
@@ -92,15 +92,15 @@ object Interactive {
    *
    * @see sourceSymbol
    */
-  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(using Context): List[Symbol] = {
+  def enclosingSourceSymbols(path: Vector[Tree], pos: SourcePosition)(using Context): Vector[Symbol] = {
     val syms = path match {
       // For a named arg, find the target `DefDef` and jump to the param
-      case NamedArg(name, _) :: Apply(fn, _) :: _ =>
+      case NamedArg(name, _) +: Apply(fn, _) +: _ =>
         val funSym = fn.symbol
         if (funSym.name == StdNames.nme.copy
           && funSym.is(Synthetic)
           && funSym.owner.is(CaseClass))
-            List(funSym.owner.info.member(name).symbol)
+            Vector(funSym.owner.info.member(name).symbol)
         else {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
@@ -109,21 +109,21 @@ object Interactive {
               param <- paramss.flatten.find(_.name == name)
             }
             yield param.symbol
-          List(paramSymbol.getOrElse(fn.symbol))
+          Vector(paramSymbol.getOrElse(fn.symbol))
         }
 
       // For constructor calls, return the `<init>` that was selected
-      case _ :: (_:  New) :: (select: Select) :: _ =>
-        List(select.symbol)
+      case _ +: (_:  New) +: (select: Select) +: _ =>
+        Vector(select.symbol)
 
-      case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
+      case (_: untpd.ImportSelector) +: (imp: Import) +: _ =>
         importedSymbols(imp, _.span.contains(pos.span))
 
-      case (imp: Import) :: _ =>
+      case (imp: Import) +: _ =>
         importedSymbols(imp, _.span.contains(pos.span))
 
       case _ =>
-        List(enclosingTree(path).symbol)
+        Vector(enclosingTree(path).symbol)
     }
 
     syms.map(_.sourceSymbol).filter(_.exists)
@@ -156,10 +156,10 @@ object Interactive {
    *  use `sourceSymbol` to get a symbol related to `sym` that is defined in
    *  source code.
    */
-  def namedTrees(trees: List[SourceTree], include: Include.Set, sym: Symbol)
-   (using Context): List[SourceTree] =
+  def namedTrees(trees: Vector[SourceTree], include: Include.Set, sym: Symbol)
+   (using Context): Vector[SourceTree] =
     if (!sym.exists)
-      Nil
+      Vector()
     else
       namedTrees(trees, include, matchSymbol(_, sym, include))
 
@@ -170,10 +170,10 @@ object Interactive {
    *  @param treePredicate An additional predicate that the trees must match.
    *  @return The trees with a non-empty position satisfying `treePredicate`.
    */
-  def namedTrees(trees: List[SourceTree],
+  def namedTrees(trees: Vector[SourceTree],
                  include: Include.Set,
                  treePredicate: NameTree => Boolean = util.common.alwaysTrue
-                )(using Context): List[SourceTree] = safely {
+                )(using Context): Vector[SourceTree] = safely {
     val buf = new mutable.ListBuffer[SourceTree]
 
     def traverser(source: SourceFile) =
@@ -212,7 +212,7 @@ object Interactive {
 
     trees.foreach(t => traverser(t.source).traverse(t.tree))
 
-    buf.toList
+    buf.toVector
   }
 
   /**
@@ -223,11 +223,11 @@ object Interactive {
    * @param symbol    The symbol for which we want to find references.
    * @param predicate An additional predicate that the trees must match.
    */
-  def findTreesMatching(trees: List[SourceTree],
+  def findTreesMatching(trees: Vector[SourceTree],
                         includes: Include.Set,
                         symbol: Symbol,
                         predicate: NameTree => Boolean = util.common.alwaysTrue
-                       )(using Context): List[SourceTree] = {
+                       )(using Context): Vector[SourceTree] = {
     val linkedSym = symbol.linkedClass
     val fullPredicate: NameTree => Boolean = tree =>
       (  (includes.isDefinitions || !Interactive.isDefinition(tree))
@@ -243,7 +243,7 @@ object Interactive {
   }
 
   /** The reverse path to the node that closest encloses position `pos`,
-   *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
+   *  or `Vector()` if no such path exists. If a non-empty path is returned it starts with
    *  the tree closest enclosing `pos` and ends with an element of `trees`.
    *
    *  Note that if the given `pos` points out places for incomplete parses,
@@ -251,35 +251,35 @@ object Interactive {
    *
    *  @see https://github.com/scala/scala3/issues/15294
    */
-  def pathTo(trees: List[SourceTree], pos: SourcePosition)(using Context): List[Tree] =
+  def pathTo(trees: Vector[SourceTree], pos: SourcePosition)(using Context): Vector[Tree] =
     pathTo(trees.map(_.tree), pos.span)
 
-  def pathTo(tree: Tree, span: Span)(using Context): List[Tree] =
-    pathTo(List(tree), span)
+  def pathTo(tree: Tree, span: Span)(using Context): Vector[Tree] =
+    pathTo(Vector(tree), span)
 
-  private def pathTo(trees: List[Tree], span: Span)(using Context): List[Tree] =
+  private def pathTo(trees: Vector[Tree], span: Span)(using Context): Vector[Tree] =
     if (trees.exists(_.span.contains(span)))
       NavigateAST.pathTo(span, trees, skipZeroExtent = true)
         .collect { case t: untpd.Tree => t }
-        .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
-    else Nil
+        .dropWhile(!_.hasType).asInstanceOf[Vector[tpd.Tree]]
+    else Vector()
 
-  def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): Context = stats match {
-    case Nil =>
+  def contextOfStat(stats: Vector[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): Context = (stats: @unchecked) match {
+    case Vector() =>
       ctx
-    case first :: _ if first eq stat =>
+    case first +: _ if first eq stat =>
       ctx.exprContext(stat, exprOwner)
-    case (imp: Import) :: rest =>
+    case (imp: Import) +: rest =>
       contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, inContext(ctx){imp.symbol}))
-    case _ :: rest =>
+    case _ +: rest =>
       contextOfStat(rest, stat, exprOwner, ctx)
   }
 
-  def contextOfPath(path: List[Tree])(using Context): Context = path match {
-    case Nil | _ :: Nil =>
+  def contextOfPath(path: Vector[Tree])(using Context): Context = (path: @unchecked) match {
+    case Vector() | _ +: Vector() =>
       ctx.fresh
-    case nested :: encl :: rest =>
-      val outer = contextOfPath(encl :: rest)
+    case nested +: encl +: rest =>
+      val outer = contextOfPath(encl +: rest)
       try encl match {
         case tree @ PackageDef(pkg, stats) if tree.symbol.exists =>
           if (nested `eq` pkg) outer
@@ -310,7 +310,7 @@ object Interactive {
           }
           localCtx
         case tree @ Template(constr, _, self, _) =>
-          if ((constr :: self :: tree.parentsOrDerived).contains(nested)) outer
+          if ((constr +: self +: tree.parentsOrDerived).contains(nested)) outer
           else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
         case _ =>
           outer
@@ -321,7 +321,7 @@ object Interactive {
   }
 
   /** The first tree in the path that is a definition. */
-  def enclosingDefinitionInPath(path: List[Tree])(using Context): Tree =
+  def enclosingDefinitionInPath(path: Vector[Tree])(using Context): Tree =
     path.find(_.isInstanceOf[DefTree]).getOrElse(EmptyTree)
 
   /**
@@ -332,7 +332,7 @@ object Interactive {
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver): List[SourceTree] = {
+  def findDefinitions(path: Vector[Tree], pos: SourcePosition, driver: InteractiveDriver): Vector[SourceTree] = {
     given Context = driver.currentCtx
     val enclTree = enclosingTree(path)
     val includeOverridden = enclTree.isInstanceOf[MemberDef]
@@ -351,10 +351,10 @@ object Interactive {
    * @return The definitions for the symbols in `symbols`, and if `includeOverridden` is set, the
    *         definitions for the symbols that they override.
    */
-  def findDefinitions(symbols: List[Symbol],
+  def findDefinitions(symbols: Vector[Symbol],
                       driver: InteractiveDriver,
                       includeOverridden: Boolean,
-                      includeExternal: Boolean): List[SourceTree] = {
+                      includeExternal: Boolean): Vector[SourceTree] = {
     given Context = driver.currentCtx
     val include = Include.definitions | Include.overriding |
       (if (includeOverridden) Include.overridden else Include.empty)
@@ -385,7 +385,7 @@ object Interactive {
     if (sourceDriver == targetDriver) symbol
     else {
       val owners = in(sourceDriver) {
-        symbol.ownersIterator.toList.reverse.map(_.name)
+        symbol.ownersIterator.toVector.reverse.map(_.name)
       }
       in(targetDriver) {
         val base: Symbol = defn.RootClass
@@ -424,14 +424,14 @@ object Interactive {
    *  is expanded into methods. In order to support completions in those cases
    *  we have to rely on untyped trees and only when types are necessary use typed trees.
    */
-  def resolveTypedOrUntypedPath(tpdPath: List[Tree], pos: SourcePosition)(using Context): List[untpd.Tree] =
-    lazy val untpdPath: List[untpd.Tree] = NavigateAST
-      .pathTo(pos.span, List(ctx.compilationUnit.untpdTree), true).collect:
+  def resolveTypedOrUntypedPath(tpdPath: Vector[Tree], pos: SourcePosition)(using Context): Vector[untpd.Tree] =
+    lazy val untpdPath: Vector[untpd.Tree] = NavigateAST
+      .pathTo(pos.span, Vector(ctx.compilationUnit.untpdTree), true).collect:
         case untpdTree: untpd.Tree => untpdTree
 
     tpdPath match
-      case (_: Bind) :: _ => tpdPath
-      case (_: untpd.TypTree) :: _ => tpdPath
+      case (_: Bind) +: _ => tpdPath
+      case (_: untpd.TypTree) +: _ => tpdPath
       case _ => untpdPath
 
   /**
@@ -464,7 +464,7 @@ object Interactive {
     val owner = sym.effectiveOwner
     owner == defn.ScalaPredefModuleClass || owner == defn.ScalaPackageClass || owner == defn.JavaLangPackageClass
 
-  private[interactive] def safely[T](op: => List[T]): List[T] =
-    try op catch { case ex: TypeError => Nil }
+  private[interactive] def safely[T](op: => Vector[T]): Vector[T] =
+    try op catch { case ex: TypeError => Vector() }
 }
 

@@ -34,20 +34,20 @@ import Decorators.*
 class TreeTypeMap(
   val typeMap: Type => Type = IdentityTypeMap,
   val treeMap: tpd.Tree => tpd.Tree = identity,
-  val oldOwners: List[Symbol] = Nil,
-  val newOwners: List[Symbol] = Nil,
-  val substFrom: List[Symbol] = Nil,
-  val substTo: List[Symbol] = Nil,
+  val oldOwners: Vector[Symbol] = Vector(),
+  val newOwners: Vector[Symbol] = Vector(),
+  val substFrom: Vector[Symbol] = Vector(),
+  val substTo: Vector[Symbol] = Vector(),
   cpy: tpd.TreeCopier = tpd.cpy)(using Context) extends tpd.TreeMap(cpy) {
   import tpd.*
 
   def copy(
       typeMap: Type => Type,
       treeMap: Tree => Tree,
-      oldOwners: List[Symbol],
-      newOwners: List[Symbol],
-      substFrom: List[Symbol],
-      substTo: List[Symbol])(using Context): TreeTypeMap =
+      oldOwners: Vector[Symbol],
+      newOwners: Vector[Symbol],
+      substFrom: Vector[Symbol],
+      substTo: Vector[Symbol])(using Context): TreeTypeMap =
     new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
@@ -57,11 +57,15 @@ class TreeTypeMap(
    *  by the corresponding `This(newOwner)`.
    */
   private val mapOwnerThis = new TypeMap {
-    private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
-      case Nil => tp
-      case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
-      case _ :: from1 => mapPrefix(from1, to.tail, tp)
-    }
+    private def mapPrefix(from: Vector[Symbol], to: Vector[Symbol], tp: Type): Type =
+      var result = tp
+      var i = 0
+      while i < from.length do
+        from(i) match
+          case cls: ClassSymbol => result = result.substThis(cls, to(i).thisType)
+          case _ =>
+        i += 1
+      result
     def apply(tp: Type): Type = tp match {
       case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
       case _ => mapOver(tp)
@@ -76,19 +80,18 @@ class TreeTypeMap(
     mapOwnerThis(substMap(typeMap(tp)))
   end mapType
 
-  private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
-    if (prevStats.isEmpty) assert(newStats.isEmpty)
-    else {
-      prevStats.head match {
+  private def updateDecls(prevStats: Vector[Tree], newStats: Vector[Tree]): Unit =
+    assert(prevStats.length == newStats.length)
+    var i = 0
+    while i < prevStats.length do
+      prevStats(i) match
         case pdef: MemberDef =>
           val prevSym = pdef.symbol
-          val newSym = newStats.head.symbol
+          val newSym = newStats(i).symbol
           val newCls = newSym.owner.asClass
           if (prevSym != newSym) newCls.replace(prevSym, newSym)
         case _ =>
-      }
-      updateDecls(prevStats.tail, newStats.tail)
-    }
+      i += 1
 
   def transformInlined(tree: Inlined)(using Context): Tree =
     val Inlined(call, bindings, expanded) = tree
@@ -98,7 +101,7 @@ class TreeTypeMap(
 
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
-      val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
+      val tmap = withMappedSyms(localSyms(impl +: self +: Vector()))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
           parents = impl.parents.mapconserve(transform),
@@ -148,7 +151,7 @@ class TreeTypeMap(
           val rhs1 = tmap.transform(rhs)
           cpy.CaseDef(cdef)(pat1, guard1, rhs1)
         case labeled @ Labeled(bind, expr) =>
-          val tmap = withMappedSyms(bind.symbol :: Nil)
+          val tmap = withMappedSyms(bind.symbol +: Vector())
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
@@ -157,22 +160,22 @@ class TreeTypeMap(
       }
   }
 
-  override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+  override def transformStats(trees: Vector[Tree], exprOwner: Symbol)(using Context): Vector[Tree] =
     transformDefs(trees)._2
 
-  def transformDefs[TT <: Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
+  def transformDefs[TT <: Tree](trees: Vector[TT])(using Context): (TreeTypeMap, Vector[TT]) = {
     val tmap = withMappedSyms(localSyms(trees))
     (tmap, tmap.transformSub(trees))
   }
 
-  private def transformAllParamss(paramss: List[ParamClause]): (TreeTypeMap, List[ParamClause]) = paramss match
-    case params :: paramss1 =>
+  private def transformAllParamss(paramss: Vector[ParamClause]): (TreeTypeMap, Vector[ParamClause]) = paramss match
+    case params +: paramss1 =>
       val (tmap1, params1: ParamClause) = ((params: @unchecked) match
         case ValDefs(vparams) => transformDefs(vparams)
         case TypeDefs(tparams) => transformDefs(tparams)
       ): @unchecked
       val (tmap2, paramss2) = tmap1.transformAllParamss(paramss1)
-      (tmap2, params1 :: paramss2)
+      (tmap2, params1 +: paramss2)
     case nil =>
       (this, paramss)
 
@@ -181,7 +184,7 @@ class TreeTypeMap(
   def apply(annot: Annotation): Annotation = annot.derivedAnnotation(apply(annot.tree))
 
   /** The current tree map composed with a substitution [from -> to] */
-  def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =
+  def withSubstitution(from: Vector[Symbol], to: Vector[Symbol]): TreeTypeMap =
     if (from eq to) this
     else {
       // assert that substitution stays idempotent, assuming its parts are
@@ -206,25 +209,25 @@ class TreeTypeMap(
    *  and return a treemap that contains the substitution
    *  between original and mapped symbols.
    */
-  def withMappedSyms(syms: List[Symbol]): TreeTypeMap =
+  def withMappedSyms(syms: Vector[Symbol]): TreeTypeMap =
     withMappedSyms(syms, mapSymbols(syms, this))
 
   /** The tree map with the substitution between originals `syms`
    *  and mapped symbols `mapped`. Also goes into mapped classes
    *  and substitutes their declarations.
    */
-  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap =
+  def withMappedSyms(syms: Vector[Symbol], mapped: Vector[Symbol]): TreeTypeMap =
     if syms eq mapped then this
     else
       val substMap = withSubstitution(syms, mapped)
       lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
       mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-        val origDcls = cls.info.decls.toList.filterNot(_.is(TypeParam))
+        val origDcls = cls.info.decls.toVector.filterNot(_.is(TypeParam))
         val tmap0 = tmap.withSubstitution(origCls(cls).typeParams, cls.typeParams)
         val mappedDcls = mapSymbols(origDcls, tmap0, mapAlways = true)
         val tmap1 = tmap.withMappedSyms(
-          origCls(cls).typeParams ::: origDcls,
-          cls.typeParams ::: mappedDcls)
+          origCls(cls).typeParams ++ origDcls,
+          cls.typeParams ++ mappedDcls)
         mapped.foreach { sym =>
           // outer Symbols can reference nested ones in info,
           // so we remap that once again with the updated TreeTypeMap
@@ -235,7 +238,7 @@ class TreeTypeMap(
       }
 
   override def toString =
-    def showSyms(syms: List[Symbol]) =
+    def showSyms(syms: Vector[Symbol]) =
       syms.map(sym => s"$sym#${sym.id}").mkString(", ")
     s"""TreeTypeMap(
        |typeMap   = $typeMap

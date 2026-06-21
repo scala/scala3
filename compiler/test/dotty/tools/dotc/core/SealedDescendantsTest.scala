@@ -22,11 +22,11 @@ class SealedDescendantsTest extends DottyTest {
       """
 
     expectedDescendents(source, "Z",
-      "Z" ::
-      "A" ::
-      "B" ::
-      "C" ::
-      "D" :: Nil
+      "Z" +:
+      "A" +:
+      "B" +:
+      "C" +:
+      "D" +: Vector()
     )
   end zincIssue979
 
@@ -41,23 +41,23 @@ class SealedDescendantsTest extends DottyTest {
       """
 
     expectedDescendents(source, "Opt",
-      "Opt"       ::
-      "Some"      ::
-      "None.type" :: Nil
+      "Opt"       +:
+      "Some"      +:
+      "None.type" +: Vector()
     )
   end enumOpt
 
   @Test
   def javaEnum: Unit =
     expectedDescendents("java.util.concurrent.TimeUnit",
-      "TimeUnit"          ::
-      "NANOSECONDS.type"  ::
-      "MICROSECONDS.type" ::
-      "MILLISECONDS.type" ::
-      "SECONDS.type"      ::
-      "MINUTES.type"      ::
-      "HOURS.type"        ::
-      "DAYS.type"         :: Nil
+      "TimeUnit"          +:
+      "NANOSECONDS.type"  +:
+      "MICROSECONDS.type" +:
+      "MILLISECONDS.type" +:
+      "SECONDS.type"      +:
+      "MINUTES.type"      +:
+      "HOURS.type"        +:
+      "DAYS.type"         +: Vector()
     )
 
   @Test
@@ -74,11 +74,11 @@ class SealedDescendantsTest extends DottyTest {
       """
 
     expectedDescendents(source, "Z",
-      "Z"      ::
-      "A"      ::
-      "Q"      ::
-      "X"      ::
-      "Y.type" :: Nil
+      "Z"      +:
+      "A"      +:
+      "Q"      +:
+      "X"      +:
+      "Y.type" +: Vector()
     )
   end hierarchicalSharedChildren
 
@@ -95,23 +95,23 @@ class SealedDescendantsTest extends DottyTest {
       """
 
     expectedDescendents(source, "Z",
-      "Z"      ::
-      "A.type" ::
-      "B"      ::
-      "C"      ::
-      "D"      ::
-      "E"      :: Nil
+      "Z"      +:
+      "A.type" +:
+      "B"      +:
+      "C"      +:
+      "D"      +:
+      "E"      +: Vector()
     )
   end hierarchicalSharedChildrenB
 
-  def assertMatchingDescenants(rootCls: Symbol, expected: List[String])(using Context): Unit =
+  def assertMatchingDescenants(rootCls: Symbol, expected: Vector[String])(using Context): Unit =
     val descendents = rootCls.sealedDescendants.map(sym => s"${sym.name}${if (sym.isTerm) ".type" else ""}")
     assertEquals(expected.toString, descendents.toString)
 
-  def expectedDescendents(root: String, expected: List[String]): Unit =
+  def expectedDescendents(root: String, expected: Vector[String]): Unit =
     exploreRootNoSource(root)(assertMatchingDescenants(_, expected))
 
-  def expectedDescendents(source: String, root: String, expected: List[String]): Unit =
+  def expectedDescendents(source: String, root: String, expected: Vector[String]): Unit =
     exploreRoot(source, root)(assertMatchingDescenants(_, expected))
 
   def exploreRootNoSource(root: String)(op: Context ?=> ClassSymbol => Unit) =

@@ -34,7 +34,7 @@ class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase 
   private def restoreScope(tree: Tree)(using Context) = tree match {
     case TypeDef(_, impl: Template) =>
       val restoredDecls = newScope
-      for (stat <- impl.constr :: impl.body)
+      for (stat <- impl.constr +: impl.body)
         if (stat.isInstanceOf[MemberDef] && stat.symbol.exists)
           restoredDecls.enter(stat.symbol)
       // Enter class in enclosing package scope, in case it was an inner class before flatten.

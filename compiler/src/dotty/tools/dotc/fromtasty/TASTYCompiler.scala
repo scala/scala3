@@ -8,8 +8,8 @@ import Phases.Phase
 
 class TASTYCompiler extends Compiler {
 
-  override protected def frontendPhases: List[List[Phase]] =
-    List(new ReadTasty) :: Nil
+  override protected def frontendPhases: Vector[Vector[Phase]] =
+    Vector(new ReadTasty) +: Vector()
 
   override def newRun(using Context): Run = {
     reset()

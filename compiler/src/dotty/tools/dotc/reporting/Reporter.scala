@@ -112,20 +112,20 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Have warnings been reported by this reporter (ignoring outer reporters)? */
   def hasWarnings: Boolean = warningCount > 0
 
-  private var errors: List[Error] = Nil
+  private var errors: Vector[Error] = Vector()
 
-  private var warnings: List[Warning] = Nil
+  private var warnings: Vector[Warning] = Vector()
 
-  private var infos: List[Info] = Nil
+  private var infos: Vector[Info] = Vector()
 
   /** All errors reported by this reporter (ignoring outer reporters) */
-  def allErrors: List[Error] = errors
+  def allErrors: Vector[Error] = errors
 
   /** All warnings reported by this reporter (ignoring outer reporters) */
-  def allWarnings: List[Warning] = warnings
+  def allWarnings: Vector[Warning] = warnings
 
   /** All infos reported by this reporter (ignoring outer reporters) */
-  def allInfos: List[Info] = infos
+  def allInfos: Vector[Info] = infos
 
   /** Were sticky errors reported? Overridden in StoreReporter. */
   def hasStickyErrors: Boolean = false
@@ -179,15 +179,15 @@ abstract class Reporter extends interfaces.ReporterResult {
           case w: Warning =>
             if w.isInstanceOf[LintWarning] then
               w.msg.actions.foreach(Rewrites.applyAction)
-            warnings = w :: warnings
+            warnings = w +: warnings
             _warningCount += 1
           case e: Error   =>
-            errors = e :: errors
+            errors = e +: errors
             _errorCount += 1
             if ctx.typerState.isGlobalCommittable then
               ctx.base.errorsToBeReported = true
           case i: Info    =>
-            infos = i :: infos
+            infos = i +: infos
             _infoCount += 1
           // match error if d is something else
         }
@@ -288,7 +288,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     pendingMessages.nonEmpty || unreportedWarnings.nonEmpty
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
-  def removeBufferedMessages(using Context): List[Diagnostic] = Nil
+  def removeBufferedMessages(using Context): Vector[Diagnostic] = Vector()
 
   /** If this reporter buffers messages, apply `f` to all buffered messages. */
   def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit = ()
@@ -301,6 +301,6 @@ abstract class Reporter extends interfaces.ReporterResult {
       ctx.reporter.addUnreported(key, count)
     unreportedWarnings = Map.empty
 
-  /** If this reporter buffers messages, all buffered messages, otherwise Nil */
-  def pendingMessages(using Context): List[Diagnostic] = Nil
+  /** If this reporter buffers messages, all buffered messages, otherwise Vector() */
+  def pendingMessages(using Context): Vector[Diagnostic] = Vector()
 }

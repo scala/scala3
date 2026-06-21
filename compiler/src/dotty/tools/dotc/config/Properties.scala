@@ -48,7 +48,7 @@ trait PropertiesTrait {
   def propOrElse(name: String, alt: => String): String  = propOrNone(name).getOrElse(alt)
   def propOrEmpty(name: String): String                 = propOrElse(name, "")
   def propOrNull(name: String): String|Null             = propOrNone(name).orNull
-  def propOrFalse(name: String): Boolean                = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
+  def propOrFalse(name: String): Boolean                = propOrNone(name) exists (x => Vector("yes", "on", "true") contains x.toLowerCase)
 
   def setProp(name: String, value: String): String | Null = System.setProperty(name, value)
   def clearProp(name: String): String | Null              = System.clearProperty(name)

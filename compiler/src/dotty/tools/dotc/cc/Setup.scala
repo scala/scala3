@@ -65,7 +65,7 @@ object Setup:
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match
-      case AppliedType(tycon, res :: exc :: Nil) if tycon.typeSymbol == defn.throwsAlias =>
+      case AppliedType(tycon, res +: exc +: Vector()) if tycon.typeSymbol == defn.throwsAlias =>
         Some((res, exc))
       case _ =>
         None
@@ -454,16 +454,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         * expands to
         *       (erased x$0: CanThrow[E1]) ?-> (erased x$1: CanThrow[E1]) ?->{x$0} T
         */
-      private def expandThrowsAlias(res: Type, exc: Type, encl: List[MethodType]): Type =
+      private def expandThrowsAlias(res: Type, exc: Type, encl: Vector[MethodType]): Type =
         val paramType = AnnotatedType(
             defn.CanThrowClass.typeRef.appliedTo(exc),
             Annotation(defn.ErasedParamAnnot, defn.CanThrowClass.span))
         val resDecomposed = throwsAlias.unapply(res)
         val paramName = nme.syntheticParamName(encl.length)
-        val mt = ContextualMethodType(paramName :: Nil)(
-            _ => paramType :: Nil,
+        val mt = ContextualMethodType(paramName +: Vector())(
+            _ => paramType +: Vector(),
             mt => resDecomposed match
-              case Some((res1, exc1)) => expandThrowsAlias(res1, exc1, mt :: encl)
+              case Some((res1, exc1)) => expandThrowsAlias(res1, exc1, mt +: encl)
               case _ => res
           )
         val fntpe = defn.PolyFunctionOf(mt)
@@ -489,7 +489,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case c => c
 
           val elems1 = refs.elems.map(mapElem)
-          val refs1 = if elems1 == refs.elems then refs else CaptureSet(elems1.toList*)
+          val refs1 = if elems1 == refs.elems then refs else CaptureSet(elems1.toVector*)
           tp.derivedCapturingType(parent, refs1)
         case tp => tp
 
@@ -529,7 +529,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             else
               t.derivedAnnotatedType(this(parent), ann)
           case throwsAlias(res, exc) =>
-            this(expandThrowsAlias(res, exc, Nil))
+            this(expandThrowsAlias(res, exc, Vector()))
           case mt: MethodType if mt.marksExistentialScope =>
             variance = -variance
             val ptypes1 = mt.paramInfos.mapConserve(this)
@@ -723,7 +723,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // parameters. Constructor defs have `Unit` as result type tree, that's why
         // we can't get this type by reading the result type tree, and have to construct
         // it explicitly.
-        def constrReturnType(info: Type, psymss: List[List[Symbol]]): Type = info match
+        def constrReturnType(info: Type, psymss: Vector[Vector[Symbol]]): Type = info match
           case info: MethodOrPoly =>
             constrReturnType(info.instantiate(psymss.head.map(_.namedType)), psymss.tail)
           case _ =>
@@ -752,7 +752,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def ownerChanges =
           ctx.owner.name.is(TryOwnerName)
 
-        def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
+        def paramsToCap(psymss: Vector[Vector[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
             try
               mt.derivedLambdaType(
@@ -1025,13 +1025,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   // ------ Checks to run at Setup ----------------------------------------
 
   private def checkClassifiedInheritance(cls: ClassSymbol)(using Context): Unit =
-    def recur(cs: List[ClassSymbol]): Unit = cs match
-      case c :: cs1 =>
+    def recur(cs: Vector[ClassSymbol]): Unit = (cs: @unchecked) match
+      case c +: cs1 =>
         for c1 <- cs1 do
           if !c.derivesFrom(c1) && !c1.derivesFrom(c) then
             report.error(em"$cls inherits two unrelated classifier traits: $c and $c1", cls.srcPos)
         recur(cs1)
-      case Nil =>
+      case Vector() =>
     recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
 
   // ------ Checks to run after main capture checking --------------------------

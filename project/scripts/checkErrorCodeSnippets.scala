@@ -625,6 +625,31 @@ object DiagnosticFormatter extends MessageRendering
 
 /** Snippet compiler with dedicated output directory */
 object SnippetCompiler:
+  private def acceptsCompilerCollection(paramType: Class[?]): Boolean =
+    paramType.isAssignableFrom(List.empty[Any].getClass) ||
+      paramType.isAssignableFrom(Vector.empty[Any].getClass)
+
+  private def compilerCollection[A](paramType: Class[?], elems: List[A]): AnyRef =
+    if paramType.isAssignableFrom(elems.getClass) then elems
+    else
+      val vector = elems.toVector
+      if paramType.isAssignableFrom(vector.getClass) then vector
+      else throw AssertionError(s"Unsupported compiler collection parameter type: ${paramType.getName}")
+
+  private def method(target: AnyRef, name: String)(matches: Array[Class[?]] => Boolean) =
+    val methods = target.getClass.getMethods.filter: method =>
+      method.getName == name && matches(method.getParameterTypes)
+    methods.toList match
+      case method :: Nil => method
+      case Nil           => throw AssertionError(s"Method not found: ${target.getClass.getName}.$name")
+      case many =>
+        val signatures = many.map(methodSignature).mkString(", ")
+        throw AssertionError(s"Ambiguous method: ${target.getClass.getName}.$name matched $signatures")
+
+  private def methodSignature(method: java.lang.reflect.Method): String =
+    val params = method.getParameterTypes.map(_.getName).mkString(", ")
+    s"${method.getName}($params)"
+
   // Dedicated temp directory for compilation outputs (cached to avoid creating many dirs)
   private lazy val outputDir = os.temp.dir(prefix = "snippet-compile-")
 
@@ -646,8 +671,20 @@ object SnippetCompiler:
 
     // Process all options
     val allOpts = baseOpts ++ List("-d", outputDir.toString) ++ extraOpts
-    val ArgsSummary(sstate, _, _, _) =
-      base.initialCtx.settings.processArguments(allOpts, processAll = true, base.initialCtx.settingsState)
+    val processArguments = method(base.initialCtx.settings, "processArguments"): params =>
+      params.length == 3 &&
+        acceptsCompilerCollection(params(0)) &&
+        params(1) == java.lang.Boolean.TYPE &&
+        params(2).isAssignableFrom(base.initialCtx.settingsState.getClass)
+    val processArgumentsParams = processArguments.getParameterTypes
+    val ArgsSummary(sstate, _, _, _) = processArguments
+      .invoke(
+        base.initialCtx.settings,
+        compilerCollection(processArgumentsParams(0), allOpts),
+        Boolean.box(true),
+        base.initialCtx.settingsState
+      )
+      .asInstanceOf[ArgsSummary]
 
     given ctx: Context = base.initialCtx.fresh
       .setReporter(reporter)
@@ -656,7 +693,9 @@ object SnippetCompiler:
 
     // Compile
     val run = compiler.newRun
-    run.compileSources(List(sourceFile))
+    val compileSources = method(run, "compileSources"): params =>
+      params.length == 1 && acceptsCompilerCollection(params.head)
+    compileSources.invoke(run, compilerCollection(compileSources.getParameterTypes.head, List(sourceFile)))
 
     // Extract results
     val runCtx = run.runContext

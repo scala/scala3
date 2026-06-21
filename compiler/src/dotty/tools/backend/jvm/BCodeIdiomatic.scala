@@ -4,7 +4,6 @@ package jvm
 
 import dotty.tools.backend.jvm.opt.CallGraph
 import scala.tools.asm
-import scala.annotation.tailrec
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
@@ -334,25 +333,25 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
      *
      * can-multi-thread
      */
-    final def emitSWITCH(unsortedKeysAndBranches: List[(Int, asm.Label)], defaultBranch: asm.Label, minDensity: Double): Unit = {
+    final def emitSWITCH(unsortedKeysAndBranches: Vector[(Int, asm.Label)], defaultBranch: asm.Label, minDensity: Double): Unit = {
       val keysAndBranches = unsortedKeysAndBranches.sortBy(_._1)
-
-      // check for duplicate keys to avoid "VerifyError: unsorted lookupswitch" (SI-6011)
-      @tailrec
-      def scan(lst: List[(Int, asm.Label)], prev: Int): Unit = lst match {
-        case (n, _) :: tl if n == prev => throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
-        case (n, _) :: tl => scan(tl, n)
-        case _ => ()
-      }
 
       // For empty keys, it makes sense emitting LOOKUPSWITCH with defaultBranch only.
       // Similar to what javac emits for a switch statement consisting only of a default case.
-      keysAndBranches match
-        case Nil =>
+      (keysAndBranches: @unchecked) match
+        case Vector() =>
           jmethod.visitLookupSwitchInsn(defaultBranch, Array.empty[Int], Array.empty[asm.Label])
           return
-        case (n, _) :: tl =>
-          scan(tl, n)
+        case _ =>
+          // check for duplicate keys to avoid "VerifyError: unsorted lookupswitch" (SI-6011)
+          var previous = keysAndBranches(0)._1
+          var scanIdx = 1
+          while scanIdx < keysAndBranches.length do
+            val current = keysAndBranches(scanIdx)._1
+            if current == previous then
+              throw new AssertionError("duplicate keys in SWITCH, can't pick arbitrarily one of them to evict, see SI-6011.")
+            previous = current
+            scanIdx += 1
 
       val keyMin = keysAndBranches.head._1
       val keyMax = keysAndBranches.last._1
@@ -370,30 +369,28 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
         // use a table in which holes are filled with defaultBranch.
         val keyRange    = keyMax - keyMin + 1
         val newBranches = new Array[asm.Label](keyRange)
-        var remainingKeysAndBranches = keysAndBranches
+        var keyIdx = 0
         var i = 0
         while (i < keyRange) {
           val key = keyMin + i
-          if (remainingKeysAndBranches.head._1 == key) {
-            newBranches(i) = remainingKeysAndBranches.head._2
-            remainingKeysAndBranches = remainingKeysAndBranches.tail
+          if (keyIdx < keysAndBranches.length && keysAndBranches(keyIdx)._1 == key) {
+            newBranches(i) = keysAndBranches(keyIdx)._2
+            keyIdx += 1
           } else {
             newBranches(i) = defaultBranch
           }
           i += 1
         }
-        assert(remainingKeysAndBranches.isEmpty, "emitSWITCH")
+        assert(keyIdx == keysAndBranches.length, "emitSWITCH")
         jmethod.visitTableSwitchInsn(keyMin, keyMax, defaultBranch, newBranches*)
       } else {
         val len = keysAndBranches.length
         val keys = new Array[Int](len)
         val branches = new Array[asm.Label](len)
-        var remainingKeysAndBranches = keysAndBranches
         var idx = 0
-        while remainingKeysAndBranches.nonEmpty do
-          keys(idx) = remainingKeysAndBranches.head._1
-          branches(idx) = remainingKeysAndBranches.head._2
-          remainingKeysAndBranches = remainingKeysAndBranches.tail
+        while idx < len do
+          keys(idx) = keysAndBranches(idx)._1
+          branches(idx) = keysAndBranches(idx)._2
           idx = idx + 1
         jmethod.visitLookupSwitchInsn(defaultBranch, keys, branches)
       }

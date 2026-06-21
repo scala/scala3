@@ -19,11 +19,11 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
   /**
    * Creators for sub classpaths which preserve this context.
    */
-  def sourcesInPath(path: String)(using Context): List[ClassPath] =
+  def sourcesInPath(path: String)(using Context): Vector[ClassPath] =
     precomputedSourcePackages match {
       // We also accept files in case of YlogicalPackageLoading
       case Some(rootPackage) if ctx.settings.YlogicalPackageLoading.value =>
-        List(new LogicalSourcePath(path, rootPackage))
+        Vector(new LogicalSourcePath(path, rootPackage))
       case _ =>
         for
           file <- expandPath(path, expandStar = false)
@@ -31,15 +31,15 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
         yield ClassPathFactory.newSourcePath(dir)
     }
 
-  def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
+  def expandPath(path: String, expandStar: Boolean = true): Vector[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
 
   /** Expand dir out to contents, a la extdir */
-  private def expandDir(extdir: String): List[String] =
+  private def expandDir(extdir: String): Vector[String] =
     AbstractFile.getDirectory(extdir) match
-      case null => Nil
-      case dir => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
+      case null => Vector()
+      case dir => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toVector
 
-  def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
+  def contentsOfDirsInPath(path: String)(using Context): Vector[ClassPath] =
     for {
       dir <- expandPath(path, expandStar = false)
       name <- expandDir(dir)
@@ -50,10 +50,10 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
   def classesInExpandedPath(path: String)(using Context): IndexedSeq[ClassPath] =
     classesInPathImpl(path, expand = true).toIndexedSeq
 
-  def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
+  def classesInPath(path: String)(using Context): Vector[ClassPath] = classesInPathImpl(path, expand = false)
 
-  private def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
-    val files: List[AbstractFile] = for {
+  private def classesInPathImpl(path: String, expand: Boolean)(using Context): Vector[ClassPath] =
+    val files: Vector[AbstractFile] = for {
       file <- expandPath(path, expand)
       dir <- {
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None

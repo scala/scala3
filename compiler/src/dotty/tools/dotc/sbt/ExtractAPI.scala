@@ -66,7 +66,7 @@ class ExtractAPI extends Phase {
   // definitions, and `PostTyper` does not change definitions).
   override def runsAfter: Set[String] = Set(transform.Pickler.name)
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+  override def runOn(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] =
     val doZincCallback = ctx.runZincPhases
     val nonLocalClassSymbols = new mutable.HashSet[Symbol]
     val units0 =
@@ -339,14 +339,14 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
             // See neg/i1750a for an example where a cyclic error can arise.
             // The root cause in this example is an illegal "override" of an inner trait
             report.error(ex, csym.sourcePos)
-            defn.ObjectType :: Nil
+            defn.ObjectType +: Vector()
         }
       if (csym.isDerivedValueClass) {
         val underlying = ValueClasses.valueClassUnbox(csym).info.finalResultType
         // The underlying type of a value class should be part of the name hash
         // of the value class (see the test `value-class-underlying`), this is accomplished
         // by adding the underlying type to the list of parent types.
-        underlying :: ancestorTypes0
+        underlying +: ancestorTypes0
       } else
         ancestorTypes0
     }
@@ -373,7 +373,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     api.Structure.of(api.SafeLazy.strict(apiBases.toArray), api.SafeLazy.strict(apiDecls.toArray), apiInherited)
   }
 
-  def linearizedAncestorTypes(info: ClassInfo): List[Type] = {
+  def linearizedAncestorTypes(info: ClassInfo): Vector[Type] = {
     val ref = info.appliedRef
     // Note that the ordering of classes in `baseClasses` is important.
     info.baseClasses.tail.map(ref.baseType)
@@ -406,7 +406,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     }
   }
 
-  def apiDefinitions(defs: List[Symbol]): List[api.ClassDefinition] =
+  def apiDefinitions(defs: Vector[Symbol]): Vector[api.ClassDefinition] =
     defs.sorted(using classFirstSort).map(apiDefinition(_, inlineOrigin = NoSymbol))
 
   /** `inlineOrigin` denotes an optional inline method that we are
@@ -449,45 +449,45 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         marker(s"${MurmurHash3.finalizeHash(h, "inlineExtras".hashCode)}")
       }
 
-    def tparamList(pt: TypeLambda): List[api.TypeParameter] =
+    def tparamList(pt: TypeLambda): Vector[api.TypeParameter] =
       pt.paramNames.lazyZip(pt.paramInfos).map((pname, pbounds) =>
         apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi)
       )
 
-    def paramList(mt: MethodType, params: List[Symbol]): api.ParameterList =
+    def paramList(mt: MethodType, params: Vector[Symbol]): api.ParameterList =
       val apiParams = params.lazyZip(mt.paramInfos).map((param, ptype) =>
         mixInlineParam(param)
         api.MethodParameter.of(
           param.name.toString, apiType(ptype), param.is(HasDefault), api.ParameterModifier.Plain))
       api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)
 
-    def paramLists(t: Type, paramss: List[List[Symbol]]): List[api.ParameterList] = t match {
+    def paramLists(t: Type, paramss: Vector[Vector[Symbol]]): Vector[api.ParameterList] = t match {
       case pt: TypeLambda =>
         paramLists(pt.resultType, paramss.drop(1))
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
         assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
-        paramList(mt, paramss.head) :: paramLists(restpe, paramss.tail)
+        paramList(mt, paramss.head) +: paramLists(restpe, paramss.tail)
       case _ =>
-        Nil
+        Vector()
     }
 
     /** returns list of pairs of 1: the position in all parameter lists, and 2: a type parameter list */
-    def tparamLists(t: Type, index: Int): List[(Int, List[api.TypeParameter])] = t match
+    def tparamLists(t: Type, index: Int): Vector[(Int, Vector[api.TypeParameter])] = t match
       case pt: TypeLambda =>
-        (index, tparamList(pt)) :: tparamLists(pt.resultType, index + 1)
+        (index, tparamList(pt)) +: tparamLists(pt.resultType, index + 1)
       case mt: MethodType =>
         tparamLists(mt.resultType, index + 1)
       case _ =>
-        Nil
+        Vector()
 
     val (tparams, tparamsExtras) = sym.info match
       case pt: TypeLambda =>
         (tparamList(pt), tparamLists(pt.resultType, index = 1))
       case mt: MethodType =>
-        (Nil, tparamLists(mt.resultType, index = 1))
+        (Vector(), tparamLists(mt.resultType, index = 1))
       case _ =>
-        (Nil, Nil)
+        (Vector(), Vector())
 
     val vparamss = paramLists(sym.info, sym.paramSymss)
     val retTp = sym.info.finalResultType.widenExpr
@@ -635,7 +635,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case MatchType(bound, scrut, cases) =>
-        val s = combineApiTypes(apiType(bound) :: apiType(scrut) :: cases.map(apiType)*)
+        val s = combineApiTypes(apiType(bound) +: apiType(scrut) +: cases.map(apiType)*)
         withMarker(s, matchMarker)
       case ConstantType(constant) =>
         api.Constant.of(apiType(constant.tpe), constant.stringValue)
@@ -722,7 +722,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
   /** `inlineOrigin` denotes an optional inline method that we are
    *  currently hashing the body of.
    */
-  def apiAnnotations(s: Symbol, inlineOrigin: Symbol): List[api.Annotation] = {
+  def apiAnnotations(s: Symbol, inlineOrigin: Symbol): Vector[api.Annotation] = {
     val annots = new mutable.ListBuffer[api.Annotation]
     val inlineBody = Inlines.bodyToInline(s)
     if !inlineBody.isEmpty then
@@ -761,7 +761,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         annots += apiAnnotation(annot)
     }
 
-    annots.toList
+    annots.toVector
   }
 
   /** Produce a hash for a tree that is as stable as possible:
@@ -843,7 +843,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         it.next() match
           case p: Positioned =>
             h = positionedHash(p, h)
-          case xs: List[?] =>
+          case xs: Vector[?] =>
             h = iteratorHash(xs.iterator, h)
           case c: Constant =>
             h = constantHash(c, h)
@@ -862,9 +862,9 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
   /** Hash secondary type parameters in separate marker annotation.
    *  We hash them separately because the position of type parameters is important.
    */
-  private def hashTparamsExtras(tparamsExtras: List[(Int, List[api.TypeParameter])])(initHash: Int): Int =
+  private def hashTparamsExtras(tparamsExtras: Vector[(Int, Vector[api.TypeParameter])])(initHash: Int): Int =
 
-    def mixTparams(tparams: List[api.TypeParameter])(initHash: Int) =
+    def mixTparams(tparams: Vector[api.TypeParameter])(initHash: Int) =
       var h = initHash
       var elems = tparams
       while elems.nonEmpty do
@@ -872,7 +872,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         elems = elems.tail
       h
 
-    def mixIndexAndTparams(index: Int, tparams: List[api.TypeParameter])(initHash: Int) =
+    def mixIndexAndTparams(index: Int, tparams: Vector[api.TypeParameter])(initHash: Int) =
       mixTparams(tparams)(MurmurHash3.mix(initHash, index))
 
     var h = initHash

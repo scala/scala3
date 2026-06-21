@@ -190,7 +190,7 @@ trait PcCollector[T]:
                       (sym.owner == apply.symbol.owner.companion || sym.owner == apply.symbol.owner))
                 ) =>
               arg
-          }
+          }.toList
           val named = args.map { arg =>
             val realName = arg.name.stripModuleClassSuffix.lastPart
             val length = realName.toString.backticked.length()
@@ -262,7 +262,7 @@ trait PcCollector[T]:
             new PcCollector.DeepFolderWithParent[Set[T]](
               collectNamesWithParent
             )
-          val trees = inl.call :: inl.bindings
+          val trees = inl.call +: inl.bindings
           trees.foldLeft(occurrences) { case (set, tree) =>
             traverser(set, tree)
           }

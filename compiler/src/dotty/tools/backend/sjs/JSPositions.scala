@@ -17,21 +17,21 @@ import dotty.tools.sjs.ir
 class JSPositions()(using Context) {
   import JSPositions.*
 
-  private val sourceURIMaps: List[URIMap] = {
+  private val sourceURIMaps: Vector[URIMap] = {
     ctx.settings.scalajsMapSourceURI.value.flatMap { option =>
       val uris = option.split("->")
       if (uris.length != 1 && uris.length != 2) {
         report.error("-scalajs-mapSourceURI needs one or two URIs as argument (separated by '->').")
-        Nil
+        Vector()
       } else {
         try {
           val from = new URI(uris.head)
           val to = uris.lift(1).map(str => new URI(str))
-          URIMap(from, to) :: Nil
+          URIMap(from, to) +: Vector()
         } catch {
           case e: URISyntaxException =>
             report.error(em"${e.getInput} is not a valid URI")
-            Nil
+            Vector()
         }
       }
     }

@@ -11,7 +11,7 @@ import dotty.tools.dotc.util.SourceFile
 class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Driver:
   override def sourcesRequired: Boolean = false
 
-  def compileAndRun(classpath: List[String] = Nil): Option[Throwable] =
+  def compileAndRun(classpath: Vector[String] = Vector()): Option[Throwable] =
     val outDir = Files.createTempDirectory("scala3-expression")
     outDir.toFile.deleteOnExit()
 
@@ -22,7 +22,7 @@ class StringDriver(compilerArgs: Array[String], scalaSource: String) extends Dri
         val compiler = newCompiler
 
         val source = SourceFile.virtual("expression", scalaSource)
-        compiler.newRun.compileSources(List(source))
+        compiler.newRun.compileSources(Vector(source))
 
         val output = ctx.settings.outputDir.value
         if ctx.reporter.hasErrors then

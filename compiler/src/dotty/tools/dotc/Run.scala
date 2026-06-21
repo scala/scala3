@@ -67,8 +67,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   private var compiling = false
 
-  private var myUnits: List[CompilationUnit] = Nil
-  private var myUnitsCached: List[CompilationUnit] = Nil
+  private var myUnits: Vector[CompilationUnit] = Vector()
+  private var myUnitsCached: Vector[CompilationUnit] = Vector()
   private var myFiles: Set[AbstractFile] = Set.empty
 
   // `@nowarn` annotations by source file, populated during typer
@@ -112,16 +112,16 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       var verbose = false
       val filters = conf match
         case "" =>
-          List(MessageFilter.Any)
+          Vector(MessageFilter.Any)
         case "none" =>
-          List(MessageFilter.None)
+          Vector(MessageFilter.None)
         case "verbose" | "v" =>
           verbose = true
-          List(MessageFilter.Any)
+          Vector(MessageFilter.Any)
         case conf =>
           WConf.parseFilters(conf).left.map: parseErrors =>
             report.warning(s"Invalid message filter\n${parseErrors.mkString("\n")}", pos)
-            List(MessageFilter.None)
+            Vector(MessageFilter.None)
           .merge
       addSuppression:
         Suppression(annotPos, filters, range.start, range.end, verbose)
@@ -142,18 +142,18 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     def runFinished()(using Context): Unit =
       val hasErrors = ctx.reporter.hasErrors
       // report suspended messages (in case the run finished before typer)
-      mySuspendedMessages.keysIterator.toList.foreach(reportSuspendedMessages)
+      mySuspendedMessages.keysIterator.toVector.foreach(reportSuspendedMessages)
       // report unused nowarns only if all all phases are done
       if !hasErrors && ctx.settings.WunusedHas.nowarn then
         for
-          source <- mySuppressions.keysIterator.toList
+          source <- mySuppressions.keysIterator.toVector
           sups   <- mySuppressions.remove(source)
         do
-          val suppressions = sups.reverse.toList
+          val suppressions = sups.reverse.toVector
           for sup <- suppressions do
             if !sup.used
             && !suppressions.exists(s => s.ne(sup) && s.used && s.annotPos == sup.annotPos) // duplicate
-            && sup.filters != List(MessageFilter.None) // invalid suppression, don't report as unused
+            && sup.filters != Vector(MessageFilter.None) // invalid suppression, don't report as unused
             then
               val more = if sup.superseded then " but matches a diagnostic" else ""
               report.warning("@nowarn annotation does not suppress any warnings"+more, sup.annotPos)
@@ -162,9 +162,9 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   /** The compilation units currently being compiled, this may return different
    *  results over time.
    */
-  def units: List[CompilationUnit] = myUnits
+  def units: Vector[CompilationUnit] = myUnits
 
-  private def units_=(us: List[CompilationUnit]): Unit =
+  private def units_=(us: Vector[CompilationUnit]): Unit =
     myUnits = us
 
   var suspendedUnits: ListBuffer[CompilationUnit] = ListBuffer.empty
@@ -173,13 +173,13 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
   var suspendedAtTyperPhase: Boolean = false
 
-  def checkSuspendedUnits(newUnits: List[CompilationUnit])(using Context): Unit =
+  def checkSuspendedUnits(newUnits: Vector[CompilationUnit])(using Context): Unit =
     if newUnits.isEmpty && suspendedUnits.nonEmpty && !ctx.reporter.errorsReported then
       val where =
         if suspendedUnits.size == 1 then i"in ${suspendedUnits.head}."
         else i"""among
                 |
-                |  ${suspendedUnits.toList}%, %
+                |  ${suspendedUnits.toVector}%, %
                 |"""
       val enableXprintSuspensionHint =
         if ctx.settings.XprintSuspension.value then ""
@@ -323,7 +323,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
   private var myEnrichedErrorMessage = false
 
-  def compile(files: List[AbstractFile]): Unit =
+  def compile(files: Vector[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
     catch case ex: Exception if !this.enrichedErrorMessage =>
       val files1 = if units.isEmpty then files else units.map(_.source.file)
@@ -336,19 +336,19 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
    *  account. I think the latter would be preferable.
    */
-  def compileSources(sources: List[SourceFile]): Unit =
+  def compileSources(sources: Vector[SourceFile]): Unit =
     if (sources forall (_.exists)) {
       units = sources.map(CompilationUnit(_))
       compileUnits()
     }
 
 
-  def compileUnits(us: List[CompilationUnit]): Unit = {
+  def compileUnits(us: Vector[CompilationUnit]): Unit = {
     units = us
     compileUnits()
   }
 
-  def compileUnits(us: List[CompilationUnit], ctx: Context): Unit = {
+  def compileUnits(us: Vector[CompilationUnit], ctx: Context): Unit = {
     units = us
     compileUnits()(using ctx)
   }
@@ -370,7 +370,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     // If testing pickler, make sure to stop after pickling phase:
     val stopAfter =
-      if (ctx.settings.YtestPickler.value) List("pickler")
+      if (ctx.settings.YtestPickler.value) Vector("pickler")
       else ctx.settings.YstopAfter.value
 
     val runCtx = ctx.fresh
@@ -474,7 +474,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   /** Compile units `us` which were suspended in a previous run,
    *  also signal if all necessary async tasty files were written in a previous run.
    */
-  def compileSuspendedUnits(us: List[CompilationUnit], asyncTastyWritten: Boolean): Unit =
+  def compileSuspendedUnits(us: Vector[CompilationUnit], asyncTastyWritten: Boolean): Unit =
     myCompilingSuspended = true
     myAsyncTastyWritten = asyncTastyWritten
     for unit <- us do unit.suspended = false
@@ -550,7 +550,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     }
   }
 
-  def compileFromStrings(scalaSources: List[String], javaSources: List[String] = Nil): Unit = {
+  def compileFromStrings(scalaSources: Vector[String], javaSources: Vector[String] = Vector()): Unit = {
     def sourceFile(source: String, isJava: Boolean): SourceFile = {
       val uuid = java.util.UUID.randomUUID().toString
       val ext = if (isJava) "java" else "scala"
@@ -581,8 +581,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     super[CaptureRunInfo].reset()
     // TODO: This makes `runContext` unusable after being reset.
     myCtx = null.asInstanceOf[Context]
-    myUnits = Nil
-    myUnitsCached = Nil
+    myUnits = Vector()
+    myUnitsCached = Vector()
   }
 
   /** Produces the following contexts, from outermost to innermost

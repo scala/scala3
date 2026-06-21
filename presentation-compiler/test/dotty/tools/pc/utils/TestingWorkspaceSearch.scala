@@ -97,7 +97,7 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
       val newParent = symbol.map(ParentSymbol(_, parent.fileName)).getOrElse(parent)
       children.foldLeft(res)((a, c) => traverse(a, c, newParent))
 
-  val driver = new InteractiveDriver(settings)
+  val driver = new InteractiveDriver(settings.toVector)
 
   private def namesFromSelect(select: Tree)(using Context): List[String] =
     select match

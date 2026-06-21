@@ -39,23 +39,23 @@ object MacroAnnotations:
   /** Expands every macro annotation that is on this tree.
    *  Returns a list with transformed definition and any added definitions.
    */
-  def expandAnnotations(tree: MemberDef, companion: Option[MemberDef])(using Context): (List[MemberDef], Option[MemberDef]) =
+  def expandAnnotations(tree: MemberDef, companion: Option[MemberDef])(using Context): (Vector[MemberDef], Option[MemberDef]) =
     if !tree.symbol.hasMacroAnnotation then
-      (List(tree), companion)
+      (Vector(tree), companion)
     else if tree.symbol.is(ModuleVal) then
       // only module classes are transformed
-      (List(tree), companion)
+      (Vector(tree), companion)
     else if tree.symbol.isType && !tree.symbol.isClass then
       report.error("macro annotations are not supported on type", tree)
-      (List(tree), companion)
+      (Vector(tree), companion)
     else
       debug.println(i"Expanding macro annotations of:\n$tree")
       val macroInterpreter = new Interpreter(tree.srcPos, MacroClassLoader.fromContext)
 
-      val prefixedTrees = List.newBuilder[MemberDef]
+      val prefixedTrees = Vector.newBuilder[MemberDef]
 
       // Apply all macro annotation to `tree` and collect new definitions in order
-      val unprocessed = (tree, companion, List.empty[MemberDef])
+      val unprocessed = (tree, companion, Vector.empty[MemberDef])
       val (transformedTree, transformedCompanion, suffixed) =
         tree.symbol.annotations.foldLeft(unprocessed): (lastResult, annot) =>
           if annot.isMacroAnnotation then
@@ -64,16 +64,16 @@ object MacroAnnotations:
             // Interpret call to `new myAnnot(..).transform(using <Quotes>)(<tree>, <companion>)`
             val (transformedTrees, transformedCompanion) = callMacro(macroInterpreter, tree, companion, annot)
             // Establish the trees order and check the integrity of the trees
-            transformedTrees.span(_.symbol != tree.symbol) match
-              case (newPrefixed, newTree :: newSuffixed) =>
+            (transformedTrees.span(_.symbol != tree.symbol): @unchecked) match
+              case (newPrefixed, newTree +: newSuffixed) =>
                 // Check the integrity of the generated trees
                 for prefixedTree <- newPrefixed do checkMacroDef(prefixedTree, tree, annot)
                 for suffixedTree <- newSuffixed do checkMacroDef(suffixedTree, tree, annot)
                 for tcompanion <- transformedCompanion do TreeChecker.checkMacroGeneratedTree(companion.get, tcompanion)
                 TreeChecker.checkMacroGeneratedTree(tree, newTree)
                 prefixedTrees ++= newPrefixed
-                (newTree, transformedCompanion, newSuffixed ::: suffixed)
-              case (_, Nil) =>
+                (newTree, transformedCompanion, newSuffixed ++ suffixed)
+              case (_, Vector()) =>
                 report.error(i"Transformed tree for ${tree.symbol} was not return by `(${annot.tree}).transform(..)` during macro expansion", annot.tree.srcPos)
                 lastResult
           else
@@ -81,14 +81,14 @@ object MacroAnnotations:
       end val
 
       // Complete the list of transformed/generated definitions
-      val result = prefixedTrees.result() ::: transformedTree :: suffixed
+      val result = prefixedTrees.result() ++ (transformedTree +: suffixed)
       debug.println(result.map(_.show).mkString("expanded to:\n", "\n", ""))
       (result, transformedCompanion)
   end expandAnnotations
 
   /** Interpret the code `new annot(..).transform(using <Quotes(ctx)>)(<tree>, <companion>)` */
   private def callMacro(interpreter: Interpreter, tree: MemberDef, companion: Option[MemberDef], annot: Annotation)
-                       (using Context): (List[MemberDef], Option[MemberDef]) =
+                       (using Context): (Vector[MemberDef], Option[MemberDef]) =
     // TODO: Remove when scala.annotation.MacroAnnotation is no longer experimental
     import scala.reflect.Selectable.reflectiveSelectable
     type MacroAnnotation = {
@@ -107,14 +107,14 @@ object MacroAnnotations:
 
     val quotes = QuotesImpl()(using SpliceScope.contextWithNewSpliceScope(tree.symbol.sourcePos)(using MacroExpansion.context(tree)).withOwner(tree.symbol.owner))
     try
-      val result = annotInstance.transform(using quotes)(tree, companion)
+      val result = annotInstance.transform(using quotes)(tree, companion).toVector
       // Process the result based on if the companion was present or not
       // The idea is that we try to find a transformation of the companion if we do provide one
       companion.map(_.symbol) match
         case None => (result, companion)
         case Some(companionSym) => result.partition(_.symbol == companionSym) match
-          case (Nil, result) => (result, companion) // companion didn't change
-          case (newCompanion :: Nil, result) => (result, Some(newCompanion))
+          case (Vector(), result) => (result, companion) // companion didn't change
+          case (newCompanion +: Vector(), result) => (result, Some(newCompanion))
           case (_, result) =>
             report.error(i"Transformed companion for ${tree.symbol} was returned more than once by `(${annot.tree}).transform(..)` during macro expansion", annot.tree)
             (result, companion)
@@ -129,7 +129,7 @@ object MacroAnnotations:
           case ex: scala.quoted.runtime.StopMacroExpansion =>
             if !ctx.reporter.hasErrors then
               report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", annot.tree)
-            (List(tree), companion)
+            (Vector(tree), companion)
           case Interpreter.MissingClassValidInCurrentRun(sym, origin) =>
             Interpreter.suspendOnMissing(sym, origin, annot.tree)
           // We're dealing with user-thrown things here, so we must use NonFatal to catch anything realistic,
@@ -143,7 +143,7 @@ object MacroAnnotations:
                   |    ${stack.mkString("\n    ")}
                   |"""
             report.error(msg, annot.tree)
-            (List(tree), companion)
+            (Vector(tree), companion)
           case _ =>
             throw ex0
   end callMacro
@@ -165,7 +165,7 @@ object MacroAnnotations:
   def enterMissingSymbols(tree: MemberDef, phase: DenotTransformer)(using Context) = new TreeTraverser {
     def traverse(tree: tpd.Tree)(using Context): Unit = tree match
       case tdef @ TypeDef(_, template: Template) =>
-        val isSymbolInDecls = atNextPhase(tdef.symbol.asClass.info.decls.toList.toSet)
+        val isSymbolInDecls = atNextPhase(tdef.symbol.asClass.info.decls.toVector.toSet)
         for tree <- template.body if tree.isDef do
           if tree.symbol.owner != tdef.symbol then
             report.error(em"Macro added a definition with the wrong owner - ${tree.symbol.owner} - ${tdef.symbol} in ${tree.source}", tree.srcPos)

@@ -48,21 +48,21 @@ class InlinePatterns extends MiniPhase:
     else app
 
   private object App:
-    def unapply(app: Tree): (Tree, List[List[Tree]]) =
+    def unapply(app: Tree): (Tree, Vector[Vector[Tree]]) =
       app match
         case Apply(App(fn, argss), args) => (fn, argss :+ args)
-        case _ => (app, Nil)
+        case _ => (app, Vector())
 
   // TODO merge with BetaReduce.scala
-  private def betaReduce(tree: Apply, fn: Tree, name: Name, argss: List[List[Tree]])(using Context): Tree =
+  private def betaReduce(tree: Apply, fn: Tree, name: Name, argss: Vector[Vector[Tree]])(using Context): Tree =
     fn match
-      case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
+      case Block(TypeDef(_, template: Template) +: Vector(), Apply(Select(New(_),_), Vector())) if template.constr.rhs.isEmpty =>
         template.body match
-          case List(ddef @ DefDef(`name`, _, _, _)) =>
+          case Vector(ddef @ DefDef(`name`, _, _, _)) =>
             val bindings = new ListBuffer[DefTree]()
             BetaReduce.reduceApplication(ddef, argss, bindings) match
               case Some(expansion1) =>
-                val bindings1 = bindings.result()
+                val bindings1 = bindings.result().toVector
                 seq(bindings1, expansion1)
               case None => tree
           case _ => tree
@@ -71,4 +71,3 @@ class InlinePatterns extends MiniPhase:
 object InlinePatterns:
   val name: String = "inlinePatterns"
   val description: String = "remove placeholders of inlined patterns"
-

@@ -112,14 +112,14 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
         Right(false)
     }
     
-    def collect(it: Iterator[Either[OptimizerWarning, ClassBType]]): Either[OptimizerWarning, List[ClassBType]] =
-      it.foldLeft(Right(Nil).asInstanceOf[Either[OptimizerWarning, List[ClassBType]]]){
-        case (Right(xs), Right(x)) => Right(x :: xs)
+    def collect(it: Iterator[Either[OptimizerWarning, ClassBType]]): Either[OptimizerWarning, Vector[ClassBType]] =
+      it.foldLeft(Right(Vector()).asInstanceOf[Either[OptimizerWarning, Vector[ClassBType]]]){
+        case (Right(xs), Right(x)) => Right(x +: xs)
         case (Left(l), _) => Left(l)
         case (_, Left(l)) => Left(l)
       }.map(_.reverse)
 
-    def nestedClasses: Either[OptimizerWarning, List[ClassBType]] = 
+    def nestedClasses: Either[OptimizerWarning, Vector[ClassBType]] =
       collect(classNode.innerClasses.asScala.iterator.collect(Function.unlift(i =>
         nestedInCurrentClass(i) match
           case Left(l) => Some(Left(l))

@@ -46,8 +46,6 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
         if (knownSize == 0) empty[E]
         else if (knownSize > 0 && knownSize <= WIDTH) {
           val a1: Arr1 = it match {
-            case as: ArraySeq.ofRef[?] if as.elemTag.runtimeClass == classOf[AnyRef] =>
-              as.unsafeArray.asInstanceOf[Arr1]
             case it: Iterable[E @unchecked] =>
               val a1 = new Arr1(knownSize)
               @annotation.unused val copied = it.copyToArray(a1.asInstanceOf[Array[Any]])
@@ -66,6 +64,17 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
     }
 
   def newBuilder[A]: ReusableBuilder[A, Vector[A]] = new VectorBuilder[A]
+
+  /** Wraps `xs` into a single-node `Vector1`, taking ownership of the array: the caller
+   *  must not mutate `xs` or otherwise retain a reference to it afterwards.
+   *
+   *  Precondition: `1 <= xs.length <= WIDTH`. This is unchecked — it is an entry point for
+   *  the compiler's small `Seq(...)` / `Vector(...)` literal optimization, which statically
+   *  knows the (non-empty, `<= WIDTH`) length and so can build the right node directly,
+   *  avoiding an intermediate `ArraySeq` wrapper and the dispatch in `from`. Larger or empty
+   *  literals are not routed here.
+   */
+  def fromArray1Unsafe[A](xs: Array[AnyRef]): Vector[A] = new Vector1[A](xs)
 
   /** Creates a Vector with the same element at each index.
    *

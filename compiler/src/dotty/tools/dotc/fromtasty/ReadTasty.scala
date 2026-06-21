@@ -21,12 +21,12 @@ class ReadTasty extends Phase {
   override def isRunnable(using Context): Boolean =
     ctx.settings.fromTasty.value
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+  override def runOn(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] =
     withMode(Mode.ReadPositions) {
       val nextUnits = collection.mutable.ListBuffer.empty[CompilationUnit]
       val unitContexts = units.view.map(ctx.fresh.setCompilationUnit)
       for unitContext <- unitContexts if addTasty(nextUnits += _)(using unitContext) do ()
-      nextUnits.toList
+      nextUnits.toVector
     }
 
   def addTasty(fn: CompilationUnit => Unit)(using Context): Boolean = monitor(phaseName):

@@ -96,7 +96,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
 
     // the `toList` prevents modifying closureInstantiations while iterating it.
     // minimalRemoveUnreachableCode (called in the loop) removes elements
-    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toList)
+    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toVector)
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite
     // buffer (cannot change a method's bytecode while still looking for further invocations to
@@ -174,7 +174,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
   /**
    * Find all callsites of a closure within the method where the closure is allocated.
    */
-  private def closureCallsites(closureInit: ClosureInstantiation, prodCons: => ProdConsAnalyzer): List[Either[RewriteClosureApplyToClosureBodyFailed, (MethodInsnNode, Int)]] = {
+  private def closureCallsites(closureInit: ClosureInstantiation, prodCons: => ProdConsAnalyzer): Vector[Either[RewriteClosureApplyToClosureBodyFailed, (MethodInsnNode, Int)]] = {
     val ownerMethod = closureInit.ownerMethod
     val ownerClass = closureInit.ownerClass
     val lambdaBodyHandle = closureInit.lambdaMetaFactoryCall.implMethod
@@ -201,7 +201,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         }
 
         stackSize.map((invocation, _))
-    }).toList
+    }).toVector
   }
 
   /**
@@ -517,7 +517,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
   /**
    * A list of local variables. Each local stores information about its type, see class [[Local]].
    */
-  private case class LocalsList(locals: List[Local]) {
+  private case class LocalsList(locals: Vector[Local]) {
     val size = locals.iterator.map(_.size).sum
   }
 
@@ -527,14 +527,14 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
      * `types` parameter.
      *
      * For example, `fromTypes(3, Array(Int, Long, String))` returns
-     *   Local(3, intOpOffset)  ::
-     *   Local(4, longOpOffset) ::  // note that this local occupies two slots, the next is at 6
-     *   Local(6, refOpOffset)  ::
-     *   Nil
+     *   Local(3, intOpOffset)  +:
+     *   Local(4, longOpOffset) +:  // note that this local occupies two slots, the next is at 6
+     *   Local(6, refOpOffset)  +:
+     *   Vector()
      */
     def fromTypes(firstLocal: Int, types: Array[Type]): LocalsList = {
       var sizeTwoOffset = 0
-      val locals = List.from[Local](types.indices.iterator.map(i => {
+      val locals = Vector.from[Local](types.indices.iterator.map(i => {
         // The ASM method `type.getOpcode` returns the opcode for operating on a value of `type`.
         val offset = types(i).getOpcode(ILOAD) - ILOAD
         val local = Local(firstLocal + i + sizeTwoOffset, offset)

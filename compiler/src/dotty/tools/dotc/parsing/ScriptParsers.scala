@@ -77,7 +77,7 @@ object ScriptParsers {
          *  via import, etc.
          */
         def isMainMethod(t: Tree) = t match {
-          case DefDef(_, nme.main, Nil, List(_), _, _)  => true
+          case DefDef(_, nme.main, Vector(), Vector(_), _, _)  => true
           case _                                        => false
         }
         /** For now we require there only be one top level object. */
@@ -124,24 +124,24 @@ object ScriptParsers {
       def emptyInit   = DefDef(
         Modifiers(),
         nme.CONSTRUCTOR,
-        Nil,
-        List(Nil),
+        Vector(),
+        Vector(Vector()),
         TypeTree(),
-        Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
+        Block(Vector(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), Vector())), Literal(Constant(())))
       )
 
       // def main
-      def mainParamType = AppliedTypeTree(Ident(tpnme.Array), List(Ident(tpnme.String)))
-      def mainParameter = List(ValDef(Modifiers(Param), "argv", mainParamType, EmptyTree))
-      def mainSetArgv   = List(ValDef(Modifiers(), "args", TypeTree(), Ident("argv")))
-      def mainNew       = makeNew(Nil, emptyValDef, stmts, List(Nil), NoPosition, NoPosition)
-      def mainDef       = DefDef(Modifiers(), nme.main, Nil, List(mainParameter), scalaDot(tpnme.Unit), Block(mainSetArgv, mainNew))
+      def mainParamType = AppliedTypeTree(Ident(tpnme.Array), Vector(Ident(tpnme.String)))
+      def mainParameter = Vector(ValDef(Modifiers(Param), "argv", mainParamType, EmptyTree))
+      def mainSetArgv   = Vector(ValDef(Modifiers(), "args", TypeTree(), Ident("argv")))
+      def mainNew       = makeNew(Vector(), emptyValDef, stmts, Vector(Vector()), NoPosition, NoPosition)
+      def mainDef       = DefDef(Modifiers(), nme.main, Vector(), Vector(mainParameter), scalaDot(tpnme.Unit), Block(mainSetArgv, mainNew))
 
       // object Main
       def moduleName  = ScriptRunner scriptMain settings
-      def moduleBody  = Template(List(scalaScalaObjectConstr), emptyValDef, List(emptyInit, mainDef))
+      def moduleBody  = Template(Vector(scalaScalaObjectConstr), emptyValDef, Vector(emptyInit, mainDef))
       def moduleDef   = ModuleDef(Modifiers(), moduleName, moduleBody)
 
       // package <empty> { ... }
-      makePackaging(0, emptyPkg, List(moduleDef))
+      makePackaging(0, emptyPkg, Vector(moduleDef))
     }*/

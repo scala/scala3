@@ -95,7 +95,7 @@ object SepCheck:
     def toMap: Map[Capability, (SrcPos, TypeRole)] = refs.take(size).zip(locs).toMap
 
     def show(using Context) =
-      s"[${toMap.map((ref, loc) => i"$ref -> $loc").toList}]"
+      s"[${toMap.map((ref, loc) => i"$ref -> $loc").toVector}]"
   end ConsumedSet
 
   /** A fixed consumed set consisting of the given references `refs` and
@@ -187,21 +187,21 @@ object SepCheck:
      *  `_.captureSetOfInfo` and `_.hiddenElems`.
      */
     private def computeFootprint(followHidden: Boolean)(using Context): Refs =
-      def recur(seen: Refs, acc: Refs, newElems: List[Capability]): Refs = trace(i"peaks $acc, $newElems = "):
-        newElems match
-        case newElem :: newElems1 =>
+      def recur(seen: Refs, acc: Refs, newElems: Vector[Capability]): Refs = trace(i"peaks $acc, $newElems = "):
+        (newElems: @unchecked) match
+        case newElem +: newElems1 =>
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
           else newElem.stripRestricted.stripReadOnly match
             case _: LocalCap if !newElem.isKnownClassifiedAs(defn.Caps_SharedCapability) =>
-              val hiddens = if followHidden then newElem.hiddenSet.toList else Nil
+              val hiddens = if followHidden then newElem.hiddenSet.toVector else Vector()
               recur(seen + newElem, acc + newElem, hiddens ++ newElems1)
             case _ if newElem.isTerminalCapability =>
               recur(seen + newElem, acc, newElems1)
             case _ =>
-              recur(seen + newElem, acc + newElem, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
-        case Nil => acc
-      recur(emptyRefs, emptyRefs, refs.toList)
+              recur(seen + newElem, acc + newElem, newElem.captureSetOfInfo.dropEmpties().elems.toVector ++ newElems1)
+        case Vector() => acc
+      recur(emptyRefs, emptyRefs, refs.toVector)
 
     /** The direct footprint of a set of capabilities `refs` is the closure
      *  of `refs` under `_.captureSetOfInfo`, dropping any shared terminal
@@ -335,7 +335,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The previous val or def definitions encountered during separation checking
    *  in reverse order. These all enclose and precede the current traversal node.
    */
-  private var previousDefs: List[DefInfo] = Nil
+  private var previousDefs: Vector[DefInfo] = Vector()
 
   /** The set of references that were consumed so far in the current method */
   private var consumed: MutConsumedSet = MutConsumedSet()
@@ -344,7 +344,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  For each labeled expression, it's label name, and a list buffer containing
    *  all consumed sets of return expressions referring to that label.
    */
-  private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
+  private var openLabeled: Vector[(Name, mutable.ListBuffer[ConsumedSet])] = Vector()
 
   /** The deep capture set of an argument or prefix widened to the formal parameter, if
    *  the latter contains an `any`.
@@ -382,7 +382,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *                     which it clashes,
    *
    */
-  def sepApplyError(fn: Tree, parts: List[Tree], polyArg: Tree, clashing: Tree)(using Context): Unit =
+  def sepApplyError(fn: Tree, parts: Vector[Tree], polyArg: Tree, clashing: Tree)(using Context): Unit =
     val polyArgIdx = parts.indexOf(polyArg).ensuring(_ >= 0) - 1
     val clashIdx = parts.indexOf(clashing) // -1 means entire function application
     def paramName(mt: Type, idx: Int): Option[Name] = mt match
@@ -508,7 +508,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  @param resultPeaks   peaks in the result type that could interfere with the
    *                       hidden sets of formal parameters
    */
-  private def checkApply(fn: Tree, args: List[Tree], app: Tree, deps: collection.Map[Tree, List[Tree]], resultPeaks: Refs)(using Context): Unit =
+  private def checkApply(fn: Tree, args: Vector[Tree], app: Tree, deps: collection.Map[Tree, Vector[Tree]], resultPeaks: Refs)(using Context): Unit =
     val (qual, fnCaptures) = methPart(fn) match
       case Select(qual, _) => (qual, qual.nuType.captureSet)
       case _ => (fn, CaptureSet.empty)
@@ -520,8 +520,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
          |  formalCaptures = ${args.map(arg => CaptureSet(formalCaptures(arg)))},
          |  actualCaptures = ${args.map(arg => CaptureSet(spanCaptures(arg)))},
          |  resultPeaks = ${resultPeaks},
-         |  deps = ${deps.toList}""")
-    val parts = qual :: args
+         |  deps = ${deps.toVector}""")
+    val parts = qual +: args
     var reported: SimpleIdentitySet[Tree] = SimpleIdentitySet.empty
 
     for arg <- args do
@@ -627,12 +627,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
         val rootSym = pathRoot(tree).symbol
 
-        def findClashing(prevDefs: List[DefInfo]): Option[DefInfo] = prevDefs match
-          case prevDef :: prevDefs1 =>
+        def findClashing(prevDefs: Vector[DefInfo]): Option[DefInfo] = (prevDefs: @unchecked) match
+          case prevDef +: prevDefs1 =>
             if prevDef.symbol == rootSym then Some(prevDef)
             else if !prevDef.hiddenPeaks.sharedPeaks(usedPeaks).isEmpty then Some(prevDef)
             else findClashing(prevDefs1)
-          case Nil =>
+          case Vector() =>
             None
 
         findClashing(previousDefs) match
@@ -647,7 +647,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       for ref <- used do
         val loc = consumed.clashing(ref)
         if loc != null then
-          // println(i"consumed so far ${consumed.refs.toList} with peaks ${consumed.directPeaks.toList}, used = $used, exposed = ${ref.directPeaks }")
+          // println(i"consumed so far ${consumed.refs.toVector} with peaks ${consumed.directPeaks.toVector}, used = $used, exposed = ${ref.directPeaks }")
           consumeError(ref, loc, tree.srcPos)
   end checkUse
 
@@ -713,13 +713,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           case _ =>
 
     if badParams.nonEmpty then
-      def paramsStr(params: List[Symbol]): String = (params: @unchecked) match
-        case p :: Nil => i"${p.name}"
-        case p :: p2 :: Nil => i"${p.name} and ${p2.name}"
-        case p :: ps => i"${p.name}, ${paramsStr(ps)}"
+      def paramsStr(params: Vector[Symbol]): String = (params: @unchecked) match
+        case p +: Vector() => i"${p.name}"
+        case p +: p2 +: Vector() => i"${p.name} and ${p2.name}"
+        case p +: ps => i"${p.name}, ${paramsStr(ps)}"
       val (pluralS, singleS) = if badParams.tail.isEmpty then ("", "s") else ("s", "")
       report.error(
-        em"""Separation failure: $descr parameter$pluralS ${paramsStr(badParams.toList)}.
+        em"""Separation failure: $descr parameter$pluralS ${paramsStr(badParams.toVector)}.
             |The parameter$pluralS need$singleS to be annotated with consume to allow this.""",
           pos)
 
@@ -751,7 +751,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case _ => tpe
       refs.deductSymRefs(role.dclSym).deduct(explicitRefs(deductedType))
 
-    def sepTypeError(parts: List[Type], genPart: Type, otherPart: Type): Unit =
+    def sepTypeError(parts: Vector[Type], genPart: Type, otherPart: Type): Unit =
       val captured = genPart.deepCaptureSet.elems
       val hiddenSet = captured.transHiddenSet.pruned
       val clashSet = otherPart.deepCaptureSet.elems
@@ -769,7 +769,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
      *  This means that references hidden in some part of the type may not
      *  be explicitly referenced or hidden in some other part.
      */
-    def checkParts(parts: List[Type]): Unit =
+    def checkParts(parts: Vector[Type]): Unit =
       var currentPeaks = PeaksPair(emptyRefs, emptyRefs)
       val partsWithPeaks = mutable.ListBuffer[(Type, PeaksPair)]()
 
@@ -819,7 +819,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
        *  But we want to check outermost parts first since this prioritizes errors
        *  that are more obvious.
        */
-      var toCheck: List[List[Type]] = Nil
+      var toCheck: Vector[Vector[Type]] = Vector()
 
       private val seen = util.HashSet[Symbol]()
 
@@ -831,7 +831,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t @ AppliedType(tycon, args) =>
               val c1 = foldOver(Captures.None, t)
               if c1 == Captures.NeedsCheck then
-                toCheck = (tycon :: args) :: toCheck
+                toCheck = (tycon +: args) +: toCheck
               c.add(c1)
             case t @ CapturingType(parent, cs) =>
               val c1 = this(c, parent)
@@ -904,10 +904,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The list of all individual method types making up some potentially
    *  curried method type.
    */
-  private def collectMethodTypes(tp: Type): List[TermLambda] = tp match
-    case tp: MethodType => tp :: collectMethodTypes(tp.resType)
+  private def collectMethodTypes(tp: Type): Vector[TermLambda] = tp match
+    case tp: MethodType => tp +: collectMethodTypes(tp.resType)
     case tp: PolyType => collectMethodTypes(tp.resType)
-    case _ => Nil
+    case _ => Vector()
 
   /** The inter-parameter dependencies of the function reference `fn` applied
    *  to the argument lists `argss`. For instance, if `f` has type
@@ -922,10 +922,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    * It also returns the interfering peaks of the result of the application. They are the
    * peaks of argument captures and deep captures of the result function type, minus the
    * those dependent on parameters. For instance,
-   * if `f` has the type (x: A, y: B, c: C) -> (op: () ->{b} Unit) -> List[() ->{x, y, a} Unit], its interfering
+   * if `f` has the type (x: A, y: B, c: C) -> (op: () ->{b} Unit) -> Vector[() ->{x, y, a} Unit], its interfering
    * peaks will be the peaks of `a` and `b`.
    */
-  private def dependencies(fn: Tree, argss: List[List[Tree]], app: Tree)(using Context): (collection.Map[Tree, List[Tree]], Refs) =
+  private def dependencies(fn: Tree, argss: Vector[Vector[Tree]], app: Tree)(using Context): (collection.Map[Tree, Vector[Tree]], Refs) =
     def isFunApply(sym: Symbol) =
       sym.name == nme.apply && defn.isFunctionClass(sym.owner)
     val mtpe =
@@ -935,7 +935,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     assert(mtps.hasSameLengthAs(argss), i"diff for $fn: ${fn.symbol} /// $mtps /// $argss")
     val mtpsWithArgs = mtps.zip(argss)
     val argMap = mtpsWithArgs.toMap
-    val deps = mutable.LinkedHashMap[Tree, List[Tree]]().withDefaultValue(Nil)
+    val deps = mutable.LinkedHashMap[Tree, Vector[Tree]]().withDefaultValue(Vector())
 
     def argOfDep(dep: Capability): Option[Tree] = dep match
       case dep: TermParamRef =>
@@ -948,14 +948,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     def recordDeps(formal: Type, actual: Tree) =
       def captures = formal.captureSet
-      for dep <- captures.elems.toList do
+      for dep <- captures.elems.toVector do
         val referred = argOfDep(dep)
         deps(actual) ++= referred
 
     inline def isLocalRef(x: Capability): Boolean = x.isInstanceOf[TermParamRef]
 
     def resultArgCaptures(tpe: Type): Refs =
-      def collectRefs(args: List[Type], res: Type) =
+      def collectRefs(args: Vector[Type], res: Type) =
         args.foldLeft(resultArgCaptures(res)): (refs, arg) =>
           refs ++ arg.captureSet.elems
       tpe match
@@ -976,7 +976,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       (resultArgCaptures(resultType) ++ resultType.deepCaptureSet.elems).filter(!isLocalRef(_))
       // See i23726.scala why deepCaptureSet is needed here.
     val resultPeaks = resultCaptures.allPeaks
-    capt.println(i"deps for $app = ${deps.toList}")
+    capt.println(i"deps for $app = ${deps.toVector}")
     (deps, resultPeaks)
   end dependencies
 
@@ -985,14 +985,14 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  perform a separation check with `checkApply`
    */
   private def traverseApply(app: Tree)(using Context): Unit =
-    def recur(tree: Tree, argss: List[List[Tree]]): Unit = tree match
-      case Apply(fn, args) => recur(fn, args :: argss)
+    def recur(tree: Tree, argss: Vector[Vector[Tree]]): Unit = tree match
+      case Apply(fn, args) => recur(fn, args +: argss)
       case TypeApply(fn, args) => recur(fn, argss) // skip type arguments
       case _ =>
         if argss.nestedExists(_.needsSepCheck) then
           val (deps, resultPeaks) = dependencies(tree, argss, app)
           checkApply(tree, argss.flatten, app, deps, resultPeaks)
-    recur(app, Nil)
+    recur(app, Vector())
 
   /** Is `tree` an application of `caps.unsafe.unsafeAssumeSeparate`? */
   def isUnsafeAssumeSeparate(tree: Tree)(using Context): Boolean = tree match
@@ -1001,7 +1001,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
     defsShadow ++= hiddenByDef
-    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.allPeaks) :: previousDefs
+    previousDefs = DefInfo(tree, tree.symbol, hiddenByDef, hiddenByDef.allPeaks) +: previousDefs
 
   /** Check (result-) type of `tree` for separation conditions using `checkType`.
    *  Excluded are parameters and definitions that have an =unsafeAssumeSeparate
@@ -1090,7 +1090,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           consumed ++= elseConsumed
         case tree @ Labeled(bind, expr) =>
           val consumedBuf = mutable.ListBuffer[ConsumedSet]()
-          openLabeled = (bind.name, consumedBuf) :: openLabeled
+          openLabeled = (bind.name, consumedBuf) +: openLabeled
           traverse(expr)
           for cs <- consumedBuf do consumed ++= cs
           openLabeled = openLabeled.tail

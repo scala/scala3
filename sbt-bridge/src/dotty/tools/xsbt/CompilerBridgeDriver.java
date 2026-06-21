@@ -135,7 +135,7 @@ public class CompilerBridgeDriver extends Driver {
         log.debug(this::prettyPrintCompilationArguments);
         Compiler compiler = newCompiler(context);
 
-        doCompile(compiler, sourcesBuffer.toList(), context);
+        doCompile(compiler, sourcesBuffer.toVector(), context);
 
         for (xsbti.Problem problem: delegate.problems()) {
           try {

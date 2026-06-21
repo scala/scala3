@@ -58,7 +58,7 @@ object Inferencing {
    *  If none of (1) - (4) applies, the type variable is left uninstantiated.
    *  The method is called to instantiate type variables before an implicit search.
    */
-  def instantiateSelected(tp: Type, tvars: List[Type])(using Context): Unit =
+  def instantiateSelected(tp: Type, tvars: Vector[Type])(using Context): Unit =
     if (tvars.nonEmpty)
       IsFullyDefinedAccumulator(
         new ForceDegree.Value(IfBottom.flip):
@@ -69,7 +69,7 @@ object Inferencing {
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `paramss`.
    */
-  def instantiateDependent(tp: Type, paramss: List[List[Symbol]])(using Context): Unit = {
+  def instantiateDependent(tp: Type, paramss: Vector[Vector[Symbol]])(using Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
@@ -83,7 +83,7 @@ object Inferencing {
       }
     }
     val depVars = dependentVars(Set(), tp)
-    if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
+    if (depVars.nonEmpty) instantiateSelected(tp, depVars.toVector)
   }
 
   /** If `tp` is top-level type variable with a lower bound in the current constraint,
@@ -106,7 +106,7 @@ object Inferencing {
     case AppliedType(tycon, args) =>
       // The argument in `args` that may potentially appear directly as result
       // and thereby influence the members of this type
-      def argsInResult: List[Type] = tycon.stripTypeVar match
+      def argsInResult: Vector[Type] = tycon.stripTypeVar match
         case tycon: TypeRef =>
           tycon.info match
             case MatchAlias(_) => args
@@ -115,10 +115,10 @@ object Inferencing {
                 case ref: TypeParamRef if ref.binder == upper =>
                   args.lazyZip(upper.paramRefs).collect {
                     case (arg, pref) if pref eq ref => arg
-                  }.toList
-                case _ => Nil
-            case _ => Nil
-        case _ => Nil
+                  }.toVector
+                case _ => Vector()
+            case _ => Vector()
+        case _ => Vector()
       couldInstantiateTypeVar(tycon, applied)
       || (if applied then args else argsInResult).exists(couldInstantiateTypeVar(_, applied))
     case RefinedType(parent, _, _) =>
@@ -226,7 +226,7 @@ object Inferencing {
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
       false
 
-    private var toMaximize: List[TypeVar] = Nil
+    private var toMaximize: Vector[TypeVar] = Vector()
 
     def apply(x: Boolean, tp: Type): Boolean = trace(i"isFullyDefined($tp, $force)", typr) {
       try {
@@ -246,7 +246,7 @@ object Inferencing {
               case Decision.Max   => skip = instantiate(tvar, fromBelow = false)
               case Decision.Skip  => // hold off instantiating unbounded unconstrained variable
               case Decision.Fail  => fail = true
-              case Decision.ToMax => toMaximize ::= tvar
+              case Decision.ToMax => toMaximize +:= tvar
             !fail && (skip || foldOver(x, tvar))
           }
         case tp => foldOver(x, tp)
@@ -256,8 +256,8 @@ object Inferencing {
 
     def process(tp: Type): Boolean =
       // Maximize type vars in the order they were visited before */
-      def maximize(tvars: List[TypeVar]): Unit = tvars match
-        case tvar :: tvars1 =>
+      def maximize(tvars: Vector[TypeVar]): Unit = tvars match
+        case tvar +: tvars1 =>
           maximize(tvars1)
           if !tvar.isInstantiated then
             instantiate(tvar, fromBelow = false)
@@ -266,7 +266,7 @@ object Inferencing {
       && (
         toMaximize.isEmpty
         || { maximize(toMaximize)
-             toMaximize = Nil       // Do another round since the maximixing instances
+             toMaximize = Vector()       // Do another round since the maximixing instances
              process(tp)            // might have type uninstantiated variables themselves.
            }
       )
@@ -387,10 +387,10 @@ object Inferencing {
    *    - The prefix `p` of a selection `p.f`.
    *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
-  def tvarsInParams(tree: Tree, locked: TypeVars)(using Context): List[TypeVar] = {
-    def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
+  def tvarsInParams(tree: Tree, locked: TypeVars)(using Context): Vector[TypeVar] = {
+    def boundVars(tree: Tree, acc: Vector[TypeVar]): Vector[TypeVar] = tree match {
       case Apply(fn, args) =>
-        val argTpVars = args.flatMap(boundVars(_, Nil))
+        val argTpVars = args.flatMap(boundVars(_, Vector()))
         boundVars(fn, acc ++ argTpVars)
       case TypeApply(fn, targs) =>
         val tvars = targs.filter(_.isInstanceOf[InferredTypeTree]).tpes.collect {
@@ -399,30 +399,30 @@ object Inferencing {
              ctx.typerState.ownedVars.contains(tvar) &&
              !locked.contains(tvar) => tvar
         }
-        boundVars(fn, acc ::: tvars)
+        boundVars(fn, acc ++ tvars)
       case Select(pre, _) => boundVars(pre, acc)
       case Block(_, expr) => boundVars(expr, acc)
       case _ => acc
     }
-    def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
+    def occurring(tree: Tree, toTest: Vector[TypeVar], acc: Vector[TypeVar]): Vector[TypeVar] =
       if (toTest.isEmpty) acc
       else tree match {
         case Apply(fn, args) =>
-          val argsOcc = args.flatMap(occurring(_, toTest, Nil))
+          val argsOcc = args.flatMap(occurring(_, toTest, Vector()))
           val argsNocc = toTest.filterNot(argsOcc.contains)
           fn.tpe.widen match {
             case mtp: MethodType =>
               val (occ, nocc) = argsNocc.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
-              occurring(fn, nocc, occ ::: argsOcc ::: acc)
+              occurring(fn, nocc, occ ++ argsOcc ++ acc)
             case _ =>
-              occurring(fn, argsNocc, argsOcc ::: acc)
+              occurring(fn, argsNocc, argsOcc ++ acc)
           }
         case TypeApply(fn, targs) => occurring(fn, toTest, acc)
         case Select(pre, _) => occurring(pre, toTest, acc)
         case Block(_, expr) => occurring(expr, toTest, acc)
         case _ => acc
       }
-    occurring(tree, boundVars(tree, Nil), Nil)
+    occurring(tree, boundVars(tree, Vector()), Vector())
   }
 
   /** The instantiation direction for given poly param computed
@@ -485,7 +485,7 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, span: Span)(using Context): List[Symbol] = {
+  def maximizeType(tp: Type, span: Span)(using Context): Vector[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
@@ -494,7 +494,7 @@ object Inferencing {
       if !tvar.isInstantiated then
         // if the tvar is covariant/contravariant (v == 1/-1, respectively) in the input type tp
         // then it is safe to instantiate if it doesn't occur in any of the GADT bounds.
-        // Eg neg/i14983 the C in Node[+C] occurs in GADT bound X >: List[C] so maximising to Node[Any] is unsound
+        // Eg neg/i14983 the C in Node[+C] occurs in GADT bound X >: Vector[C] so maximising to Node[Any] is unsound
         // Eg pos/precise-pattern-type the T in Tree[-T] doesn't occur in any GADT bound so can maximise to Tree[Type]
         val safeToInstantiate = v != 0 && gadtBounds.forall(!tvar.occursIn(_))
         if safeToInstantiate then tvar.instantiate(fromBelow = v == -1)
@@ -511,7 +511,7 @@ object Inferencing {
           }
         }
     }
-    val res = patternBindings.toList.map { (boundSym, origin) =>
+    val res = patternBindings.toVector.map { (boundSym, origin) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
       for (wildCard, param) <- patternBindings do
         boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)
@@ -670,9 +670,9 @@ trait Inferencing { this: Typer =>
 
     val ownedVars = state.ownedVars
     if (ownedVars ne locked) && !ownedVars.isEmpty then
-      val qualifying = (ownedVars -- locked).toList
+      val qualifying = (ownedVars -- locked).toVector
       if (!qualifying.isEmpty) {
-        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
+        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toVector}%, %, qualifying = ${qualifying.toVector}%, %, previous = ${locked.toVector}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
           tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
         if (!resultAlreadyConstrained)
@@ -688,19 +688,19 @@ trait Inferencing { this: Typer =>
         // An example is in neg/i1240.scala. Without the condition in the next code line
         // we get for
         //
-        //      val y: List[List[String]] = List(List(1))
+        //      val y: Vector[Vector[String]] = Vector(Vector(1))
         //
         //     i1430.scala:5: error: type mismatch:
         //     found   : Int(1)
         //     required: Nothing
-        //     val y: List[List[String]] = List(List(1))
+        //     val y: Vector[Vector[String]] = Vector(Vector(1))
         //                                           ^
         // With the condition, we get the much more sensical:
         //
         //     i1430.scala:5: error: type mismatch:
         //     found   : Int(1)
         //     required: String
-        //     val y: List[List[String]] = List(List(1))
+        //     val y: Vector[Vector[String]] = Vector(Vector(1))
         if state.reporter.hasUnreportedErrors then return tree
 
         instantiateTypeVars(tp, pt, qualifying, tree)
@@ -709,7 +709,7 @@ trait Inferencing { this: Typer =>
     tree
   end interpolateTypeVars
 
-  def instantiateTypeVars(tp: Type, pt: Type, qualifying: List[TypeVar], tree: Tree = EmptyTree)(using Context): Unit =
+  def instantiateTypeVars(tp: Type, pt: Type, qualifying: Vector[TypeVar], tree: Tree = EmptyTree)(using Context): Unit =
   trace(i"instantiateTypeVars($tp, $pt, $qualifying, $tree)", typr):
     val state = ctx.typerState
     def constraint = state.constraint
@@ -721,7 +721,7 @@ trait Inferencing { this: Typer =>
      *    -1  variable appears contravariantly, can be instantiated from upper bound
      *     0  variable does not appear at all, can be instantiated from either bound
      */
-    type ToInstantiate = List[(TypeVar, Int)]
+    type ToInstantiate = Vector[(TypeVar, Int)]
 
     val toInstantiate: ToInstantiate =
       val buf = new mutable.ListBuffer[(TypeVar, Int)]
@@ -744,7 +744,7 @@ trait Inferencing { this: Typer =>
                 typr.println(i"no interpolation for nonvariant $tvar in $state")
             )
       // constrainIfDependentParamRef could also have instantiated tvars added to buf before the check
-      buf.filterNot(_._1.isInstantiated).toList
+      buf.filterNot(_._1.isInstantiated).toVector
     end toInstantiate
 
     def typeVarsIn(xs: ToInstantiate): TypeVars =
@@ -756,21 +756,21 @@ trait Inferencing { this: Typer =>
     def filterByDeps(tvs0: ToInstantiate): ToInstantiate =
       val excluded =  // ignore dependencies from other variables that are being instantiated
         typeVarsIn(tvs0)
-      def step(tvs: ToInstantiate): ToInstantiate = tvs match
-        case tvs @ (hd @ (tvar, v)) :: tvs1 =>
+      def step(tvs: ToInstantiate): ToInstantiate = (tvs: @unchecked) match
+        case tvs @ (hd @ (tvar, v)) +: tvs1 =>
           def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
           def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
           if v == 0 && !aboveOK then
-            step((tvar, 1) :: tvs1)
+            step((tvar, 1) +: tvs1)
           else if v == 0 && !belowOK then
-            step((tvar, -1) :: tvs1)
+            step((tvar, -1) +: tvs1)
           else if v == -1 && !aboveOK || v == 1 && !belowOK then
-            typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
+            typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toVector}, tvs0 = ${tvs0.toVector}%, %, excluded = ${excluded.toVector}, $constraint")
             step(tvs1)
           else // no conflict, keep the instantiation proposal
             tvs.derivedCons(hd, step(tvs1))
-        case Nil =>
-          Nil
+        case Vector() =>
+          Vector()
       val tvs1 = step(tvs0)
       if tvs1 eq tvs0 then tvs1
       else filterByDeps(tvs1) // filter again with smaller excluded set
@@ -809,8 +809,8 @@ trait Inferencing { this: Typer =>
     def doInstantiate(tvs: ToInstantiate): Unit =
 
       /** Try to instantiate `tvs`, return any suspended type variables */
-      def tryInstantiate(tvs: ToInstantiate): ToInstantiate = tvs match
-        case (hd @ (tvar, v)) :: tvs1 =>
+      def tryInstantiate(tvs: ToInstantiate): ToInstantiate = (tvs: @unchecked) match
+        case (hd @ (tvar, v)) +: tvs1 =>
           val fromBelow = v == 1 || (v == 0 && tvar.hasLowerBound)
           typr.println(
             i"interpolate${if v == 0 then " non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
@@ -824,11 +824,11 @@ trait Inferencing { this: Typer =>
             }
             if suspend then
               typr.println(i"suspended: $hd")
-              hd :: tryInstantiate(tvs1)
+              hd +: tryInstantiate(tvs1)
             else
               tvar.instantiate(fromBelow)
               tryInstantiate(tvs1)
-        case Nil => Nil
+        case Vector() => Vector()
       if tvs.nonEmpty then doInstantiate(tryInstantiate(tvs))
     end doInstantiate
 

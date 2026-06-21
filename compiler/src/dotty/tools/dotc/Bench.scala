@@ -20,7 +20,7 @@ object Bench extends Driver:
   @sharable private var curCompiler = 0
   @sharable private var times: Array[Int] = uninitialized
 
-  override def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
+  override def doCompile(compiler: Compiler, files: Vector[AbstractFile])(using Context): Reporter =
     var reporter: Reporter = emptyReporter
     for i <- 0 until numRuns do
       val curRun = curCompiler * numRuns + i

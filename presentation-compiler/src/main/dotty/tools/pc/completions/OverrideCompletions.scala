@@ -182,7 +182,7 @@ object OverrideCompletions:
         val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
         val tpdTree = newctx.compilationUnit.tpdTree
         val path =
-          Interactive.pathTo(tpdTree, pos.span)(using newctx) match
+          Interactive.pathTo(tpdTree, pos.span)(using newctx).toList match
             case path @ TypeDef(_, template) :: _ =>
               template :: path
             case path => path
@@ -194,7 +194,7 @@ object OverrideCompletions:
           pos,
           text,
           unit.tpdTree,
-          unit.comments,
+          unit.comments.toList,
           indexedContext,
           config
         )
@@ -325,7 +325,7 @@ object OverrideCompletions:
       val shouldCompleteBraces = decls.isEmpty && hasBracesOrColon(text, defn).isEmpty
 
       val (_, indent, lastIndent) =
-        calcIndent(defn, decls, source, text, shouldCompleteBraces)
+        calcIndent(defn, decls.toList, source, text, shouldCompleteBraces)
 
       // If there're declarations in the class/object to implement e.g.
       // ```scala

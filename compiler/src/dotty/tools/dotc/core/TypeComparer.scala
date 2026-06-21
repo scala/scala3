@@ -52,7 +52,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     recCount = 0
     needsGc = false
     maxErrorLevel = -1
-    errorNotes = Nil
+    errorNotes = Vector()
     undoLog.clear()
     frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
@@ -62,7 +62,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var monitored = false
 
   private var maxErrorLevel: Int = -1
-  protected var errorNotes: List[(Int, Note)] = Nil
+  protected var errorNotes: Vector[(Int, Note)] = Vector()
 
   val undoLog = mutable.ArrayBuffer[() => Unit]()
 
@@ -160,7 +160,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
     opaquesUsed = false
-    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(Nil)
+    if !topLevelSubType(tp1, tp2) then CompareResult.Fail(Vector())
     else if GADTused then CompareResult.OKwithGADTUsed
     else if opaquesUsed then CompareResult.OKwithOpaquesUsed // we cast on GADTused, so handles if both are used
     else CompareResult.OK
@@ -612,7 +612,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (tp1.isLambdaSub) return false
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
-              // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
+              // idiom that e.g. `Vector <: Any`. We have to bootstrap without scalac first.
             if cls2 eq AnyClass then return true
             if cls2 == defn.SingletonClass && tp1.isStable then return true
             return tryBaseType(cls2)
@@ -716,7 +716,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _: RefinedType | _: AndType =>
                   // maximally decompose RHS to limit the bad effects of the `either` that is necessary
                   // since LHS contains an AndType
-                  recur(tp1, decomposeRefinements(tp2, Nil))
+                  recur(tp1, decomposeRefinements(tp2, Vector()))
                 case _ =>
                   // Delay calling `compareRefinedSlow` because looking up a member
                   // of an `AndType` can lead to a cascade of subtyping checks
@@ -855,7 +855,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // as members of the same type. And it seems most logical to take
           // ()T <:< => T, since everything one can do with a => T one can
           // also do with a ()T by automatic () insertion.
-          case tp1 @ MethodType(Nil) => isSubType(tp1.resultType, restpe2)
+          case tp1 @ MethodType(Vector()) => isSubType(tp1.resultType, restpe2)
           case tp1 @ ExprType(restpe1) => isSubType(restpe1, restpe2)
           case _ => fourthTry
         }
@@ -1022,7 +1022,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // Special case: Java arrays are covariant.
         // When checking overrides (frozenConstraint) of Java methods, allow B[] <: A[] if B <: A.
         def checkJavaArrayCovariance: Boolean = tp2 match {
-          case AppliedType(tycon2, arg2 :: Nil)
+          case AppliedType(tycon2, arg2 +: Vector())
             if frozenConstraint
               && tycon1.typeSymbol == defn.ArrayClass
               && tycon2.typeSymbol == defn.ArrayClass
@@ -1243,7 +1243,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  - The PR against Scala 2.12 implementing -Ypartial-unification: https://github.com/scala/scala/pull/5102
      *  - Some explanations on how this impacts API design: https://gist.github.com/djspiewak/7a81a395c461fd3a09a6941d4cd040f2
      */
-    def compareAppliedTypeParamRef(tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean): Boolean =
+    def compareAppliedTypeParamRef(tycon: TypeParamRef, args: Vector[Type], other: AppliedType, fromBelow: Boolean): Boolean =
       def directionalIsSubType(tp1: Type, tp2: Type): Boolean =
         if fromBelow then isSubType(tp2, tp1) else isSubType(tp1, tp2)
       def directionalRecur(tp1: Type, tp2: Type): Boolean =
@@ -1282,7 +1282,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     /** Subtype test for the hk application `tp2 = tycon2[args2]`.
      */
-    def compareAppliedType2(tp2: AppliedType, tycon2: Type, args2: List[Type]): Boolean = {
+    def compareAppliedType2(tp2: AppliedType, tycon2: Type, args2: Vector[Type]): Boolean = {
       val tparams = tycon2.typeParams
       if (tparams.isEmpty) return false // can happen for ill-typed programs, e.g. neg/tcpoly_overloaded.scala
 
@@ -1336,7 +1336,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // is weaker than the first, we keep it in place of the first.
           // Note that if the isSubArgs test fails, we will proceed anyway by
           // dealising by doing a compareLower.
-          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
+          def loop(tycon1: Type, args1: Vector[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
                canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
@@ -1418,8 +1418,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val tp1w = tp1.widen
         appOK(tp1w) || tp1w.typeSymbol.isClass && {
           val classBounds = tycon2.classSymbols
-          def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
-            case bc :: bcs1 =>
+          def liftToBase(bcs: Vector[ClassSymbol]): Boolean = bcs match {
+            case bc +: bcs1 =>
               classBounds.exists(bc.derivesFrom) && appOK(nonExprBaseType(tp1, bc))
               || liftToBase(bcs1)
             case _ =>
@@ -1501,7 +1501,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     /** Subtype test for the application `tp1 = tycon1[args1]`.
      */
-    def compareAppliedType1(tp1: AppliedType, tycon1: Type, args1: List[Type]): Boolean =
+    def compareAppliedType1(tp1: AppliedType, tycon1: Type, args1: Vector[Type]): Boolean =
       tycon1 match {
         case param1: TypeParamRef =>
           def canInstantiate = tp2 match {
@@ -1537,7 +1537,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
      */
     def compareS(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = tp.args match {
-      case arg :: Nil =>
+      case arg +: Vector() =>
         natValue(arg) match {
           case Some(n) if n != Int.MaxValue =>
             val succ = ConstantType(Constant(n + 1))
@@ -1812,27 +1812,27 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @param  tp1       The applied type containing `args1`
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
+  def isSubArgs(args1: Vector[Type], args2: Vector[Type], tp1: Type, tparams2: Vector[ParamInfo]): Boolean = {
 
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
      */
     def paramBounds(tparam: Symbol): TypeBounds =
-      tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
+      tparam.info.substApprox(tparams2.asInstanceOf[Vector[Symbol]], args2).bounds
 
     /** Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
      *  the first run and picked up in the second.
      */
-    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo],
+    def recurArgs(args1: Vector[Type], args2: Vector[Type], tparams2: Vector[ParamInfo],
                   canDefer: Boolean,
-                  deferred1: List[Type], deferred2: List[Type], deferredTparams2: List[ParamInfo]): Boolean =
+                  deferred1: Vector[Type], deferred2: Vector[Type], deferredTparams2: Vector[ParamInfo]): Boolean =
       if args1.isEmpty then
         args2.isEmpty
         && (deferred1.isEmpty
             || recurArgs(
                   deferred1.reverse, deferred2.reverse, deferredTparams2.reverse,
-                  canDefer = false, Nil, Nil, Nil))
+                  canDefer = false, Vector(), Vector(), Vector()))
       else args2.nonEmpty && tparams2.nonEmpty && {
         val tparam = tparams2.head
         val v = tparam.paramVarianceSign
@@ -1939,7 +1939,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val arg2 = args2.head
         val rest1 = args1.tail
         if !canDefer
-            || rest1.isEmpty && deferred1.isEmpty
+            || args1.length == 1 && deferred1.isEmpty
                 // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
             || !isIncomplete(arg1, arg2)
         then
@@ -1950,10 +1950,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         else
           recurArgs(
             rest1, args2.tail, tparams2.tail, canDefer,
-            arg1 :: deferred1, arg2 :: deferred2, tparams2.head :: deferredTparams2)
+            arg1 +: deferred1, arg2 +: deferred2, tparams2.head +: deferredTparams2)
       }
 
-    recurArgs(args1, args2, tparams2, canDefer = true, Nil, Nil, Nil)
+    recurArgs(args1, args2, tparams2, canDefer = true, Vector(), Vector(), Vector())
 
   }
 
@@ -1962,10 +1962,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
    *   - `B` satisfies predicate `p`.
    */
-  private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeParamInfo], p: Type => Boolean): Boolean = {
+  private def testLifted(tp1: Type, tp2: Type, tparams: Vector[TypeParamInfo], p: Type => Boolean): Boolean = {
     val classBounds = tp2.classSymbols
-    def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
-      case bc :: bcs1 =>
+    def recur(bcs: Vector[ClassSymbol]): Boolean = bcs match {
+      case bc +: bcs1 =>
         (classBounds.exists(bc.derivesFrom) &&
           variancesConform(bc.typeParams, tparams) &&
           p(nonExprBaseType(tp1, bc))
@@ -2180,10 +2180,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    * since the `I1(_)` case gives the constraint `T >: Int` while `B(_)` gives `T >: Boolean`.
    * Neither of the constraints is subsumed by the other.
    */
-  def necessaryGadtConstraint(constrs: List[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] = boundary:
-    constrs match
-      case Nil => break(None)
-      case c0 :: constrs =>
+  def necessaryGadtConstraint(constrs: Vector[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] = boundary:
+    (constrs: @unchecked) match
+      case Vector() => break(None)
+      case c0 +: constrs =>
         var weakest = c0
         for c <- constrs do
           if subsumes(weakest.constraint, c.constraint, preGadt.constraint) then
@@ -2201,9 +2201,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     result
 
   /** Decompose into conjunction of types each of which has only a single refinement */
-  def decomposeRefinements(tp: Type, refines: List[(Name, Type)]): Type = tp match
+  def decomposeRefinements(tp: Type, refines: Vector[(Name, Type)]): Type = tp match
     case RefinedType(parent, rname, rinfo) =>
-      decomposeRefinements(parent, (rname, rinfo) :: refines)
+      decomposeRefinements(parent, (rname, rinfo) +: refines)
     case AndType(tp1, tp2) =>
       AndType(decomposeRefinements(tp1, refines), decomposeRefinements(tp2, refines))
     case _ =>
@@ -2302,7 +2302,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // OK: { var x: T } <: { def x: T }
             // NO: { var x: T } <: { val x: T }
             ExprType(info1)
-          case info1 @ MethodType(Nil) if isExpr2 && m.symbol.is(JavaDefined) =>
+          case info1 @ MethodType(Vector()) if isExpr2 && m.symbol.is(JavaDefined) =>
             // OK{ { def x(): T } <: { def x: T} // if x is Java defined
             ExprType(info1.resType)
           case info1 => info1
@@ -2415,10 +2415,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Otherwise parameters in `tp2` must be subtypes of corresponding parameters in `tp1`.
    */
   def matchingMethodParams(tp1: MethodType, tp2: MethodType, precise: Boolean = true): Boolean = {
-    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
-      case formal1 :: rest1 =>
+    def loop(formals1: Vector[Type], formals2: Vector[Type]): Boolean = formals1 match {
+      case formal1 +: rest1 =>
         formals2 match {
-          case formal2 :: rest2 =>
+          case formal2 +: rest2 =>
             val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
             val paramsMatch =
               if precise then
@@ -2445,10 +2445,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  to override `tp2` ? This is the case if they're pairwise >:>.
    */
   def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean = {
-    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
-      case formal1 :: rest1 =>
+    def loop(formals1: Vector[Type], formals2: Vector[Type]): Boolean = formals1 match {
+      case formal1 +: rest1 =>
         formals2 match {
-          case formal2 :: rest2 =>
+          case formal2 +: rest2 =>
             val formal2a = formal2.subst(tp2, tp1)
             isSubTypeWhenFrozen(formal2a, formal1) &&
             loop(rest1, rest2)
@@ -2629,11 +2629,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    - if corresponding parameter variance is co/contra-variant, the lub/glb.
    *    - otherwise a TypeBounds containing both arguments
    */
-  def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false): List[Type] =
+  def lubArgs(args1: Vector[Type], args2: Vector[Type], tparams: Vector[TypeParamInfo], canConstrain: Boolean = false): Vector[Type] =
     tparams match {
-      case tparam :: tparamsRest =>
-        val arg1 :: args1Rest = args1: @unchecked
-        val arg2 :: args2Rest = args2: @unchecked
+      case tparam +: tparamsRest =>
+        val arg1 +: args1Rest = args1: @unchecked
+        val arg2 +: args2Rest = args2: @unchecked
         val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVarianceSign
         val lubArg =
@@ -2642,9 +2642,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           else if (v < 0) glb(arg1.loBound, arg2.loBound)
           else TypeBounds(glb(arg1.loBound, arg2.loBound),
                           lub(arg1.hiBound, arg2.hiBound, canConstrain))
-        lubArg :: lubArgs(args1Rest, args2Rest, tparamsRest, canConstrain)
+        lubArg +: lubArgs(args1Rest, args2Rest, tparamsRest, canConstrain)
       case nil =>
-        Nil
+        Vector()
     }
 
   /** Try to produce joint arguments for a glb `A[T_1, ..., T_n] & A[T_1', ..., T_n']` using
@@ -2661,11 +2661,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  The unification rule is contentious because it cuts the constraint set.
    *  Therefore it is subject to Config option `alignArgsInAnd`.
    */
-  def glbArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo]): List[Type] =
+  def glbArgs(args1: Vector[Type], args2: Vector[Type], tparams: Vector[TypeParamInfo]): Vector[Type] =
     tparams match {
-      case tparam :: tparamsRest =>
-        val arg1 :: args1Rest = args1: @unchecked
-        val arg2 :: args2Rest = args2: @unchecked
+      case tparam +: tparamsRest =>
+        val arg1 +: args1Rest = args1: @unchecked
+        val arg2 +: args2Rest = args2: @unchecked
         val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVarianceSign
         val glbArg =
@@ -2677,9 +2677,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                        glb(arg1.hiBound, arg2.hiBound))
           else if (homogenizeArgs && !frozenConstraint && isSameType(arg1, arg2)) arg1
           else NoType
-        glbArg :: glbArgs(args1Rest, args2Rest, tparamsRest)
+        glbArg +: glbArgs(args1Rest, args2Rest, tparamsRest)
       case nil =>
-        Nil
+        Vector()
     }
 
   private def recombine(tp1: Type, tp2: Type, rebuild: (Type, Type) => Type): Type =
@@ -2808,7 +2808,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         variances =
           if tp1.isDeclaredVarianceLambda && tp2.isDeclaredVarianceLambda then
             tparams1.lazyZip(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
-          else Nil
+          else Vector()
       )(
         paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
@@ -2872,7 +2872,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Try to distribute `|` inside type, detect and handle conflicts
    *  Note that a disjunction cannot be pushed into a refined or applied type. Example:
    *
-   *     List[T] | List[U] is not the same as List[T | U].
+   *     Vector[T] | Vector[U] is not the same as Vector[T | U].
    *
    *  The rhs is a proper supertype of the lhs.
    */
@@ -2917,7 +2917,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: MethodType =>
       tp2 match {
         case tp2: MethodType =>
-          def asGoodParams(formals1: List[Type], formals2: List[Type]) =
+          def asGoodParams(formals1: Vector[Type], formals2: Vector[Type]) =
             (formals2 corresponds formals1)(isSubTypeWhenFrozen)
           asGoodParams(tp1.paramInfos, tp2.paramInfos) &&
           (!asGoodParams(tp2.paramInfos, tp1.paramInfos) ||
@@ -2957,8 +2957,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     val subc = subCaptures(refs1Adapted, refs2)
     if !subc then
       errorNotes match
-        case (level, CaptureSet.MutAdaptFailure(cs, NoType, NoType)) :: rest =>
-          errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
+        case (level, CaptureSet.MutAdaptFailure(cs, NoType, NoType)) +: rest =>
+          errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) +: rest
         case _ =>
     subc
     && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
@@ -3214,7 +3214,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def typeArgsMatch(tp: Type, cls: ClassSymbol): Boolean =
           val typeArgs = tp match
-            case tp: TypeRef          => Nil
+            case tp: TypeRef          => Vector()
             case AppliedType(_, args) => args
           cls.typeParams.sizeCompare(typeArgs) == 0
 
@@ -3262,7 +3262,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def isDecomposable(cls: Symbol): Boolean =
       cls.is(Sealed) && !cls.hasAnonymousChild
 
-    def decompose(cls: Symbol): List[Symbol] =
+    def decompose(cls: Symbol): Vector[Symbol] =
       cls.children.map: child =>
         if child.isTerm then
           // Enum vals with mixins, such as in i21860 or i22266,
@@ -3309,7 +3309,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
   end provablyDisjointClasses
 
-  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: util.HashSet[(Type, Type)])(using Context): Boolean =
+  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: Vector[Type], args2: Vector[Type], pending: util.HashSet[(Type, Type)])(using Context): Boolean =
     // sjrd: I will not be surprised when this causes further issues in the future.
     // This is a compromise to be able to fix #21295 without breaking the world.
     def cannotBeNothing(tp: Type): Boolean = tp match
@@ -3378,7 +3378,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   def addErrorNote(note: Note)(using Context): Unit =
     if !errorNotes.exists(_._2.covers(note)) then
-      errorNotes = (recCount, note) :: errorNotes.filterConserve(n => !note.covers(n._2))
+      errorNotes = (recCount, note) +: errorNotes.filterConserve(n => !note.covers(n._2))
       assert(maxErrorLevel <= recCount)
       maxErrorLevel = recCount
 
@@ -3386,7 +3386,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def isolated[T](inline op: Boolean, inline mapResult: Boolean => T)(using Context): T =
     val savedNotes = errorNotes
     val savedLevel = maxErrorLevel
-    errorNotes = Nil
+    errorNotes = Vector()
     maxErrorLevel = -1
     try mapResult(op)
     finally
@@ -3415,7 +3415,7 @@ object TypeComparer {
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:
     case OK, OKwithGADTUsed, OKwithOpaquesUsed
-    case Fail(errorNotes: List[Note])
+    case Fail(errorNotes: Vector[Note])
 
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
@@ -3509,17 +3509,17 @@ object TypeComparer {
     comparing(_.lub(tp1, tp2, canConstrain = canConstrain, isSoft = isSoft))
 
   /** The least upper bound of a list of types */
-  final def lub(tps: List[Type])(using Context): Type =
+  final def lub(tps: Vector[Type])(using Context): Type =
     tps.foldLeft(defn.NothingType: Type)(lub(_,_))
 
-  def lubArgs(args1: List[Type], args2: List[Type], tparams: List[TypeParamInfo], canConstrain: Boolean = false)(using Context): List[Type] =
+  def lubArgs(args1: Vector[Type], args2: Vector[Type], tparams: Vector[TypeParamInfo], canConstrain: Boolean = false)(using Context): Vector[Type] =
     comparing(_.lubArgs(args1, args2, tparams, canConstrain))
 
   def glb(tp1: Type, tp2: Type)(using Context): Type =
     comparing(_.glb(tp1, tp2))
 
   /** The greatest lower bound of a list types */
-  def glb(tps: List[Type])(using Context): Type =
+  def glb(tps: Vector[Type])(using Context): Type =
     tps.foldLeft(defn.AnyType: Type)(glb)
 
   def orType(using Context)(tp1: Type, tp2: Type, isSoft: Boolean = true, isErased: Boolean = ctx.erasedTypes): Type =
@@ -3560,7 +3560,7 @@ object TypeComparer {
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
     comparing(_.fullUpperBound(param))
 
-  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
+  def addToConstraint(tl: TypeLambda, tvars: Vector[TypeVar])(using Context): Boolean =
     comparing(_.addToConstraint(tl, tvars))
 
   def widenInferred(inst: Type, bound: Type, widen: Widen)(using Context): Type =
@@ -3572,7 +3572,7 @@ object TypeComparer {
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
 
-  def necessaryGadtConstraint(constrs: List[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] =
+  def necessaryGadtConstraint(constrs: Vector[GadtConstraint], preGadt: GadtConstraint)(using Context): Option[GadtConstraint] =
     comparing(_.necessaryGadtConstraint(constrs, preGadt))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
@@ -3618,7 +3618,7 @@ object MatchReducer:
     case Disjoint
     case ReducedAndDisjoint
     case Stuck
-    case NoInstance(fails: List[(Name, TypeBounds)])
+    case NoInstance(fails: Vector[(Name, TypeBounds)])
 
     def toText(p: Printer): Text = this match
       case Reduced(tp)        => "Reduced(" ~ p.toText(tp) ~ ")"
@@ -3639,7 +3639,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
   override def matchReducer = this
 
-  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = {
+  def matchCases(scrut: Type, cases: Vector[MatchTypeCaseSpec])(using Context): Type = {
     // a reference for the type parameters poisoned during matching
     // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty
@@ -3873,7 +3873,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                 false
       end rec
 
-      def matchArgs(argPatterns: List[MatchTypeCasePattern], args: List[Type], tparams: List[TypeParamInfo], scrutIsWidenedAbstract: Boolean): Boolean =
+      def matchArgs(argPatterns: Vector[MatchTypeCasePattern], args: Vector[Type], tparams: Vector[TypeParamInfo], scrutIsWidenedAbstract: Boolean): Boolean =
         if argPatterns.isEmpty then
           true
         else
@@ -3895,7 +3895,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
       if rec(spec.pattern, scrut, variance = 1, scrutIsWidenedAbstract = false) then
         if noInstances.nonEmpty then
-          MatchResult.NoInstance(noInstances.toList)
+          MatchResult.NoInstance(noInstances.toVector)
         else
           val defn.MatchCase(instantiatedPat, reduced) =
             instantiateParamsSpec(instances, constrainedCaseLambda)(constrainedCaseLambda.resultType): @unchecked
@@ -3959,11 +3959,11 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
     def matchMissingCaptures(spec: MatchTypeCaseSpec.MissingCaptures): MatchResult =
       MatchResult.Stuck
 
-    def recur(remaining: List[MatchTypeCaseSpec]): Type = remaining match
-      case (cas: MatchTypeCaseSpec.LegacyPatMat) :: _ if sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
+    def recur(remaining: Vector[MatchTypeCaseSpec]): Type = (remaining: @unchecked) match
+      case (cas: MatchTypeCaseSpec.LegacyPatMat) +: _ if sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
         val errorText = MatchTypeTrace.illegalPatternText(scrut, cas)
         ErrorType(reporting.MatchTypeLegacyPattern(errorText))
-      case cas :: remaining1 =>
+      case cas +: remaining1 =>
         matchCase(cas) match
           case MatchResult.Disjoint =>
             recur(remaining1)
@@ -3985,7 +3985,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             // exploit emptiness to break match type soundness.
             MatchTypeTrace.emptyScrutinee(scrut)
             NoType
-      case Nil =>
+      case Vector() =>
         val noCasesText = MatchTypeTrace.noMatchesText(scrut, cases)
         val pos = ctx.source.atSpan(ctx.owner.span)
         val isStableScrut = !scrut.isInstanceOf[TypeVar]
@@ -4023,7 +4023,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   private val b = new StringBuilder
   private var lastForwardGoal: String | Null = null
 
-  private def appendFailure(notes: List[Note]) =
+  private def appendFailure(notes: Vector[Note]) =
     if lastForwardGoal != null then  // last was deepest goal that failed
       b.append(s"  = false")
       for case note: printing.Showable <- notes do

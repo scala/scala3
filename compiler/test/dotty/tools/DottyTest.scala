@@ -40,7 +40,7 @@ trait DottyTest extends ContextEscapeDetection {
   protected def initializeCtx(fc: FreshContext): Unit = {
     fc.setSetting(fc.settings.encoding, "UTF8")
     fc.setSetting(fc.settings.classpath, TestConfiguration.basicClasspath)
-    fc.setSetting(fc.settings.language, List("experimental.erasedDefinitions").asInstanceOf)
+    fc.setSetting(fc.settings.language, Vector("experimental.erasedDefinitions").asInstanceOf)
     fc.setProperty(ContextDoc, new ContextDocstrings)
   }
 
@@ -59,20 +59,20 @@ trait DottyTest extends ContextEscapeDetection {
         def phaseName = "assertionChecker"
         override def run(using ctx: Context): Unit = assertion(ctx.compilationUnit.tpdTree, ctx)
       }
-      val lastGroupAppended = List(lastGroup ::: targetPhase :: Nil)
+      val lastGroupAppended = Vector(lastGroup :+ targetPhase)
 
-      groupsBefore ::: lastGroupAppended ::: List(List(checker))
+      groupsBefore ++ lastGroupAppended ++ Vector(Vector(checker))
     }
   }
 
   def checkCompile(checkAfterPhase: String, source: String)(assertion: (tpd.Tree, Context) => Unit): Context = {
     val c = compilerWithChecker(checkAfterPhase)(assertion)
     val run = c.newRun
-    run.compileFromStrings(List(source))
+    run.compileFromStrings(Vector(source))
     run.runContext
   }
 
-  def checkAfterCompile(checkAfterPhase: String, sources: List[String])(assertion: Context => Unit): Context = {
+  def checkAfterCompile(checkAfterPhase: String, sources: Vector[String])(assertion: Context => Unit): Context = {
     val c = defaultCompiler
     val run = c.newRun
     run.compileFromStrings(sources)
@@ -81,36 +81,36 @@ trait DottyTest extends ContextEscapeDetection {
     rctx
   }
 
-  def checkTypes(source: String, typeStrings: String*)(assertion: (List[Type], Context) => Unit): Unit =
-    checkTypes(source, List(typeStrings.toList)) { (tpess, ctx) => (tpess: @unchecked) match {
-      case List(tpes) => assertion(tpes, ctx)
+  def checkTypes(source: String, typeStrings: String*)(assertion: (Vector[Type], Context) => Unit): Unit =
+    checkTypes(source, Vector(typeStrings.toVector)) { (tpess, ctx) => (tpess: @unchecked) match {
+      case Vector(tpes) => assertion(tpes, ctx)
     }}
 
-  def checkTypes(source: String, typeStringss: List[List[String]])(assertion: (List[List[Type]], Context) => Unit): Unit = {
+  def checkTypes(source: String, typeStringss: Vector[Vector[String]])(assertion: (Vector[Vector[Type]], Context) => Unit): Unit = {
     val dummyName = "x_x_x"
     val vals = typeStringss.flatten.zipWithIndex.map{case (s, x)=> s"val ${dummyName}$x: $s = ???"}.mkString("\n")
     val gatheredSource = s"${source}\nobject A$dummyName {$vals}"
     checkCompile("typer", gatheredSource) {
       (tree, context) =>
         given Context = context
-        val findValDef: (List[tpd.ValDef], tpd.Tree) => List[tpd.ValDef] =
+        val findValDef: (Vector[tpd.ValDef], tpd.Tree) => Vector[tpd.ValDef] =
           (acc , tree) =>  {
             tree match {
-              case t: tpd.ValDef if t.name.startsWith(dummyName) => t :: acc
+              case t: tpd.ValDef if t.name.startsWith(dummyName) => t +: acc
               case _ => acc
             }
           }
-        val d = new tpd.DeepFolder[List[tpd.ValDef]](findValDef).foldOver(Nil, tree)
+        val d = new tpd.DeepFolder[Vector[tpd.ValDef]](findValDef).foldOver(Vector(), tree)
         val tpes = d.map(_.tpe.widen).reverse
-        val tpess = typeStringss.foldLeft[(List[Type], List[List[Type]])]((tpes, Nil)) {
+        val tpess = typeStringss.foldLeft[(Vector[Type], Vector[Vector[Type]])]((tpes, Vector())) {
           case ((rest, result), typeStrings) =>
             val (prefix, suffix) = rest.splitAt(typeStrings.length)
-            (suffix, prefix :: result)
+            (suffix, prefix +: result)
         }._2.reverse
         assertion(tpess, context)
     }
   }
 
   def methType(names: String*)(paramTypes: Type*)(resultType: Type = defn.UnitType) =
-    MethodType(names.toList map (_.toTermName), paramTypes.toList, resultType)
+    MethodType(names.toVector map (_.toTermName), paramTypes.toVector, resultType)
 }

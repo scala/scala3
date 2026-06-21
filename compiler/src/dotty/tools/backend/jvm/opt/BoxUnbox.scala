@@ -179,8 +179,8 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
    */
   def boxUnboxElimination(method: MethodNode, owner: InternalName): Boolean = {
     Limits.sizeOKForSourceValue(method) && {
-      val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
-      val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+      val toInsertBefore = mutable.Map.empty[AbstractInsnNode, Vector[AbstractInsnNode]]
+      val toReplace = mutable.Map.empty[AbstractInsnNode, Vector[AbstractInsnNode]]
       val toDelete = mutable.Set.empty[AbstractInsnNode]
 
       val knownHandled = mutable.Set.empty[AbstractInsnNode]
@@ -237,16 +237,16 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
           // store boxed value(s) into localSlots
           val storeOps = localSlots.reverseIterator.map { case (slot, tp) =>
             new VarInsnNode(tp.getOpcode(ISTORE), slot)
-          }.toList
+          }.toVector
           val storeInitialValues = creation.loadInitialValues match {
-            case Some(ops) => ops ::: storeOps
+            case Some(ops) => ops ++ storeOps
             case None => storeOps
           }
           if (keepBox) {
-            val loadOps = List.from[VarInsnNode](localSlots.iterator.map({ case (slot, tp) =>
+            val loadOps = Vector.from[VarInsnNode](localSlots.iterator.map({ case (slot, tp) =>
               new VarInsnNode(tp.getOpcode(ILOAD), slot)
             }))
-            toInsertBefore(creation.valuesConsumer) = storeInitialValues ::: loadOps
+            toInsertBefore(creation.valuesConsumer) = storeInitialValues ++ loadOps
           } else {
             toReplace(creation.valuesConsumer) = storeInitialValues
             toDelete ++= creation.allInsns - creation.valuesConsumer
@@ -258,19 +258,19 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
               assert(!keepBox, s"cannot eliminate box write if the box remains (and escapes): $write")
               val (slot, tp) = localSlots(boxKind.extractedValueIndex(write))
               val storeOp = new VarInsnNode(tp.getOpcode(ISTORE), slot)
-              toReplace(write.consumer) = List(storeOp)
+              toReplace(write.consumer) = Vector(storeOp)
 
             case c: EscapingConsumer =>
               assert(keepBox, s"found escaping consumer, but box is eliminated: $c")
 
             case Drop(insn) =>
-              if (keepBox) toReplace(insn) = List(getPop(1))
+              if (keepBox) toReplace(insn) = Vector(getPop(1))
               else toDelete += insn
 
             case extraction =>
               val (slot, tp) = localSlots(boxKind.extractedValueIndex(extraction))
-              val loadOps = new VarInsnNode(tp.getOpcode(ILOAD), slot) :: extraction.postExtractionAdaptationOps(tp)
-              if (keepBox) toReplace(extraction.consumer) = getPop(1) :: loadOps
+              val loadOps = new VarInsnNode(tp.getOpcode(ILOAD), slot) +: extraction.postExtractionAdaptationOps(tp)
+              if (keepBox) toReplace(extraction.consumer) = getPop(1) +: loadOps
               else toReplace(extraction.consumer) = loadOps
               toDelete ++= extraction.allInsns - extraction.consumer
           }
@@ -298,8 +298,8 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
          */
         def updateLocalVariableTypes(reTypedLocals: Map[Int, Type]): Unit = {
           lazy val localsByIndex = method.localVariables.asScala.groupBy(_.index)
-          for ((index, tp) <- reTypedLocals) localsByIndex.get(index).map(_.toList) match {
-            case Some(List(local)) =>
+          for ((index, tp) <- reTypedLocals) localsByIndex.get(index).map(_.toVector) match {
+            case Some(Vector(local)) =>
               local.desc = tp.getDescriptor
             case Some(locals) =>
               locals foreach method.localVariables.remove
@@ -329,7 +329,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
           if (boxKind.boxedTypes.lengthCompare(1) == 0) {
             // fast path for single-value boxes
             allConsumers.foreach(extraction => extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head) match {
-              case Nil => extraction match {
+              case Vector() => extraction match {
                 case Drop(_) => toReplace(extraction.consumer) = boxKind.boxedTypes.map(t => getPop(t.getSize))
                 case _ => toDelete ++= extraction.allInsns
               }
@@ -341,25 +341,25 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
             for (extraction <- allConsumers) {
               val replacementOps = extraction match {
                 case Drop(_) =>
-                  boxKind.boxedTypes.reverseIterator.map(t => getPop(t.getSize)).toList
+                  boxKind.boxedTypes.reverseIterator.map(t => getPop(t.getSize)).toVector
                 case _ =>
                   val valueIndex = boxKind.extractedValueIndex(extraction)
                   if (valueIndex == 0) {
                     val pops = boxKind.boxedTypes.tail.map(t => getPop(t.getSize))
-                    pops ::: extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head)
+                    pops ++ extraction.postExtractionAdaptationOps(boxKind.boxedTypes.head)
                   } else {
-                    var loadOps: List[AbstractInsnNode] | Null = null
+                    var loadOps: Vector[AbstractInsnNode] | Null = null
                     val consumeStack = boxKind.boxedTypes.zipWithIndex.reverseIterator.map {
                       case (tp, i) =>
                         if (i == valueIndex) {
                           val resultSlot = getLocal(tp.getSize)
-                          loadOps = new VarInsnNode(tp.getOpcode(ILOAD), resultSlot) :: extraction.postExtractionAdaptationOps(tp)
+                          loadOps = new VarInsnNode(tp.getOpcode(ILOAD), resultSlot) +: extraction.postExtractionAdaptationOps(tp)
                           new VarInsnNode(tp.getOpcode(ISTORE), resultSlot)
                         } else {
                           getPop(tp.getSize)
                         }
-                      }.to(List)
-                    consumeStack ::: loadOps.nn
+                      }.to(Vector)
+                    consumeStack ++ loadOps.nn
                   }
               }
               toReplace(extraction.consumer) = replacementOps
@@ -505,16 +505,16 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
    * exotic copy operations (DUP2_X2) are not supported (note that Scalac never emits them). If a
    * copy operation cannot be replaced, this method returns `None`.
    */
-  private def checkCopyOpReplacements(initialProds: Set[BoxCreation], finalCons: Set[BoxConsumer], valueTypes: List[Type], nextLocal: Int, prodCons: ProdConsAnalyzer): Option[(Map[AbstractInsnNode, List[AbstractInsnNode]], Int, Map[Int, Type])] = {
-    var replacements = Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+  private def checkCopyOpReplacements(initialProds: Set[BoxCreation], finalCons: Set[BoxConsumer], valueTypes: Vector[Type], nextLocal: Int, prodCons: ProdConsAnalyzer): Option[(Map[AbstractInsnNode, Vector[AbstractInsnNode]], Int, Map[Int, Type])] = {
+    var replacements = Map.empty[AbstractInsnNode, Vector[AbstractInsnNode]]
     var reTypedLocals = Map.empty[Int, Type]
 
     var nextCopyOpLocal = nextLocal
-    val newLocalsMap: mutable.LongMap[List[(Type, Int)]] = mutable.LongMap.empty
+    val newLocalsMap: mutable.LongMap[Vector[(Type, Int)]] = mutable.LongMap.empty
     def newLocals(index: Int) = newLocalsMap.getOrElseUpdate(index, valueTypes match {
-      case List(t) if t.getSize == 1 =>
+      case Vector(t) if t.getSize == 1 =>
         reTypedLocals += index -> t
-        List((t, index))
+        Vector((t, index))
       case _ => valueTypes.map(t => {
         val newIndex = nextCopyOpLocal
         nextCopyOpLocal += t.getSize
@@ -537,7 +537,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
       case copyOp =>
         if (copyOp.getOpcode == DUP && valueTypes.lengthCompare(1) == 0) {
           if (valueTypes.head.getSize == 2)
-            replacements += copyOp -> List(new InsnNode(DUP2))
+            replacements += copyOp -> Vector(new InsnNode(DUP2))
         } else {
           replaceOK = false
         }
@@ -585,7 +585,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
   private trait BoxKind {
     def checkBoxCreation(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxCreation]
     def checkBoxConsumer(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxConsumer]
-    def boxedTypes: List[Type]
+    def boxedTypes: Vector[Type]
     def extractedValueIndex(extraction: BoxConsumer): Int
     def isMutable: Boolean
   }
@@ -659,7 +659,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
     import PrimitiveBox._
     def checkBoxCreation(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxCreation] = checkPrimitiveBox(insn, Some(this), prodCons).map(_._1)
     def checkBoxConsumer(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxConsumer] = checkPrimitiveUnbox(insn, this, prodCons)
-    def boxedTypes: List[Type] = List(boxedType)
+    def boxedTypes: Vector[Type] = Vector(boxedType)
     def extractedValueIndex(extraction: BoxConsumer): Int = 0
     def isMutable = false
   }
@@ -728,7 +728,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
     import Ref._
     def checkBoxCreation(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxCreation] = checkRefCreation(insn, Some(this), prodCons).map(_._1)
     def checkBoxConsumer(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxConsumer] = checkRefConsumer(insn, this)
-    def boxedTypes: List[Type] = List(boxedType)
+    def boxedTypes: Vector[Type] = Vector(boxedType)
     def extractedValueIndex(extraction: BoxConsumer): Int = 0
     def isMutable = true
   }
@@ -736,7 +736,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
   private object Ref {
     private def boxedType(mi: MethodInsnNode): Type = optimizerUtils.runtimeRefClassBoxedType(mi.owner)
     private def refClass(mi: MethodInsnNode): InternalName = mi.owner
-    private def loadZeroValue(refZeroCall: MethodInsnNode): List[AbstractInsnNode] = List(loadZeroForTypeSort(optimizerUtils.runtimeRefClassBoxedType(refZeroCall.owner).getSort))
+    private def loadZeroValue(refZeroCall: MethodInsnNode): Vector[AbstractInsnNode] = Vector(loadZeroForTypeSort(optimizerUtils.runtimeRefClassBoxedType(refZeroCall.owner).getSort))
 
     private val refSupertypes = Set(ts.jiSerializableRef, ts.ObjectRef).map(_.internalName)
 
@@ -776,7 +776,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
     }
   }
 
-  private case class Tuple(boxedTypes: List[Type], tupleClass: InternalName) extends BoxKind {
+  private case class Tuple(boxedTypes: Vector[Type], tupleClass: InternalName) extends BoxKind {
     import Tuple._
     def checkBoxCreation(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxCreation] = checkTupleCreation(insn, Some(this), prodCons).map(_._1)
     def checkBoxConsumer(insn: AbstractInsnNode, prodCons: ProdConsAnalyzer): Option[BoxConsumer] = checkTupleExtraction(insn, this, prodCons)
@@ -790,7 +790,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
   }
 
   private object Tuple {
-    private def boxedTypes(mi: MethodInsnNode): List[Type] = Type.getArgumentTypes(mi.desc).toList
+    private def boxedTypes(mi: MethodInsnNode): Vector[Type] = Type.getArgumentTypes(mi.desc).toVector
     private def tupleClass(mi: MethodInsnNode): InternalName = if mi.owner.endsWith("$") then mi.owner.substring(0, mi.owner.length - 1) else mi.owner
 
     def checkTupleCreation(insn: AbstractInsnNode, expectedKind: Option[Tuple], prodCons: ProdConsAnalyzer): Option[(BoxCreation, Tuple)] = {
@@ -866,7 +866,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
 
   private sealed trait BoxCreation {
     // to support box creation operations that don't consume an initial value from the stack, e.g., IntRef.zero
-    val loadInitialValues: Option[List[AbstractInsnNode]]
+    val loadInitialValues: Option[Vector[AbstractInsnNode]]
 
     /**
      * The instruction that produces the box value; for instance creations, the `NEW` operation.
@@ -908,13 +908,13 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
     }
   }
 
-  private case class StaticFactory(producer: MethodInsnNode, loadInitialValues: Option[List[AbstractInsnNode]]) extends BoxCreation
+  private case class StaticFactory(producer: MethodInsnNode, loadInitialValues: Option[Vector[AbstractInsnNode]]) extends BoxCreation
   private case class ModuleFactory(moduleLoad: AbstractInsnNode, producer: MethodInsnNode) extends BoxCreation {
-    val loadInitialValues: Option[List[AbstractInsnNode]] = None
+    val loadInitialValues: Option[Vector[AbstractInsnNode]] = None
   }
   private case class InstanceCreation(newOp: TypeInsnNode, dupOp: InsnNode, initCall: MethodInsnNode) extends BoxCreation {
     def producer: AbstractInsnNode = newOp
-    val loadInitialValues: Option[List[AbstractInsnNode]] = None
+    val loadInitialValues: Option[Vector[AbstractInsnNode]] = None
   }
 
   private sealed trait BoxConsumer {
@@ -949,14 +949,14 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
      * equivalent conversion operations. For example, invoking `_1\$mcI\$sp` on a non-specialized
      * `Tuple2` extracts the Integer value and unboxes it.
      */
-    def postExtractionAdaptationOps(typeOfExtractedValue: Type): List[AbstractInsnNode] = this match {
-      case PrimitiveBoxingGetter(_) => List(optimizerUtils.getScalaBox(typeOfExtractedValue))
-      case PrimitiveUnboxingGetter(_, unboxedPrimitive) => List(optimizerUtils.getScalaUnbox(unboxedPrimitive))
+    def postExtractionAdaptationOps(typeOfExtractedValue: Type): Vector[AbstractInsnNode] = this match {
+      case PrimitiveBoxingGetter(_) => Vector(optimizerUtils.getScalaBox(typeOfExtractedValue))
+      case PrimitiveUnboxingGetter(_, unboxedPrimitive) => Vector(optimizerUtils.getScalaUnbox(unboxedPrimitive))
       case BoxedPrimitiveTypeCheck(_, success) =>
-        getPop(typeOfExtractedValue.getSize) ::
-          new InsnNode(if (success) ICONST_1 else ICONST_0) ::
-          Nil
-      case _ => Nil
+        getPop(typeOfExtractedValue.getSize) +:
+          new InsnNode(if (success) ICONST_1 else ICONST_0) +:
+          Vector()
+      case _ => Vector()
     }
   }
 

@@ -44,10 +44,10 @@ extends SrcPos, interfaces.SourcePosition, Showable:
     else startOffset to endOffset
   }
 
-  def lineOffsets: List[Int] =
-    lines.toList.map(source.lineToOffset(_))
+  def lineOffsets: Vector[Int] =
+    lines.toVector.map(source.lineToOffset(_))
 
-  def beforeAndAfterPoint: (List[Int], List[Int]) =
+  def beforeAndAfterPoint: (Vector[Int], Vector[Int]) =
     lineOffsets.partition(_ <= point)
 
   def column: Int = source.column(point)
@@ -98,10 +98,10 @@ extends SrcPos, interfaces.SourcePosition, Showable:
 
 object SourcePosition:
   extension (pos: SourcePosition)
-    /** List of all the inline calls that surround the position. */
-    def inlinePosStack: List[SourcePosition] =
-      if pos.outer != null && pos.outer.exists then pos :: pos.outer.inlinePosStack
-      else pos :: Nil
+    /** Vector of all the inline calls that surround the position. */
+    def inlinePosStack: Vector[SourcePosition] =
+      if pos.outer != null && pos.outer.exists then pos +: pos.outer.inlinePosStack
+      else pos +: Vector()
 end SourcePosition
 
 /** A sentinel for a non-existing source position */

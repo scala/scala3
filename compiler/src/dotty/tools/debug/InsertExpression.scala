@@ -178,9 +178,9 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
 
         // for loop: we insert the expression on the first enumeration
         case tree @ ForYield(enums, rhs) if isOnBreakpoint(tree) =>
-          ForYield(transform(enums.head) :: enums.tail, rhs)
+          ForYield(transform(enums.head) +: enums.tail, rhs)
         case tree @ ForDo(enums, rhs) if isOnBreakpoint(tree) =>
-          ForDo(transform(enums.head) :: enums.tail, rhs)
+          ForDo(transform(enums.head) +: enums.tail, rhs)
 
         // generator of for loop: we insert the expression on the rhs
         case tree @ GenFrom(pat, rhs, checkMode) if isOnBreakpoint(tree) =>
@@ -242,9 +242,9 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
       // we insert a fake effectful tree to avoid the constant-folding of the block during the firstTransform phase
       val effect = Apply(
         Select(Select(Ident(termName("scala")), termName("Predef")), termName("print")),
-        List(Literal(Constant("")))
+        Vector(Literal(Constant("")))
       )
-      Block(List(valDef, effect), tree)
+      Block(Vector(valDef, effect), tree)
 
   // only fails in test mode
   private def warnOrError(msg: String, srcPos: SrcPos)(using Context): Unit =

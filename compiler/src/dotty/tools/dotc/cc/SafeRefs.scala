@@ -21,7 +21,7 @@ import config.Printers.capt
 /** Check whether references from safe mode should be allowed */
 object SafeRefs {
 
-  val assumedSafePackages = List(
+  val assumedSafePackages = Vector(
     "scala", "scala.runtime", "scala.collection.immutable", "scala.compiletime.ops",
     "scala.math", "scala.util", "scala.caps", "java.math", "java.time",
     "java.util.function", "java.util.regex", "java.util.stream"
@@ -29,20 +29,20 @@ object SafeRefs {
 
   private def rejectSafe(sym: Symbol)(using Context): Unit =
     if !sym.infoOrCompleter.isInstanceOf[StubInfo] then
-      sym.addAnnotation(Annotation(defn.RejectSafeAnnot, List(Literal(Constant(""))), NoSpan))
+      sym.addAnnotation(Annotation(defn.RejectSafeAnnot, Vector(Literal(Constant(""))), NoSpan))
       if sym.is(ModuleVal) then rejectSafe(sym.moduleClass)
 
-  private def assumeSafe(sym: Symbol, except: List[String])(using Context): Unit =
+  private def assumeSafe(sym: Symbol, except: Vector[String])(using Context): Unit =
     if !sym.infoOrCompleter.isInstanceOf[StubInfo] then
       val cls = if sym.is(ModuleVal) then sym.moduleClass else sym
       cls.addAnnotation(Annotation(defn.AssumeSafeAnnot, NoSpan))
       for exc <- except
-          name <- List(exc.toTermName, exc.toTypeName)
+          name <- Vector(exc.toTermName, exc.toTypeName)
           mbr <- cls.info.member(name).alternatives
       do
         rejectSafe(mbr.symbol)
 
-  private def assumeSafe(name: String, except: List[String] = Nil)(using Context): Unit =
+  private def assumeSafe(name: String, except: Vector[String] = Vector())(using Context): Unit =
     assumeSafe(requiredClass(name), except)
     assumeSafe(requiredModule(name), except)
 
@@ -57,10 +57,10 @@ object SafeRefs {
    *  to library classes manually, as long as these library classes are capture checked.
    */
   def init()(using Context): Unit = {
-    assumeSafe("scala.Predef", except = List("print", "println", "printf"))
+    assumeSafe("scala.Predef", except = Vector("print", "println", "printf"))
     assumeSafe("scala.runtime.coverage.Invoker")
     assumeSafe("scala.reflect.ClassTag")
-    assumeSafe("scala.util.Properties", except = List("setProp", "clearProp", "main"))
+    assumeSafe("scala.util.Properties", except = Vector("setProp", "clearProp", "main"))
     assumeSafe("java.lang.Object")
     assumeSafe("java.lang.Boolean")
     assumeSafe("java.lang.Byte")
@@ -112,7 +112,7 @@ object SafeRefs {
     assumeSafe("java.lang.Record")
     assumeSafe("java.lang.CharSequence")
     assumeSafe("java.lang.Comparable")
-    assumeSafe("java.lang.Class", except = List(
+    assumeSafe("java.lang.Class", except = Vector(
       "accessFlags", "asSubclass", "cast", "describeConstable",
       "descriptorString", "desiredAssertionStatus", "forName", "forPrimitiveName", "getAnnotatedInterfaces",
       "getAnnotatedSuperclass", "getAnnotation", "getAnnotations", "getAnnotationsByType", "getCanonicalName",
@@ -124,9 +124,9 @@ object SafeRefs {
       "getPackage", "getPackageName", "getPermittedSubclasses", "getProtectionDomain", "getRecordComponents",
       "getResource", "getResourceAsStream", "getSigners", "getTypeParameters", "getTypeName",
       "newInstance", "cast", "toGenericString"))
-    assumeSafe("java.util.Locale", except = List("setDefault"))
-    assumeSafe("java.util.TimeZone", except = List("setDefault", "setID", "setRawOffset"))
-    assumeSafe("java.util.UUID", except = List("randomUIID"))
+    assumeSafe("java.util.Locale", except = Vector("setDefault"))
+    assumeSafe("java.util.TimeZone", except = Vector("setDefault", "setID", "setRawOffset"))
+    assumeSafe("java.util.UUID", except = Vector("randomUIID"))
     assumeSafe("java.util.Objects")
     assumeSafe("java.util.Optional")
     assumeSafe("java.util.OptionalInt")

@@ -48,7 +48,7 @@ class BootstrappedOnlyCompilationTests {
       compileDir("tasty/src/dotty/tools/tasty", withCompilerOptions),
       compileList(
         "testIssue6460",
-        List(
+        Vector(
           "compiler/src/dotty/tools/dotc/core/SymbolLoaders.scala",
           "compiler/src/dotty/tools/dotc/core/Types.scala"
         ),
@@ -56,7 +56,7 @@ class BootstrappedOnlyCompilationTests {
       ),
       compileList(
         "testIssue6603",
-        List(
+        Vector(
           "compiler/src/dotty/tools/dotc/ast/Desugar.scala",
           "compiler/src/dotty/tools/dotc/ast/Trees.scala",
           "compiler/src/dotty/tools/dotc/core/Types.scala"
@@ -73,7 +73,7 @@ class BootstrappedOnlyCompilationTests {
       compileFile("tests/pos-with-compiler/Patterns.scala", withCompilerOptions),
       compileList(
         "testNonCyclic",
-        List(
+        Vector(
           "compiler/src/dotty/tools/dotc/CompilationUnit.scala",
           "compiler/src/dotty/tools/dotc/core/Types.scala",
           "compiler/src/dotty/tools/dotc/ast/Trees.scala"
@@ -82,7 +82,7 @@ class BootstrappedOnlyCompilationTests {
       ),
       compileList(
         "testIssue34",
-        List(
+        Vector(
           "compiler/src/dotty/tools/dotc/config/Properties.scala",
           "compiler/src/dotty/tools/dotc/config/PathResolver.scala"
         ),
@@ -117,14 +117,14 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
-    val basicTests = List(
+    val basicTests = Vector(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/run-staging", withStagingOptions),
       compileFilesInDir("tests/run-tasty-inspector", withTastyInspectorOptions)
     )
     val tests =
       if scala.util.Properties.isWin then basicTests
-      else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
+      else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) +: basicTests
 
     val compilationTest = withCoverage(aggregateTests(tests*))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
@@ -189,7 +189,7 @@ class BootstrappedOnlyCompilationTests {
       val outDir = new java.io.File(defaultOutputDir, "testPlugins")
       val sourceDir = new java.io.File(dir)
 
-      val dirs = sourceDir.listFiles.toList.filter(_.isDirectory)
+      val dirs = sourceDir.listFiles.toVector.filter(_.isDirectory)
       val targets = dirs.map { dir =>
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
         Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), StandardCopyOption.REPLACE_EXISTING)

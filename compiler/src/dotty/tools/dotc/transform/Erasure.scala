@@ -44,7 +44,7 @@ class Erasure extends Phase with DenotTransformer {
 
   override def description: String = Erasure.description
 
-  /** List of names of phases that should precede this phase */
+  /** Vector of names of phases that should precede this phase */
   override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name)
 
   override def changesMembers: Boolean = true // the phase adds bridges
@@ -55,7 +55,7 @@ class Erasure extends Phase with DenotTransformer {
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
           atPhase(ctx.phase.next)(symd.info) match {
-            case MethodType(nme.ALLARGS :: Nil) => true
+            case MethodType(nme.ALLARGS +: Vector()) => true
             case _                              => false
           }
         }
@@ -146,8 +146,8 @@ class Erasure extends Phase with DenotTransformer {
   /** erased classes get erased to empty traits with Object as parent and an empty constructor */
   private def erasedClassInfo(cls: ClassSymbol)(using Context) =
     cls.classInfo.derivedClassInfo(
-      declaredParents = defn.ObjectClass.typeRef :: Nil,
-      decls = newScopeWith(newConstructor(cls, Flags.EmptyFlags, Nil, Nil)))
+      declaredParents = defn.ObjectClass.typeRef +: Vector(),
+      decls = newScopeWith(newConstructor(cls, Flags.EmptyFlags, Vector(), Vector())))
 
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     assertErased(tree)
@@ -215,12 +215,12 @@ object Erasure {
   private val BunchedArgs = new Property.Key[Unit]
 
   /** An Apply node which might still be missing some arguments */
-  def partialApply(fn: Tree, args: List[Tree])(using Context): Tree =
-    untpd.Apply(fn, args.toList)
+  def partialApply(fn: Tree, args: Vector[Tree])(using Context): Tree =
+    untpd.Apply(fn, args.toVector)
       .withType(applyResultType(fn.tpe.widen.asInstanceOf[MethodType], args))
 
   /** The type of an Apply node which might still be missing some arguments */
-  private def applyResultType(mt: MethodType, args: List[Tree])(using Context): Type =
+  private def applyResultType(mt: MethodType, args: Vector[Tree])(using Context): Type =
     if mt.paramInfos.length <= args.length then mt.resultType
     else MethodType(mt.paramInfos.drop(args.length), mt.resultType)
 
@@ -231,10 +231,10 @@ object Erasure {
    */
   def expandedMethodType(mt: MethodType, origFun: Tree)(using Context): MethodType =
     mt.paramInfos match
-      case JavaArrayType(elemType) :: Nil if elemType.isRef(defn.ObjectClass) =>
+      case JavaArrayType(elemType) +: Vector() if elemType.isRef(defn.ObjectClass) =>
         val origArity = totalParamCount(origFun.symbol)(using preErasureCtx)
         if origArity > MaxImplementedFunctionArity then
-          MethodType(List.fill(origArity)(defn.ObjectType), mt.resultType)
+          MethodType(Vector.fill(origArity)(defn.ObjectType), mt.resultType)
         else mt
       case _ => mt
 
@@ -259,7 +259,7 @@ object Erasure {
      *  fields (see TupleX). (ID)
      */
     private def safelyRemovableUnboxArg(tree: Tree)(using Context): Tree = tree match {
-      case Apply(fn, arg :: Nil)
+      case Apply(fn, arg +: Vector())
       if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.typeSymbol) =>
         arg
       case _ =>
@@ -267,12 +267,12 @@ object Erasure {
     }
 
     def constant(tree: Tree, const: Tree)(using Context): Tree =
-      (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withSpan(tree.span)
+      (if (isPureExpr(tree)) const else Block(tree +: Vector(), const)).withSpan(tree.span)
 
     final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary()}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
-          New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
+          New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) +: Vector()) // todo: use adaptToType?
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -497,7 +497,7 @@ object Erasure {
         val bridge = newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method | Flags.Bridge, bridgeType)
         Closure(bridge, bridgeParamss =>
           inContext(ctx.withOwner(bridge)) {
-            val List(bridgeParams) = bridgeParamss
+            val Vector(bridgeParams) = bridgeParamss
             assert(ctx.typer.isInstanceOf[Erasure.Typer])
             val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
             ctx.typer.adapt(rhs, bridgeType.resultType)
@@ -566,7 +566,7 @@ object Erasure {
         // We cannot simply drop erased classes, since then they would not generate classfiles
         // and would not be visible under separate compilation. So we transform them to
         // empty interfaces instead.
-        tpd.ClassDef(sym.asClass, DefDef(sym.primaryConstructor.asTerm), Nil)
+        tpd.ClassDef(sym.asClass, DefDef(sym.primaryConstructor.asTerm), Vector())
       else
         if sym.owner.isClass then sym.dropAfter(erasurePhase)
         tpd.EmptyTree
@@ -695,7 +695,7 @@ object Erasure {
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if erasedPre.isAnyRef then
-          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), qual :: Nil)
+          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), qual +: Vector())
         else if !(qual.tpe <:< erasedPre) then
           selectArrayMember(cast(qual, erasedPre), erasedPre)
         else
@@ -765,7 +765,7 @@ object Erasure {
     override def typedThis(tree: untpd.This)(using Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
-        report.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
+        report.log(i"computing outer path from ${ctx.owner.ownersIterator.toVector}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
         outer.path(toCls = tree.symbol)
       }
 
@@ -808,9 +808,9 @@ object Erasure {
             if isErased then
               checkPureErased(arg, isArgument = true,
                 isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
-              Nil
+              Vector()
             else
-              arg :: Nil
+              arg +: Vector()
         case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
@@ -819,15 +819,15 @@ object Erasure {
                 bunchArgs,  // whether arguments are bunched
                 outers) =   // the outer reference parameter(s)
             if fun1.isInstanceOf[Apply] then
-              (mt, fun1.removeAttachment(BunchedArgs).isDefined, Nil)
+              (mt, fun1.removeAttachment(BunchedArgs).isDefined, Vector())
             else
               val xmt = expandedMethodType(mt, origFun)
               (xmt, xmt ne mt, outer.args(origFun))
 
-          val args0 = outers ::: ownArgs
+          val args0 = outers ++ ownArgs
           val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
 
-          def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
+          def mkApply(finalFun: Tree, finalArgs: Vector[Tree]) =
             val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
               .withType(applyResultType(xmt, args1))
             if bunchArgs then app.withAttachment(BunchedArgs, ()) else app
@@ -835,12 +835,12 @@ object Erasure {
           def app(fun1: Tree): Tree = fun1 match
             case Block(stats, expr) =>
               cpy.Block(fun1)(stats, app(expr))
-            case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
-              mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
+            case Apply(fun2, SeqLiteral(prevArgs, argTpt) +: _) if bunchArgs =>
+              mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) +: Vector())
             case Apply(fun2, prevArgs) =>
               mkApply(fun2, prevArgs ++ args1)
             case _ if bunchArgs =>
-              mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
+              mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) +: Vector())
             case _ =>
               mkApply(fun1, args1)
 
@@ -903,7 +903,7 @@ object Erasure {
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
-            ::: ddef.paramss.collect {
+            ++ ddef.paramss.collect {
               case untpd.ValDefs(vparams) => vparams
             }.flatten.filterConserve(!_.symbol.is(Flags.Erased))
 
@@ -932,23 +932,23 @@ object Erasure {
             case (paramDef, idx) =>
               assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
           }
-          vparams = ValDef(bunchedParam) :: Nil
+          vparams = ValDef(bunchedParam) +: Vector()
           rhs1 = Block(paramDefs, rhs1)
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
-          paramss = vparams :: Nil,
+          paramss = vparams +: Vector(),
           tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)
     end typedDefDef
 
     /** The outer parameter definition of a constructor if it needs one */
-    private def outerParamDefs(constr: Symbol)(using Context): List[ValDef] =
+    private def outerParamDefs(constr: Symbol)(using Context): Vector[ValDef] =
       if constr.isConstructor && needsOuterParam(constr.owner.asClass) then
         constr.info match
-          case MethodTpe(outerName :: _, outerType :: _, _) =>
+          case MethodTpe(outerName +: _, outerType +: _, _) =>
             val outerSym = newSymbol(constr, outerName, Flags.Param | Flags.SyntheticArtifact, outerType)
-            ValDef(outerSym) :: Nil
+            ValDef(outerSym) +: Vector()
           case _ =>
             // There's a possible race condition that a constructor was looked at
             // after erasure before we had a chance to run ExplicitOuter on its class
@@ -962,7 +962,7 @@ object Erasure {
               info = outer.addParam(constr.owner.asClass, constr.info)
             ).installAfter(erasurePhase)
             outerParamDefs(constr)
-      else Nil
+      else Vector()
 
     /** For all statements in stats: given a retained inline method and
      *  its retainedBody method such as
@@ -981,7 +981,7 @@ object Erasure {
      *  `f$retainedBody` is subsequently mapped to the empty tree in `typedDefDef`
      *  which is then dropped in `typedStats`.
      */
-    private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =
+    private def addRetainedInlineBodies(stats: Vector[untpd.Tree])(using Context): Vector[untpd.Tree] =
       lazy val retainerDef: Map[Symbol, DefDef] = stats.collect {
         case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
@@ -1004,8 +1004,8 @@ object Erasure {
           val toParams = untpd.allParamSyms(stat)
           assert(fromParams.hasSameLengthAs(toParams))
           val mapBody = TreeTypeMap(
-            oldOwners = rdef.symbol :: Nil,
-            newOwners = stat.symbol :: Nil,
+            oldOwners = rdef.symbol +: Vector(),
+            newOwners = stat.symbol +: Vector(),
             substFrom = fromParams,
             substTo   = toParams)
           cpy.DefDef(stat)(rhs = mapBody.transform(rdef.rhs))
@@ -1035,13 +1035,13 @@ object Erasure {
 
       val newParents =
         if impl.parents.tail eq newTraits then impl.parents
-        else impl.parents.head :: newTraits
+        else impl.parents.head +: newTraits
       cpy.TypeDef(typedTree)(rhs = cpy.Template(impl)(parents = newParents))
 
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
 
-    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
+    override def typedStats(stats: Vector[untpd.Tree], exprOwner: Symbol)(using Context): (Vector[Tree], Context) = {
       // discard Imports first, since Bridges will use tree's symbol
       val stats0 = addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))(using preErasureCtx)
       val stats1 =

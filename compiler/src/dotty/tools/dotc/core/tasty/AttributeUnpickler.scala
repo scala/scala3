@@ -12,7 +12,7 @@ class AttributeUnpickler(reader: TastyReader, nameAtRef: NameTable):
 
   lazy val attributes: Attributes = {
     val booleanTags = BitSet.newBuilder
-    val stringTagValue = List.newBuilder[(Int, String)]
+    val stringTagValue = Vector.newBuilder[(Int, String)]
 
     var lastTag = -1
     while !isAtEnd do

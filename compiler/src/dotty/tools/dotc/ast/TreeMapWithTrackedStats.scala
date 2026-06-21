@@ -3,6 +3,7 @@ package ast
 
 import tpd.*
 import core.Contexts.*
+import core.Decorators.*
 import core.Symbols.*
 import util.Property
 
@@ -33,7 +34,7 @@ abstract class TreeMapWithTrackedStats extends TreeMapWithImplicits:
   end updateTracked
 
   /** Process a list of trees and give the priority to tracked trees */
-  private final def withUpdatedTrackedTrees(stats: List[Tree])(using Context) =
+  private final def withUpdatedTrackedTrees(stats: Vector[Tree])(using Context) =
     val trackedTrees = TreeMapWithTrackedStats.trackedTrees
     stats.mapConserve:
       case tree: MemberDef if trackedTrees.contains(tree.symbol) =>
@@ -72,6 +73,6 @@ object TreeMapWithTrackedStats:
     ctx.property(TrackedTrees).get
 
   /** Build a context and track the provided MemberDef trees */
-  private def trackedDefinitionsCtx(stats: List[Tree])(using Context): Context =
+  private def trackedDefinitionsCtx(stats: Vector[Tree])(using Context): Context =
     val treesToTrack = stats.collect { case m: MemberDef => (m.symbol, m) }
     ctx.fresh.setProperty(TrackedTrees, mutable.Map(treesToTrack*))

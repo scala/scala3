@@ -41,7 +41,7 @@ class SpecializeTuples extends MiniPhase:
         case AppliedType(tycon, args) if defn.isSpecializableTuple(tycon.classSymbol, args) =>
           val argIdx = if name == nme._1 then 0 else 1
           // Keep the specialized accessor for performance, then adapt back to the original expected type.
-          Select(qual, name.specializedName(args(argIdx) :: Nil)).ensureConforms(tree.tpe)
+          Select(qual, name.specializedName(args(argIdx) +: Vector())).ensureConforms(tree.tpe)
         case _ =>
           tree
     case _ => tree

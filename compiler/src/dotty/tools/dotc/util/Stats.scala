@@ -17,7 +17,7 @@ import collection.mutable
 
   var monitored: Boolean = false
 
-  @volatile private var stack: List[String] = Nil
+  @volatile private var stack: Vector[String] = Vector()
 
   val hits: mutable.Map[String, Int] = new mutable.HashMap[String, Int].withDefaultValue(0)
 
@@ -64,7 +64,7 @@ import collection.mutable
         if hits.nonEmpty then
           aggregate()
           println()
-          println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
+          println(hits.toVector.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
           hits.clear()
     else op
 }

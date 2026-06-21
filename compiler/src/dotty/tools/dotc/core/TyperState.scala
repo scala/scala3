@@ -309,9 +309,9 @@ class TyperState() {
         constraint = constraint.remove(tl)
 
   override def toString: String = {
-    def ids(state: TyperState): List[String] =
-      s"${state.id}${if (state.isCommittable) "" else "X"}" ::
-        (state.previous match { case null => Nil; case sp => ids(sp) })
+    def ids(state: TyperState): Vector[String] =
+      s"${state.id}${if (state.isCommittable) "" else "X"}" +:
+        (state.previous match { case null => Vector(); case sp => ids(sp) })
     s"TS[${ids(this).mkString(", ")}]"
   }
 

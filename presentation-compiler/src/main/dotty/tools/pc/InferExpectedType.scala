@@ -36,10 +36,10 @@ class InferExpectedType(
     driver.compilationUnits.get(uri) match
       case Some(unit) =>
         val path =
-          Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx)
+          Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx).toList
         val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
         val tpdPath =
-          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
+          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx).toList
         val indexedContext = IndexedContext(pos, tpdPath, newctx)
         val printer =
           ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
@@ -51,7 +51,7 @@ class InferExpectedType(
 object InferCompletionType:
   def inferType(path: List[Tree])(using Context): Option[Type] =
     path match
-      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), List(s: Select)) :: rest
+      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), Vector(s: Select)) :: rest
           if s.symbol == defn.Predef_undefined => inferType(rest, lit.span)
       case ident :: rest => inferType(rest, ident.span)
       case _ => None

@@ -43,9 +43,9 @@ trait CliCommand:
   def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState)(using Context): ArgsSummary =
 
     // expand out @filename to the contents of that filename
-    def expandedArguments = args.toList flatMap {
+    def expandedArguments = args.toVector flatMap {
       case x if x.startsWith("@") => CommandLineParser.expandArg(x)
-      case x                      => List(x)
+      case x                      => Vector(x)
     }
 
     sg.processArguments(expandedArguments, processAll = true, settingsState = ss)
@@ -63,23 +63,23 @@ trait CliCommand:
       val descr =
         if shortDescription then s.description.linesIterator.next()
         else s.description
-      val info = List(deprecationMessage, descr, if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices: ${s.legalChoices}" else "")
+      val info = Vector(deprecationMessage, descr, if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices: ${s.legalChoices}" else "")
       (s.name, info.filter(_.nonEmpty).mkString("\n"))
     end help
 
-    val ss = settings.allSettings.filter(p).toList.sortBy(_.name)
+    val ss = settings.allSettings.filter(p).toVector.sortBy(_.name)
     val formatter = Columnator("", "", maxField = 30)
     val fresh = ContextBase().initialCtx.fresh.setSettings(summon[SettingsState])
     var msg = ss.map(help)
     if showArgFileMsg then
       msg = msg :+ ("@<file>", "A text file containing compiler arguments (options and source files).")
-    formatter(List(msg))(using fresh)
+    formatter(Vector(msg))(using fresh)
   end availableOptionsMsg
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
   protected def createUsageMsg(label: String, shouldExplain: Boolean, cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
-    val prefix = List(
+    val prefix = Vector(
       Some(shortUsage),
       Some(explainAdvanced).filter(_ => shouldExplain),
       Some(label + " options include:")
@@ -99,7 +99,7 @@ trait CliCommand:
     s.name.startsWith("-Y") && s.name != "-Y"
   protected def isHelping(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     cond(s.value) {
-      case ss: List[?] if s.isMultivalue => ss.contains("help")
+      case ss: Vector[?] if s.isMultivalue => ss.contains("help")
       case s: String                     => "help" == s
     }
 
@@ -125,7 +125,7 @@ trait CliCommand:
    *  are already applied in context.
    *  @return  Either Some list of files passed as arguments or None if further processing should be interrupted.
    */
-  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using settings: ConcreteSettings)(using SettingsState, Context): Option[List[String]] =
+  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using settings: ConcreteSettings)(using SettingsState, Context): Option[Vector[String]] =
     // Print all warnings encountered during arguments parsing
     for warning <- summary.warnings; message = NoExplanation(warning) do
       report.configurationWarning(message)
@@ -154,9 +154,9 @@ trait CliCommand:
 
   // Formatting for -help and -Vphases in two columns, handling long field1 and wrapping long field2
   class Columnator(heading1: String, heading2: String, maxField: Int, separation: Int = 2):
-    def apply(texts: List[List[(String, String)]])(using Context): String = StringBuilder().tap(columnate(_, texts)).toString
+    def apply(texts: Vector[Vector[(String, String)]])(using Context): String = StringBuilder().tap(columnate(_, texts)).toString
 
-    private def columnate(sb: StringBuilder, texts: List[List[(String, String)]])(using Context): Unit =
+    private def columnate(sb: StringBuilder, texts: Vector[Vector[(String, String)]])(using Context): Unit =
       import Highlighting.*
       val colors = Seq(Green(_), Yellow(_), Magenta(_), Cyan(_), Red(_))
       val nocolor = texts.length == 1
@@ -168,13 +168,13 @@ trait CliCommand:
       val EOL = "\n"
       def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else text + EOL + "".padLeft(field1)
       def formatField2(text: String): String =
-        def loopOverField2(fld: String): List[String] =
-          if field2 == 0 || fld.length <= field2 then List(fld)
+        def loopOverField2(fld: String): Vector[String] =
+          if field2 == 0 || fld.length <= field2 then Vector(fld)
           else
             fld.lastIndexOf(" ", field2) match
-              case -1 => List(fld)
-              case i  => val (prefix, rest) = fld.splitAt(i) ; prefix :: loopOverField2(rest.trim)
-        text.split("\n").toList.flatMap(loopOverField2).filter(_.nonEmpty).mkString(EOL + "".padLeft(field1) + separator)
+              case -1 => Vector(fld)
+              case i  => val (prefix, rest) = fld.splitAt(i) ; prefix +: loopOverField2(rest.trim)
+        text.split("\n").toVector.flatMap(loopOverField2).filter(_.nonEmpty).mkString(EOL + "".padLeft(field1) + separator)
       end formatField2
       def format(first: String, second: String, index: Int, colorPicker: Int => String => Highlight) =
         sb.append(colorPicker(index)(formatField1(first)).show)
@@ -196,8 +196,8 @@ trait CliCommand:
 
       texts.zipWithIndex.foreach { (text, index) =>
         text match
-          case List(single) => emit(index)(single)
-          case Nil          =>
+          case Vector(single) => emit(index)(single)
+          case Vector()          =>
           case mega         => group(index)(i => mega.foreach(emit(i)))
       }
   end Columnator

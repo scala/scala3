@@ -29,7 +29,7 @@ class AnnotationsTest:
         val defn = ctx.definitions
         val cls = requiredClass("A")
         val annotCls = requiredClass("Annot")
-        val arrayOfString = defn.ArrayType.appliedTo(List(defn.StringType))
+        val arrayOfString = defn.ArrayType.appliedTo(Vector(defn.StringType))
 
         atPhase(erasurePhase.next) {
           // Even though we're forcing the annotation after erasure,
@@ -42,7 +42,7 @@ class AnnotationsTest:
           // If we run the type check after erasure, we will have
           // `Array[String] =:= Array[String]` being false.
           // The reason is that in `TypeComparer.compareAppliedType2` we have
-          // `tycon2.typeParams == Nil` after erasure, thus always get false.
+          // `tycon2.typeParams == Vector()` after erasure, thus always get false.
           val res = atPhase(typerPhase) { arrayOfString =:= arg.tpe }
 
           assert(arg.tpe.isInstanceOf[AppliedType] && res,
@@ -86,7 +86,7 @@ class AnnotationsTest:
       inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
         val cls = requiredClass("a.b.Baz")
         val annots = cls.annotations.map(_.tree)
-        assert(annots == Nil,
+        assert(annots == Vector(),
           s"class Baz should have no visible annotations since Outer.Value.Immutable is not on the classpath, but found: $annots")
         assert(!ctx.reporter.hasErrors && !ctx.reporter.hasWarnings,
           s"A missing annotation while parsing a Java class should be silently ignored but: ${ctx.reporter.summary}")
@@ -105,11 +105,11 @@ class AnnotationsTest:
         """|import java.lang.annotation.*;
            |@Inherited @Target({ElementType.FIELD}) @Retention(RetentionPolicy.RUNTIME)
            |public @interface Param { String[] value(); }""".stripMargin)
-      :: Nil
+      +: Vector()
     val scalaSources =
       """object Bar { inline transparent def bar() = Array("a", "b", "c") }"""
-      :: "@Param(Bar.bar()) class Foo"
-      :: Nil
+      +: "@Param(Bar.bar()) class Foo"
+      +: Vector()
     withJavaCompiled(javaSources*): javaOutputDir =>
       inCompilerContext(augmentedClassPath(javaOutputDir), scalaSources = scalaSources*):
         val cls = requiredClass("Foo")
@@ -122,7 +122,7 @@ class AnnotationsTest:
           def stripNamedArg = tpd.stripNamedArg(t)
           def stripInlined = tpd.stripInlined(t)
         annot.arguments(0).stripNamedArg.stripInlined match
-        case Apply(Apply(_, List(Typed(SeqLiteral(ks, _), _))), _) =>
+        case Apply(Apply(_, Vector(Typed(SeqLiteral(ks, _), _))), _) =>
           assert(ks.length == 3, i"$ks")
-          assert(ks.map(_.tpe).collect { case ConstantType(Constant(s: String)) => s } == List("a", "b", "c"))
+          assert(ks.map(_.tpe).collect { case ConstantType(Constant(s: String)) => s } == Vector("a", "b", "c"))
         case bad => assert(false, s"Bad arg $bad")

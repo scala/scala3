@@ -101,7 +101,7 @@ object SyntaxHighlighting {
           for (annotation <- tree.rawMods.annotations)
             highlightPosition(annotation.span, TypeColor)
 
-        def highlight(trees: List[Tree])(using Context): Unit =
+        def highlight(trees: Vector[Tree])(using Context): Unit =
           trees.foreach(traverse)
 
         def traverse(tree: Tree)(using Context): Unit = {

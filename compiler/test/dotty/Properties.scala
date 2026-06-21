@@ -31,7 +31,7 @@ object Properties {
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define
    */
-  val testsFilter: List[String] = sys.props.get("dotty.tests.filter").fold(Nil)(_.split(',').toList)
+  val testsFilter: Vector[String] = sys.props.get("dotty.tests.filter").fold(Vector())(_.split(',').toVector)
 
   /** Run only failed tests */
   val rerunFailed: Boolean = propIsTrue("dotty.tests.rerunFailed")

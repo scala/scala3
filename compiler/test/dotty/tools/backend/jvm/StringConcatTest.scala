@@ -50,22 +50,22 @@ class StringConcatTest extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(code) { dir =>
-      def instructions(meth: String): List[Instruction] = {
+      def instructions(meth: String): Vector[Instruction] = {
         val clsIn = dir.lookupName("C.class", directory = false).nn.input
         val clsNode = loadClassNode(clsIn)
         instructionsFromMethod(getMethod(clsNode, meth))
       }
 
-      def invokeNameDesc(m: String): List[String] = instructions(m) collect {
+      def invokeNameDesc(m: String): Vector[String] = instructions(m) collect {
         case Invoke(_, _, name, desc, _) => name + desc
       }
 
-      assertEquals(List(
+      assertEquals(Vector(
         "toString()Ljava/lang/String;"),
         invokeNameDesc("t1")
       )
 
-      assertEquals(List(
+      assertEquals(Vector(
         "toString()Ljava/lang/String;"),
         invokeNameDesc("t2")
       )

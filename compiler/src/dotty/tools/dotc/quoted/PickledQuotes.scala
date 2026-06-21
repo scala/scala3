@@ -28,8 +28,8 @@ object PickledQuotes {
   import tpd.*
 
   /** Pickle the tree of the quote into strings */
-  def pickleQuote(tree: Tree)(using Context): List[String] =
-    if (ctx.reporter.hasErrors) Nil
+  def pickleQuote(tree: Tree)(using Context): Vector[String] =
+    if (ctx.reporter.hasErrors) Vector()
     else {
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
       val pickled = pickle(tree)
@@ -82,18 +82,18 @@ object PickledQuotes {
     type ArgV2 = scala.quoted.Type[?] | scala.quoted.Expr[Any]
 
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
+  def unpickleTerm(pickled: String | Vector[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
     withMode(Mode.ReadPositions)(unpickle(pickled, isType = false)) match
-      case tree @ Inlined(call, Nil, expansion) =>
+      case tree @ Inlined(call, Vector(), expansion) =>
         val inlineCtx = inlineContext(tree)
         val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
         val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
-        cpy.Inlined(tree)(call, Nil, expansion2)
+        cpy.Inlined(tree)(call, Vector(), expansion2)
   }
 
 
   /** Unpickle the tree contained in the TastyType */
-  def unpickleTypeTree(pickled: String | List[String], typeHole: TypeHole)(using Context): Tree = {
+  def unpickleTypeTree(pickled: String | Vector[String], typeHole: TypeHole)(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
     spliceTypes(unpickled, typeHole)
   }
@@ -160,8 +160,8 @@ object PickledQuotes {
   private def spliceTypes(tree: Tree, typeHole: TypeHole)(using Context): Tree = {
     if typeHole.isEmpty then tree
     else tree match
-      case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
-        val typeSpliceMap = (stat :: rest).iterator.map {
+      case Block(stat +: rest, expr1) if stat.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
+        val typeSpliceMap = (stat +: rest).iterator.map {
           case tdef: TypeDef =>
             assert(tdef.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot))
             val tree = typeHole match
@@ -198,16 +198,16 @@ object PickledQuotes {
         tree
   }
 
-  def reifyTypeHoleArgs(args: List[Tree])(using Context): List[scala.quoted.Type[?]] =
+  def reifyTypeHoleArgs(args: Vector[Tree])(using Context): Vector[scala.quoted.Type[?]] =
     args.map(arg => new TypeImpl(arg, SpliceScope.getCurrent))
 
-  def reifyExprHoleV1Args(args: List[Tree])(using Context): List[ExprHole.ArgV1] =
+  def reifyExprHoleV1Args(args: Vector[Tree])(using Context): Vector[ExprHole.ArgV1] =
     args.map { arg =>
       if arg.isTerm then (q: Quotes) ?=> new ExprImpl(arg, SpliceScope.getCurrent)
       else new TypeImpl(arg, SpliceScope.getCurrent)
     }
 
-  def reifyExprHoleV2Args(args: List[Tree])(using Context): List[ExprHole.ArgV2] =
+  def reifyExprHoleV2Args(args: Vector[Tree])(using Context): Vector[ExprHole.ArgV2] =
     args.map { arg =>
       if arg.isTerm then new ExprImpl(arg, SpliceScope.getCurrent)
       else new TypeImpl(arg, SpliceScope.getCurrent)
@@ -220,12 +220,14 @@ object PickledQuotes {
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass, isBestEffortTasty = false)
     val treePkl = new TreePickler(pickler, Attributes.empty)
-    treePkl.pickle(tree :: Nil)
+    treePkl.pickle(tree +: Vector())
     treePkl.compactify()
     if tree.span.exists then
+      val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
       PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
-        ctx.compilationUnit.source, tree :: Nil)
+        ctx.compilationUnit.source, tree +: Vector(), positionWarnings)
+      positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()
     quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
@@ -233,14 +235,14 @@ object PickledQuotes {
   }
 
   /** Unpickle TASTY bytes into it's tree */
-  private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
+  private def unpickle(pickled: String | Vector[String], isType: Boolean)(using Context): Tree = {
     QuotesCache.getTree(pickled) match
       case Some(tree) =>
         quotePickling.println(s"**** Using cached quote for TASTY\n$tree")
         treeOwner(tree) match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
-            val treeCpy = TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            val treeCpy = TreeTypeMap(oldOwners = Vector(owner), newOwners = Vector(owner)).apply(tree)
             // Then replace the symbol owner with the one pointed by the quote context.
             treeCpy.changeNonLocalOwners(ctx.owner)
           case _ =>
@@ -249,7 +251,7 @@ object PickledQuotes {
       case _ =>
         val bytes = pickled match
           case pickled: String => TastyString.unpickle(pickled)
-          case pickled: List[String] => TastyString.unpickle(pickled)
+          case pickled: Vector[String] => TastyString.unpickle(pickled)
 
         val unpicklingContext =
           if ctx.owner.isClass then

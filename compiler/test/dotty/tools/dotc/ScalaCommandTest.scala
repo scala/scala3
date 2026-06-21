@@ -22,7 +22,7 @@ class ScalaCommandTest:
     val summary = ScalacCommand.distill(args, settings)()
     given SettingsState = summary.sstate
     assertEquals("path/to/classes1:other/path/to/classes2", settings.classpath.value)
-    assertEquals("files" :: Nil, summary.arguments)
+    assertEquals("files" +: Vector(), summary.arguments)
   }
 
   @Test def `Unfold @file`: Unit = inContext {
@@ -37,7 +37,7 @@ class ScalaCommandTest:
     given SettingsState = summary.sstate
     assertEquals("path/to/classes1:other/path/to/classes2", settings.classpath.value)
     assertEquals("myNewRoot", settings.sourceroot.value)
-    assertEquals("someMoreFiles" :: "someFiles" :: Nil, summary.arguments)
+    assertEquals("someMoreFiles" +: "someFiles" +: Vector(), summary.arguments)
   }
 
   private def inContext(f: Context ?=> Unit) = f(using (new ContextBase).initialCtx.fresh)

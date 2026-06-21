@@ -30,7 +30,7 @@ object test2:
   def withFile[T](io2: IO^)(op: (f: File^{io2}) => T): T =
     op(new File)
 
-  val io3: IO^ = IO()
+  val io3: IO^ = new IO
 
   def test() =
     withFile(io3): f => // error: separation failure

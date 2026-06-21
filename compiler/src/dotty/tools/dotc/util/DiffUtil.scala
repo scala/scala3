@@ -9,7 +9,7 @@ object DiffUtil {
 
   val ansiColorToken: Char = '\u001b'
 
-  @tailrec private def splitTokens(str: String, acc: List[String] = Nil): List[String] =
+  @tailrec private def splitTokens(str: String, acc: Vector[String] = Vector()): Vector[String] =
       if (str == "")
         acc.reverse
       else {
@@ -28,15 +28,15 @@ object DiffUtil {
               !Character.isAlphabetic(c) && !Character.isDigit(c) &&
                 !Character.isMirrored(c) && !Character.isWhitespace(c) && c != ansiColorToken
             }
-        splitTokens(rest, token :: acc)
+        splitTokens(rest, token +: acc)
       }
 
 
   /** @return a tuple of the (found, expected, changedPercentage) diffs as strings */
   def mkColoredTypeDiff(found: String, expected: String): (String, String, Double) = {
     var totalChange = 0
-    val foundTokens   = splitTokens(found, Nil).toArray
-    val expectedTokens = splitTokens(expected, Nil).toArray
+    val foundTokens   = splitTokens(found, Vector()).toArray
+    val expectedTokens = splitTokens(expected, Vector()).toArray
 
     val diffExp = hirschberg(foundTokens, expectedTokens)
     val diffAct = hirschberg(expectedTokens, foundTokens)
@@ -78,8 +78,8 @@ object DiffUtil {
 
   def mkColoredLineDiff(expected: String, actual: String, expectedSize: Int): String = {
     lazy val diff = {
-      val tokens = splitTokens(expected, Nil).toArray
-      val lastTokens = splitTokens(actual, Nil).toArray
+      val tokens = splitTokens(expected, Vector()).toArray
+      val lastTokens = splitTokens(actual, Vector()).toArray
       hirschberg(lastTokens, tokens)
     }
 
@@ -128,28 +128,28 @@ object DiffUtil {
     val deleteIndent = "-" ++ (" " * (indent - 1))
 
     if actual.isEmpty then
-      (expected.linesIterator.map(line => added(insertIndent + line)).toList :+ deleted("--- EMPTY OUTPUT ---"))
+      (expected.linesIterator.map(line => added(insertIndent + line)).toVector :+ deleted("--- EMPTY OUTPUT ---"))
         .map(ensureLineSeparator).mkString
     else if expected.isEmpty then
-      (added("--- NO VALUE EXPECTED ---") +: actual.linesIterator.map(line => deleted(deleteIndent + line)).toList)
+      (added("--- NO VALUE EXPECTED ---") +: actual.linesIterator.map(line => deleted(deleteIndent + line)).toVector)
         .map(ensureLineSeparator).mkString
     else
       lazy val diff = {
         val expectedTokens = expected.linesWithSeparators.toArray
         val actualTokens = actual.linesWithSeparators.toArray
         hirschberg(actualTokens, expectedTokens)
-      }.toList
+      }.toVector
 
       val transformedDiff = diff.flatMap {
-        case Modified(original, str) => Seq(
+        case Modified(original, str) => Vector(
           Inserted(ensureLineSeparator(original)), Deleted(ensureLineSeparator(str))
         )
-        case other => Seq(other)
+        case other => Vector(other)
       }
 
       val zipped = transformedDiff zip transformedDiff.drop(1)
 
-      val (acc, inserts, deletions) = zipped.foldLeft((Seq[Patch](), Seq[Inserted](), Seq[Deleted]())): (acc, patches) =>
+      val (acc, inserts, deletions) = zipped.foldLeft((Vector.empty[Patch], Vector.empty[Inserted], Vector.empty[Deleted])): (acc, patches) =>
         val (currAcc, inserts, deletions) = acc
         patches match
           case (currentPatch: Inserted, nextPatch: Deleted) =>
@@ -157,7 +157,7 @@ object DiffUtil {
           case (currentPatch: Deleted, nextPatch: Inserted) =>
             (currAcc, inserts, deletions :+ currentPatch)
           case (currentPatch, nextPatch) =>
-            (currAcc :++ inserts :++ deletions :+ currentPatch, Seq.empty, Seq.empty)
+            (currAcc :++ inserts :++ deletions :+ currentPatch, Vector.empty, Vector.empty)
 
       val stackedDiff = acc :++ inserts :++ deletions :+ diff.last
 
@@ -170,8 +170,8 @@ object DiffUtil {
   }
 
   def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {
-    val tokens = splitTokens(code, Nil).toArray
-    val lastTokens = splitTokens(lastCode, Nil).toArray
+    val tokens = splitTokens(code, Vector()).toArray
+    val lastTokens = splitTokens(lastCode, Vector()).toArray
 
     val diff = hirschberg(lastTokens, tokens)
 
@@ -271,7 +271,7 @@ object DiffUtil {
         score(i)(j) = mtch max insert max delete
       }
 
-    var alignment = List.empty[Patch]
+    var alignment = Vector.empty[Patch]
     var i = x.length
     var j = y.length
     while (i > 0 || j > 0)
@@ -279,16 +279,16 @@ object DiffUtil {
         val newHead =
           if (x(i - 1) == y(j - 1)) Unmodified(x(i - 1))
           else Modified(x(i - 1), y(j - 1))
-        alignment = newHead :: alignment
+        alignment = newHead +: alignment
         i = i - 1
         j = j - 1
       }
       else if (i > 0 && score(i)(j) == score(i - 1)(j) + d) {
-        alignment = Deleted(x(i - 1)) :: alignment
+        alignment = Deleted(x(i - 1)) +: alignment
         i = i - 1
       }
       else {
-        alignment = Inserted(y(j - 1)) :: alignment
+        alignment = Inserted(y(j - 1)) +: alignment
         j = j - 1
       }
     builder ++= alignment

@@ -25,7 +25,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     srLambdaDeserializeInternalName,
     "bootstrap",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
+      Vector(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false
@@ -35,7 +35,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     jliLambdaMetafactoryInternalName,
     "metafactory",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
+      Vector(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false
@@ -45,7 +45,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     jliLambdaMetafactoryInternalName,
     "altMetafactory",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
+      Vector(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false
@@ -55,7 +55,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     jliStringConcatFactoryInternalName,
     "makeConcatWithConstants",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
+      Vector(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false

@@ -46,7 +46,7 @@ object RefChecks {
     // shaved 95% off the time spent in this method.
 
     for {
-      defaultGetterClass <- List(clazz, clazz.companionModule.moduleClass);
+      defaultGetterClass <- Vector(clazz, clazz.companionModule.moduleClass);
       if defaultGetterClass.isClass
     }
     {
@@ -73,7 +73,7 @@ object RefChecks {
 
     // Check for doomed attempt to overload applyDynamic
     if clazz.derivesFrom(defn.DynamicClass) then
-      for case (_, m1 :: m2 :: _) <- clazz.info.member(nme.applyDynamic)
+      for case (_, m1 +: m2 +: _) <- clazz.info.member(nme.applyDynamic)
           .alternatives.groupBy(_.symbol.typeParams.length)
       do
         report.error("implementation restriction: applyDynamic cannot be overloaded except by methods with different numbers of type parameters, e.g. applyDynamic[T1](method: String)(arg: T1) and applyDynamic[T1, T2](method: String)(arg1: T1, arg2: T2)",
@@ -101,7 +101,7 @@ object RefChecks {
    *   - If self type of `cls` is explicit, check that it conforms to the self types
    *     of all its class symbols.
    */
-  def checkSelfAgainstParents(cls: ClassSymbol, parents: List[Symbol])(using Context): Unit =
+  def checkSelfAgainstParents(cls: ClassSymbol, parents: Vector[Symbol])(using Context): Unit =
     withMode(Mode.CheckBoundsOrSelfType) {
       val cinfo = cls.classInfo
 
@@ -123,7 +123,7 @@ object RefChecks {
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum` and no user-written class extends ContextFunctionN.
    */
-  def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
+  def checkParents(cls: Symbol, parentTrees: Vector[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       val psyms = cls.asClass.parentSyms
       checkSelfAgainstParents(cls.asClass, psyms)
@@ -215,8 +215,8 @@ object RefChecks {
     private def inLinearizationOrder(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
       val owner1 = sym1.owner
       val owner2 = sym2.owner
-      def precedesIn(bcs: List[ClassSymbol]): Boolean = (bcs: @unchecked) match
-        case bc :: bcs1 =>
+      def precedesIn(bcs: Vector[ClassSymbol]): Boolean = (bcs: @unchecked) match
+        case bc +: bcs1 =>
           if owner1 eq bc then true
           else if owner2 eq bc then false
           else precedesIn(bcs1)
@@ -355,26 +355,26 @@ object RefChecks {
      *  the class name; for enum-case anonymous classes the error is moved to
      *  the case definition(s) so the user sees it on `case Foo` rather than on
      *  the synthetic `$anon`. */
-    def classErrorPositions: List[util.SrcPos] =
-      if !isEnumAnonCls then clazzNamePos :: Nil
-      else if clazz.owner.isAllOf(EnumCase) then clazz.owner.srcPos :: Nil
+    def classErrorPositions: Vector[util.SrcPos] =
+      if !isEnumAnonCls then clazzNamePos +: Vector()
+      else if clazz.owner.isAllOf(EnumCase) then clazz.owner.srcPos +: Vector()
       else
         val e = clazz.parentSyms.head
         e.children.filter(_.info.typeSymbol == e).map(_.srcPos)
 
     def printMixinOverrideErrors(): Unit =
-      mixinOverrideErrors.toList match {
-        case Nil =>
-        case List(MixinOverrideError(_, msg)) =>
+      (mixinOverrideErrors.toVector: @unchecked) match {
+        case Vector() =>
+        case Vector(MixinOverrideError(_, msg)) =>
           report.error(msg, clazz.srcPos)
-        case MixinOverrideError(member, msg) :: others =>
+        case MixinOverrideError(member, msg) +: others =>
           val others1 = others.map(_.member).filter(_.name != member.name).distinct
           def othersMsg = {
             val others1 = others.map(_.member)
               .filter(_.name != member.name)
               .map(_.show).distinct
             if (others1.isEmpty) ""
-            else i";\nother members with override errors are:: $others1%, %"
+            else i";\nother members with override errors are: $others1%, %"
           }
           report.error(msg.append(othersMsg), clazz.srcPos)
       }
@@ -394,13 +394,13 @@ object RefChecks {
     /** Detect any param section where params in last position do not agree isRepeatedParam.
      */
     def incompatibleRepeatedParam(member: Symbol, other: Symbol): Boolean =
-      def loop(mParamInfoss: List[List[Type]], oParamInfoss: List[List[Type]]): Boolean =
-        mParamInfoss match
-          case Nil => false
-          case h :: t =>
-            oParamInfoss match
-              case Nil => false
-              case h2 :: t2 => h.nonEmpty && h2.nonEmpty && h.last.isRepeatedParam != h2.last.isRepeatedParam
+      def loop(mParamInfoss: Vector[Vector[Type]], oParamInfoss: Vector[Vector[Type]]): Boolean =
+        (mParamInfoss: @unchecked) match
+          case Vector() => false
+          case h +: t =>
+            (oParamInfoss: @unchecked) match
+              case Vector() => false
+              case h2 +: t2 => h.nonEmpty && h2.nonEmpty && h.last.isRepeatedParam != h2.last.isRepeatedParam
                             || loop(t, t2)
       member.is(Method, butNot = JavaDefined)
       && other.is(Method, butNot = JavaDefined)
@@ -683,7 +683,7 @@ object RefChecks {
           else s"$clazz needs to be abstract"
           ) + ", since"
 
-        if (abstractErrors.isEmpty) abstractErrors ++= List(prelude, msg)
+        if (abstractErrors.isEmpty) abstractErrors ++= Vector(prelude, msg)
         else abstractErrors += msg
       }
 
@@ -717,11 +717,11 @@ object RefChecks {
 
       /** Filter out symbols from `syms` that are overridden by a symbol appearing later in the list.
        *  Symbols that are not overridden are kept. */
-      def lastOverrides(syms: List[Symbol]): List[Symbol] =
+      def lastOverrides(syms: Vector[Symbol]): Vector[Symbol] =
         val deduplicated =
-          syms.foldLeft(List.empty[Symbol]):
+          syms.foldLeft(Vector.empty[Symbol]):
             case (acc, sym) if acc.exists(s => isOverridingPair(s, sym, clazz.thisType)) => acc
-            case (acc, sym) => sym :: acc
+            case (acc, sym) => sym +: acc
         deduplicated.reverse
 
       /** The term symbols in this class and its baseclasses that are
@@ -729,12 +729,12 @@ object RefChecks {
        *  a concrete member might have the same signature as an abstract
        *  member in a base class, yet might not override it.
        */
-      def missingTermSymbols: List[Symbol] =
+      def missingTermSymbols: Vector[Symbol] =
         val buf = new mutable.ListBuffer[Symbol]
-        for bc <- clazz.baseClasses; sym <- bc.info.decls.toList do
+        for bc <- clazz.baseClasses; sym <- bc.info.decls.toVector do
           if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym) then
             buf += sym
-        buf.toList
+        buf.toVector
 
       // 2. Check that only abstract classes have deferred members
       def checkNoAbstractMembers(): Unit = {
@@ -747,17 +747,17 @@ object RefChecks {
         def isDuplicateSetter(sym: Symbol): Boolean =
           sym.isSetter && {
             val field = sym.accessedFieldOrGetter
-            grouped.getOrElse(field.name, Nil).contains(field)
+            grouped.getOrElse(field.name, Vector()).contains(field)
           }
 
-        val missingMethods = grouped.toList flatMap {
+        val missingMethods = grouped.toVector flatMap {
           case (name, syms) =>
             lastOverrides(syms)
               .filterConserve(!isDuplicateSetter(_)) // Avoid reporting override error for both `x` and setter `x_=`
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
-        def stubImplementations: List[String] =
+        def stubImplementations: Vector[String] =
           missingMethods.sortBy(_.name.toString).map: sym =>
             sym.asSeenFrom(clazz.thisType).mapInfo(_.withCleanParamNames).showDcl + " = ???"
 
@@ -784,7 +784,7 @@ object RefChecks {
           // Give a specific error message for abstract vars based on why it fails:
           // It could be unimplemented, have only one accessor, or be uninitialized.
           if underlying.isMutableVarOrAccessor then
-            val isMultiple = grouped.getOrElse(underlying.name, Nil).size > 1
+            val isMultiple = grouped.getOrElse(underlying.name, Vector()).size > 1
 
             // If both getter and setter are missing, squelch the setter error.
             if (member.isSetter && isMultiple) ()
@@ -805,13 +805,13 @@ object RefChecks {
 
             matchingArity match {
               // So far so good: only one candidate method
-              case concrete :: Nil =>
+              case concrete +: Vector() =>
                 val mismatches =
                   abstractParams.zip(concrete.info.firstParamTypes)
                     .filterNot { case (x, y) => x =:= y }
                 mismatches match {
                   // Only one mismatched parameter: say something useful.
-                  case (pa, pc) :: Nil =>
+                  case (pa, pc) +: Vector() =>
                     val abstractSym = pa.typeSymbol
                     val concreteSym = pc.typeSymbol
                     def subclassMsg(c1: Symbol, c2: Symbol) =
@@ -843,7 +843,7 @@ object RefChecks {
                       else
                         s"\n(The class implements a member with a different type: ${showDclAndLocation(concrete.symbol)})")
                 }
-              case Nil =>
+              case Vector() =>
                 undefined("")
               case concretes =>
                 undefined(s"\n(The class implements members with different types: ${concretes.map(c => showDclAndLocation(c.symbol))}%\n  %)")
@@ -1056,7 +1056,7 @@ object RefChecks {
 
         val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz)
         nonMatching match {
-          case Nil =>
+          case Vector() =>
             report.error(OverridesNothing(member), member.srcPos)
           case ms =>
             report.error(OverridesNothingButNameExists(member, ms), member.srcPos)
@@ -1332,14 +1332,14 @@ object RefChecks {
           report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
         case _ => ()
 
-  private def createAddMissingMethodsAction(clazz: ClassSymbol, methods: List[String])(using Context): List[CodeAction] =
+  private def createAddMissingMethodsAction(clazz: ClassSymbol, methods: Vector[String])(using Context): Vector[CodeAction] =
     // Synthetic classes (e.g. anonymous classes generated by macros) may have
     // no corresponding node in the untyped AST. In that case there's nothing
     // to anchor a source-level patch to, so we don't offer the action.
     NavigateAST.untypedPath(clazz.span) match
-      case (untypedTree: untpd.Tree) :: _ =>
+      case (untypedTree: untpd.Tree) +: _ =>
         addMissingMethodsActionPatch(clazz, methods, untypedTree)
-      case _ => Nil
+      case _ => Vector()
 
   /** Code action that prepends the `abstract` modifier to the class declaration.
    *
@@ -1353,24 +1353,24 @@ object RefChecks {
    *  As with [[createAddMissingMethodsAction]], if the class has no node in
    *  the untyped AST (e.g. macro-generated) we skip silently.
    */
-  private def createMakeClassAbstractAction(clazz: ClassSymbol)(using Context): List[CodeAction] =
+  private def createMakeClassAbstractAction(clazz: ClassSymbol)(using Context): Vector[CodeAction] =
     import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 
     val ineligible =
       clazz.is(Module) || clazz.isAnonymousClass || clazz.is(Case) ||
         clazz.is(Final) || clazz.is(Synthetic)
-    if ineligible then Nil
+    if ineligible then Vector()
     else NavigateAST.untypedPath(clazz.span) match
-      case (untypedTree: untpd.Tree) :: _ =>
+      case (untypedTree: untpd.Tree) +: _ =>
         val insertPos = untypedTree.sourcePos.withSpan(Span(untypedTree.span.start))
         val patch = ActionPatch(insertPos, "abstract ")
-        List(CodeAction(s"Make `${clazz.name.show}` abstract", None, List(patch)))
-      case _ => Nil
+        Vector(CodeAction(s"Make `${clazz.name.show}` abstract", None, Vector(patch)))
+      case _ => Vector()
 
   private def addMissingMethodsActionPatch(
       clazz: ClassSymbol,
-      methods: List[String],
-      untypedTree: untpd.Tree)(using Context): List[CodeAction] = {
+      methods: Vector[String],
+      untypedTree: untpd.Tree)(using Context): Vector[CodeAction] = {
     import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 
     val classSrcPos = clazz.srcPos
@@ -1407,7 +1407,7 @@ object RefChecks {
         "\n"
 
       val patch = ActionPatch(insertBeforeBrace, patchText)
-      List(CodeAction("Add missing methods", None, List(patch)))
+      Vector(CodeAction("Add missing methods", None, Vector(patch)))
     } else if (isBracelessSyntax) {
       val insertAfterLastDef = untypedTree match
         case untpd.TypeDef(_, tmpl: untpd.Template) if tmpl.body.nonEmpty =>
@@ -1419,7 +1419,7 @@ object RefChecks {
       val patchText = "\n" + formattedMethods
 
       val patch = ActionPatch(insertAfterLastDef, patchText)
-      List(CodeAction("Add missing methods", None, List(patch)))
+      Vector(CodeAction("Add missing methods", None, Vector(patch)))
     } else {
       // Class has no body – add whole `{ ... }` after class header, same line
       val insertAfterHeader = untypedTree.sourcePos.withSpan(Span(untypedTree.span.end))
@@ -1430,7 +1430,7 @@ object RefChecks {
         "}"
 
       val patch = ActionPatch(insertAfterHeader, patchText)
-      List(CodeAction("Add missing methods", None, List(patch)))
+      Vector(CodeAction("Add missing methods", None, Vector(patch)))
     }
   }
 
@@ -1545,8 +1545,8 @@ class RefChecks extends MiniPhase { thisPhase =>
       def apply(tp: Type) = mapOver(tp).normalize
     }
 
-    def checkImplicitViewOptionApply(pos: Position, fn: Tree, args: List[Tree]): Unit = if (settings.lint) (fn, args) match {
-      case (tap@TypeApply(fun, targs), List(view: ApplyImplicitView)) if fun.symbol == currentRun.runDefinitions.Option_apply =>
+    def checkImplicitViewOptionApply(pos: Position, fn: Tree, args: Vector[Tree]): Unit = if (settings.lint) (fn, args) match {
+      case (tap@TypeApply(fun, targs), Vector(view: ApplyImplicitView)) if fun.symbol == currentRun.runDefinitions.Option_apply =>
         unit.warning(pos, s"Suspicious application of an implicit view (${view.fun}) in the argument to Option.apply.") // SI-6567
       case _ =>
     }
@@ -1569,8 +1569,8 @@ class RefChecks extends MiniPhase { thisPhase =>
       }
       val actual   = underlyingClass(other.tpe)
       val receiver = underlyingClass(qual.tpe)
-      def onTrees[T](f: List[Tree] => T) = f(List(qual, other))
-      def onSyms[T](f: List[Symbol] => T) = f(List(receiver, actual))
+      def onTrees[T](f: Vector[Tree] => T) = f(Vector(qual, other))
+      def onSyms[T](f: Vector[Symbol] => T) = f(Vector(receiver, actual))
 
       // @MAT normalize for consistency in error message, otherwise only part is normalized due to use of `typeSymbol`
       def typesString = normalizeAll(qual.tpe.widen)+" and " + normalizeAll(other.tpe.widen)
@@ -1685,7 +1685,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       else if (isWarnable && nullCount == 0 && !(isSpecial(receiver) && isSpecial(actual))) {
         // better to have lubbed and lost
         def warnIfLubless(): Unit = {
-          val common = global.lub(List(actual.tpe, receiver.tpe))
+          val common = global.lub(Vector(actual.tpe, receiver.tpe))
           if (ObjectTpe <:< common)
             unrelatedTypes()
         }
@@ -1712,7 +1712,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       }
     }
     /** Sensibility check examines flavors of equals. */
-    def checkSensible(pos: Position, fn: Tree, args: List[Tree]) = fn match {
+    def checkSensible(pos: Position, fn: Tree, args: Vector[Tree]) = fn match {
       case Select(qual, name @ (nme.EQ | nme.NE | nme.eq | nme.ne)) if args.length == 1 && isObjectOrAnyComparisonMethod(fn.symbol) =>
         checkSensibleEquals(pos, qual, name, fn.symbol, args.head)
       case _ =>
@@ -1728,9 +1728,9 @@ class RefChecks extends MiniPhase { thisPhase =>
   )
 
   def overridesTypeInPrefix(tp1: Type, tp2: Type, prefix: Type): Boolean = (tp1.dealiasWiden, tp2.dealiasWiden) match {
-    case (MethodType(List(), rtp1), NullaryMethodType(rtp2)) =>
+    case (MethodType(Vector(), rtp1), NullaryMethodType(rtp2)) =>
       rtp1 <:< rtp2
-    case (NullaryMethodType(rtp1), MethodType(List(), rtp2)) =>
+    case (NullaryMethodType(rtp1), MethodType(Vector(), rtp2)) =>
       rtp1 <:< rtp2
     case (TypeRef(_, sym, _),  _) if sym.isModuleClass =>
       overridesTypeInPrefix(NullaryMethodType(tp1), tp2, prefix)
@@ -1765,7 +1765,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     private def checkTypeRefBounds(tp: Type, tree: Tree) = {
       var skipBounds = false
       tp match {
-        case AnnotatedType(ann :: Nil, underlying) if ann.symbol == UncheckedBoundsClass =>
+        case AnnotatedType(ann +: Vector(), underlying) if ann.symbol == UncheckedBoundsClass =>
           skipBounds = true
           underlying
         case TypeRef(pre, sym, args) =>
@@ -1777,14 +1777,14 @@ class RefChecks extends MiniPhase { thisPhase =>
       }
     }
 
-    private def checkAnnotations(tpes: List[Type], tree: Tree) = tpes foreach { tp =>
+    private def checkAnnotations(tpes: Vector[Type], tree: Tree) = tpes foreach { tp =>
       checkTypeRef(tp, tree, skipBounds = false)
       checkTypeRefBounds(tp, tree)
     }
     private def doTypeTraversal(tree: Tree)(f: Type => Unit) = if (!inPattern) tree.tpe foreach f
 
     private def applyRefchecksToAnnotations(tree: Tree)(using Context): Unit = {
-      def applyChecks(annots: List[Annotation]) = {
+      def applyChecks(annots: Vector[Annotation]) = {
         checkAnnotations(annots map (_.atp), tree)
         transformTrees(annots flatMap (_.args))
       }
@@ -1855,9 +1855,9 @@ class RefChecks extends MiniPhase { thisPhase =>
     private def transformApply(tree: Apply): Tree = tree match {
       case Apply(
         Select(qual, nme.filter | nme.withFilter),
-        List(Function(
-          List(ValDef(_, pname, tpt, _)),
-          Match(_, CaseDef(pat1, _, _) :: _))))
+        Vector(Function(
+          Vector(ValDef(_, pname, tpt, _)),
+          Match(_, CaseDef(pat1, _, _) +: _))))
         if ((pname startsWith nme.CHECK_IF_REFUTABLE_STRING) &&
             isIrrefutable(pat1, tpt.tpe) && (qual.tpe <:< tree.tpe)) =>
 
@@ -1962,16 +1962,16 @@ class RefChecks extends MiniPhase { thisPhase =>
       && (otherSym isLessAccessibleThan memberSym)
       && (otherSym isLessAccessibleThan memberSym.enclClass)
     )
-    private def lessAccessibleSymsInType(other: Type, memberSym: Symbol): List[Symbol] = {
+    private def lessAccessibleSymsInType(other: Type, memberSym: Symbol): Vector[Symbol] = {
       val extras = other match {
         case TypeRef(pre, _, args) =>
           // checking the prefix here gives us spurious errors on e.g. a private[process]
           // object which contains a type alias, which normalizes to a visible type.
           args filterNot (_ eq NoPrefix) flatMap (tp => lessAccessibleSymsInType(tp, memberSym))
         case _ =>
-          Nil
+          Vector()
       }
-      if (lessAccessible(other.typeSymbol, memberSym)) other.typeSymbol :: extras
+      if (lessAccessible(other.typeSymbol, memberSym)) other.typeSymbol +: extras
       else extras
     }
     private def warnLessAccessible(otherSym: Symbol, memberSym: Symbol) {
@@ -2016,7 +2016,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
     private def checkByNameRightAssociativeDef(tree: DefDef) {
       tree match {
-        case DefDef(_, name, _, params :: _, _, _) =>
+        case DefDef(_, name, _, params +: _, _, _) =>
           if (settings.lint && name.decodedName.isRightAssocOperatorName && params.exists(p => isByName(p.symbol)))
             unit.warning(tree.pos,
               "by-name parameters will be evaluated eagerly when called as a right-associative infix operator. For more details, see SI-1980.")
@@ -2127,9 +2127,9 @@ class RefChecks extends MiniPhase { thisPhase =>
               //         that we are in the user-supplied code in the case body.
               //
               //         Relies on the translation of:
-              //            (null: Any) match { case x: List[?] => x; x.reverse; case _ => }'
+              //            (null: Any) match { case x: Vector[?] => x; x.reverse; case _ => }'
               //         to:
-              //            <synthetic> val x2: List[?] = (x1.asInstanceOf[List[?]]: List[?]);
+              //            <synthetic> val x2: Vector[?] = (x1.asInstanceOf[Vector[?]]: Vector[?]);
               //                  matchEnd4({ x2; x2.reverse}) // case body is an argument to a label apply.
               inPattern = false
               super.transform(result)

@@ -36,7 +36,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
       var idx = -1
       val argss = receiver.tpe.widenDealias.paramInfoss.map(_.map { param =>
         idx += 1
-        argsApply.appliedToTermArgs(List(Literal(Constant(idx)))).cast(param)
+        argsApply.appliedToTermArgs(Vector(Literal(Constant(idx)))).cast(param)
       })
       ref(receiver.symbol).appliedToArgss(argss).cast(defn.ObjectType)
     }
@@ -51,13 +51,13 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
            ddef.symbol.allOverriddenSymbols.exists(sym => defn.isXXLFunctionClass(sym.owner))
       }
       yield {
-        val xsType = defn.ArrayType.appliedTo(List(defn.ObjectType))
-        val methType = MethodType(List(nme.args))(_ => List(xsType), _ => defn.ObjectType)
+        val xsType = defn.ArrayType.appliedTo(Vector(defn.ObjectType))
+        val methType = MethodType(Vector(nme.args))(_ => Vector(xsType), _ => defn.ObjectType)
         val meth = newSymbol(ddef.symbol.owner, nme.apply, Synthetic | Method, methType)
         DefDef(meth, paramss => forwarderRhs(ddef, paramss.head.head))
       }
 
-    cpy.Template(impl)(body = forwarders ::: impl.body)
+    cpy.Template(impl)(body = forwarders ++ impl.body)
   }
 }
 

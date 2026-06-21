@@ -148,11 +148,11 @@ x = LinkedHashMap(Linked -> 1, Hash -> 2, Map -> 3)
 y = LinkedHashMap(Linked -> 1, Hash -> 2, Map -> 3)
 x equals y: true, y equals x: true
 
-x = List((Linked,1), (Hash,2), (Map,3))
-y = List((Linked,1), (Hash,2), (Map,3))
+x = Vector((Linked,1), (Hash,2), (Map,3))
+y = Vector((Linked,1), (Hash,2), (Map,3))
 x equals y: true, y equals x: true
 
-x = List((Linked,1), (Hash,2), (Map,3))
+x = Vector((Linked,1), (Hash,2), (Map,3))
 y = List((Linked,1), (Hash,2), (Map,3))
 x equals y: true, y equals x: true
 
@@ -160,11 +160,11 @@ x = LinkedHashSet(layers, buffers, title)
 y = LinkedHashSet(layers, buffers, title)
 x equals y: true, y equals x: true
 
-x = List(layers, buffers, title)
-y = List(layers, buffers, title)
+x = Vector(layers, buffers, title)
+y = Vector(layers, buffers, title)
 x equals y: true, y equals x: true
 
-x = List(layers, buffers, title)
+x = Vector(layers, buffers, title)
 y = List(layers, buffers, title)
 x equals y: true, y equals x: true
 

@@ -27,7 +27,7 @@ class CheckNoSuperThis extends MiniPhase:
     if mdef.symbol.isClassConstructor then
       mdef.rhs match
         case Block(stats, _) => splitAtSuper(stats) match
-          case (Apply(_, superArgs) :: _, _) =>
+          case (Apply(_, superArgs) +: _, _) =>
             val cls = mdef.symbol.owner
             def fail(t: Tree) =
               report.error(em"super constructor cannot be passed a self reference $t unless parameter is declared by-name", t.srcPos)

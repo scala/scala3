@@ -210,7 +210,7 @@ case class ScalaPresentationCompiler(
       new CompletionProvider(
         search,
         driver,
-        () => InteractiveDriver(driverSettings, driver.logicalRootPackage),
+        () => InteractiveDriver(driverSettings.toVector, driver.logicalRootPackage),
         params,
         config,
         buildTargetIdentifier,

@@ -23,7 +23,7 @@ class YCheckPositions extends Phase {
     tree match {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
         val checker = new TreeTraverser {
-          private var sources: List[SourceFile] = ctx.source :: Nil
+          private var sources: Vector[SourceFile] = ctx.source +: Vector()
           def traverse(tree: tpd.Tree)(using Context): Unit = {
 
             // Check current context is correct
@@ -46,7 +46,7 @@ class YCheckPositions extends Phase {
                   sources = old
                 case tree @ Inlined(call, bindings, expansion) =>
                   // bindings.foreach(traverse(_)) // TODO check inline proxies (see tests/tun/lst)
-                  sources = call.symbol.topLevelClass.source :: sources
+                  sources = call.symbol.topLevelClass.source +: sources
                   if !isMacro(call) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
                     && !isBootstrappedPredefWithPatchedMethods(call) // FIXME The patched symbol has a different source as the definition of Predef. Solution: define them directly in `Predef`s TASTy and do not patch (see #19231).
                   then

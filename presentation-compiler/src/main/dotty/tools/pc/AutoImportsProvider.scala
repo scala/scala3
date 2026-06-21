@@ -43,7 +43,7 @@ final class AutoImportsProvider(
 
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     val path =
-      Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
+      Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx).toList
     val indexedContext = IndexedContext(pos, path, newctx)
     import indexedContext.ctx
 
@@ -92,7 +92,7 @@ final class AutoImportsProvider(
                 correctedPos,
                 text,
                 tree,
-                unit.comments,
+                unit.comments.toList,
                 indexedContext,
                 config
               )

@@ -40,7 +40,7 @@ class TastyBootstrapTests {
     dotty.tools.io.Directory(new java.io.File(defaultOutputDir, "tastyBootstrap").getAbsolutePath).deleteRecursively()
 
     val opt = TestFlags(
-      List(
+      Vector(
         // compile with bootstrapped library on cp:
         Paths.get(defaultOutputDir.getAbsolutePath, libGroup.name, "lib").toString,
         // and bootstrapped tasty-core:
@@ -54,7 +54,7 @@ class TastyBootstrapTests {
       Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")
     )
 
-    val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
+    val libraryDirs = Vector(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
     val librarySources = libraryDirs.flatMap(sources(_))
 
     val lib =
@@ -69,13 +69,13 @@ class TastyBootstrapTests {
     val compilerSources = sources(Paths.get("compiler/src")) ++ sources(Paths.get("compiler/src-bootstrapped"))
     val compilerManagedSources = Properties.dottyCompilerManagedSources match
       case p if Files.isDirectory(p) => sources(p)
-      case _                         => Nil
+      case _                         => Vector()
 
     val dotty1 = compileList("dotty1", compilerSources ++ compilerManagedSources, opt)(using dotty1Group)
     val dotty2 = compileList("dotty2", compilerSources ++ compilerManagedSources, opt)(using dotty2Group)
 
     val tests = {
-      lib.keepOutput :: tastyCore.keepOutput :: dotty1.keepOutput :: aggregateTests(
+      lib.keepOutput +: tastyCore.keepOutput +: dotty1.keepOutput +: aggregateTests(
         dotty2,
         compileShallowFilesInDir("compiler/src/dotty/tools", opt),
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc", opt),
@@ -91,7 +91,7 @@ class TastyBootstrapTests {
         compileShallowFilesInDir("compiler/src/dotty/tools/backend", opt),
         compileShallowFilesInDir("compiler/src/dotty/tools/backend/jvm", opt),
         compileList("managed-sources", compilerManagedSources, opt)
-      ).keepOutput :: Nil
+      ).keepOutput +: Vector()
     }.map(_.checkCompile())
 
     def assertExists(path: String) = assertTrue(Files.exists(Paths.get(path)))
@@ -99,7 +99,7 @@ class TastyBootstrapTests {
     assertExists(s"out/$tastyCoreGroup/tastyCore/")
     assertExists(s"out/$dotty1Group/dotty1/")
     assertExists(s"out/$dotty2Group/dotty2/")
-    compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
+    compileList("idempotency", Vector("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
   }

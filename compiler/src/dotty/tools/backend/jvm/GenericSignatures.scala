@@ -74,7 +74,7 @@ object GenericSignatures {
       }
     }
 
-    def superSig(cls: Symbol, parents: List[Type]): Unit = {
+    def superSig(cls: Symbol, parents: Vector[Type]): Unit = {
       def isInterfaceOrTrait(sym: Symbol) = sym.is(PureInterface) || sym.is(Trait)
 
       val minParents = minimizeParents(cls, parents)
@@ -104,9 +104,10 @@ object GenericSignatures {
      *
      *        Which should emit a signature `S <: A`. See the handling
      *        of `AndType` in `jsig` which already supports `def foo(x: A & Object)`.
-     */
-    def boundsSig(bounds: List[Type]): Unit = {
-      val (repr :: _, others) = splitIntersection(bounds): @unchecked
+    */
+    def boundsSig(bounds: Vector[Type]): Unit = {
+      val (reprs, others) = splitIntersection(bounds)
+      val repr = reprs.head
       builder.append(':')
 
       // In Java, intersections always erase to their first member, so put
@@ -194,7 +195,7 @@ object GenericSignatures {
         jsig(finalType)
     }
 
-    def classSig(sym: ClassSymbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+    def classSig(sym: ClassSymbol, pre: Type = NoType, args: Vector[Type] = Vector()): Unit = {
       def argSig(tp: Type): Unit =
         tp.dealias match {
           case bounds: TypeBounds =>
@@ -327,7 +328,7 @@ object GenericSignatures {
                 else builder.append(defn.typeTag(sym.info))
               else if defn.isSyntheticFunctionClass(sym) then
                 defn.functionTypeErasure(sym).classSymbol match
-                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Nil else args)
+                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Vector() else args)
                   case NoSymbol => throw new AssertionError(s"No class symbol for erased function type $sym")
               else sym match
                 case classSym: ClassSymbol if classSym.isDerivedValueClass && vcBoxing == ValueClassBoxing.Unbox =>
@@ -452,9 +453,9 @@ object GenericSignatures {
     leaves
   }
 
-  private def hiBounds(bounds: TypeBounds)(using Context): List[Type] = bounds.hi.widenDealias match {
-    case AndType(tp1, tp2) => hiBounds(tp1.bounds) ::: hiBounds(tp2.bounds)
-    case tp => tp :: Nil
+  private def hiBounds(bounds: TypeBounds)(using Context): Vector[Type] = bounds.hi.widenDealias match {
+    case AndType(tp1, tp2) => hiBounds(tp1.bounds) ++ hiBounds(tp2.bounds)
+    case tp => tp +: Vector()
   }
 
 
@@ -508,13 +509,13 @@ object GenericSignatures {
         case _ => ResolvedAppliedType.NotResolved
 
     @tailrec
-    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
+    def unapply(tp: Type)(using Context): Option[(Symbol, Type, Vector[Type])] = tp match
       case TypeRef(pre, _) if !tp.typeSymbol.isAliasType =>
-        Some((tp.typeSymbol, pre, Nil))
+        Some((tp.typeSymbol, pre, Vector()))
       case TypeParamRef(_, _) =>
-        Some((tp.typeSymbol, tp, Nil))
+        Some((tp.typeSymbol, tp, Vector()))
       case TermParamRef(_, _) =>
-        Some((tp.termSymbol, tp, Nil))
+        Some((tp.termSymbol, tp, Vector()))
       case a @ AppliedType(pre, args) =>
         resolveAppliedType(a) match
           case ResolvedAppliedType.Resolved(resolved) => unapply(resolved)

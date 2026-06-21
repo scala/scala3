@@ -41,28 +41,28 @@ abstract class Constraint extends Showable {
   def isLess(param1: TypeParamRef, param2: TypeParamRef): Boolean
 
   /** The parameters that are known to be smaller wrt <: than `param` */
-  def lower(param: TypeParamRef): List[TypeParamRef]
+  def lower(param: TypeParamRef): Vector[TypeParamRef]
 
   /** The parameters that are known to be greater wrt <: than `param` */
-  def upper(param: TypeParamRef): List[TypeParamRef]
+  def upper(param: TypeParamRef): Vector[TypeParamRef]
 
   /** The lower dominator set.
    *
    * This is like `lower`, except that each parameter returned is no smaller than every other returned parameter.
    */
-  def minLower(param: TypeParamRef): List[TypeParamRef]
+  def minLower(param: TypeParamRef): Vector[TypeParamRef]
 
   /** The upper dominator set.
    *
    * This is like `upper`, except that each parameter returned is no greater than every other returned parameter.
    */
-  def minUpper(param: TypeParamRef): List[TypeParamRef]
+  def minUpper(param: TypeParamRef): Vector[TypeParamRef]
 
   /** lower(param) \ lower(butNot) */
-  def exclusiveLower(param: TypeParamRef, butNot: TypeParamRef): List[TypeParamRef]
+  def exclusiveLower(param: TypeParamRef, butNot: TypeParamRef): Vector[TypeParamRef]
 
   /** upper(param) \ upper(butNot) */
-  def exclusiveUpper(param: TypeParamRef, butNot: TypeParamRef): List[TypeParamRef]
+  def exclusiveUpper(param: TypeParamRef, butNot: TypeParamRef): Vector[TypeParamRef]
 
   /** The constraint bounds for given type parameter `param`.
    *  Poly params that are known to be smaller or greater than `param`
@@ -77,11 +77,11 @@ abstract class Constraint extends Showable {
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
    *  @param tvars   A list of type variables associated with the params,
-   *                 or Nil if the constraint will just be checked for
+   *                 or Vector() if the constraint will just be checked for
    *                 satisfiability but will solved to give instances of
    *                 type variables.
    */
-  def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This
+  def add(poly: TypeLambda, tvars: Vector[TypeVar])(using Context): This
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
@@ -154,10 +154,10 @@ abstract class Constraint extends Showable {
   def ensureFresh(tl: TypeLambda)(using Context): TypeLambda
 
   /** The type lambdas constrained by this constraint */
-  def domainLambdas: List[TypeLambda]
+  def domainLambdas: Vector[TypeLambda]
 
   /** The type lambda parameters constrained by this constraint */
-  def domainParams: List[TypeParamRef]
+  def domainParams: Vector[TypeParamRef]
 
   /** Check whether predicate holds for all parameters in constraint */
   def forallParams(p: TypeParamRef => Boolean): Boolean

@@ -180,7 +180,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       case Try(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
-      val caseHandlers: List[EHClause] =
+      val caseHandlers: Vector[EHClause] =
         for (CaseDef(pat, _, caseBody) <- catches) yield {
           pat match {
             case Typed(Ident(nme.WILDCARD), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)
@@ -419,8 +419,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
     /* if no more pending cleanups, all that remains to do is return. Otherwise, jump to the next (outer) pending cleanup. */
     private def pendingCleanups(): Unit = {
-      cleanups match {
-        case Nil =>
+      (cleanups: @unchecked) match {
+        case Vector() =>
           if (earlyReturnVar != null) {
             locals.load(earlyReturnVar.nn)
             bc.emitRETURN(locals(earlyReturnVar.nn).tk)
@@ -429,7 +429,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
           }
           shouldEmitCleanup = false
 
-        case nextCleanup :: _ =>
+        case nextCleanup +: _ =>
           bc.goTo(nextCleanup)
       }
     }

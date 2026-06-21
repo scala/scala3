@@ -119,7 +119,7 @@ abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessage
 extends SyntaxMsg(errNo) {
   def explain(using Context) = {
     val tryString = tryBody match {
-      case Block(Nil, untpd.EmptyTree) => "{}"
+      case Block(Vector(), untpd.EmptyTree) => "{}"
       case _ => tryBody.show
     }
 
@@ -260,7 +260,7 @@ extends NamingMsg(DuplicateBindID) {
       case guard => s"if ${guard.show}"
 
     val body = tree.body match {
-      case Block(Nil, untpd.EmptyTree) => ""
+      case Block(Vector(), untpd.EmptyTree) => ""
       case body => s" ${body.show}"
     }
 
@@ -306,7 +306,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], val notes: List[Note] = Nil)(using Context)
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], val notes: Vector[Note] = Vector())(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID) {
 
   private val shouldSuggestNN =
@@ -382,16 +382,16 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
             content + ".nn"
           case _ @ (Select(_, _) | Ident(_)) => content + ".nn"
           case _ => "(" + content + ").nn"
-        List(
+        Vector(
           CodeAction(title = """Add .nn""",
             description = None,
-            patches = List(
+            patches = Vector(
               ActionPatch(tree.srcPos.sourcePos, replacement)
             )
           )
         )
       case _ =>
-        List()
+        Vector()
     }
 }
 
@@ -575,10 +575,10 @@ extends SyntaxMsg(RepeatedModifierID) {
   }
 
   override def actions(using Context) =
-    List(
+    Vector(
       CodeAction(title = s"""Remove repeated modifier: "$modifier"""",
         description = None,
-        patches = List(
+        patches = Vector(
           ActionPatch(SourcePosition(source, span), "")
         )
       )
@@ -775,7 +775,7 @@ extends SyntaxMsg(ByNameParameterNotSupportedID) {
         |"""
 }
 
-class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(using Context)
+class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Vector[ParamInfo], actual: Vector[untpd.Tree])(using Context)
 extends SyntaxMsg(WrongNumberOfTypeArgsID) {
 
   private val expectedCount = expectedArgs.length
@@ -930,14 +930,14 @@ extends Message(PatternMatchExhaustivityID) {
       .map(_.startPos.startColumn)
       .getOrElse(tree.selector.startPos.startColumn + 2)
 
-    val pathes = List(
+    val pathes = Vector(
       ActionPatch(
         srcPos = endPos,
         replacement = casesWithoutColor.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
     )
-    List(
+    Vector(
       CodeAction(title = s"Insert missing cases (${casesWithoutColor.size})",
         description = None,
         patches = pathes
@@ -1182,7 +1182,7 @@ extends DeclarationMsg(OverridesNothingID) {
         |"""
 }
 
-class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(using Context)
+class OverridesNothingButNameExists(member: Symbol, existing: Vector[Denotations.SingleDenotation])(using Context)
 extends DeclarationMsg(OverridesNothingButNameExistsID) {
   def msg(using Context) =
     val what =
@@ -1208,7 +1208,7 @@ class OverrideError(
     member: Symbol, other: Symbol,
     memberTp: Type, otherTp: Type)(using Context)
 extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
-  withDisambiguation(Disambiguation.AllExcept(List(member.name.toString)))
+  withDisambiguation(Disambiguation.AllExcept(Vector(member.name.toString)))
   def msg(using Context) =
     val isConcreteOverAbstract =
       other.owner.isSubClass(member.owner) && other.is(Deferred) && !member.is(Deferred)
@@ -1538,7 +1538,7 @@ extends TypeMsg(MethodDoesNotTakeParametersId) {
 
 }
 
-class AmbiguousOverload(tree: tpd.Tree, val alternatives: List[SingleDenotation], pt: Type, addendum: String = "")(
+class AmbiguousOverload(tree: tpd.Tree, val alternatives: Vector[SingleDenotation], pt: Type, addendum: String = "")(
   implicit ctx: Context)
 extends ReferenceMsg(AmbiguousOverloadID), NoDisambiguation {
   private def all = if (alternatives.length == 2) "both" else "all"
@@ -1584,7 +1584,7 @@ class ReassignmentToVal(name: Name, pt: Type)(using Context)
          |Reassigment is only permitted if the variable is declared with `var`."""
 }
 
-class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
+class TypeDoesNotTakeParameters(tpe: Type, params: Vector[untpd.Tree])(using Context)
   extends TypeMsg(TypeDoesNotTakeParametersID) {
   private def fboundsAddendum(using Context) =
     if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
@@ -2015,7 +2015,7 @@ class TailrecNestedCall(definition: Symbol, innerDef: Symbol)(using Context)
       |""".stripMargin
 }
 
-class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
+class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: Vector[Symbol], classRoot: Symbol)(using Context)
   extends Message(FailureToEliminateExistentialID) {
   def kind = MessageKind.Compatibility
   def msg(using Context) =
@@ -2043,10 +2043,10 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(us
 
   override def actions(using Context) =
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
-    List(
+    Vector(
       CodeAction(title = "Rewrite to function value",
         description = None,
-        patches = List(
+        patches = Vector(
           ActionPatch(SourcePosition(tree.source, Span(tree.span.start)), "(() => "),
           ActionPatch(SourcePosition(tree.source, Span(qual.span.end, tree.span.end)), ")")
         )
@@ -2071,10 +2071,10 @@ class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
   }
 
   override def actions(using Context) =
-    List(
+    Vector(
       CodeAction(title = "Insert ()",
         description = None,
-        patches = List(
+        patches = Vector(
           ActionPatch(SourcePosition(tree.source, tree.span.endPos), "()"),
         )
       )
@@ -2087,7 +2087,7 @@ class DuplicateNamedTypeParameter(name: Name)(using Context)
   def explain(using Context) = ""
 }
 
-class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(using Context)
+class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: Vector[Name])(using Context)
   extends SyntaxMsg(UndefinedNamedTypeParameterID) {
   def msg(using Context) = i"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
   def explain(using Context) = ""
@@ -2142,14 +2142,14 @@ extends NamingMsg(AlreadyDefinedID):
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
     def print(tpe: Type): String =
-      def addParams(tpe: Type): List[String] = tpe match
+      def addParams(tpe: Type): Vector[String] = tpe match
         case tpe: MethodType =>
           val s = if tpe.isContextualMethod then i"(${tpe.paramInfos}%, %) =>" else ""
-          s :: addParams(tpe.resType)
+          s +: addParams(tpe.resType)
         case tpe: PolyType =>
-          i"[${tpe.paramNames}%, %] =>" :: addParams(tpe.resType)
+          i"[${tpe.paramNames}%, %] =>" +: addParams(tpe.resType)
         case tpe =>
-          i"$tpe" :: Nil
+          i"$tpe" +: Vector()
       addParams(tpe).mkString(" ")
     def note =
       if conflicting.is(Given) && name.startsWith("given_") then
@@ -2199,7 +2199,7 @@ class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(Pa
         |Rename either one of them$or."""
 }
 
-class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(using Context)
+class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: Vector[Type])(using Context)
   extends SyntaxMsg(UnapplyInvalidNumberOfArgumentsID) {
   def msg(using Context) = i"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
   def explain(using Context) =
@@ -2276,7 +2276,7 @@ class StaticFieldsOnlyAllowedInObjects(member: Symbol)(using Context) extends Sy
     i"${hl("@static")} members are only allowed inside objects."
 }
 
-class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: List[tpd.Tree])(using Context) extends SyntaxMsg(StaticFieldsShouldPrecedeNonStaticID) {
+class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: Vector[tpd.Tree])(using Context) extends SyntaxMsg(StaticFieldsShouldPrecedeNonStaticID) {
   def msg(using Context) = i"${hl("@static")} $member in ${member.owner} must be defined before non-static fields."
   def explain(using Context) = {
     val nonStatics = defns.takeWhile(_.symbol != member).take(3).filter(_.isInstanceOf[tpd.ValDef])
@@ -2488,14 +2488,14 @@ extends NamingMsg(DoubleDefinitionID):
     def givenAddendum =
       def isGivenName(sym: Symbol) = sym.name.startsWith("given_") // Desugar.inventGivenName
       def print(tpe: Type): String =
-        def addParams(tpe: Type): List[String] = tpe match
+        def addParams(tpe: Type): Vector[String] = tpe match
           case tpe: MethodType =>
             val s = if tpe.isContextualMethod then i"(${tpe.paramInfos}%, %) =>" else ""
-            s :: addParams(tpe.resType)
+            s +: addParams(tpe.resType)
           case tpe: PolyType =>
-            i"[${tpe.paramNames}%, %] =>" :: addParams(tpe.resType)
+            i"[${tpe.paramNames}%, %] =>" +: addParams(tpe.resType)
           case tpe =>
-            i"$tpe" :: Nil
+            i"$tpe" +: Vector()
         addParams(tpe).mkString(" ")
       if decl.is(Given) && previousDecl.is(Given) && isGivenName(decl) && isGivenName(previousDecl) then
         i"""| Provide an explicit, unique name to given definitions,
@@ -2707,7 +2707,7 @@ class OverloadInRefinement(rsym: Symbol)(using Context)
         |Refinements cannot contain overloaded definitions."""
 }
 
-class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using Context)
+class NoMatchingOverload(val alternatives: Vector[SingleDenotation], pt: Type)(using Context)
   extends TypeMsg(NoMatchingOverloadID) {
   def msg(using Context) =
     i"""None of the ${err.overloadedAltsStr(alternatives)}
@@ -2935,7 +2935,7 @@ class CaseClassInInlinedCode(tree: tpd.Tree)(using Context)
         |"""
 }
 
-class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: List[(Candidate, Type)])(using Context)
+class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: Vector[(Candidate, Type)])(using Context)
   extends TypeMsg(ImplicitSearchTooLargeID):
   override def showAlways = true
   def showQuery(query: (Candidate, Type))(using Context): String =
@@ -3012,7 +3012,7 @@ class MissingImplicitArgument(
    *  all occurrences of `${X}` where `X` is in `paramNames` with the
    *  corresponding shown type in `args`.
    */
-  def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type])(using Context): String =
+  def userDefinedErrorString(raw: String, paramNames: Vector[String], args: Vector[Type])(using Context): String =
     def translate(name: String): Option[String] =
       val idx = paramNames.indexOf(name)
       if (idx >= 0) Some(i"${args(idx)}") else None
@@ -3029,15 +3029,15 @@ class MissingImplicitArgument(
   def formatAnnotationMessage(
     rawMsg: String,
     sym: Symbol,
-    paramNames: List[Name],
-    args: List[Type],
+    paramNames: Vector[Name],
+    args: Vector[Type],
     substituteType: Type => Type,
   )(using Context): String =
     val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
     userDefinedErrorString(
       rawMsg,
-      paramNames = (paramNames ::: substitutableTypesSymbols.map(_.name)).map(_.unexpandedName.toString),
-      args = args ::: substitutableTypesSymbols.map(_.typeRef).map(substituteType)
+      paramNames = (paramNames ++ substitutableTypesSymbols.map(_.name)).map(_.unexpandedName.toString),
+      args = args ++ substitutableTypesSymbols.map(_.typeRef).map(substituteType)
     )
 
   /** Extract a user defined error message from a symbol `sym`
@@ -3051,8 +3051,8 @@ class MissingImplicitArgument(
 
   def userDefinedImplicitNotFoundTypeMessageFor(
     sym: Symbol,
-    params: List[ParamInfo] = Nil,
-    args: List[Type] = Nil
+    params: Vector[ParamInfo] = Vector(),
+    args: Vector[Type] = Vector()
   )(using Context): Option[String] = for
     rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
     if Feature.migrateTo3 || sym != defn.Function1
@@ -3079,11 +3079,11 @@ class MissingImplicitArgument(
         formatAnnotationMessage(rawMsg, sym.owner, methodTypeParams, methodTypeArgs, _.asSeenFrom(methodOwnerType, methodOwner))
 
   def userDefinedImplicitNotFoundTypeMessage(using Context): Option[String] =
-    def recur(tp: Type, params: List[ParamInfo] = Nil, args: List[Type] = Nil): Option[String] = tp match
+    def recur(tp: Type, params: Vector[ParamInfo] = Vector(), args: Vector[Type] = Vector()): Option[String] = tp match
       case tp: AppliedType =>
         val tycon = tp.typeConstructor
         val typeParams = if tycon.isLambdaSub then tycon.hkTypeParams else tycon.typeParams
-        recur(tycon, typeParams ::: params, tp.args ::: args)
+        recur(tycon, typeParams ++ params, tp.args ++ args)
       case tp: TypeRef =>
         userDefinedImplicitNotFoundTypeMessageFor(tp.symbol, params, args)
           .orElse(recur(tp.info))
@@ -3169,9 +3169,9 @@ class MissingImplicitArgument(
     def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
       val params = alt.ref.underlying match {
         case p: PolyType => p.paramNames.map(_.toString)
-        case _           => Nil
+        case _           => Vector()
       }
-      def resolveTypes(targs: List[tpd.Tree])(using Context) =
+      def resolveTypes(targs: Vector[tpd.Tree])(using Context) =
         targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
 
       // We can extract type arguments from:
@@ -3258,9 +3258,9 @@ extends ReferenceMsg(CannotBeAccessedID):
     val name = tpe.name
     val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
     val whatCanNot = alts match
-      case Nil =>
+      case Vector() =>
         i"$name cannot"
-      case sym :: Nil =>
+      case sym +: Vector() =>
         i"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
       case _ =>
         i"none of the overloaded alternatives named $name can"
@@ -3450,7 +3450,7 @@ extends TypeMsg(PhantomSymbolNotValueID):
        |term capture parameter for `C`. However, these term capture parameters are not real values,
        |they can only be referred in capture sets."""
 
-class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
+class UnusedSymbol(errorText: String, val actions: Vector[CodeAction] = Vector())(using Context)
 extends Message(UnusedSymbolID):
   def kind = MessageKind.UnusedSymbol
 
@@ -3459,7 +3459,7 @@ extends Message(UnusedSymbolID):
   override def actions(using Context) = this.actions
 
 object UnusedSymbol:
-  def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
+  def imports(actions: Vector[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
   def localVars(using Context): UnusedSymbol = UnusedSymbol(i"local variable was mutated but not read")
   def explicitParams(sym: Symbol)(using Context): UnusedSymbol =
@@ -3649,7 +3649,7 @@ class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotParti
        |Efficient operations will use `applyOrElse` to avoid computing the match twice,
        |but the `apply` body would be executed "per element" in the example."""
 
-final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
+final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: Vector[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
   override protected def msg(using Context): String =
     val act = i"$tpt(${args.map(_.show).mkString(", ")})"
     i"""|Applied constructor type $act has no effect.
@@ -3694,10 +3694,10 @@ class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Contex
     sourcePosition.withSpan(Span(sourcePosition.span.end, sourcePosition.span.end + 3, sourcePosition.span.end))
 
   override def actions(using Context) =
-    List(
+    Vector(
       CodeAction(title = """Remove unnecessary .nn""",
         description = None,
-        patches = List(
+        patches = Vector(
           ActionPatch(nnSourcePosition, "")
         )
       )
@@ -3776,7 +3776,7 @@ final class CannotBeIncluded(
     added: Capability | CaptureSet,
     target: CaptureSet,      // The original set where elements cannot be included
     realTarget: CaptureSet,  // The underlying set of an IncludeFailure
-    notes: List[Note],
+    notes: Vector[Note],
     targetOwner: Symbol,
     provenance: => String)(using Context) extends CapturesMessage(CannotBeIncludedID) {
 
@@ -3801,7 +3801,7 @@ final class CannotBeIncluded(
         def useStr(c: Capability) = c.showAsCapability ++ suffix
         val usedStr = added match
           case added: Capability => i"${useStr(added)}"
-          case added: CaptureSet => i"${added.elems.toList.map(useStr).mkString(", ")}"
+          case added: CaptureSet => i"${added.elems.toVector.map(useStr).mkString(", ")}"
 
         if loc.isPackageObject then
           i"""
@@ -3901,9 +3901,9 @@ final class IllegalIdentifier(name: Name)(using Context) extends SyntaxMsg(Illeg
 
 class ConcreteClassHasUnimplementedMethods(
     clazz: ClassSymbol,
-    missingMethods: List[Symbol],
+    missingMethods: Vector[Symbol],
     addendum: String,
-    methodActions: List[CodeAction])(using Context)
+    methodActions: Vector[CodeAction])(using Context)
 extends Message(ConcreteClassHasUnimplementedMethodsID), NoDisambiguation:
 
   def kind = MessageKind.Declaration
@@ -3916,8 +3916,8 @@ extends Message(ConcreteClassHasUnimplementedMethodsID), NoDisambiguation:
     else if clazz.is(Synthetic) then "instance cannot be created"
     else s"$clazz needs to be abstract"
 
-  private def renderMissingMethods(using Context): List[String] =
-    val grouped = missingMethods.groupBy(_.owner).toList
+  private def renderMissingMethods(using Context): Vector[String] =
+    val grouped = missingMethods.groupBy(_.owner).toVector
     grouped.sortBy(_._1.name).map { case (owner, members) =>
       val sigs = members.sortBy(_.name).map(s => s"- ${showDecl(s)}")
       s"""Members declared in ${owner.fullName}:
@@ -3925,7 +3925,7 @@ extends Message(ConcreteClassHasUnimplementedMethodsID), NoDisambiguation:
     }
 
   def msg(using Context) = missingMethods match
-    case single :: Nil =>
+    case single +: Vector() =>
       val notDefined = s"${showDecl(single)} in ${single.owner.showLocated} is not defined"
       s"$prelude, since $notDefined$addendum"
     case _ =>

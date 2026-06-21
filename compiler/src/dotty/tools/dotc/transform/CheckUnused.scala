@@ -128,8 +128,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def transformApply(tree: Apply)(using Context): tree.type =
     // check for multiversal equals
     tree match
-    case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
-      val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
+    case Apply(Select(left, nme.Equals | nme.NotEquals), right +: Vector()) =>
+      val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen +: right.tpe.widen +: Vector())
       resolveScoped(caneq, tree.srcPos)
     case tree =>
       refUsage(tree.tpe.typeSymbol, tree.srcPos)
@@ -149,7 +149,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForMatch(tree: Match)(using Context): Context =
     // allow case.pat against tree.selector (simple var pat only for now)
     tree.selector match
-    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(List(nm), List(k.pat)))
+    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(Vector(nm), Vector(k.pat)))
     case _ =>
     ctx
   override def transformMatch(tree: Match)(using Context): tree.type =
@@ -241,7 +241,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       register(tree)
     tree
 
-  override def prepareForStats(trees: List[Tree])(using Context): Context =
+  override def prepareForStats(trees: Vector[Tree])(using Context): Context =
     // gather local implicits while ye may
     if !ctx.owner.isClass then
       if trees.exists(t => t.isDef && t.symbol.is(Given) && t.symbol.isLocalToBlock) then
@@ -370,8 +370,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         sameSym && alt.symbol.isAccessibleFrom(qtpe)
       def hasAltMemberNamed(nm: Name) = qtpe.member(nm).hasAltWith(_.symbol.isAccessibleFrom(qtpe))
 
-      def loop(sels: List[ImportSelector]): ImportSelector | Null = sels match
-        case sel :: sels =>
+      def loop(sels: Vector[ImportSelector]): ImportSelector | Null = sels match
+        case sel +: sels =>
           val matches =
             if sel.isWildcard then
               // if name is different from sym.name, it must be a rename on import, not a wildcard selector
@@ -473,11 +473,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     val ctxs = ctx.outersIterator
     while !done && ctxs.hasNext do
       val cur = ctxs.next()
-      val implicitRefs: List[ImplicitRef] =
+      val implicitRefs: Vector[ImplicitRef] =
         if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
         else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
         else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
-        else Nil
+        else Vector()
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
         refUsage(found.denot.symbol, pos)
@@ -681,7 +681,7 @@ object CheckUnused:
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
           && !(sym.owner.is(ExtensionMethod) &&
             m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
-            case (h :: Nil) :: _ => h == sym // param is the extended receiver
+            case (h +: Vector()) +: _ => h == sym // param is the extended receiver
             case _ => false
           )
           && !sym.name.isInstanceOf[DerivedName]
@@ -774,11 +774,11 @@ object CheckUnused:
       import scala.jdk.CollectionConverters.given
       type ImpSel = (Import, ImportSelector)
       def isUsed(sel: ImportSelector): Boolean = infos.sels.containsKey(sel)
-      def warnImport(warnable: ImpSel, actions: List[CodeAction] = Nil): Unit =
+      def warnImport(warnable: ImpSel, actions: Vector[CodeAction] = Vector()): Unit =
         val (imp, sel) = warnable
         val msg = UnusedSymbol.imports(actions)
         // example collection.mutable.{Map as MutMap}
-        val origin = cpy.Import(imp)(imp.expr, List(sel)).show(using ctx.withoutColors).stripPrefix("import ")
+        val origin = cpy.Import(imp)(imp.expr, Vector(sel)).show(using ctx.withoutColors).stripPrefix("import ")
         warnAt(sel.srcPos)(msg, origin)
 
       if !actionable then
@@ -816,11 +816,11 @@ object CheckUnused:
               p1.withStart(newStart)
             else p1
           srcPos.sourcePos.withSpan(p2)
-        def actionsOf(actions: (SrcPos, String)*): List[CodeAction] =
-          val patches = actions.map((srcPos, replacement) => ActionPatch(srcPos.sourcePos, replacement)).toList
-          List(CodeAction(title = "unused import", description = Some("remove import"), patches))
-        def replace(editPos: SrcPos)(replacement: String): List[CodeAction] = actionsOf(editPos -> replacement)
-        def deletion(editPos: SrcPos): List[CodeAction] = actionsOf(editPos -> "")
+        def actionsOf(actions: (SrcPos, String)*): Vector[CodeAction] =
+          val patches = actions.map((srcPos, replacement) => ActionPatch(srcPos.sourcePos, replacement)).toVector
+          Vector(CodeAction(title = "unused import", description = Some("remove import"), patches))
+        def replace(editPos: SrcPos)(replacement: String): Vector[CodeAction] = actionsOf(editPos -> replacement)
+        def deletion(editPos: SrcPos): Vector[CodeAction] = actionsOf(editPos -> "")
         def textFor(impsel: ImpSel): String =
           val (imp, sel) = impsel
           val content = imp.srcPos.sourcePos.source.content()
@@ -845,7 +845,7 @@ object CheckUnused:
             // To delete a comma separated item, delete start-to-start, but for last item delete a preceding comma.
             // Reminder that first clause span includes the keyword, so delete point-to-start instead.
             val existing = sortedImps.slice(index, nextImport)
-            val (keeping, deleting) = existing.iterator.flatMap(imp => imp.selectors.map(imp -> _)).toList
+            val (keeping, deleting) = existing.iterator.flatMap(imp => imp.selectors.map(imp -> _)).toVector
                                       .partition((imp, sel) => isUsed(sel))
             if keeping.isEmpty then
               val editPos = existing.head.srcPos.sourcePos.withSpan:
@@ -859,7 +859,7 @@ object CheckUnused:
               val text = s"import ${textFor(keeping.head)}"
               warnImport(deleting.last, replace(editPosAt(editPos, forDeletion = false))(text))
             else
-              val lostClauses = existing.iterator.filter(imp => !keeping.exists((i, _) => imp eq i)).toList
+              val lostClauses = existing.iterator.filter(imp => !keeping.exists((i, _) => imp eq i)).toVector
               for imp <- lostClauses do
                 val actions =
                   if imp == existing.last then
@@ -879,15 +879,15 @@ object CheckUnused:
                     deletion(editPos)
                 imp.selectors.init.foreach(sel => warnImport(imp -> sel))
                 warnImport(imp -> imp.selectors.last, actions)
-              val singletons = existing.iterator.filter(imp => keeping.count((i, _) => imp eq i) == 1).toList
-              var seen = List.empty[Import]
+              val singletons = existing.iterator.filter(imp => keeping.count((i, _) => imp eq i) == 1).toVector
+              var seen = Vector.empty[Import]
               for impsel <- deleting do
                 val (imp, sel) = impsel
                 if singletons.contains(imp) then
                   if seen.contains(imp) then
                     warnImport(impsel)
                   else
-                    seen ::= imp
+                    seen +:= imp
                     val editPos = imp.srcPos.sourcePos.withSpan:
                       Span(start = imp.srcPos.span.point, end = imp.srcPos.span.end) // exclude keyword
                     val text = textFor(keeping.find((i, _) => imp eq i).get)
@@ -953,20 +953,20 @@ object CheckUnused:
         case _ => false
      //|| isPurePath(rhs) // a bit strong
      || rhs.match
-        case Block((dd @ DefDef(anonfun, paramss, _, _)) :: Nil, Closure(Nil, Ident(nm), _)) =>
+        case Block((dd @ DefDef(anonfun, paramss, _, _)) +: Vector(), Closure(Vector(), Ident(nm), _)) =>
              anonfun == nm // isAnonymousFunctionName(anonfun)
           && paramss.match
-             case (ValDef(contextual, _, _) :: Nil) :: Nil =>
+             case (ValDef(contextual, _, _) +: Vector()) +: Vector() =>
                   contextual.is(ContextFunctionParamName)
                && isUnconsuming(dd.rhs) // rhs was wrapped in a context function
              case _ => false
-        case Block(Nil, Literal(u)) => u.tpe =:= defn.UnitType // def f(x: X) = {}
+        case Block(Vector(), Literal(u)) => u.tpe =:= defn.UnitType // def f(x: X) = {}
         case This(_) => true
         case Ident(_) => rhs.symbol.is(ParamAccessor)
         case Typed(rhs, _) => isUnconsuming(rhs)
         case _ => false
 
-  def allowVariableBindings(ok: List[Name], args: List[Tree]): Unit =
+  def allowVariableBindings(ok: Vector[Name], args: Vector[Tree]): Unit =
     ok.zip(args).foreach:
       case (param, arg @ Bind(p, _)) if param == p => arg.withAttachment(NoWarn, ())
       case _ =>
@@ -983,7 +983,7 @@ object CheckUnused:
             case PolyType(tycon, MethodTpe(_, _, AppliedType(_, tprefs))) =>
               tprefs.collect:
                 case ref: TypeParamRef => termName(ref.binder.paramNames(ref.paramNum).toString.toLowerCase)
-            case _ => Nil
+            case _ => Vector()
           allowVariableBindings(ok, args)
         else if fun.symbol == defn.TypeTest_unapply then
           () // just recurse into args
@@ -996,7 +996,7 @@ object CheckUnused:
             val implName = s"dotty.tools.dotc.ast.Trees$$${unapplied.name}"
             try
               val clz = Class.forName(implName) // TODO improve to use class path or reflect
-              val ok = clz.getConstructors.head.getParameters.map(p => termName(p.getName)).toList.init
+              val ok = clz.getConstructors.head.getParameters.map(p => termName(p.getName)).toVector.init
               allowVariableBindings(ok, args)
             catch case _: ClassNotFoundException => ()
         args.foreach(traverse)
@@ -1004,11 +1004,11 @@ object CheckUnused:
 
   // NoWarn members in tree that correspond to refinements; currently uses only names.
   def relax(tree: Tree, tpe: Type)(using Context): Unit =
-    def refinements(tpe: Type, names: List[Name]): List[Name] =
+    def refinements(tpe: Type, names: Vector[Name]): Vector[Name] =
       tpe match
-      case RefinedType(parent, refinedName, refinedInfo) => refinedName :: refinements(parent, names)
+      case RefinedType(parent, refinedName, refinedInfo) => refinedName +: refinements(parent, names)
       case _ => names
-    val refinedNames = refinements(tpe, Nil)
+    val refinedNames = refinements(tpe, Vector())
     if !refinedNames.isEmpty then
       val names = refinedNames.toSet
       val relaxer = new TreeTraverser:

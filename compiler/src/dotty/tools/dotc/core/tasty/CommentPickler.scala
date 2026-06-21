@@ -37,12 +37,10 @@ object CommentPickler:
         while n < limit do
           traverse(x.productElement(n))
           n += 1
-      case y :: ys =>
-        traverse(y)
-        traverse(ys)
+      case xs: Vector[?] =>
+        xs.foreach(traverse)
       case _ =>
 
     traverse(root)
   end pickleComments
 end CommentPickler
-

@@ -13,13 +13,13 @@ enum CompileMode:
   case Script
 
 case class CompileSettings(
-  classPath: List[String] = List.empty,
+  classPath: Vector[String] = Vector.empty,
   compileMode: CompileMode = CompileMode.Guess,
   exitCode: Int = 0,
-  javaProps: List[(String, String)] = List.empty,
-  scalaArgs: List[String] = List.empty,
-  residualArgs: List[String] = List.empty,
-  scriptArgs: List[String] = List.empty,
+  javaProps: Vector[(String, String)] = Vector.empty,
+  scalaArgs: Vector[String] = Vector.empty,
+  residualArgs: Vector[String] = Vector.empty,
+  scriptArgs: Vector[String] = Vector.empty,
   targetScript: String = "",
 ) {
   def withCompileMode(em: CompileMode): CompileSettings = this.compileMode match
@@ -31,16 +31,16 @@ case class CompileSettings(
   end withCompileMode
 
   def withScalaArgs(args: String*): CompileSettings =
-    this.copy(scalaArgs = scalaArgs.appendedAll(args.toList.filter(_.nonEmpty)))
+    this.copy(scalaArgs = scalaArgs.appendedAll(args.toVector.filter(_.nonEmpty)))
 
   def withJavaProps(args: (String, String)*): CompileSettings =
-    this.copy(javaProps = javaProps.appendedAll(args.toList))
+    this.copy(javaProps = javaProps.appendedAll(args.toVector))
 
   def withResidualArgs(args: String*): CompileSettings =
-    this.copy(residualArgs = residualArgs.appendedAll(args.toList.filter(_.nonEmpty)))
+    this.copy(residualArgs = residualArgs.appendedAll(args.toVector.filter(_.nonEmpty)))
 
   def withScriptArgs(args: String*): CompileSettings =
-    this.copy(scriptArgs = scriptArgs.appendedAll(args.toList.filter(_.nonEmpty)))
+    this.copy(scriptArgs = scriptArgs.appendedAll(args.toVector.filter(_.nonEmpty)))
 
   def withTargetScript(file: String): CompileSettings =
     Try(Source.fromFile(file)) match
@@ -56,8 +56,8 @@ object MainGenericCompiler {
   private val classpathSeparator: String = File.pathSeparator
   private val javaPropOption = raw"""-D(.+?)=(.?)""".r
 
-  private def processClasspath(cp: String, tail: List[String]): (List[String], List[String]) =
-    val cpEntries = cp.split(classpathSeparator).toList
+  private def processClasspath(cp: String, tail: Vector[String]): (Vector[String], Vector[String]) =
+    val cpEntries = cp.split(classpathSeparator).toVector
     val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
     val globDir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
     def validGlobbedJar(s: String): Boolean = s.startsWith(globDir) && (s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip"))
@@ -71,47 +71,47 @@ object MainGenericCompiler {
       (tail, cpEntries)
 
   @tailrec
-  def process(args: List[String], settings: CompileSettings): CompileSettings = args match
-    case Nil =>
+  def process(args: Vector[String], settings: CompileSettings): CompileSettings = (args: @unchecked) match
+    case Vector() =>
       settings
-    case "--" :: tail =>
+    case "--" +: tail =>
       settings.withResidualArgs(tail*)
-    case ("-v" | "-verbose" | "--verbose") :: tail =>
+    case ("-v" | "-verbose" | "--verbose") +: tail =>
       process(tail, settings.withScalaArgs("-verbose"))
-    case "-script" :: targetScript :: tail =>
-      process(Nil, settings
+    case "-script" +: targetScript +: tail =>
+      process(Vector(), settings
         .withCompileMode(CompileMode.Script)
         .withJavaProps("script.path" -> targetScript)
         .withTargetScript(targetScript)
         .withScriptArgs(tail*))
-    case "-compile" :: tail =>
+    case "-compile" +: tail =>
       process(tail, settings.withCompileMode(CompileMode.Compile))
-    case "-decompile" :: tail =>
+    case "-decompile" +: tail =>
       process(tail, settings.withCompileMode(CompileMode.Decompile))
-    case "-print-tasty" :: tail =>
+    case "-print-tasty" +: tail =>
       process(tail, settings.withCompileMode(CompileMode.PrintTasty))
-    case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
+    case ("-cp" | "-classpath" | "--class-path") +: cp +: tail =>
       val (tailArgs, newEntries) = processClasspath(cp, tail)
       process(tailArgs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
-    case "-Oshort" :: tail =>
+    case "-Oshort" +: tail =>
       // Nothing is to be done here. Request that the user adds the relevant flags manually.
       val addTC="-XX:+TieredCompilation"
       val tStopAtLvl="-XX:TieredStopAtLevel=1"
       println(s"ignoring deprecated -Oshort flag, please add `-J$addTC` and `-J$tStopAtLvl` flags manually")
       process(tail, settings)
-    case javaPropOption(opt: String, value: String) :: tail =>
+    case javaPropOption(opt: String, value: String) +: tail =>
       process(tail, settings.withJavaProps(opt -> value))
-    case arg :: tail =>
+    case arg +: tail =>
       process(tail, settings.withResidualArgs(arg))
   end process
 
   def main(args: Array[String]): Unit =
-    val settings = process(args.toList, CompileSettings())
+    val settings = process(args.toVector, CompileSettings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)
 
     val classpathSetting =
-      if settings.classPath.isEmpty then List()
-      else List("-classpath", settings.classPath.mkString(classpathSeparator))
+      if settings.classPath.isEmpty then Vector()
+      else Vector("-classpath", settings.classPath.mkString(classpathSeparator))
 
     val properArgs = classpathSetting ++ settings.scalaArgs ++ settings.residualArgs
 
@@ -127,7 +127,7 @@ object MainGenericCompiler {
       case CompileMode.Script => // Naive copy from scalac bash script
         val fullArgs =
           properArgs
-          ++ List("-script", settings.targetScript)
+          ++ Vector("-script", settings.targetScript)
           ++ settings.scriptArgs
         scripting.Main.main(fullArgs.toArray)
   end main

@@ -50,7 +50,7 @@ object PrepJSExports {
    *  - Registers top-level and static exports.
    *  - Returns (non-static) exporters for this symbol.
    */
-  def genExport(sym: Symbol)(using Context): List[Tree] = {
+  def genExport(sym: Symbol)(using Context): Vector[Tree] = {
     // Scala classes are never exported: Their constructors are.
     val isScalaClass = sym.isClass && !sym.isOneOf(Trait | Module) && !isJSAny(sym)
 
@@ -58,7 +58,7 @@ object PrepJSExports {
     val isModuleClassCtor = sym.isConstructor && sym.owner.is(ModuleClass)
 
     val exports =
-      if (isScalaClass || isModuleClassCtor) Nil
+      if (isScalaClass || isModuleClassCtor) Vector()
       else exportsOf(sym)
 
     assert(exports.isEmpty || !sym.is(Bridge),
@@ -70,7 +70,7 @@ object PrepJSExports {
   }
 
   /** Computes the ExportInfos for sym from its annotations. */
-  private def exportsOf(sym: Symbol)(using Context): List[ExportInfo] = {
+  private def exportsOf(sym: Symbol)(using Context): Vector[ExportInfo] = {
     val trgSym = {
       def isOwnerScalaClass = !sym.owner.is(ModuleClass) && !isJSAny(sym.owner)
 
@@ -109,7 +109,7 @@ object PrepJSExports {
       if (useExportAll)
         symOwner.annotations.filter(_.symbol == JSExportAllAnnot)
       else
-        Nil
+        Vector()
     }
 
     val allAnnots = {
@@ -120,9 +120,9 @@ object PrepJSExports {
           if (allAnnots0.head.symbol == JSExportAllAnnot) sym
           else allAnnots0.head.tree
         if (checkExportTarget(sym, errorPos)) allAnnots0
-        else Nil // prevent code generation from running to avoid crashes.
+        else Vector() // prevent code generation from running to avoid crashes.
       } else {
-        Nil
+        Vector()
       }
     }
 
@@ -382,7 +382,7 @@ object PrepJSExports {
   }
 
   /** Generates an exporter for a DefDef including default parameter methods. */
-  private def genExportDefs(sym: Symbol, jsName: String, span: Span)(using Context): List[Tree] = {
+  private def genExportDefs(sym: Symbol, jsName: String, span: Span)(using Context): Vector[Tree] = {
     val siblingSym =
       if (sym.isConstructor) sym.owner
       else sym
@@ -410,7 +410,7 @@ object PrepJSExports {
 
     // Construct exporters for default getters
     val defaultGetters = if (!sym.hasDefaultParams) {
-      Nil
+      Vector()
     } else {
       for {
         (param, i) <- sym.paramSymss.flatten.zipWithIndex
@@ -420,7 +420,7 @@ object PrepJSExports {
       }
     }
 
-    exporter :: defaultGetters
+    exporter +: defaultGetters
   }
 
   private def genExportDefaultGetter(clsSym: ClassSymbol, trgMethod: Symbol,
@@ -462,9 +462,9 @@ object PrepJSExports {
       } else if (trgSym.isClass) {
         assert(isJSAny(trgSym), s"got a class export for a non-JS class ($trgSym) at $span")
         val tpe = argss match {
-          case Nil =>
+          case Vector() =>
             trgSym.typeRef
-          case (targs @ (first :: _)) :: Nil if first.isType =>
+          case (targs @ (first +: _)) +: Vector() if first.isType =>
             trgSym.typeRef.appliedTo(targs.map(_.tpe))
           case _ =>
             throw AssertionError(s"got a class export with unexpected paramss. target: $trgSym, proxy: $proxySym at $span")

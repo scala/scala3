@@ -5,9 +5,17 @@ import org.junit.Ignore
 
 import dotty.tools.languageserver.util.Code._
 
-import dotty.tools.dotc.util.Signatures.{TypeParam => TP, MethodParam => P, Signature => S}
+import dotty.tools.dotc.util.Signatures.{TypeParam => TP, MethodParam => P, Param, Signature}
 
 class SignatureHelpTest {
+
+  private def S(
+      name: String,
+      paramss: List[List[Param]],
+      returnType: Option[String],
+      doc: Option[String] = None
+  ): Signature =
+    Signature(name, paramss.map(_.toVector).toVector, returnType, doc)
 
   @Test def fromJava: Unit = {
     val signature =

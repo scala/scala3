@@ -62,7 +62,7 @@ class NonLocalReturns extends MiniPhase {
     Throw(
       New(
         nonLocalReturnControl,
-        ref(nonLocalReturnKey(meth)) :: expr.ensureConforms(defn.ObjectType) :: Nil))
+        ref(nonLocalReturnKey(meth)) +: expr.ensureConforms(defn.ObjectType) +: Vector()))
 
   /** Transform (body, key) to:
    *
@@ -78,16 +78,16 @@ class NonLocalReturns extends MiniPhase {
    *  }
    */
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(using Context) = {
-    val keyDef = ValDef(key, New(defn.ObjectType, Nil))
+    val keyDef = ValDef(key, New(defn.ObjectType, Vector()))
     val ex = newSymbol(meth, nme.ex, Case, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(
         ref(ex).select(nme.key).appliedToNone.select(nme.eq).appliedTo(ref(key)),
         ref(ex).select(nme.value).ensureConforms(meth.info.finalResultType),
         Throw(ref(ex)))
-    val catches = CaseDef(pat, EmptyTree, rhs) :: Nil
+    val catches = CaseDef(pat, EmptyTree, rhs) +: Vector()
     val tryCatch = Try(body, catches, EmptyTree)
-    Block(keyDef :: Nil, tryCatch)
+    Block(keyDef +: Vector(), tryCatch)
   }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =

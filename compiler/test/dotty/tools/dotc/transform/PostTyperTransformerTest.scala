@@ -62,9 +62,9 @@ class PostTyperTransformerTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      val classPattern = "TypeDef(Modifiers(,,List()),A,"
+      val classPattern = "TypeDef(Modifiers(,,Vector()),A,"
       val classPos = transformed.indexOf(classPattern)
-      val moduleClassPattern = "TypeDef(Modifiers(final module,,List()),A$,"
+      val moduleClassPattern = "TypeDef(Modifiers(final module,,Vector()),A$,"
       val modulePos = transformed.indexOf(moduleClassPattern)
 
       Assert.assertTrue("should reorder existing objects in package",
@@ -86,9 +86,9 @@ class PostTyperTransformerTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      val classPattern = "TypeDef(Modifiers(,,List()),A,"
+      val classPattern = "TypeDef(Modifiers(,,Vector()),A,"
       val classPos = transformed.indexOf(classPattern)
-      val moduleClassPattern = "TypeDef(Modifiers(final module,,List()),A$,"
+      val moduleClassPattern = "TypeDef(Modifiers(final module,,Vector()),A$,"
       val modulePos = transformed.indexOf(moduleClassPattern)
 
       Assert.assertTrue("should reorder existing objects in block",
@@ -110,9 +110,9 @@ class PostTyperTransformerTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      val classPattern = "TypeDef(Modifiers(,,List()),A,"
+      val classPattern = "TypeDef(Modifiers(,,Vector()),A,"
       val classPos = transformed.indexOf(classPattern)
-      val moduleClassPattern = "TypeDef(Modifiers(final module,,List()),A$,"
+      val moduleClassPattern = "TypeDef(Modifiers(final module,,Vector()),A$,"
       val modulePos = transformed.indexOf(moduleClassPattern)
 
       Assert.assertTrue("should reorder existing objects in template",

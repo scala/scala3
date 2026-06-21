@@ -209,12 +209,12 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
   private def renderTableOfContents(toc: Seq[TocEntry]): Option[AppliedTag] =
     def renderTocRec(level: Int, rest: Seq[TocEntry]): Seq[AppliedTag] =
       rest match {
-        case Nil => Nil
-        case head :: tail if head.level == level =>
+        case Seq() => Nil
+        case head +: tail if head.level == level =>
           val (nested, rest) = tail.span(_.level > level)
           val nestedList = if nested.nonEmpty then Seq(ul(renderTocRec(level + 1, nested))) else Nil
           li(a(href := head.anchor)(head.content), nestedList) +: renderTocRec(level, rest)
-        case rest @ (head :: tail) if head.level > level =>
+        case rest @ (head +: tail) if head.level > level =>
           val (prefix, suffix) = rest.span(_.level > level)
           li(ul(renderTocRec(level + 1, prefix))) +: renderTocRec(level, suffix)
       }

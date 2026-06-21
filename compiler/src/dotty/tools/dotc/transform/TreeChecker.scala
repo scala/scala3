@@ -89,7 +89,7 @@ class TreeChecker extends Phase with SymTransformer {
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
       assert(symd == initial || symd.signature == initial.signature,
-        i"""Signature of ${sym} in ${sym.ownersIterator.toList}%, % changed at phase ${ctx.phase.prev.megaPhase}
+        i"""Signature of ${sym} in ${sym.ownersIterator.toVector}%, % changed at phase ${ctx.phase.prev.megaPhase}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
            |Current info: ${symd.info}
@@ -113,7 +113,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     inContext(ctx) {
       assert(ctx.typerState.constraint.domainLambdas.isEmpty,
-        i"non-empty constraint at end of $fusedPhase: ${ctx.typerState.constraint}, ownedVars = ${ctx.typerState.ownedVars.toList}%, %")
+        i"non-empty constraint at end of $fusedPhase: ${ctx.typerState.constraint}, ownedVars = ${ctx.typerState.ownedVars.toVector}%, %")
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
       TreeNodeChecker.traverse(ctx.compilationUnit.tpdTree)
     }
@@ -123,7 +123,7 @@ class TreeChecker extends Phase with SymTransformer {
         .setReporter(new ThrowingReporter(ctx.reporter))
 
     val checker = inContext(ctx) {
-      new Checker(previousPhases(phasesToRun.toList))
+      new Checker(previousPhases(phasesToRun.toVector))
     }
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(using checkingCtx)
     catch {
@@ -196,7 +196,7 @@ object TreeChecker {
     }
   }.apply(tp0)
 
-  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree], assertionFunc: (Boolean, String) => Unit)(using Context): Unit =
+  def checkParents(sym: ClassSymbol, parents: Vector[tpd.Tree], assertionFunc: (Boolean, String) => Unit)(using Context): Unit =
     val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
     val treeParents = parents.map(_.tpe.dealias.typeSymbol)
     assertionFunc(symbolParents == treeParents,
@@ -241,10 +241,10 @@ object TreeChecker {
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
-    override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+    override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: Vector[Tree])(using Context): Unit = ()
 
-    def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(using Context): T = {
-      var locally = List.empty[Symbol]
+    def withDefinedSyms[T](trees: Vector[untpd.Tree])(op: => T)(using Context): T = {
+      var locally = Vector.empty[Symbol]
       for (tree <- trees) {
         val sym = tree.symbol
         tree match {
@@ -267,7 +267,7 @@ object TreeChecker {
                 // todo: compare trees inside annotations
                 case _ =>
               }
-            locally = sym :: locally
+            locally = sym +: locally
             nowDefinedSyms += sym
           case _ =>
         }
@@ -281,7 +281,7 @@ object TreeChecker {
      *
      *  patBoundSyms.contains(sym) <=> sym.isPatternBound
      */
-    def withPatSyms[T](syms: List[Symbol])(op: => T)(using Context): T = {
+    def withPatSyms[T](syms: Vector[Symbol])(op: => T)(using Context): T = {
       syms.foreach { sym =>
         assert(
           sym.isPatternBound,
@@ -569,7 +569,7 @@ object TreeChecker {
         ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
         i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
-        i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
+        i"owner chain = ${tree.symbol.ownersIterator.toVector}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toVector}%, %")
     }
 
     private def checkParents(tree: untpd.TypeDef)(using Context): Unit = {
@@ -601,14 +601,14 @@ object TreeChecker {
         !x.isValueClassConvertMethod &&
         !x.name.is(DocArtifactName)
 
-      val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
+      val decls   = cls.classInfo.decls.toVector.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
       val symbolsMissingDefs = (decls -- defined - constr.symbol).filterNot(isSymWithoutDef)
 
       assert(symbolsMissingDefs.isEmpty,
-        i"""$cls tree does not define members: ${symbolsMissingDefs.toList}%, %
-           |expected: ${decls.toList}%, %
+        i"""$cls tree does not define members: ${symbolsMissingDefs.toVector}%, %
+           |expected: ${decls.toVector}%, %
            |defined: ${defined}%, %""")
 
       super.typedClassDef(cdef, cls)
@@ -624,7 +624,7 @@ object TreeChecker {
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       def defParamss = ddef.paramss.filter(!_.isEmpty).nestedMap(_.symbol)
-      def layout(symss: List[List[Symbol]]): String =
+      def layout(symss: Vector[Vector[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
       assert(ctx.erasedTypes || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
@@ -653,7 +653,7 @@ object TreeChecker {
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
       if (!ctx.phase.lambdaLifted) nestingBlock match {
-        case block @ Block((meth : untpd.DefDef) :: Nil, closure: untpd.Closure) =>
+        case block @ Block((meth : untpd.DefDef) +: Vector(), closure: untpd.Closure) =>
           assert(meth.symbol == closure.meth.symbol, "closure.meth symbol not equal to method symbol. Block: " + block.show)
 
         case block: untpd.Block =>
@@ -678,7 +678,7 @@ object TreeChecker {
      *  is that we should be able to pull out an expression as an initializer
      *  of a helper value without having to do a change owner traversal of the expression.
      */
-    override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
+    override def typedStats(trees: Vector[untpd.Tree], exprOwner: Symbol)(using Context): (Vector[Tree], Context) = {
       for (tree <- trees) tree match {
         case tree: untpd.DefTree => checkOwner(tree)
         case _: untpd.Thicket => assert(false, i"unexpanded thicket $tree in statement sequence $trees%\n%")
@@ -689,7 +689,7 @@ object TreeChecker {
 
     override def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {
       checkOwner(tree.bind)
-      withDefinedSyms(tree.bind :: Nil) { super.typedLabeled(tree) }
+      withDefinedSyms(tree.bind +: Vector()) { super.typedLabeled(tree) }
     }
 
     override def typedReturn(tree: untpd.Return)(using Context): Return = {
@@ -723,7 +723,7 @@ object TreeChecker {
         assert(tag.typeOpt.derivesFrom(defn.QuotedTypeClass), i"expected Quote tag to be of type `Type` but was: ${tag.tpe}")
 
       tree1 match
-        case Quote(body, targ :: Nil) if body.isType =>
+        case Quote(body, targ +: Vector()) if body.isType =>
           assert(!(body.tpe =:= targ.tpe.select(tpnme.Underlying)), i"missed quote cancellation in $tree1")
         case _ =>
 
@@ -759,7 +759,7 @@ object TreeChecker {
       assert(idx >= 0, i"hole should not have negative index: $tree")
       assert(isTerm || tree.args.isEmpty, i"type hole should not have arguments: $tree")
 
-      // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
+      // Check that we only add the captured type `T` instead of a more complex type like `Vector[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
       def isAllowedTypeArg(tp: Type): Boolean = tp.dealias match
         case _: TypeRef | _: TermRef | _: ThisType => true
@@ -789,7 +789,7 @@ object TreeChecker {
         if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
         else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
-        defn.FunctionNOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+        defn.FunctionNOf(Vector(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
         defn.FunctionNOf(argQuotedTypes, contextualResult)
       assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
@@ -797,7 +797,7 @@ object TreeChecker {
       tree1
     }
 
-    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
+    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => Vector[Symbol])(using Context): Tree =
       tree
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
@@ -847,7 +847,7 @@ object TreeChecker {
         .setReporter(new ThrowingReporter(ctx.reporter))
         .setPhase(ctx.base.inliningPhase)
 
-      val phases = ctx.base.allPhases.toList
+      val phases = ctx.base.allPhases.toVector
       val treeChecker = new LocalChecker(previousPhases(phases))
 
       def reportMalformedMacroTree(msg: String | Null, err: Throwable) =
@@ -879,15 +879,15 @@ object TreeChecker {
         case err: UnhandledError =>
           reportMalformedMacroTree(err.diagnostic.message, err)
 
-  private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
-    case (phase: MegaPhase) :: phases1 =>
+  private[TreeChecker] def previousPhases(phases: Vector[Phase])(using Context): Vector[Phase] = phases match {
+    case (phase: MegaPhase) +: phases1 =>
       val subPhases = phase.miniPhases
-      val previousSubPhases = previousPhases(subPhases.toList)
-      if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)
+      val previousSubPhases = previousPhases(subPhases.toVector)
+      if (previousSubPhases.length == subPhases.length) previousSubPhases ++ previousPhases(phases1)
       else previousSubPhases
-    case phase :: phases1 if phase ne ctx.phase =>
-      phase :: previousPhases(phases1)
+    case phase +: phases1 if phase ne ctx.phase =>
+      phase +: previousPhases(phases1)
     case _ =>
-      Nil
+      Vector()
   }
 }

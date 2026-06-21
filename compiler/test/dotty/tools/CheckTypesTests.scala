@@ -13,7 +13,7 @@ class CheckTypeTest extends DottyTest {
       |class B extends A
     """.stripMargin
 
-    val types = List(
+    val types = Vector(
       "A",
       "B",
       "List[?]",
@@ -25,7 +25,7 @@ class CheckTypeTest extends DottyTest {
     )
 
     checkTypes(source, types*) {
-      case (List(a, b, lu, li, lr, ls, la, lb), context) =>
+      case (Vector(a, b, lu, li, lr, ls, la, lb), context) =>
         given Context = context
 
         assertTrue  ( b <:<  a)
@@ -46,18 +46,18 @@ class CheckTypeTest extends DottyTest {
       |class B extends A
     """.stripMargin
 
-    val typesA = List(
+    val typesA = Vector(
       "A",
       "List[A]"
     )
 
-    val typesB = List(
+    val typesB = Vector(
       "B",
       "List[B]"
     )
 
-    checkTypes(source, List(typesA, typesB)) {
-      case (List(sups, subs), context) =>
+    checkTypes(source, Vector(typesA, typesB)) {
+      case (Vector(sups, subs), context) =>
         given Context = context
 
         sups.lazyZip(subs).foreach { (sup, sub) => assertTrue(sub <:< sup) }

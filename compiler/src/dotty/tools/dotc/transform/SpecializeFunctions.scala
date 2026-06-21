@@ -102,7 +102,7 @@ class SpecializeFunctions extends MiniPhase {
                   // Need to cast to regular function, since specialized apply methods
                   // are not members of ContextFunction0. The cast will be eliminated in
                   // erasure.
-                  qual.cast(defn.FunctionNOf(Nil, res))
+                  qual.cast(defn.FunctionNOf(Vector(), res))
                 case _ =>
                   qual
               qual1.select(specializedApply)

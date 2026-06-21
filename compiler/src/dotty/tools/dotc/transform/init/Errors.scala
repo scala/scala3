@@ -71,7 +71,7 @@ object Errors:
    *
    *  Invariant: argsIndices.nonEmpty
    */
-  case class UnsafeLeaking(error: Error, nonHotOuterClass: Symbol, argsIndices: List[Int])(val trace: Trace) extends Error:
+  case class UnsafeLeaking(error: Error, nonHotOuterClass: Symbol, argsIndices: Vector[Int])(val trace: Trace) extends Error:
     def show(using Context): String =
       "Problematic object instantiation: " + argumentInfo() + stacktrace + "\n" +
         "It leads to the following error during object initialization:\n" +

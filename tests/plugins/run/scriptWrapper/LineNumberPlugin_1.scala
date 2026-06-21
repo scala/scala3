@@ -12,7 +12,8 @@ class LineNumberPlugin extends StandardPlugin {
   val name: String = "linenumbers"
   val description: String = "adjusts line numbers of script files"
 
-  override def initialize(options: List[String])(using Context): List[PluginPhase] = FixLineNumbers() :: Nil
+  override def initialize(options: List[String])(using Context): List[PluginPhase] =
+    FixLineNumbers() :: Nil
 }
 
 // Loosely follows Mill linenumbers plugin (scan for marker with "original" source, adjust line numbers to match)

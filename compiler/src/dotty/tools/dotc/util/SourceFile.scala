@@ -23,7 +23,7 @@ import java.util.regex.Pattern
 
 object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
-  private val headerStarts  = List("#!", "::#!")
+  private val headerStarts  = Vector("#!", "::#!")
 
   /** Return true if has a script header */
   def hasScriptHeader(content: Array[Char]): Boolean =

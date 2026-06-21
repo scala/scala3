@@ -23,7 +23,7 @@ def inCompilerContext[T](classpath: String, separateRun: Boolean = true, scalaSo
   val compiler = new Compiler()
   val rootCtx = initCtx(classpath)
   val firstRun = compiler.newRun(using rootCtx)
-  firstRun.compileFromStrings(scalaSources.toList)
+  firstRun.compileFromStrings(scalaSources.toVector)
   val opRun = if separateRun
     then compiler.newRun(using rootCtx)
     else firstRun
@@ -42,7 +42,7 @@ def withJavaCompiled[T](javaSources: JavaFileObject*)(op: Path => T): T =
   val javaOutputDir = Files.createTempDirectory("withJavaCompiled")
   try
     val javac = ToolProvider.getSystemJavaCompiler()
-    val options = List("-d", javaOutputDir.toString)
+    val options = Vector("-d", javaOutputDir.toString)
     javac.getTask(null, null, null, options.asJava, null, javaSources.asJava).call();
     op(javaOutputDir)
   finally
@@ -50,7 +50,7 @@ def withJavaCompiled[T](javaSources: JavaFileObject*)(op: Path => T): T =
 
 /** Recursively delete a directory. */
 def deleteDirectory(directory: File): Unit =
-  directory.listFiles.toList.foreach { file =>
+  directory.listFiles.toVector.foreach { file =>
     if (file.isDirectory)
       deleteDirectory(file)
     file.delete()

@@ -57,7 +57,8 @@ class Completions(
   given context: Context = ctx
 
   private lazy val coursierComplete = new CoursierComplete(BuildInfo.scalaVersion)
-  private lazy val completionMode = Completion.completionMode(adjustedPath, completionPos.originalCursorPosition)
+  private lazy val completionMode =
+    Completion.completionMode(adjustedPath.toVector, completionPos.originalCursorPosition)
 
   private lazy val shouldAddSnippet =
     path match
@@ -94,7 +95,7 @@ class Completions(
 
   private lazy val shouldAddSuffix = shouldAddSnippet && isContinuedApply && isDerivingOrContextBound
 
-  private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
+  private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath.toVector)
 
   def includeSymbol(sym: Symbol)(using Context): Boolean =
     def hasSyntheticCursorSuffix: Boolean =
@@ -137,8 +138,8 @@ class Completions(
         completionPos.originalCursorPosition,
         completionMode,
         completionPos.query,
-        fromPath,
-        adjustedPath,
+        fromPath.toVector,
+        adjustedPath.toVector,
         Some(fuzzyMatcher),
         calculatedScopeContext = Some(indexedContext.scopeContext)
       )
@@ -250,7 +251,7 @@ class Completions(
         }
         .chain { suffix =>
           adjustedPath match
-            case (_: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
+            case (_: Ident) :: (app @ Apply(_, Vector(arg))) :: _ =>
               app.symbol.info match
                 case _: MethodType
                     if app.symbol.paramSymss.last.exists(_.is(Given)) &&
@@ -264,8 +265,8 @@ class Completions(
           if shouldAddSuffix && symbol.is(Flags.Method) then
             val paramss = getParams(symbol)
             paramss match
-              case Nil => suffix
-              case List(Nil) => suffix.withNewSuffix(Affix(SuffixKind.Brace))
+              case Vector() => suffix
+              case Vector(Vector()) => suffix.withNewSuffix(Affix(SuffixKind.Brace))
               case _ if config.isCompletionSnippetsEnabled() =>
                 val onlyParameterless = paramss.forall(_.isEmpty)
                 lazy val onlyImplicitOrTypeParams = paramss.forall(
@@ -549,7 +550,7 @@ class Completions(
         (
           AmmoniteFileCompletions.contribute(
             expr,
-            selectors,
+            selectors.toList,
             pos.endPos.toLsp,
             rawPath.toString(),
             workspace,
@@ -564,7 +565,7 @@ class Completions(
         (
           AmmoniteIvyCompletions.contribute(
             coursierComplete,
-            selectors,
+            selectors.toList,
             completionPos,
             text
           ),

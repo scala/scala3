@@ -30,36 +30,36 @@ class RepeatableAnnotations extends MiniPhase:
       tree.symbol.annotations = aggregateAnnotations(tree.symbol.annotations)
     tree
 
-  private def aggregateAnnotations(annotations: Seq[Annotation])(using Context): List[Annotation] =
+  private def aggregateAnnotations(annotations: Seq[Annotation])(using Context): Vector[Annotation] =
     val annsByType = stableGroupBy(annotations, _.symbol)
     annsByType.flatMap {
-      case (_, a :: Nil) => a :: Nil
+      case (_, a +: Vector()) => a +: Vector()
       case (sym, anns) if sym.is(JavaDefined) =>
         sym.getAnnotation(defn.JavaRepeatableAnnot).flatMap(_.argumentConstant(0)) match
           case Some(Constant(containerTpe: Type)) =>
-            val clashingAnns = annsByType.getOrElse(containerTpe.classSymbol, Nil)
+            val clashingAnns = annsByType.getOrElse(containerTpe.classSymbol, Vector())
             if clashingAnns.nonEmpty then
               // this is the same error javac would raise in this case
               val pos = clashingAnns.head.tree.srcPos
               report.error("Container must not be present at the same time as the element it contains", pos)
-              Nil
+              Vector()
             else
-              val aggregated = JavaSeqLiteral(anns.map(_.tree).toList, TypeTree(sym.typeRef))
-              Annotation(containerTpe, NamedArg("value".toTermName, aggregated), sym.span) :: Nil
+              val aggregated = JavaSeqLiteral(anns.map(_.tree).toVector, TypeTree(sym.typeRef))
+              Annotation(containerTpe, NamedArg("value".toTermName, aggregated), sym.span) +: Vector()
           case _ =>
             val pos = anns.head.tree.srcPos
             report.error("Not repeatable annotation repeated", pos)
-            Nil
+            Vector()
       case (_, anns) => anns
-    }.toList
+    }.toVector
 
-  private def stableGroupBy[A, K](ins: Seq[A], f: A => K): scala.collection.MapView[K, List[A]] =
+  private def stableGroupBy[A, K](ins: Seq[A], f: A => K): scala.collection.MapView[K, Vector[A]] =
     val out = new mutable.LinkedHashMap[K, mutable.ListBuffer[A]]()
     for (in <- ins) {
       val buffer = out.getOrElseUpdate(f(in), new mutable.ListBuffer)
       buffer += in
     }
-    out.view.mapValues(_.toList)
+    out.view.mapValues(_.toVector)
 
 object RepeatableAnnotations:
   val name: String = "repeatableAnnotations"

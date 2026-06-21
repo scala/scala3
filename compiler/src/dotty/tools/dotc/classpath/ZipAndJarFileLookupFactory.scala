@@ -92,21 +92,21 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     private lazy val cachedPackages: util.HashMap[String, PackageFileInfo] = {
       val packages = util.HashMap[String, PackageFileInfo]()
 
-      def getSubpackages(dir: AbstractFile): List[AbstractFile] =
-        (for (file <- dir if file.isPackage) yield file).toList
+      def getSubpackages(dir: AbstractFile): Vector[AbstractFile] =
+        (for (file <- dir if file.isPackage) yield file).toVector
 
       @tailrec
       def traverse(packagePrefix: String,
-                   filesForPrefix: List[AbstractFile],
+                   filesForPrefix: Vector[AbstractFile],
                    subpackagesQueue: collection.mutable.Queue[PackageInfo]): Unit = filesForPrefix match {
-        case pkgFile :: remainingFiles =>
+        case pkgFile +: remainingFiles =>
           val subpackages = getSubpackages(pkgFile)
           val fullPkgName = packagePrefix + pkgFile.name
           packages(fullPkgName) = PackageFileInfo(pkgFile, subpackages)
           val newPackagePrefix = fullPkgName + "."
           subpackagesQueue.enqueue(PackageInfo(newPackagePrefix, subpackages))
           traverse(packagePrefix, remainingFiles, subpackagesQueue)
-        case Nil if subpackagesQueue.nonEmpty =>
+        case Vector() if subpackagesQueue.nonEmpty =>
           val PackageInfo(packagePrefix, filesForPrefix) = subpackagesQueue.dequeue()
           traverse(packagePrefix, filesForPrefix, subpackagesQueue)
         case _ =>
@@ -135,7 +135,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
 
   private object ManifestResourcesClassPath {
     case class PackageFileInfo(packageFile: AbstractFile, subpackages: Seq[AbstractFile])
-    case class PackageInfo(packageName: String, subpackages: List[AbstractFile])
+    case class PackageInfo(packageName: String, subpackages: Vector[AbstractFile])
   }
 
   override protected def createForZipFile(zipFile: AbstractFile, jFile: File | Null, release: Option[String]): ClassPath =

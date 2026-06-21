@@ -14,10 +14,10 @@ object QuoteTypeTags:
 
   private val TaggedTypes = new Property.Key[LinkedHashSet[TermRef]]
 
-  def inContextWithQuoteTypeTags(body: Context ?=> tpd.Tree)(using Context): (List[tpd.Tree], tpd.Tree) =
+  def inContextWithQuoteTypeTags(body: Context ?=> tpd.Tree)(using Context): (Vector[tpd.Tree], tpd.Tree) =
     val tags = LinkedHashSet.empty[TermRef]
     val transformed = body(using ctx.fresh.setProperty(TaggedTypes, tags))
-    (tags.toList.map(tpd.ref(_)), transformed)
+    (tags.toVector.map(tpd.ref(_)), transformed)
 
   def getTagRef(spliced: TermRef)(using Context): Type =
     ctx.property(TaggedTypes).get += spliced

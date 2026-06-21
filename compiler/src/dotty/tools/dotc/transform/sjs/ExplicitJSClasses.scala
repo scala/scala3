@@ -332,7 +332,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         case _              => false
       }
     }.symbol.asTerm
-    Annotation(New(annotClass.typeRef, stringCtor, Literal(Constant(argument)) :: Nil))
+    Annotation(New(annotClass.typeRef, stringCtor, Literal(Constant(argument)) +: Vector()))
   }
 
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
@@ -340,7 +340,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       val innerJSClasses = decls.filter(isJSClass)
 
       val innerObjectsForAdHocExposed =
-        if (!cls.isStaticOwner) Nil // those already have a module accessor
+        if (!cls.isStaticOwner) Vector() // those already have a module accessor
         else decls.filter(isExposedModule)
 
       if (innerJSClasses.isEmpty && innerObjectsForAdHocExposed.isEmpty) {
@@ -423,7 +423,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
    *  a `Block` or `Template`, so that they are visible even before their
    *  definition (in their enclosing scope).
    */
-  private def populateNestedObject2superClassTpe(stats: List[Tree])(using Context): Unit = {
+  private def populateNestedObject2superClassTpe(stats: Vector[Tree])(using Context): Unit = {
     for (stat <- stats) {
       stat match {
         case cd @ TypeDef(_, rhs) if cd.isClassDef && isInnerOrLocalJSObject(cd.symbol) =>
@@ -462,7 +462,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       if (fixedParents eq tree.parents) tree
       else cpy.Template(tree)(parents = fixedParents)
     } else {
-      val newStats = List.newBuilder[Tree]
+      val newStats = Vector.newBuilder[Tree]
       for (stat <- tree.body) {
         stat match {
           case stat: TypeDef if stat.isClassDef && isJSClass(stat.symbol) =>
@@ -498,7 +498,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         newStats += stat
       }
 
-      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.result())
+      cpy.Template(tree)(tree.constr, fixedParents, Vector(), tree.self, newStats.result())
     }
   }
 
@@ -529,13 +529,13 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
       val jsclassVal = myState.localClass2jsclassVal(sym)
       if (myState.notYetReferencedLocalClasses.remove(cls)) {
-        Thicket(List(tree, ValDef(jsclassVal, rhs)))
+        Thicket(Vector(tree, ValDef(jsclassVal, rhs)))
       } else {
         /* We are using `jsclassVal` inside the definition of the class.
          * We need to declare it as var before and initialize it after the class definition.
          */
         jsclassVal.setFlag(Mutable)
-        Thicket(List(
+        Thicket(Vector(
             ValDef(jsclassVal, Literal(Constant(null))),
             tree,
             Assign(ref(jsclassVal), rhs)
@@ -597,11 +597,11 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
       tree match {
         // Desugar js.constructorOf[T]
-        case TypeApply(fun, tpt :: Nil) if sym == jsdefn.JSPackage_constructorOf =>
+        case TypeApply(fun, tpt +: Vector()) if sym == jsdefn.JSPackage_constructorOf =>
           genJSConstructorOf(tree, tpt.tpe).cast(jsdefn.JSDynamicType)
 
         // Translate x.isInstanceOf[T] for inner and local JS classes
-        case TypeApply(fun @ Select(obj, _), tpeArg :: Nil)
+        case TypeApply(fun @ Select(obj, _), tpeArg +: Vector())
             if sym == defn.Any_isInstanceOf && isTypeTreeForInnerOrLocalJSClass(tpeArg) =>
           val jsCtorOf = genJSConstructorOf(tree, tpeArg.tpe)
           ref(jsdefn.Special_instanceof).appliedTo(obj, jsCtorOf)
@@ -694,7 +694,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
     ref(jsdefn.Runtime_withContextualJSClassValue).appliedToType(tree.tpe).appliedTo(jsClassValue, tree)
 
   private def unwrapWithContextualJSClassValue(tree: Tree)(using Context): Tree = tree match {
-    case Apply(fun, jsClassValue :: actualTree :: Nil)
+    case Apply(fun, jsClassValue +: actualTree +: Vector())
         if fun.symbol == jsdefn.Runtime_withContextualJSClassValue =>
       actualTree
     case _ =>

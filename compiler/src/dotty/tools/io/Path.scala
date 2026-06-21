@@ -44,7 +44,7 @@ object Path {
 
   def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs.filter(_.isFile).map(_.toFile)
 
-  def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
+  def roots: Vector[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toVector
 
   def apply(path: String): Path = apply(new java.io.File(path).toPath)
   def apply(jpath: JPath): Path = try {
@@ -110,7 +110,7 @@ class Path private[io] (val jpath: JPath) {
   def resolve(other: Path): Path = new Path(jpath.resolve(other.jpath))
   def relativize(other: Path): Path = new Path(jpath.relativize(other.jpath))
 
-  def segments: List[String] = (path split separator).toList filterNot (_.length == 0)
+  def segments: Vector[String] = (path split separator).toVector filterNot (_.length == 0)
 
   /**
    * @return The path of the parent directory, or root if path is already root
@@ -143,9 +143,9 @@ class Path private[io] (val jpath: JPath) {
       case x =>
         Directory(x)
   }
-  def parents: List[Directory] = {
+  def parents: Vector[Directory] = {
     val p = parent
-    if p.isSame(this) then Nil else p :: p.parents
+    if p.isSame(this) then Vector() else p +: p.parents
   }
 
   def ext: FileExtension = Path.fileExtension(name)

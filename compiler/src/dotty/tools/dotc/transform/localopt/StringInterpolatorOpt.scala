@@ -38,7 +38,7 @@ class StringInterpolatorOpt extends MiniPhase:
 
   /** Matches a list of constant literals */
   private object Literals:
-    def unapply(tree: SeqLiteral)(using Context): Option[List[Literal]] =
+    def unapply(tree: SeqLiteral)(using Context): Option[Vector[Literal]] =
       tree.elems match
         case literals if literals.forall(_.isInstanceOf[Literal]) => Some(literals.map(_.asInstanceOf[Literal]))
         case _ => None
@@ -49,12 +49,12 @@ class StringInterpolatorOpt extends MiniPhase:
 
   /** Matches an s or raw string interpolator.
    *
-   *  The `List[Literal]` in the result is always non-empty (but not the `List[Tree]`).
+   *  The `Vector[Literal]` in the result is always non-empty (but not the `Vector[Tree]`).
    */
   private object SOrRawInterpolator:
-    def unapply(tree: Tree)(using Context): Option[(List[Literal], List[Tree])] =
+    def unapply(tree: Tree)(using Context): Option[(Vector[Literal], Vector[Tree])] =
       tree match
-        case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _), List(SeqLiteral(elems, _)))
+        case Apply(Select(Apply(StringContextApply(), Vector(Literals(strs))), _), Vector(SeqLiteral(elems, _)))
         if elems.length == strs.length - 1 => Some(strs, elems)
         case _ => None
 
@@ -74,7 +74,7 @@ class StringInterpolatorOpt extends MiniPhase:
    *  the variable references.
    */
   private object StringContextIntrinsic:
-    def unapply(tree: Apply)(using Context): Option[(List[Literal], List[Tree])] =
+    def unapply(tree: Apply)(using Context): Option[(Vector[Literal], Vector[Tree])] =
       tree match
         case SOrRawInterpolator(strs, elems) =>
           if tree.symbol == defn.StringContext_raw then Some(strs, elems)
@@ -97,7 +97,7 @@ class StringInterpolatorOpt extends MiniPhase:
         case _ => None
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    def mkConcat(strs: List[Literal], elems: List[Tree]): Tree =
+    def mkConcat(strs: Vector[Literal], elems: Vector[Tree]): Tree =
       val stri = strs.iterator
       val elemi = elems.iterator
       var result: Tree = stri.next()
@@ -141,16 +141,16 @@ class StringInterpolatorOpt extends MiniPhase:
       // For f"${arg}%xpart", check format conversions and return (format, args) for String.format(format, args).
       def checked(args0: Tree)(using Context): (Tree, Tree) =
         val (partsExpr, parts) = fun match
-          case TypeApply(Select(Apply(_, (parts: SeqLiteral) :: Nil), _), _) =>
+          case TypeApply(Select(Apply(_, (parts: SeqLiteral) +: Vector()), _), _) =>
             (parts.elems, parts.elems.map { case Literal(Constant(s: String)) => s })
           case _ =>
             report.error("Expected statically known StringContext", fun.srcPos)
-            (Nil, Nil)
+            (Vector(), Vector())
         val (args, elemtpt) = args0 match
           case seqlit: SeqLiteral => (seqlit.elems, seqlit.elemtpt)
           case _ =>
             report.error("Expected statically known argument list", args0.srcPos)
-            (Nil, EmptyTree)
+            (Vector(), EmptyTree)
 
         def literally(s: String) = Literal(Constant(s))
         if parts.lengthIs != args.length + 1 then
@@ -163,10 +163,10 @@ class StringInterpolatorOpt extends MiniPhase:
           val checker = TypedFormatChecker(partsExpr, parts, args)
           val (format, formatArgs) = checker.checked
           if format.isEmpty then (literally(parts.mkString), args0) // on error just use unchecked inputs
-          else (literally(format.mkString), SeqLiteral(formatArgs.toList, elemtpt))
+          else (literally(format.mkString), SeqLiteral(formatArgs.toVector, elemtpt))
       end checked
       val (fmt, args1) = checked(args)
-      resolveConstructor(defn.StringOps.typeRef, List(fmt))
+      resolveConstructor(defn.StringOps.typeRef, Vector(fmt))
         .select(nme.format)
         .appliedTo(args1)
     end transformF
@@ -185,15 +185,15 @@ class StringInterpolatorOpt extends MiniPhase:
       evalOnce(pre) { sc =>
         val parts = sc.select(defn.StringContext_parts)
         ref(defn.StringContextModule_standardInterpolator)
-          .appliedToTermArgs(List(process, args, parts))
+          .appliedToTermArgs(Vector(process, args, parts))
       }
     end transformS
     // begin transformApply
     if isInterpolatedMethod then
       (tree: @unchecked) match
-        case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
+        case StringContextIntrinsic(strs: Vector[Literal], elems: Vector[Tree]) =>
           mkConcat(strs, elems)
-        case Apply(intp, args :: Nil) =>
+        case Apply(intp, args +: Vector()) =>
           if sym eq defn.StringContext_f then transformF(intp, args)
           else transformS(intp, args, isRaw = sym eq defn.StringContext_raw)
     else

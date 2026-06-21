@@ -225,7 +225,7 @@ object ClassfileParser {
       value
     }
 
-    def getBytes(indices: List[Int])(using in: DataReader): Array[Byte] = {
+    def getBytes(indices: Vector[Int])(using in: DataReader): Array[Byte] = {
       assert(!indices.isEmpty, indices)
       var value = values(indices.head).asInstanceOf[Array[Byte]]
       if (value eq null) {
@@ -366,7 +366,7 @@ final class ClassfileParser(
 
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
-    def parseParents: List[Type] = {
+    def parseParents: Vector[Type] = {
       val superType =
         val superClass = in.nextChar
         // Treat these interfaces as universal traits
@@ -378,16 +378,16 @@ final class ClassfileParser(
         else
           pool.getSuperClass(superClass).typeRef
       val ifaceCount = in.nextChar
-      val ifaces = List.fill(ifaceCount.toInt):
+      val ifaces = Vector.fill(ifaceCount.toInt):
         pool.getSuperClass(in.nextChar).typeRef
-      superType :: ifaces
+      superType +: ifaces
     }
 
     val result = unpickleOrParseInnerClasses()
     if (!result.isDefined) {
       var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
       // might be reassigned by later parseAttributes
-      val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
+      val staticInfo = TempClassInfoType(Vector(), staticScope, moduleRoot.symbol)
 
       enterOwnInnerClasses()
 
@@ -419,7 +419,7 @@ final class ClassfileParser(
       NamerOps.addConstructorProxies(moduleRoot.classSymbol)
     }
     else if (result == Some(NoEmbedded))
-      for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
+      for (sym <- Vector(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
         sym.markAbsent()
       }
@@ -513,11 +513,11 @@ final class ClassfileParser(
       denot.info = sigToType(sig, isVarargs = isVarargs)
       if (isConstructor) normalizeConstructorParams()
       if isNative then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Nil))
+        attrCompleter.annotations +:= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Vector()))
       if isTransient then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Nil))
+        attrCompleter.annotations +:= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Vector()))
       if isVolatile then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Nil))
+        attrCompleter.annotations +:= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Vector()))
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
@@ -638,7 +638,7 @@ final class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toList)
+                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toVector)
               }
               else tp
             case tp =>
@@ -700,7 +700,7 @@ final class ClassfileParser(
 
           index += 1
           val restype = sig2type(skiptvs = false)
-          MethodType(paramnames.toList, paramtypes.toList, restype)
+          MethodType(paramnames.toVector, paramtypes.toVector, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
@@ -757,7 +757,7 @@ final class ClassfileParser(
       }
       index += 1
     }
-    val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
+    val ownTypeParams = newTParams.toVector.asInstanceOf[Vector[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
         sig2type(skiptvs = false)
@@ -766,7 +766,7 @@ final class ClassfileParser(
         val parents = new ListBuffer[Type]()
         while (index < end)
           parents += sig2type(skiptvs = false, isParent = true) // here the variance doesn't matter
-        TempClassInfoType(parents.toList, instanceScope, owner)
+        TempClassInfoType(parents.toVector, instanceScope, owner)
       }
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)
   }
@@ -822,7 +822,7 @@ final class ClassfileParser(
         if (hasError) None
         else if (skip) None
         else {
-          val elems = arr.toList
+          val elems = arr.toVector
           Some(untpd.JavaSeqLiteral(elems, untpd.TypeTree()))
         }
       case ANNOTATION_TAG =>
@@ -830,8 +830,8 @@ final class ClassfileParser(
     }
   }
 
-  class ClassfileAnnotation(annotType: Type, lazyArgs: List[(NameOrString, untpd.Tree | EnumTag)]) extends LazyAnnotation {
-    private def args(using Context): List[untpd.Tree] =
+  class ClassfileAnnotation(annotType: Type, lazyArgs: Vector[(NameOrString, untpd.Tree | EnumTag)]) extends LazyAnnotation {
+    private def args(using Context): Vector[untpd.Tree] =
       lazyArgs.map {
         case (name, tree: untpd.Tree) => untpd.NamedArg(name.name, tree).withSpan(NoSpan)
         case (name, tag: EnumTag)     => untpd.NamedArg(name.name, tag.toTree).withSpan(NoSpan)
@@ -844,7 +844,7 @@ final class ClassfileParser(
       (ctx: Context) ?=> untpd.resolveConstructor(annotType, args)
 
     def untpdTree(using Context): untpd.Tree =
-      untpd.New(untpd.TypeTree(annotType), List(args))
+      untpd.New(untpd.TypeTree(annotType), Vector(args))
   }
 
   /** Parse and return a single annotation.  If it is malformed,
@@ -873,7 +873,7 @@ final class ClassfileParser(
         None
       case _ =>
         if (hasError || skip) None
-        else Some(ClassfileAnnotation(attrType, argbuf.toList))
+        else Some(ClassfileAnnotation(attrType, argbuf.toVector))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
@@ -901,10 +901,10 @@ final class ClassfileParser(
   class AttributeCompleter(sym: Symbol) {
     var sig: String | Null = null
     var constant: Constant | Null = null
-    var exceptions: List[NameOrString] = Nil
-    var annotations: List[Annotation] = Nil
+    var exceptions: Vector[NameOrString] = Vector()
+    var annotations: Vector[Annotation] = Vector()
     var namedParams: Map[Int, TermName] = Map.empty
-    var permittedSubclasses: List[NameOrString] = Nil
+    var permittedSubclasses: Vector[NameOrString] = Vector()
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
         val sig = this.sig
@@ -933,14 +933,14 @@ final class ClassfileParser(
       permittedSubclasses.foreach { child =>
         val cls = getClassSymbol(child.name)
         sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
-          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
+          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Vector())
           .withSpan(NoSpan)
           ))
         }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
-          mt.derivedLambdaType(List.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
+          mt.derivedLambdaType(Vector.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
         case pt: PolyType if namedParams.nonEmpty =>
           pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
@@ -970,8 +970,8 @@ final class ClassfileParser(
         case tpnme.DeprecatedATTR =>
           val msg = Literal(Constant("see corresponding Javadoc for more information."))
           val since = Literal(Constant(""))
-          res.annotations ::= Annotation.deferredSymAndTree(defn.DeprecatedAnnot) {
-            New(defn.DeprecatedAnnot.typeRef, msg :: since :: Nil)
+          res.annotations +:= Annotation.deferredSymAndTree(defn.DeprecatedAnnot) {
+            New(defn.DeprecatedAnnot.typeRef, msg +: since +: Vector())
           }
 
         case tpnme.ConstantValueATTR =>
@@ -990,7 +990,7 @@ final class ClassfileParser(
                 res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Vector(), sym.span))
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
@@ -1020,7 +1020,7 @@ final class ClassfileParser(
           val numberOfClasses = in.nextChar
           for (n <- 0 until numberOfClasses) {
             val childName = pool.getClassName(in.nextChar.toInt)
-            res.permittedSubclasses ::= childName
+            res.permittedSubclasses +:= childName
           }
 
         case _ =>
@@ -1037,7 +1037,7 @@ final class ClassfileParser(
       for (n <- 0 until nClasses) {
         // FIXME: this performs an equivalent of getExceptionTypes instead of getGenericExceptionTypes (SI-7065)
         val cls = pool.getClassName(in.nextChar.toInt)
-        res.exceptions ::= cls
+        res.exceptions +:= cls
       }
     }
 
@@ -1074,7 +1074,7 @@ final class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
+      val attrs = classInfo.decls.toVector.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
@@ -1106,7 +1106,7 @@ final class ClassfileParser(
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
   // instead of ScalaSignature before 2.13.0-M2, see https://github.com/scala/scala/pull/5952
-  private val scalaUnpickleAllowlist = List(tpnme.nothingClass, tpnme.nullClass)
+  private val scalaUnpickleAllowlist = Vector(tpnme.nothingClass, tpnme.nullClass)
 
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
@@ -1141,7 +1141,7 @@ final class ClassfileParser(
 
         if (allowed != "always") {
           failUnless(allowed != "never")
-          val allowedList = allowed.split(java.io.File.pathSeparator).toList
+          val allowedList = allowed.split(java.io.File.pathSeparator).toVector
           val file = classRoot.symbol.associatedFile
           // Using `.toString.contains` isn't great, but it's good enough for a debug flag.
           failUnless(file == null || allowedList.exists(path => file.toString.contains(path)))
@@ -1168,7 +1168,7 @@ final class ClassfileParser(
             assert(stag == STRING_TAG, stag)
             in.nextChar.toInt
           }
-        pool.getBytes(entries.toList)
+        pool.getBytes(entries.toVector)
       }
 
       if (scan(tpnme.TASTYATTR)) {

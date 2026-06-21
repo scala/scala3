@@ -436,8 +436,8 @@ object NameKinds {
    *  and that need to be unmangled. Note: Scala2 protected accessors and setters
    *  can be left mangled, so they are not included in thus list.
    */
-  val Scala2MethodNameKinds: List[NameKind] =
-    List(DefaultGetterName, ExtMethName, UniqueExtMethName)
+  val Scala2MethodNameKinds: Vector[NameKind] =
+    Vector(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
   def simpleNameKindOfTag      : util.ReadOnlyMap[Int, ClassifiedNameKind] = simpleNameKinds
   def qualifiedNameKindOfTag   : util.ReadOnlyMap[Int, QualifiedNameKind]  = qualifiedNameKinds

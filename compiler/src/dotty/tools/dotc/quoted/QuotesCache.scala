@@ -9,15 +9,15 @@ object QuotesCache {
   import tpd.*
 
   /** A key to be used in a context property that caches the unpickled trees */
-  private val QuotesCacheKey = new Property.Key[collection.mutable.Map[String | List[String], Tree]]
+  private val QuotesCacheKey = new Property.Key[collection.mutable.Map[String | Vector[String], Tree]]
 
 
   /** Get the cached tree of the quote */
-  def getTree(pickled: String | List[String])(using Context): Option[Tree] =
+  def getTree(pickled: String | Vector[String])(using Context): Option[Tree] =
     ctx.property(QuotesCacheKey).get.get(pickled)
 
   /** Update the cached tree of the quote */
-  def update(pickled: String | List[String], tree: Tree)(using Context): Unit =
+  def update(pickled: String | Vector[String], tree: Tree)(using Context): Unit =
     ctx.property(QuotesCacheKey).get.update(pickled, tree)
 
   /** Context with a cache for quote trees and tasty bytes */

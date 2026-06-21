@@ -9,13 +9,13 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
   override def initCtx = {
     val ctx = super.initCtx
     ctx.setSetting(ctx.settings.opt, true)
-    ctx.setSetting(ctx.settings.optInline, List("**", "!java.**"))
+    ctx.setSetting(ctx.settings.optInline, Vector("**", "!java.**"))
     // Probably don't:
     //ctx.setSetting(ctx.settings.YoptInlineHeuristics, "everything")
     // For debugging purposes:
     //ctx.setSetting(ctx.settings.Ydebug, true)
     //ctx.setSetting(ctx.settings.silentWarnings, false)
-    //ctx.setSetting(ctx.settings.Wopt, List(ChoiceWithHelp("all", "")))
+    //ctx.setSetting(ctx.settings.Wopt, Vector(ChoiceWithHelp("all", "")))
     //ctx.setSetting(ctx.settings.YoptLogInline, "_")
     //ctx.setSetting(ctx.settings.YoptTrace, "_")
   }
@@ -35,7 +35,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       ""
   }
 
-  def assertEquivalence(expectedSource: String, actualSource: String, params: List[String] = Nil, extraMemberSources: List[String] = Nil, returnType: String = "Int"): Unit = {
+  def assertEquivalence(expectedSource: String, actualSource: String, params: Vector[String] = Vector(), extraMemberSources: Vector[String] = Vector(), returnType: String = "Int"): Unit = {
     val source =
       f"""
         |${escapeSource(expectedSource + actualSource + extraMemberSources.mkString("\n"))}
@@ -61,7 +61,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
    }
   }
 
-  private def assertCalls(allowedCalls: (String, String) => Boolean, body: String, params: List[String] = Nil, extraMemberSources: List[String] = Nil, returnType: String = "Int"): Unit =
+  private def assertCalls(allowedCalls: (String, String) => Boolean, body: String, params: Vector[String] = Vector(), extraMemberSources: Vector[String] = Vector(), returnType: String = "Int"): Unit =
     val source =
       f"""
          |${escapeSource(body + extraMemberSources.mkString("\n"))}
@@ -125,7 +125,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x",
       "val a: Any = x; val t = (a, 42); t._1.asInstanceOf[Int]",
-      params = List("x: Int"),
+      params = Vector("x: Int"),
     )
 
   @Test def inlineTuple2OfTuple2General =
@@ -138,7 +138,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x",
       "val t1 = (x, 0); val a: Any = t1._1; val t2 = (a, 42); t2._1.asInstanceOf[Int]",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
 
@@ -146,14 +146,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "1",
       "locally { 1 }",
-      extraMemberSources = List("@inline def locally(x: Int): Int = x") // simplified from the form below
+      extraMemberSources = Vector("@inline def locally(x: Int): Int = x") // simplified from the form below
     )
 
   @Test def inlineGenericLocallyFunction =
     assertEquivalence(
       "1",
       "locally { 1 }",
-      extraMemberSources = List("@inline def locally[T](@deprecatedName(\"x\") x: T): T = x") // copied from Predef.scala
+      extraMemberSources = Vector("@inline def locally[T](@deprecatedName(\"x\") x: T): T = x") // copied from Predef.scala
     )
 
 
@@ -161,7 +161,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "if x == null then throw new NullPointerException(\"tried to cast away nullability, but value is null\"); x.asInstanceOf[Int]",
       "x.nn",
-      params = List("x: Int | Null")
+      params = Vector("x: Int | Null")
     )
 
 
@@ -169,8 +169,8 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x.nn; 0",
       "add(x.nn, 0); 0",
-      extraMemberSources = List("def add(x: Int, y: Int): Int = x + y"),
-      params = List("x: Int | Null")
+      extraMemberSources = Vector("def add(x: Int, y: Int): Int = x + y"),
+      params = Vector("x: Int | Null")
     )
 
 
@@ -178,14 +178,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x",
       "val a: Any = x; a.asInstanceOf[Int]",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
   @Test def inlineBoxUnboxMixedArithmetic =
     assertEquivalence(
       "x + y",
       "val a: java.lang.Integer = x; val b: java.lang.Long = y; a + b",
-      params = List("x: Int", "y: Long"),
+      params = Vector("x: Int", "y: Long"),
       returnType = "Long"
     )
 
@@ -193,20 +193,20 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "escape(x); x",
       "val a: Any = x; escape(a); a.asInstanceOf[Int]",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
   @Test def inlineBoxUnboxValEscapedBranch =
     assertCalls(Calls.noBoxing,
       "val i = Integer.valueOf(10); val j = Integer.valueOf(32); escape(if b then i else j); if b then i.toInt else j.toInt",
-      params = List("b: Boolean")
+      params = Vector("b: Boolean")
     )
 
   @Test def inlineBoxUnboxVarClosure =
     assertEquivalence(
       "x",
       "var a: Any = x; val c: () => String = () => a.asInstanceOf[String]; c()",
-      params = List("x: String"),
+      params = Vector("x: String"),
       returnType = "String"
     )
 
@@ -214,14 +214,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "if x >= 0 then 1 else 2",
       "var a = if x >= 0 then (1: Any) else 2; a.asInstanceOf[Int]",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
   @Test def inlineBoxUnboxBranchContrived =
     assertEquivalence(
       "String.valueOf(if x > 0 then x else -x)",
       "val wat: Any = if x > 0 then x else -x; wat match { case x: Int => String.valueOf(x); case _ => \"?\" }",
-      params = List("x: Int"),
+      params = Vector("x: Int"),
       returnType = "String"
     )
 
@@ -229,7 +229,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x",
       "val a = java.lang.Integer.valueOf(x); a.asInstanceOf[Int]",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
   @Test def inlineBoxUnboxJavaBranch =
@@ -261,7 +261,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     // we'd like assertEquivalence("if b then 0 else 1", ` but our simple store-load elimination can't do it
     assertCalls(Calls.none,
       "val r1 = scala.runtime.IntRef.zero(); val r2 = scala.runtime.IntRef.create(1); val r = if b then r1 else r2; r.elem",
-      params = List("b: Boolean")
+      params = Vector("b: Boolean")
     )
 
   @Test def inlineRefWrite =
@@ -275,7 +275,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     // we'd like `assertEquivalence("if b then 1 else 2", ` but our simple store-load elimination can't do it
     assertCalls(Calls.none,
       "val x = scala.runtime.BooleanRef.create(false); if b then x.elem = true; if x.elem then 1 else 2",
-      params = List("b: Boolean")
+      params = Vector("b: Boolean")
     )
 
 
@@ -283,21 +283,21 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "a + b",
       "(a, b) match { case (a: Int, b: Int) => a + b; case _ => -1 }",
-      params = List("a: Int", "b: Int")
+      params = Vector("a: Int", "b: Int")
     )
 
   @Test def inlineMatchBoxed =
     assertEquivalence(
       "a + b",
       "(a: Any, b: Any) match { case (a: Int, b: Int) => a + b; case _ => -1 }",
-      params = List("a: Int", "b: Int")
+      params = Vector("a: Int", "b: Int")
     )
 
   @Test def inlineMatchResult =
     // we'd like assertEquivalence("if n == 0 then 1 + 2 else 3 + 4", ` but our simple store-load elimination can't do it
     assertCalls(Calls.none,
       "val (a, b) = n match { case 0 => (1, 2); case _ => (3, 4) }; a + b",
-      params = List("n: Int")
+      params = Vector("n: Int")
     )
 
 
@@ -312,7 +312,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x.length",
       "val y = x; y.length",
-      params = List("x: Array[Int]")
+      params = Vector("x: Array[Int]")
     )
 
 
@@ -377,14 +377,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x",
       "x.asInstanceOf[Int]",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
   @Test def elidedCastClass =
     assertEquivalence(
       "x",
       "x.asInstanceOf[String]",
-      params = List("x: String"),
+      params = Vector("x: String"),
       returnType = "String"
     )
 
@@ -392,7 +392,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "true",
       "val b = (x: Integer); b.isInstanceOf[Object]",
-      params = List("x: Int"),
+      params = Vector("x: Int"),
       returnType = "Boolean"
     )
 
@@ -400,7 +400,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "true",
       "val b = (x: Integer); b.isInstanceOf[Number]",
-      params = List("x: Int"),
+      params = Vector("x: Int"),
       returnType = "Boolean"
     )
 
@@ -409,14 +409,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "x",
       "java.lang.Integer.valueOf(x); x",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
   @Test def deadBoxScala =
     assertEquivalence(
       "x",
       "scala.runtime.BoxesRunTime.boxToInteger(x); x",
-      params = List("x: Int")
+      params = Vector("x: Int")
     )
 
 
@@ -424,14 +424,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "1",
       "Byte.unbox(b); 1",
-      params = List("b: java.lang.Byte")
+      params = Vector("b: java.lang.Byte")
     )
 
   @Test def deadUnboxBox =
     assertEquivalence(
       "1",
       "Int.unbox(Integer.valueOf(n)); 1",
-      params = List("n: Int")
+      params = Vector("n: Int")
     )
 
   @Test def deadUnboxNull =
@@ -514,28 +514,28 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "if x == null then 1 else 2",
       "if x == null then 1 else if x.isInstanceOf[String] then 2 else 3",
-      params = List("x: String | Null")
+      params = Vector("x: String | Null")
     )
 
   @Test def deadCodeFromIsInstanceAny =
     assertEquivalence(
       "if x == null then 1 else 2",
       "if x == null then 1 else if x.isInstanceOf[Any] then 2 else 3",
-      params = List("x: String | Null")
+      params = Vector("x: String | Null")
     )
 
   @Test def deadCodeFromIsInstanceNull =
     assertEquivalence(
       "2",
       "var y = x; y = null; if y.isInstanceOf[String] then 1 else 2",
-      params = List("x: String | Null")
+      params = Vector("x: String | Null")
     )
 
   @Test def deadCodeFromIsInstanceUnrelated =
     assertEquivalence(
       "2",
       "if x.isInstanceOf[List[Int]] then 1 else 2",
-      params = List("x: String")
+      params = Vector("x: String")
     )
 
 
@@ -543,7 +543,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "()",
       "val limit = 5; var n = 1; var (d, f) = progress match { case 0 => (10000L, 5); case _ => (250L, 4) }; ()",
-      params = List("terminated: => Boolean", "progress: Int = 0", "label: => String = \"test\""),
+      params = Vector("terminated: => Boolean", "progress: Int = 0", "label: => String = \"test\""),
       returnType = "Unit"
     )
 
@@ -592,7 +592,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       "while(true) {}",
       "while(true) m(\"...\")",
       returnType = "Unit",
-      extraMemberSources = List("final def m(msg: => String) = try () catch { case ex: Throwable => println(msg) }")
+      extraMemberSources = Vector("final def m(msg: => String) = try () catch { case ex: Throwable => println(msg) }")
     )
 
 
@@ -600,7 +600,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var l = a.length; var i = 0; while i < l do { escape(a(i)); i += 1 }",
       "a.foreach(i => escape(i))",
-      params = List("a: Array[Int]"),
+      params = Vector("a: Array[Int]"),
       returnType = "Unit"
     )
 
@@ -608,7 +608,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var l = a.length; var i = 0; while i < l do { a(i).trim(); i += 1 }",
       "a.foreach(_.trim)",
-      params = List("a: Array[String]"),
+      params = Vector("a: Array[String]"),
       returnType = "Unit"
     )
 
@@ -616,7 +616,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var l = a.length; var r = new Array[Int](l); if l > 0 then { var i = 0; while i < l do { val temp = a(i) + 1; r(i) = temp; i += 1 } }; r",
       "a.map(_ + 1)",
-      params = List("a: Array[Int]"),
+      params = Vector("a: Array[Int]"),
       returnType = "Array[Int]"
     )
 
@@ -624,7 +624,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var l = a.length; var r = new Array[Int](l); if l > 0 then { var i = 0; while i < l do { val temp = a(i) + 1; r(i) = temp; i += 1 } }; r",
       "a.map(_ + 1)",
-      params = List("a: Array[Byte]"),
+      params = Vector("a: Array[Byte]"),
       returnType = "Array[Int]"
     )
 
@@ -632,7 +632,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var l = a.length; var r = new Array[Byte](l); if l > 0 then { var i = 0; while i < l do { val temp = (a(i) + 1).toByte; r(i) = temp; i += 1 } }; r",
       "a.map(x => (x + 1).toByte)",
-      params = List("a: Array[Byte]"),
+      params = Vector("a: Array[Byte]"),
       returnType = "Array[Byte]"
     )
 
@@ -640,47 +640,47 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var l = a.length; var r = new Array[String](l); if l > 0 then { var i = 0; while i < l do { var temp = a(i).trim; r(i) = temp; temp = null; i += 1 } }; r",
       "a.map(_.trim)",
-      params = List("a: Array[String]"),
+      params = Vector("a: Array[String]"),
       returnType = "Array[String]"
     )
 
   @Test def cleanArrayExistsVal = // also covers "forall", "indexWhere", "find" (implemented similarly)
     assertCalls(Calls.noBoxing,
       "a.exists(_ == 0)",
-      params = List("a: Array[Int]"),
+      params = Vector("a: Array[Int]"),
       returnType = "Boolean"
     )
 
   @Test def cleanArrayFoldLeftVal = // also covers "fold", "foldRight"
     assertCalls(Calls.noneExcept("<init>"),  // constructor for the exception
       "a.foldLeft(0)(_ + _)",
-      params = List("a: Array[Int]")
+      params = Vector("a: Array[Int]")
     )
 
   @Test def cleanArrayFoldLeftRef =
     assertCalls(Calls.noneExcept("<init>", "length"), // constructor for the exception
       "a.foldLeft(0)(_ + _.length)",
-      params = List("a: Array[String]")
+      params = Vector("a: Array[String]")
     )
 
   @Test def cleanArrayScanLeftVal = // also covers "scan", "scanRight"
     assertCalls(Calls.none,
       "a.scanLeft(0)(_ + _)",
-      params = List("a: Array[Int]"),
+      params = Vector("a: Array[Int]"),
       returnType = "Array[Int]"
     )
 
   @Test def cleanArrayScanLeftRef =
     assertCalls(Calls.noneExcept("length"),
       "a.scanLeft(0)(_ + _.length)",
-      params = List("a: Array[String]"),
+      params = Vector("a: Array[String]"),
       returnType = "Array[Int]"
     )
 
   @Test def cleanArrayScanLeftRef2 =
     assertCalls(Calls.noneExcept("trim"),
       "a.scanLeft(\"\")((_, s) => s.trim)",
-      params = List("a: Array[String]"),
+      params = Vector("a: Array[String]"),
       returnType = "Array[String]"
     )
 
@@ -688,7 +688,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var i = 0; while i < a.length do { val temp = a(i) + 1; a(i) = temp; i += 1 }; a",
       "a.mapInPlace(_ + 1)",
-      params = List("a: Array[Int]"),
+      params = Vector("a: Array[Int]"),
       returnType = "Array[Int]"
     )
 
@@ -696,14 +696,14 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "var i = 0; while i < a.length do { var temp = a(i).trim; a(i) = temp; temp = null; i += 1 }; a",
       "a.mapInPlace(_.trim)",
-      params = List("a: Array[String]"),
+      params = Vector("a: Array[String]"),
       returnType = "Array[String]"
     )
 
   @Test def cleanArrayCountVal =
     assertCalls(Calls.noBoxing,
       "a.count(_ == 0)",
-      params = List("a: Array[Int]")
+      params = Vector("a: Array[Int]")
     )
 
   @Test def cleanArrayFill =
@@ -724,8 +724,8 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "if i eq null then throw null; 42",
       "i.foo()",
-      params = List("i: Impl"),
-      extraMemberSources = List(
+      params = Vector("i: Impl"),
+      extraMemberSources = Vector(
         "abstract class SAM { def foo(): Int }",
         "final class Impl extends SAM { def foo() = 42 }"
       )
@@ -735,7 +735,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     assertEquivalence(
       "{ val a = 9; a + 1 } + { val b = 31; b + 1 }",
       "call(n => n + 1)",
-      extraMemberSources = List(
+      extraMemberSources = Vector(
         "trait MyIntFunction { def foo(n: Int): Int }",
         "def call(f: MyIntFunction): Int = f.foo(9) + f.foo(31)"
       )
@@ -777,7 +777,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       val clsIn = dir.lookupName("Test.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
 
-      for m <- List(getMethod(clsNode, "bad")) do
+      for m <- Vector(getMethod(clsNode, "bad")) do
         val instrs = instructionsFromMethod(m)
         assert(!instrs.exists {
           case inv: AsmConverters.Invoke => inv.owner.startsWith("jdk/internal")

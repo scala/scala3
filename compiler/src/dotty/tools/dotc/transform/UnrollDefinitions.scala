@@ -49,7 +49,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
   def newTransformer(using Context): Transformer =
     UnrollingTransformer(ctx.compilationUnit.unrolledClasses)
 
-  type ComputedIndices = List[(Int, List[Int])]
+  type ComputedIndices = Vector[(Int, Vector[Int])]
   type ComputeIndices = Context ?=> Symbol => ComputedIndices
 
   private class UnrollingTransformer(unrolledClasses: Set[Symbol]) extends Transformer {
@@ -65,7 +65,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
           // yields:
           //   `def foo$default$2(@unroll y: String): Int @uncheckedVariance = 23`
           // Perhaps annotations should be preprocessed before they are copied?
-          Nil
+          Vector()
         else
           val indices = annotated
             .paramSymss
@@ -102,7 +102,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     i"in ${sym.owner}${lineDesc}"
   }
 
-  private def findUnrollAnnotations(params: List[Symbol])(using Context): List[Int] = {
+  private def findUnrollAnnotations(params: Vector[Symbol])(using Context): Vector[Int] = {
     params
       .zipWithIndex
       .collect {
@@ -129,7 +129,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
                               annotatedParamListIndex: Int,
                               isCaseApply: Boolean)(using Context): DefDef = {
 
-    def initNewForwarder()(using Context): (TermSymbol, List[List[Symbol]]) = {
+    def initNewForwarder()(using Context): (TermSymbol, Vector[Vector[Symbol]]) = {
       val forwarderDefSymbol0 = Symbols.newSymbol(
         defdef.symbol.owner,
         defdef.name,
@@ -154,7 +154,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       forwarderDefSymbol0 -> newParamSymLists0
     }
 
-    def extractParamSymss[T](onSymbol: Symbol => T): List[List[T]] =
+    def extractParamSymss[T](onSymbol: Symbol => T): Vector[Vector[T]] =
       defdef.paramss.zipWithIndex.map{ case (ps, i) =>
         if (i == annotatedParamListIndex) ps.take(paramIndex).map(p => onSymbol(p.symbol))
         else ps.map(p => onSymbol(p.symbol))
@@ -215,7 +215,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
       val forwarderCall =
         if (!defdef.symbol.isConstructor) forwarderCall0
-        else Block(List(forwarderCall0), Literal(Constant(())))
+        else Block(Vector(forwarderCall0), Literal(Constant(())))
 
       forwarderCall
     }
@@ -226,7 +226,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     forwarderDef
   }
 
-  case class Forwarders(origin: Symbol, forwarders: List[DefDef])
+  case class Forwarders(origin: Symbol, forwarders: Vector[DefDef])
 
   private def generateSyntheticDefs(tree: Tree, compute: ComputeIndices)(using Context): Option[Forwarders] = tree match {
     case defdef: DefDef if defdef.paramss.nonEmpty =>
@@ -244,13 +244,13 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
         else defdef.symbol
 
       compute(annotated) match {
-        case Nil => None
-        case (paramClauseIndex, annotationIndices) :: Nil =>
+        case Vector() => None
+        case (paramClauseIndex, annotationIndices) +: Vector() =>
           val paramCount = annotated.paramSymss(paramClauseIndex).size
           val generatedDefs =
-            val indices = (annotationIndices :+ paramCount).sliding(2).toList.reverse
-            indices.foldLeft(List.empty[DefDef]):
-              case (defdefs, paramIndex :: nextParamIndex :: Nil) =>
+            val indices = (annotationIndices :+ paramCount).sliding(2).toVector.reverse
+            indices.foldLeft(Vector.empty[DefDef]):
+              case (defdefs, paramIndex +: nextParamIndex +: Vector()) =>
                 generateSingleForwarder(
                   defdef,
                   paramIndex,
@@ -258,7 +258,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
                   nextParamIndex,
                   paramClauseIndex,
                   isCaseApply
-                ) :: defdefs
+                ) +: defdefs
               case _ => unreachable("sliding with at least 2 elements")
           Some(Forwarders(origin = defdef.symbol, forwarders = generatedDefs))
 
@@ -277,7 +277,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     val allGenerated = generatedBody ++ generatedConstr0
 
     if allGenerated.nonEmpty then
-      val byName = (tmpl.constr :: tmpl.body).groupMap(_.symbol.name.toString)(_.symbol)
+      val byName = (tmpl.constr +: tmpl.body).groupMap(_.symbol.name.toString)(_.symbol)
       for
         syntheticDefs <- allGenerated
         dcl <- syntheticDefs.forwarders

@@ -47,14 +47,14 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
           val gen = new Gen(
             Apply(
               Select(This(config.expressionClass), reflectEvalName),
-              List(nullLiteral, nullLiteral, nullLiteral)
+              Vector(nullLiteral, nullLiteral, nullLiteral)
             )
           )
           val rhs = gen.unboxIfValueClass(expressionStore.symbol.nn, transform(tree.rhs))
           cpy.DefDef(tree)(rhs = rhs)
 
         case reflectEval: Apply if isReflectEval(reflectEval.fun.symbol) =>
-          val qualifier :: _ :: argsTree :: Nil = reflectEval.args.map(transform): @unchecked
+          val qualifier +: _ +: argsTree +: Vector() = reflectEval.args.map(transform): @unchecked
           val args = argsTree.asInstanceOf[JavaSeqLiteral].elems
           val gen = new Gen(reflectEval)
           tree.attachment(ReflectEvalStrategy) match
@@ -136,7 +136,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               // then we must call the getter method
               val fieldValue =
                 if field.is(Lazy) || field.owner.isValueClass || field.owner.is(Trait)
-                then gen.callMethod(tree)(qualifier, field.getter.asTerm, Nil)
+                then gen.callMethod(tree)(qualifier, field.getter.asTerm, Vector())
                 else
                   val rawValue = gen.getField(tree)(qualifier, field)
                   if isByName then gen.evaluateByName(rawValue) else rawValue
@@ -145,7 +145,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
             case ReflectEvalStrategy.FieldAssign(field) =>
               val arg = gen.unboxIfValueClass(field, args.head)
               if field.owner.is(Trait) then
-                gen.callMethod(tree)(qualifier, field.setter.asTerm, List(arg))
+                gen.callMethod(tree)(qualifier, field.setter.asTerm, Vector(arg))
               else gen.setField(tree)(qualifier, field, arg)
             
             case ReflectEvalStrategy.MethodCall(method) => gen.callMethod(tree)(qualifier, method, args)
@@ -175,7 +175,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
     def boxValueClass(valueClass: ClassSymbol, tree: Tree): Tree =
       // qualifier is null: a value class cannot be nested into a class
       val ctor = valueClass.primaryConstructor.asTerm
-      callConstructor(tree)(nullLiteral, ctor, List(tree))
+      callConstructor(tree)(nullLiteral, ctor, Vector(tree))
 
     def unboxIfValueClass(term: TermSymbol, tree: Tree): Tree =
       getErasedValueType(atPhase(Phases.elimErasedValueTypePhase)(term.info)) match
@@ -190,27 +190,27 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
     private def unboxValueClass(tree: Tree, tpe: ErasedValueType): Tree =
       val cls = tpe.tycon.typeSymbol.asClass
       val unboxMethod = ValueClasses.valueClassUnbox(cls).asTerm
-      callMethod(tree)(tree, unboxMethod, Nil)
+      callMethod(tree)(tree, unboxMethod, Vector())
 
     def getThisObject: Tree =
-      Apply(Select(expressionThis, termName("getThisObject")), Nil)
+      Apply(Select(expressionThis, termName("getThisObject")), Vector())
 
     def getLocalValue(name: String): Tree =
       Apply(
         Select(expressionThis, termName("getLocalValue")),
-        List(Literal(Constant(name)))
+        Vector(Literal(Constant(name)))
       )
 
     def setLocalValue(name: String, value: Tree): Tree =
       Apply(
         Select(expressionThis, termName("setLocalValue")),
-        List(Literal(Constant(name)), value)
+        Vector(Literal(Constant(name)), value)
       )
 
     def getOuter(qualifier: Tree, outerCls: ClassSymbol): Tree =
       Apply(
         Select(expressionThis, termName("getOuter")),
-        List(qualifier, Literal(Constant(JavaEncoding.encode(outerCls))))
+        Vector(qualifier, Literal(Constant(JavaEncoding.encode(outerCls))))
       )
 
     def getClassCapture(tree: Tree)(qualifier: Tree, originalName: Name, cls: ClassSymbol): Option[Tree] =
@@ -235,7 +235,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
     def getStaticObject(obj: ClassSymbol): Tree =
       Apply(
         Select(expressionThis, termName("getStaticObject")),
-        List(Literal(Constant(JavaEncoding.encode(obj))))
+        Vector(Literal(Constant(JavaEncoding.encode(obj))))
       )
 
     def getField(tree: Tree)(qualifier: Tree, field: TermSymbol): Tree =
@@ -245,7 +245,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
       else
         Apply(
           Select(expressionThis, termName("getField")),
-          List(
+          Vector(
             qualifier,
             Literal(Constant(JavaEncoding.encode(field.owner.asType))),
             Literal(Constant(JavaEncoding.encode(field.name)))
@@ -259,7 +259,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
       else
         Apply(
           Select(expressionThis, termName("setField")),
-          List(
+          Vector(
             qualifier,
             Literal(Constant(JavaEncoding.encode(field.owner.asType))),
             Literal(Constant(JavaEncoding.encode(field.name))),
@@ -269,9 +269,9 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
 
     def evaluateByName(function: Tree): Tree =
       val castFunction = function.cast(defn.Function0.typeRef.appliedTo(defn.AnyType))
-      Apply(Select(castFunction, termName("apply")), List())
+      Apply(Select(castFunction, termName("apply")), Vector())
 
-    def callMethod(tree: Tree)(qualifier: Tree, method: TermSymbol, args: List[Tree]): Tree =
+    def callMethod(tree: Tree)(qualifier: Tree, method: TermSymbol, args: Vector[Tree]): Tree =
       val methodType = method.info.asInstanceOf[MethodType]
       val paramTypesNames = methodType.paramInfos.map(JavaEncoding.encode)
       val paramTypesArray = JavaSeqLiteral(
@@ -297,7 +297,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
       val methodName = JavaEncoding.encode(method.name)
       val result = Apply(
         Select(expressionThis, termName("callMethod")),
-        List(
+        Vector(
           qualifier,
           Literal(Constant(JavaEncoding.encode(method.owner.asType))),
           Literal(Constant(methodName)),
@@ -311,7 +311,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
         case _ => result
     end callMethod
 
-    def callConstructor(tree: Tree)(qualifier: Tree, ctor: TermSymbol, args: List[Tree]): Tree =
+    def callConstructor(tree: Tree)(qualifier: Tree, ctor: TermSymbol, args: Vector[Tree]): Tree =
       val methodType = ctor.info.asInstanceOf[MethodType]
       val paramTypesNames = methodType.paramInfos.map(JavaEncoding.encode)
       val clsName = JavaEncoding.encode(methodType.resType)
@@ -344,7 +344,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
       )
       Apply(
         Select(expressionThis, termName("callConstructor")),
-        List(
+        Vector(
           Literal(Constant(clsName)),
           paramTypesArray,
           JavaSeqLiteral(capturedArgs ++ unboxedArgs, TypeTree(ctx.definitions.ObjectType))

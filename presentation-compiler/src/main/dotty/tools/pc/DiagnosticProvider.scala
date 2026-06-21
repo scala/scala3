@@ -26,7 +26,7 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
       val filteredDiags =
         if localOnly then diags.filter(isLocal(_, uri))
         else diags
-      filteredDiags.flatMap(toLsp)
+      filteredDiags.flatMap(toLsp).toList
     else Nil
 
   private def isLocal(diag: Diagnostic, uri: java.net.URI): Boolean =

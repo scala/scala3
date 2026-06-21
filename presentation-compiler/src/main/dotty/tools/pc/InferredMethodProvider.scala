@@ -63,7 +63,7 @@ final class InferredMethodProvider(
     val unit = driver.currentCtx.run.nn.units.head
     val pos = driver.sourcePosition(params)
     val path =
-      Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
+      Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx).toList
 
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     val indexedContext = IndexedContext(pos, path, newctx)
@@ -73,7 +73,7 @@ final class InferredMethodProvider(
       pos,
       sourceText,
       unit.tpdTree,
-      unit.comments,
+      unit.comments.toList,
       indexedContext,
       config
     )
@@ -190,7 +190,7 @@ final class InferredMethodProvider(
           if defn.isFunctionType(expectedFunctionType) then
             expectedFunctionType match
               case defn.FunctionOf(argTypes, retType, _) =>
-                (Some(argTypes), Some(retType))
+                (Some(argTypes.toList), Some(retType))
               case _ =>
                 (None, Some(expectedFunctionType))
           else
@@ -268,8 +268,8 @@ final class InferredMethodProvider(
         val argIndex = outerArgs.indexOf(apply)
         val (allArgTypes, retTypeOpt) =
           extractParameterTypeInfo(method.tpe.widenDealias, argIndex) match
-            case (Some(argTypes2), retTypeOpt) => (List(argTypes, argTypes2), retTypeOpt)
-            case (None, retTypeOpt) => (List(argTypes), retTypeOpt)
+            case (Some(argTypes2), retTypeOpt) => (List(argTypes.toList, argTypes2), retTypeOpt)
+            case (None, retTypeOpt) => (List(argTypes.toList), retTypeOpt)
 
         val signature = printSignature(errorMethod, allArgTypes, retTypeOpt)
 
@@ -311,7 +311,7 @@ final class InferredMethodProvider(
         val retType = tpt.tpe.widenDealias
         val argTypes = args.map(_.typeOpt.widenDealias)
 
-        val signature = printSignature(errorMethod, List(argTypes), Some(retType))
+        val signature = printSignature(errorMethod, List(argTypes.toList), Some(retType))
         signatureEdits(signature)
 
       /** ```
@@ -340,7 +340,7 @@ final class InferredMethodProvider(
 
         val argTypes = args.map(_.typeOpt.widenDealias)
 
-        val signature = printSignature(errorMethod, List(argTypes), None)
+        val signature = printSignature(errorMethod, List(argTypes.toList), None)
         signatureEdits(signature)
 
       /** ```
@@ -362,7 +362,7 @@ final class InferredMethodProvider(
           _ if select.symbol == NoSymbol && func == select =>
 
         val argTypes = args.map(_.typeOpt.widenDealias)
-        val signature = printSignature(errorMethod, List(argTypes), None)
+        val signature = printSignature(errorMethod, List(argTypes.toList), None)
         signatureEditsForContainer(signature, container)
 
       /** ```

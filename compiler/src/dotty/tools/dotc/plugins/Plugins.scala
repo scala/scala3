@@ -24,7 +24,7 @@ trait Plugins {
    *  test for same-named phases or other problems that are
    *  filtered from the final list of plugins.
    */
-  protected def loadRoughPluginsList(using Context): List[Plugin] = {
+  protected def loadRoughPluginsList(using Context): Vector[Plugin] = {
     def asPath(p: String) = ClassPath.split(p)
     val paths  = ctx.settings.plugin.value
       .filter (_ != "")
@@ -45,8 +45,8 @@ trait Plugins {
     goods map (_.get)
   }
 
-  private var _roughPluginsList: List[Plugin] | Null = null
-  protected def roughPluginsList(using Context): List[Plugin] =
+  private var _roughPluginsList: Vector[Plugin] | Null = null
+  protected def roughPluginsList(using Context): Vector[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
     }
@@ -56,16 +56,16 @@ trait Plugins {
    *  either have the same name as another one, or which
    *  define a phase name that another one does.
    */
-  protected def loadPlugins(using Context): List[Plugin] = {
+  protected def loadPlugins(using Context): Vector[Plugin] = {
     // remove any with conflicting names or subcomponent names
     def pick(
-      plugins: List[Plugin],
-      plugNames: Set[String]): List[Plugin] = {
-      if (plugins.isEmpty) return Nil // early return
+      plugins: Vector[Plugin],
+      plugNames: Set[String]): Vector[Plugin] = {
+      if (plugins.isEmpty) return Vector() // early return
 
-      val plug :: tail      = plugins: @unchecked
+      val plug +: tail      = plugins: @unchecked
       def withoutPlug       = pick(tail, plugNames)
-      def withPlug          = plug :: pick(tail, plugNames + plug.name)
+      def withPlug          = plug +: pick(tail, plugNames + plug.name)
 
       def note(msg: String): Unit = if (ctx.settings.verbose.value) report.inform(msg format plug.name)
       def fail(msg: String)       = { note(msg) ; withoutPlug }
@@ -96,8 +96,8 @@ trait Plugins {
     plugs
   }
 
-  private var _plugins: List[Plugin] | Null = null
-  def plugins(using Context): List[Plugin] =
+  private var _plugins: Vector[Plugin] | Null = null
+  def plugins(using Context): Vector[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins
     }
@@ -114,21 +114,23 @@ trait Plugins {
     }).mkString
 
   /** Add plugin phases to phase plan */
-  def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] = {
-    def options(plugin: Plugin): List[String] =
+  def addPluginPhases(plan: Vector[Vector[Phase]])(using Context): Vector[Vector[Phase]] = {
+    def options(plugin: Plugin): Vector[String] =
       def namec = plugin.name + ":"
       ctx.settings.pluginOptions.value
         .filter(_.startsWith(namec))
         .map(_.stripPrefix(namec))
 
     // schedule plugins according to ordering constraints
-    val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.initialize(options(plug)) }
+    val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug =>
+      plug.initialize(options(plug).toList).toVector
+    }
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
     if Properties.researchPluginEnabled then
       plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) {
-        (plug, plan) => plug.init(options(plug), plan)
+        (plug, plan) => plug.init(options(plug).toList, plan.map(_.toList).toList).map(_.toVector).toVector
       }
     else
       updatedPlan
@@ -143,7 +145,7 @@ object Plugins {
    *
    *  Note: this algorithm is factored out for unit test.
    */
-  def schedule(plan: List[List[Phase]], pluginPhases: List[PluginPhase]): List[List[Phase]] = {
+  def schedule(plan: Vector[Vector[Phase]], pluginPhases: Vector[PluginPhase]): Vector[Vector[Phase]] = {
     import scala.collection.mutable.{ Map => MMap }
     type OrderingReq = (Set[String], Set[String])
 
@@ -267,7 +269,7 @@ object Plugins {
       }
 
       insertedPhase = insertedPhase + phase.phaseName
-      updatedPlan = before ++ (List(phase) :: after)
+      updatedPlan = before ++ (Vector(phase) +: after)
     }
 
     updatedPlan

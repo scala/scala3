@@ -30,22 +30,22 @@ class SymUtils:
     *  through the superclass. Traits are given in the order they appear in the
     *  parents clause (which is the reverse of their order in baseClasses)
     */
-    def directlyInheritedTraits(using Context): List[ClassSymbol] = {
+    def directlyInheritedTraits(using Context): Vector[ClassSymbol] = {
       val superCls = self.asClass.superClass
       val baseClasses = self.asClass.baseClasses
-      if (baseClasses.isEmpty) Nil
+      if (baseClasses.isEmpty) Vector()
       else
-        def recur(bcs: List[ClassSymbol], acc: List[ClassSymbol]): List[ClassSymbol] = bcs match
-          case bc :: bcs1 => if bc eq superCls then acc else recur(bcs1, bc :: acc)
+        def recur(bcs: Vector[ClassSymbol], acc: Vector[ClassSymbol]): Vector[ClassSymbol] = bcs match
+          case bc +: bcs1 => if bc eq superCls then acc else recur(bcs1, bc +: acc)
           case nil => acc
-        recur(baseClasses.tail, Nil)
+        recur(baseClasses.tail, Vector())
     }
 
     /** All traits implemented by a class, except for those inherited through the superclass.
      *  The empty list if `self` is a trait.
      */
-    def mixins(using Context): List[ClassSymbol] =
-      if (self.is(Trait)) Nil
+    def mixins(using Context): Vector[ClassSymbol] =
+      if (self.is(Trait)) Vector()
       else directlyInheritedTraits
 
     def isTypeTest(using Context): Boolean =
@@ -139,7 +139,7 @@ class SymUtils:
      */
     def isOldStyleImplicitConversion(directOnly: Boolean = false, forImplicitClassOnly: Boolean = false)(using Context): Boolean =
       self.is(Implicit) && self.info.stripPoly.match
-        case mt @ MethodType(_ :: Nil) if !mt.isImplicitMethod =>
+        case mt @ MethodType(_ +: Vector()) if !mt.isImplicitMethod =>
           if self.isCoDefinedGiven(mt.finalResultType.typeSymbol)
           then !directOnly
           else !forImplicitClassOnly
@@ -199,7 +199,7 @@ class SymUtils:
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
-        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbols else Nil
+        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbols else Vector()
         def problem(child: Symbol) = {
 
           def accessibleMessage(sym: Symbol): String =
@@ -262,8 +262,8 @@ class SymUtils:
       else NoSymbol
 
     /** Apply symbol/symbol substitution to this symbol */
-    def subst(from: List[Symbol], to: List[Symbol]): Symbol = {
-      @tailrec def loop(from: List[Symbol], to: List[Symbol]): Symbol =
+    def subst(from: Vector[Symbol], to: Vector[Symbol]): Symbol = {
+      @tailrec def loop(from: Vector[Symbol], to: Vector[Symbol]): Symbol =
         if (from.isEmpty) self
         else if (self eq from.head) to.head
         else loop(from.tail, to.tail)
@@ -273,7 +273,7 @@ class SymUtils:
     def accessorNamed(name: TermName)(using Context): Symbol =
       self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
 
-    def caseAccessors(using Context): List[Symbol] =
+    def caseAccessors(using Context): Vector[Symbol] =
       self.info.decls.filter(_.is(CaseAccessor))
 
     def getter(using Context): Symbol =
@@ -440,7 +440,7 @@ class SymUtils:
     def localReturnType(using Context): Type =
       if self.isConstructor then defn.UnitType
       else
-        def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
+        def instantiateRT(info: Type, psymss: Vector[Vector[Symbol]]): Type = info match
           case info: PolyType =>
             instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
           case info: MethodType =>
@@ -461,7 +461,7 @@ class SymUtils:
        * @param  paramss  the parameters of the anonymous functions
        *                  enclosing the return expression
        */
-      def instantiateCFT(pt: Type, paramss: => List[List[Symbol]]): Type =
+      def instantiateCFT(pt: Type, paramss: => Vector[Vector[Symbol]]): Type =
         val ift = defn.asContextFunctionType(pt)
         if ift.exists then
           ift.nonPrivateMember(nme.apply).info match
@@ -472,7 +472,7 @@ class SymUtils:
       def iftParamss = ctx.owner.ownersIterator
           .filter(_.is(Method, butNot = Accessor))
           .takeWhile(_.isAnonymousFunction)
-          .toList
+          .toVector
           .reverse
           .map(_.paramSymss.head)
 

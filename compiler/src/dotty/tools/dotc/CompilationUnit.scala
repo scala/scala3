@@ -87,8 +87,8 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Can this compilation unit be suspended */
   def isSuspendable: Boolean = true
 
-  /** List of all comments present in this compilation unit */
-  var comments: List[Comment] = Nil
+  /** Vector of all comments present in this compilation unit */
+  var comments: Vector[Comment] = Vector()
 
   /** This is used to record dependencies to invalidate during incremental
    *  compilation, but only if `ctx.runZincPhases` is true.
@@ -117,13 +117,13 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
         currRun.suspendedAtTyperPhase = true
     throw CompilationUnit.SuspendException()
 
-  private var myAssignmentSpans: Map[Int, List[Span]] | Null = null
+  private var myAssignmentSpans: Map[Int, Vector[Span]] | Null = null
 
   /** A map from (name-) offsets of all local variables in this compilation unit
    *  that can be tracked for being not null to the list of spans of assignments
    *  to these variables.
    */
-  def assignmentSpans(using Context): Map[Int, List[Span]] =
+  def assignmentSpans(using Context): Map[Int, Vector[Span]] =
     if myAssignmentSpans == null then myAssignmentSpans = Nullables.assignmentSpans
     myAssignmentSpans.nn
 }
@@ -135,7 +135,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   override def suspend(hint: => String)(using Context): Nothing =
     throw CompilationUnit.SuspendException()
 
-  override def assignmentSpans(using Context): Map[Int, List[Span]] = Map.empty
+  override def assignmentSpans(using Context): Map[Int, Vector[Span]] = Map.empty
 }
 
 object CompilationUnit {

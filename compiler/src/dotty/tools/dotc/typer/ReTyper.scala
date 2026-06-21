@@ -97,7 +97,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree = {
     val (bindings1, exprCtx) = typedBlockStats(tree.bindings)
     val expansion1 = typed(tree.expansion, pt)(using inlineContext(promote(tree))(using exprCtx))
-    untpd.cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1)
+    untpd.cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[Vector[MemberDef]], expansion1)
       .withType(avoidingType(expansion1, bindings1))
   }
 
@@ -149,7 +149,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def localTyper(sym: Symbol): Typer = this
 
-  override def index(trees: List[untpd.Tree])(using Context): Context = ctx
+  override def index(trees: Vector[untpd.Tree])(using Context): Context = ctx
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(using Context): Tree =
     fallBack
@@ -161,16 +161,16 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree = fun.tpe match {
     case mt: MethodType =>
-      val args: List[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr)
+      val args: Vector[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr)
       assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
     case _ =>
       super.handleUnexpectedFunType(tree, fun)
   }
 
-  override def addCanThrowCapabilities(expr: untpd.Tree, cases: List[CaseDef])(using Context): untpd.Tree =
+  override def addCanThrowCapabilities(expr: untpd.Tree, cases: Vector[CaseDef])(using Context): untpd.Tree =
     expr
 
-  override def inlineExpansion(mdef: DefDef)(using Context): List[Tree] = mdef :: Nil
+  override def inlineExpansion(mdef: DefDef)(using Context): Vector[Tree] = mdef +: Vector()
 
   override def inferView(from: Tree, to: Type)(using Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
@@ -178,7 +178,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree = tree
 
-  override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = body
+  override protected def addAccessorDefs(cls: Symbol, body: Vector[Tree])(using Context): Vector[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context): Unit = ()
   override protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean = true
   override protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree = promote(call)

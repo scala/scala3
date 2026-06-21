@@ -49,7 +49,7 @@ class Flatten extends MiniPhase with SymTransformer {
       EmptyTree
     }
 
-  override def transformStats(stats: List[Tree])(using Context): List[Tree] =
+  override def transformStats(stats: Vector[Tree])(using Context): Vector[Tree] =
     if ctx.owner.is(Package) then
       val defs = liftedDefs
       if defs != null then

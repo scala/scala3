@@ -89,7 +89,7 @@ object CheckCaptures:
   /** Similar normal substParams, but this is an approximating type map that
    *  maps parameters in contravariant capture sets to the empty set.
    */
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
+  final class SubstParamsMap(from: BindingType, to: Vector[Type])(using Context)
   extends ApproximatingTypeMap {
     def apply(tp: Type): Type =
       tp match
@@ -141,7 +141,7 @@ object CheckCaptures:
 
       // We keep track of open existential scopes here so that we can set these scopes
       // in ccState when printing a part of the offending type.
-      var openExistentialScopes: List[MethodType] = Nil
+      var openExistentialScopes: Vector[MethodType] = Vector()
 
       def traverse(t: Type) =
         t.dealiasKeepAnnots match
@@ -166,9 +166,9 @@ object CheckCaptures:
                   if t eq tp then ""
                   else
                     // Show in context of all enclosing traversed existential scopes.
-                    def showInOpenedResultBinders(mts: List[MethodType]): String = mts match
-                      case Nil => i"the part $t of "
-                      case mt :: mts1 =>
+                    def showInOpenedResultBinders(mts: Vector[MethodType]): String = (mts: @unchecked) match
+                      case Vector() => i"the part $t of "
+                      case mt +: mts1 =>
                         inNewExistentialScope(mt):
                           showInOpenedResultBinders(mts1)
                     showInOpenedResultBinders(openScopes.reverse)
@@ -183,7 +183,7 @@ object CheckCaptures:
             atVariance(-variance):
               t.paramInfos.foreach(traverse)
             val saved = openExistentialScopes
-            openExistentialScopes = t :: openExistentialScopes
+            openExistentialScopes = t +: openExistentialScopes
             try traverse(t.resType)
             finally openExistentialScopes = saved
           case t =>
@@ -279,7 +279,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private var curEnv = rootEnv
 
     /** Currently checked closures and their expected types, used for error reporting */
-    private var openClosures: List[(Symbol, Type)] = Nil
+    private var openClosures: Vector[(Symbol, Type)] = Vector()
 
     /** A list of actions to perform at postCheck. The reason to defer these actions
      *  is that it is sometimes better for type inference to not constrain too early
@@ -433,12 +433,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         case TypeComparer.CompareResult.Fail(notes) =>
           val (includeFailures, otherNotes) = notes.partition(_.isInstanceOf[IncludeFailure])
           val realTarget = includeFailures match
-            case (fail: IncludeFailure) :: _
+            case (fail: IncludeFailure) +: _
             if !fail.cs.isInstanceOf[CaptureSet.EmptyOfBoxed] => fail.cs
             case _ => target
           val whyNotes = added match
-            case added: Capability => WhyCapability(added) :: Nil
-            case added: CaptureSet => added.elems.toList.map(WhyCapability(_))
+            case added: Capability => WhyCapability(added) +: Vector()
+            case added: CaptureSet => added.elems.toVector.map(WhyCapability(_))
           def msg = CannotBeIncluded(
               added, target, realTarget, otherNotes ++ whyNotes, targetOwner, provenance)
           target match
@@ -576,7 +576,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  @param  sym  the constructor symbol (could be a method or a val or a class)
      *  @param  args the type arguments
      */
-    def markFreeTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
+    def markFreeTypeArgs(fn: Tree, sym: Symbol, args: Vector[Tree])(using Context): Unit =
       def isExempt = sym.isTypeTestOrCast || defn.capsErasedValueMethods.contains(sym)
       if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
@@ -749,7 +749,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
     def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
-      val arg :: Nil = tree.args: @unchecked
+      val arg +: Vector() = tree.args: @unchecked
       val argType0 = recheck(arg, pt.stripCapturing.capturing(LocalCap(Origin.UnsafeAssumePure)))
       val argType =
         if argType0.captureSet.isAlwaysEmpty then argType0
@@ -766,7 +766,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if meth == defn.Caps_unsafeAssumePure then
         applyAssumePure(tree, pt)
       else if meth == defn.Caps_unsafeDiscardUses then
-        val arg :: Nil = tree.args: @unchecked
+        val arg +: Vector() = tree.args: @unchecked
         withDiscardedUses(recheck(arg, pt))
       else if meth == defn.Caps_freeze then
         freeze(super.recheckApply(tree, pt), tree.srcPos)
@@ -816,7 +816,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  otherwise we pick Cr.
      */
     protected override
-    def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
+    def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: Vector[Type])(using Context): Type =
       val instArgs =
         // Improve the argument types with which the method type is instantiated.
         // If the rechecked argument type is an unboxed capturing type but the previous
@@ -860,16 +860,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         case appType =>
           appType
 
-    private def isDistinct(xs: List[Type]): Boolean = xs match
-      case x :: xs1 => xs1.isEmpty || !xs1.contains(x) && isDistinct(xs1)
-      case Nil => true
+    private def isDistinct(xs: Vector[Type]): Boolean = (xs: @unchecked) match
+      case x +: xs1 => xs1.isEmpty || !xs1.contains(x) && isDistinct(xs1)
+      case Vector() => true
 
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means
      *   - Instantiate result type with actual arguments
      *   - if `sym` is a constructor, refine its type with `refineConstructorInstance`
      */
-    override def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
+    override def instantiate(mt: MethodType, argTypes: Vector[Type], sym: Symbol)(using Context): Type =
       val ownType =
         if !mt.isResultDependent then mt.resType
         else SubstParamsMap(mt, argTypes)(mt.resType)
@@ -907,7 +907,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  only or by a method in the class. Both captures go into the result type. We
      *  could be more precise by distinguishing the two capture sets.
      */
-    private def refineConstructorInstance(resType: Type, mt: MethodType, argTypes: List[Type], cls: ClassSymbol)(using Context): Type =
+    private def refineConstructorInstance(resType: Type, mt: MethodType, argTypes: Vector[Type], cls: ClassSymbol)(using Context): Type =
 
       /** First half of result pair:
        *  Refine the type of a constructor call `new C(t_1, ..., t_n)`
@@ -1064,8 +1064,8 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  This improves error messages and avoids shortcomings of inference
        *  which cannot infer new quantifiers (i24901.scala is an example).
        */
-      def matchParamsAndResult(paramss: List[ParamClause], pt: Type): Unit = paramss match
-        case params :: paramss1 => pt.dealias match
+      def matchParamsAndResult(paramss: Vector[ParamClause], pt: Type): Unit = (paramss: @unchecked) match
+        case params +: paramss1 => pt.dealias match
           case CapturingType(parent, _) =>
             matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
@@ -1106,9 +1106,9 @@ class CheckCaptures extends Recheck, SymTransformer:
               // they come from. We work around this by not passing down the result
               // type of a SAM method.
           case _ =>
-        case Nil =>
+        case Vector() =>
 
-      openClosures = (anonfun, pt) :: openClosures
+      openClosures = (anonfun, pt) +: openClosures
         // openClosures is needed for errors but currently makes no difference
         // TODO follow up on this
       try
@@ -1139,7 +1139,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private def constrainClosureCaptures(sym: Symbol, localSet: CaptureSet)(using Context): Unit =
       openClosures match
-        case (`sym`, CapturingType(parent, refs)) :: _ if canConstrainClosureBody(refs) =>
+        case (`sym`, CapturingType(parent, refs)) +: _ if canConstrainClosureBody(refs) =>
           parent.dealias match
             case defn.ByNameFunction(_) =>
             case FunctionOrMethod(_, _) | SAMType(_, _) =>
@@ -1149,7 +1149,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
 
     /** Add var mirrors to the list of block-local symbols to avoid */
-    override def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+    override def avoidLocals(tp: Type, symsToAvoid: => Vector[Symbol])(using Context): Type =
       val locals = symsToAvoid
       val varMirrors = locals.collect:
         case local if local.termRef.isLocalMutable => local.varMirror
@@ -1297,7 +1297,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type = {
       val sym = tree.symbol
 
-      def fail(tree: Tree, expected: Type, notes: List[Note]): Unit =
+      def fail(tree: Tree, expected: Type, notes: Vector[Note]): Unit =
         def maybeResult = if sym.is(Method) then " result" else ""
         report.error(
           em"""$sym needs an explicit$maybeResult type because the inferred type does not conform to
@@ -1317,7 +1317,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           |The new inferred type $tp
           |must conform to this type."""
 
-      def covers(classCapset: CaptureSet, fieldClassifiers: List[ClassSymbol]): Boolean =
+      def covers(classCapset: CaptureSet, fieldClassifiers: Vector[ClassSymbol]): Boolean =
         fieldClassifiers.forall: cls =>
           classCapset.elems.exists:
             case localCap: LocalCap => cls.isSubClass(localCap.hiddenSet.classifier)
@@ -1332,7 +1332,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val expected = tpt.tpe.dropAllRetains
             todoAtPostCheck += { () =>
               withGlobalCapAsRoot:
-                testAdapted(tp, expected, tree.rhs, addendum(expected) :: Nil)(fail)
+                testAdapted(tp, expected, tree.rhs, addendum(expected) +: Vector())(fail)
                 // The check that inferred <: expected is done after recheck so that it
                 // does not interfere with normal rechecking by constraining capture set variables.
             }
@@ -1427,7 +1427,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
           else restoreEnvFor(sym.owner)
         curEnv = restoreEnvFor(sym.owner)
-        capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
+        capt.println(i"Complete $sym in ${curEnv.outersIterator.toVector.map(_.owner)}")
         try recheckDef(tree, sym)
         finally completed += sym
       finally
@@ -1514,7 +1514,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree.tpt.tpe match
         case AnnotatedType(_, annot) if annot.symbol == defn.RequiresCapabilityAnnot =>
           annot.tree match
-            case Apply(_, cap :: Nil) =>
+            case Apply(_, cap +: Vector()) =>
               markFree(cap.symbol, tree)
             case _ =>
         case _ =>
@@ -1617,9 +1617,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  mapping of a capability in contravariant position to the empty set because
      *  the original result type of the map was not itself a capability.
      */
-    private def addApproxAddenda(using Context): TypeAccumulator[List[Note]] =
+    private def addApproxAddenda(using Context): TypeAccumulator[Vector[Note]] =
       new TypeAccumulator:
-        def apply(notes: List[Note], t: Type) = t match
+        def apply(notes: Vector[Note], t: Type) = t match
           case CapturingType(t, CaptureSet.EmptyWithProvenance(ref, mapped)) =>
             /* val (origCore, kind) = original match
               case tp @ AnnotatedType(parent, ann) if ann.hasSymbol(defn.ReachCapabilityAnnot) =>
@@ -1631,7 +1631,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                    |
                    |Note that a capability $ref in a capture set appearing in contravariant position
                    |was mapped to $mapped which is not a capability. Therefore, it was under-approximated to the empty set."""
-            :: notes
+            +: notes
           case _ =>
             foldOver(notes, t)
 
@@ -1642,7 +1642,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  If the resulting types are not compatible, try again with an actual type
      *  where local capture roots are instantiated to root variables.
      */
-    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
+    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: Vector[Note])(using Context): Type =
       try testAdapted(actual, expected, tree, notes)(err.typeMismatch)
       catch case ex: AssertionError =>
         println(i"error while checking $tree: $actual against $expected")
@@ -1658,8 +1658,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => NoType
       case _ => NoType
 
-    inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: List[Note])
-        (fail: (Tree, Type, List[Note]) => Unit)(using Context): Type = {
+    inline def testAdapted(actual: Type, expected: Type, tree: Tree, notes: Vector[Note])
+        (fail: (Tree, Type, Vector[Note]) => Unit)(using Context): Type = {
 
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val falseDeps = expected1 ne expected
@@ -1683,10 +1683,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Only `addOuterRefs` when there is no box adaptation
         expected1 = addOuterRefs(expected1, actual, tree.srcPos)
 
-      def nestedLambdas(mdef: DefDef): List[Symbol] =
-        mdef.symbol :: mdef.rhs.match
+      def nestedLambdas(mdef: DefDef): Vector[Symbol] =
+        mdef.symbol +: mdef.rhs.match
           case closureDef(mdef1) => nestedLambdas(mdef1)
-          case _ => Nil
+          case _ => Vector()
 
       /** Try to convert ResultCaps that are classified as Unscoped
        *  back to local caps, if they were generated as parts of the types
@@ -1699,7 +1699,7 @@ class CheckCaptures extends Recheck, SymTransformer:
        *  By adapting its type to `() => Ref^` we make it fit. Test cases are in
        *  ref-with-file.scala and lambda-fresh.scala.
        */
-      def existentialWiden(notes: List[Note]): Type =
+      def existentialWiden(notes: Vector[Note]): Type =
         tree match
         case closureDef(mdef) =>
           val mappable =
@@ -1715,7 +1715,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               .showing(i"try existential widen $actual to $result", capt)
         case _ => NoType
 
-      def tryType(actualBoxed: Type)(alt: List[Note] => Type): Type = {
+      def tryType(actualBoxed: Type)(alt: Vector[Note] => Type): Type = {
         TypeComparer.compareResult(isCompatible(actualBoxed, expected1)) match
           case TypeComparer.CompareResult.Fail(cmpNotes) => alt(cmpNotes)
           case _ =>
@@ -2158,7 +2158,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  that joint and separate compilation give the same result.
      */
     def checkSelfTypes(unit: tpd.Tree)(using Context): Unit =
-      val parentTrees = mutable.HashMap[Symbol, List[Tree]]()
+      val parentTrees = mutable.HashMap[Symbol, Vector[Tree]]()
       unit.foreachSubTree {
         case cdef @ TypeDef(_, impl: Template) => parentTrees(cdef.symbol) = impl.parents
         case _ =>
@@ -2305,7 +2305,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   2. The constructor does not take arguments that retain exclusive capabilities.
      *   3. The class does not does not have fields that retain exclusive universal capabilities.
      */
-    def checkStatefulInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
+    def checkStatefulInheritance(cls: ClassSymbol, parents: Vector[Tree])(using Context): Unit =
       if cls.derivesFrom(defn.Caps_Stateful) then
         for parent <- parents do
           if !parent.tpe.derivesFromStateful then

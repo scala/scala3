@@ -22,8 +22,8 @@ trait Scope {
   def root: Scope =
     if outer.eq(NoScope) then this else outer.root
   /** Stack of locations where scopes where evaluated */
-  def stack: List[String] =
-    this.toString :: (if outer.eq(NoScope) then Nil else outer.stack)
+  def stack: Vector[String] =
+    this.toString +: (if outer.eq(NoScope) then Vector.empty else outer.stack)
   /** If the two scopes correspond to the same splice in source. */
   def atSameLocation(scope: Scope): Boolean = false
 }

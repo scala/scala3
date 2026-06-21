@@ -194,7 +194,7 @@ class ExpressionEvaluator(
         catch case invocationException: InvocationException =>
           val sig = "()Ljava/lang/String;"
           val message =
-            invoke[StringReference](invocationException.exception, "toString", sig, List())
+            invoke[StringReference](invocationException.exception, "toString", sig, Vector())
           throw new EvaluationException(message.value, invocationException)
       // Prevent object created by the debugger to be garbage collected
       // In theory we should re-enable collection later to avoid memory leak

@@ -21,7 +21,7 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
     foreach(x => acc ++= f(x))
     acc
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
-  def toList: List[Elem]
+  final def toVector: Vector[Elem] = iterator.toVector
   def nth(n: Int): Elem
 
   final def isEmpty: Boolean = size == 0
@@ -57,7 +57,7 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def != [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
     !(this == that)
 
-  override def toString: String = toList.mkString("{", ", ", "}")
+  override def toString: String = toVector.mkString("{", ", ", "}")
 }
 
 object SimpleIdentitySet {
@@ -80,7 +80,6 @@ object SimpleIdentitySet {
     def exists[E <: AnyRef](p: E => Boolean): Boolean = false
     override def map[B <: AnyRef](f: Nothing => B): SimpleIdentitySet[B] = empty
     def /: [A, E <: AnyRef](z: A)(f: (A, E) => A): A = z
-    def toList = Nil
     def nth(n: Int): Nothing = throw new IndexOutOfBoundsException(n.toString)
   }
 
@@ -98,7 +97,6 @@ object SimpleIdentitySet {
       Set1(f(x0.asInstanceOf[Elem]))
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(z, x0.asInstanceOf[E])
-    def toList = x0.asInstanceOf[Elem] :: Nil
     def nth(n: Int) =
       if n == 0 then x0.asInstanceOf[Elem]
       else throw new IndexOutOfBoundsException(n.toString)
@@ -122,7 +120,6 @@ object SimpleIdentitySet {
       if y0 eq y1 then Set1(y0) else Set2(y0, y1)
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E])
-    def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: Nil
     def nth(n: Int) = n match
       case 0 => x0.asInstanceOf[Elem]
       case 1 => x1.asInstanceOf[Elem]
@@ -162,7 +159,6 @@ object SimpleIdentitySet {
       else Set3(y0, y1, y2)
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E]), x2.asInstanceOf[E])
-    def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
     def nth(n: Int) = n match
       case 0 => x0.asInstanceOf[Elem]
       case 1 => x1.asInstanceOf[Elem]
@@ -209,11 +205,6 @@ object SimpleIdentitySet {
       xs.asInstanceOf[Array[E]].exists(p)
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       xs.asInstanceOf[Array[E]].foldLeft(z)(f)
-    def toList: List[Elem] = {
-      val buf = new mutable.ListBuffer[Elem]
-      foreach(buf += _)
-      buf.toList
-    }
     def nth(n: Int) =
       if 0 <= n && n < size then xs(n).asInstanceOf[Elem]
       else throw new IndexOutOfBoundsException(n.toString)

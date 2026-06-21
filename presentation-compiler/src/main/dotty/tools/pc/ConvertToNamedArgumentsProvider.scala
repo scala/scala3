@@ -36,11 +36,12 @@ final class ConvertToNamedArgumentsProvider(
 
     def paramss(fun: tpd.Tree)(using Context): List[String] =
       fun.typeOpt match
-        case m: MethodType => m.paramNamess.flatten.map(_.toString)
+        case m: MethodType => m.paramNamess.flatten.map(_.toString).toList
         case _ =>
           fun.symbol.rawParamss.flatten
             .filter(!_.isTypeParam)
             .map(_.nameBackticked)
+            .toList
 
     object FromNewApply:
       def unapply(tree: tpd.Tree): Option[(tpd.Tree, List[tpd.Tree])] =
@@ -50,7 +51,7 @@ final class ConvertToNamedArgumentsProvider(
           case tpd.TypeApply(FromNewApply(fun, argss), _) =>
             Some(fun, argss)
           case tpd.Apply(FromNewApply(fun, argss), args) =>
-            Some(fun, argss ++ args)
+            Some(fun, argss ++ args.toList)
           case _ => None
 
     def edits(tree: Option[tpd.Tree])(using Context): Either[String, List[l.TextEdit]] =
@@ -74,7 +75,7 @@ final class ConvertToNamedArgumentsProvider(
             case FromNewApply(fun, args) =>
               makeTextEdits(fun, args)
             case tpd.Apply(fun, args) =>
-              makeTextEdits(fun, args)
+              makeTextEdits(fun, args.toList)
             case _ => Right(Nil)
         case _ => Right(Nil)
     edits(tree)(using newctx)

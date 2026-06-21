@@ -192,7 +192,7 @@ object TypeTestsCasts {
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
-          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
+          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), Vector(TypeTree(tp)))
 
         def inMatch =
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
@@ -229,7 +229,7 @@ object TypeTestsCasts {
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issues a warning or an error otherwise.
            */
-          def checkSensical(foundClasses: List[Symbol])(using Context): Boolean =
+          def checkSensical(foundClasses: Vector[Symbol])(using Context): Boolean =
             def exprType = i"type ${expr.tpe.widen.stripped}"
             def check(foundCls: Symbol): Boolean =
               if (!isCheckable(foundCls)) true
@@ -266,7 +266,7 @@ object TypeTestsCasts {
             }
             else if (testCls.isPrimitiveValueClass)
               foundClsSyms match
-                case List(cls) if cls.isPrimitiveValueClass && !ctx.platform.typeMightBeSubtypeAtRuntime(testCls, cls) =>
+                case Vector(cls) if cls.isPrimitiveValueClass && !ctx.platform.typeMightBeSubtypeAtRuntime(testCls, cls) =>
                   constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
                 case _ =>
                   transformIsInstanceOf(
@@ -286,7 +286,7 @@ object TypeTestsCasts {
             Typed(expr, tree.args.head) // Replace cast by type ascription (which does not generate any bytecode)
           else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
-            Block(expr :: Nil, unitLiteral).withSpan(expr.span)
+            Block(expr +: Vector(), unitLiteral).withSpan(expr.span)
           else if (foundClsSymPrimitive)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
@@ -298,8 +298,8 @@ object TypeTestsCasts {
             // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.
             // To avoid this loophole we execute `x` and then regardless of the result throw a `ClassCastException`
             val throwCCE = Throw(New(defn.ClassCastExceptionClass.typeRef, defn.ClassCastExceptionClass_stringConstructor,
-                Literal(Constant("Cannot cast to scala.Nothing")) :: Nil))
-            Block(expr :: Nil, throwCCE).withSpan(expr.span)
+                Literal(Constant("Cannot cast to scala.Nothing")) +: Vector()))
+            Block(expr +: Vector(), throwCCE).withSpan(expr.span)
           }
           else
             derivedTree(expr, defn.Any_asInstanceOf, testType)
@@ -397,10 +397,10 @@ object TypeTestsCasts {
     else if tp.isRef(defn.AnyValClass) then defn.AnyClass
     else tp.classSymbol
 
-  private[transform] def foundClasses(tp: Type)(using Context): List[Symbol] =
-    def go(tp: Type, acc: List[Type])(using Context): List[Type] = tp.dealias match
+  private[transform] def foundClasses(tp: Type)(using Context): Vector[Symbol] =
+    def go(tp: Type, acc: Vector[Type])(using Context): Vector[Type] = tp.dealias match
       case  OrType(tp1, tp2) => go(tp2, go(tp1, acc))
-      case AndType(tp1, tp2) => (for t1 <- go(tp1, Nil); t2 <- go(tp2, Nil) yield AndType(t1, t2)) ::: acc
-      case _                 => tp :: acc
-    go(tp, Nil).map(effectiveClass)
+      case AndType(tp1, tp2) => (for t1 <- go(tp1, Vector()); t2 <- go(tp2, Vector()) yield AndType(t1, t2)) ++ acc
+      case _                 => tp +: acc
+    go(tp, Vector()).map(effectiveClass)
 }

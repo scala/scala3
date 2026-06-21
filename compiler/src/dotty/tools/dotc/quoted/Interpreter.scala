@@ -93,7 +93,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       else
         unexpectedTree(tree)
 
-    case closureDef((ddef @ DefDef(_, ValDefs(arg :: Nil) :: Nil, _, _))) =>
+    case closureDef((ddef @ DefDef(_, ValDefs(arg +: Vector()) +: Vector(), _, _))) =>
       (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
     // Interpret `foo(j = x, i = y)` which it is expanded to
@@ -113,35 +113,35 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       unexpectedTree(tree)
   }
 
-  private def interpretArgs(argss: List[List[Tree]], fnType: Type)(using Env): List[Object] = {
-    def interpretArgsGroup(args: List[Tree], argTypes: List[Type]): List[Object] =
+  private def interpretArgs(argss: Vector[Vector[Tree]], fnType: Type)(using Env): Vector[Object] = {
+    def interpretArgsGroup(args: Vector[Tree], argTypes: Vector[Type]): Vector[Object] =
       assert(args.size == argTypes.size)
       val view =
         for (arg, info) <- args.lazyZip(argTypes) yield
           info match
             case _: ExprType => () => interpretTree(arg) // by-name argument
             case _ => interpretTree(arg) // by-value argument
-      view.toList
+      view.toVector
 
     fnType.dealias match
       case fnType: MethodType =>
         val argTypes = fnType.paramInfos
         assert(argss.head.size == argTypes.size)
-        val nonErasedArgs = argss.head.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
-        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
+        val nonErasedArgs = argss.head.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toVector
+        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toVector
         assert(nonErasedArgs.size == nonErasedArgTypes.size)
-        interpretArgsGroup(nonErasedArgs, nonErasedArgTypes) ::: interpretArgs(argss.tail, fnType.resType)
+        interpretArgsGroup(nonErasedArgs, nonErasedArgTypes) ++ interpretArgs(argss.tail, fnType.resType)
       case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
         val argTypes :+ resType = fnType.args: @unchecked
-        interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
+        interpretArgsGroup(argss.head, argTypes) ++ interpretArgs(argss.tail, resType)
       case fnType: PolyType => interpretArgs(argss, fnType.resType)
       case fnType: ExprType => interpretArgs(argss, fnType.resType)
       case _ =>
         assert(argss.isEmpty)
-        Nil
+        Vector()
   }
 
-  private def interpretBlock(stats: List[Tree], expr: Tree)(using Env) = {
+  private def interpretBlock(stats: Vector[Tree], expr: Tree)(using Env) = {
     var unexpected: Option[Object] = None
     val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match
       case stat: ValDef =>
@@ -157,10 +157,10 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def interpretLiteral(value: Any): Object =
     value.asInstanceOf[Object]
 
-  private def interpretVarargs(args: List[Object]): Object =
+  private def interpretVarargs(args: Vector[Object]): Object =
     args.toSeq
 
-  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
+  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: Vector[Object]): Object = {
     val inst =
       try loadModule(moduleClass)
       catch
@@ -181,7 +181,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def interpretModuleAccess(fn: Symbol): Object =
     loadModule(fn.moduleClass)
 
-  private def interpretNew(fn: Symbol, args: List[Object]): Object = {
+  private def interpretNew(fn: Symbol, args: Vector[Object]): Object = {
     val className = fn.owner.fullName.mangledString.replaceAll("\\$\\.", "\\$")
     val clazz = loadClass(className)
     val constr = clazz.getConstructor(paramsSig(fn)*)
@@ -215,7 +215,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         suspendOnMissing(sym, origin, pos)
 
 
-  private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
+  private def getMethod(clazz: Class[?], name: Name, paramClasses: Vector[Class[?]]): JLRMethod =
     try clazz.getMethod(name.toString, paramClasses*)
     catch {
       case _: NoSuchMethodException =>
@@ -264,8 +264,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         }
     }
 
-  /** List of classes of the parameters of the signature of `sym` */
-  private def paramsSig(sym: Symbol): List[Class[?]] = {
+  /** Vector of classes of the parameters of the signature of `sym` */
+  private def paramsSig(sym: Symbol): Vector[Class[?]] = {
     def paramClass(param: Type): Class[?] = {
       def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match {
         case JavaArrayType(elemType) => arrayDepth(elemType, depth + 1)
@@ -306,15 +306,15 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       else if (sym == defn.DoubleClass) classOf[Double]
       else java.lang.Class.forName(javaSig(param), false, classLoader)
     }
-    def getExtraParams(tp: Type): List[Type] = tp.widenDealias match {
+    def getExtraParams(tp: Type): Vector[Type] = tp.widenDealias match {
       case tp: AppliedType if defn.isContextFunctionType(tp) =>
         // Call context function type direct method
-        tp.args.init.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
-      case _ => Nil
+        tp.args.init.map(arg => TypeErasure.erasure(arg)) ++ getExtraParams(tp.args.last)
+      case _ => Vector()
     }
     val extraParams = getExtraParams(sym.info.finalResultType)
     val allParams = TypeErasure.erasure(sym.info) match {
-      case meth: MethodType => meth.paramInfos ::: extraParams
+      case meth: MethodType => meth.paramInfos ++ extraParams
       case _ => extraParams
     }
     allParams.map(paramClass)
@@ -330,16 +330,16 @@ object Interpreter:
     /** Matches an expression that is either a field access or an application
      *  It returns a TermRef containing field accessed or a method reference and the arguments passed to it.
      */
-    def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] =
+    def unapply(arg: Tree)(using Context): Option[(RefTree, Vector[Vector[Tree]])] =
       Call0.unapply(arg).map((fn, args) => (fn, args.reverse))
 
     private object Call0 {
-      def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] = arg match {
+      def unapply(arg: Tree)(using Context): Option[(RefTree, Vector[Vector[Tree]])] = arg match {
         case Select(Call0(fn, args), nme.apply) if defn.isContextFunctionType(fn.tpe.widenDealias.finalResultType) =>
           Some((fn, args))
-        case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))
-        case fn: Select => Some((fn, Nil))
-        case Apply(f @ Call0(fn, argss), args) => Some((fn, args :: argss))
+        case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Vector()))
+        case fn: Select => Some((fn, Vector()))
+        case Apply(f @ Call0(fn, argss), args) => Some((fn, args +: argss))
         case TypeApply(Call0(fn, argss), _) => Some((fn, argss))
         case _ => None
       }

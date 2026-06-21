@@ -163,7 +163,7 @@ object ParseResult {
     val parser = new Parser(ctx.source)
     val stats = parser.blockStatSeq(outermost = true)
     parser.accept(Tokens.EOF)
-    stats
+    stats.toList
   }
 
   private[repl] val commands: List[(String, String => ParseResult)] = List(
@@ -204,7 +204,7 @@ object ParseResult {
           if (reporter.hasErrors)
             SyntaxErrors(
               sourceCode,
-              reporter.removeBufferedMessages,
+              reporter.removeBufferedMessages.toList,
               stats)
           else
             Parsed(source, stats, reporter)

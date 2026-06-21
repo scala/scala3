@@ -50,7 +50,7 @@ object ContextFunctionResults:
   def contextResultCount(sym: Symbol)(using Context): Int =
     sym.getAnnotation(defn.ContextResultCountAnnot) match
       case Some(annot) =>
-        val ast.Trees.Literal(Constant(crCount: Int)) :: Nil = annot.arguments: @unchecked
+        val ast.Trees.Literal(Constant(crCount: Int)) +: Vector() = annot.arguments: @unchecked
         crCount
       case none => 0
 

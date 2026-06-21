@@ -94,7 +94,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val cls = ctx.owner.asClass
     if myState.classesThatNeedReleaseFence.contains(cls) then
       val releaseFenceCall = ref(defn.staticsMethodRef(nme.releaseFence)).appliedToNone
-      cpy.Template(tree)(tree.constr, tree.parents, Nil, tree.self, tree.body :+ releaseFenceCall)
+      cpy.Template(tree)(tree.constr, tree.parents, Vector(), tree.self, tree.body :+ releaseFenceCall)
     else
       tree
 

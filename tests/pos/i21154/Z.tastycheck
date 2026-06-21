@@ -22,15 +22,15 @@ Names (332 bytes, starting from <elided base index>):
     15: scala[Qualified . annotation][Qualified . internal][Qualified . SourceFile]
     16: String
     17: java[Qualified . lang][Qualified . String]
-    18: <init>[Signed Signature(List(java.lang.String),scala.annotation.internal.SourceFile) @<init>]
+    18: <init>[Signed Signature(Vector(java.lang.String),scala.annotation.internal.SourceFile) @<init>]
     19: <elided source file name>
     20: Child
     21: scala[Qualified . annotation][Qualified . internal][Qualified . Child]
-    22: <init>[Signed Signature(List(1),scala.annotation.internal.Child) @<init>]
+    22: <init>[Signed Signature(Vector(1),scala.annotation.internal.Child) @<init>]
     23: Z[ModuleClass]
-    24: <init>[Signed Signature(List(),Z$) @<init>]
+    24: <init>[Signed Signature(Vector(),Z$) @<init>]
     25: java[Qualified . lang][Qualified . Object]
-    26: <init>[Signed Signature(List(),java.lang.Object) @<init>]
+    26: <init>[Signed Signature(Vector(),java.lang.Object) @<init>]
     27: _
     28: writeReplace
     29: AnyRef
@@ -40,7 +40,7 @@ Names (332 bytes, starting from <elided base index>):
     33: scala[Qualified . runtime][Qualified . ModuleSerializationProxy]
     34: Class
     35: java[Qualified . lang][Qualified . Class]
-    36: <init>[Signed Signature(List(java.lang.Class),scala.runtime.ModuleSerializationProxy) @<init>]
+    36: <init>[Signed Signature(Vector(java.lang.Class),scala.runtime.ModuleSerializationProxy) @<init>]
     37: AOptions
     38: BOptions
     39: COptions
@@ -66,7 +66,7 @@ Trees (288 bytes, starting from <elided base index>):
     27:       TYPEREF 10 [SourceFile]
     29:         TERMREFpkg 14 [scala[Qualified . annotation][Qualified . internal]]
     31:       APPLY(10)
-    33:         SELECTin(6) 18 [<init>[Signed Signature(List(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
+    33:         SELECTin(6) 18 [<init>[Signed Signature(Vector(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
     36:           NEW
     37:             SHAREDtype 27
     39:           SHAREDtype 27
@@ -76,7 +76,7 @@ Trees (288 bytes, starting from <elided base index>):
     47:         SHAREDtype 29
     49:       APPLY(20)
     51:         TYPEAPPLY(18)
-    53:           SELECTin(6) 22 [<init>[Signed Signature(List(1),scala.annotation.internal.Child) @<init>]]
+    53:           SELECTin(6) 22 [<init>[Signed Signature(Vector(1),scala.annotation.internal.Child) @<init>]]
     56:             NEW
     57:               SHAREDtype 45
     59:             SHAREDtype 45
@@ -89,7 +89,7 @@ Trees (288 bytes, starting from <elided base index>):
     73:       SHAREDtype 45
     75:       APPLY(15)
     77:         TYPEAPPLY(13)
-    79:           SELECTin(6) 22 [<init>[Signed Signature(List(1),scala.annotation.internal.Child) @<init>]]
+    79:           SELECTin(6) 22 [<init>[Signed Signature(Vector(1),scala.annotation.internal.Child) @<init>]]
     82:             NEW
     83:               SHAREDtype 45
     85:             SHAREDtype 45
@@ -99,7 +99,7 @@ Trees (288 bytes, starting from <elided base index>):
     94:       SHAREDtype 45
     96:       APPLY(15)
     98:         TYPEAPPLY(13)
-   100:           SELECTin(6) 22 [<init>[Signed Signature(List(1),scala.annotation.internal.Child) @<init>]]
+   100:           SELECTin(6) 22 [<init>[Signed Signature(Vector(1),scala.annotation.internal.Child) @<init>]]
    103:             NEW
    104:               SHAREDtype 45
    106:             SHAREDtype 45
@@ -109,7 +109,7 @@ Trees (288 bytes, starting from <elided base index>):
    116:     IDENTtpt 23 [Z[ModuleClass]]
    118:       SHAREDtype 65
    120:     APPLY(8)
-   122:       SELECTin(6) 24 [<init>[Signed Signature(List(),Z$) @<init>]]
+   122:       SELECTin(6) 24 [<init>[Signed Signature(Vector(),Z$) @<init>]]
    125:         NEW
    126:           SHAREDterm 116
    128:         SHAREDtype 65
@@ -117,7 +117,7 @@ Trees (288 bytes, starting from <elided base index>):
    131:   TYPEDEF(154) 23 [Z[ModuleClass]]
    135:     TEMPLATE(133)
    138:       APPLY(8)
-   140:         SELECTin(6) 26 [<init>[Signed Signature(List(),java.lang.Object) @<init>]]
+   140:         SELECTin(6) 26 [<init>[Signed Signature(Vector(),java.lang.Object) @<init>]]
    143:           NEW
    144:             SHAREDtype 10
    146:           SHAREDtype 10
@@ -134,7 +134,7 @@ Trees (288 bytes, starting from <elided base index>):
    166:         TYPEREF 29 [AnyRef]
    168:           SHAREDtype 20
    170:         APPLY(15)
-   172:           SELECTin(9) 36 [<init>[Signed Signature(List(java.lang.Class),scala.runtime.ModuleSerializationProxy) @<init>]]
+   172:           SELECTin(9) 36 [<init>[Signed Signature(Vector(java.lang.Class),scala.runtime.ModuleSerializationProxy) @<init>]]
    175:             NEW
    176:               TYPEREF 32 [ModuleSerializationProxy]
    178:                 TERMREFpkg 31 [scala[Qualified . runtime]]
@@ -146,7 +146,7 @@ Trees (288 bytes, starting from <elided base index>):
    189:       TYPEDEF(26) 37 [AOptions]
    192:         TEMPLATE(23)
    194:           APPLY(8)
-   196:             SELECTin(6) 26 [<init>[Signed Signature(List(),java.lang.Object) @<init>]]
+   196:             SELECTin(6) 26 [<init>[Signed Signature(Vector(),java.lang.Object) @<init>]]
    199:               NEW
    200:                 SHAREDtype 10
    202:               SHAREDtype 10
@@ -160,7 +160,7 @@ Trees (288 bytes, starting from <elided base index>):
    217:       TYPEDEF(25) 38 [BOptions]
    220:         TEMPLATE(22)
    222:           APPLY(8)
-   224:             SELECTin(6) 26 [<init>[Signed Signature(List(),java.lang.Object) @<init>]]
+   224:             SELECTin(6) 26 [<init>[Signed Signature(Vector(),java.lang.Object) @<init>]]
    227:               NEW
    228:                 SHAREDtype 10
    230:               SHAREDtype 10
@@ -173,7 +173,7 @@ Trees (288 bytes, starting from <elided base index>):
    244:       TYPEDEF(25) 39 [COptions]
    247:         TEMPLATE(22)
    249:           APPLY(8)
-   251:             SELECTin(6) 26 [<init>[Signed Signature(List(),java.lang.Object) @<init>]]
+   251:             SELECTin(6) 26 [<init>[Signed Signature(Vector(),java.lang.Object) @<init>]]
    254:               NEW
    255:                 SHAREDtype 10
    257:               SHAREDtype 10
@@ -187,7 +187,7 @@ Trees (288 bytes, starting from <elided base index>):
    272:     ANNOTATION(14)
    274:       SHAREDtype 27
    276:       APPLY(10)
-   278:         SELECTin(6) 18 [<init>[Signed Signature(List(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
+   278:         SELECTin(6) 18 [<init>[Signed Signature(Vector(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
    281:           NEW
    282:             SHAREDtype 27
    284:           SHAREDtype 27

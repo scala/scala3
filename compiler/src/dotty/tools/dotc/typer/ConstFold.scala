@@ -34,7 +34,7 @@ object ConstFold:
         xt match
           case ConstantTree(x) =>
             tree.args match
-              case yt :: Nil =>
+              case yt +: Vector() =>
                 yt match
                   case ConstantTree(y) => tree.withFoldedType(foldBinop(op, x, y))
                   case _ => tree
@@ -57,14 +57,14 @@ object ConstFold:
   def apply[T <: Tree](tree: T)(using Context): T = tree match
     case tree: Apply => Apply(tree)
     case tree: Select => Select(tree)
-    case TypeApply(_, targ :: Nil) if tree.symbol eq defn.Predef_classOf =>
+    case TypeApply(_, targ +: Vector()) if tree.symbol eq defn.Predef_classOf =>
       tree.withFoldedType(Constant(targ.tpe))
     case _ => tree
 
   private object ConstantTree:
     def unapply(tree: Tree)(using Context): Option[Constant] =
       tree match
-        case Inlined(_, Nil, expr) => unapply(expr)
+        case Inlined(_, Vector(), expr) => unapply(expr)
         case Typed(expr, _) => unapply(expr)
         case Literal(c) if c.tag == Constants.NullTag => Some(c)
         case _ =>

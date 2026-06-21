@@ -15,13 +15,14 @@ abstract class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef] extends (K => V | Nu
   def mapValuesNow[V1 >: V <: AnyRef](f: (K, V1) => V1): SimpleIdentityMap[K, V1]
   def foreachBinding(f: (K, V) => Unit): Unit
   def forallBinding(f: (K, V) => Boolean): Boolean
-  def map2[T](f: (K, V) => T): List[T] = {
+  def map2[T](f: (K, V) => T): Vector[T] = {
     val buf = new ListBuffer[T]
     foreachBinding((k, v) => buf += f(k, v))
-    buf.toList
+    buf.toVector
   }
-  def keys: List[K] = map2((k, v) => k)
-  def toList: List[(K, V)] = map2((k, v) => (k, v))
+  def keys: Vector[K] = map2((k, v) => k)
+  def toList: List[(K, V)] = map2((k, v) => (k, v)).toList
+  def toVector: Vector[(K, V)] = map2((k, v) => (k, v))
   override def toString: String = {
     def assocToString(key: K, value: V) = s"$key -> $value"
     map2(assocToString) mkString ("(", ", ", ")")

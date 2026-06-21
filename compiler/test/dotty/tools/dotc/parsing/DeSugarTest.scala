@@ -6,6 +6,7 @@ import Tokens.*, Parsers.*
 import core.*
 import ast.Trees.*
 import ast.desugar
+import core.Decorators.*
 import core.Mode
 import Contexts.Context
 
@@ -28,7 +29,7 @@ class DeSugarTest extends ParserTest {
     }
 
     def transform(tree: Tree, mode: Mode)(using Context): Tree = withMode(mode) { transform(tree) }
-    def transform(trees: List[Tree], mode: Mode)(using Context): List[Tree] = withMode(mode) { transform(trees) }
+    def transform(trees: Vector[Tree], mode: Mode)(using Context): Vector[Tree] = withMode(mode) { transform(trees) }
 
     override def transform(tree: Tree)(using Context): Tree = {
       val tree1 = desugar(tree)(using ctx.withModeBits(curMode))
@@ -60,21 +61,21 @@ class DeSugarTest extends ParserTest {
         case tree1 @ TypeDef(name, rhs) =>
           cpy.TypeDef(tree1)(name, transform(rhs, Type))
         case impl @ Template(constr, _, self, _) =>
-          cpy.Template(tree1)(transformSub(constr), transform(impl.parentsOrDerived), Nil, transformSub(self), transform(impl.body, Expr))
+          cpy.Template(tree1)(transformSub(constr), transform(impl.parentsOrDerived), Vector(), transformSub(self), transform(impl.body, Expr))
         case Thicket(trees) =>
-          Thicket(flatten(trees mapConserve super.transform))
+          Thicket(flatten(trees.mapConserve(super.transform)))
         case tree1 =>
           super.transform(tree1)
       }
     }
   }
 
-  def firstClass(stats: List[Tree]): String = stats match {
-    case Nil => "<empty>"
-    case TypeDef(name, _) :: _ => name.toString
-    case ModuleDef(name, _) :: _ => name.toString
-    case (pdef: PackageDef) :: _ => firstClass(pdef)
-    case stat :: stats => firstClass(stats)
+  def firstClass(stats: Vector[Tree]): String = (stats: @unchecked) match {
+    case Vector() => "<empty>"
+    case TypeDef(name, _) +: _ => name.toString
+    case ModuleDef(name, _) +: _ => name.toString
+    case (pdef: PackageDef) +: _ => firstClass(pdef)
+    case stat +: stats => firstClass(stats)
   }
 
   def firstClass(tree: Tree): String = tree match {

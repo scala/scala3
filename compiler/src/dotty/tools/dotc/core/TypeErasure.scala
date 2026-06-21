@@ -93,7 +93,7 @@ object TypeErasure:
    *           -2 if the arity depends on an uninstantiated type variable or WildcardType.
    */
   def tupleArity(tp: Type)(using Context): Int = tp/*.dealias*/ match
-    case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+    case AppliedType(tycon, _ +: tl +: Vector()) if tycon.isRef(defn.PairClass) =>
       val arity = tupleArity(tl)
       if (arity < 0) arity else arity + 1
     case tp: SingletonType =>
@@ -188,10 +188,10 @@ object TypeErasure:
 
   for
     sourceLanguage <- SourceLanguage.values
-    semiEraseVCs <- List(false, true)
-    isConstructor <- List(false, true)
-    isSymbol <- List(false, true)
-    inSigName <- List(false, true)
+    semiEraseVCs <- Vector(false, true)
+    isConstructor <- Vector(false, true)
+    isSymbol <- Vector(false, true)
+    inSigName <- Vector(false, true)
   do
     erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, inSigName)) =
       new TypeErasure(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, inSigName)
@@ -285,9 +285,9 @@ object TypeErasure:
     else erase.eraseInfo(tp, sym)(using preErasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
-          MethodType(Nil, defn.BoxedUnitClass.typeRef)
+          MethodType(Vector(), defn.BoxedUnitClass.typeRef)
         else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
-          MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
+          MethodType(nme.ALLARGS +: Vector(), JavaArrayType(defn.ObjectType) +: Vector(), einfo.resultType)
         else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass))
           // The erasure of `apply` in subclasses of PolyFunction has to match
           // the erasure of FunctionN#apply, since after `ElimPolyFunction` we replace
@@ -439,13 +439,13 @@ object TypeErasure:
             val cls2 = tp2.classSymbol
 
             /** takeWhile+1 */
-            def takeUntil[T](l: List[T])(f: T => Boolean): List[T] = {
-              @tailrec def loop(tail: List[T], acc: List[T]): List[T] =
-                tail match {
-                  case h :: t => loop(if (f(h)) t else Nil, h :: acc)
-                  case Nil    => acc.reverse
+            def takeUntil[T](l: Vector[T])(f: T => Boolean): Vector[T] = {
+              @tailrec def loop(tail: Vector[T], acc: Vector[T]): Vector[T] =
+                (tail: @unchecked) match {
+                  case h +: t => loop(if (f(h)) t else Vector(), h +: acc)
+                  case Vector()    => acc.reverse
                 }
-              loop(l, Nil)
+              loop(l, Vector())
             }
 
             // We are not interested in anything that is not a supertype of tp2
@@ -614,9 +614,9 @@ object TypeErasure:
    *  @return (paramNeeded, resultNeeded) indicating what needs bridging
    */
   def additionalAdaptationNeeded(
-      implParamTypes: List[Type],
+      implParamTypes: Vector[Type],
       implResultType: Type,
-      samParamTypes: List[Type],
+      samParamTypes: Vector[Type],
       samResultType: Type
   )(using Context): (paramNeeded: Boolean, resultNeeded: Boolean) =
     def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
@@ -870,13 +870,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             case tp: AppliedType if tp.tycon.isRef(defn.PairClass) => defn.ObjectType
             case _ => apply(tp)
           }
-          val erasedParents: List[Type] =
-            if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
+          val erasedParents: Vector[Type] =
+            if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Vector()
             else parents.mapConserve(eraseParent) match {
-              case tr :: trs1 =>
+              case tr +: trs1 =>
                 assert(!tr.classSymbol.is(Trait), i"$cls has bad parents $parents%, %")
                 val tr1 = if (cls.is(Trait)) defn.ObjectType else tr
-                tr1 :: trs1.filterNot(_.isAnyRef)
+                tr1 +: trs1.filterNot(_.isAnyRef)
               case nil => nil
             }
           val erasedDecls = decls.filteredScope(
@@ -926,7 +926,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
    *  if `underlyingOfTermRef` is replaced by `widen`.
    */
   private def underlyingOfTermRef(tp: TermRef)(using Context) = tp.widen match
-    case tpw @ MethodType(Nil) if tp.symbol.isGetter => tpw.resultType
+    case tpw @ MethodType(Vector()) if tp.symbol.isGetter => tpw.resultType
     case tpw => tpw
 
   private def eraseArray(tp: Type)(using Context) = {
@@ -966,12 +966,12 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             // forwarders to mixin methods.
             // See doc comment for ElimByName for speculation how we could improve this.
         else
-          MethodType(Nil, Nil,
+          MethodType(Vector(), Vector(),
             eraseResult(rt.translateFromRepeated(toArray = sourceLanguage.isJava)))
       case tp1: PolyType =>
         eraseResult(tp1.resultType) match
           case rt: MethodType => rt
-          case rt => MethodType(Nil, Nil, rt)
+          case rt => MethodType(Vector(), Vector(), rt)
       case tp1 =>
         this(tp1)
 
@@ -1093,7 +1093,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case tp: TermRef =>
         sigName(underlyingOfTermRef(tp))
       case ExprType(rt) =>
-        sigName(defn.FunctionNOf(Nil, rt))
+        sigName(defn.FunctionNOf(Vector(), rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
       case tp @ defn.PolyFunctionOf(_) =>

@@ -43,7 +43,7 @@ object Rewrites {
       pbuf.filterInPlace(x => !p(x.span))
 
     def apply(cs: Array[Char]): Array[Char] = {
-      val patches = pbuf.toList.distinct.sortBy(_.span.start)
+      val patches = pbuf.toVector.distinct.sortBy(_.span.start)
       val delta = patches.map(_.delta).sum
       if (patches.nonEmpty)
         patches.reduceLeft {(p1, p2) =>
@@ -51,18 +51,18 @@ object Rewrites {
           p2
         }
       val ds = new Array[Char](cs.length + delta)
-      @tailrec def loop(ps: List[Patch], inIdx: Int, outIdx: Int): Unit = {
+      @tailrec def loop(ps: Vector[Patch], inIdx: Int, outIdx: Int): Unit = {
         def copy(upTo: Int): Int = {
           val untouched = upTo - inIdx
           System.arraycopy(cs, inIdx, ds, outIdx, untouched)
           outIdx + untouched
         }
-        ps match {
-          case patch @ Patch(span, replacement) :: ps1 =>
+        (ps: @unchecked) match {
+          case patch @ Patch(span, replacement) +: ps1 =>
             val outNew = copy(span.start)
             replacement.copyToArray(ds, outNew)
             loop(ps1, span.end, outNew + replacement.length)
-          case Nil =>
+          case Vector() =>
             val outNew = copy(cs.length)
             assert(outNew == ds.length, s"$outNew != ${ds.length}")
         }

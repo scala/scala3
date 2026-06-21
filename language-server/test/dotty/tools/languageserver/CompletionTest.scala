@@ -9,6 +9,17 @@ import dotty.tools.languageserver.util.CodeTester
 import dotty.tools.languageserver.util.actions.CodeCompletion
 
 class CompletionTest {
+  private type SimpleCompletion = (String, org.eclipse.lsp4j.CompletionItemKind, String)
+
+  private val javaLangForeignCompletion: Set[SimpleCompletion] =
+    try
+      _root_.java.lang.Class.forName("java.lang.foreign.Linker")
+      Set(("foreign", Module, "java.lang.foreign"))
+    catch case _: ClassNotFoundException =>
+      Set.empty
+
+  private def patternGuardExpected(items: SimpleCompletion*): Set[SimpleCompletion] =
+    items.toSet ++ javaLangForeignCompletion
 
   @Test def completion0: Unit = {
     code"class Foo { val xyz: Int = 0; def y: Int = xy${m1} }"
@@ -1488,8 +1499,8 @@ class CompletionTest {
           |  1 match { case foo if fo${m1} => }
           |  1 match { case foo => fo${m2} }
           """
-      .completion(m1, Set(("foo", Field, "(1 : Int)")))
-      .completion(m2, Set(("foo", Field, "(1 : Int)")))
+      .completion(m1, patternGuardExpected(("foo", Field, "(1 : Int)")))
+      .completion(m2, patternGuardExpected(("foo", Field, "(1 : Int)")))
   }
 
   @Test def patternGuardCompletionsUnApply: Unit = {
@@ -1497,8 +1508,8 @@ class CompletionTest {
           |  Some(1) match { case Some(foo) if fo${m1} => }
           |  Some(1) match { case Some(foo) => fo${m2} }
           """
-      .completion(m1, Set(("foo", Field, "Int")))
-      .completion(m2, Set(("foo", Field, "Int")))
+      .completion(m1, patternGuardExpected(("foo", Field, "Int")))
+      .completion(m2, patternGuardExpected(("foo", Field, "Int")))
   }
 
   @Test def patternGuardCompletionsNested: Unit = {
@@ -1506,8 +1517,8 @@ class CompletionTest {
           |  ((1, 2), 3) match { case ((foo1, foo2), foo3) if fo${m1} => }
           |  ((1, 2), 3) match { case ((foo1, foo2), foo3) => fo${m2} }
           """
-      .completion(m1, Set(("foo1", Field, "Int"), ("foo2", Field, "Int"), ("foo3", Field, "Int")))
-      .completion(m2, Set(("foo1", Field, "Int"), ("foo2", Field, "Int"), ("foo3", Field, "Int")))
+      .completion(m1, patternGuardExpected(("foo1", Field, "Int"), ("foo2", Field, "Int"), ("foo3", Field, "Int")))
+      .completion(m2, patternGuardExpected(("foo1", Field, "Int"), ("foo2", Field, "Int"), ("foo3", Field, "Int")))
   }
 
   @Test def patternGuardCompletionsSeq: Unit = {
@@ -1515,8 +1526,8 @@ class CompletionTest {
           |  Seq(1, 2) match { case foo1 :: foo2 if fo${m1} => }
           |  Seq(1, 2) match { case foo1 :: foo2 => fo${m2} }
           """
-      .completion(m1, Set(("foo1", Field, "Int"), ("foo2", Field, "List[Int]")))
-      .completion(m2, Set(("foo1", Field, "Int"), ("foo2", Field, "List[Int]")))
+      .completion(m1, patternGuardExpected(("foo1", Field, "Int"), ("foo2", Field, "List[Int]")))
+      .completion(m2, patternGuardExpected(("foo1", Field, "Int"), ("foo2", Field, "List[Int]")))
   }
 
   @Test def noCompletionsInsidePatternBind: Unit = {

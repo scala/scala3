@@ -70,16 +70,16 @@ trait Migrations:
             msg.actions
               .headOption
               .foreach(Rewrites.applyAction)
-            return typed(untpd.Function(Nil, qual), pt)
+            return typed(untpd.Function(Vector(), qual), pt)
     }
     nestedCtx.typerState.commit()
 
     def functionPrefixSuffix(arity: Int) = if (arity > 0) ("", "") else ("(() => ", "())")
 
     lazy val (prefix, suffix) = res match {
-      case Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+      case Block(DefDef(_, vparams +: Vector(), _, _) +: Vector(), _: Closure) =>
         functionPrefixSuffix(vparams.length)
-      case Block(ValDef(_, _, _) :: Nil, Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure)) =>
+      case Block(ValDef(_, _, _) +: Vector(), Block(DefDef(_, vparams +: Vector(), _, _) +: Vector(), _: Closure)) =>
         functionPrefixSuffix(vparams.length)
       case _ if defn.isFunctionType(res.tpe.widen) =>
         ("", "")
@@ -108,7 +108,7 @@ trait Migrations:
   def contextBoundParams(tree: Tree, tp: Type, pt: FunProto)(using Context): Unit =
     val mversion = mv.ExplicitContextBoundArgument
     def isContextBoundParams = tp.stripPoly match
-      case MethodType(ContextBoundParamName(_) :: _) => true
+      case MethodType(ContextBoundParamName(_) +: _) => true
       case _ => false
     if sourceVersion.isAtLeast(`3.4`)
       && isContextBoundParams
@@ -122,7 +122,7 @@ trait Migrations:
             |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""",
         tree.srcPos, mversion)
       tree match
-        case Apply(ta @ TypeApply(Select(New(_), _), _), Nil) =>
+        case Apply(ta @ TypeApply(Select(New(_), _), _), Vector()) =>
           // Remove empty arguments for calls to new that may precede the context bound.
           // They are no longer necessary.
           patch(Span(ta.span.end, pt.args.head.span.start - 1), "")
@@ -150,7 +150,7 @@ trait Migrations:
       val codeAction = CodeAction(
         title = "Add `using` clause",
         description = None,
-        patches = List(ActionPatch(pt.args.head.startPos.sourcePos, "using "))
+        patches = Vector(ActionPatch(pt.args.head.startPos.sourcePos, "using "))
       )
       val withActions = message.withActions(codeAction)
       report.errorOrMigrationWarning(
