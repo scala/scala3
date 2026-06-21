@@ -5,8 +5,6 @@ import sbt.Keys._
 import sbt.librarymanagement.ModuleFilter
 import sbt.plugins.JvmPlugin
 
-import sbtcompat.PluginCompat
-
 import java.io.FileInputStream
 
 import scala.jdk.CollectionConverters.*
@@ -22,9 +20,13 @@ import com.spotify.missinglink.datamodel.{
   DeclaredClass,
   Dependency
 }
-import xsbti.FileConverter
+import sbt.{toFile, toFileRef}
+import xsbti.{FileConverter, HashedVirtualFileRef}
 
 object MissingLinkPlugin extends AutoPlugin {
+
+  private def parseModuleIDStrAttribute(str: String): ModuleID =
+    Classpaths.moduleIdJsonKeyFormat.read(str)
 
   object autoImport {
 
@@ -272,7 +274,7 @@ object MissingLinkPlugin extends AutoPlugin {
     } else {
       val cp = bootstrapClasspath
         .split(System.getProperty("path.separator"))
-        .map(f => Attributed.blank(PluginCompat.toFileRef(file(f))))
+        .map(f => Attributed.blank(file(f).toFileRef))
         .toList
 
       constructArtifacts(cp, log).map(_.artifact)
@@ -298,15 +300,15 @@ object MissingLinkPlugin extends AutoPlugin {
     def isValid(entry: File): Boolean =
       (entry.isFile() && entry.getPath().endsWith(".jar")) || entry.isDirectory()
 
-    def fileToArtifact(f: Attributed[PluginCompat.FileRef]): ModuleArtifact = {
+    def fileToArtifact(f: Attributed[HashedVirtualFileRef]): ModuleArtifact = {
       log.debug("loading artifact for path: " + f)
       ModuleArtifact(
-        artifactLoader.load(PluginCompat.toFile(f.data)),
-        f.get(PluginCompat.moduleIDStr).map(PluginCompat.parseModuleIDStrAttribute)
+        artifactLoader.load(f.data.toFile),
+        f.get(moduleIDStr).map(parseModuleIDStrAttribute)
       )
     }
 
-    cp.filter(c => isValid(PluginCompat.toFile(c.data))).map(fileToArtifact).toList
+    cp.filter(c => isValid(c.data.toFile)).map(fileToArtifact).toList
   }
 
   private def filterConflicts[T <: PackageFilter](

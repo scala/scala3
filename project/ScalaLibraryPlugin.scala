@@ -13,7 +13,6 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin.autoImport.missinglinkCheck
 import com.spotify.missinglink.Conflict
-import sbtcompat.PluginCompat.*
 import xsbti.FileConverter
 
 object ScalaLibraryPlugin extends AutoPlugin {
@@ -33,11 +32,11 @@ object ScalaLibraryPlugin extends AutoPlugin {
   override def projectSettings = Seq(
     // Settings to validate that JARs don't contain Scala 2 pickle annotations and have valid TASTY attributes
     Compile / packageBin := Def.uncached {
-      implicit val conv: FileConverter = fileConverter.value
+      given FileConverter = fileConverter.value
       val jar = (Compile / packageBin).value
-      validateNoScala2Pickles(toFile(jar))
-      validateTastyAttributes(toFile(jar))
-      validateScalaAttributes(toFile(jar))
+      validateNoScala2Pickles(jar.toFile)
+      validateTastyAttributes(jar.toFile)
+      validateScalaAttributes(jar.toFile)
       jar
     },
     (Compile / manipulateBytecode) := Def.uncached {
@@ -102,7 +101,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     },
     Compile / missinglinkCheck := Def.uncached {
       val log = streams.value.log
-      implicit val converter: FileConverter = fileConverter.value
+      given FileConverter = fileConverter.value
       val cp = (Compile / fullClasspath).value
       val classDir = (Compile / classDirectory).value
 
