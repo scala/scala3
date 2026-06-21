@@ -264,7 +264,7 @@ object JSEncoding {
     else {
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
-      jstpe.ClassType(encodeClassName(sym), nullable = true, exact = false)
+      jstpe.ClassType(encodeClassName(sym), nullable = true)
     }
   }
 
@@ -327,10 +327,10 @@ object JSEncoding {
         else if (sym == defn.NullClass)
           jstpe.NullType
         else
-          jstpe.ClassType(typeRef.className, nullable = true, exact = false)
+          jstpe.ClassType(typeRef.className, nullable = true)
 
       case typeRef: jstpe.ArrayTypeRef =>
-        jstpe.ArrayType(typeRef, nullable = true, exact = false)
+        jstpe.ArrayType(typeRef, nullable = true)
 
       case typeRef: jstpe.TransientTypeRef =>
         throw AssertionError(s"Unexpected transient type ref $typeRef for ${typeRefInternal._2}")
