@@ -30,7 +30,7 @@ class ArrayApply extends MiniPhase {
   private inline val MaxVector1Length = 32
 
   override def prepareForApply(tree: Apply)(using Context): Context = tree match
-    case SeqApplyArgs(elems) =>
+    case SeqApplyArgs(elems) if isListApply(tree) || !defn.Vector_fromArray1Unsafe.exists =>
       ctx.fresh.setProperty(TransformListApplyBudgetKey, transformListApplyBudget - elems.length)
     case _ => ctx
 

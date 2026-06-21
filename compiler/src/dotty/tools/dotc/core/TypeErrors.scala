@@ -16,7 +16,7 @@ import util.Property
 import config.Printers.{cyclicErrors, noPrinter}
 import collection.mutable
 
-import scala.annotation.constructorOnly
+import scala.annotation.{constructorOnly, publicInBinary}
 
 abstract class TypeError(using creationContext: Context) extends Exception(""):
 
@@ -85,10 +85,14 @@ class MissingType(val pre: Type, val name: Name)(using Context) extends TypeErro
         |$reason."""
 end MissingType
 
-class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)(using Context)
+class RecursionOverflow @publicInBinary private[dotc] (
+  val op: String,
+  details: RecursionOverflow.Details,
+  val previous: Throwable,
+  val weight: Int)(using Context)
 extends TypeError:
 
-  def explanation: String = s"$op $details"
+  def explanation: String = s"$op ${details.value}"
 
   private def recursions: Vector[RecursionOverflow] = {
     val result = mutable.ListBuffer.empty[RecursionOverflow]
@@ -125,6 +129,23 @@ extends TypeError:
   override def getStackTrace(): Array[StackTraceElement] = previous.getStackTrace().asInstanceOf
 end RecursionOverflow
 
+object RecursionOverflow:
+  sealed abstract class Details:
+    def value: String
+
+  private final class StrictDetails(details: String) extends Details:
+    def value: String = details
+
+  @annotation.nowarn("id=197")
+  inline def apply(op: String, details: => String, previous: Throwable, weight: Int)(using Context): RecursionOverflow =
+    new RecursionOverflow(op, new Details:
+      def value: String = details
+    , previous, weight)
+
+  def withStrictDetails(op: String, details: String, previous: Throwable, weight: Int)(using Context): RecursionOverflow =
+    new RecursionOverflow(op, new StrictDetails(details), previous, weight)
+end RecursionOverflow
+
 /** Post-process exceptions that might result from StackOverflow to add
   * tracing information while unwalking the stack.
   */
@@ -136,15 +157,15 @@ object handleRecursive:
     while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
     e
 
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
+  inline def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
     if ctx.settings.XnoEnrichErrorMessages.value then
       throw exc
     else exc match
       case _: RecursionOverflow =>
-        throw new RecursionOverflow(op, details, exc, weight)
+        throw RecursionOverflow(op, details, exc, weight)
       case _ =>
         val so = underlyingStackOverflowOrNull(exc)
-        if so != null then throw new RecursionOverflow(op, details, so, weight)
+        if so != null then throw RecursionOverflow(op, details, so, weight)
         else throw exc
 end handleRecursive
 

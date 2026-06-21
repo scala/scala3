@@ -71,6 +71,9 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
   @Test
   def ctSymTest(): Unit = {
 
+    def releaseHasJavaBase(release: String): Boolean =
+      JrtClassPath(Some(release)).exists(_.findClassFile("java.lang.Object").isDefined)
+
     def classExists(className: String, release: String): Boolean = {
       given ctx: Context = initCtx.fresh
       ctx.settings.Yusejavacp.update(true)
@@ -80,7 +83,8 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
       classFile.isDefined
     }
 
-    assertFalse(classExists("java.lang.invoke.LambdaMetafactory", "7"))
+    if releaseHasJavaBase("7") then
+      assertFalse(classExists("java.lang.invoke.LambdaMetafactory", "7"))
     assertTrue(classExists("java.lang.invoke.LambdaMetafactory", "8"))
     assertTrue(classExists("java.lang.invoke.LambdaMetafactory", "9"))
   }

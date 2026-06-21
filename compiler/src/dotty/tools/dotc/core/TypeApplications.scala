@@ -178,6 +178,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       case NoPrefix => true
       case _ => false
     }
+    def rethrowTypeParamsRecursionOverflow(ex: Throwable): Nothing =
+      // Avoid constructing a by-name detail thunk while unwinding a stack overflow.
+      throw RecursionOverflow.withStrictDetails("type parameters of", "<type>", ex, weight = 1)
     try self match {
       case self: TypeRef =>
         val tsym = self.symbol
@@ -213,6 +216,12 @@ class TypeApplications(val self: Type) extends AnyVal {
         Vector()
     }
     catch {
+      case ex: Throwable if ctx.settings.XnoEnrichErrorMessages.value =>
+        throw ex
+      case ex: RecursionOverflow =>
+        rethrowTypeParamsRecursionOverflow(ex)
+      case ex: StackOverflowError =>
+        rethrowTypeParamsRecursionOverflow(ex)
       case ex: Throwable => handleRecursive("type parameters of", self.show, ex)
     }
   }

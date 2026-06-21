@@ -14,6 +14,10 @@ object ClasspathFromClassloader {
    */
   def apply(cl: ClassLoader): String = {
     val classpathBuff = Vector.newBuilder[String]
+    def isAbstractFileClassLoaderClass(cls: Class[?]): Boolean =
+      cls != null &&
+        (cls.getName == classOf[AbstractFileClassLoader].getName ||
+          isAbstractFileClassLoaderClass(cls.getSuperclass))
     def collectClassLoaderPaths(cl: ClassLoader): Unit = {
       if (cl != null) {
         cl match {
@@ -27,7 +31,7 @@ object ClasspathFromClassloader {
             classpathBuff ++=
               cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
           case _ =>
-            if cl.getClass.getName == classOf[AbstractFileClassLoader].getName then
+            if isAbstractFileClassLoaderClass(cl.getClass) then
               // HACK: We can't just collect the classpath from arbitrary parent
               // classloaders since the current classloader might intentionally
               // filter loading classes from its parent (for example
@@ -35,8 +39,8 @@ object ClasspathFromClassloader {
               // don't want to include the scala-library that sbt depends on
               // here), but we do need to look at the parent of the REPL
               // classloader, so we special case it. We can't do this using a type
-              // test since the REPL classloader class itself is normally loaded
-              // with a different classloader.
+              // test since the REPL classloader class itself may be loaded with
+              // a different classloader.
               collectClassLoaderPaths(cl.getParent)
             else if cl eq ClassLoader.getSystemClassLoader then
               // HACK: For Java 9+, if the classloader is an AppClassLoader then use the classpath from the system

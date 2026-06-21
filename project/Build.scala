@@ -838,6 +838,7 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       Test    / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
+      Test    / javaOptions += s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := true,

@@ -28,6 +28,18 @@ class FactoriesTest {
     assertEquals("Vector", cloneElements(seq)(Seq).collectionClassName)
   }
 
+  @Test def vectorBackedSeqFactoriesDoNotAliasMutableSourceArrays(): Unit = {
+    val seqSource = Array[AnyRef]("x")
+    val seq = Seq(seqSource*)
+    seqSource(0) = "mutated"
+    assertEquals("x", seq.head)
+
+    val vectorSource = Array[AnyRef]("x")
+    val vector = im.Vector.from(im.ArraySeq.unsafeWrapArray(vectorSource))
+    vectorSource(0) = "mutated"
+    assertEquals("x", vector.head)
+  }
+
   def apply(factory: IterableFactory[Iterable]): Unit = {
     assertTrue(factory(1, 2, 3).iterator.sameElements(new View.Elems(1, 2, 3)))
   }
