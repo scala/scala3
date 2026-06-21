@@ -52,7 +52,7 @@ object Contexts {
   private val (compilationUnitLoc,   store5) = store4.newLocation[CompilationUnit]()
   private val (runLoc,               store6) = store5.newLocation[Run | Null]()
   private val (profilerLoc,          store7) = store6.newLocation[Profiler]()
-  private val (notNullInfosLoc,      store8) = store7.newLocation[List[NotNullInfo]]()
+  private val (notNullInfosLoc,      store8) = store7.newLocation[Vector[NotNullInfo]]()
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
   private val (progressCallbackLoc, store11) = store10.newLocation[ProgressCallback | Null]()
@@ -209,7 +209,7 @@ object Contexts {
     def profiler: Profiler = store(profilerLoc)
 
     /** The paths currently known to be not null */
-    def notNullInfos: List[NotNullInfo] = store(notNullInfosLoc)
+    def notNullInfos: Vector[NotNullInfo] = store(notNullInfosLoc)
 
     /** The currently active import info */
     def importInfo: ImportInfo | Null = store(importInfoLoc)
@@ -222,15 +222,15 @@ object Contexts {
     def implicits: ContextualImplicits = {
       if (implicitsCache == null)
         implicitsCache = {
-          val implicitRefs: List[ImplicitRef] =
+          val implicitRefs: Vector[ImplicitRef] =
             if (isClassDefContext)
               try owner.thisType.implicitMembers
               catch {
-                case ex: CyclicReference => Nil
+                case ex: CyclicReference => Vector()
               }
             else if (isImportContext) importInfo.nn.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
-            else Nil
+            else Vector()
           val outerImplicits =
             if (isImportContext && importInfo.nn.unimported.exists)
               outer.implicits.exclude(importInfo.nn.unimported)
@@ -724,7 +724,7 @@ object Contexts {
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
-    def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
+    def setNotNullInfos(notNullInfos: Vector[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
     def setImportInfo(importInfo: ImportInfo): this.type =
       importInfo.mentionsFeature(nme.unsafeNulls) match
         case Some(true) =>
@@ -780,7 +780,7 @@ object Contexts {
       c._source = NoSource
       c._store = initialStore
           .updated(settingsStateLoc, settingsGroup.defaultState)
-          .updated(notNullInfosLoc, Nil)
+          .updated(notNullInfosLoc, Vector())
           .updated(compilationUnitLoc, NoCompilationUnit)
           .updated(profilerLoc, Profiler.NoOp)
       c._searchHistory = new SearchRoot
@@ -803,7 +803,7 @@ object Contexts {
     def addNotNullRefs(refs: Set[TermRef]) =
       if c.explicitNulls then c.addNotNullInfo(NotNullInfo(refs, Set())) else c
 
-    def withNotNullInfos(infos: List[NotNullInfo]): Context =
+    def withNotNullInfos(infos: Vector[NotNullInfo]): Context =
       if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
@@ -896,7 +896,7 @@ object Contexts {
   end comparing
 
   @sharable val NoContext: Context = new FreshContext(null.asInstanceOf[ContextBase]) {
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Vector(), null, false)(this: @unchecked)
     setSource(NoSource)
   }
 
@@ -935,7 +935,7 @@ object Contexts {
     val definitions: Definitions = new Definitions
 
     // Set up some phases to get started */
-    usePhases(List(SomePhase), FreshContext(this))
+    usePhases(Vector(SomePhase), FreshContext(this))
 
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
@@ -1036,10 +1036,10 @@ object Contexts {
     /** Number of findMember calls on stack */
     private[core] var findMemberCount: Int = 0
 
-    /** List of names which have a findMemberCall on stack,
+    /** Vector of names which have a findMemberCall on stack,
      *  after Config.LogPendingFindMemberThreshold is reached.
      */
-    private[core] var pendingMemberSearches: List[Name] = Nil
+    private[core] var pendingMemberSearches: Vector[Name] = Vector()
 
     /** The number of recursive invocation of underlying on a NamedType
      *  during a controlled operation.
@@ -1058,7 +1058,7 @@ object Contexts {
 
     // Phases state
 
-    private[core] var phasesPlan: List[List[Phase]] = uninitialized
+    private[core] var phasesPlan: Vector[Vector[Phase]] = uninitialized
 
     /** Phases by id */
     private[dotc] var phases: Array[Phase] = uninitialized
@@ -1106,7 +1106,7 @@ object Contexts {
 
     private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
-    private[dotc] var wConfCache: (List[String], WConf) = uninitialized
+    private[dotc] var wConfCache: (Vector[String], WConf) = uninitialized
 
     def sharedCharArray(len: Int): Array[Char] =
       while len > charArray.length do

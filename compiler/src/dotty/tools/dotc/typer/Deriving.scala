@@ -86,13 +86,13 @@ trait Deriving {
       val typeClassParams = typeClass.typeParams
       val typeClassArity = typeClassParams.length
 
-      def sameParamKinds(xs: List[ParamInfo], ys: List[ParamInfo]): Boolean =
+      def sameParamKinds(xs: Vector[ParamInfo], ys: Vector[ParamInfo]): Boolean =
         xs.corresponds(ys)((x, y) => x.paramInfo.hasSameKindAs(y.paramInfo))
 
       def cannotBeUnified =
         report.error(em"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.srcPos)
 
-      def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
+      def addInstance(derivedParams: Vector[TypeSymbol], evidenceParamInfos: Vector[Vector[Type]], instanceTypes: Vector[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
         val monoInfo =
           if evidenceParamInfos.isEmpty then resultType
@@ -174,13 +174,13 @@ trait Deriving {
                 tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity)))
             }
 
-          addInstance(derivedParams, Nil, List(instanceType))
+          addInstance(derivedParams, Vector(), Vector(instanceType))
         }
         else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub)) {
           // case (b) ... see description above
           val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
-          val evidenceParamInfos = clsParams.map(param => List(param.typeRef))
-          addInstance(clsParams, evidenceParamInfos, List(instanceType))
+          val evidenceParamInfos = clsParams.map(param => Vector(param.typeRef))
+          addInstance(clsParams, evidenceParamInfos, Vector(instanceType))
         }
         else
           cannotBeUnified
@@ -221,7 +221,7 @@ trait Deriving {
         //     T_L  T_R
         //     U_L  U_R
         //     V_L  V_R
-        val clsParamss: List[List[TypeSymbol]] = cls.typeParams.map { tparam =>
+        val clsParamss: Vector[Vector[TypeSymbol]] = cls.typeParams.map { tparam =>
           typeClassParams.map(tcparam =>
             tparam.copy(name = s"${tparam.name}_$$_${tcparam.name}".toTypeName)
               .asInstanceOf[TypeSymbol])
@@ -229,7 +229,7 @@ trait Deriving {
         // Retain only rows with L/R params of kind * which CanEqual can be applied to.
         // No pairwise evidence will be required for params of other kinds.
         val firstKindedParamss = clsParamss.filter {
-          case param :: _ => !param.info.isLambdaSub
+          case param +: _ => !param.info.isLambdaSub
           case _ => false
         }
 
@@ -242,7 +242,7 @@ trait Deriving {
         // The class instances in the result type. Running example:
         //   A[T_L, U_L, V_L], A[T_R, U_R, V_R]
         val instanceTypes =
-          for (n <- List.range(0, typeClassArity))
+          for (n <- Vector.range(0, typeClassArity))
           yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
 
         // CanEqual[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
@@ -261,20 +261,20 @@ trait Deriving {
      *  append them to `synthetics` buffer, and enter them into class scope.
      *  Also, add generic instances if needed.
      */
-    def enterDerived(derived: List[untpd.Tree]) =
+    def enterDerived(derived: Vector[untpd.Tree]) =
       derived.foreach(processDerivedInstance(_))
 
     /** The synthesized type class instance definitions */
-    def syntheticDefs: List[tpd.Tree] = {
+    def syntheticDefs: Vector[tpd.Tree] = {
       import tpd.*
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(using Context): List[List[tpd.Tree]] => tpd.Tree =
-        (paramRefss: List[List[tpd.Tree]]) =>
+      def typeclassInstance(sym: Symbol)(using Context): Vector[Vector[tpd.Tree]] => tpd.Tree =
+        (paramRefss: Vector[Vector[tpd.Tree]]) =>
           val (tparamRefs, vparamRefss) = splitArgs(paramRefss)
           val tparamTypes = tparamRefs.tpes
           val tparams = tparamTypes.map(_.typeSymbol.asType)
-          val vparams = if (vparamRefss.isEmpty) Nil else vparamRefss.head.map(_.symbol.asTerm)
+          val vparams = if (vparamRefss.isEmpty) Vector() else vparamRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
           vparams.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
@@ -309,10 +309,10 @@ trait Deriving {
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
         if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))
-        else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil))
+        else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Vector()))
       }
 
-      synthetics.map((t, s) => syntheticDef(s).withAttachment(Deriving.OriginalTypeClass, t)).toList
+      synthetics.map((t, s) => syntheticDef(s).withAttachment(Deriving.OriginalTypeClass, t)).toVector
     }
 
     def finalize(stat: tpd.TypeDef): tpd.Tree = {

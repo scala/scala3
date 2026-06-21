@@ -60,7 +60,7 @@ class ParsedLogicalPackage(
     this
 
   /** Return all member packages. Only direct members are returned. */
-  def packages: Seq[ParsedLogicalPackage] = subpackages.values.toList
+  def packages: Seq[ParsedLogicalPackage] = subpackages.values.toVector
 
   /**
    * Return all sources contained by this package. Only direct members are returned, and there are no duplicates.

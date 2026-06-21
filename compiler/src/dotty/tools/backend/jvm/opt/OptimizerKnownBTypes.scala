@@ -32,7 +32,7 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val boxed = defn.boxedClass(primitive)
       val unboxed = ts.bTypeFromSymbol(primitive)
-      val method = MethodNameAndType("valueOf", MethodBType(List(unboxed), boxedClassOfPrimitive(unboxed)))
+      val method = MethodNameAndType("valueOf", MethodBType(Vector(unboxed), boxedClassOfPrimitive(unboxed)))
       (ts.classBTypeFromSymbol(boxed).internalName, method)
     }))
   }
@@ -43,7 +43,7 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val boxed = defn.boxedClass(primitive)
       val name = primitive.name.toString.toLowerCase + "Value"
-      (ts.classBTypeFromSymbol(boxed).internalName, MethodNameAndType(name, MethodBType(Nil, ts.bTypeFromSymbol(primitive))))
+      (ts.classBTypeFromSymbol(boxed).internalName, MethodNameAndType(name, MethodBType(Vector(), ts.bTypeFromSymbol(primitive))))
     }))
   }
 
@@ -52,7 +52,7 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
       val unboxed = ts.bTypeFromSymbol(primitive)
       val boxed = boxedClassOfPrimitive(unboxed)
       val name = getName(primitive.name.toString, defn.boxedClass(primitive).name.toString)
-      (name, MethodBType(List(if isBox then unboxed else boxed), if isBox then boxed else unboxed))
+      (name, MethodBType(Vector(if isBox then unboxed else boxed), if isBox then boxed else unboxed))
     }))
 
   // boolean2Boolean -> (Z)Ljava/lang/Boolean;
@@ -71,9 +71,9 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
       val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.bTypeFromSymbol(primitive)
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
-      List(
-        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), ts.bTypeFromSymbol(refClass)))),
-        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(List(unboxed), ts.bTypeFromSymbol(volatileRefClass))))
+      Vector(
+        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(Vector(unboxed), ts.bTypeFromSymbol(refClass)))),
+        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.create.toString, MethodBType(Vector(unboxed), ts.bTypeFromSymbol(volatileRefClass))))
       )
     }))
   }
@@ -85,9 +85,9 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
       val boxed = if primitive == defn.ObjectClass then primitive else defn.boxedClass(primitive)
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
-      List(
-        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), ts.bTypeFromSymbol(refClass)))),
-        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(List(), ts.bTypeFromSymbol(volatileRefClass))))
+      Vector(
+        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(Vector(), ts.bTypeFromSymbol(refClass)))),
+        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.zero.toString, MethodBType(Vector(), ts.bTypeFromSymbol(volatileRefClass))))
       )
     }))
   }
@@ -98,7 +98,7 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val boxed = defn.boxedClass(primitive)
       val unboxed = ts.bTypeFromSymbol(primitive)
-      (ts.classBTypeFromSymbol(boxed).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(unboxed), UNIT)))
+      (ts.classBTypeFromSymbol(boxed).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(Vector(unboxed), UNIT)))
     }))
   }
 
@@ -109,7 +109,7 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
       val bType = ts.bTypeFromSymbol(primitive)
       val boxed = boxedClassOfPrimitive(bType)
       val name = "boxTo" + defn.boxedClass(primitive).name.toString
-      (bType, MethodNameAndType(name, MethodBType(List(bType), boxed)))
+      (bType, MethodNameAndType(name, MethodBType(Vector(bType), boxed)))
     }))
   }
 
@@ -119,7 +119,7 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
     Map.from(defn.ScalaValueClassesNoUnit().map(primitive => {
       val bType = ts.bTypeFromSymbol(primitive)
       val name = "unboxTo" + primitive.name.toString
-      (bType, MethodNameAndType(name, MethodBType(List(ObjectRef), bType)))
+      (bType, MethodNameAndType(name, MethodBType(Vector(ObjectRef), bType)))
     }))
   }
 
@@ -131,9 +131,9 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
       val unboxed = if primitive == defn.ObjectClass then ObjectRef else ts.bTypeFromSymbol(primitive)
       val refClass = Symbols.requiredClass("scala.runtime." + primitive.name.toString + "Ref")
       val volatileRefClass = Symbols.requiredClass("scala.runtime.Volatile" + primitive.name.toString + "Ref")
-      List(
-        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(unboxed), UNIT))),
-        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(unboxed), UNIT)))
+      Vector(
+        (ts.classBTypeFromSymbol(refClass).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(Vector(unboxed), UNIT))),
+        (ts.classBTypeFromSymbol(volatileRefClass).internalName, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(Vector(unboxed), UNIT)))
       )
     }))
   }
@@ -145,21 +145,21 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
   // tuple2 is specialized for C, D, I, J, Z in each parameter
   val tupleClassConstructors: Map[InternalName, MethodNameAndType] = _tupleClassConstructors(using initctx)
   private def _tupleClassConstructors(using Context): Map[InternalName, MethodNameAndType] = {
-    val spec1 = List(defn.DoubleClass, defn.IntClass, defn.LongClass)
-    val spec2 = List(defn.CharClass, defn.DoubleClass, defn.IntClass, defn.LongClass, defn.BooleanClass)
+    val spec1 = Vector(defn.DoubleClass, defn.IntClass, defn.LongClass)
+    val spec2 = Vector(defn.CharClass, defn.DoubleClass, defn.IntClass, defn.LongClass, defn.BooleanClass)
     Map.from(
       Iterator.concat(
         (1 to 22).map { n =>
-          ("scala/Tuple" + n, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List.fill(n)(ObjectRef), UNIT)))
+          ("scala/Tuple" + n, MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(Vector.fill(n)(ObjectRef), UNIT)))
         },
         spec1.map { sp1 =>
           val prim = ts.bTypeFromSymbol(sp1)
-          ("scala/Tuple1$mc" + prim.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(), UNIT)))
+          ("scala/Tuple1$mc" + prim.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(Vector(), UNIT)))
         },
         for sp2a <- spec2; sp2b <- spec2 yield {
           val primA = ts.bTypeFromSymbol(sp2a)
           val primB = ts.bTypeFromSymbol(sp2b)
-          ("scala/Tuple2$mc" + primA.descriptor + primB.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(List(primA, primB), UNIT)))
+          ("scala/Tuple2$mc" + primA.descriptor + primB.descriptor + "$sp", MethodNameAndType(nme.CONSTRUCTOR.toString, MethodBType(Vector(primA, primB), UNIT)))
         }
       )
     )

@@ -25,12 +25,12 @@ import java.nio.file.*
 class InterfaceEntryPointTest {
   @Test def runCompilerFromInterface = {
     val sources =
-      List("tests/pos/HelloWorld.scala").map(p => Paths.get(p).toAbsolutePath().toString)
+      Vector("tests/pos/HelloWorld.scala").map(p => Paths.get(p).toAbsolutePath().toString)
     val out = Paths.get("out/").toAbsolutePath()
     if (Files.notExists(out))
       Files.createDirectory(out)
 
-    val args = sources ++ List(
+    val args = sources ++ Vector(
       "-d",
       out.toString,
       "-classpath", "", // Avoid the default "."
@@ -68,7 +68,7 @@ class InterfaceEntryPointTest {
 
   private class CustomCompilerCallback extends CompilerCallback {
     private val pathsBuffer = new ListBuffer[String]
-    def paths = pathsBuffer.toList
+    def paths = pathsBuffer.toVector
 
     override def onSourceCompiled(source: SourceFile): Unit = {
       if (source.jfile.isPresent)

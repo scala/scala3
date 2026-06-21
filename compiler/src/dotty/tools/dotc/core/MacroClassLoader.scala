@@ -25,20 +25,20 @@ object MacroClassLoader {
     ctx.setProperty(MacroClassLoaderKey, makeMacroClassLoader(using ctx))
 
   private def makeMacroClassLoader(using Context): ClassLoader = trace("new macro class loader") {
-    val urls: List[java.net.URL] =
-      def settingsUrls: List[java.net.URL] =
+    val urls: Vector[java.net.URL] =
+      def settingsUrls: Vector[java.net.URL] =
         val entries = ClassPath.expandPath(ctx.settings.classpath.value, expandStar=true)
-        entries.map(cp => java.nio.file.Paths.get(cp).toUri.toURL).toList
+        entries.map(cp => java.nio.file.Paths.get(cp).toUri.toURL).toVector
 
       if ctx.mode.is(Mode.Interactive) then
         try
-          ctx.platform.classPath.asURLs.toList
+          ctx.platform.classPath.asURLs.toVector
         catch
           case _: IllegalStateException =>
             settingsUrls
       else
         settingsUrls
     val out = Option(ctx.settings.outputDir.value.toURL) // to find classes in case of suspended compilation
-    new java.net.URLClassLoader((urls ++ out.toList).toArray, getClass.getClassLoader)
+    new java.net.URLClassLoader((urls ++ out.toVector).toArray, getClass.getClassLoader)
   }
 }

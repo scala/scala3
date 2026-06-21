@@ -87,18 +87,18 @@ object ScaladocInternalTastyInspector:
     class TastyInspectorPhase extends Phase:
       override def phaseName: String = "tastyInspector"
 
-      override def runOn(units: List[CompilationUnit])(using ctx0: Context): List[CompilationUnit] =
+      override def runOn(units: Vector[CompilationUnit])(using ctx0: Context): Vector[CompilationUnit] =
         // NOTE: although this is a phase, do not expect this to be run with an xsbti.CompileProgress
         val ctx = QuotesCache.init(ctx0.fresh)
         runOnImpl(units)(using ctx)
 
-      private def runOnImpl(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+      private def runOnImpl(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] =
         val quotesImpl = QuotesImpl()
         class TastyImpl(val path: String, val ast: quotesImpl.reflect.Tree) extends Tasty[quotesImpl.type] {
           val quotes = quotesImpl
         }
         val tastys = units.map(unit => new TastyImpl(unit.source.path , unit.tpdTree.asInstanceOf[quotesImpl.reflect.Tree]))
-        inspector.inspect(using quotesImpl)(tastys)
+        inspector.inspect(using quotesImpl)(tastys.toList)
         units
 
       override def run(implicit ctx: Context): Unit = unsupported("run")
@@ -106,17 +106,15 @@ object ScaladocInternalTastyInspector:
 
     class TastyFromClass extends TASTYCompiler:
 
-      override protected def frontendPhases: List[List[Phase]] =
-        List(new ReadTasty) :: // Load classes from tasty
-        Nil
+      override protected def frontendPhases: Vector[Vector[Phase]] =
+        Vector(Vector(new ReadTasty)) // Load classes from tasty
 
-      override protected def picklerPhases: List[List[Phase]] = Nil
+      override protected def picklerPhases: Vector[Vector[Phase]] = Vector()
 
-      override protected def transformPhases: List[List[Phase]] = Nil
+      override protected def transformPhases: Vector[Vector[Phase]] = Vector()
 
-      override protected def backendPhases: List[List[Phase]] =
-        List(new TastyInspectorPhase) ::  // Perform a callback for each compilation unit
-        Nil
+      override protected def backendPhases: Vector[Vector[Phase]] =
+        Vector(Vector(new TastyInspectorPhase)) // Perform a callback for each compilation unit
 
       override def newRun(implicit ctx: Context): Run =
         reset()

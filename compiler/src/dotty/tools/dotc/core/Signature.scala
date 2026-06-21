@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package core
 
-import scala.annotation.tailrec
-
 import Names.*, Types.*, Contexts.*, StdNames.*, Decorators.*
 import TypeErasure.sigName
 import Signature.*
@@ -30,7 +28,7 @@ import Signature.*
  *  would have signature
  *
  *      Signature(
- *        List(2, "scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName),
+ *        Vector(2, "scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName),
  *        "java.lang.Object".toTypeName)
  *
  *  Note that `paramsSig` has one entry for *a whole type parameter section* but
@@ -46,7 +44,7 @@ import Signature.*
  *   - tpnme.WILDCARD       Arises from a Wildcard or error type
  *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
-case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
+case class Signature(paramsSig: Vector[ParamSig], resSig: TypeName) {
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =
@@ -57,10 +55,13 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  equal or on of them is tpnme.Uninstantiated.
    */
   final def consistentParams(that: Signature)(using Context): Boolean = {
-    @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
-      if (names1.isEmpty) names2.isEmpty
-      else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
-    loop(this.paramsSig, that.paramsSig)
+    if this.paramsSig.length != that.paramsSig.length then false
+    else
+      var idx = 0
+      while idx < this.paramsSig.length do
+        if !consistent(this.paramsSig(idx), that.paramsSig(idx)) then return false
+        idx += 1
+      true
   }
 
   /** `that` signature, but keeping all corresponding parts of `this` signature. */
@@ -107,8 +108,8 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
-  def prependTermParams(params: List[Type], sourceLanguage: SourceLanguage)(using Context): Signature =
-    Signature(params.map(p => sigName(p, sourceLanguage)) ::: paramsSig, resSig)
+  def prependTermParams(params: Vector[Type], sourceLanguage: SourceLanguage)(using Context): Signature =
+    Signature(params.map(p => sigName(p, sourceLanguage)) ++ paramsSig, resSig)
 
   /** Construct a signature by prepending the length of a type parameter section
    *  to the parameter part of this signature.
@@ -116,7 +117,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
   def prependTypeParams(typeParamSigsSectionLength: Int)(using Context): Signature =
-    Signature(typeParamSigsSectionLength :: paramsSig, resSig)
+    Signature(typeParamSigsSectionLength +: paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
@@ -150,11 +151,11 @@ object Signature {
   /** The signature of everything that's not a method, i.e. that has
    *  a type different from PolyType or MethodType.
    */
-  val NotAMethod: Signature = Signature(List(), EmptyTypeName)
+  val NotAMethod: Signature = Signature(Vector(), EmptyTypeName)
 
   /** The signature of an overloaded denotation.
    */
-  val OverloadedSignature: Signature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
+  val OverloadedSignature: Signature = Signature(Vector(tpnme.OVERLOADED), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`.
    *
@@ -164,7 +165,7 @@ object Signature {
    */
   def apply(resultType: Type, sourceLanguage: SourceLanguage)(using Context): Signature = {
     assert(!resultType.isInstanceOf[ExprType])
-    apply(Nil, sigName(resultType, sourceLanguage))
+    apply(Vector(), sigName(resultType, sourceLanguage))
   }
 
   val lexicographicOrdering: Ordering[Signature] = new Ordering[Signature] {

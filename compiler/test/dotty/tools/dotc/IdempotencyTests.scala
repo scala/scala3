@@ -49,7 +49,7 @@ class IdempotencyTests {
     }
 
     def check(name: String) = {
-      val files = List(s"tests/idempotency/$name.scala", "tests/idempotency/IdempotencyCheck.scala")
+      val files = Vector(s"tests/idempotency/$name.scala", "tests/idempotency/IdempotencyCheck.scala")
       compileList(name, files, defaultOptions)(using TestGroup("idempotency/check"))
     }
     val allChecks = aggregateTests(

@@ -218,7 +218,7 @@ trait ConstraintHandling {
       /** If it exists, return the first param in the list created in a previous call to `legalVar(tp)`
        *  with the appropriate level and variance.
        */
-      def findParam(params: List[TypeParamRef]): Option[TypeParamRef] =
+      def findParam(params: Vector[TypeParamRef]): Option[TypeParamRef] =
         params.find(p =>
           nestingLevel(p) <= maxLevel && representedParamRef(p) == oldParam &&
           (p.paramName.is(AvoidNameKind.BothBounds) ||
@@ -407,8 +407,8 @@ trait ConstraintHandling {
     val res =
       if (constraint.isLess(p2, p1)) unify(p2, p1)
       else {
-        val down1 = p1 :: constraint.exclusiveLower(p1, p2)
-        val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
+        val down1 = p1 +: constraint.exclusiveLower(p1, p2)
+        val up2 = p2 +: constraint.exclusiveUpper(p2, p1)
         val lo1 = constraint.nonParamBounds(p1).lo
         val hi2 = constraint.nonParamBounds(p2).hi
         constr.println(i"adding $description down1 = $down1, up2 = $up2$location")
@@ -598,11 +598,11 @@ trait ConstraintHandling {
    */
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
-    var dropped: List[Type] = List() // the types dropped so far, last one on top
+    var dropped: Vector[Type] = Vector() // the types dropped so far, last one on top
 
     def dropOneTransparentTrait(tp: Type): Type =
       if tp.isTransparent(traitOnly = true) && !kept.contains(tp) then
-        dropped = tp :: dropped
+        dropped = tp +: dropped
         defn.AnyType
       else tp match
         case AndType(tp1, tp2) =>
@@ -786,7 +786,7 @@ trait ConstraintHandling {
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
+  def addToConstraint(tl: TypeLambda, tvars: Vector[TypeVar])(using Context): Boolean =
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
       tl.paramRefs.forall { param =>
@@ -829,7 +829,7 @@ trait ConstraintHandling {
     if !bound.isValueTypeOrLambda then return false
 
     /** When comparing lambdas we might get constraints such as
-     *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
+     *  `A <: X0` or `A = Vector[X0]` where `A` is a constrained parameter
      *  and `X0` is a lambda parameter. The constraint for `A` is not allowed
      *  to refer to such a lambda parameter because the lambda parameter is
      *  not visible where `A` is defined. Consequently, we need to

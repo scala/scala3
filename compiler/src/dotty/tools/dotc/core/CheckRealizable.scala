@@ -160,7 +160,7 @@ class CheckRealizable(using Context) {
 
     def baseTypeProblems(base: Type) = base match {
       case AndType(base1, base2) =>
-        new HasProblemBase(base1, base2) :: Nil
+        new HasProblemBase(base1, base2) +: Vector()
       case base =>
         base.argInfos.collect {
           case bounds @ TypeBounds(lo, hi) if !(lo <:< hi) =>

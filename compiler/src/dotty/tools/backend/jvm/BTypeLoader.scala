@@ -88,7 +88,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     classBType(internalName)(_ =>
       ClassInfo(
         superClass = Some(classBTypeFromSymbol(defn.ObjectClass)),
-        interfaces = Nil,
+        interfaces = Vector(),
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
         nestedClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
         nestedInfo = None,
@@ -131,7 +131,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    */
   def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
     val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
-      def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
+      def declaredNestedClasses(internalName: InternalName): Vector[ClassBType] =
         previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
@@ -206,7 +206,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       val linkedClass = classSym.linkedClass
       val companionModuleMembers = {
         if (classSym.linkedClass.isTopLevelModuleClass) getMemberClasses(classSym.linkedClass)
-        else Nil
+        else Vector()
       }
 
       nestedClasses ++ companionModuleMembers
@@ -238,19 +238,19 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   /** For currently compiled classes: All locally defined classes including local classes.
    * The empty list for classes that are not currently compiled.
    */
-  private def getNestedClasses(sym: Symbol)(using Context): List[Symbol] = definedClasses(sym, flattenPhase)
+  private def getNestedClasses(sym: Symbol)(using Context): Vector[Symbol] = definedClasses(sym, flattenPhase)
 
   /** For currently compiled classes: All classes that are declared as members of this class
    * (but not inherited ones). The empty list for classes that are not currently compiled.
    */
-  private def getMemberClasses(sym: Symbol)(using Context): List[Symbol] = definedClasses(sym, lambdaLiftPhase)
+  private def getMemberClasses(sym: Symbol)(using Context): Vector[Symbol] = definedClasses(sym, lambdaLiftPhase)
 
   private def definedClasses(sym: Symbol, phase: Phase)(using Context) =
     if (sym.isDefinedInCurrentRun)
       atPhase(phase) {
         sym.info.decls.filter(sym => sym.isClass && !sym.isEffectivelyErased)
       }
-    else Nil
+    else Vector()
 
   private def buildNestedInfo(innerClassSym: Symbol)(using Context): Option[NestedInfo] = {
     assert(innerClassSym.isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
@@ -331,9 +331,9 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    */
   private def buildInlineInfoFromClassSymbol(classSym: ClassSymbol)(using Context): InlineInfo = {
     // We only want an approximation of SAMs for inlining heuristics, no need to check FunctionalInterface annotations or such
-    val abstractMembers = classSym.memberNames(abstractTermNameFilter).iterator.map(classSym.classInfo.member).map(_.symbol).filter(_.is(Method)).toList
+    val abstractMembers = classSym.memberNames(abstractTermNameFilter).iterator.map(classSym.classInfo.member).map(_.symbol).filter(_.is(Method)).toVector
     val sam = abstractMembers match
-      case List(single) =>
+      case Vector(single) =>
         val btype = methodBTypeFromSymbol(single)
         Some(single.javaSimpleName + btype.descriptor)
       case _ => None
@@ -356,7 +356,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         classSym.info.decls.filter(s => s.isTerm && !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
           SymbolUtils.makeStatifiedDefSymbol(s.asTerm, SymbolUtils.traitSuperAccessorName(s).toTermName)
         })
-      else Nil
+      else Vector()
       classMethods ++ staticForwarders
 
     // Primitive methods cannot be inlined, so there's no point in building a MethodInlineInfo. Also, some

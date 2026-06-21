@@ -40,13 +40,13 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
   /** Reconstitute annotation tree from capture set */
   override def tree(using Context) =
     if symbol == defn.RetainsCapAnnot then
-      New(symbol.typeRef, Nil)
+      New(symbol.typeRef, Vector())
     else
-      val elems = refs.elems.toList.map(_.toType)
+      val elems = refs.elems.toVector.map(_.toType)
       val trefs =
         if elems.isEmpty then defn.NothingType
         else elems.reduce((a, b) => OrType(a, b, soft = false))
-      New(AppliedType(symbol.typeRef, trefs :: Nil), Nil)
+      New(AppliedType(symbol.typeRef, trefs +: Vector()), Vector())
 
   override def symbol(using Context) = cls
 
@@ -67,13 +67,13 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
       // This avoids running into illegal states in mapCapability.
       EmptyAnnotation
     else
-      val elems = refs.elems.toList
+      val elems = refs.elems.toVector
       val elems1 = elems.mapConserve(tm.mapCapability(_))
       if elems1 eq elems then this
       else if elems1.forall:
         case elem1: Capability => elem1.isWellformed
         case _ => false
-      then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[Capability]]*), boxed)
+      then derivedAnnotation(CaptureSet(elems1.asInstanceOf[Vector[Capability]]*), boxed)
       else EmptyAnnotation
 
   override def refersToParamOf(tl: TermLambda)(using Context): Boolean =

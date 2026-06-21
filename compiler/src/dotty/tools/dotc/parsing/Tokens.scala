@@ -127,7 +127,7 @@ abstract class TokensCommon {
 
   def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
     def start(tok: Token) = tokenString(tok).nn.toTermName.asSimpleName.start
-    def sourceKeywords = keywords.toList.filter { (kw: Token) =>
+    def sourceKeywords = keywords.toVector.filter { (kw: Token) =>
       val ts = tokenString(kw)
       (ts != null) && !ts.contains(' ')
     }

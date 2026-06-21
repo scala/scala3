@@ -27,7 +27,7 @@ class Driver {
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
-  protected def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
+  protected def doCompile(compiler: Compiler, files: Vector[AbstractFile])(using Context): Reporter =
     if files.nonEmpty then
       var runOrNull = ctx.run
       try
@@ -52,9 +52,9 @@ class Driver {
   protected def finish(compiler: Compiler, run: Run)(using Context): Unit =
     run.printSummary()
     if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
-      val suspendedUnits = run.suspendedUnits.toList
+      val suspendedUnits = run.suspendedUnits.toVector
       if (ctx.settings.XprintSuspension.value)
-        val suspendedHints = run.suspendedHints.toList
+        val suspendedHints = run.suspendedHints.toVector
         report.echo(i"compiling suspended $suspendedUnits%, %")
         for (unit, (hint, atInlining)) <- suspendedHints do
           report.echo(s"  $unit at ${if atInlining then "inlining" else "typer"}: $hint")
@@ -75,7 +75,7 @@ class Driver {
    *  this method returns a list of files to compile and an updated Context.
    *  If compilation should be interrupted, this method returns None.
    */
-  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
+  def setup(args: Array[String], rootCtx: Context): Option[(Vector[AbstractFile], Context)] = {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
@@ -102,9 +102,9 @@ class Driver {
   }
 
   /** Setup extra classpath of tasty and jar files */
-  protected def fromTastySetup(files: List[AbstractFile])(using Context): Context =
+  protected def fromTastySetup(files: Vector[AbstractFile])(using Context): Context =
     if ctx.settings.fromTasty.value then
-      val newEntries: List[String] = files
+      val newEntries: Vector[String] = files
         .flatMap { file =>
           if !file.exists then
             report.error(em"File does not exist: ${file.path}")

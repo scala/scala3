@@ -19,7 +19,7 @@ object NavigateAST {
    */
   def toUntyped(tree: tpd.Tree)(using Context): untpd.Tree =
     untypedPath(tree, exactMatch = true) match {
-      case (utree: untpd.Tree) :: _ =>
+      case (utree: untpd.Tree) +: _ =>
         utree
       case _ =>
         val loosePath = untypedPath(tree, exactMatch = false)
@@ -33,7 +33,7 @@ object NavigateAST {
    *  `tree` and ending in the untyped tree at the root of the compilation unit
    *  specified by `ctx`.
    *  @param exactMatch    If `true`, the path must start with a node that exactly
-   *                       matches `tree`, or `Nil` is returned.
+   *                       matches `tree`, or `Vector()` is returned.
    *                       If `false` the path might start with a node enclosing
    *                       the logical position of `tree`.
    *  Note: A complication concerns member definitions. ValDefs and DefDefs
@@ -41,30 +41,30 @@ object NavigateAST {
    *  defined and nothing else. So we look instead for an untyped tree approximating the
    *  envelope of the definition, and declare success if we find another DefTree.
    */
-  def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(using Context): List[Positioned] =
+  def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(using Context): Vector[Positioned] =
     tree match {
       case tree: MemberDef[?] =>
         untypedPath(tree.span) match {
-          case path @ (last: DefTree[?]) :: _ => path
+          case path @ (last: DefTree[?]) +: _ => path
           case path if !exactMatch => path
-          case _ => Nil
+          case _ => Vector()
         }
       case _ =>
         untypedPath(tree.span) match {
-          case (path @ last :: _) if last.span == tree.span || !exactMatch => path
-          case _ => Nil
+          case (path @ last +: _) if last.span == tree.span || !exactMatch => path
+          case _ => Vector()
         }
     }
 
   /** The reverse part of the untyped root of the compilation unit of `ctx` to
    *  the given `span`.
    */
-  def untypedPath(span: Span)(using Context): List[Positioned] =
-    pathTo(span, List(ctx.compilationUnit.untpdTree))
+  def untypedPath(span: Span)(using Context): Vector[Positioned] =
+    pathTo(span, Vector(ctx.compilationUnit.untpdTree))
 
 
   /** The reverse path from any node in `from` to the node that closest encloses `span`,
-   *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
+   *  or `Vector()` if no such path exists. If a non-empty path is returned it starts with
    *  the node closest enclosing `span` and ends with one of the nodes in `from`.
    *
    *  @param skipZeroExtent  If true, skip over zero-extent nodes in the search. These nodes
@@ -72,16 +72,16 @@ object NavigateAST {
    *                         end point are the same, so this is useful when trying to reconcile
    *                         nodes with source code.
    */
-  def pathTo(span: Span, from: List[Positioned], skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
-    def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
-      var bestFit: List[Positioned] = path
+  def pathTo(span: Span, from: Vector[Positioned], skipZeroExtent: Boolean = false)(using Context): Vector[Positioned] = {
+    def childPath(it: Iterator[Any], path: Vector[Positioned]): Vector[Positioned] = {
+      var bestFit: Vector[Positioned] = path
       while (it.hasNext) do
         val path1 = it.next() match
           case sel: untpd.Select if isRecoveryTree(sel) => path
           case sel: untpd.Ident  if isPatternRecoveryTree(sel) => path
           case p: Positioned if !p.isInstanceOf[Closure[?]] => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
-          case xs: List[?] => childPath(xs.iterator, path)
+          case xs: Vector[?] => childPath(xs.iterator, path)
           case _ => path
 
         if (path1 ne path) && ((bestFit eq path) || isBetterFit(bestFit, path1)) then
@@ -97,7 +97,7 @@ object NavigateAST {
       * In case when spans start and end at same offsets we prefer non synthethic one,
       * and then one with better point (see isBetterPoint below).
       */
-    def isBetterFit(currentBest: List[Positioned], candidate: List[Positioned]): Boolean =
+    def isBetterFit(currentBest: Vector[Positioned], candidate: Vector[Positioned]): Boolean =
       if currentBest.isEmpty && candidate.nonEmpty then true
       else if currentBest.nonEmpty && candidate.nonEmpty then
         val bestSpan = currentBest.head.span
@@ -134,7 +134,7 @@ object NavigateAST {
     /*
      * Annotations trees are located in the Type
      */
-    def unpackAnnotations(t: Type, path: List[Positioned]): List[Positioned] =
+    def unpackAnnotations(t: Type, path: Vector[Positioned]): Vector[Positioned] =
       t match {
         case ann: AnnotatedType =>
             unpackAnnotations(ann.parent, childPath(ann.annot.tree.productIterator, path))
@@ -143,7 +143,7 @@ object NavigateAST {
         case other =>
           path
     }
-    def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
+    def singlePath(p: Positioned, path: Vector[Positioned]): Vector[Positioned] =
       if (p.span.exists && !(skipZeroExtent && p.span.isZeroExtent) && p.span.contains(span)) {
         // FIXME: We shouldn't be manually forcing trees here, we should replace
         // our usage of `productIterator` by something in `Positioned` that takes
@@ -158,7 +158,7 @@ object NavigateAST {
             p.productIterator ++ annotations ++ mods.productIterator
           case _ =>
             p.productIterator
-        childPath(iterator, p :: path)
+        childPath(iterator, p +: path)
       }
       else {
         p match {
@@ -166,6 +166,6 @@ object NavigateAST {
           case _ => path
         }
       }
-    childPath(from.iterator, Nil)
+    childPath(from.iterator, Vector())
   }
 }

@@ -43,7 +43,7 @@ object Splicer {
    *  See: `Staging`
    */
   def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
-    case Quote(quotedTree, Nil) => quotedTree
+    case Quote(quotedTree, Vector()) => quotedTree
     case _ =>
       val owner = ctx.owner
       val macroOwner = newSymbol(owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
@@ -136,7 +136,7 @@ object Splicer {
     *  See: `Staging`
     */
   def checkValidMacroBody(tree: Tree)(using Context): Unit = tree match {
-    case Quote(_, Nil) => // ok
+    case Quote(_, Vector()) => // ok
     case _ =>
       type Env = Set[Symbol]
 
@@ -152,7 +152,7 @@ object Splicer {
       }
 
       def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match {
-        case Block(Nil, expr) => checkIfValidArgument(expr)
+        case Block(Vector(), expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
         case Apply(Select(Quote(body, _), nme.apply), _) =>
@@ -165,7 +165,7 @@ object Splicer {
           }
           noSpliceChecker.traverse(body)
 
-        case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
+        case Apply(TypeApply(fn, Vector(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
 
         case Literal(Constant(value)) =>
@@ -193,7 +193,7 @@ object Splicer {
       }
 
       def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
-        case closureDef(ddef @ DefDef(_, ValDefs(ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
+        case closureDef(ddef @ DefDef(_, ValDefs(ev +: Vector()) +: Vector(), _, _)) if ddef.symbol.info.isContextualMethod =>
           checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>
@@ -203,7 +203,7 @@ object Splicer {
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
 
-        case Apply(Select(Quote(quoted, Nil), nme.apply), _) =>
+        case Apply(Select(Quote(quoted, Vector()), nme.apply), _) =>
           // OK, canceled and warning emitted
 
         case Call(fn, args)
@@ -255,10 +255,10 @@ object Splicer {
           case tree: Inlined if tree.inlinedFromOuterScope => tree.expansion
           case _ => body
         }
-        new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)
+        new ExprImpl(Inlined(EmptyTree, Vector(), QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)
 
       // Interpret level -1 `Type.of[T]`
-      case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>
+      case Apply(TypeApply(fn, quoted +: Vector()), _) if fn.symbol == defn.QuotedTypeModule_of =>
         new TypeImpl(QuoteUtils.changeOwnerOfTree(quoted, ctx.owner), SpliceScope.getCurrent)
 
       case _ =>

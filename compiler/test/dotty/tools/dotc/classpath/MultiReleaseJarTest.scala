@@ -27,7 +27,7 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
     val jar2 = Files.createTempFile("mr-jar-test-", ".jar")
 
     def classBytes(code: String): Array[Byte] =
-      val outDir = compileCode(code :: Nil)
+      val outDir = compileCode(code +: Vector())
       getGeneratedClassfiles(outDir).head._2
 
     val defaultFooDef = "package p1; abstract class Foo { def foo1: Int }"
@@ -49,7 +49,7 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
     }
 
     try {
-      List(jar1, jar2, jar3).foreach(temp => createZip(temp, List(
+      Vector(jar1, jar2, jar3).foreach(temp => createZip(temp, Vector(
         "/p1/Foo.class" -> classBytes(defaultFooDef),
         "/p2/Bar.class" -> classBytes(defaultBarDef),
         "/META-INF/versions/9/p1/Foo.class" -> classBytes(java9FooDef),
@@ -62,7 +62,7 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
 
       assertEquals(Set("foo1", "foo2", "bar1", "bar2"), apiMethods(jar3, "10"))
     } finally
-      List(jar1, jar2, jar3).forall(path =>
+      Vector(jar1, jar2, jar3).forall(path =>
         try Files.deleteIfExists(path)
         catch case _: IOException => false
       )
@@ -95,7 +95,7 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
     manifestBytes
   }
 
-  private def createZip(zipLocation: Path, content: List[(String, Array[Byte])]): Unit = {
+  private def createZip(zipLocation: Path, content: Vector[(String, Array[Byte])]): Unit = {
     val env = new java.util.HashMap[String, String]()
     Files.deleteIfExists(zipLocation)
     env.put("create", String.valueOf(true))

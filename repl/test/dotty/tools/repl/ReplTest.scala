@@ -58,8 +58,8 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   def testScript(name: => String, str: String): Unit =
     testScript(name, str.linesIterator.toList).foreach(fail)
 
-  private def testFile(f: JFile): Option[String] =
-    testScript(f.toString, readLines(f), Some(f))
+  protected def testFile(f: JFile): Option[String] =
+    testScript(f.toString, readLines(f).toList, Some(f))
 
   /** Returns failures: None if all is well, Some for an error */
   private def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Option[String] = {
@@ -86,9 +86,9 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
     val expectedOutput = lines.filter(nonBlank)
     val actualOutput = {
-      val opts = toolArgsFor(ToolName.Scalac, scriptFile.map(_.toString))(lines.take(1))
+      val opts = toolArgsFor(ToolName.Scalac, scriptFile.map(_.toString))(lines.take(1).toVector)
       val (optsLine, inputLines) = if opts.isEmpty then ("", lines) else (lines.head, lines.drop(1))
-      resetToInitial(opts)
+      resetToInitial(opts.toList)
 
       assert(inputLines.head.startsWith(prompt),
         s"""Each script must start with the prompt: "$prompt"""")

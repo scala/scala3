@@ -41,7 +41,7 @@ extension (str: String) def dropExtension =
 
 private
 def withFile[T](file: File)(action: Source => T): T = resource(Source.fromFile(file, UTF_8.name))(action)
-def readLines(f: File): List[String]                = withFile(f)(_.getLines().toList)
+def readLines(f: File): Vector[String]                = withFile(f)(_.getLines().toVector)
 def readFile(f: File): String                       = withFile(f)(_.mkString)
 
 // Make common types useable with Using.
@@ -93,13 +93,13 @@ enum ToolName:
 object ToolName:
   def named(s: String): ToolName = values.find(_.toString.equalsIgnoreCase(s)).getOrElse(throw IllegalArgumentException(s))
 
-type ToolArgs = Map[ToolName, List[String]]
-type PlatformFiles = Map[TestPlatform, List[String]]
+type ToolArgs = Map[ToolName, Vector[String]]
+type PlatformFiles = Map[TestPlatform, Vector[String]]
 
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
  */
-def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
+def toolArgsFor(files: Vector[JPath], charset: Charset = UTF_8): ToolArgs =
   val (_, toolArgs) = platformAndToolArgsFor(files, charset)
   toolArgs
 
@@ -107,9 +107,9 @@ def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
  *  If the ToolName is Target, then also accumulate the file name associated with the given platform.
  */
-def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (PlatformFiles, ToolArgs) =
-  files.foldLeft(Map.empty[TestPlatform, List[String]] -> Map.empty[ToolName, List[String]]) { (res, path) =>
-    val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)), Some(path.toString))
+def platformAndToolArgsFor(files: Vector[JPath], charset: Charset = UTF_8): (PlatformFiles, ToolArgs) =
+  files.foldLeft(Map.empty[TestPlatform, Vector[String]] -> Map.empty[ToolName, Vector[String]]) { (res, path) =>
+    val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(Vector)), Some(path.toString))
     toolargs.foldLeft(res) {
       case ((plat, acc), (tool, args)) =>
         val name = ToolName.named(tool)
@@ -118,7 +118,7 @@ def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (Platf
         val plat1 = if name eq ToolName.Target then
           val testPlatform = TestPlatform.named(tokens.head)
           val fileName = path.toString
-          plat.updatedWith(testPlatform)(_.map(fileName :: _).orElse(Some(fileName :: Nil)))
+          plat.updatedWith(testPlatform)(_.map(fileName +: _).orElse(Some(fileName +: Vector())))
         else
           plat
 
@@ -126,8 +126,8 @@ def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (Platf
     }
   }
 
-def toolArgsFor(tool: ToolName, filename: Option[String])(lines: List[String]): List[String] =
-  toolArgsParse(lines, filename).collectFirst { case (name, args) if tool eq ToolName.named(name) => CommandLineParser.tokenize(args) }.getOrElse(Nil)
+def toolArgsFor(tool: ToolName, filename: Option[String])(lines: Vector[String]): Vector[String] =
+  toolArgsParse(lines, filename).collectFirst { case (name, args) if tool eq ToolName.named(name) => CommandLineParser.tokenize(args) }.getOrElse(Vector())
 
 // scalajs: arg1 arg2, with alternative opening, optional space, alt names, text that is not */ up to end.
 // groups are (name, args)
@@ -149,31 +149,31 @@ private val directiveUnknown = raw"//> using (.*)".r
 // `//> using options args`, `// scalajs: args`, `/* scalajs: args`, ` * scalajs: args` etc.
 // If args string ends in close comment, stop at the `*` `/`.
 // Returns all the matches by the regex.
-def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,String)] =
+def toolArgsParse(lines: Vector[String], filename: Option[String]): Vector[(String,String)] =
   lines.flatMap {
     case toolArg("scalac", _) => sys.error(s"`// scalac: args` not supported. Please use `//> using options args`${filename.fold("")(f => s" in file $f")}")
     case toolArg("javac", _) => sys.error(s"`// javac: args` not supported. Please use `//> using javacOpt args`${filename.fold("")(f => s" in file $f")}")
-    case toolArg(name, args) => List((name, args))
-    case _ => Nil
+    case toolArg(name, args) => Vector((name, args))
+    case _ => Vector()
   } ++
   lines.flatMap {
-    case directiveOptionsArg(args) => List(("scalac", args))
-    case directiveJavacOptions(args) => List(("javac", args))
-    case directiveTargetOptions(platform) => List(("target", platform))
-    case directiveUnsupported(name, args) => Nil
+    case directiveOptionsArg(args) => Vector(("scalac", args))
+    case directiveJavacOptions(args) => Vector(("javac", args))
+    case directiveTargetOptions(platform) => Vector(("target", platform))
+    case directiveUnsupported(name, args) => Vector()
     case directiveUnknown(rest) => sys.error(s"Unknown directive: `//> using ${CommandLineParser.tokenize(rest).headOption.getOrElse("''")}`${filename.fold("")(f => s" in file $f")}")
-    case _ => Nil
+    case _ => Vector()
   }
 
 import org.junit.Test
 import org.junit.Assert.*
 
 class ToolArgsTest:
-  @Test def `missing toolarg is absent`: Unit = assertEquals(Nil, toolArgsParse(List(""), None))
-  @Test def `toolarg is present`: Unit = assertEquals(("test", " -hey") :: Nil, toolArgsParse("// test: -hey" :: Nil, None))
-  @Test def `tool is present`: Unit = assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: Nil))
-  @Test def `missing tool is absent`: Unit = assertEquals(Nil, toolArgsFor(ToolName.Javac, None)("// test: -hey" :: Nil))
+  @Test def `missing toolarg is absent`: Unit = assertEquals(Vector(), toolArgsParse(Vector(""), None))
+  @Test def `toolarg is present`: Unit = assertEquals(("test", " -hey") +: Vector(), toolArgsParse("// test: -hey" +: Vector(), None))
+  @Test def `tool is present`: Unit = assertEquals("-hey" +: Vector(), toolArgsFor(ToolName.Test, None)("// test: -hey" +: Vector()))
+  @Test def `missing tool is absent`: Unit = assertEquals(Vector(), toolArgsFor(ToolName.Javac, None)("// test: -hey" +: Vector()))
   @Test def `multitool is present`: Unit =
-    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
-    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Java, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
+    assertEquals("-hey" +: Vector(), toolArgsFor(ToolName.Test, None)("// test: -hey" +: "// java: -d /tmp" +: Vector()))
+    assertEquals("-d" +: "/tmp" +: Vector(), toolArgsFor(ToolName.Java, None)("// test: -hey" +: "// java: -d /tmp" +: Vector()))
 end ToolArgsTest

@@ -135,14 +135,14 @@ class TreeUnpickler(reader: TastyReader,
   }
 
   /** The unpickled trees */
-  def unpickle(mode: UnpickleMode)(using Context): List[Tree] = {
+  def unpickle(mode: UnpickleMode)(using Context): Vector[Tree] = {
     if mode != UnpickleMode.TopLevel then rootOwner = ctx.owner
     assert(roots != null, "unpickle without previous enterTopLevel")
     val rdr = new TreeReader(reader)
     mode match {
       case UnpickleMode.TopLevel => rdr.readTopLevel()
-      case UnpickleMode.Term => rdr.readTree() :: Nil
-      case UnpickleMode.TypeTree => rdr.readTpt() :: Nil
+      case UnpickleMode.Term => rdr.readTree() +: Vector()
+      case UnpickleMode.TypeTree => rdr.readTpt() +: Vector()
     }
   }
 
@@ -274,12 +274,12 @@ class TreeUnpickler(reader: TastyReader,
     /** Read names in an interleaved sequence of types/bounds and (parameter) names,
      *  possibly followed by a sequence of modifiers.
      */
-    def readParamNamesAndMods(end: Addr): (List[Name], FlagSet) =
+    def readParamNamesAndMods(end: Addr): (Vector[Name], FlagSet) =
       val names =
         collectWhile(currentAddr != end && !isModifierTag(nextByte)) {
           skipTree()
           readName()
-        }
+        }.toVector
       var mods = EmptyFlags
       while currentAddr != end do // avoid boxing the mods
         readByte() match
@@ -288,12 +288,12 @@ class TreeUnpickler(reader: TastyReader,
       (names, mods)
 
     /** Read `n` parameter types or bounds which are interleaved with names */
-    def readParamTypes[T <: Type](n: Int)(using Context): List[T] =
-      if n == 0 then Nil
+    def readParamTypes[T <: Type](n: Int)(using Context): Vector[T] =
+      if n == 0 then Vector()
       else
         val t = readType().asInstanceOf[T]
         readNat() // skip name
-        t :: readParamTypes(n - 1)
+        t +: readParamTypes(n - 1)
 
     /** Read reference to definition and return symbol created at that definition */
     def readSymRef()(using Context): Symbol = symbolAt(readAddr())
@@ -382,7 +382,7 @@ class TreeUnpickler(reader: TastyReader,
                 case STABLE => Invariant
                 case COVARIANT => Covariant
                 case CONTRAVARIANT => Contravariant
-            }
+            }.toVector
             tp.withVariances(vs)
           case _ => tp
 
@@ -415,7 +415,7 @@ class TreeUnpickler(reader: TastyReader,
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
-              readType().appliedTo(until(end)(readType()))
+              readType().appliedTo(until(end)(readType()).toVector)
             case TYPEBOUNDS =>
               val lo = readType()
               if nothingButMods(end) then AliasingBounds(readVariances(lo))
@@ -436,7 +436,7 @@ class TreeUnpickler(reader: TastyReader,
             case SUPERtype =>
               SuperType(readType(), readType())
             case MATCHtype =>
-              MatchType(readType(), readType(), until(end)(readType()))
+              MatchType(readType(), readType(), until(end)(readType()).toVector)
             case MATCHCASEtype =>
               defn.MatchCaseClass.typeRef.appliedTo(readType(), readType())
             case POLYtype =>
@@ -715,9 +715,9 @@ class TreeUnpickler(reader: TastyReader,
     /** Read modifier list into triplet of flags, annotations and a privateWithin
      *  boundary symbol.
      */
-    def readModifiers(end: Addr)(using Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
+    def readModifiers(end: Addr)(using Context): (FlagSet, Vector[Symbol => Annotation], Symbol) = {
       var flags: FlagSet = EmptyFlags
-      var annotFns: List[Symbol => Annotation] = Nil
+      var annotFns: Vector[Symbol => Annotation] = Vector()
       var privateWithin: Symbol = NoSymbol
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
@@ -779,7 +779,7 @@ class TreeUnpickler(reader: TastyReader,
             val annotFn =
               val annot = readAnnot
               (sym: Symbol) => annot.complete(sym)
-            annotFns = annotFn :: annotFns
+            annotFns = annotFn +: annotFns
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
@@ -902,15 +902,15 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
 
-      def readParamss()(using Context): List[ParamClause] =
+      def readParamss()(using Context): Vector[ParamClause] =
         def readRest() =
           if nextByte == SPLITCLAUSE then readByte()
           readParamss()
         nextByte match
-          case PARAM => readParams[ValDef](PARAM) :: readRest()
-          case TYPEPARAM => readParams[TypeDef](TYPEPARAM) :: readRest()
-          case EMPTYCLAUSE => readByte(); Nil :: readRest()
-          case _ => Nil
+          case PARAM => readParams[ValDef](PARAM) +: readRest()
+          case TYPEPARAM => readParams[TypeDef](TYPEPARAM) +: readRest()
+          case EMPTYCLAUSE => readByte(); Vector() +: readRest()
+          case _ => Vector()
 
       val localCtx = localContext(sym)
 
@@ -928,7 +928,7 @@ class TreeUnpickler(reader: TastyReader,
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(using localCtx)), sym)
 
-      def DefDef(paramss: List[ParamClause], tpt: Tree) =
+      def DefDef(paramss: Vector[ParamClause], tpt: Tree) =
         sym.setParamssFromDefs(paramss)
         ta.assignType(
           untpd.DefDef(sym.name.asTermName, paramss, tpt, readRhs(using localCtx)),
@@ -995,7 +995,7 @@ class TreeUnpickler(reader: TastyReader,
             def opaqueToBounds(info: Type): Type =
               val tparamSyms = rhs match
                 case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
-                case _ => Nil
+                case _ => Vector()
               sym.opaqueToBounds(info, rhs, tparamSyms)
 
             val info = checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false)
@@ -1054,7 +1054,7 @@ class TreeUnpickler(reader: TastyReader,
             goto(end)
             tycon
           else
-            val args = until(end)(readTpt())
+            val args = until(end)(readTpt()).toVector
             val cls = tycon.classSymbol
             assert(cls.typeParams.hasSameLengthAs(args))
             cls.typeRef.appliedTo(args.tpes)
@@ -1083,14 +1083,14 @@ class TreeUnpickler(reader: TastyReader,
      *                   but skip constructor arguments. Return any trees that were partially
      *                   parsed in this way as InferredTypeTrees.
      */
-    def readParents(withArgs: Boolean)(using Context): List[Tree] =
+    def readParents(withArgs: Boolean)(using Context): Vector[Tree] =
       collectWhile({val tag = nextByte; tag != SELFDEF && tag != DEFDEF && tag != SPLITCLAUSE}) {
         nextUnsharedTag match
           case APPLY | TYPEAPPLY | BLOCK =>
             if withArgs then readTree()
             else InferredTypeTree().withType(readParentType())
           case _ => readTpt()
-      }
+      }.toVector
 
     private def readTemplate(using Context): Template = {
       val start = currentAddr
@@ -1143,18 +1143,18 @@ class TreeUnpickler(reader: TastyReader,
               val sym = denot.symbol
               val pflags = flags | Flags.Param
               val tparamRefs = tparams.map(_.symbol.asType)
-              lazy val derivedTparamSyms: List[TypeSymbol] = tparams.map: tdef =>
+              lazy val derivedTparamSyms: Vector[TypeSymbol] = tparams.map: tdef =>
                 val completer = new LazyType {
                   def complete(denot: SymDenotation)(using Context) =
                     denot.info = tdef.symbol.asType.info.subst(tparamRefs, derivedTparamRefs)
                 }
                 newSymbol(sym, tdef.name, Flags.JavaDefined | Flags.Param, completer, coord = cls.coord)
-              lazy val derivedTparamRefs: List[Type] = derivedTparamSyms.map(_.typeRef)
+              lazy val derivedTparamRefs: Vector[Type] = derivedTparamSyms.map(_.typeRef)
               val vparamSym =
                 newSymbol(sym, nme.syntheticParamName(1), pflags, defn.UnitType, coord = cls.coord)
-              val vparamSymss: List[List[Symbol]] = List(vparamSym) :: Nil
+              val vparamSymss: Vector[Vector[Symbol]] = Vector(vparamSym) +: Vector()
               val paramSymss =
-                if derivedTparamSyms.nonEmpty then derivedTparamSyms :: vparamSymss else vparamSymss
+                if derivedTparamSyms.nonEmpty then derivedTparamSyms +: vparamSymss else vparamSymss
               val res = effectiveResultType(sym, paramSymss)
               denot.info = methodType(paramSymss, res)
               denot.setParamss(paramSymss)
@@ -1192,14 +1192,14 @@ class TreeUnpickler(reader: TastyReader,
     def isTopLevel(using Context): Boolean =
       nextByte == IMPORT || nextByte == PACKAGE
 
-    def readTopLevel()(using Context): List[Tree] = {
-      @tailrec def read(acc: ListBuffer[Tree]): List[Tree] =
+    def readTopLevel()(using Context): Vector[Tree] = {
+      @tailrec def read(acc: ListBuffer[Tree]): Vector[Tree] =
         if (isTopLevel) {
           acc += readIndexedStat(NoSymbol)
-          if (!isAtEnd) read(acc) else acc.toList
+          if (!isAtEnd) read(acc) else acc.toVector
         }
         else // top-level trees which are not imports or packages are not part of tree
-          acc.toList
+          acc.toVector
       read(new ListBuffer[tpd.Tree])
     }
 
@@ -1220,7 +1220,7 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     inline def readImportOrExport(inline mkTree:
-        (Tree, List[untpd.ImportSelector]) => Tree)()(using Context): Tree = {
+        (Tree, Vector[untpd.ImportSelector]) => Tree)()(using Context): Tree = {
       val start = currentAddr
       readByte()
       readEnd()
@@ -1228,7 +1228,7 @@ class TreeUnpickler(reader: TastyReader,
       setSpan(start, mkTree(expr, readSelectors()))
     }
 
-    def readSelectors()(using Context): List[untpd.ImportSelector] =
+    def readSelectors()(using Context): Vector[untpd.ImportSelector] =
       if nextByte == IMPORTED then
         val start = currentAddr
         assert(sourcePathAt(start).isEmpty)
@@ -1248,11 +1248,11 @@ class TreeUnpickler(reader: TastyReader,
             untpd.ImportSelector(from, EmptyTree, bound)
           case _ =>
             untpd.ImportSelector(from)
-        selector :: readSelectors()
+        selector +: readSelectors()
       else
-        Nil
+        Vector()
 
-    def readIndexedStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T =
+    def readIndexedStats[T](exprOwner: Symbol, end: Addr, k: (Vector[Tree], Context) => T = sameTrees)(using Context): T =
       val buf = new mutable.ListBuffer[Tree]
       var curCtx = ctx
       while currentAddr.index < end.index do
@@ -1262,23 +1262,23 @@ class TreeUnpickler(reader: TastyReader,
           case stat: Import => curCtx = curCtx.importContext(stat, stat.symbol)
           case _ =>
       assert(currentAddr.index == end.index)
-      k(buf.toList, curCtx)
+      k(buf.toVector, curCtx)
 
-    def readStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T = {
+    def readStats[T](exprOwner: Symbol, end: Addr, k: (Vector[Tree], Context) => T = sameTrees)(using Context): T = {
       fork.indexStats(end)
       readIndexedStats(exprOwner, end, k)
     }
 
-    private def sameTrees(xs: List[Tree], ctx: Context) = xs
+    private def sameTrees(xs: Vector[Tree], ctx: Context) = xs
 
-    def readIndexedParams[T <: MemberDef](tag: Int)(using Context): List[T] =
-      collectWhile(nextByte == tag) { readIndexedDef().asInstanceOf[T] }
+    def readIndexedParams[T <: MemberDef](tag: Int)(using Context): Vector[T] =
+      collectWhile(nextByte == tag) { readIndexedDef().asInstanceOf[T] }.toVector
 
-    def readParams[T <: MemberDef](tag: Int)(using Context): List[T] =
+    def readParams[T <: MemberDef](tag: Int)(using Context): Vector[T] =
       if nextByte == tag then
         fork.indexParams(tag)
         readIndexedParams(tag)
-      else Nil
+      else Vector()
 
 // ------ Reading trees -----------------------------------------------------
 
@@ -1397,14 +1397,14 @@ class TreeUnpickler(reader: TastyReader,
        *  constructor calls use the old scheme, but constructor definitions already
        *  use the new scheme, since they are reconstituted with normalizeIfConstructor.
        */
-      def constructorApply(fn: Tree, args: List[Tree]): Tree =
+      def constructorApply(fn: Tree, args: Vector[Tree]): Tree =
         if fn.symbol.owner.is(JavaAnnotation) then
           tpd.Apply(fn, fixArgsToJavaAnnotConstructor(fn.tpe.widen, args))
         else if fn.tpe.widen.isContextualMethod && args.isEmpty then
           fn.withAttachment(SuppressedApplyToNone, ())
         else
           val fn1 = fn match
-            case Apply(fn1, Nil) if fn.removeAttachment(InsertedApplyToNone).isDefined =>
+            case Apply(fn1, Vector()) if fn.removeAttachment(InsertedApplyToNone).isDefined =>
               // We thought we inserted a final `()` but hit a user-written `()` instead.
               // Remove the inserted `()`.
               fn1
@@ -1422,7 +1422,7 @@ class TreeUnpickler(reader: TastyReader,
                 res.withAttachment(SuppressedApplyToNone, ())
               else res
 
-      def fixArgsToJavaAnnotConstructor(methType: Type, args: List[Tree]): List[Tree] =
+      def fixArgsToJavaAnnotConstructor(methType: Type, args: Vector[Tree]): Vector[Tree] =
         methType match
           case methType: MethodType =>
             val formalNames = methType.paramNames
@@ -1431,12 +1431,12 @@ class TreeUnpickler(reader: TastyReader,
             def makeDefault(name: TermName, tpe: Type): NamedArg =
               NamedArg(name, Underscore(tpe))
 
-            def extendOnly(args: List[NamedArg]): List[NamedArg] =
+            def extendOnly(args: Vector[NamedArg]): Vector[NamedArg] =
               if sizeCmp < 0 then
                 val argsSize = args.size
-                val additionalArgs: List[NamedArg] =
+                val additionalArgs: Vector[NamedArg] =
                   formalNames.drop(argsSize).lazyZip(methType.paramInfos.drop(argsSize)).map(makeDefault(_, _))
-                args ::: additionalArgs
+                args ++ additionalArgs
               else
                 args // fast path
 
@@ -1463,7 +1463,7 @@ class TreeUnpickler(reader: TastyReader,
                 })
             else
               // Good TASTy where all the arguments are named; reorder and extend if needed
-              val namedArgs = args.asInstanceOf[List[NamedArg]]
+              val namedArgs = args.asInstanceOf[Vector[NamedArg]]
               val prefixMatch = namedArgs.lazyZip(formalNames).forall((arg, formalName) => arg.name == formalName)
               if prefixMatch then
                 // fast path, extend only
@@ -1484,17 +1484,17 @@ class TreeUnpickler(reader: TastyReader,
             args
       end fixArgsToJavaAnnotConstructor
 
-      def quotedExpr(fn: Tree, args: List[Tree]): Tree =
+      def quotedExpr(fn: Tree, args: Vector[Tree]): Tree =
         val TypeApply(_, targs) = fn: @unchecked
-        untpd.Quote(args.head, Nil).withBodyType(targs.head.tpe)
+        untpd.Quote(args.head, Vector()).withBodyType(targs.head.tpe)
 
-      def splicedExpr(fn: Tree, args: List[Tree]): Tree =
+      def splicedExpr(fn: Tree, args: Vector[Tree]): Tree =
         val TypeApply(_, targs) = fn: @unchecked
         Splice(args.head, targs.head.tpe)
 
-      def nestedSpliceExpr(fn: Tree, args: List[Tree]): Tree =
+      def nestedSpliceExpr(fn: Tree, args: Vector[Tree]): Tree =
         fn match
-          case Apply(TypeApply(_, targs), _ :: Nil) => // nestedSplice[T](quotes)(expr)
+          case Apply(TypeApply(_, targs), _ +: Vector()) => // nestedSplice[T](quotes)(expr)
             Splice(args.head, targs.head.tpe)
           case _ => // nestedSplice[T](quotes)
             tpd.Apply(fn, args)
@@ -1513,7 +1513,7 @@ class TreeUnpickler(reader: TastyReader,
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTree()
-              val args = until(end)(readTree())
+              val args = until(end)(readTree()).toVector
               if fn.symbol.isConstructor then constructorApply(fn, args)
               else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
@@ -1521,11 +1521,11 @@ class TreeUnpickler(reader: TastyReader,
               else if isSpuriousApply(fn, args) then fn
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
-              tpd.TypeApply(readTree(), until(end)(readTpt()))
+              tpd.TypeApply(readTree(), until(end)(readTpt()).toVector)
             case APPLYsigpoly =>
               val fn = readTree()
               val methType = readType()
-              val args = until(end)(readTree())
+              val args = until(end)(readTree()).toVector
               val fun2 = typer.Applications.retypeSignaturePolymorphicFn(fn, methType)
               tpd.Apply(fun2, args)
             case TYPED =>
@@ -1547,7 +1547,7 @@ class TreeUnpickler(reader: TastyReader,
                 case _ => readTree()
               }
               val call = ifBefore(end)(maybeCall, EmptyTree)
-              val bindings = readStats(ctx.owner, end).asInstanceOf[List[ValOrDefDef]]
+              val bindings = readStats(ctx.owner, end).asInstanceOf[Vector[ValOrDefDef]]
               val expansion = exprReader.readTree() // need bindings in scope, so needs to be read before
               Inlined(call, bindings, expansion)
             case IF =>
@@ -1560,7 +1560,7 @@ class TreeUnpickler(reader: TastyReader,
             case LAMBDA =>
               val meth = readTree()
               val tpt = ifBefore(end)(readTpt(), EmptyTree)
-              Closure(Nil, meth, tpt)
+              Closure(Vector(), meth, tpt)
             case MATCH =>
               simplifyLub(
                 if (nextByte == IMPLICIT) {
@@ -1628,7 +1628,7 @@ class TreeUnpickler(reader: TastyReader,
               makeSelect(qual, name, denot)
             case REPEATED =>
               val elemtpt = readTpt()
-              SeqLiteral(until(end)(readTree()), elemtpt)
+              SeqLiteral(until(end)(readTree()).toVector, elemtpt)
             case BIND =>
               val sym = symAtAddr.getOrElse(start, forkAt(start).createSymbol())
               readName()
@@ -1638,16 +1638,16 @@ class TreeUnpickler(reader: TastyReader,
               sym.setFlag(givenFlags)
               Bind(sym, body)
             case ALTERNATIVE =>
-              Alternative(until(end)(readTree()))
+              Alternative(until(end)(readTree()).toVector)
             case UNAPPLY =>
               val fn = readTree()
               val implicitArgs =
                 collectWhile(nextByte == IMPLICITarg) {
                   readByte()
                   readTree()
-                }
+                }.toVector
               val patType = readType()
-              val argPats = until(end)(readTree())
+              val argPats = until(end)(readTree()).toVector
               val unapply = UnApply(fn, implicitArgs, argPats, patType)
               if fn.symbol == defn.QuoteMatching_ExprMatch_unapply
                  || fn.symbol == defn.QuoteMatching_TypeMatch_unapply
@@ -1666,7 +1666,7 @@ class TreeUnpickler(reader: TastyReader,
               // wrong number of arguments in some scenarios reading F-bounded
               // types. This came up in #137 of collection strawman.
               val tycon = readTpt()
-              val args = until(end)(readTpt())
+              val args = until(end)(readTpt()).toVector
               val tree = untpd.AppliedTypeTree(tycon, args)
               val ownType = ctx.typeAssigner.processAppliedType(tycon.tpe.safeAppliedTo(args.tpes))
               tree.withType(ownType)
@@ -1700,7 +1700,7 @@ class TreeUnpickler(reader: TastyReader,
               val alias = if currentAddr == end then EmptyTree else readTpt()
               createNullableTypeBoundsTree(lo, hi, alias)
             case QUOTE =>
-              Quote(readTree(), Nil).withBodyType(readType())
+              Quote(readTree(), Vector()).withBodyType(readType())
             case SPLICE =>
               Splice(readTree()).withType(readType())
             case QUOTEPATTERN =>
@@ -1714,7 +1714,9 @@ class TreeUnpickler(reader: TastyReader,
             case SPLICEPATTERN =>
               val pat = readTree()
               val patType = readType()
-              val (targs, args) = until(end)(readTree()).span(_.isType)
+              val (targs0, args0) = until(end)(readTree()).span(_.isType)
+              val targs = targs0.toVector
+              val args = args0.toVector
               SplicePattern(pat, targs, args, patType)
             case HOLE =>
               readHole(end, isTerm = true)
@@ -1760,14 +1762,14 @@ class TreeUnpickler(reader: TastyReader,
       setSpan(start, tree)
     }
 
-    def readCases(end: Addr)(using Context): List[CaseDef] =
+    def readCases(end: Addr)(using Context): Vector[CaseDef] =
       collectWhile((nextUnsharedTag == CASEDEF) && currentAddr != end) {
         if (nextByte == SHAREDterm) {
           readByte()
           forkAt(readAddr()).readCase()(using ctx.fresh.setNewScope)
         }
         else readCase()(using ctx.fresh.setNewScope)
-      }
+      }.toVector
 
     def readCase()(using Context): CaseDef = {
       val sctx = sourceChangeContext()
@@ -1784,7 +1786,7 @@ class TreeUnpickler(reader: TastyReader,
     def readHole(end: Addr, isTerm: Boolean)(using Context): Tree =
       val idx = readNat()
       val tpe = readType()
-      val args = until(end)(readTree())
+      val args = until(end)(readTree()).toVector
       Hole(isTerm, idx, args, EmptyTree, tpe)
 
     def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =
@@ -1884,23 +1886,23 @@ class TreeUnpickler(reader: TastyReader,
    */
   class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
 
-    private var myChildren: List[OwnerTree] | Null = null
+    private var myChildren: Vector[OwnerTree] | Null = null
 
     /** All definitions that have the definition at `addr` as closest enclosing definition */
-    def children: List[OwnerTree] = {
+    def children: Vector[OwnerTree] = {
       if (myChildren == null) myChildren = {
         val buf = new ListBuffer[OwnerTree]
         reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
-        buf.toList
+        buf.toVector
       }
       myChildren.nn
     }
 
     /** Find the owner of definition at `addr` */
     def findOwner(addr: Addr)(using Context): Symbol = {
-      def search(cs: List[OwnerTree], current: Symbol): Symbol =
-        try cs match {
-          case ot :: cs1 =>
+      def search(cs: Vector[OwnerTree], current: Symbol): Symbol =
+        try (cs: @unchecked) match {
+          case ot +: cs1 =>
             if (ot.addr.index == addr.index) {
               assert(current.exists, i"no symbol at $addr")
               current
@@ -1909,7 +1911,7 @@ class TreeUnpickler(reader: TastyReader,
               search(ot.children, reader.symbolAt(ot.addr))
             else
               search(cs1, current)
-          case Nil =>
+          case Vector() =>
             throw new TreeWithoutOwner
         }
         catch {

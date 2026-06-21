@@ -12,47 +12,47 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
 
 
   val projectName: Setting[String] =
-    StringSetting(RootSetting, "project", "project title", "The name of the project.", "", aliases = List("-doc-title"))
+    StringSetting(RootSetting, "project", "project title", "The name of the project.", "", aliases = Vector("-doc-title"))
 
   val projectVersion: Setting[String] =
-    StringSetting(RootSetting, "project-version", "project version", "The current version of your project.", "", aliases = List("-doc-version"))
+    StringSetting(RootSetting, "project-version", "project version", "The current version of your project.", "", aliases = Vector("-doc-version"))
 
   val projectLogo: Setting[String] =
-    StringSetting(RootSetting, "project-logo", "project logo filename", "Path to the file that contains the project's logo. Provided path can be absolute or relative to the project root directory.", "", aliases = List("-doc-logo"))
+    StringSetting(RootSetting, "project-logo", "project logo filename", "Path to the file that contains the project's logo. Provided path can be absolute or relative to the project root directory.", "", aliases = Vector("-doc-logo"))
 
-  val projectFooter: Setting[String] = StringSetting(RootSetting, "project-footer", "project footer", "A footer on every Scaladoc page.", "", aliases = List("-doc-footer"))
+  val projectFooter: Setting[String] = StringSetting(RootSetting, "project-footer", "project footer", "A footer on every Scaladoc page.", "", aliases = Vector("-doc-footer"))
 
-  val sourceLinks: Setting[List[String]] =
+  val sourceLinks: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "source-links", "sources", SourceLinks.usage)
 
   val legacySourceLink: Setting[String] =
     StringSetting(RootSetting, "doc-source-url", "sources", "Legacy option from Scala 2. Use -source-links instead.", "")
 
-  val syntax: Setting[List[String]] =
+  val syntax: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "comment-syntax", "syntax", tasty.comments.CommentSyntaxArgs.usage)
 
   val revision: Setting[String] =
     StringSetting(RootSetting, "revision", "revision", "Revision (branch or ref) used to build project project", "")
 
-  val externalDocumentationMappings: Setting[List[String]] =
+  val externalDocumentationMappings: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "external-mappings", "external-mappings",
       "Mapping between regexes matching classpath entries and external documentation. " +
         "'regex::[scaladoc|scaladoc|javadoc]::path' syntax is used")
 
-  val legacyExternalDocumentationMappings: Setting[List[String]] =
+  val legacyExternalDocumentationMappings: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "doc-external-doc", "legacy-external-mappings", "Legacy option from Scala 2. Mapping betweeen path and external documentation. Use -external-mappings instead.")
 
-  val socialLinks: Setting[List[String]] =
+  val socialLinks: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "social-links", "social-links",
       "Links to social sites. '[github|twitter|gitter|discord]::link' or 'custom::link::light_icon_file_name[::dark_icon_file_name]' syntax is used. For custom links, the icons must be present in '_assets/images/'")
 
-  val deprecatedSkipPackages: Setting[List[String]] =
+  val deprecatedSkipPackages: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "skip-packages", "packages", "Deprecated, please use `-skip-by-id` or `-skip-by-regex`")
 
-  val skipById: Setting[List[String]] =
+  val skipById: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "skip-by-id", "package or class identifier", "Identifiers of packages or top-level classes to skip when generating documentation")
 
-  val skipByRegex: Setting[List[String]] =
+  val skipByRegex: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "skip-by-regex", "regex", "Regexes that match fully qualified names of packages or top-level classes to skip when generating documentation")
 
   val docRootContent: Setting[String] =
@@ -111,7 +111,7 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val YdocumentSyntheticTypes: Setting[Boolean] =
     BooleanSetting(RootSetting, "Ydocument-synthetic-types", "Attach pages with documentation of the intrinsic types e. g. Any, Nothing to the docs. Setting is useful only for stdlib.", false)
 
-  val snippetCompiler: Setting[List[String]] =
+  val snippetCompiler: Setting[Vector[String]] =
     MultiStringSetting(RootSetting, "snippet-compiler", "snippet-compiler", snippets.SnippetCompilerArgs.usage)
 
   val generateInkuire: Setting[Boolean] =
@@ -136,7 +136,7 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
       ""
     )
 
-  val quickLinks: Setting[List[String]] =
+  val quickLinks: Setting[Vector[String]] =
     MultiStringSetting(
       RootSetting,
       "quick-links",
@@ -150,8 +150,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val suppressCC: Setting[Boolean] =
     BooleanSetting(RootSetting, "suppressCC", "Suppress rendering anything related to experimental capture checking", false)
 
-  val noSnippetNamesFor: Setting[List[String]] =
-    MultiStringSetting(RootSetting, "no-snippet-names-for", "path", "Do not render labels for named snippets in static-site pages under these paths relative to the site root", Nil)
+  val noSnippetNamesFor: Setting[Vector[String]] =
+    MultiStringSetting(RootSetting, "no-snippet-names-for", "path", "Do not render labels for named snippets in static-site pages under these paths relative to the site root", Vector())
 
   def scaladocSpecificSettings: Set[Setting[?]] =
     Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks, dynamicSideMenu, suppressCC, noSnippetNamesFor, generateApi)

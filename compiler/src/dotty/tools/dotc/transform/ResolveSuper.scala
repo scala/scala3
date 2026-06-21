@@ -47,7 +47,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val ops = new MixinOps(cls, thisPhase)
     import ops.*
 
-    def superAccessors(mixin: ClassSymbol): List[Tree] =
+    def superAccessors(mixin: ClassSymbol): Vector[Tree] =
       for superAcc <- mixin.info.decls.filter(_.isSuperAccessor)
       yield
         util.Stats.record("super accessors")
@@ -57,7 +57,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     val overrides = mixins.flatMap(superAccessors)
 
-    cpy.Template(impl)(body = overrides ::: impl.body)
+    cpy.Template(impl)(body = overrides ++ impl.body)
   }
 
   override def transformDefDef(ddef: DefDef)(using Context): Tree = {

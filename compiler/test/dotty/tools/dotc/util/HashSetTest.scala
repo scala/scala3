@@ -28,7 +28,7 @@ class HashSetTest:
   def newEmpty: Unit =
     val s = HashSet[Id]()
     assert(s.size == 0)
-    assert(s.iterator.toList == Nil)
+    assert(s.iterator.toVector == Vector())
 
   @Test
   def put: Unit =
@@ -42,7 +42,7 @@ class HashSetTest:
     s.put(id2)
     assert(s.size == 2 && s.contains(id1) && s.contains(id2))
     // put id3
-    s ++= List(id3)
+    s ++= Vector(id3)
     assert(s.size == 3 && s.contains(id1) && s.contains(id2) && s.contains(id3))
 
   @Test
@@ -58,13 +58,13 @@ class HashSetTest:
 
   @Test
   def construct: Unit =
-    val s = HashSet.from(List(id1,id2,id3))
+    val s = HashSet.from(Vector(id1,id2,id3))
     assert(s.size == 3)
     assert(s.contains(id1) && s.contains(id2) && s.contains(id3))
 
   @Test
   def remove: Unit =
-    val s = HashSet.from(List(id1,id2,id3))
+    val s = HashSet.from(Vector(id1,id2,id3))
     // remove id2
     s.remove(id2)
     assert(s.size == 2)
@@ -74,30 +74,30 @@ class HashSetTest:
     assert(s.size == 1)
     assert(!s.contains(id1) && !s.contains(id2) && s.contains(id3))
     // remove id3
-    s --= List(id3)
+    s --= Vector(id3)
     assert(s.size == 0)
     assert(!s.contains(id1) && !s.contains(id2) && !s.contains(id3))
 
   @Test
   def lookup: Unit =
-    val s = HashSet.from(List(id1, id2))
+    val s = HashSet.from(Vector(id1, id2))
     assert(s.lookup(id1) eq id1)
     assert(s.lookup(id2) eq id2)
     assert(s.lookup(id3) eq null)
 
   @Test
   def iterator: Unit =
-    val s = HashSet.from(List(id1,id2,id3))
-    assert(s.iterator.toList.sorted == List(id1,id2,id3))
+    val s = HashSet.from(Vector(id1,id2,id3))
+    assert(s.iterator.toVector.sorted == Vector(id1,id2,id3))
 
   @Test
   def clear: Unit =
     locally:
-      val s1 = HashSet.from(List(id1,id2,id3))
+      val s1 = HashSet.from(Vector(id1,id2,id3))
       s1.clear()
       assert(s1.size == 0)
     locally:
-      val s2 = HashSet.from(List(id1,id2,id3))
+      val s2 = HashSet.from(Vector(id1,id2,id3))
       s2.clear(resetToInitial = false)
       assert(s2.size == 0)
 
@@ -109,9 +109,9 @@ class HashSetTest:
     assert(id2.equals(id2_2)) // structural equality
     assert(id2 ne id2_2) // reference inequality
 
-    val s = HashSet.from(List(id2,id2_2))
+    val s = HashSet.from(Vector(id2,id2_2))
 
     assert(s.size == 1 && s.contains(id2) && s.contains(id2_2))
-    assert(s.iterator.toList == List(id2)) // single element
+    assert(s.iterator.toVector == Vector(id2)) // single element
   end universalEquality
 

@@ -14,7 +14,7 @@ class DivergenceCheckerTests extends DottyTest {
       |class B extends A
     """.stripMargin
 
-    val types = List(
+    val types = Vector(
       "A",
       "B",
       "List[?]",
@@ -25,14 +25,14 @@ class DivergenceCheckerTests extends DottyTest {
       "List[List[(A, B) { type Baz = Int }]] { type Foo = A }"
     )
 
-    val elements = List("A", "B", "Nothing", "Object", "String", "Tuple2[?, ?]", "Int", "List[?]")
+    val elements = Vector("A", "B", "Nothing", "Object", "String", "Tuple2[?, ?]", "Int", "List[?]")
 
-    checkTypes(source, List(types, elements)) {
-      case (List(tpes, elements0), context) =>
+    checkTypes(source, Vector(types, elements)) {
+      case (Vector(tpes, elements0), context) =>
         given Context = context
 
-        val List(a, b, n, o, s, t2, i, l) = elements0.map(_.typeConstructor)
-        val expectedCoveringSets = List(
+        val Vector(a, b, n, o, s, t2, i, l) = elements0.map(_.typeConstructor)
+        val expectedCoveringSets = Vector(
           Set(a),
           Set(b),
           Set(l),
@@ -43,7 +43,7 @@ class DivergenceCheckerTests extends DottyTest {
           Set(l, t2, a, b, i)
         ).map(_.map(_.dealias.typeSymbol))
 
-        val expectedSizes = List(
+        val expectedSizes = Vector(
           0,
           0,
           1,

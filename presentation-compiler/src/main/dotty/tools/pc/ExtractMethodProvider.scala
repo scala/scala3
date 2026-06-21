@@ -43,7 +43,7 @@ final class ExtractMethodProvider(
     val unit = driver.currentCtx.run.nn.units.head
     val pos = driver.sourcePosition(range).startPos
     val path =
-      Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
+      Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx).toList
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     val indexedContext = IndexedContext(pos, path, newctx)
     import indexedContext.ctx
@@ -55,9 +55,9 @@ final class ExtractMethodProvider(
           case _: (MethodType | PolyType) =>
             prettyPrintReturnType(tpe.resultType)
           case tpe => printer.tpe(tpe)
-      def printParams(params: List[Type]) =
+      def printParams(params: Vector[Type]) =
         params match
-          case p :: Nil => prettyPrintReturnType(p)
+          case Vector(p) => prettyPrintReturnType(p)
           case _ => s"(${params.map(prettyPrintReturnType).mkString(", ")})"
       if tpe.paramInfoss.isEmpty
       then prettyPrintReturnType(tpe)
@@ -68,9 +68,9 @@ final class ExtractMethodProvider(
     def extractFromBlock(t: tpd.Tree): List[tpd.Tree] =
       t match
         case Block(stats, expr) =>
-          (stats :+ expr).filter(stat => range.encloses(stat.sourcePos))
+          (stats :+ expr).filter(stat => range.encloses(stat.sourcePos)).toList
         case temp: Template[?] =>
-          temp.body.filter(stat => range.encloses(stat.sourcePos))
+          temp.body.filter(stat => range.encloses(stat.sourcePos)).toList
         case other => List(other)
 
     def localRefs(
@@ -97,7 +97,7 @@ final class ExtractMethodProvider(
 
       val methodParams = allSymbols.toList.filter(_.isTerm)
       val methodParamTypes = methodParams
-        .flatMap(p => p :: p.paramSymss.flatten)
+        .flatMap(p => p +: p.paramSymss.flatten.toList)
         .map(_.info.typeSymbol)
         .filter(tp => nonAvailable(tp) && tp.isTypeParam)
         .distinct

@@ -47,7 +47,7 @@ object DebugTests extends ParallelTesting:
       import test.*
       checkPass(new DebugTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
 
-  private final class DebugTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+  private final class DebugTest(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
     extends RunTest(testSources, times, threadLimit, suppressAllOutput):
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =

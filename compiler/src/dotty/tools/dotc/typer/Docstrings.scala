@@ -33,8 +33,8 @@ object Docstrings {
         expandComment(sym).map { expanded =>
           val typedUsecases = expanded.usecases.map { usecase =>
             ctx.typer.enterSymbol(ctx.typer.createSymbol(usecase.untpdCode))
-            ctx.typer.typedStats(usecase.untpdCode :: Nil, owner)._1 match {
-              case List(df: tpd.DefDef) =>
+            ctx.typer.typedStats(usecase.untpdCode +: Vector(), owner)._1 match {
+              case Vector(df: tpd.DefDef) =>
                 usecase.typed(df)
               case _ =>
                 report.error(em"`@usecase` was not a valid definition", ctx.source.atSpan(usecase.codePos))

@@ -66,8 +66,8 @@ object Checking {
    *              or (in case it is inferred) containing the type.
    *  See TypeOps.boundsViolations for an explanation of the first four parameters.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
-    instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
+  def checkBounds(args: Vector[tpd.Tree], boundss: Vector[TypeBounds],
+    instantiate: (Type, Vector[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
     if !isCaptureChecking then
       args.lazyZip(boundss).foreach { (arg, bound) =>
         if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
@@ -83,7 +83,7 @@ object Checking {
    *  Note: This does not check the bounds of AppliedTypeTrees. These
    *  are handled by method checkAppliedType below.
    */
-  def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(using Context): Unit =
+  def checkBounds(args: Vector[tpd.Tree], tl: TypeLambda)(using Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
 
   def checkGoodBounds(sym: Symbol)(using Context): Boolean =
@@ -116,9 +116,9 @@ object Checking {
     // otherwise return type parameters unchanged
     val tparams = tycon.tpe.typeParams
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
-    def instantiate(bound: Type, args: List[Type]) =
+    def instantiate(bound: Type, args: Vector[Type]) =
       tparams match
-        case LambdaParam(lam, _) :: _ =>
+        case LambdaParam(lam, _) +: _ =>
           HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
@@ -192,7 +192,7 @@ object Checking {
         arg.tpe.hasSameKindAs(paramBounds.bounds.hi)) arg
     else errorTree(arg, em"Type argument ${arg.tpe} does not have the same kind as its bound $paramBounds")
 
-  def preCheckKinds(args: List[Tree], paramBoundss: List[Type])(using Context): List[Tree] = {
+  def preCheckKinds(args: Vector[Tree], paramBoundss: Vector[Type])(using Context): Vector[Tree] = {
     val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)
     args1 ++ args.drop(paramBoundss.length)
       // add any arguments that do not correspond to a parameter back,
@@ -493,7 +493,7 @@ object Checking {
    *  unless a type with the same name already appears in `decls`.
    *  @return    true iff no cycles were detected
    */
-  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = {
+  def checkNonCyclicInherited(joint: Type, parents: Vector[Type], decls: Scope, pos: SrcPos)(using Context): Unit = {
     // If we don't have more than one parent, then there's nothing to check
     if (parents.lengthCompare(1) <= 0)
       return
@@ -525,10 +525,10 @@ object Checking {
       case sym: ClassSymbol => sym.primaryConstructor.info
       case _ => sym.info
     def paramName = info.firstParamNames match
-      case pname :: _ => pname.show
+      case pname +: _ => pname.show
       case _ => "x"
     def paramTypeStr = info.firstParamTypes match
-      case pinfo :: _ => pinfo.show
+      case pinfo +: _ => pinfo.show
       case _ => "T"
     def toFunctionStr(info: Type): String = info match
       case ExprType(resType) =>
@@ -757,7 +757,7 @@ object Checking {
    */
   def checkNoPrivateLeaks(sym: Symbol)(using Context): Type = {
     class NotPrivate extends TypeMap {
-      var errors: List[Message] = Nil
+      var errors: Vector[Message] = Vector()
       private var inCaptureSet: Boolean = false
 
       def accessBoundary(sym: Symbol): Symbol =
@@ -791,7 +791,7 @@ object Checking {
             if (isLeaked(tp.symbol)) {
               errors =
                 em"non-private ${sym.showLocated} refers to private ${tp.symbol}\nin its type signature ${sym.info}"
-                :: errors
+                +: errors
               tp
             }
             else mapOver(tp)
@@ -835,7 +835,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: Vector[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         report.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.srcPos)
@@ -879,8 +879,8 @@ object Checking {
         val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
           param.isTerm && !param.is(Flags.Accessor)
         }
-        clParamAccessors match {
-          case param :: params =>
+        (clParamAccessors: @unchecked) match {
+          case param +: params =>
             if (defn.isContextFunctionType(param.info))
               report.error("value classes are not allowed for context function types", param.srcPos)
             if (param.is(Mutable))
@@ -892,7 +892,7 @@ object Checking {
             else
               for (p <- params if !p.is(Erased))
                 report.error("value class can only have one non `erased` parameter", p.srcPos)
-          case Nil =>
+          case Vector() =>
             report.error(ValueClassNeedsOneValParam(clazz), clazz.srcPos)
         }
       }
@@ -919,12 +919,12 @@ object Checking {
    *  to @experimental definitions.
    *
    */
-  def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
-    def nonExperimentalTopLevelDefs(): List[Symbol] =
-      new TreeAccumulator[List[Symbol]] {
-        override def apply(x: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
+  def checkAndAdaptExperimentalImports(trees: Vector[Tree])(using Context): Unit =
+    def nonExperimentalTopLevelDefs(): Vector[Symbol] =
+      new TreeAccumulator[Vector[Symbol]] {
+        override def apply(x: Vector[Symbol], tree: tpd.Tree)(using Context): Vector[Symbol] =
           def addIfNotExperimental(sym: Symbol) =
-            if !sym.isExperimental then sym :: x
+            if !sym.isExperimental then sym +: x
             else x
           tree match {
             case tpd.PackageDef(_, contents) => apply(x, contents)
@@ -933,7 +933,7 @@ object Checking {
             case mdef: tpd.MemberDef => addIfNotExperimental(mdef.symbol)
             case _ => x
           }
-      }.apply(Nil, ctx.compilationUnit.tpdTree)
+      }.apply(Vector(), ctx.compilationUnit.tpdTree)
 
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
@@ -954,7 +954,7 @@ object Checking {
           sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
 
       unitExperimentalLanguageImports match
-        case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
+        case imp +: _ => markTopLevelDefsAsExperimental(i"top level $imp")
         case _ =>
           Feature.experimentalEnabledByLanguageSetting match
             case Some(sel) => markTopLevelDefsAsExperimental(i"-language:experimental.$sel")
@@ -1015,8 +1015,8 @@ object Checking {
       .toMap
 
     annot match
-      case untpd.Apply(fun, List(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
-        untpd.cpy.Apply(annot)(fun, List(untpd.cpy.NamedArg(param)(nme.value, param)))
+      case untpd.Apply(fun, Vector(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
+        untpd.cpy.Apply(annot)(fun, Vector(untpd.cpy.NamedArg(param)(nme.value, param)))
       case untpd.Apply(_, params) =>
         for
           (param, paramIdx) <- params.zipWithIndex
@@ -1039,7 +1039,7 @@ trait Checking {
   def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type =
     Checking.checkNonCyclic(sym, info, reportErrors)
 
-  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit =
+  def checkNonCyclicInherited(joint: Type, parents: Vector[Type], decls: Scope, pos: SrcPos)(using Context): Unit =
     Checking.checkNonCyclicInherited(joint, parents, decls, pos)
 
   /** Check that type `tp` is stable. */
@@ -1204,7 +1204,7 @@ trait Checking {
           report.error(em"no aliases can be used to refer to a language import", path.srcPos)
 
   /** Check that `path` is a legal prefix for an export clause */
-  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Unit =
+  def checkLegalExportPath(path: Tree, selectors: Vector[untpd.ImportSelector])(using Context): Unit =
     checkLegalImportOrExportPath(path, "export prefix")
     if
       selectors.exists(_.isWildcard)
@@ -1363,7 +1363,7 @@ trait Checking {
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit =
-    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
+    val seen = new mutable.HashMap[Name, Vector[Symbol]].withDefaultValue(Vector())
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit =
@@ -1384,7 +1384,7 @@ trait Checking {
           report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
           decl.resetFlag(HasDefaultParams)
       if !excludeFromDoubleDeclCheck(decl) then
-        seen(decl.name) = decl :: seen(decl.name)
+        seen(decl.name) = decl +: seen(decl.name)
 
     cls.info.decls.foreach(checkDecl)
     cls.info match
@@ -1426,7 +1426,7 @@ trait Checking {
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit =
+  def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: Vector[Tree])(using Context): Unit =
     Checking.checkDerivedValueClass(cdef, clazz, stats)
 
   /** Check that case classes are not inherited by case classes.
@@ -1444,15 +1444,15 @@ trait Checking {
   /** Check that method parameter types do not reference their own parameter
    *  or later parameters in the same parameter section.
    */
-  def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
-    case vparam :: vparams1 =>
+  def checkNoForwardDependencies(vparams: Vector[ValDef])(using Context): Unit = (vparams: @unchecked) match {
+    case vparam +: vparams1 =>
       vparam.tpt.foreachSubTree {
         case id: Ident if vparams.exists(_.symbol == id.symbol) =>
           report.error(em"illegal forward reference to method parameter", id.srcPos)
         case _ =>
       }
       checkNoForwardDependencies(vparams1)
-    case Nil =>
+    case Vector() =>
   }
 
   /** Check that all named types that form part of this type have a denotation.
@@ -1545,14 +1545,14 @@ trait Checking {
   def checkAnnotArgs(tree: Tree)(using Context): tree.type =
     val cls = Annotations.annotClass(tree)
     tree match
-      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
+      case Apply(tycon, arg +: Vector()) if cls == defn.TargetNameAnnot =>
         arg match
           case Literal(Constant("")) =>
             report.error(em"target name cannot be empty", arg.srcPos)
           case Literal(_) => // ok
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
-      case Apply(tycon, arg :: Nil) if cls == defn.ImplicitNotFoundAnnot || cls == defn.ImplicitAmbiguousAnnot =>
+      case Apply(tycon, arg +: Vector()) if cls == defn.ImplicitNotFoundAnnot || cls == defn.ImplicitAmbiguousAnnot =>
         arg.tpe.widenTermRefExpr.normalized match
           case _: ConstantType => ()
           case _ => report.error(em"@${cls.name} requires constant expressions as a parameter", arg.srcPos)
@@ -1581,7 +1581,7 @@ trait Checking {
       val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
       if javaEnumBase.exists then
         javaEnumBase.argInfos match
-          case typeArg :: Nil =>
+          case typeArg +: Vector() =>
             if cls.typeParams.nonEmpty then
               report.error(em"An enum extending java.lang.Enum cannot have type parameters", cdef.srcPos)
             if typeArg.classSymbol ne cls then
@@ -1608,7 +1608,7 @@ trait Checking {
         // parent.
         //
         // this test allows inheriting from `Enum` by hand;
-        // see enum-List-control.scala.
+        // see enum-Vector-control.scala.
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
     if cls.isEnumClass && !isJavaEnum then
       checkExistingOrdinal
@@ -1630,7 +1630,7 @@ trait Checking {
         report.error(em"enum case does not extend its enum $enumCls", enumCase.srcPos)
         cls.info match
           case info: ClassInfo =>
-            cls.info = info.derivedClassInfo(declaredParents = enumCls.typeRefApplied :: info.declaredParents)
+            cls.info = info.derivedClassInfo(declaredParents = enumCls.typeRefApplied +: info.declaredParents)
           case _ =>
 
     val enumCase =
@@ -1670,7 +1670,7 @@ trait Checking {
             impl.parents.foreach(check)
           case vdef: ValDef =>
             vdef.rhs match {
-              case Block((clsDef @ TypeDef(_, impl: Template)) :: Nil, _)
+              case Block((clsDef @ TypeDef(_, impl: Template)) +: Vector(), _)
               if clsDef.symbol.isAnonymousClass =>
                 impl.parents.foreach(check)
               case _ =>
@@ -1719,7 +1719,7 @@ trait Checking {
     }
 
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
-  def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit =
+  def checkNoTargetNameConflict(stats: Vector[Tree])(using Context): Unit =
     var seen = Set[Name]()
     for stat <- stats do
       val sym = stat.symbol
@@ -1772,7 +1772,7 @@ trait Checking {
    *  qualifier type.
    *  (2) Check that no import selector is renamed more than once.
    */
-  def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit =
+  def checkImportSelectors(qualType: Type, selectors: Vector[untpd.ImportSelector])(using Context): Unit =
     val originals = mutable.Set.empty[Name]
     val targets = mutable.Set.empty[Name]
 
@@ -1816,21 +1816,21 @@ trait ReChecking extends Checking {
 trait NoChecking extends ReChecking {
   import tpd.*
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type = info
-  override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
+  override def checkNonCyclicInherited(joint: Type, parents: Vector[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()
   override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean, refinementOK: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
-  override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
+  override def checkNoTargetNameConflict(stats: Vector[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
-  override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+  override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: Vector[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
-  override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
+  override def checkNoForwardDependencies(vparams: Vector[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()
-  override def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit = ()
+  override def checkImportSelectors(qualType: Type, selectors: Vector[untpd.ImportSelector])(using Context): Unit = ()
 }

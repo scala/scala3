@@ -21,7 +21,7 @@ object PathResolver {
   /** pretty print class path
    */
   def ppcp(s: String): String = split(s) match {
-    case Nil      => ""
+    case Vector()      => ""
     case Seq(x)   => x
     case xs       => xs.map("\n" + _).mkString
   }
@@ -147,7 +147,7 @@ object PathResolver {
     }
     else inContext(ContextBase().initialCtx) {
       val ArgsSummary(sstate, rest, errors, warnings) =
-        ctx.settings.processArguments(args.toList, processAll = true, ctx.settingsState)
+        ctx.settings.processArguments(args.toVector, processAll = true, ctx.settingsState)
       errors.foreach(println)
       val pr = inContext(ctx.fresh.setSettings(sstate)) {
         new PathResolver()
@@ -211,10 +211,10 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
     import classPathFactory.*
 
     // Assemble the elements!
-    def basis: List[Iterable[ClassPath]] =
+    def basis: Vector[Iterable[ClassPath]] =
       val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
 
-      List(
+      Vector(
         JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
         classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
         contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
@@ -225,7 +225,7 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
         sourcesInPath(sourcePath)                     // 8. The Scala source path.
       )
 
-    lazy val containers: List[ClassPath] = basis.flatten.distinct
+    lazy val containers: Vector[ClassPath] = basis.flatten.distinct
 
     override def toString: String = """
       |object Calculated {
@@ -247,7 +247,7 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
       )
   }
 
-  def containers: List[ClassPath] = Calculated.containers
+  def containers: Vector[ClassPath] = Calculated.containers
 
   lazy val result: ClassPath = {
     val cp = AggregateClassPath(containers.toIndexedSeq)

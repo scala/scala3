@@ -94,7 +94,7 @@ class CCState:
 
   // ------ Context info accessed from companion object when isCaptureCheckingOrSetup is true
 
-  private var openExistentialScopes: List[MethodType] = Nil
+  private var openExistentialScopes: Vector[MethodType] = Vector()
 
   private var globalCapIsRoot: Boolean = false
 
@@ -110,7 +110,7 @@ class CCState:
   /** A cache that stores for each class the classifiers of all LocalCap instances
    *  in the types of its fields and the fields that contribute such LocalCap instances.
    */
-  val localCapClassifiersAndFieldsCache: EqHashMap[Symbol, (List[ClassSymbol], List[Symbol])] = EqHashMap()
+  val localCapClassifiersAndFieldsCache: EqHashMap[Symbol, (Vector[ClassSymbol], Vector[Symbol])] = EqHashMap()
 
   /** A map from class symbols in the current compilation unit to those of their fields
    *  that have an explicit type given. Used in `captureSetImpliedByFields`
@@ -118,7 +118,7 @@ class CCState:
    *  where this matters is i24335.scala. The precise failure scenario which
    *  this avoids is described in #24335.
    */
-  val fieldsWithExplicitTypes: EqHashMap[ClassSymbol, List[Symbol]] = EqHashMap()
+  val fieldsWithExplicitTypes: EqHashMap[ClassSymbol, Vector[Symbol]] = EqHashMap()
 
 object CCState:
 
@@ -130,13 +130,13 @@ object CCState:
     if isCaptureCheckingOrSetup then
       val ccs = ccState
       val saved = ccs.openExistentialScopes
-      if mt.marksExistentialScope then ccs.openExistentialScopes = mt :: ccs.openExistentialScopes
+      if mt.marksExistentialScope then ccs.openExistentialScopes = mt +: ccs.openExistentialScopes
       try op finally ccs.openExistentialScopes = saved
     else
       op
 
   /** The currently opened existential scopes */
-  def openExistentialScopes(using Context): List[MethodType] = ccState.openExistentialScopes
+  def openExistentialScopes(using Context): Vector[MethodType] = ccState.openExistentialScopes
 
   /** Run `op` under the assumption that `caps.any` can subsume all other capabilties
    *  except Result capabilities. Every use of this method should be scrutinized

@@ -323,13 +323,13 @@ object Capabilities:
     private var myCaptureSet: CaptureSet | Null = null
     private var captureSetValid: Validity = invalid
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
-    private var myDerived: List[DerivedCapability] = Nil
+    private var myDerived: Vector[DerivedCapability] = Vector()
     private var myClassifiers: Classifiers = UnknownClassifier
     private var classifiersValid: Validity = invalid
 
     protected def cached[C <: DerivedCapability](newRef: C): C =
-      def recur(refs: List[DerivedCapability]): C = refs match
-        case ref :: refs1 =>
+      def recur(refs: Vector[DerivedCapability]): C = (refs: @unchecked) match
+        case ref +: refs1 =>
           val exists = ref match
             case Restricted(_, cls) =>
               newRef match
@@ -339,8 +339,8 @@ object Capabilities:
               ref.getClass == newRef.getClass
           if exists then ref.asInstanceOf[C]
           else recur(refs1)
-        case Nil =>
-          myDerived = newRef :: myDerived
+        case Vector() =>
+          myDerived = newRef +: myDerived
           newRef
       recur(myDerived)
 
@@ -605,7 +605,7 @@ object Capabilities:
     def transClassifiers(using Context): Classifiers =
       def toClassifiers(cls: ClassSymbol): Classifiers =
         if cls == defn.AnyClass then Unclassified
-        else ClassifiedAs(cls :: Nil)
+        else ClassifiedAs(cls +: Vector())
       if classifiersValid != currentId then
         myClassifiers = this match
           case self: LocalCap =>
@@ -614,8 +614,8 @@ object Capabilities:
             Unclassified
           case Restricted(_, cls) =>
             assert(cls != defn.AnyClass)
-            if cls == defn.NothingClass then ClassifiedAs(Nil)
-            else ClassifiedAs(cls :: Nil)
+            if cls == defn.NothingClass then ClassifiedAs(Vector())
+            else ClassifiedAs(cls +: Vector())
           case ReadOnly(ref1) =>
             ref1.transClassifiers
           case Maybe(ref1) =>
@@ -916,7 +916,7 @@ object Capabilities:
   enum Classifiers derives CanEqual:
     case UnknownClassifier
     case Unclassified
-    case ClassifiedAs(clss: List[ClassSymbol])
+    case ClassifiedAs(clss: Vector[ClassSymbol])
 
   export Classifiers.{UnknownClassifier, Unclassified, ClassifiedAs}
 
@@ -947,10 +947,10 @@ object Capabilities:
   /** The smallest list D of class symbols in cs1 and cs2 such that
    *  every class symbol in cs1 and cs2 is a subclass of a class symbol in D
    */
-  def dominators(cs1: List[ClassSymbol], cs2: List[ClassSymbol])(using Context): List[ClassSymbol] =
+  def dominators(cs1: Vector[ClassSymbol], cs2: Vector[ClassSymbol])(using Context): Vector[ClassSymbol] =
     // Drop classes that subclass classes of the other set
     // @param proper  If true, only drop proper subclasses of a class of the other set
-    def filterSub(cs1: List[ClassSymbol], cs2: List[ClassSymbol], proper: Boolean) =
+    def filterSub(cs1: Vector[ClassSymbol], cs2: Vector[ClassSymbol], proper: Boolean) =
       cs1.filter: cls1 =>
         !cs2.exists: cls2 =>
           cls1.isSubClass(cls2) && (!proper || cls1 != cls2)
@@ -969,14 +969,14 @@ object Capabilities:
    *  error diagnostics
    */
   enum Origin derives CanEqual:
-    case InDecl(sym: Symbol, fields: List[Symbol] = Nil)
+    case InDecl(sym: Symbol, fields: Vector[Symbol] = Vector())
     case TypeArg(tp: Type)
     case UnsafeAssumePure
     case Formal(pref: ParamRef, app: tpd.Apply)
     case ResultInstance(result: ResultCap, methType: Type, tree: Tree = EmptyTree)
     case UnapplyInstance(info: MethodType)
     case LocalInstance(restpe: Type)
-    case NewInstance(tp: Type, fields: List[Symbol])
+    case NewInstance(tp: Type, fields: Vector[Symbol])
     case LambdaExpected(respt: Type)
     case LambdaActual(restp: Type)
     case OverriddenType(member: Symbol)
@@ -984,15 +984,15 @@ object Capabilities:
     case Parameter(param: Symbol)
     case Unknown
 
-    def contributingFields: List[Symbol] = this match
+    def contributingFields: Vector[Symbol] = this match
       case InDecl(sym, fields) => fields
       case NewInstance(tp, fields) => fields
-      case _ => Nil
+      case _ => Vector()
 
     private def contributingStr(using Context): String =
       contributingFields match
-        case Nil => ""
-        case field :: Nil => s" with contributing field $field"
+        case Vector() => ""
+        case field +: Vector() => s" with contributing field $field"
         case fields => s" with contributing fields ${fields.map(_.show).mkString(", ")}"
 
     def explanation(using Context): String = this match

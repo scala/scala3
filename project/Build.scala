@@ -821,7 +821,10 @@ object Build {
     // We want the compiler to be present in the compiler classpath when compiling this project but not
     // when compiling a project that depends on scala3-staging (see sbt-test/sbt-dotty/quoted-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
-    .dependsOn(`scala3-compiler-bootstrapped` % "provided; compile->runtime; test->test")
+    .dependsOn(
+      `scala3-compiler-bootstrapped` % "provided; compile->runtime; test->test",
+      `scala3-repl` % "test->test"
+    )
     .settings(publishSettings)
     .settings(
       name          := "scala3-staging",
@@ -834,6 +837,7 @@ object Build {
       // Add the source directories for the sbt-bridge (boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
+      Test    / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := true,
@@ -1182,6 +1186,8 @@ object Build {
       // Packaging configuration of the stdlib
       Compile / publishArtifact := true,
       Test    / publishArtifact := false,
+      // Required by Scala.js test discovery.
+      Test    / fork := false,
       // Take into account the source files from the `library` folder
       // but give the priority to the files in `library-js` that override files in `library`
       Compile / sources := {

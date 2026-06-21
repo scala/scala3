@@ -20,17 +20,17 @@ class BeanProperties(thisPhase: DenotTransformer):
     val origBody = impl.body
     cpy.Template(impl)(body = impl.body.flatMap {
       case v: ValDef => generateAccessors(v)
-      case _ => Nil
-    } ::: origBody)
+      case _ => Vector()
+    } ++ origBody)
 
-  def generateAccessors(valDef: ValDef)(using Context): List[Tree] =
+  def generateAccessors(valDef: ValDef)(using Context): Vector[Tree] =
     def generateGetter(valDef: ValDef, annot: Annotation)(using Context) : Tree =
       val prefix = if annot.matches(defn.BooleanBeanPropertyAnnot) then "is" else "get"
       val meth = newSymbol(
         owner = ctx.owner,
         name = prefixedName(prefix, valDef.name),
         flags = Method | Synthetic | Invisible,
-        info = MethodType(Nil, valDef.denot.info),
+        info = MethodType(Vector(), valDef.denot.info),
         coord = annot.tree.span
       ).enteredAfter(thisPhase).asTerm
        .withAnnotationsCarrying(valDef.symbol, defn.BeanGetterMetaAnnot)
@@ -44,11 +44,11 @@ class BeanProperties(thisPhase: DenotTransformer):
           owner,
           name = prefixedName("set", valDef.name),
           flags = Method | Synthetic | Invisible,
-          info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
+          info = MethodType(valDef.name +: Vector(), valDef.denot.info +: Vector(), defn.UnitType),
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
          .withAnnotationsCarrying(valDef.symbol, defn.BeanSetterMetaAnnot)
-        def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
+        def body(params: Vector[Vector[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
         DefDef(meth, body).withSpan(meth.span)
       }
 
@@ -58,7 +58,7 @@ class BeanProperties(thisPhase: DenotTransformer):
     val symbol = valDef.denot.symbol
     symbol.getAnnotation(defn.BeanPropertyAnnot)
       .orElse(symbol.getAnnotation(defn.BooleanBeanPropertyAnnot))
-      .toList.flatMap { annot =>
-        generateGetter(valDef, annot) +: maybeGenerateSetter(valDef, annot) ++: Nil
+      .toVector.flatMap { annot =>
+        generateGetter(valDef, annot) +: maybeGenerateSetter(valDef, annot) ++: Vector()
       }
   end generateAccessors

@@ -30,7 +30,7 @@ abstract class Platform {
   def addToClassPath(cPath: ClassPath)(using Context): Unit
 
   /** Any platform-specific phases. */
-  //def platformPhases: List[SubComponent]
+  //def platformPhases: Vector[SubComponent]
 
   /** Is the SAMType `cls` also a SAM under the rules of the platform? */
   def isSam(cls: ClassSymbol)(using Context): Boolean

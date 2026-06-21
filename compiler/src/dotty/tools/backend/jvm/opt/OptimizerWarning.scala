@@ -159,7 +159,7 @@ sealed trait CannotInlineWarning extends OptimizerWarning {
 final case class CalleeNotFinal(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean) extends CannotInlineWarning
 
 final case class IllegalAccessInstructions(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean,
-                                           callsiteClass: InternalName, instructions: List[AbstractInsnNode]) extends CannotInlineWarning
+                                           callsiteClass: InternalName, instructions: Vector[AbstractInsnNode]) extends CannotInlineWarning
 
 final case class IllegalAccessCheckFailed(calleeDeclarationClass: InternalName, name: String, descriptor: String, annotatedInline: Boolean,
                                           callsiteClass: InternalName, instruction: AbstractInsnNode, cause: OptimizerWarning) extends CannotInlineWarning

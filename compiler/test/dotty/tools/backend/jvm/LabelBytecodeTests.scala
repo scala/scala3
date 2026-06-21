@@ -124,7 +124,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
     )
   }
 
-  private def throws(instructions: List[Instruction]): Boolean =
+  private def throws(instructions: Vector[Instruction]): Boolean =
     instructions.exists {
       case Op(ATHROW) => true
       case _ => false
@@ -132,23 +132,23 @@ class LabelBytecodeTests extends DottyBytecodeTest {
 
   private def testLabelBytecodeEquals(code: String, tpe: String, expected: Instruction*): Unit =
     checkLabelBytecodeInstructions(code, tpe) { instructions =>
-      val expectedList = expected.toList
+      val expectedList = expected.toVector
       assert(instructions == expectedList,
         "`test` was not properly generated\n" + diffInstructions(instructions, expectedList))
     }
 
-  private def testLabelBytecodeExpect(code: String, tpe: String, expected: List[Instruction] => Boolean): Unit =
+  private def testLabelBytecodeExpect(code: String, tpe: String, expected: Vector[Instruction] => Boolean): Unit =
     checkLabelBytecodeInstructions(code, tpe) { instructions =>
       assert(expected(instructions),
         "`test` was not properly generated\n" + instructions)
     }
 
-   private def checkLabelBytecodeInstructions(code: String, tpe: String)(checkOutput: List[Instruction] => Unit): Unit = {
+   private def checkLabelBytecodeInstructions(code: String, tpe: String)(checkOutput: Vector[Instruction] => Unit): Unit = {
     val source =
       s"""import scala.util.boundary, boundary.break
          |class Test:
          |  def test: $tpe = {
-         |    ${code.linesIterator.toList.mkString("", "\n    ", "")}
+         |    ${code.linesIterator.toVector.mkString("", "\n    ", "")}
          |  }
          |  def nonLocalBreak[T](value: T)(using boundary.Label[T]): Nothing = break(value)
          |  def nonLocalBreak()(using boundary.Label[Unit]): Nothing = break(())

@@ -103,8 +103,13 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
             Span(MaxOffset, MaxOffset)
         case m: untpd.Modifiers =>
           include(include(span, m.mods), m.annotations)
-        case y :: ys =>
-          include(include(span, y), ys)
+        case xs: Vector[?] =>
+          var span1 = span
+          var i = 0
+          while i < xs.length do
+            span1 = include(span1, xs(i))
+            i += 1
+          span1
         case _ => span
       }
       val limit = productArity
@@ -140,7 +145,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         x.contains(that)
       case m: untpd.Modifiers =>
         m.mods.exists(isParent) || m.annotations.exists(isParent)
-      case xs: List[?] =>
+      case xs: Vector[?] =>
         xs.exists(isParent)
       case _ =>
         false
@@ -204,7 +209,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       case m: untpd.Modifiers =>
         m.annotations.foreach(check)
         m.mods.foreach(check)
-      case xs: List[?] =>
+      case xs: Vector[?] =>
         xs.foreach(check)
       case _ =>
     }
@@ -216,7 +221,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         check(tree.trailingParamss)
       case tree: DefDef if tree.mods.is(ExtensionMethod) =>
         tree.paramss match
-          case vparams1 :: vparams2 :: rest if tree.name.isRightAssocOperatorName =>
+          case vparams1 +: vparams2 +: rest if tree.name.isRightAssocOperatorName =>
             // omit check for right-associatiove extension methods; their parameters were swapped
           case _ =>
             check(tree.paramss)

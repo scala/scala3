@@ -249,7 +249,7 @@ private[semanticdb] object Scala3:
         val setterName = sym.name.toTermName.setterName
 
         extension (t: Type) inline def matchingType = t.paramInfoss match
-          case (arg::Nil)::Nil => t.resultType == defn.UnitType && arg == sym.info
+          case (arg+:Vector())+:Vector() => t.resultType == defn.UnitType && arg == sym.info
           case _               => false
 
         sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
@@ -332,7 +332,7 @@ private[semanticdb] object Scala3:
         if sym.is(Lazy, butNot=Module) then
           props |= SymbolInformation.Property.LAZY.value
         if sym.isAllOf(Case | Module) ||
-          (sym.is(CaseClass) && !symkinds.exists(_.isTypeVal)) || // `t` of `case List[t] =>` (which has `CaseClass` flag) shouldn't be `CASE`
+          (sym.is(CaseClass) && !symkinds.exists(_.isTypeVal)) || // `t` of `case Vector[t] =>` (which has `CaseClass` flag) shouldn't be `CASE`
           sym.isAllOf(EnumCase) then
           props |= SymbolInformation.Property.CASE.value
         if sym.is(Covariant) then
@@ -381,8 +381,8 @@ private[semanticdb] object Scala3:
               if (sym.is(Protected)) ProtectedWithinAccess(ssym)
               else PrivateWithinAccess(ssym)
 
-      def overriddenSymbols(using Context, SemanticSymbolBuilder): List[String] =
-        sym.allOverriddenSymbols.map(_.symbolName).toList
+      def overriddenSymbols(using Context, SemanticSymbolBuilder): Vector[String] =
+        sym.allOverriddenSymbols.map(_.symbolName).toVector
   end SymbolOps
 
   object LocalSymbol:

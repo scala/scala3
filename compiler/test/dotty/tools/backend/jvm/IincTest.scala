@@ -20,7 +20,7 @@ class IincTest extends DottyBytecodeTest {
       |  i -= 128
       |  i
       |}""".stripMargin,
-    List(1, 54, 127, -1, -54, -128)
+    Vector(1, 54, 127, -1, -54, -128)
   )
 
   @Test def wideIncrement = test(
@@ -34,7 +34,7 @@ class IincTest extends DottyBytecodeTest {
       |  i -= 32768
       |  i
       |}""".stripMargin,
-    List(128, 8765, 32767, -129, -8765, -32768)
+    Vector(128, 8765, 32767, -129, -8765, -32768)
   )
 
   @Test def tooBigForIinc = test(
@@ -48,10 +48,10 @@ class IincTest extends DottyBytecodeTest {
       |  i -= 2147483647
       |  i
       |}""".stripMargin,
-    Nil
+    Vector()
   )
 
-  private def test(code: String, expectedIincs: List[Int])= {
+  private def test(code: String, expectedIincs: Vector[Int])= {
     val source =
       s"""class Increment {
          | def test(x: Int): Int = $code

@@ -101,7 +101,7 @@ class CheckShadowing extends MiniPhase:
   private def isValidTypeParamOwner(owner: Symbol)(using Context): Boolean =
     !owner.isConstructor && !owner.is(Synthetic) && !owner.is(Exported)
 
-  private def reportShadowing(warnings: List[ShadowWarning])(using Context): Unit =
+  private def reportShadowing(warnings: Vector[ShadowWarning])(using Context): Unit =
     warnings.sortBy(w => (w.pos.line, w.pos.startPos.column))
       .foreach(w => report.warning(w.msg, w.pos))
 
@@ -150,7 +150,7 @@ object CheckShadowing:
     private val explicitsImports = MutStack[MutSet[tpd.Import]]()
     private val renamedImports = MutStack[MutMap[SimpleName, Name]]() // original name -> renamed name
 
-    private val typeParamCandidates = MutMap[Symbol, Seq[tpd.TypeDef]]().withDefaultValue(Seq())
+    private val typeParamCandidates = MutMap[Symbol, Vector[tpd.TypeDef]]().withDefaultValue(Vector.empty)
     private val typeParamShadowWarnings = MutSet[ShadowWarning]()
 
     private val privateShadowWarnings = MutSet[ShadowWarning]()
@@ -179,8 +179,8 @@ object CheckShadowing:
 
     /** Register a potential type definition which could shadows a Type already defined */
     def registerCandidate(parent: Symbol, typeDef: tpd.TypeDef) =
-      val actual = typeParamCandidates.getOrElseUpdate(parent, Seq())
-      typeParamCandidates.update(parent, actual.+:(typeDef))
+      val actual = typeParamCandidates.getOrElseUpdate(parent, Vector.empty)
+      typeParamCandidates.update(parent, typeDef +: actual)
 
     /** Compute if there is some TypeParam shadowing and register if it is the case */
     def computeTypeParamShadowsFor(parent: Symbol)(using Context): Unit =
@@ -224,28 +224,28 @@ object CheckShadowing:
       if symDecl.isPrivate then
         val symDeclType = symDecl.info
         val bClasses = symDecl.owner.info.baseClasses
-        bClasses match
-          case _ :: inherited =>
+        (bClasses: @unchecked) match
+          case _ +: inherited =>
             inherited
               .map(classSymbol => symDecl.denot.matchingDecl(classSymbol, symDeclType))
               .find(sym => sym.name == symDecl.name)
-          case Nil =>
+          case Vector() =>
             None
       else
         None
 
     /** Get the shadowing analysis's result */
-    def getShadowingResult(using Context): List[ShadowWarning] =
-      val privateWarnings: List[ShadowWarning] =
+    def getShadowingResult(using Context): Vector[ShadowWarning] =
+      val privateWarnings: Vector[ShadowWarning] =
         if ctx.settings.WshadowHas.privateShadow then
-          privateShadowWarnings.toList
+          privateShadowWarnings.toVector
         else
-          Nil
-      val typeParamWarnings: List[ShadowWarning] =
+          Vector()
+      val typeParamWarnings: Vector[ShadowWarning] =
         if ctx.settings.WshadowHas.typeParameterShadow then
-          typeParamShadowWarnings.toList
+          typeParamShadowWarnings.toVector
         else
-          Nil
+          Vector()
       privateWarnings ++ typeParamWarnings
 
     extension (sym: Symbol)

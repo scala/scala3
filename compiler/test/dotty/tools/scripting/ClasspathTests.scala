@@ -53,10 +53,10 @@ class ClasspathTests:
       val scriptCp = findTaggedLine("classpath", scriptOutput) // the value tagged "classpath: "
 
       // convert scriptCp to a list of files
-      val hashbangJars: List[File] = scriptCp.split(psep).map { _.toFile }.toList
+      val hashbangJars: Vector[File] = scriptCp.split(psep).map { _.toFile }.toVector
       val hashbangClasspathJars = hashbangJars.map { _.name }.sorted.distinct // get jar basenames, remove duplicates
       val packlibDir: String = ??? /* ??? was s"$scriptCwd/$packLibDir" */ // classpathReport_scalacli.sc specifies a wildcard classpath in this directory
-      val packlibJars: List[File] = listJars(packlibDir) // classpath entries expected to have been reported by the script
+      val packlibJars: Vector[File] = listJars(packlibDir) // classpath entries expected to have been reported by the script
 
       printf(s"%d jar files in $packDir/lib\n", packlibJars.size)
       printf("%d test script jars in classpath\n", hashbangClasspathJars.size)

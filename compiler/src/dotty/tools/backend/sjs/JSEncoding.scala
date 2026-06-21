@@ -199,18 +199,18 @@ object JSEncoding {
     val hasExplicitThisParameter = !sym.is(JavaStatic) && sym.owner.isNonNativeJSClass
     val paramTypeRefs =
       if (!hasExplicitThisParameter) paramTypeRefs0
-      else encodeClassRef(sym.owner) :: paramTypeRefs0
+      else encodeClassRef(sym.owner) +: paramTypeRefs0
 
     val name = sym.name
     val simpleName = SimpleMethodName(name.mangledString)
 
     val methodName = {
       if (sym.isClassConstructor)
-        MethodName.constructor(paramTypeRefs)
+        MethodName.constructor(paramTypeRefs.toList)
       else if (reflProxy)
-        MethodName.reflectiveProxy(simpleName, paramTypeRefs)
+        MethodName.reflectiveProxy(simpleName, paramTypeRefs.toList)
       else
-        MethodName(simpleName, paramTypeRefs, paramOrResultTypeRef(patchedResultType(sym)))
+        MethodName(simpleName, paramTypeRefs.toList, paramOrResultTypeRef(patchedResultType(sym)))
     }
 
     js.MethodIdent(methodName)
@@ -234,14 +234,14 @@ object JSEncoding {
   private def encodeFieldSymAsMethod(sym: Symbol)(using Context, ir.Position): js.MethodIdent = {
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.info)
-    val methodName = MethodName(name.mangledString, Nil, resultTypeRef)
+    val methodName = MethodName(name.mangledString, Vector().toList, resultTypeRef)
     js.MethodIdent(methodName)
   }
 
-  def encodeDynamicImportForwarderIdent(params: List[Symbol])(using Context, ir.Position): js.MethodIdent = {
+  def encodeDynamicImportForwarderIdent(params: Vector[Symbol])(using Context, ir.Position): js.MethodIdent = {
     val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.info))
     val resultTypeRef = jstpe.ClassRef(jswkn.ObjectClass)
-    val methodName = MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
+    val methodName = MethodName(dynamicImportForwarderSimpleName, paramTypeRefs.toList, resultTypeRef)
     js.MethodIdent(methodName)
   }
 

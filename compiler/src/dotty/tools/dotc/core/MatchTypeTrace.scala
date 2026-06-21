@@ -12,14 +12,14 @@ object MatchTypeTrace:
 
   private enum TraceEntry:
     case TryReduce(scrut: Type)
-    case NoMatches(scrut: Type, cases: List[MatchTypeCaseSpec])
-    case Stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: List[MatchTypeCaseSpec])
-    case NoInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: List[(Name, TypeBounds)])
+    case NoMatches(scrut: Type, cases: Vector[MatchTypeCaseSpec])
+    case Stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: Vector[MatchTypeCaseSpec])
+    case NoInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: Vector[(Name, TypeBounds)])
     case EmptyScrutinee(scrut: Type)
   import TraceEntry.*
 
   private class MatchTrace:
-    var entries: List[TraceEntry] = Nil
+    var entries: Vector[TraceEntry] = Vector()
 
   private val MatchTrace = new Property.Key[MatchTrace]
 
@@ -47,24 +47,24 @@ object MatchTypeTrace:
     ctx.property(MatchTrace) match
       case Some(trace) =>
         trace.entries match
-          case (e: TryReduce) :: es => trace.entries = entry :: trace.entries
+          case (e: TryReduce) +: es => trace.entries = entry +: trace.entries
           case _ =>
       case _ =>
 
   /** Record a failure that scrutinee `scrut` does not match any case in `cases`.
    *  Only the first failure is recorded.
    */
-  def noMatches(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context) =
+  def noMatches(scrut: Type, cases: Vector[MatchTypeCaseSpec])(using Context) =
     matchTypeFail(NoMatches(scrut, cases))
 
   /** Record a failure that scrutinee `scrut` does not match `stuckCase` but is
    *  not disjoint from it either, which means that the remaining cases `otherCases`
    *  cannot be visited. Only the first failure is recorded.
    */
-  def stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: List[MatchTypeCaseSpec])(using Context) =
+  def stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: Vector[MatchTypeCaseSpec])(using Context) =
     matchTypeFail(Stuck(scrut, stuckCase, otherCases))
 
-  def noInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: List[(Name, TypeBounds)])(using Context) =
+  def noInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: Vector[(Name, TypeBounds)])(using Context) =
     matchTypeFail(NoInstance(scrut, stuckCase, fails))
 
   /** Record a failure that scrutinee `scrut` is provably empty.
@@ -80,7 +80,7 @@ object MatchTypeTrace:
     ctx.property(MatchTrace) match
       case Some(trace) if !trace.entries.contains(TryReduce(scrut)) =>
         val prev = trace.entries
-        trace.entries = TryReduce(scrut) :: prev
+        trace.entries = TryReduce(scrut) +: prev
         val res = op
         if res.exists then trace.entries = prev
         res
@@ -96,7 +96,7 @@ object MatchTypeTrace:
     case defn.MatchCase(pat, body) => i"case $pat => $body"
     case _ => i"case $tp"
 
-  private def casesText(cases: List[MatchTypeCaseSpec])(using Context) =
+  private def casesText(cases: Vector[MatchTypeCaseSpec])(using Context) =
     i"${cases.map(caseText)}%\n    %"
 
   private def explainEntry(entry: TraceEntry)(using Context): String = entry match
@@ -131,7 +131,7 @@ object MatchTypeTrace:
          |    ${fails.map((name, bounds) => i"$name$bounds")}%\n    %"""
 
   /** The failure message when the scrutinee `scrut` does not match any case in `cases`. */
-  def noMatchesText(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): String =
+  def noMatchesText(scrut: Type, cases: Vector[MatchTypeCaseSpec])(using Context): String =
     i"""failed since selector $scrut
        |matches none of the cases
        |

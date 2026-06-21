@@ -531,12 +531,12 @@ class CodeActionTest extends DottyTest:
     assertEquals("Expected exactly one diagnostic", 1, diagnostics.size)
 
     val diagnostic = diagnostics.head
-    val actions = diagnostic.msg.actions.toList
+    val actions = diagnostic.msg.actions.toVector
     val action = actions.find(_.title == title).getOrElse:
       assertFailed(
         s"Expected an action titled '$title', but found: " +
           (if actions.isEmpty then "none" else actions.map(a => s"'${a.title}'").mkString(", ")))
-    val patches = action.patches.toList
+    val patches = action.patches.toVector
     if patches.nonEmpty then
       patches.reduceLeft: (p1, p2) =>
         assert(p1.srcPos.span.end <= p2.srcPos.span.start, s"overlapping patches $p1 and $p2")
@@ -556,7 +556,7 @@ class CodeActionTest extends DottyTest:
     val runCtx = checkCompile(afterPhase, code) { (_, _) => () }
     val diagnostics = runCtx.reporter.removeBufferedMessages
     assertEquals("Expected exactly one diagnostic", 1, diagnostics.size)
-    val actions = diagnostics.head.msg.actions.toList
+    val actions = diagnostics.head.msg.actions.toVector
     assert(
       !actions.exists(_.title == title),
       s"Did not expect action '$title', but it was offered. Found: ${actions.map(_.title).mkString(", ")}"

@@ -107,7 +107,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
   private class InliningTreeMap(collector: ExtractInlineDependenciesCollector) extends TreeMapWithTrackedStats {
 
-    /** List of top level classes added by macro annotation in a package object.
+    /** Vector of top level classes added by macro annotation in a package object.
      *  These are added to the PackageDef that owns this particular package object.
      */
     private val newTopClasses = MutableSymbolMap[mutable.ListBuffer[Tree]]()
@@ -145,7 +145,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
               newTopClasses.get(tree.symbol.moduleClass) match
                 case Some(topClasses) =>
                   newTopClasses.remove(tree.symbol.moduleClass)
-                  val newStats = tree1.stats ::: topClasses.result()
+                  val newStats = tree1.stats ++ topClasses.result()
                   cpy.PackageDef(tree1)(tree1.pid, newStats)
                 case _ => tree1
             case tree1 => tree1
@@ -185,7 +185,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
         val (trees, newCompanion) = MacroAnnotations.expandAnnotations(tree, companion)
 
         // Enter the new symbols & Update the tracked trees
-        (newCompanion.toList ::: trees).foreach: tree =>
+        (newCompanion.toVector ++ trees).foreach: tree =>
           MacroAnnotations.enterMissingSymbols(tree, self)
 
         // Perform inlining on the expansion of the annotations
@@ -197,7 +197,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
         // Find classes added to the top level from a package object
         val (topClasses, trees2) =
           if ctx.owner.isPackageObject then trees1.partition(_.symbol.owner == ctx.owner.owner)
-          else (Nil, trees1)
+          else (Vector(), trees1)
         if topClasses.nonEmpty then
           newTopClasses.getOrElseUpdate(ctx.owner.owner, new mutable.ListBuffer) ++= topClasses
         flatTree(trees2)

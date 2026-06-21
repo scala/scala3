@@ -61,7 +61,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       // Check that the @publicInBinary annotated method is called
       val testInlined = getMethod(cClass, "testInlined")
       val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInlinedInstructions, List(
+      assertSameCode(testInlinedInstructions, Vector(
         Invoke(INVOKEVIRTUAL, "C", "packagePrivateMethod", "()I", false),
         Invoke(INVOKEVIRTUAL, "C", "protectedMethod", "()I", false),
       ))
@@ -92,7 +92,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       // Check that the @publicInBinary annotated method is called
       val testInlined = getMethod(cClass, "testInlined")
       val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInlinedInstructions, List(
+      assertSameCode(testInlinedInstructions, Vector(
         Invoke(INVOKEVIRTUAL, "C", "packagePrivateVal", "()I", false),
         Invoke(INVOKEVIRTUAL, "C", "protectedVal", "()I", false),
         Invoke(INVOKEVIRTUAL, "C", "lazyPackagePrivateVal", "()I", false),
@@ -125,7 +125,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       // Check that the @publicInBinary annotated method is called
       val testInlined = getMethod(cClass, "testInlined")
       val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInlinedInstructions, List(
+      assertSameCode(testInlinedInstructions, Vector(
         Invoke(INVOKEVIRTUAL, "C", "packagePrivateVar_$eq", "(I)V", false),
         Invoke(INVOKEVIRTUAL, "C", "protectedVar_$eq", "(I)V", false),
         Invoke(INVOKEVIRTUAL, "C", "packagePrivateVar", "()I", false),
@@ -158,7 +158,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       // Check that the @publicInBinary annotated method is called
       val testInlined = getMethod(cClass, "testInlined")
       val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInlinedInstructions, List(
+      assertSameCode(testInlinedInstructions, Vector(
         Invoke(INVOKEVIRTUAL, "C", "packagePrivateGiven1", "()I", false),
         Invoke(INVOKEVIRTUAL, "C", "protectedGiven1", "()I", false),
         Invoke(INVOKEVIRTUAL, "C", "packagePrivateGiven2", "(I)I", false),
@@ -188,7 +188,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       // Check that the @publicInBinary annotated method is called
       val testInlined = getMethod(cClass, "testInlined")
       val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInlinedInstructions, List(
+      assertSameCode(testInlinedInstructions, Vector(
         Invoke(INVOKEVIRTUAL, "C", "packagePrivateVal", "()I", false),
         Invoke(INVOKEVIRTUAL, "C", "protectedVal", "()I", false),
       ))
@@ -262,7 +262,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       // Check that the @publicInBinary annotated method is called
       val testInlined = getMethod(cTrait, "testInlined")
       val testInlinedInstructions = instructionsFromMethod(testInlined).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInlinedInstructions, List(
+      assertSameCode(testInlinedInstructions, Vector(
         Invoke(INVOKEINTERFACE, "C", "packagePrivateVar_$eq", "(I)V", true),
         Invoke(INVOKEINTERFACE, "C", "protectedVar_$eq", "(I)V", true),
         Invoke(INVOKEINTERFACE, "C", "packagePrivateVal", "()I", true),
@@ -324,7 +324,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       val macroClass = loadClassNode(dir.lookupName("Macro.class", directory = false).input, skipDebugInfo = false)
       val testMethod = getMethod(macroClass, "test")
       val testInstructions = instructionsFromMethod(testMethod).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInstructions, List(
+      assertSameCode(testInstructions, Vector(
         Invoke(INVOKEVIRTUAL, "Macro$", "fooImpl", "()V", false)))
     }
   }
@@ -344,7 +344,7 @@ class PublicInBinaryTests extends DottyBytecodeTest {
       val barClass = loadClassNode(dir.subdirectoryNamed("foo").lookupName("C.class", directory = false).input, skipDebugInfo = false)
       val testMethod = getMethod(barClass, "test")
       val testInstructions = instructionsFromMethod(testMethod).filter(_.isInstanceOf[Invoke])
-      assertSameCode(testInstructions, List(
+      assertSameCode(testInstructions, Vector(
         Invoke(INVOKEVIRTUAL, "foo/D$", "bazImpl", "()V", false)))
     }
   }
@@ -377,13 +377,13 @@ class PublicInBinaryTests extends DottyBytecodeTest {
 
       val test1Method = getMethod(bInnerClass, "test1")
       val test1Instructions = instructionsFromMethod(test1Method).filter(_.isInstanceOf[Invoke])
-      assertSameCode(test1Instructions, List(
+      assertSameCode(test1Instructions, Vector(
         Invoke(INVOKEINTERFACE, "q/B$BInner", "q$B$BInner$$$outer", "()Lq/B;", true),
         Invoke(INVOKEVIRTUAL, "q/B", "protected$a", "()I", false)))
 
       val test2Method = getMethod(bInnerClass, "test2")
       val test2Instructions = instructionsFromMethod(test2Method).filter(_.isInstanceOf[Invoke])
-      assertSameCode(test2Instructions, List(
+      assertSameCode(test2Instructions, Vector(
         Invoke(INVOKEINTERFACE, "q/B$BInner", "q$B$BInner$$$outer", "()Lq/B;", true),
         Invoke(INVOKEVIRTUAL, "q/B", "b", "()I", false) ))
     }

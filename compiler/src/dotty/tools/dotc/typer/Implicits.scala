@@ -102,7 +102,7 @@ object Implicits:
     def level: Int = 0
 
     /** The implicit references */
-    def refs: List[ImplicitRef]
+    def refs: Vector[ImplicitRef]
 
     /** If comes from an implicit scope of a type, the companion objects making
      *  up that implicit scope, otherwise the empty set.
@@ -121,7 +121,7 @@ object Implicits:
     protected def isAccessible(ref: TermRef)(using Context): Boolean
 
     /** Return those references in `refs` that are compatible with type `pt`. */
-    protected def filterMatching(pt: Type)(using Context): List[Candidate] = {
+    protected def filterMatching(pt: Type)(using Context): Vector[Candidate] = {
       record("filterMatching")
 
       val considerExtension = pt match
@@ -215,9 +215,9 @@ object Implicits:
             tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(widenSingleton))
           case _ =>
             tp.baseType(defn.ConversionClass) match
-              case app @ AppliedType(tycon, from :: rest) =>
+              case app @ AppliedType(tycon, from +: rest) =>
                 val wideFrom = from.widenSingleton
-                if wideFrom ne from then app.derivedAppliedType(tycon, wideFrom :: rest)
+                if wideFrom ne from then app.derivedAppliedType(tycon, wideFrom +: rest)
                 else tp
               case _ => tp
 
@@ -251,7 +251,7 @@ object Implicits:
 
 
       if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
-        Nil
+        Vector()
       else
         val candidates = new mutable.ListBuffer[Candidate]
         def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
@@ -267,7 +267,7 @@ object Implicits:
           companionRefs.foreach(tryCandidate(extensionOnly = true))
         if refs.nonEmpty then
           refs.foreach(tryCandidate(extensionOnly = false))
-        candidates.toList
+        candidates.toVector
     }
   }
 
@@ -277,14 +277,14 @@ object Implicits:
    */
   class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     implicits.println(i"implicit scope of type $tp = ${companionRefs.showAsList}%, %")
-    @threadUnsafe lazy val refs: List[ImplicitRef] = {
+    @threadUnsafe lazy val refs: Vector[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers
-      buf.toList
+      buf.toVector
     }
 
     /** The candidates that are eligible for expected type `tp` */
-    @threadUnsafe lazy val eligible: List[Candidate] =
+    @threadUnsafe lazy val eligible: Vector[Candidate] =
       trace(i"eligible($tp), companions = ${companionRefs.showAsList}%, %", implicitsDetailed, show = true) {
         if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
         filterMatching(tp)
@@ -305,10 +305,10 @@ object Implicits:
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
   class ContextualImplicits(
-      val refs: List[ImplicitRef],
+      val refs: Vector[ImplicitRef],
       val outerImplicits: ContextualImplicits | Null,
       val isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
-    private val eligibleCache = EqHashMap[Type, List[Candidate]]()
+    private val eligibleCache = EqHashMap[Type, Vector[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
      *  the context of the next-outer ImplicitRefs. This is however disabled under
@@ -335,7 +335,7 @@ object Implicits:
     def bindingPrec: BindingPrec =
       if isImport then if ctx.importInfo.uncheckedNN.isWildcardImport then WildImport else NamedImport else Definition
 
-    private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
+    private def combineEligibles(ownEligible: Vector[Candidate], outerEligible: Vector[Candidate]): Vector[Candidate] =
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
@@ -350,12 +350,12 @@ object Implicits:
             else true
           val keptOwn = ownEligible.filterConserve: cand =>
             ownNames.contains(cand.ref.implicitName)
-          keptOwn ::: keptOuters
+          keptOwn ++ keptOuters
         else
-          ownEligible ::: outerEligible.filterConserve: cand =>
+          ownEligible ++ outerEligible.filterConserve: cand =>
             !ownNames.contains(cand.ref.implicitName)
 
-    def uncachedEligible(tp: Type)(using Context): List[Candidate] =
+    def uncachedEligible(tp: Type)(using Context): Vector[Candidate] =
       Stats.record("uncached eligible")
       if monitored then record(s"check uncached eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
@@ -363,7 +363,7 @@ object Implicits:
       else combineEligibles(ownEligible, outerImplicits.nn.uncachedEligible(tp))
 
     /** The implicit references that are eligible for type `tp`. */
-    def eligible(tp: Type): List[Candidate] =
+    def eligible(tp: Type): Vector[Candidate] =
       if (tp.hash == NotCached)
         Stats.record(i"compute eligible not cached ${tp.getClass}")
         Stats.record("compute eligible not cached")
@@ -374,7 +374,7 @@ object Implicits:
           Stats.record("cached eligible")
           eligibles
         }
-        else if (irefCtx eq NoContext) Nil
+        else if (irefCtx eq NoContext) Vector()
         else {
           Stats.record(i"compute eligible cached")
           val result = computeEligible(tp)
@@ -383,7 +383,7 @@ object Implicits:
         }
       }
 
-    private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
+    private def computeEligible(tp: Type): Vector[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
       if isOutermost then ownEligible
@@ -426,7 +426,7 @@ object Implicits:
     /** The references that were found, there can be two of them in the case
      *  of an AmbiguousImplicits failure
      */
-    def found: List[TermRef]
+    def found: Vector[TermRef]
 
     def recoverWith(other: SearchFailure => SearchResult): SearchResult = this match {
       case _: SearchSuccess => this
@@ -444,7 +444,7 @@ object Implicits:
    */
   case class SearchSuccess(tree: Tree, ref: TermRef, level: Int, isExtension: Boolean = false)(val tstate: TyperState, val gstate: GadtConstraint)
   extends SearchResult with RefAndLevel with Showable:
-    final def found = ref :: Nil
+    final def found = ref +: Vector()
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
@@ -452,8 +452,8 @@ object Implicits:
     final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
     final def found = tree.tpe match
-      case tpe: AmbiguousImplicits => tpe.alt1.ref :: tpe.alt2.ref :: Nil
-      case _ => Nil
+      case tpe: AmbiguousImplicits => tpe.alt1.ref +: tpe.alt2.ref +: Vector()
+      case _ => Vector()
   }
 
   object SearchFailure {
@@ -485,7 +485,7 @@ object Implicits:
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
 
-    def notes(using Context): List[Note] = Nil
+    def notes(using Context): Vector[Note] = Vector()
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty)
@@ -509,7 +509,7 @@ object Implicits:
             case _ =>
               mapOver(t)
 
-          override def mapArgs(args: List[Type], tparams: List[ParamInfo]) =
+          override def mapArgs(args: Vector[Type], tparams: Vector[ParamInfo]) =
             args.mapConserve {
               case t: TypeParamRef =>
                 constraint.entry(t) match
@@ -545,7 +545,7 @@ object Implicits:
         i"""
           |Note that implicit conversions were not tried because the result of an implicit conversion
           |must be more specific than $target"""
-      :: Nil
+      +: Vector()
 
     override def msg(using Context) =
       super.msg.append(i"\nThe expected type $target is not specific enough, so no search was attempted")
@@ -556,7 +556,7 @@ object Implicits:
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree, val nested: Boolean = false) extends SearchFailureType:
 
-    private[Implicits] var priorityChangeWarnings: List[GivenSearchPriorityWarning] = Nil
+    private[Implicits] var priorityChangeWarnings: Vector[GivenSearchPriorityWarning] = Vector()
 
     def priorityChangeWarningNote(using Context): String =
       priorityChangeWarnings.map(_.ambiguousNote).mkString
@@ -571,14 +571,14 @@ object Implicits:
 
     override def notes(using Context) =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
-        Nil
+        Vector()
       else
         val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
         Note:
           i"""
              |Note that implicit $what cannot be applied because they are ambiguous;
              |$explanation"""
-        :: Nil
+        +: Vector()
 
     def asNested = if nested then this else AmbiguousImplicits(alt1, alt2, expectedType, argument, nested = true)
   end AmbiguousImplicits
@@ -610,7 +610,7 @@ object Implicits:
     override def msg(using Context) = _msg
 
   /** A search failure type for failed synthesis of terms for special types */
-  class SynthesisFailure(reasons: List[String], val expectedType: Type) extends SearchFailureType:
+  class SynthesisFailure(reasons: Vector[String], val expectedType: Type) extends SearchFailureType:
     def argument = EmptyTree
 
     private def formatReasons =
@@ -621,7 +621,7 @@ object Implicits:
 
     def msg(using Context) = em"Failed to synthesize an instance of type ${clarify(expectedType)}:${formatReasons}"
 
-  class MacroErrorsFailure(errors: List[Diagnostic.Error],
+  class MacroErrorsFailure(errors: Vector[Diagnostic.Error],
                            val expectedType: Type,
                            val argument: Tree) extends SearchFailureType {
     def msg(using Context): Message =
@@ -856,7 +856,7 @@ trait ImplicitRunInfo:
             case t @ AppliedType(tycon, args) if !tycon.typeSymbol.isClass =>
               // To prevent arguments to be reduced away when re-applying the tycon bounds,
               // we collect all parts as elements of a tuple. See i21951.scala for a test case.
-              apply(defn.tupleType(tycon :: args))
+              apply(defn.tupleType(tycon +: args))
             case t => mapOver(t)
         end liftToAnchors
         val liftedTp = liftToAnchors(tp)
@@ -998,9 +998,9 @@ trait Implicits:
           // example where searching for a nested type causes an infinite loop.
           None
 
-    def allImplicits(currImplicits: ContextualImplicits): List[ImplicitRef] =
+    def allImplicits(currImplicits: ContextualImplicits): Vector[ImplicitRef] =
       if currImplicits.outerImplicits == null then currImplicits.refs
-      else currImplicits.refs ::: allImplicits(currImplicits.outerImplicits)
+      else currImplicits.refs ++ allImplicits(currImplicits.outerImplicits)
 
     /** Whether the given type is for an implicit def that's a Scala 2 implicit conversion */
     def isImplicitDefConversion(typ: Type): Boolean = typ match {
@@ -1023,7 +1023,7 @@ trait Implicits:
                 && viewExists(imp.underlying.resultType, fail.expectedType)
             }
         else
-          Nil
+          Vector()
 
     MissingImplicitArgument(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, ignoredConvertibleImplicits)
   }
@@ -1195,7 +1195,7 @@ trait Implicits:
                   nme.apply)
               else untpdGenerated
             typed(
-              untpd.Apply(untpdConv, untpd.TypedSplice(argument) :: Nil),
+              untpd.Apply(untpdConv, untpd.TypedSplice(argument) +: Vector()),
               pt, locked)
           }
           pt match
@@ -1321,12 +1321,12 @@ trait Implicits:
             result
 
     /** Search a list of eligible implicit references */
-    private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
+    private def searchImplicit(eligible: Vector[Candidate], contextual: Boolean): SearchResult =
 
       // A map that associates a priority change warning (between -source 3.6 and 3.7)
       // with the candidate refs mentioned in the warning. We report the associated
       // message if one of the critical candidates is part of the result of the implicit search.
-      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]()
+      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ Vector[TermRef], GivenSearchPriorityWarning)]()
 
       val sv = Feature.sourceVersion
       val isLastOldVersion = sv.stable == SourceVersion.`3.6`
@@ -1368,7 +1368,7 @@ trait Implicits:
                       case 1 => (alt2, alt1)
                       case -1 => (alt1, alt2)
               val msg = GivenSearchPriorityWarning(pt, cmp, prev, winner.ref, loser.ref, isLastOldVersion)
-              val critical = alt1.ref :: alt2.ref :: Nil
+              val critical = alt1.ref +: alt2.ref +: Vector()
               priorityChangeWarnings += ((critical, msg))
               if isLastOldVersion then prev else cmp
             else cmp max prev
@@ -1447,14 +1447,14 @@ trait Implicits:
        *      treated as a simple failure, with a warning that semantics will change.
        *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
        */
-      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult =
+      def rank(pending: Vector[Candidate], found: SearchResult, rfailures: Vector[SearchFailure]): SearchResult =
         pending match {
-          case cand :: remaining =>
+          case cand +: remaining =>
             /** To recover from an ambiguous implicit failure, we need to find a pending
              *  candidate that is strictly better than the failed `ambiguous` candidate(s).
              *  If no such candidate is found, we propagate the ambiguity.
              */
-            def healAmbiguous(fail: SearchFailure, ambiguous: List[RefAndLevel]) =
+            def healAmbiguous(fail: SearchFailure, ambiguous: Vector[RefAndLevel]) =
               def betterThanAmbiguous(newCand: RefAndLevel, disambiguate: Boolean): Boolean =
                 ambiguous.forall(compareAlternatives(newCand, _, disambiguate) > 0)
 
@@ -1468,7 +1468,7 @@ trait Implicits:
                 else true
 
               val newPending = remaining.filter(betterThanAmbiguous(_, disambiguate = false))
-              rank(newPending, fail, Nil) match
+              rank(newPending, fail, Vector()) match
                 case found: SearchSuccess if betterByCurrentScheme(found) => found
                 case _ => fail
             end healAmbiguous
@@ -1479,19 +1479,19 @@ trait Implicits:
                   fail
                 else if (fail.isAmbiguous)
                   if migrateTo3 then
-                    val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
+                    val result = rank(remaining, found, NoMatchingImplicitsFailure +: rfailures)
                     if (result.isSuccess)
                       warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
                     result
                   else
                     // The ambiguity happened in a nested search: to recover we
                     // need a candidate better than `cand`
-                    healAmbiguous(fail, cand :: Nil)
+                    healAmbiguous(fail, cand +: Vector())
                 else
                   // keep only warnings that don't involve the failed candidate reference
                   priorityChangeWarnings.filterInPlace: (critical, _) =>
                     !critical.contains(cand.ref)
-                  rank(remaining, found, fail :: rfailures)
+                  rank(remaining, found, fail +: rfailures)
               case best: SearchSuccess =>
                 if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
                   best
@@ -1505,7 +1505,7 @@ trait Implicits:
                     // The ambiguity happened in the current search: to recover we
                     // need a candidate better than the two ambiguous alternatives.
                     val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
-                    healAmbiguous(fail, ambi.alt1 :: ambi.alt2 :: Nil)
+                    healAmbiguous(fail, ambi.alt1 +: ambi.alt2 +: Vector())
                 }
             }
           case nil =>
@@ -1628,11 +1628,11 @@ trait Implicits:
        *  This is just an optimization that aims at reducing the average
        *  number of candidates to be tested.
        */
-      def sort(eligible: List[Candidate]) = eligible match
-        case Nil => eligible
-        case e1 :: Nil => eligible
-        case e1 :: e2 :: Nil =>
-          if compareEligibles(e2, e1) < 0 then e2 :: e1 :: Nil
+      def sort(eligible: Vector[Candidate]) = eligible match
+        case Vector() => eligible
+        case e1 +: Vector() => eligible
+        case e1 +: e2 +: Vector() =>
+          if compareEligibles(e2, e1) < 0 then e2 +: e1 +: Vector()
           else eligible
         case _ =>
           val ord: Ordering[Candidate] = (a, b) => compareEligibles(a, b)
@@ -1643,10 +1643,10 @@ trait Implicits:
             validateOrdering(ord)
             throw ex
 
-      val res = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+      val res = rank(sort(eligible), NoMatchingImplicitsFailure, Vector())
 
       // Issue all priority change warnings that can affect the result
-      val shownWarnings = priorityChangeWarnings.toList.collect:
+      val shownWarnings = priorityChangeWarnings.toVector.collect:
         case (critical, msg) if res.found.exists(critical.contains(_)) =>
           msg
       res match
@@ -1788,7 +1788,7 @@ trait Implicits:
                         case _ =>
                           reason match
                             case (_: DivergingImplicit) => failure
-                            case _ => List(failure, failure2).maxBy(_.tree.treeSize)
+                            case _ => Vector(failure, failure2).maxBy(_.tree.treeSize)
                   else failure
     end searchImplicit
 
@@ -1949,7 +1949,7 @@ abstract class SearchHistory:
   val root: SearchRoot
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
-  def openSearchPairs: List[(Candidate, Type)]
+  def openSearchPairs: Vector[(Candidate, Type)]
 
   /**
    * Create the state for a nested implicit search.
@@ -1976,7 +1976,7 @@ end SearchHistory
 case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Context) extends SearchHistory:
   val root = outer.root
   val byname = outer.byname || pt.isByName
-  def openSearchPairs = (cand, pt) :: outer.openSearchPairs
+  def openSearchPairs = (cand, pt) +: outer.openSearchPairs
 
   // The typeSize and coveringSet of the current search.
   // Note: It is important to cache size and covering sets since types
@@ -1994,7 +1994,7 @@ end OpenSearch
 final class SearchRoot extends SearchHistory:
   val root = this
   val byname = false
-  def openSearchPairs = Nil
+  def openSearchPairs = Vector()
 
   /** How many expressions were constructed so far in the current toplevel implicit search?
    */
@@ -2080,8 +2080,8 @@ final class SearchRoot extends SearchHistory:
           // eliminating entries until all remaining entries are at least transtively referred
           // to in the outermost result term.
           @tailrec
-          def prune(trees: List[Tree], pending: List[(TermRef, Tree)], acc: List[(TermRef, Tree)]): List[(TermRef, Tree)] = pending match {
-            case Nil => acc
+          def prune(trees: Vector[Tree], pending: Vector[(TermRef, Tree)], acc: Vector[(TermRef, Tree)]): Vector[(TermRef, Tree)] = pending match {
+            case Vector() => acc
             case ps =>
               val (in, out) = ps.partition {
                 case (vref, rhs) =>
@@ -2094,7 +2094,7 @@ final class SearchRoot extends SearchHistory:
               else prune(in.map(_._2) ++ trees, out, in ++ acc)
           }
 
-          val pruned = prune(List(success.tree), implicitDictionary.map(_._2).toList, Nil)
+          val pruned = prune(Vector(success.tree), implicitDictionary.map(_._2).toVector, Vector())
           myImplicitDictionary = null
           if (pruned.isEmpty) result
           else if (pruned.exists(_._2 == EmptyTree)) NoMatchingImplicitsFailure
@@ -2119,7 +2119,7 @@ final class SearchRoot extends SearchHistory:
             //   result.tree // with dictionary references substituted in
             // }
 
-            val parents = List(defn.ObjectType, defn.SerializableType)
+            val parents = Vector(defn.ObjectType, defn.SerializableType)
             val classSym = newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = span)
             val vsyms = pruned.map(_._1.symbol)
             val nsyms = vsyms.map(vsym => newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
@@ -2148,11 +2148,11 @@ final class SearchRoot extends SearchHistory:
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
             }
 
-            val constr = newConstructor(classSym, Synthetic, Nil, Nil).entered
+            val constr = newConstructor(classSym, Synthetic, Vector(), Vector()).entered
             val classDef = ClassDef(classSym, DefDef(constr), vdefs)
 
             val valSym = newLazyImplicit(classSym.typeRef, span)
-            val inst = ValDef(valSym, New(classSym.typeRef, Nil))
+            val inst = ValDef(valSym, New(classSym.typeRef, Vector()))
 
             // Substitute dictionary references into outermost result term.
             val res = substVsymRefs(
@@ -2160,7 +2160,7 @@ final class SearchRoot extends SearchHistory:
               ref => valSym.termRef.select(vsymMap(ref.symbol)),
               id  => Select(tpd.ref(valSym), id.name))
 
-            val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
+            val blk = Block(classDef +: inst +: Vector(), res).withSpan(span)
 
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
@@ -2169,7 +2169,7 @@ end SearchRoot
 
 /** A set of term references where equality is =:= */
 sealed class TermRefSet(using Context):
-  private val elems = new java.util.LinkedHashMap[TermSymbol, Type | List[Type]]
+  private val elems = new java.util.LinkedHashMap[TermSymbol, Type | Vector[Type]]
 
   def isEmpty = elems.size == 0
 
@@ -2181,25 +2181,25 @@ sealed class TermRefSet(using Context):
         case null =>
           elems.put(sym, pre)
         case prefix: Type =>
-          if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
-        case prefixes: List[Type] =>
-          if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
+          if !(prefix =:= pre) then elems.put(sym, pre +: prefix +: Vector())
+        case prefixes: Vector[Type] =>
+          if !prefixes.exists(_ =:= pre) then elems.put(sym, pre +: prefixes)
 
   def ++= (that: TermRefSet): Unit =
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    def handle(sym: TermSymbol, prefixes: Type | List[Type]): Unit =
+    def handle(sym: TermSymbol, prefixes: Type | Vector[Type]): Unit =
       prefixes match
         case prefix: Type => f(TermRef(prefix, sym))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym)))
+        case prefixes: Vector[Type] => prefixes.foreach(pre => f(TermRef(pre, sym)))
     elems.forEach(handle)
 
   // used only for debugging
-  def showAsList: List[TermRef] = {
+  def showAsList: Vector[TermRef] = {
     val buffer = new mutable.ListBuffer[TermRef]
     foreach(tr => buffer += tr)
-    buffer.toList
+    buffer.toVector
   }
 
   override def toString = showAsList.toString

@@ -38,7 +38,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
   // super accessors that we emit in traits. The inlined calls are marked in the call graph as
   // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
   // the call graph will always return the corresponding method in the trait.
-  private def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
+  private def maybeInlinedLater(callsite: KnownCallsite, insns: Vector[AbstractInsnNode]): Boolean = {
     insns.forall({
       case mi: MethodInsnNode =>
         (mi.getOpcode != INVOKESPECIAL) || {
@@ -82,10 +82,10 @@ class Inliner(optimizerUtils: OptimizerUtils,
         changedByClosureOptimizer = closureOptimizer.rewriteClosureApplyInvocations(specificMethodsForClosureRewriting, inlinerState, issueSink)
       }
 
-      var logs = List.empty[(MethodNode, InlineLog)]
+      var logs = Vector.empty[(MethodNode, InlineLog)]
       for (m <- inlinerState.keySet if !changedByClosureOptimizer(m)) {
         val log = inlinerState.remove(m).get.inlineLog
-        if (log.nonEmpty) logs ::= ((m, log))
+        if (log.nonEmpty) logs +:= ((m, log))
       }
       if (logs.nonEmpty) {
         // Deterministic inline log
@@ -104,7 +104,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
   private def runInliner(methods: Option[mutable.LinkedHashSet[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState], failed: mutable.Set[MethodInsnNode], issueSink: OptimizerIssue => Unit): Iterable[MethodNode] = {
     // Inline requests are grouped by method for performance: we only update the call graph (which
     // runs analyzers) once all callsites are inlined.
-    val requests: mutable.Queue[(MethodNode, List[InlineRequest])] =
+    val requests: mutable.Queue[(MethodNode, Vector[InlineRequest])] =
       if (methods.isEmpty) collectAndOrderInlineRequests(issueSink)
       else mutable.Queue.empty
 
@@ -121,7 +121,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
     val overallChangedMethods = mutable.Set.empty[MethodNode]
 
     // Show chain of inlines that lead to a failure in inliner warnings
-    def inlineChainSuffix(callsite: KnownCallsite, chain: List[KnownCallsite]): String =
+    def inlineChainSuffix(callsite: KnownCallsite, chain: Vector[KnownCallsite]): String =
       if (chain.isEmpty) "" else
         s"""
            |Note that this callsite was itself inlined into ${OptimizerUtils.methodSignature(callsite.callsiteClass.internalName, callsite.callsiteMethod)}
@@ -254,7 +254,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
             }
           case _ =>
         }
-        val newRequests = heuristics.selectRequestsForMethodSize(method, rs.toList.sorted(using inlineRequestOrdering), mutable.Map.empty)
+        val newRequests = heuristics.selectRequestsForMethodSize(method, rs.toVector.sorted(using inlineRequestOrdering), mutable.Map.empty)
 
         state.illegalAccessInstructions.find(insn => newRequests.forall(_.callsite.callsiteInstruction != insn)) match {
           case None =>
@@ -296,7 +296,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
    * The resulting list is sorted such that the leaves of the inline request graph are on the left.
    * Once these leaves are inlined, the successive elements will be leaves, etc.
    */
-  private def collectAndOrderInlineRequests(issueSink: OptimizerIssue => Unit): mutable.Queue[(MethodNode, List[InlineRequest])] = {
+  private def collectAndOrderInlineRequests(issueSink: OptimizerIssue => Unit): mutable.Queue[(MethodNode, Vector[InlineRequest])] = {
     val requestsByMethod = heuristics.selectCallsitesForInlining(issueSink).withDefaultValue(Set.empty)
 
     val elided = mutable.Set.empty[InlineRequest]
@@ -309,7 +309,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
      * The list `requests` is traversed left-to-right, removing those callsites that are part of a
      * cycle. Elided callsites are also removed from the `inlineRequestsForMethod` map.
      */
-    def breakInlineCycles: List[(MethodNode, List[InlineRequest])] = {
+    def breakInlineCycles: Vector[(MethodNode, Vector[InlineRequest])] = {
       // is there a path of inline requests from start to goal?
       def isReachable(start: MethodNode, goal: MethodNode): Boolean = {
         @tailrec def reachableImpl(check: Set[MethodNode], visited: Set[MethodNode]): Boolean = {
@@ -333,7 +333,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
       // Callsites within the same method are next to each other in the sorted array.
       java.util.Arrays.sort(requests, inlineRequestOrdering)
 
-      val result = new mutable.ListBuffer[(MethodNode, List[InlineRequest])]()
+      val result = new mutable.ListBuffer[(MethodNode, Vector[InlineRequest])]()
       var currentMethod: MethodNode | Null = null
       val currentMethodRequests = mutable.ListBuffer.empty[InlineRequest]
       for (r <- requests) {
@@ -346,7 +346,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
             currentMethodRequests += r
           } else {
             if (currentMethod != null)
-              result += ((currentMethod.nn, currentMethodRequests.toList))
+              result += ((currentMethod.nn, currentMethodRequests.toVector))
             currentMethod = m
             currentMethodRequests.clear()
             currentMethodRequests += r
@@ -354,19 +354,19 @@ class Inliner(optimizerUtils: OptimizerUtils,
         }
       }
       if (currentMethod != null)
-        result += ((currentMethod.nn, currentMethodRequests.toList))
-      result.toList
+        result += ((currentMethod.nn, currentMethodRequests.toVector))
+      result.toVector
     }
 
     // sort the remaining inline requests such that the leaves appear first, then those requests
     // that become leaves, etc.
-    def leavesFirst(requests: List[(MethodNode, List[InlineRequest])]): mutable.Queue[(MethodNode, List[InlineRequest])] = {
-      val result = mutable.Queue.empty[(MethodNode, List[InlineRequest])]
+    def leavesFirst(requests: Vector[(MethodNode, Vector[InlineRequest])]): mutable.Queue[(MethodNode, Vector[InlineRequest])] = {
+      val result = mutable.Queue.empty[(MethodNode, Vector[InlineRequest])]
       val visited = mutable.Set.empty[MethodNode]
 
-      @tailrec def impl(toAdd: List[(MethodNode, List[InlineRequest])]): Unit =
+      @tailrec def impl(toAdd: Vector[(MethodNode, Vector[InlineRequest])]): Unit =
         if (toAdd.nonEmpty) {
-          val rest = mutable.ListBuffer.empty[(MethodNode, List[InlineRequest])]
+          val rest = mutable.ListBuffer.empty[(MethodNode, Vector[InlineRequest])]
           toAdd.foreach { case r@(_, rs) =>
             val callees = rs.iterator.map(_.callsite.callee.callee)
             if (callees.forall(c => visited(c) || nonElidedRequests(c).isEmpty)) {
@@ -375,7 +375,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
             } else
               rest += r
           }
-          impl(rest.toList)
+          impl(rest.toVector)
         }
 
       impl(requests)
@@ -384,7 +384,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
 
     val sortedRequests = leavesFirst(breakInlineCycles)
     val methodSizes = mutable.Map.empty[MethodNode, Int]
-    val result = mutable.Queue.empty[(MethodNode, List[InlineRequest])]
+    val result = mutable.Queue.empty[(MethodNode, Vector[InlineRequest])]
     for ((method, rs) <- sortedRequests) {
       val sizeOkRs = heuristics.selectRequestsForMethodSize(method, rs, methodSizes)
       if (sizeOkRs.nonEmpty)
@@ -442,7 +442,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
     })
     // If we didn't properly eliminate dead code, the frame might be null and we can't continue.
     // (Note that this can come from `aliasFrame` being `Some(null)`, so before we eliminate dead code earlier in this method;
-    //  ideally this should never happen, but in practice it does, e.g., `for (x <- Nil) yield x`
+    //  ideally this should never happen, but in practice it does, e.g., `for (x <- Vector()) yield x`
     if f == null then
       return Map.empty
 
@@ -697,7 +697,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
     callsite.callsiteMethod.maxStack = math.max(MethodMax.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
 
     lazy val callsiteLambdaBodyMethods = optimizerUtils.onIndyLambdaImplMethod(callsite.callsiteClass.internalName)(_.getOrElseUpdate(callsite.callsiteMethod, mutable.Map.empty))
-    optimizerUtils.onIndyLambdaImplMethodIfPresent(calleeDeclarationClass.internalName)(methods => methods.getOrElse(callee, Nil) foreach {
+    optimizerUtils.onIndyLambdaImplMethodIfPresent(calleeDeclarationClass.internalName)(methods => methods.getOrElse(callee, Vector()) foreach {
       case (indy, handle) => instructionMap.get(indy) match {
         case Some(clonedIndy: InvokeDynamicInsnNode) =>
           callsiteLambdaBodyMethods(clonedIndy) = handle
@@ -728,7 +728,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
    *
    * Returns
    *  - `None` if the callsite can be inlined
-   *  - `Some((message, Nil))` if there was an issue performing the access checks, for example
+   *  - `Some((message, Vector()))` if there was an issue performing the access checks, for example
    *    because of a missing classfile
    *  - `Some((message, instructions))` if inlining `instructions` into the callsite method would
    *    cause an IllegalAccessError
@@ -775,7 +775,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
         callsite.callsiteClass.internalName, callsite.callsiteMethod.name, callsite.callsiteMethod.desc)
       Some(warning)
     } else findIllegalAccess(callee.instructions, callsiteCallee.calleeDeclarationClass, callsite.callsiteClass) match {
-      case Right(Nil) =>
+      case Right(Vector()) =>
         None
 
       case Right(illegalAccessInsns) =>
@@ -805,13 +805,13 @@ class Inliner(optimizerUtils: OptimizerUtils,
 
   /**
    * Returns
-   *   - `Right(Nil)` if all instructions can be safely inlined
+   *   - `Right(Vector())` if all instructions can be safely inlined
    *   - `Right(insns)` if inlining any of `insns` would cause a [[java.lang.IllegalAccessError]]
    *     when inlined into the `destinationClass`
    *   - `Left((insn, warning))` if validity of some instruction could not be checked because an
    *     error occurred
    */
-  private def findIllegalAccess(instructions: InsnList, calleeDeclarationClass: ClassBType, destinationClass: ClassBType): Either[(AbstractInsnNode, OptimizerWarning), List[AbstractInsnNode]] = {
+  private def findIllegalAccess(instructions: InsnList, calleeDeclarationClass: ClassBType, destinationClass: ClassBType): Either[(AbstractInsnNode, OptimizerWarning), Vector[AbstractInsnNode]] = {
     /*
      * Check if `instruction` can be transplanted to `destinationClass`.
      *
@@ -970,7 +970,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
         case _ =>
       }
     }
-    Right(illegalAccess.toList)
+    Right(illegalAccess.toVector)
   }
 }
 
@@ -1060,9 +1060,9 @@ class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
 
   import java.util.{ArrayList => JArrayList}
 
-  private var actions = List.empty[() => Unit]
+  private var actions = Vector.empty[() => Unit]
 
-  def apply(a: => Unit): Unit = actions = (() => a) :: actions
+  def apply(a: => Unit): Unit = actions = (() => a) +: actions
 
   def rollback(): Unit = actions.foreach(_.apply())
 
@@ -1090,7 +1090,7 @@ class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
     apply {
       // `methodNode.instructions.clear()` doesn't work: it keeps the `prev` / `next` / `index` of
       // instruction nodes. `instructions.removeAll(true)` would work, but is not public.
-      methodNode.instructions.iterator.asScala.toList.foreach(methodNode.instructions.remove)
+      methodNode.instructions.iterator.asScala.toVector.foreach(methodNode.instructions.remove)
       for (i <- currentInstructions) methodNode.instructions.add(i)
 
       methodNode.localVariables.clear()
@@ -1144,7 +1144,7 @@ final case class InlinedCallsite(eliminatedCallsite: KnownCallsite, warning: Opt
   // If this InlinedCallsite has a warning about a given instruction, return a copy where the warning
   // only contains that instruction.
   def filterForWarning(insn: AbstractInsnNode): Option[InlinedCallsite] = warning match {
-    case Some(w) if w.instructions.contains(insn) => Some(this.copy(warning = Some(w.copy(instructions = List(insn)))))
+    case Some(w) if w.instructions.contains(insn) => Some(this.copy(warning = Some(w.copy(instructions = Vector(insn)))))
     case _ => None
   }
 }
@@ -1181,17 +1181,17 @@ final class MethodInlinerState(optLogInline: Option[String]) {
   // synthetic forwarders if skipForwarders is true (don't show those in inliner warnings, as they
   // don't show up in the source code).
   // Also used to detect inlining cycles.
-  def inlineChain(call: AbstractInsnNode, skipForwarders: Boolean): List[KnownCallsite] = {
-    @tailrec def impl(insn: AbstractInsnNode, res: List[KnownCallsite]): List[KnownCallsite] = inlinedCalls.get(insn) match {
+  def inlineChain(call: AbstractInsnNode, skipForwarders: Boolean): Vector[KnownCallsite] = {
+    @tailrec def impl(insn: AbstractInsnNode, res: Vector[KnownCallsite]): Vector[KnownCallsite] = inlinedCalls.get(insn) match {
       case Some(inlinedCallsite) =>
         val cs = inlinedCallsite.eliminatedCallsite
-        val res1 = if (skipForwarders && AnalysisUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.callee, cs.callee.calleeDeclarationClass)) res else cs :: res
+        val res1 = if (skipForwarders && AnalysisUtils.isTraitSuperAccessorOrMixinForwarder(cs.callee.callee, cs.callee.calleeDeclarationClass)) res else cs +: res
         impl(cs.callsiteInstruction, res1)
       case _ =>
         res
     }
 
-    impl(call, Nil)
+    impl(call, Vector())
   }
 
   // In a chain of inlined calls which lead to some (call) instruction, return the root `InlinedCallsite`
@@ -1271,7 +1271,7 @@ final class InlineLog(optLogInline: Option[String]) {
   }
 
   def logClosureRewrite(closureInit: ClosureInstantiation, invocations: mutable.ArrayBuffer[(MethodInsnNode, Int)], outer: Option[Callsite]) = if (active(closureInit.ownerClass, closureInit.ownerMethod)) {
-    bufferForOuter(outer) += InlineLogRewrite(closureInit, invocations.map(_._1).toList)
+    bufferForOuter(outer) += InlineLogRewrite(closureInit, invocations.map(_._1).toVector)
   }
 
   def logFail(request: InlineRequest, warning: CannotInlineWarning, outer: Option[Callsite]) = if (active(request.callsite)) {
@@ -1338,7 +1338,7 @@ object InlineLog {
 
   final case class InlineLogSuccess(request: InlineRequest, sizeBefore: Int, sizeAfter: Int) extends InlineLogResult
 
-  final case class InlineLogRewrite(closureInit: ClosureInstantiation, invocations: List[MethodInsnNode]) extends InlineLogResult
+  final case class InlineLogRewrite(closureInit: ClosureInstantiation, invocations: Vector[MethodInsnNode]) extends InlineLogResult
 
   final case class InlineLogFail(request: InlineRequest, warning: CannotInlineWarning) extends InlineLogResult
 

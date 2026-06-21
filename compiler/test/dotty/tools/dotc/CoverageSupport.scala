@@ -21,13 +21,13 @@ trait CoverageSupport:
       verifyCoverageFile(testSource)
 
   trait CoverageTestSupport[A <: Test]:
-    def build(using SummaryReporting): (List[TestSource], Int, Option[Int], Boolean) => Test
+    def build(using SummaryReporting): (Vector[TestSource], Int, Option[Int], Boolean) => Test
     def fallback(test: CompilationTest)(using SummaryReporting): Unit
 
 
   /** Custom PosTest that verifies coverage files in onSuccess callback */
   final class PosTestWithCoverage(
-    testSources: List[TestSource],
+    testSources: Vector[TestSource],
     times: Int,
     threadLimit: Option[Int],
     suppressAllOutput: Boolean
@@ -35,7 +35,7 @@ trait CoverageSupport:
   extends Test(testSources, times, threadLimit, suppressAllOutput) with CoverageVerification
 
   final class RewriteTestWithCoverage(
-    testSources: List[TestSource],
+    testSources: Vector[TestSource],
     checkFiles: Map[java.io.File, java.io.File],
     times: Int,
     threadLimit: Option[Int],
@@ -44,7 +44,7 @@ trait CoverageSupport:
   extends RewriteTest(testSources, checkFiles, times, threadLimit, suppressAllOutput) with CoverageVerification
 
   final class WarnTestWithCoverage(
-    testSources: List[TestSource],
+    testSources: Vector[TestSource],
     times: Int,
     threadLimit: Option[Int],
     suppressAllOutput: Boolean
@@ -53,7 +53,7 @@ trait CoverageSupport:
 
   /** Custom RunTest that verifies coverage files in onSuccess callback */
   final class RunTestWithCoverage(
-    testSources: List[TestSource],
+    testSources: Vector[TestSource],
     times: Int,
     threadLimit: Option[Int],
     suppressAllOutput: Boolean

@@ -21,7 +21,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
 
   private def checkForwarder(clazz: ClassNode, target: String) = {
     val f = getMethod(clazz, "f")
-    assertSameCode(f, List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, target, "f$", s"(L$target;)I", itf = true), Op(IRETURN)))
+    assertSameCode(f, Vector(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, target, "f$", s"(L$target;)I", itf = true), Op(IRETURN)))
   }
 
   @Test
@@ -38,7 +38,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
     checkBCode(code) { dir =>
       val clsIn = dir.lookupName("AbstractSet2.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
-      assertEquals(clsNode.methods.asScala.map(_.name).toList, List("<init>")) // no bridge for apply (there's already one in AbstractSet)
+      assertEquals(clsNode.methods.asScala.map(_.name).toVector, Vector("<init>")) // no bridge for apply (there's already one in AbstractSet)
     }
   }
 
@@ -94,7 +94,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(code) { dir =>
-      val noForwarder = List("C1", "C2", "C3", "C4", "C10", "C11", "C12", "C13", "C16", "C17")
+      val noForwarder = Vector("C1", "C2", "C3", "C4", "C10", "C11", "C12", "C13", "C16", "C17")
       val noForwarderClasses = noForwarder.map(cn => loadClassNode(dir.lookupName(cn + ".class", directory = false).nn.input))
       for cn <- noForwarderClasses do
         val meth = cn.methods.asScala.find(_.name == "f")
@@ -107,9 +107,9 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
       checkForwarder(getClass(dir, "C9"), "T5")
       checkForwarder(getClass(dir, "C14"), "T4")
       checkForwarder(getClass(dir, "C15"), "T5")
-      assertSameCode(getMethod(getClass(dir, "C18"), "f"), List(IntOp(BIPUSH, 22), Op(IRETURN)))
+      assertSameCode(getMethod(getClass(dir, "C18"), "f"), Vector(IntOp(BIPUSH, 22), Op(IRETURN)))
       checkForwarder(getClass(dir, "C19"), "T7")
-      assertSameCode(getMethod(getClass(dir, "C19"), "T7$$super$f"), List(VarOp(ALOAD, 0), Invoke(INVOKESPECIAL, "C18", "f", "()I", itf = false), Op(IRETURN)))
+      assertSameCode(getMethod(getClass(dir, "C19"), "T7$$super$f"), Vector(VarOp(ALOAD, 0), Invoke(INVOKESPECIAL, "C18", "f", "()I", itf = false), Op(IRETURN)))
       assertInvoke(getMethod(getClass(dir, "C20"), "clone"), "T8", "clone$") // mixin forwarder
     }
   }
@@ -156,8 +156,8 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
         |class K12 extends J2 with T2
       """.stripMargin
 
-    checkBCode(scalaSources = List(code), javaSources = List(j1, j2, j3, j4)) { dir =>
-      val noForwarder = List("K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10", "K11")
+    checkBCode(scalaSources = Vector(code), javaSources = Vector(j1, j2, j3, j4)) { dir =>
+      val noForwarder = Vector("K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10", "K11")
       for (cn <- noForwarder)
         assert(!getClass(dir, cn).methods.asScala.exists(_.name == "f"))
       checkForwarder(getClass(dir, "K12"), "T2")
@@ -204,7 +204,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
         |}
       """.stripMargin
 
-    checkBCode(scalaSources = List(code), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code), javaSources = Vector(jCode)) { dir =>
       val cls = getClass(dir, "C")
       val instrs = getInstructions(cls, "m")
       // REVIEW: scala2 called T.m here, we call A.m, but it should be the same? invokespecial only requires direct parents for interfaces
@@ -247,7 +247,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
         |trait U2 extends T
         |class C extends U1 with U2 { def t = super.f }
       """.stripMargin
-    checkBCode(scalaSources = List(code), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code), javaSources = Vector(jCode)) { dir =>
       val c = getClass(dir, "C")
       val t = getInstructions(c, "t")
       // REVIEW: the following comment is from scala2 where U1.f was selected, presumably T.f is better?
@@ -265,7 +265,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
       """trait B1 extends A // called "B1" not "B" due to scala-dev#214
         |class C extends B1
       """.stripMargin
-    checkBCode(scalaSources = List(code1), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code1), javaSources = Vector(jCode)) { dir =>
       assert(!getClass(dir, "C").methods.asScala.exists(_.name == "m")) // ok, no forwarder
     }
 
@@ -273,7 +273,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
       """abstract class B { def m: Int }
         |class C extends B with A
       """.stripMargin
-    checkBCode(scalaSources = List(code3), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code3), javaSources = Vector(jCode)) { dir =>
       // invokespecial to A.m is correct here: A is an interface, so resolution starts at A.
       // https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5.invokespecial
       val ins3 = getInstructions(getClass(dir, "C"), "m")
@@ -284,7 +284,7 @@ class MixinBytecodeTestsNoForwarders extends DottyBytecodeTest {
       """trait B { self: A => override def m = 2 }
         |class C extends A with B // forwarder, invokestatic B.m$
       """.stripMargin
-    checkBCode(scalaSources = List(code4), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code4), javaSources = Vector(jCode)) { dir =>
       val ins4 = getInstructions(getClass(dir, "C"), "m")
       assert(ins4.contains(Invoke(INVOKESTATIC, "B", "m$", "(LB;)I", itf = true)), ins4.mkString("\n"))
     }
@@ -313,7 +313,7 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       """trait U extends T
         |class C extends U { def t = super.f }
       """.stripMargin
-    checkBCode(scalaSources = List(code), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code), javaSources = Vector(jCode)) { dir =>
       val ins = getInstructions(getClass(dir, "C"), "t")
       // REVIEW: scala2 called U.f here, but this should be fine? T is an interface so no need to be a direct parent for invokespecial
       assert(ins.contains(Invoke(INVOKESPECIAL, "T", "f", "()I", itf = true)), ins.mkString("\n"))
@@ -327,9 +327,9 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       """trait U extends T { override def f() = 2 }
         |class C extends T with U { def t = super[T].f }
       """.stripMargin
-    checkBCode(scalaSources = List(code), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code), javaSources = Vector(jCode)) { dir =>
       val c = getClass(dir, "C")
-      assert(c.interfaces.asScala.toList.sorted == List("T", "U"), c.interfaces.asScala.mkString(", "))
+      assert(c.interfaces.asScala.toVector.sorted == Vector("T", "U"), c.interfaces.asScala.mkString(", "))
       val ins = getInstructions(c, "t")
       assert(ins.contains(Invoke(INVOKESPECIAL, "T", "f", "()I", itf = true)), ins.mkString("\n"))
     }
@@ -343,18 +343,18 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
         |trait V extends U
         |class C extends U with V { def t = super.f() }
       """.stripMargin
-    checkBCode(scalaSources = List(code), javaSources = List(jCode)) { dir =>
+    checkBCode(scalaSources = Vector(code), javaSources = Vector(jCode)) { dir =>
       val c = getClass(dir, "C")
       val ins = getInstructions(c, "t")
       // REVIEW: in scala2 both instances of "A" were "U" instead. But we don't need U at all, so this should be ok?
-      assert(c.interfaces.asScala.toList.sorted == List("A", "V"), c.interfaces.asScala.mkString(", "))
+      assert(c.interfaces.asScala.toVector.sorted == Vector("A", "V"), c.interfaces.asScala.mkString(", "))
       assert(ins.contains(Invoke(INVOKESPECIAL, "A", "f", "()I", itf = true)), ins.mkString("\n"))
     }
   }
 
-  def invSt(instrs: List[Instruction], receiver: String, method: String = "f$", itf: Boolean = true): Unit =
+  def invSt(instrs: Vector[Instruction], receiver: String, method: String = "f$", itf: Boolean = true): Unit =
     assert(instrs.contains(Invoke(INVOKESTATIC, receiver, method, s"(L$receiver;)I", itf)), instrs.mkString("\n"))
-  def invSp(instrs: List[Instruction], receiver: String, method: String = "f", sig: String = "()I", itf: Boolean = true): Unit =
+  def invSp(instrs: Vector[Instruction], receiver: String, method: String = "f", sig: String = "()I", itf: Boolean = true): Unit =
     assert(instrs.contains(Invoke(INVOKESPECIAL, receiver, method, sig, itf)), instrs.mkString("\n"))
 
   @Test
@@ -366,7 +366,7 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       """.stripMargin
     checkBCode(code) { dir =>
       val c = getClass(dir, "C")
-      assert(c.interfaces.asScala.toList == List("U"), c.interfaces.asScala.mkString(", "))
+      assert(c.interfaces.asScala.toVector == Vector("U"), c.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c, "t"), "T")
       invSt(getInstructions(c, "f"), "T")
     }
@@ -427,7 +427,7 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       """.stripMargin
     checkBCode(code) { dir =>
       val c = getClass(dir, "C")
-      assert(c.interfaces.asScala.toList == List("U"), c.interfaces.asScala.mkString(", "))
+      assert(c.interfaces.asScala.toVector == Vector("U"), c.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c, "f"), "T2")
       invSt(getInstructions(c, "t1"), "T2")
       invSt(getInstructions(c, "t2"), "T2")
@@ -445,7 +445,7 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
     checkBCode(code) { dir =>
       val c = getClass(dir, "C")
       // T1, T2 removed by minimizeParents
-      assert(c.interfaces.asScala.toList == List("U"), c.interfaces.asScala.mkString(", "))
+      assert(c.interfaces.asScala.toVector == Vector("U"), c.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c, "f"), "T2")
     }
   }
@@ -462,7 +462,7 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       """.stripMargin
     checkBCode(code) { dir =>
       val c = getClass(dir, "C")
-      assert(c.interfaces.asScala.toList == List("U"), c.interfaces.asScala.mkString(", "))
+      assert(c.interfaces.asScala.toVector == Vector("U"), c.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c, "hashCode"), "T", "hashCode$")
       invSt(getInstructions(c, "t1"), "T", "hashCode$")
       invSt(getInstructions(c, "t2"), "T", "hashCode$")
@@ -488,8 +488,8 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
     checkBCode(code) { dir =>
       val c1 = getClass(dir, "C1")
       val c2 = getClass(dir, "C2")
-      assert(c1.interfaces.asScala.sorted.toList == List("U1", "U2"), c1.interfaces.asScala.mkString(", "))
-      assert(c2.interfaces.asScala.sorted.toList == List("U1", "U2"), c2.interfaces.asScala.mkString(", "))
+      assert(c1.interfaces.asScala.sorted.toVector == Vector("U1", "U2"), c1.interfaces.asScala.mkString(", "))
+      assert(c2.interfaces.asScala.sorted.toVector == Vector("U1", "U2"), c2.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c1, "f"), "U2")
       invSt(getInstructions(c1, "t1"), "U2")
       invSt(getInstructions(c1, "t2"), "T")
@@ -514,7 +514,7 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       """.stripMargin
     checkBCode(code) { dir =>
       val c = getClass(dir, "C")
-      assert(c.interfaces.asScala.toList == List("V"), c.interfaces.asScala.mkString(", "))
+      assert(c.interfaces.asScala.toVector == Vector("V"), c.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c, "f"), "T2")
       invSt(getInstructions(c, "t1"), "T2")
       invSt(getInstructions(c, "t2"), "T2")
@@ -543,13 +543,13 @@ class MixinBytecodeTestsWithForwarders extends DottyBytecodeTest {
       val c2 = getClass(dir, "C2")
       val c3 = getClass(dir, "C3")
 
-      assert(c1.interfaces.asScala.toList == List("W1"), c1.interfaces.asScala.mkString(", "))
+      assert(c1.interfaces.asScala.toVector == Vector("W1"), c1.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c1, "f"), "U2")
 
-      assert(c2.interfaces.asScala.toList == List("W2"), c1.interfaces.asScala.mkString(", "))
+      assert(c2.interfaces.asScala.toVector == Vector("W2"), c1.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c2, "f"), "W2")
 
-      assert(c3.interfaces.asScala.toList == List("W3"), c3.interfaces.asScala.mkString(", "))
+      assert(c3.interfaces.asScala.toVector == Vector("W3"), c3.interfaces.asScala.mkString(", "))
       invSt(getInstructions(c3, "W3$$super$f"), "U2")
       invSt(getInstructions(c3, "f"), "W3")
     }

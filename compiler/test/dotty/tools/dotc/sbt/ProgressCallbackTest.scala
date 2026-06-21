@@ -24,7 +24,7 @@ final class ProgressCallbackTest extends DottyTest:
     val source1 = """class Foo"""
     val source2 = """class Bar"""
 
-    inspectProgress(List(source1, source2), terminalPhase = None): progressCallback =>
+    inspectProgress(Vector(source1, source2), terminalPhase = None): progressCallback =>
       locally:
         // (1) assert that the way we compute next phase in `Run.doAdvancePhase` is correct
         assertNextPhaseIsNext()
@@ -72,7 +72,7 @@ final class ProgressCallbackTest extends DottyTest:
   def inspectCancellationAtPhase(targetPhase: String): Unit =
     val source1 = """class Foo"""
 
-    inspectProgress(List(source1), cancellation = Some(cancelOnEnter(targetPhase))): progressCallback =>
+    inspectProgress(Vector(source1), cancellation = Some(cancelOnEnter(targetPhase))): progressCallback =>
       locally:
         // (1) assert that the compiler was cancelled
         assertTrue("should have cancelled", progressCallback.isCancelled)
@@ -120,7 +120,7 @@ final class ProgressCallbackTest extends DottyTest:
   /** Assert that the recorded progression of phases are all in the real progression, and that order is preserved */
   def assertMonotonicProgression(progressCallback: TestProgressCallback)(using Context): Unit =
     val allPhasePlan = ctx.base.allPhases.flatMap(asSubphases) ++ syntheticNextPhases
-    for case List(
+    for case Vector(
       PhaseTransition(curr1, next1),
       PhaseTransition(curr2, next2)
     ) <- progressCallback.progressPhasesFinal.sliding(2) do
@@ -142,7 +142,7 @@ final class ProgressCallbackTest extends DottyTest:
       val firstPhase = allPhases.head
       val expectedCurrPhases = allPhases.toSet
       val expectedNextPhases = nextExpected.toSet //expectedCurrPhases - firstPhase ++ syntheticNextPhases
-      (allPhases.toList, expectedCurrPhases, expectedNextPhases)
+      (allPhases.toVector, expectedCurrPhases, expectedNextPhases)
 
     for (expectedCurr, recordedCurr) <- allPhasePlan.zip(progressCallback.progressPhasesFinal.map(_.curr)) do
       assertEquals(s"Phase $recordedCurr was not expected", expectedCurr, recordedCurr)
@@ -168,7 +168,7 @@ final class ProgressCallbackTest extends DottyTest:
       val uniquePhases = visitedPhases.toSet
       assert(unit != NoCompilationUnit, s"unexpected NoCompilationUnit for phases $uniquePhases")
       val duplicatePhases = visitedPhases.view.groupBy(identity).values.filter(_.size > 1).map(_.head)
-      assertEquals(s"some phases were visited twice for $unit! ${duplicatePhases.toList}", visitedPhases.size, uniquePhases.size)
+      assertEquals(s"some phases were visited twice for $unit! ${duplicatePhases.toVector}", visitedPhases.size, uniquePhases.size)
       val unvisitedPhases = expectedPhases.filterNot(visitedPhases.contains)
       val extraPhases = visitedPhases.filterNot(expectedPhases.contains)
       assertTrue(s"these phases were not visited for $unit ${unvisitedPhases}", unvisitedPhases.isEmpty)
@@ -180,13 +180,13 @@ final class ProgressCallbackTest extends DottyTest:
     for (_, phases) <- progressCallback.unitPhases do
       fileTraversals += phases.size
     val expectedTotal = fileTraversals // assume that no late enters occur
-    progressCallback.totalEvents match
-      case Nil => fail("No total events recorded")
-      case TotalEvent(total, _) :: _ =>
+    (progressCallback.totalEvents: @unchecked) match
+      case Vector() => fail("No total events recorded")
+      case TotalEvent(total, _) +: _ =>
         assertEquals(expectedTotal, total)
 
   def inspectProgress(
-      sources: List[String],
+      sources: Vector[String],
       terminalPhase: Option[String] = Some("typer"),
       cancellation: Option[TestProgressCallback => Boolean] = None)(
       op: Context ?=> TestProgressCallback => Unit)(using Context) =
@@ -228,7 +228,7 @@ object ProgressCallbackTest:
   def allSubPhases(using Context): IndexedSeq[String] =
     ctx.base.allPhases.flatMap(asSubphases).toIndexedSeq
 
-  private val syntheticNextPhases = List("<end>")
+  private val syntheticNextPhases = Vector("<end>")
 
   /** Asserts that the computed phase name exists in the real phase plan */
   def indexOrFail(allPhasePlan: Array[String], phaseName: String): Int =
@@ -241,10 +241,10 @@ object ProgressCallbackTest:
     import collection.immutable, immutable.SeqMap
 
     private var _cancelled: Boolean = false
-    private var _unitPhases: SeqMap[CompilationUnit, List[String]] = immutable.SeqMap.empty // preserve order
-    private var _totalEvents: List[TotalEvent] = List.empty
+    private var _unitPhases: SeqMap[CompilationUnit, Vector[String]] = immutable.SeqMap.empty // preserve order
+    private var _totalEvents: Vector[TotalEvent] = Vector.empty
     private var _latestProgress: Option[ProgressEvent] = None
-    private var _progressPhases: List[PhaseTransition] = List.empty
+    private var _progressPhases: Vector[PhaseTransition] = Vector.empty
     private var _shouldCancelNow: TestProgressCallback => Boolean = _ => false
 
     def totalEvents = _totalEvents
@@ -261,25 +261,25 @@ object ProgressCallbackTest:
     override def isCancelled(): Boolean = _cancelled
 
     override def informUnitStarting(phase: String, unit: CompilationUnit): Unit =
-      _unitPhases += (unit -> (unitPhases.getOrElse(unit, Nil) :+ phase))
+      _unitPhases += (unit -> (unitPhases.getOrElse(unit, Vector()) :+ phase))
 
     override def progress(current: Int, total: Int, currPhase: String, nextPhase: String): Boolean =
       // record the total and current phase whenever the total changes
       _totalEvents = _totalEvents match
-        case Nil => TotalEvent(total, currPhase) :: Nil
-        case events @ (head :: _) if head.total != total => TotalEvent(total, currPhase) :: events
+        case Vector() => TotalEvent(total, currPhase) +: Vector()
+        case events @ (head +: _) if head.total != total => TotalEvent(total, currPhase) +: events
         case events => events
 
       _latestProgress = Some(ProgressEvent(current, total, currPhase, nextPhase))
 
       // record the current and next phase whenever the current phase changes
-      _progressPhases = _progressPhases match
-        case all @ PhaseTransition(head, _) :: rest =>
+      _progressPhases = (_progressPhases: @unchecked) match
+        case all @ PhaseTransition(head, _) +: rest =>
           if head != currPhase then
-            PhaseTransition(currPhase, nextPhase) :: all
+            PhaseTransition(currPhase, nextPhase) +: all
           else
             all
-        case Nil => PhaseTransition(currPhase, nextPhase) :: Nil
+        case Vector() => PhaseTransition(currPhase, nextPhase) +: Vector()
 
       !_shouldCancelNow(this)
 

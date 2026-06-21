@@ -61,11 +61,11 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     (unit.isJava && !ctx.settings.XjavaTasty.value) || unit.suspended
 
-  override val subPhases: List[SubPhase] = List(
+  override val subPhases: Vector[SubPhase] = Vector(
     SubPhase("indexing"), SubPhase("typechecking"), SubPhase("checkingJava"))
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    val List(Indexing @ _, Typechecking @ _, CheckingJava @ _) = subPhases: @unchecked
+  override def runOn(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] =
+    val Vector(Indexing @ _, Typechecking @ _, CheckingJava @ _) = subPhases: @unchecked
     val unitContexts =
       for unit <- units yield
         val newCtx0 = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)

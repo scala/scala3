@@ -69,29 +69,29 @@ object DottyTypeStealer extends DottyTest {
       case `class`  => s"class $name $arg"
       case `type`   => s"type $name $arg"
 
-  def stealType(source: String, kind: Kind, typeStrings: String*): (Context, List[Type]) = {
+  def stealType(source: String, kind: Kind, typeStrings: String*): (Context, Vector[Type]) = {
     val (scontext, members) = stealMember("typer", source, kind, typeStrings*)
     given Context = scontext
     (scontext, members.map(_.info))
   }
 
-  def stealMember(lastPhase: String, source: String, kind: Kind, typeStrings: String*): (Context, List[Symbol]) = {
+  def stealMember(lastPhase: String, source: String, kind: Kind, typeStrings: String*): (Context, Vector[Symbol]) = {
     val dummyName = "x_x_x"
     val vals = typeStrings.zipWithIndex.map{case (s, x) => kind.format(dummyName + x, s) }.mkString("\n")
     val gatheredSource = s" ${source}\n object A$dummyName {$vals}"
     var scontext : Context = null
-    var members: List[Symbol] = null
+    var members: Vector[Symbol] = null
     checkCompile(lastPhase, gatheredSource) {
       (tree, context) =>
         given Context = context
-        val findMemberDef: (List[MemberDef], tpd.Tree) => List[MemberDef] =
+        val findMemberDef: (Vector[MemberDef], tpd.Tree) => Vector[MemberDef] =
           (acc , tree) =>  tree match {
-            case t: DefDef if t.name.startsWith(dummyName) => t :: acc
-            case t: ValDef if t.name.startsWith(dummyName) => t :: acc
-            case t: TypeDef if t.name.startsWith(dummyName) => t :: acc
+            case t: DefDef if t.name.startsWith(dummyName) => t +: acc
+            case t: ValDef if t.name.startsWith(dummyName) => t +: acc
+            case t: TypeDef if t.name.startsWith(dummyName) => t +: acc
             case _ => acc
           }
-        val d = new DeepFolder[List[MemberDef]](findMemberDef).foldOver(Nil, tree)
+        val d = new DeepFolder[Vector[MemberDef]](findMemberDef).foldOver(Vector(), tree)
         members = d.map(_.symbol).reverse
         scontext = context
     }

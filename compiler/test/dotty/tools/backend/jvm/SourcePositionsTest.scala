@@ -30,7 +30,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "test")
       val lineNumbers = instructionsFromMethod(testMethod).collect{case ln: LineNumber => ln}
-      val expected = List(
+      val expected = Vector(
         LineNumber(4, Label(0)),   // var x
         LineNumber(5, Label(4)),   // var y
         LineNumber(6, Label(8)),   // while(true)
@@ -66,7 +66,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "test")
       val lineNumbers = instructionsFromMethod(testMethod).collect{case ln: LineNumber => ln}
-      val expected = List(
+      val expected = Vector(
         LineNumber(4, Label(0)),   // var x
         LineNumber(5, Label(4)),   // var y
         LineNumber(6, Label(8)),   // while(true)
@@ -102,7 +102,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "test")
       val lineNumbers = instructionsFromMethod(testMethod).collect{case ln: LineNumber => ln}
-      val expected = List(
+      val expected = Vector(
         LineNumber(4, Label(0)),   // var x
         LineNumber(5, Label(4)),   // var y
         LineNumber(6, Label(8)),   // while(true)
@@ -131,7 +131,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "$init$")
       val lineNumbers = instructionsFromMethod(testMethod).collect {case ln: LineNumber => ln}
-      val expected = List(
+      val expected = Vector(
         LineNumber(5, Label(0)),  // mult(3)
         LineNumber(6, Label(6)),  // mult(4)
         LineNumber(7, Label(12)), // mult(5)

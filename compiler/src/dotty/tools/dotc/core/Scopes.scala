@@ -80,26 +80,27 @@ object Scopes {
     /** The symbols in this scope in the order they were entered;
      *  inherited from outer ones first.
      */
-    def toList(using Context): List[Symbol]
+    def toList(using Context): List[Symbol] = toVector.toList
+    def toVector(using Context): Vector[Symbol]
 
     /** Return all symbols as an iterator in the order they were entered in this scope.
      */
-    def iterator(using Context): Iterator[Symbol] = toList.iterator
+    def iterator(using Context): Iterator[Symbol] = toVector.iterator
 
     /** Is the scope empty? */
     def isEmpty: Boolean = lastEntry == null
 
     /** Applies a function f to all Symbols of this Scope. */
-    def foreach[U](f: Symbol => U)(using Context): Unit = toList.foreach(f)
+    def foreach[U](f: Symbol => U)(using Context): Unit = toVector.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
-    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
+    def filter(p: Symbol => Boolean)(using Context): Vector[Symbol] = {
       ensureComplete()
-      var syms: List[Symbol] = Nil
+      var syms: Vector[Symbol] = Vector()
       var e = lastEntry
       while ((e != null) && e.owner == this) {
         val sym = e.sym
-        if (p(sym)) syms = sym :: syms
+        if (p(sym)) syms = sym +: syms
         e = e.prev
       }
       syms
@@ -110,7 +111,7 @@ object Scopes {
 
     /** Finds the first Symbol of this Scope satisfying a predicate, if any. */
     def find(p: Symbol => Boolean)(using Context): Symbol = filter(p) match {
-      case sym :: _ => sym
+      case sym +: _ => sym
       case _ => NoSymbol
     }
 
@@ -149,7 +150,7 @@ object Scopes {
 
     /** The denotation set of all the symbols with given name in this scope
      *  Symbols occur in the result in reverse order relative to their occurrence
-     *  in `this.toList`.
+     *  in `this.toVector`.
      */
     final def denotsNamed(name: Name)(using Context): PreDenotation = {
       var syms: PreDenotation = NoDenotation
@@ -187,7 +188,7 @@ object Scopes {
         case null => this
         case r => r
 
-    def implicitDecls(using Context): List[TermRef] = Nil
+    def implicitDecls(using Context): Vector[TermRef] = Vector()
 
     def openForMutations: MutableScope = unsupported("openForMutations")
 
@@ -232,7 +233,7 @@ object Scopes {
 
     /** a cache for all elements, to be used by symbol iterator.
      */
-    private var elemsCache: List[Symbol] | Null = null
+    private var elemsCache: Vector[Symbol] | Null = null
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
     private var synthesize: SymbolSynthesizer | Null = null
@@ -316,10 +317,10 @@ object Scopes {
           enterInHash(e)
         }
         else {
-          var entries: List[ScopeEntry] = List()
+          var entries: Vector[ScopeEntry] = Vector()
           var ee: ScopeEntry | Null = e
           while (ee != null) {
-            entries = ee :: entries
+            entries = ee +: entries
             ee = ee.prev
           }
           entries foreach enterInHash
@@ -408,23 +409,24 @@ object Scopes {
         e
     }
 
-    /** Returns all symbols as a list in the order they were entered in this scope.
+    /** Returns all symbols as a vector in the order they were entered in this scope.
      *  Does _not_ include the elements of inherited scopes.
      */
-    override final def toList(using Context): List[Symbol] = {
+    override final def toVector(using Context): Vector[Symbol] = {
       if (elemsCache == null) {
         ensureComplete()
-        elemsCache = Nil
+        val elems = Vector.newBuilder[Symbol]
         var e = lastEntry
         while ((e != null) && e.owner == this) {
-          elemsCache = e.sym :: elemsCache.nn
+          elems += e.sym
           e = e.prev
         }
+        elemsCache = elems.result().reverse
       }
       elemsCache.nn
     }
 
-    override def implicitDecls(using Context): List[TermRef] = {
+    override def implicitDecls(using Context): Vector[TermRef] = {
       ensureComplete()
       val irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
@@ -435,12 +437,12 @@ object Scopes {
         }
         e = e.prev
       }
-      irefs.toList
+      irefs.toVector
     }
 
     /** Vanilla scope - symbols are stored in declaration order.
      */
-    final def sorted(using Context): List[Symbol] = toList
+    final def sorted(using Context): Vector[Symbol] = toVector
 
     override def openForMutations: MutableScope = this
 
@@ -484,7 +486,7 @@ object Scopes {
     override private[dotc] def lastEntry: ScopeEntry | Null = null
     override def size: Int = 0
     override def nestingLevel: Int = 0
-    override def toList(using Context): List[Symbol] = Nil
+    override def toVector(using Context): Vector[Symbol] = Vector()
     override def cloneScope(using Context): MutableScope = newScope(nestingLevel)
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null = null

@@ -73,10 +73,10 @@ object CommentParsing {
   /** Return first index following `start` and starting a line (i.e. after skipLineLead)
    *  which satisfies predicate `p`.
    */
-  def findAll(str: String, start: Int)(p: Int => Boolean): List[Int] = {
+  def findAll(str: String, start: Int)(p: Int => Boolean): Vector[Int] = {
     val idx = findNext(str, start)(p)
-    if (idx == str.length) List()
-    else idx :: findAll(str, idx)(p)
+    if (idx == str.length) Vector()
+    else idx +: findAll(str, idx)(p)
   }
 
   /** Produces a string index, which is a list of `sections`, i.e.,
@@ -89,14 +89,14 @@ object CommentParsing {
    *  usecase or the end of the string, as they might include other sections
    *  of their own
    */
-  def tagIndex(str: String, p: Int => Boolean = (idx => true)): List[(Int, Int)] = {
+  def tagIndex(str: String, p: Int => Boolean = (idx => true)): Vector[(Int, Int)] = {
     var indices = findAll(str, 0) (idx => str(idx) == '@' && p(idx))
     indices = mergeUsecaseSections(str, indices)
     indices = mergeInheritdocSections(str, indices)
 
     indices match {
-      case List() => List()
-      case idxs   => idxs zip (idxs.tail ::: List(str.length - 2))
+      case Vector() => Vector()
+      case idxs   => idxs zip (idxs.tail ++ Vector(str.length - 2))
     }
   }
 
@@ -104,12 +104,12 @@ object CommentParsing {
    * Merge sections following a usecase into the usecase comment, so they
    * can override the parent symbol's sections
    */
-  def mergeUsecaseSections(str: String, idxs: List[Int]): List[Int] =
+  def mergeUsecaseSections(str: String, idxs: Vector[Int]): Vector[Int] =
     idxs.indexWhere(str.startsWith("@usecase", _)) match {
       case firstUCIndex if firstUCIndex != -1 =>
         val commentSections = idxs.take(firstUCIndex)
         val usecaseSections = idxs.drop(firstUCIndex).filter(str.startsWith("@usecase", _))
-        commentSections ::: usecaseSections
+        commentSections ++ usecaseSections
       case _ =>
         idxs
     }
@@ -117,7 +117,7 @@ object CommentParsing {
   /**
    * Merge the inheritdoc sections, as they never make sense on their own
    */
-  def mergeInheritdocSections(str: String, idxs: List[Int]): List[Int] =
+  def mergeInheritdocSections(str: String, idxs: Vector[Int]): Vector[Int] =
     idxs.filterNot(str.startsWith("@inheritdoc", _))
 
   /** Does interval `iv` start with given `tag`?
@@ -131,15 +131,15 @@ object CommentParsing {
   /** The first start tag of a list of tag intervals,
    *  or the end of the whole comment string - 2 if list is empty
    */
-  def startTag(str: String, sections: List[(Int, Int)]): Int = sections match {
-    case Nil             => str.length - 2
-    case (start, _) :: _ => start
+  def startTag(str: String, sections: Vector[(Int, Int)]): Int = (sections: @unchecked) match {
+    case Vector()             => str.length - 2
+    case (start, _) +: _ => start
   }
 
   /** A map from parameter names to start/end indices describing all parameter
    *  sections in `str` tagged with `tag`, where `sections` is the index of `str`.
    */
-  def paramDocs(str: String, tag: String, sections: List[(Int, Int)]): Map[String, (Int, Int)] =
+  def paramDocs(str: String, tag: String, sections: Vector[(Int, Int)]): Map[String, (Int, Int)] =
     Map() ++ {
       for (section <- sections if startsWithTag(str, section, tag)) yield {
         val start = skipWhitespace(str, section._1 + tag.length)
@@ -149,14 +149,14 @@ object CommentParsing {
 
   /** Optionally start and end index of return section in `str`, or `None`
    *  if `str` does not have a @group. */
-  def groupDoc(str: String, sections: List[(Int, Int)]): Option[(Int, Int)] =
+  def groupDoc(str: String, sections: Vector[(Int, Int)]): Option[(Int, Int)] =
     sections find (startsWithTag(str, _, "@group"))
 
 
   /** Optionally start and end index of return section in `str`, or `None`
    *  if `str` does not have a @return.
    */
-  def returnDoc(str: String, sections: List[(Int, Int)]): Option[(Int, Int)] =
+  def returnDoc(str: String, sections: Vector[(Int, Int)]): Option[(Int, Int)] =
     sections find (startsWithTag(str, _, "@return"))
 
   /** Extracts variable name from a string, stripping any pair of surrounding braces */
@@ -186,7 +186,7 @@ object CommentParsing {
   }
 
   /** A map from the section tag to section parameters */
-  def sectionTagMap(str: String, sections: List[(Int, Int)]): Map[String, (Int, Int)] =
+  def sectionTagMap(str: String, sections: Vector[(Int, Int)]): Map[String, (Int, Int)] =
     Map() ++ {
       for (section <- sections) yield
         extractSectionTag(str, section) -> section
@@ -229,11 +229,11 @@ object CommentParsing {
   }
 
   /** A map from tag name to all boundaries for this tag */
-  def groupedSections(str: String, sections: List[(Int, Int)]): Map[String, List[(Int, Int)]] = {
-    val map = mutable.Map.empty[String, List[(Int, Int)]].withDefaultValue(Nil)
+  def groupedSections(str: String, sections: Vector[(Int, Int)]): Map[String, Vector[(Int, Int)]] = {
+    val map = mutable.Map.empty[String, Vector[(Int, Int)]].withDefaultValue(Vector())
     sections.reverse.foreach { bounds =>
       val tag = extractSectionTag(str, bounds)
-      map.update(tag, (skipTag(str, bounds._1), bounds._2) :: map(tag))
+      map.update(tag, (skipTag(str, bounds._1), bounds._2) +: map(tag))
     }
     map.toMap
   }
@@ -247,7 +247,7 @@ object CommentParsing {
     }
     yield lines
 
-    val end = startTag(raw, toBeRemoved.flatten.sortBy(_._1).toList)
+    val end = startTag(raw, toBeRemoved.flatten.sortBy(_._1).toVector)
 
     if (end == raw.length - 2) raw else raw.substring(0, end) + "*/"
   }

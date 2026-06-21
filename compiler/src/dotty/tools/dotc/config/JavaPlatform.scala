@@ -24,7 +24,7 @@ class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) ext
   // The given symbol is a method with the right name and signature to be a runnable java program.
   def isMainMethod(sym: Symbol)(using Context): Boolean =
     (sym.name == nme.main) && (sym.info match {
-      case MethodTpe(_, defn.ArrayOf(el) :: Nil, restpe) => el =:= defn.StringType && restpe.isRef(defn.UnitClass)
+      case MethodTpe(_, defn.ArrayOf(el) +: Vector(), restpe) => el =:= defn.StringType && restpe.isRef(defn.UnitClass)
       case _ => false
     })
 
@@ -32,7 +32,7 @@ class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) ext
     case AggregateClassPath(entries) =>
       currentClassPath = Some(AggregateClassPath(entries :+ cPath))
     case cp: ClassPath =>
-      currentClassPath = Some(AggregateClassPath(cp :: cPath :: Nil))
+      currentClassPath = Some(AggregateClassPath(cp +: cPath +: Vector()))
   }
 
   /** Update classpath with a substituted subentry */

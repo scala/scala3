@@ -82,7 +82,7 @@ class SymbolInformationProvider(using Context):
           PcSymbolInformation(
             symbol = SemanticdbSymbols.symbolName(sym),
             kind = getSymbolKind(sym),
-            parents = parents,
+            parents = parents.toList,
             dealiasedSymbol = SemanticdbSymbols.symbolName(dealisedSymbol),
             classOwner = classOwner.map(SemanticdbSymbols.symbolName),
             overriddenSymbols = overridden.map(SemanticdbSymbols.symbolName),
@@ -92,7 +92,7 @@ class SymbolInformationProvider(using Context):
               if sym.is(Flags.Abstract) then List(PcSymbolProperty.ABSTRACT)
               else Nil,
             recursiveParents = allParents,
-            annotations = sym.denot.annotations.map(_.symbol.showFullName),
+            annotations = sym.denot.annotations.map(_.symbol.showFullName).toList,
             memberDefsAnnotations = memberDefAnnots.map(_.symbol.showFullName).toList
           )
 

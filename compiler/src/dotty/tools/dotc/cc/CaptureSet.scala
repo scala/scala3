@@ -441,7 +441,7 @@ sealed abstract class CaptureSet extends Showable:
           mapped
 
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
-  def substParams(tl: BindingType, to: List[Type])(using Context) =
+  def substParams(tl: BindingType, to: Vector[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
@@ -455,7 +455,7 @@ sealed abstract class CaptureSet extends Showable:
 
   def transClassifiers(using Context): Classifiers =
     def elemClassifiers =
-      (ClassifiedAs(Nil) /: elems.map(_.transClassifiers))(joinClassifiers)
+      (ClassifiedAs(Vector()) /: elems.map(_.transClassifiers))(joinClassifiers)
     if ccState.isSepCheck then
       dropEmpties()
       elemClassifiers
@@ -794,7 +794,7 @@ object CaptureSet:
       this
 
     /** A list of handlers to be invoked when a new element is added to this set */
-    var newElemAddedHandlers: List[Capability => Context ?=> Unit] = Nil
+    var newElemAddedHandlers: Vector[Capability => Context ?=> Unit] = Vector()
 
     /** The limit deciding which capture roots are bad (i.e. cannot be contained in this set).
      *  @see isBadRoot for details.
@@ -928,7 +928,7 @@ object CaptureSet:
       super.disallowBadRoots(upto)(handler)
 
     override def checkAddedElems(handler: Capability => Context ?=> Unit)(using Context): Unit =
-      newElemAddedHandlers = handler :: newElemAddedHandlers
+      newElemAddedHandlers = handler +: newElemAddedHandlers
       super.checkAddedElems(handler)
 
     private var computingApprox = false
@@ -969,7 +969,7 @@ object CaptureSet:
         val approx = upperApprox(empty)
           .map(GlobalCapToLocal(Origin.Unknown).inverse)    // local -> global
           .showing(i"solve $this = $result", capt)
-        //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
+        //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toVector}")
         val newElems = approx.elems -- elems
         given VarState()
         if tryInclude(newElems, empty) then
@@ -1133,9 +1133,9 @@ object CaptureSet:
       case _ => 1
 
     /** The path of DerivedVars ending in this set */
-    def path: List[DerivedVar] = source match
-      case source: DerivedVar => this :: source.path
-      case _ => this :: Nil
+    def path: Vector[DerivedVar] = source match
+      case source: DerivedVar => this +: source.path
+      case _ => this +: Vector()
 
     if ctx.settings.YccLog.value || util.Stats.enabled then
       ctx.run.nn.recordPath(pathLength, path)
@@ -1386,12 +1386,12 @@ object CaptureSet:
   /** Failure indicating that `elem` cannot be included in `cs` */
   case class IncludeFailure(cs: CaptureSet, elem: Capability, levelError: Boolean = false)
   extends Note, Showable:
-    private var myTrace: List[CaptureSet] = cs :: Nil
+    private var myTrace: Vector[CaptureSet] = cs +: Vector()
 
-    def trace: List[CaptureSet] = myTrace
+    def trace: Vector[CaptureSet] = myTrace
     def addToTrace(cs1: CaptureSet) =
       val res = IncludeFailure(cs, elem, levelError)
-      res.myTrace = cs1 :: this.myTrace
+      res.myTrace = cs1 +: this.myTrace
       res
 
     //assert(elem != GlobalFresh)
@@ -1471,7 +1471,7 @@ object CaptureSet:
             i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
         case _ =>
           def why =
-            val reasons = cs.elems.toList.collect:
+            val reasons = cs.elems.toVector.collect:
               case c: LocalCap if !c.acceptsLevelOf(elem) =>
                 i"$elem${elem.levelOwner.qualString("in")} is not visible from $c${c.ccOwner.qualString("in")}"
               case c: LocalCap if !elem.tryClassifyAs(c.hiddenSet.classifier) =>
@@ -1485,7 +1485,7 @@ object CaptureSet:
             i"capability `${elem.showAsCapability}` cannot flow into capture set $cs$why"
 
       def moduleExplanation(sym: Symbol, ref: CoreCapability): String =
-        val allElems = sym.info.captureSet.elems.toList
+        val allElems = sym.info.captureSet.elems.toVector
         val (rootElems, otherElems) = allElems.partition(_.isTerminalCapability)
         val fields =
           for
@@ -1711,12 +1711,12 @@ object CaptureSet:
       case _ => false
 
   /* Not needed:
-  def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
+  def ofClass(cinfo: ClassInfo, argTypes: Vector[Type])(using Context): CaptureSet =
     CaptureSet.empty
       def captureSetOf(tp: Type): CaptureSet = tp match
         case tp: TypeRef if tp.symbol.is(ParamAccessor) =>
-          def mapArg(accs: List[Symbol], tps: List[Type]): CaptureSet = accs match
-            case acc :: accs1 if tps.nonEmpty =>
+          def mapArg(accs: Vector[Symbol], tps: Vector[Type]): CaptureSet = accs match
+            case acc +: accs1 if tps.nonEmpty =>
               if acc == tp.symbol then tps.head.captureSet
               else mapArg(accs1, tps.tail)
             case _ =>
@@ -1778,7 +1778,7 @@ object CaptureSet:
           else
             val cs = recur(tycon)
             tycon.typeParams match
-              case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, args)
+              case tparams @ (LambdaParam(tl, _) +: _) => cs.substParams(tl, args)
               case _ => cs
         case tp: TypeProxy =>
           recur(tp.superType)
@@ -1852,7 +1852,7 @@ object CaptureSet:
           val allVars = reachable.toArray.sortBy(_.id)
           println(i"Capture set dependencies:")
           for cv <- allVars do
-            println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
+            println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toVector}%, %")
       }
     else op
 end CaptureSet

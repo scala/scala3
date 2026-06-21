@@ -37,12 +37,12 @@ class CommandLineParserTest:
     check("x", "y", "z")("""x "y" z""")
     check("x", " y ", "z")("""x " y " z""")
     // interior quotes
-    check("x y z")("x' y 'z")   // was assertEquals(List("x'","y","'z"), tokenize("x' y 'z"))
+    check("x y z")("x' y 'z")   // was assertEquals(Vector("x'","y","'z"), tokenize("x' y 'z"))
     check("x\ny\nz")("x'\ny\n'z")
     check("x'y'z")("""x"'y'"z""")
     check("abcxyz")(""""abc"xyz""")
     // missing quotes
-    checkFails(""""x""", "Unmatched quote [0](\")")  // was assertEquals(List("\"x"), tokenize(""""x"""))
+    checkFails(""""x""", "Unmatched quote [0](\")")  // was assertEquals(Vector("\"x"), tokenize(""""x"""))
     checkFails("""x'""", "Unmatched quote [1](')")
 
   @Test def `leading quote is escaped`: Unit =

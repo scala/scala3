@@ -136,7 +136,7 @@ object ShowAPI {
     case i: IdQualifier   => "[" + i.value + "]"
   }
 
-  private def showModifiers(m: Modifiers) = List(
+  private def showModifiers(m: Modifiers) = Vector(
     (m.isOverride, "override"),
     (m.isFinal, "final"),
     (m.isSealed, "sealed"),

@@ -95,11 +95,11 @@ case object Empty extends Space
  *
  */
 case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
-  private var myDecompose: List[Typ] | Null = null
+  private var myDecompose: Vector[Typ] | Null = null
 
   def canDecompose(using Context): Boolean = decompose != ListOfTypNoType
 
-  def decompose(using Context): List[Typ] =
+  def decompose(using Context): Vector[Typ] =
     val decompose = myDecompose
     if decompose == null then
       val decompose = tp match
@@ -111,7 +111,7 @@ case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
 end Typ
 
 /** Space representing an extractor pattern */
-case class Prod(tp: Type, unappTp: TermRef, params: List[Space]) extends Space
+case class Prod(tp: Type, unappTp: TermRef, params: Vector[Space]) extends Space
 
 /** Union of spaces */
 case class Or(spaces: Seq[Space]) extends Space
@@ -120,7 +120,7 @@ object SpaceEngine {
   def simplify(space: Space)(using Context): Space           = space.simplify
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
   def canDecompose(typ: Typ)(using Context): Boolean         = typ.canDecompose
-  def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
+  def decompose(typ: Typ)(using Context): Vector[Typ]          = typ.decompose
   def nullSpace(using Context): Space = Typ(ConstantType(Constant(null)), decomposed = false)
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
@@ -189,7 +189,7 @@ object SpaceEngine {
     case Prod(tp, fun, spaces) =>
       val ss = LazyList(spaces*).map(flatten)
 
-      ss.foldLeft(LazyList(Nil : List[Space])) { (acc, flat) =>
+      ss.foldLeft(LazyList(Vector() : Vector[Space])) { (acc, flat) =>
         for { sps <- acc; s <- flat }
         yield sps :+ s
       }.map { sps =>
@@ -200,7 +200,7 @@ object SpaceEngine {
       LazyList(spaces*).flatMap(flatten)
 
     case _ =>
-      List(space)
+      Vector(space)
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
@@ -294,7 +294,7 @@ object SpaceEngine {
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
           if fun1.symbol.name == nme.unapply && ss1.length != ss2.length => a
       case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        val range = ss1.indices.toList
+        val range = ss1.indices.toVector
         val cache = Array.fill[Space | Null](ss2.length)(null)
         def sub(i: Int) =
           if cache(i) == null then
@@ -400,12 +400,12 @@ object SpaceEngine {
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
           // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
-          // Doing so with a pattern of `case Seq() =>` with a scrutinee of type `Vector()` doesn't work because the
+          // Doing so with a pattern of `case Seq() =>` with a scrutinee of type `Nil` doesn't work because the
           // space is then discarded leading to a false positive reachability warning, see #13931.
           projectSeq(pats)
         else {
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, projectSeq(pats) :: Nil)
+            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, projectSeq(pats) +: Vector())
           else
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
@@ -424,7 +424,7 @@ object SpaceEngine {
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
       Typ(WildcardType, decomposed = false)
 
-    case Block(Nil, expr) =>
+    case Block(Vector(), expr) =>
       project(expr)
 
     case _ =>
@@ -433,7 +433,7 @@ object SpaceEngine {
   })
 
   private def project(tp: Type)(using Context): Space = tp match {
-    case OrType(tp1, tp2) => Or(project(tp1) :: project(tp2) :: Nil)
+    case OrType(tp1, tp2) => Or(project(tp1) +: project(tp2) +: Vector())
     case tp => Typ(tp, decomposed = true)
   }
 
@@ -519,7 +519,7 @@ object SpaceEngine {
 
   /** Space of the pattern: unapplySeq(a, b, c*)
    */
-  def projectSeq(pats: List[Tree])(using Context): Space = {
+  def projectSeq(pats: Vector[Tree])(using Context): Space = {
     if (pats.isEmpty) return Typ(defn.NilType, false)
 
     val (items, zero) = if (isWildcardStarArg(pats.last))
@@ -530,7 +530,7 @@ object SpaceEngine {
     val unapplyTp = defn.ConsType.classSymbol.companionModule.termRef.select(nme.unapply)
     items.foldRight[Space](zero) { (pat, acc) =>
       val consTp = defn.ConsType.appliedTo(pats.head.tpe.widen)
-      Prod(consTp, unapplyTp, project(pat) :: acc :: Nil)
+      Prod(consTp, unapplyTp, project(pat) +: acc +: Vector())
     }
   }
 
@@ -562,7 +562,7 @@ object SpaceEngine {
 
   /** Return term parameter types of the extractor `unapp`.
    *  Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
-  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): List[Type] = trace(i"signature($unapp, $scrutineeTp, $argLen)") {
+  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Vector[Type] = trace(i"signature($unapp, $scrutineeTp, $argLen)") {
     val unappSym = unapp.symbol
 
     val mt: MethodType = unapp.widen match {
@@ -620,13 +620,13 @@ object SpaceEngine {
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
-        List()
+        Vector()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
 
         if (isUnapplySeq) {
           val (arity, elemTp, resultTp) = unapplySeqInfo(resTp, unappSym.srcPos)
-          if (elemTp.exists) defn.ListType.appliedTo(elemTp) :: Nil
+          if (elemTp.exists) defn.ListType.appliedTo(elemTp) +: Vector()
           else {
             val sels = productSeqSelectors(resultTp, arity, unappSym.srcPos)
             sels.init :+ defn.ListType.appliedTo(sels.last)
@@ -638,7 +638,7 @@ object SpaceEngine {
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
             val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos).stripNamedTuple
-            if (argLen == 1) getTp :: Nil
+            if (argLen == 1) getTp +: Vector()
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
         }
@@ -651,33 +651,33 @@ object SpaceEngine {
   def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Boolean = trace(i"covers($unapp, $scrutineeTp, $argLen)") {
     SpaceEngine.isIrrefutable(unapp, argLen)
     || unapp.symbol == defn.TypeTest_unapply && {
-      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
+      val AppliedType(_, _ +: tp +: Vector()) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
     || unapp.symbol == defn.ClassTagClass_unapply && {
-      val AppliedType(_, tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
+      val AppliedType(_, tp +: Vector()) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type)(using Context): List[Type] = trace(i"decompose($tp)") {
-    def rec(tp: Type, mixins: List[Type]): List[Type] = tp.dealias match
+  def decompose(tp: Type)(using Context): Vector[Type] = trace(i"decompose($tp)") {
+    def rec(tp: Type, mixins: Vector[Type]): Vector[Type] = tp.dealias match
       case AndType(tp1, tp2) =>
         var tpB   = tp2
-        var parts = rec(tp1, tp2 :: mixins)
+        var parts = rec(tp1, tp2 +: mixins)
         if parts == ListOfNoType then
           tpB   = tp1
-          parts = rec(tp2, tp1 :: mixins)
+          parts = rec(tp2, tp1 +: mixins)
         if parts == ListOfNoType then ListOfNoType
         else parts.collect:
           case tp if tp <:< tpB                              => tp
           case tp if tpB <:< tp                              => tpB
           case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
 
-      case OrType(tp1, tp2)                            => List(tp1, tp2)
-      case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
-      case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
+      case OrType(tp1, tp2)                            => Vector(tp1, tp2)
+      case tp if tp.isRef(defn.BooleanClass)           => Vector(ConstantType(Constant(true)), ConstantType(Constant(false)))
+      case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) +: Vector()
       case tp @ NamedType(Parts(parts), _)             => if parts.exists(_ eq tp) then ListOfNoType else parts.map(tp.derivedSelect)
       case _: SingletonType                            => ListOfNoType
       case tp if tp.classSymbol.isAllOf(JavaEnum)      => tp.classSymbol.children.map(_.termRef)
@@ -713,13 +713,13 @@ object SpaceEngine {
           case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
           case tp                                                          => tp
         val tp = getAppliedClass(tpOriginal)
-        def getChildren(sym: Symbol): List[Symbol] =
+        def getChildren(sym: Symbol): Vector[Symbol] =
           sym.children.flatMap { child =>
-            if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
+            if child eq sym then Vector(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
-              List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
+              Vector(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
             else if child.is(Sealed) && child.isOneOf(AbstractOrTrait) then getChildren(child)
-            else List(child)
+            else Vector(child)
           }
         val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol))
 
@@ -749,7 +749,7 @@ object SpaceEngine {
       case _ => ListOfNoType
     end rec
 
-    rec(tp, Nil)
+    rec(tp, Vector())
   }
 
   extension (tp: Type)
@@ -765,13 +765,13 @@ object SpaceEngine {
     def isUpperBoundedAbstract(using Context): Boolean =
       tref.symbol.isAbstractOrAliasType && !tref.info.hiBound.isNothingType
 
-  val ListOfNoType    = List(NoType)
+  val ListOfNoType    = Vector(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
 
   object Parts:
     def unapply(tp: Type)(using Context): PartsExtractor = PartsExtractor(decompose(tp))
 
-  final class PartsExtractor(val get: List[Type]) extends AnyVal:
+  final class PartsExtractor(val get: Vector[Type]) extends AnyVal:
     def isEmpty: Boolean = get == ListOfNoType
 
   object Childless:
@@ -796,19 +796,19 @@ object SpaceEngine {
   def satisfiable(sp: Space)(using Context): Boolean = {
     def impossible: Nothing = throw new AssertionError("`satisfiable` only accepts flattened space.")
 
-    def genConstraint(space: Space): List[(Type, Type)] = space match {
+    def genConstraint(space: Space): Vector[(Type, Type)] = space match {
       case Prod(tp, unappTp, ss) =>
         val tps = signature(unappTp, tp, ss.length)
         ss.zip(tps).flatMap {
-          case (sp : Prod, tp) => sp.tp -> tp :: genConstraint(sp)
-          case (Typ(tp1, _), tp2) => tp1 -> tp2 :: Nil
+          case (sp : Prod, tp) => (sp.tp -> tp) +: genConstraint(sp)
+          case (Typ(tp1, _), tp2) => (tp1 -> tp2) +: Vector()
           case _ => impossible
         }
-      case Typ(_, _) => Nil
+      case Typ(_, _) => Vector()
       case _ => impossible
     }
 
-    def checkConstraint(constrs: List[(Type, Type)])(using Context): Boolean = {
+    def checkConstraint(constrs: Vector[(Type, Type)])(using Context): Boolean = {
       val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
       val typeParamMap = new TypeMap() {
         override def apply(tp: Type): Type = tp match {
@@ -826,7 +826,7 @@ object SpaceEngine {
 
   /** Display spaces.  Used for printing uncovered spaces in the in-exhaustive error message. */
   def display(s: Space)(using Context): String = inContext(ctx.fresh.setPrinterFn(LocalPrinter(_))) {
-    def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
+    def params(tp: Type): Vector[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
 
     /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {
@@ -1040,9 +1040,9 @@ object SpaceEngine {
     val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
-    val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
+    val patternSpace = Or(m.cases.foldLeft(Vector.empty[Space]) { (acc, x) =>
       val space = trace(i"projectCaseDef(${x.pat})")(projectCaseDef(x))
-      space :: acc
+      space +: acc
     })
 
     val checkGADTSAT = shouldCheckExamples(selTyp)
@@ -1078,17 +1078,17 @@ object SpaceEngine {
     var hadNullOnly = false
     def projectPat(pat: Tree): Space =
       // Project toplevel wildcard pattern to nullable
-      if isNullable && isWildcardArg(pat) then Or(project(pat) :: nullSpace :: Nil)
+      if isNullable && isWildcardArg(pat) then Or(project(pat) +: nullSpace +: Vector())
       else project(pat)
-    @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
-      cases match
-        case Nil =>
-        case (c @ CaseDef(pat, _, _)) :: rest =>
+    @tailrec def recur(cases: Vector[CaseDef], prevs: Vector[Space], deferred: Vector[Tree]): Unit =
+      (cases: @unchecked) match
+        case Vector() =>
+        case (c @ CaseDef(pat, _, _)) +: rest =>
           val (curr, maybePartial) = resolveCaseDef(c, projectPat)
           val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
           val prev = trace("prev")(simplify(Or(prevs)))
           if prev == Empty && covered == Empty then // defer until a case is reachable
-            recur(rest, prevs, pat :: deferred)
+            recur(rest, prevs, pat +: deferred)
           else
             for deferral <- deferred.reverseIterator
             do report.warning(MatchCaseUnreachable(), deferral.srcPos)
@@ -1099,7 +1099,7 @@ object SpaceEngine {
               if isSubspace(covered, prev) then
                 report.warning(MatchCaseUnreachable(), pat.srcPos)
               else if isNullable && !hadNullOnly && isWildcardArg(pat)
-                && isSubspace(covered, Or(prev :: nullSpace :: Nil)) then
+                && isSubspace(covered, Or(prev +: nullSpace +: Vector())) then
                 // Issue OnlyNull warning only if:
                 // 1. The target space is nullable;
                 // 2. OnlyNull warning has not been issued before;
@@ -1110,10 +1110,10 @@ object SpaceEngine {
                 report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
             // in redundancy check, take guard as false for a sound approximation
-            val newPrev = if maybePartial then prevs else covered :: prevs
-            recur(rest, newPrev, Nil)
+            val newPrev = if maybePartial then prevs else covered +: prevs
+            recur(rest, newPrev, Vector())
 
-    recur(m.cases, Nil, Nil)
+    recur(m.cases, Vector(), Vector())
   end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =

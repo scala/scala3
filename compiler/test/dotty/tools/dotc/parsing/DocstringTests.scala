@@ -150,7 +150,7 @@ class DocstringTests extends DocstringTest {
       case PackageDef(_, Seq(outer @ TypeDef(_, tpl @ Template(_,_,_,_)))) => {
         checkDocString(outer.rawComment.map(_.raw), "/** Outer docstring */")
         tpl.body match {
-          case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment.map(_.raw), "/** Inner docstring */")
+          case (inner @ TypeDef(_,_)) +: _ => checkDocString(inner.rawComment.map(_.raw), "/** Inner docstring */")
           case _ => assert(false, "Couldn't find inner class")
         }
       }
@@ -175,7 +175,7 @@ class DocstringTests extends DocstringTest {
         checkDocString(o1.rawComment.map(_.raw), "/** Outer1 docstring */")
         checkDocString(o2.rawComment.map(_.raw), "/** Outer2 docstring */")
         tpl.body match {
-          case (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment.map(_.raw), "/** Inner docstring */")
+          case (inner @ TypeDef(_,_)) +: _ => checkDocString(inner.rawComment.map(_.raw), "/** Inner docstring */")
           case _ => assert(false, "Couldn't find inner class")
         }
       }
@@ -229,7 +229,7 @@ class DocstringTests extends DocstringTest {
         checkDocString(o2.rawComment.map(_.raw), "/** Object2 docstring */")
 
         o2.impl.body match {
-          case _ :: (inner @ TypeDef(_,_)) :: _ => checkDocString(inner.rawComment.map(_.raw), "/** Inner docstring */")
+          case _ +: (inner @ TypeDef(_,_)) +: _ => checkDocString(inner.rawComment.map(_.raw), "/** Inner docstring */")
           case _ => assert(false, "Couldn't find inner class")
         }
       }
@@ -261,7 +261,7 @@ class DocstringTests extends DocstringTest {
         checkDocString(p.rawComment.map(_.raw), "/** Package object docstring */")
 
         p.impl.body match {
-          case (b: TypeDef) :: (t: TypeDef) :: (o: ModuleDef) :: Nil => {
+          case (b: TypeDef) +: (t: TypeDef) +: (o: ModuleDef) +: Vector() => {
             checkDocString(b.rawComment.map(_.raw), "/** Boo docstring */")
             checkDocString(t.rawComment.map(_.raw), "/** Trait docstring */")
             checkDocString(o.rawComment.map(_.raw), "/** InnerObject docstring */")
@@ -329,7 +329,7 @@ class DocstringTests extends DocstringTest {
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
-          case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          case (v1: MemberDef) +: (v2: MemberDef) +: (v3: MemberDef) +: Vector() => {
             checkDocString(v1.rawComment.map(_.raw), "/** val1 */")
             checkDocString(v2.rawComment.map(_.raw), "/** val2 */")
             checkDocString(v3.rawComment.map(_.raw), "/** val3 */")
@@ -361,7 +361,7 @@ class DocstringTests extends DocstringTest {
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
-          case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          case (v1: MemberDef) +: (v2: MemberDef) +: (v3: MemberDef) +: Vector() => {
             checkDocString(v1.rawComment.map(_.raw), "/** var1 */")
             checkDocString(v2.rawComment.map(_.raw), "/** var2 */")
             checkDocString(v3.rawComment.map(_.raw), "/** var3 */")
@@ -393,7 +393,7 @@ class DocstringTests extends DocstringTest {
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
-          case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          case (v1: MemberDef) +: (v2: MemberDef) +: (v3: MemberDef) +: Vector() => {
             checkDocString(v1.rawComment.map(_.raw), "/** def1 */")
             checkDocString(v2.rawComment.map(_.raw), "/** def2 */")
             checkDocString(v3.rawComment.map(_.raw), "/** def3 */")
@@ -425,7 +425,7 @@ class DocstringTests extends DocstringTest {
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
-          case (v1: MemberDef) :: (v2: MemberDef) :: (v3: MemberDef) :: Nil => {
+          case (v1: MemberDef) +: (v2: MemberDef) +: (v3: MemberDef) +: Vector() => {
             checkDocString(v1.rawComment.map(_.raw), "/** type1 */")
             checkDocString(v2.rawComment.map(_.raw), "/** type2 */")
             checkDocString(v3.rawComment.map(_.raw), "/** type3 */")
@@ -451,7 +451,7 @@ class DocstringTests extends DocstringTest {
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) =>
         o.impl.body match {
-          case (foo: MemberDef) :: Nil =>
+          case (foo: MemberDef) +: Vector() =>
             expectNoDocString(foo.rawComment.map(_.raw))
           case _ => assert(false, "Incorrect structure inside object")
         }

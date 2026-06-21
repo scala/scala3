@@ -16,9 +16,9 @@ abstract class ReadOnlySet[T]:
   def foreach[U](f: T => U): Unit = iterator.foreach(f)
 
   def toList: List[T] = iterator.toList
+  def toVector: Vector[T] = iterator.toVector
 
   def isEmpty = size == 0
 
 object ReadOnlySet:
   def empty[T]: ReadOnlySet[T] = HashSet[T](4)
-

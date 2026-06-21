@@ -133,8 +133,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
      *  type and figure out which context function types in its result are
      *  not yet instantiated.
      */
-    def etaExpand(ref: Tree, args: List[Tree])(using Context): Tree =
-      def expand(args: List[Tree], tp: Type, n: Int)(using Context): Tree =
+    def etaExpand(ref: Tree, args: Vector[Tree])(using Context): Tree =
+      def expand(args: Vector[Tree], tp: Type, n: Int)(using Context): Tree =
         if n <= 0 then
           assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
@@ -147,16 +147,16 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           val anonFun = newAnonFun(ctx.owner, mtWithoutErasedParams, coord = ctx.owner.coord)
           anonFun.info = transformInfo(anonFun, anonFun.info)
 
-          def lambdaBody(refss: List[List[Tree]]) =
-            val refs :: Nil = refss: @unchecked
+          def lambdaBody(refss: Vector[Vector[Tree]]) =
+            val refs +: Vector() = refss: @unchecked
             val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
-              case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                mtWithoutErasedParams.paramInfos.indices.toList.map(n =>
+              case (bunchedParam @ Ident(nme.ALLARGS)) +: Vector() =>
+                mtWithoutErasedParams.paramInfos.indices.toVector.map(n =>
                   bunchedParam
                     .select(nme.primitive.arrayApply)
                     .appliedTo(Literal(Constant(n))))
               case refs1 => refs1
-            expand(args ::: expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
+            expand(args ++ expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
 
           val unadapted = Closure(anonFun, lambdaBody)
           cpy.Block(unadapted)(unadapted.stats,
@@ -168,7 +168,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       expand(args, start, memberCount - otherCount)(using ctx.withOwner(bridge))
     end etaExpand
 
-    def bridgeRhs(argss: List[List[Tree]]) =
+    def bridgeRhs(argss: Vector[Vector[Tree]]) =
       assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
       if member.info.isParameterless then ref // can happen if `member` is a module
@@ -181,12 +181,12 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   /** Add all necessary bridges to template statements `stats`, and remove at the same
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
-  def add(stats: List[untpd.Tree]): List[untpd.Tree] =
+  def add(stats: Vector[untpd.Tree]): Vector[untpd.Tree] =
     val opc = inContext(preErasureCtx) { new BridgesCursor }
     while opc.hasNext do
       if !opc.overriding.is(Deferred) then
         addBridgeIfNeeded(opc.overriding, opc.overridden)
       opc.next()
     if bridges.isEmpty then stats
-    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
+    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ++ bridges.toVector
 }

@@ -14,9 +14,9 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd.*
 
   val superCls: Symbol = cls.superClass
-  val mixins: List[ClassSymbol] = cls.mixins
+  val mixins: Vector[ClassSymbol] = cls.mixins
 
-  lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
+  lazy val JUnit4Annotations: Vector[Symbol] = Vector("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
     map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
@@ -109,12 +109,12 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   private val PrivateOrAccessor: FlagSet = Private | Accessor
   private val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarderRhsFn(target: Symbol): List[List[Tree]] => Tree =
+  def forwarderRhsFn(target: Symbol): Vector[Vector[Tree]] => Tree =
     prefss =>
       val (targs, vargss) = splitArgs(prefss)
       val tapp = superRef(target).appliedToTypeTrees(targs)
       val rhs = vargss match
-        case Nil | List(Nil) =>
+        case Vector() | Vector(Vector()) =>
           // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
           // whichever makes sense for `target`
           tapp.ensureApplied
@@ -125,6 +125,6 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         // Since this is still before erasure, the type can be nullable
         // and causes error during checking. So we need to enable
         // unsafe-nulls to construct the rhs.
-        Block(Nullables.importUnsafeNulls :: Nil, rhs)
+        Block(Nullables.importUnsafeNulls +: Vector(), rhs)
       else rhs
 }

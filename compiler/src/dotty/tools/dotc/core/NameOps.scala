@@ -301,7 +301,7 @@ object NameOps {
     /** This method is to be used on **type parameters** from a class, since
      *  this method does sorting based on their names
      */
-    def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(using Context): N = {
+    def specializedFor(classTargs: Vector[Type], classTargsNames: Vector[Name], methodTargs: Vector[Type], methodTarsNames: Vector[Name])(using Context): N = {
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
 
@@ -324,7 +324,7 @@ object NameOps {
     /** Returns the name of the class specialised to the provided types,
      *  in the given order.  Used for the specialized tuple classes.
      */
-    def specializedName(args: List[Type])(using Context): N =
+    def specializedName(args: Vector[Type])(using Context): N =
       val sb = new StringBuilder
       sb.append(name.toString)
       sb.append(nme.specializedTypeNames.prefix.toString)
@@ -339,7 +339,7 @@ object NameOps {
      *
      *  `<return type><first type><second type><...>`
      */
-    def specializedFunction(ret: Type, args: List[Type])(using Context): N =
+    def specializedFunction(ret: Type, args: Vector[Type])(using Context): N =
       val sb = new StringBuilder
       sb.append(name.toString)
       sb.append(nme.specializedTypeNames.prefix.toString)
@@ -377,7 +377,7 @@ object NameOps {
           }
     }
 
-    def unmangle(kinds: List[NameKind]): N = {
+    def unmangle(kinds: Vector[NameKind]): N = {
       val unmangled = kinds.foldLeft(name)(_.unmangle(_))
       if (unmangled eq name) name else unmangled.unmangle(kinds)
     }

@@ -142,7 +142,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   private val packageToModuleBases: Map[String, Seq[Path]] = {
     val ps = Files.newDirectoryStream(dir).iterator().asScala
     def lookup(pack: Path): Seq[Path] =
-      Files.list(pack).iterator().asScala.map(l => if (Files.isSymbolicLink(l)) Files.readSymbolicLink(l) else l).toList
+      Files.list(pack).iterator().asScala.map(l => if (Files.isSymbolicLink(l)) Files.readSymbolicLink(l) else l).toVector
     ps.map(p => (p.toString.stripPrefix("/packages/"), lookup(p))).toMap
   }
 
@@ -153,9 +153,9 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     packageToModuleBases.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntry(_)).toVector
 
   override def classes(inPackage: String): Seq[BinaryFileEntry] =
-    if (inPackage == ClassPath.RootPackage) Nil
+    if (inPackage == ClassPath.RootPackage) Vector()
     else
-      packageToModuleBases.getOrElse(inPackage, Nil).flatMap(x =>
+      packageToModuleBases.getOrElse(inPackage, Vector()).flatMap(x =>
         Files.list(x.resolve(PackageNameUtils.dirPathTrailingSlash(inPackage))).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
         ClassFileEntry(x.toPlainFile)).toVector
 
@@ -165,12 +165,12 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     if (!className.contains(".")) None
     else {
       val (inPackage, _) = separatePkgAndClassNames(className)
-      packageToModuleBases.getOrElse(inPackage, Nil).iterator.flatMap{ x =>
+      packageToModuleBases.getOrElse(inPackage, Vector()).iterator.flatMap{ x =>
         val file = x.resolve(FileUtils.dirPath(className) + ".class")
         if (Files.exists(file)) {
-          file.toPlainFile :: Nil
-        } else Nil
-      }.take(1).toList.headOption
+          file.toPlainFile +: Vector()
+        } else Vector()
+      }.take(1).toVector.headOption
     }
 }
 
@@ -182,14 +182,14 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
 
   private val fileSystem: FileSystem = FileSystems.newFileSystem(ctSym, null: ClassLoader | Null)
   private val root: Path = fileSystem.getRootDirectories.iterator.next
-  private val roots = Files.newDirectoryStream(root).iterator.asScala.toList
+  private val roots = Files.newDirectoryStream(root).iterator.asScala.toVector
 
   // http://mail.openjdk.java.net/pipermail/compiler-dev/2018-March/011737.html
   private def codeFor(major: Int): String = if (major < 10) major.toString else ('A' + (major - 10)).toChar.toString
 
   private val releaseCode: String = codeFor(release)
   private def fileNameMatchesRelease(fileName: String) = !fileName.contains("-") && fileName.contains(releaseCode) // exclude `9-modules`
-  private val rootsForRelease: List[Path] = roots.filter(root => fileNameMatchesRelease(root.getFileName.toString))
+  private val rootsForRelease: Vector[Path] = roots.filter(root => fileNameMatchesRelease(root.getFileName.toString))
 
   // e.g. "java.lang" -> Seq(/876/java/lang, /87/java/lang, /8/java/lang))
   private val packageIndex: scala.collection.Map[String, scala.collection.Seq[Path]] = {
@@ -209,9 +209,9 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
     packageIndex.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntry(_)).toVector
   }
   override def classes(inPackage: String): Seq[BinaryFileEntry] = {
-    if (inPackage == ClassPath.RootPackage) Nil
+    if (inPackage == ClassPath.RootPackage) Vector()
     else {
-      val sigFiles = packageIndex.getOrElse(inPackage, Nil).iterator.flatMap(p =>
+      val sigFiles = packageIndex.getOrElse(inPackage, Vector()).iterator.flatMap(p =>
         Files.list(p).iterator.asScala.filter(_.getFileName.toString.endsWith(".sig")))
       sigFiles.map(f => ClassFileEntry(f.toPlainFile)).toVector
     }
@@ -221,10 +221,10 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
     if (!className.contains(".")) None
     else {
       val (inPackage, classSimpleName) = separatePkgAndClassNames(className)
-      packageIndex.getOrElse(inPackage, Nil).iterator.flatMap { p =>
+      packageIndex.getOrElse(inPackage, Vector()).iterator.flatMap { p =>
         val path = p.resolve(classSimpleName + ".sig")
-        if (Files.exists(path)) path.toPlainFile :: Nil else Nil
-      }.take(1).toList.headOption
+        if (Files.exists(path)) path.toPlainFile +: Vector() else Vector()
+      }.take(1).toVector.headOption
     }
   }
 }

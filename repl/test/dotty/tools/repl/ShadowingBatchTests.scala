@@ -76,7 +76,7 @@ class ShadowingBatchTests extends ErrorMessagesTest:
   def checkMessages(source: String): Report =
     ctx = newContext
     val run = compiler.newRun(using ctx.fresh)
-    run.compileFromStrings(List(source))
+    run.compileFromStrings(Vector(source))
     val runCtx = run.runContext
     if runCtx.reporter.hasErrors then
       val rep = runCtx.reporter.asInstanceOf[StoreReporter]

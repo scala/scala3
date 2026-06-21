@@ -36,7 +36,7 @@ def isCaptureCheckingOrSetup(using Context): Boolean =
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.
  */
-def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames: List[TermName] = Nil)(using Context): Type =
+def depFun(args: Vector[Type], resultType: Type, isContextual: Boolean, paramNames: Vector[TermName] = Vector())(using Context): Type =
   val make = MethodType.companion(isContextual = isContextual)
   val mt =
     if paramNames.length == args.length then make(paramNames, args, resultType)
@@ -56,7 +56,7 @@ extension (tree: Tree)
    *  annotation tree (represented as an Apply node).
    */
   def retainedSet(using Context): Type = tree match
-    case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
+    case Apply(TypeApply(_, refs +: Vector()), _) => refs.tpe
     case _ =>
       if tree.symbol.maybeOwner == defn.RetainsCapAnnot
       then defn.Caps_any.termRef
@@ -84,7 +84,7 @@ extension (tp: Type)
   /** A list of raw elements of a retained set.
    *  This will not crash even if it contains a non-wellformed Capability.
    */
-  def retainedElementsRaw(using Context): List[Type] = tp match
+  def retainedElementsRaw(using Context): Vector[Type] = tp match
     case OrType(tp1, tp2) =>
       tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
     case AnnotatedType(tp1, ann: RetainingAnnotation) if tp1.derivesFromCapSet =>
@@ -96,20 +96,20 @@ extension (tp: Type)
           // from a polymorphic target type using capture sets. In that case the parameter type
           // of $x is not treated as inferred and is approximated to CapSet. An example is
           // capset-problem.scala. We handle these cases by appromxating to the empty set.
-          Nil
+          Vector()
         case _ =>
           // Nothing is a special type to represent the empty set
-          if tp.isNothingType then Nil
-          else tp :: Nil // should be checked by wellformedness
+          if tp.isNothingType then Vector()
+          else tp +: Vector() // should be checked by wellformedness
 
   /** A list of capabilities of a retained set. */
-  def retainedElements(using Context): List[Capability] =
+  def retainedElements(using Context): Vector[Capability] =
     retainedElementsRaw.flatMap: elem =>
       elem match
         case CapturingType(parent, refs) if parent.derivesFromCapSet =>
-          refs.elems.toList
+          refs.elems.toVector
         case _ =>
-          elem.toCapability :: Nil
+          elem.toCapability +: Vector()
 
   /** Is this type a Capability that can be tracked?
    *  This is true for
@@ -434,7 +434,7 @@ extension (tp: Type)
   /** If `tp` is a function or method, a type of the same kind with the given
    *  argument and result types.
   */
-  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = tp match
+  def derivedFunctionOrMethod(argTypes: Vector[Type], resType: Type)(using Context): Type = tp match
     case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
       val args1 = argTypes :+ resType
       if args.corresponds(args1)(_ eq _) then tp
@@ -448,7 +448,7 @@ extension (tp: Type)
       tp.derivedLambdaType(paramInfos = argTypes, resType = resType)
     case tp: PolyType =>
       assert(argTypes.forall(_.isInstanceOf[TypeBounds]))
-      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[List[TypeBounds]], resType = resType)
+      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[Vector[TypeBounds]], resType = resType)
     case _ =>
       tp
 
@@ -457,13 +457,13 @@ extension (tp: Type)
     else tp.classSymbols.map(_.classifier).foldLeft(defn.AnyClass)(leastClassifier)
 
   /** The classifiers of all terminal capabilities in the span capture set of `tp` */
-  def embeddedLocalCaps(using Context): List[Capability] =
-    tp.spanCaptureSet.elems.filter(_.core.isInstanceOf[LocalCap]).toList
+  def embeddedLocalCaps(using Context): Vector[Capability] =
+    tp.spanCaptureSet.elems.filter(_.core.isInstanceOf[LocalCap]).toVector
 
   /** If classifier `clsfier` exists: A localCap instance with this classifier,
    *  possibly wrapped in a readOnly.
    */
-  def impliedCaptures(clsfier: Symbol, contributing: List[Symbol], readOnly: => Boolean)(using Context): CaptureSet =
+  def impliedCaptures(clsfier: Symbol, contributing: Vector[Symbol], readOnly: => Boolean)(using Context): CaptureSet =
     clsfier match
     case clsfier: ClassSymbol =>
       val lcap = LocalCap(Origin.NewInstance(tp, contributing))
@@ -494,7 +494,7 @@ extension (tp: Type)
         .collect:
           case cl: ClassSymbol => cl
         .commonAncestor
-      tp.impliedCaptures(impliedClr, Nil, localCaps.forall(_.isReadOnly))
+      tp.impliedCaptures(impliedClr, Vector(), localCaps.forall(_.isReadOnly))
         .showing(i"implied lambda captures of $tp = $result", capt)
     case RefinedType(_, rname, rinfo) if rname == nme.apply =>
       rinfo.impliedLambdaCaptures
@@ -561,10 +561,10 @@ extension (cls: ClassSymbol) {
    *  neg-customargs/captures/matrix.scala.
    *  @return  the implied capture set, and the list of fields contributing to it
    */
-  def capturesImpliedByFields(core: Type)(using Context): (refs: CaptureSet, fields: List[Symbol]) = {
+  def capturesImpliedByFields(core: Type)(using Context): (refs: CaptureSet, fields: Vector[Symbol]) = {
     def knownFields(cls: ClassSymbol) =
       ccState.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
-        .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
+        .getOrElse(cls, cls.info.decls.toVector)  // pick all symbols in class scope for other classes
 
     /** The implied classifier of the LocalCap of the class instance, derived from
      *    - the classifiers of the LocalCaps in the span capture sets of all fields
@@ -582,17 +582,17 @@ extension (cls: ClassSymbol) {
             case cl: ClassSymbol => cl
         val stateClassifiers =
           if cls.typeRef.isStatefulType(varsOnly = true)
-          then cls.classifier :: Nil
-          else Nil
+          then cls.classifier +: Vector()
+          else Vector()
         (fieldClassifiers ++ parentClassifiers ++ stateClassifiers).commonAncestor
       case _ => NoSymbol
 
-    def contributingFields(cls: Symbol): List[Symbol] = cls match
+    def contributingFields(cls: Symbol): Vector[Symbol] = cls match
       case cls: ClassSymbol =>
         var ownFields = knownFields(cls).filter(memberCaps(_).nonEmpty)
         val parentFields = cls.parentSyms.flatMap(contributingFields)
         ownFields ++ parentFields
-      case _ => Nil
+      case _ => Vector()
 
     val impliedClr = impliedClassifier(cls)
     val contributing = contributingFields(cls)
@@ -604,7 +604,7 @@ extension (cls: ClassSymbol) {
 
   def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =
     if cls.derivesFromCapability
-    then LocalCap(Origin.NewInstance(core, Nil)).singletonCaptureSet
+    then LocalCap(Origin.NewInstance(core, Vector())).singletonCaptureSet
     else cls.capturesImpliedByFields(core).refs
 
   /** Map locals set with an as-seen-from relative to the prefix path of the created class
@@ -813,13 +813,13 @@ extension (sym: Symbol) {
   /** The terminal capabilities that this symbol contributes to the capture set of the
    *  enclosing class.
    */
-  def memberCaps(using Context): List[Capability] =
-    if sym.contributesLocalCapsToClass then sym.info.embeddedLocalCaps else Nil
+  def memberCaps(using Context): Vector[Capability] =
+    if sym.contributesLocalCapsToClass then sym.info.embeddedLocalCaps else Vector()
 
   /** The classifiers of all terminal capabilities comntributed by this symbol
    *  to the capture set of the enclosing class.
    */
-  def classifiersOfLocalCapsInInfo(using Context): List[ClassSymbol] =
+  def classifiersOfLocalCapsInInfo(using Context): Vector[ClassSymbol] =
     memberCaps.map(_.classifier).collect:
       case cl: ClassSymbol => cl
 
@@ -851,7 +851,7 @@ extension (tp: AnnotatedType) {
     case _ => false
 }
 
-extension (clss: List[ClassSymbol])
+extension (clss: Vector[ClassSymbol])
   def commonAncestor(using Context): Symbol =
     if clss.isEmpty then NoSymbol else clss.reduce(greatestClassifier)
 
@@ -900,7 +900,7 @@ object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 object OnlyCapability:
   def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
     AnnotatedType(tp,
-      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Vector(), util.Spans.NoSpan))
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
@@ -916,7 +916,7 @@ end OnlyCapability
  *           2nd half: The result type
  */
 object FunctionOrMethod:
-  def unapply(tp: Type)(using Context): Option[(List[Type], Type)] = tp match
+  def unapply(tp: Type)(using Context): Option[(Vector[Type], Type)] = tp match
     case defn.FunctionOf(args, res, isContextual) => Some((args, res))
     case mt: MethodOrPoly => Some((mt.paramInfos, mt.resType))
     case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
@@ -928,7 +928,7 @@ object ContainsImpl:
     tree.fun.tpe.widen match
       case fntpe: PolyType if tree.fun.symbol == defn.Caps_containsImpl =>
         tree.args match
-          case csArg :: refArg :: Nil => Some((csArg, refArg))
+          case csArg +: refArg +: Vector() => Some((csArg, refArg))
           case _ => None
       case _ => None
 
@@ -936,7 +936,7 @@ object ContainsImpl:
 object ContainsParam:
   def unapply(sym: Symbol)(using Context): Option[(TypeRef, Capability)] =
     sym.info.dealias match
-      case AppliedType(tycon, (cs: TypeRef) :: arg2 :: Nil)
+      case AppliedType(tycon, (cs: TypeRef) +: arg2 +: Vector())
       if tycon.typeSymbol == defn.Caps_ContainsTrait
           && cs.typeSymbol.isAbstractOrParamType =>
         arg2.stripCapturing match // ref.type was converted to box ref.type^{ref} by boxing

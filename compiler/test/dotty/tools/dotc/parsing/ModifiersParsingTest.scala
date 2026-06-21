@@ -18,7 +18,7 @@ object ModifiersParsingTest {
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
-    stats match { case List(stat) => stat; case stats => Thicket(stats) }
+    stats match { case Vector(stat) => stat; case stats => Thicket(stats) }
   }
 
   extension (code: Tree) {
@@ -66,7 +66,7 @@ object ModifiersParsingTest {
         else expr
     }
 
-    def modifiers: List[Mod] = code match {
+    def modifiers: Vector[Mod] = code match {
       case t: MemberDef => t.mods.mods
     }
   }
@@ -79,36 +79,36 @@ class ModifiersParsingTest {
 
   @Test def valDef = {
     var source = parse("class A(var a: Int)")
-    assert(source.firstConstrValDef.modifiers == List(Mod.Var()))
+    assert(source.firstConstrValDef.modifiers == Vector(Mod.Var()))
 
     source = parse("class A(val a: Int)")
-    assert(source.firstConstrValDef.modifiers == List())
+    assert(source.firstConstrValDef.modifiers == Vector())
 
     source = parse("class A(private val a: Int)")
-    assert(source.firstConstrValDef.modifiers == List(Mod.Private()))
+    assert(source.firstConstrValDef.modifiers == Vector(Mod.Private()))
 
     source = parse("class A(protected var a: Int)")
-    assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Var()))
+    assert(source.firstConstrValDef.modifiers == Vector(Mod.Protected(), Mod.Var()))
 
     source = parse("class A(protected implicit val a: Int)")
-    assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Implicit()))
+    assert(source.firstConstrValDef.modifiers == Vector(Mod.Protected(), Mod.Implicit()))
 
     source = parse("class A[T]")
-    assert(source.firstTypeParam.modifiers == List())
+    assert(source.firstTypeParam.modifiers == Vector())
   }
 
   @Test def typeDef = {
     var source = parse("class A")
-    assert(source.modifiers == List())
+    assert(source.modifiers == Vector())
 
     source = parse("sealed class A")
-    assert(source.modifiers == List(Mod.Sealed()))
+    assert(source.modifiers == Vector(Mod.Sealed()))
 
     source = parse("implicit class A")
-    assert(source.modifiers == List(Mod.Implicit()))
+    assert(source.modifiers == Vector(Mod.Implicit()))
 
     source = parse("abstract sealed class A")
-    assert(source.modifiers == List(Mod.Abstract(), Mod.Sealed()))
+    assert(source.modifiers == Vector(Mod.Abstract(), Mod.Sealed()))
   }
 
   @Test def fieldDef = {
@@ -124,37 +124,37 @@ class ModifiersParsingTest {
         | }
       """.stripMargin)
 
-    assert(source.field("a").modifiers == List(Mod.Lazy(), Mod.Var()))
-    assert(source.field("b").modifiers == List(Mod.Lazy(), Mod.Private()))
-    assert(source.field("c").modifiers == List(Mod.Final()))
-    assert(source.field("f").modifiers == List(Mod.Abstract(), Mod.Override()))
-    assert(source.field("g").modifiers == List(Mod.Inline()))
+    assert(source.field("a").modifiers == Vector(Mod.Lazy(), Mod.Var()))
+    assert(source.field("b").modifiers == Vector(Mod.Lazy(), Mod.Private()))
+    assert(source.field("c").modifiers == Vector(Mod.Final()))
+    assert(source.field("f").modifiers == Vector(Mod.Abstract(), Mod.Override()))
+    assert(source.field("g").modifiers == Vector(Mod.Inline()))
   }
 
   @Test def paramDef = {
     var source: Tree = parse("def f(inline a: Int) = ???")
-    assert(source.defParam(0).modifiers == List(Mod.Inline()))
+    assert(source.defParam(0).modifiers == Vector(Mod.Inline()))
 
     source = parse("def f(implicit a: Int, b: Int) = ???")
-    assert(source.defParam(0).modifiers == List(Mod.Implicit()))
-    assert(source.defParam(1).modifiers == List())
+    assert(source.defParam(0).modifiers == Vector(Mod.Implicit()))
+    assert(source.defParam(1).modifiers == Vector())
 
     source = parse("def f(x: Int, y: Int)(implicit a: Int, b: Int) = ???")
-    assert(source.defParam(0, 0).modifiers == List())
-    assert(source.defParam(1, 0).modifiers == List(Mod.Implicit()))
+    assert(source.defParam(0, 0).modifiers == Vector())
+    assert(source.defParam(1, 0).modifiers == Vector(Mod.Implicit()))
   }
 
   @Test def blockDef = {
     var source: Tree = parse("implicit val x : A = ???")
-    assert(source.modifiers == List(Mod.Implicit()))
+    assert(source.modifiers == Vector(Mod.Implicit()))
 
     source = parse("implicit var x : A = ???")
-    assert(source.modifiers == List(Mod.Implicit(), Mod.Var()))
+    assert(source.modifiers == Vector(Mod.Implicit(), Mod.Var()))
 
     source = parse("{ implicit var x : A = ??? }")
-    assert(source.stat(0).modifiers == List(Mod.Implicit(), Mod.Var()))
+    assert(source.stat(0).modifiers == Vector(Mod.Implicit(), Mod.Var()))
 
     source = parse("{ implicit x => x * x }")
-    assert(source.stat(0).funParam(0).modifiers == List(Mod.Implicit()))
+    assert(source.stat(0).funParam(0).modifiers == Vector(Mod.Implicit()))
   }
 }

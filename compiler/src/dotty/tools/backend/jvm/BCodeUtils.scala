@@ -321,19 +321,10 @@ object BCodeUtils {
 
   def substituteLabel(reference: AnyRef, from: LabelNode, to: LabelNode): Unit = {
     def substList(list: java.util.List[LabelNode]): Unit = {
-      def foreachWithIndex[A](xs: List[A])(f: (A, Int) => Unit): Unit = {
-        var index = 0
-        var ys = xs
-        while (ys.nonEmpty) {
-          f(ys.head, index)
-          ys = ys.tail
-          index += 1
-        }
-      }
-      
-      foreachWithIndex(list.asScala.toList) { case (l, i) =>
-        if (l == from) list.set(i, to)
-      }
+      var i = 0
+      while i < list.size do
+        if list.get(i) == from then list.set(i, to)
+        i += 1
     }
     (reference: @unchecked) match {
       case jump: JumpInsnNode           => jump.label = to
@@ -388,7 +379,7 @@ object BCodeUtils {
    * Clone the local variable descriptors of `methodNode` and map their `start` and `end` labels
    * according to the `labelMap`.
    */
-  def cloneLocalVariableNodes(methodNode: MethodNode, labelMap: Map[LabelNode, LabelNode], calleeMethodName: String, localIndexMap: Int => Int): List[LocalVariableNode] = {
+  def cloneLocalVariableNodes(methodNode: MethodNode, labelMap: Map[LabelNode, LabelNode], calleeMethodName: String, localIndexMap: Int => Int): Vector[LocalVariableNode] = {
     val res = mutable.ListBuffer.empty[LocalVariableNode]
     for (localVariable <- methodNode.localVariables.iterator.asScala) {
       val newIdx = localIndexMap(localVariable.index)
@@ -419,20 +410,20 @@ object BCodeUtils {
           newIdx)
       }
     }
-    res.toList
+    res.toVector
   }
 
   /**
    * Clone the local try/catch blocks of `methodNode` and map their `start` and `end` and `handler`
    * labels according to the `labelMap`.
    */
-  def cloneTryCatchBlockNodes(methodNode: MethodNode, labelMap: Map[LabelNode, LabelNode]): List[TryCatchBlockNode] = {
+  def cloneTryCatchBlockNodes(methodNode: MethodNode, labelMap: Map[LabelNode, LabelNode]): Vector[TryCatchBlockNode] = {
     methodNode.tryCatchBlocks.iterator.asScala.map(tryCatch => new TryCatchBlockNode(
       labelMap(tryCatch.start),
       labelMap(tryCatch.end),
       labelMap(tryCatch.handler),
       tryCatch.`type`
-    )).toList
+    )).toVector
   }
 
   implicit class AnalyzerExtensions[V <: Value](val analyzer: Analyzer[V]) extends AnyVal {

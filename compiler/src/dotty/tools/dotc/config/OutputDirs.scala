@@ -13,7 +13,7 @@ import io.*
  */
 class OutputDirs {
   /** Pairs of source directory - destination directory. */
-  private var outputDirs: List[(AbstractFile, AbstractFile)] = Nil
+  private var outputDirs: Vector[(AbstractFile, AbstractFile)] = Vector()
 
   /** If this is not None, the output location where all
    *  classes should go.
@@ -55,11 +55,11 @@ class OutputDirs {
 
   def add(src: AbstractFile, dst: AbstractFile): Unit = {
     singleOutDir = None
-    outputDirs ::= ((src, dst))
+    outputDirs +:= ((src, dst))
   }
 
   /** Return the list of source-destination directory pairs. */
-  def outputs: List[(AbstractFile, AbstractFile)] = outputDirs
+  def outputs: Vector[(AbstractFile, AbstractFile)] = outputDirs
 
   /** Return the output directory for the given file.
    */
@@ -85,7 +85,7 @@ class OutputDirs {
    *
    *  The given classfile path must be contained in at least one of
    *  the specified output directories. If it does not then this
-   *  method returns Nil.
+   *  method returns Vector().
    *
    *  Note that the source file is not required to exist, so assuming
    *  a valid classfile path this method will always return a list
@@ -95,19 +95,19 @@ class OutputDirs {
    *  output directory there will be two or more candidate source file
    *  paths.
    */
-  def srcFilesFor(classFile: AbstractFile, srcPath: String): List[AbstractFile] = {
+  def srcFilesFor(classFile: AbstractFile, srcPath: String): Vector[AbstractFile] = {
     def isBelow(srcDir: AbstractFile, outDir: AbstractFile) =
       classFile.path.startsWith(outDir.path)
 
     singleOutDir match {
       case Some(d) =>
         d match {
-          case _: VirtualDirectory | _: io.ZipArchive => Nil
-          case _ => List(d.lookupPathUnchecked(srcPath, false))
+          case _: VirtualDirectory | _: io.ZipArchive => Vector()
+          case _ => Vector(d.lookupPathUnchecked(srcPath, false))
         }
       case None =>
         outputs.filter(isBelow(_, _)) match {
-          case Nil => Nil
+          case Vector() => Vector()
           case matches => matches.map(_._1.lookupPathUnchecked(srcPath, false))
         }
     }

@@ -163,14 +163,14 @@ object TestReporter {
     rep
   }
 
-  def lastRunFailedTests: Option[List[String]] =
+  def lastRunFailedTests: Option[Vector[String]] =
     Option.when(
       Properties.rerunFailed &&
         failedTestsFile.exists() &&
         failedTestsFile.isFile
-    )(readAllLines(failedTestsFile.toPath).asScala.toList)
+    )(readAllLines(failedTestsFile.toPath).asScala.toVector)
 
-  def writeFailedTests(tests: List[String]): Unit =
+  def writeFailedTests(tests: Vector[String]): Unit =
     initLog()
     tests.foreach(failed => failedTestsWriter.println(failed))
     failedTestsWriter.flush()

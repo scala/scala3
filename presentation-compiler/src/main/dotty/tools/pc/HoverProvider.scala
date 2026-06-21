@@ -46,8 +46,8 @@ object HoverProvider:
       unit.map(ctx.fresh.setCompilationUnit).getOrElse(ctx)
     val pos = driver.sourcePosition(params)
     val path = unit
-      .map(unit => Interactive.pathTo(unit.tpdTree, pos.span))
-      .getOrElse(Interactive.pathTo(driver.openedTrees(uri), pos))
+      .map(unit => Interactive.pathTo(unit.tpdTree, pos.span).toList)
+      .getOrElse(Interactive.pathTo(driver.openedTrees(uri), pos).toList)
     val indexedContext = IndexedContext(pos, path, ctx)
 
     def typeFromPath(path: List[Tree]) =
@@ -121,11 +121,11 @@ object HoverProvider:
 
     if tp.isError || tpw == NoType || tpw.isError || path.isEmpty
     then
-      val untpdPath = Interactive.resolveTypedOrUntypedPath(enclosing, pos)(using ctx)
+      val untpdPath = Interactive.resolveTypedOrUntypedPath(enclosing.toVector, pos)(using ctx)
       val derivesClauseSymbolOpt = untpdPath match
         /* In case of `class X derives TC@@` we shouldn't add `[]`
          */
-        case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
+        case Ident(_) +: (templ: untpd.DerivingTemplate) +: _ =>
           templ.derived.find(_.sourcePos.contains(pos)).collect {
             case ident if ident.tpe != null => ident.symbol -> ident.tpe.nn
           }
@@ -218,7 +218,7 @@ object HoverProvider:
               if (name == refName.toString() || refName.toString() == nme.Fields.toString()) =>
             val resultType =
               rest match
-                case Select(_, asInstanceOf) :: TypeApply(_, List(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
+                case Select(_, asInstanceOf) :: TypeApply(_, Vector(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
                   tpe.tpe.widenTermRefExpr.deepDealiasAndSimplify
                 case _ if n == nme.selectDynamic => tpe.resultType
                 case _ => tpe
@@ -270,8 +270,8 @@ object SelectDynamicExtractor:
     path match
       // tests `structural-types` and `structural-types1` in HoverScala3TypeSuite
       case Select(_, _) :: Apply(
-            Select(Apply(reflSel, List(sel)), n),
-            List(Literal(Constant(name: String)))
+            Select(Apply(reflSel, Vector(sel)), n),
+            Vector(Literal(Constant(name: String)))
           ) :: rest
           if (n == nme.selectDynamic || n == nme.applyDynamic) &&
             nme.reflectiveSelectable == reflSel.symbol.name =>
@@ -279,7 +279,7 @@ object SelectDynamicExtractor:
       // tests `selectable`,  `selectable2` and `selectable-full` in HoverScala3TypeSuite
       case Select(_, _) :: Apply(
             Select(sel, n),
-            List(Literal(Constant(name: String)))
+            Vector(Literal(Constant(name: String)))
           ) :: rest if n == nme.selectDynamic || n == nme.applyDynamic =>
         Some(sel, n, name, rest)
       case _ => None

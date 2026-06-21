@@ -68,7 +68,7 @@ trait ImportSuggestions:
           && !(root.name == nme.raw.BAR && ctx.settings.scalajs.value && root == JSDefinitions.jsdefn.PseudoUnionModule)
       }
 
-    def nestedRoots(site: Type, parentSymbols: Set[Symbol])(using Context): List[Symbol] =
+    def nestedRoots(site: Type, parentSymbols: Set[Symbol])(using Context): Vector[Symbol] =
       val seenNames = mutable.Set[Name]()
       site.baseClasses.flatMap { bc =>
         bc.info.decls.filter { dcl =>
@@ -78,60 +78,60 @@ trait ImportSuggestions:
         }
       }
 
-    def rootsStrictlyIn(ref: Type, parentSymbols: Set[Symbol] = Set())(using Context): List[TermRef] =
+    def rootsStrictlyIn(ref: Type, parentSymbols: Set[Symbol] = Set())(using Context): Vector[TermRef] =
       val site = ref.widen
       val refSym = site.typeSymbol
-      if parentSymbols.contains(refSym) then Nil
+      if parentSymbols.contains(refSym) then Vector()
       else
         val nested =
           if refSym.is(Package) then
             if refSym == defn.EmptyPackageClass       // Don't search the empty package
                 || refSym == defn.JavaPackageClass     // As an optimization, don't search java...
                 || refSym == defn.JavaLangPackageClass // ... or java.lang.
-            then Nil
+            then Vector()
             else refSym.info.decls.filter(lookInside)
           else if refSym.infoOrCompleter.isInstanceOf[StubInfo] then
-            Nil // Don't chase roots that do not exist
+            Vector() // Don't chase roots that do not exist
           else
             if !refSym.is(Touched) then
               refSym.ensureCompleted() // JavaDefined is reliably known only after completion
-            if refSym.is(JavaDefined) then Nil
+            if refSym.is(JavaDefined) then Vector()
             else nestedRoots(site, parentSymbols)
         val newParentSymbols = parentSymbols + refSym
         nested
           .map(mbr => TermRef(ref, mbr.asTerm))
           .flatMap(rootsIn(_, newParentSymbols))
-          .toList
+          .toVector
 
-    def rootsIn(ref: TermRef, parentSymbols: Set[Symbol] = Set())(using Context): List[TermRef] =
-      if seen.contains(ref) then Nil
+    def rootsIn(ref: TermRef, parentSymbols: Set[Symbol] = Set())(using Context): Vector[TermRef] =
+      if seen.contains(ref) then Vector()
       else
         implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
-        ref :: rootsStrictlyIn(ref, parentSymbols)
+        ref +: rootsStrictlyIn(ref, parentSymbols)
 
-    def rootsOnPath(tp: Type)(using Context): List[TermRef] = tp match
-      case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
-      case _ => Nil
+    def rootsOnPath(tp: Type)(using Context): Vector[TermRef] = tp match
+      case ref: TermRef => rootsIn(ref) ++ rootsOnPath(ref.prefix)
+      case _ => Vector()
 
-    def recur(using Context): List[TermRef] =
+    def recur(using Context): Vector[TermRef] =
       if ctx.owner.exists then
         val defined =
           if ctx.owner.isClass then
-            if ctx.owner eq ctx.outer.owner then Nil
+            if ctx.owner eq ctx.outer.owner then Vector()
             else rootsStrictlyIn(ctx.owner.thisType)
           else
-            if ctx.scope eq ctx.outer.scope then Nil
+            if ctx.scope eq ctx.outer.scope then Vector()
             else ctx.scope
               .filter(lookInside(_))
               .flatMap(sym => rootsIn(sym.termRef))
         val imported =
-          if ctx.importInfo eq ctx.outer.importInfo then Nil
+          if ctx.importInfo eq ctx.outer.importInfo then Vector()
           else ctx.importInfo.nn.importSym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
-            case _ => Nil
+            case _ => Vector()
         defined ++ imported ++ recur(using ctx.outer)
-      else Nil
+      else Vector()
 
     recur
   end suggestionRoots
@@ -149,9 +149,9 @@ trait ImportSuggestions:
    *   return instead a list of all possible references to extension methods named
    *   `name` that are applicable to `T`.
    */
-  private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
+  private def importSuggestions(pt: Type)(using Context): (Vector[TermRef], Vector[TermRef]) =
     val allotted = ctx.run.nn.importSuggestionBudget
-    if allotted <= 1 then return (Nil, Nil)
+    if allotted <= 1 then return (Vector(), Vector())
     val timer = new Timer()
     implicits.println(i"looking for import suggestions, timeout = ${allotted}ms")
     val start = System.currentTimeMillis()
@@ -243,7 +243,7 @@ trait ImportSuggestions:
         case ViewProto(argType, SelectionProto(name: TermName, _, _, _, _)) =>
           roots.flatMap(extensionMethod(_, name, argType))
         case _ =>
-          Nil
+          Vector()
 
       roots
         .flatMap(_.implicitMembers.filter { ref =>
@@ -253,13 +253,13 @@ trait ImportSuggestions:
         .partition(deepTest)
           // partition into full matches and head matches
         match
-          case (Nil, partials) => (extensionImports, partials)
+          case (Vector(), partials) => (extensionImports, partials)
           case givenImports => givenImports
     catch case ex: Exception =>
       if ctx.settings.Ydebug.value then
         println("caught exception when searching for suggestions")
         ex.printStackTrace()
-      (Nil, Nil)
+      (Vector(), Vector())
     finally
       timer.cancel()
       reduceTimeBudget(((System.currentTimeMillis() - start) min Int.MaxValue).toInt)
@@ -276,20 +276,20 @@ trait ImportSuggestions:
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
    *  have the same String part. Elements are sorted by their String parts.
    */
-  extension (refs: List[(TermRef, String)]) def distinctRefs(using Context): List[TermRef] =
+  extension (refs: Vector[(TermRef, String)]) def distinctRefs(using Context): Vector[TermRef] =
     val buf = new mutable.ListBuffer[TermRef]
     var last = ""
     for (ref, str) <- refs do
       if last != str then
         buf += ref
         last = str
-    buf.toList
+    buf.toVector
 
   /** The best `n` references in `refs`, according to `compare`
    *  `compare` is a partial order. If there's a tie, we take elements
    *  in the order thy appear in the list.
    */
-  extension (refs: List[TermRef]) def best(n: Int)(using Context): List[TermRef] =
+  extension (refs: Vector[TermRef]) def best(n: Int)(using Context): Vector[TermRef] =
     val top = new Array[TermRef](n)
     var filled = 0
     val rest = new mutable.ListBuffer[TermRef]
@@ -311,9 +311,9 @@ trait ImportSuggestions:
         rest += ref
     end for
     val remaining =
-      if filled < n && rest.nonEmpty then rest.toList.best(n - filled)
-      else Nil
-    top.take(filled).toList ++ remaining
+      if filled < n && rest.nonEmpty then rest.toVector.best(n - filled)
+      else Vector()
+    top.take(filled).toVector ++ remaining
   //end best  TODO: re-enable with new syntax
 
   /** An addendum to an error message where the error might be fixed

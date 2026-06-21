@@ -93,26 +93,26 @@ trait FullParameterization {
       case info: ExprType => (0, info.resultType)
       case _ => (0, info)
     }
-    val ctparams = if (abstractOverClass) clazz.typeParams else Nil
+    val ctparams = if (abstractOverClass) clazz.typeParams else Vector()
     val ctnames = ctparams.map(_.name)
 
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {
       val thisParamType = mapClassParams(clazz.classInfo.selfType)
       val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
-      MethodType(nme.SELF :: Nil)(
-          mt => firstArgType :: Nil,
+      MethodType(nme.SELF +: Vector())(
+          mt => firstArgType +: Vector(),
           mt => mapClassParams(origResult).substThisUnlessStatic(clazz, mt.newParamRef(0)))
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
     def mapClassParams(tp: Type, pt: PolyType): Type = {
-      val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
+      val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toVector
       tp.subst(ctparams, classParamsRange map (pt.paramRefs(_)))
     }
 
     /** The bounds for the added type parameters of the polytype `pt` */
-    def mappedClassBounds(pt: PolyType): List[TypeBounds] =
+    def mappedClassBounds(pt: PolyType): Vector[TypeBounds] =
       ctparams.map(tparam => mapClassParams(tparam.info, pt).bounds)
 
     info match {
@@ -131,9 +131,9 @@ trait FullParameterization {
   /** The type parameters (skolems) of the method definition `originalDef`,
    *  followed by the class parameters of its enclosing class.
    */
-  private def allInstanceTypeParams(originalDef: DefDef, abstractOverClass: Boolean)(using Context): List[Symbol] =
+  private def allInstanceTypeParams(originalDef: DefDef, abstractOverClass: Boolean)(using Context): Vector[Symbol] =
     if (abstractOverClass)
-      originalDef.leadingTypeParams.map(_.symbol) ::: originalDef.symbol.enclosingClass.typeParams
+      originalDef.leadingTypeParams.map(_.symbol) ++ originalDef.symbol.enclosingClass.typeParams
     else
       originalDef.leadingTypeParams.map(_.symbol)
 
@@ -151,12 +151,12 @@ trait FullParameterization {
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
       val origOtherParamSyms = originalDef.trailingParamss.flatten.map(_.symbol)
-      val thisRef :: argRefs = vrefss.flatten: @unchecked
+      val thisRef +: argRefs = vrefss.flatten: @unchecked
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
        *  @param   targs  Any type arguments passed to the rewired tree.
        */
-      def rewireTree(tree: Tree, targs: List[Tree])(using Context): Tree = {
+      def rewireTree(tree: Tree, targs: Vector[Tree])(using Context): Tree = {
         def rewireCall(thisArg: Tree): Tree = {
           val rewired = rewiredTarget(tree, derived)
           if (rewired.exists) {
@@ -207,10 +207,10 @@ trait FullParameterization {
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef.withSpan(tree.span)
-          case tree => rewireTree(tree, Nil) `orElse` tree
+          case tree => rewireTree(tree, Vector()) `orElse` tree
         },
-        oldOwners = origMeth :: Nil,
-        newOwners = derived :: Nil
+        oldOwners = origMeth +: Vector(),
+        newOwners = derived +: Vector()
       ).transform(originalDef.rhs)
     })
 
@@ -259,9 +259,9 @@ object FullParameterization {
   def memberSignature(info: Type)(using Context): Signature = info match {
     case info: PolyType =>
       memberSignature(info.resultType)
-    case MethodTpe(nme.SELF :: Nil, _, restpe) =>
+    case MethodTpe(nme.SELF +: Vector(), _, restpe) =>
       restpe.ensureMethodic.signature
-    case info @ MethodTpe(nme.SELF :: otherNames, thisType :: otherTypes, restpe) =>
+    case info @ MethodTpe(nme.SELF +: otherNames, thisType +: otherTypes, restpe) =>
       info.derivedLambdaType(otherNames, otherTypes, restpe).signature
     case _ =>
       Signature.NotAMethod

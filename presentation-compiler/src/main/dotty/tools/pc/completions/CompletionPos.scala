@@ -56,7 +56,7 @@ object CompletionPos:
         (if hasTrailingBacktick then refTreeEnd - 1 else refTreeEnd, hasTrailingBacktick)
       case _ => (sourcePos.end, false)
 
-    val query = Completion.completionPrefix(adjustedPath, sourcePos)
+    val query = Completion.completionPrefix(adjustedPath.toVector, sourcePos)
     val start = sourcePos.end - query.length()
     val hasLeadingBacktick = hasBacktickAt(start - 1)
 

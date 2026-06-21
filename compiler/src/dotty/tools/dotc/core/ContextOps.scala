@@ -82,7 +82,7 @@ object ContextOps:
           val toSearch = if preSym.is(Flags.Module) then
             if preSym.companionClass.exists then
               preSym.companionClass.asClass.baseClasses
-            else Nil
+            else Vector()
           else
             preSym.asClass.baseClasses
 

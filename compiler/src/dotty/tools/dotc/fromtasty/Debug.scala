@@ -33,13 +33,13 @@ object Debug {
       Directory(fromSourcesOut).walk
         .filter(x => x.isFile && x.ext.isTasty)
         .map(_.toString)
-        .toList
+        .toVector
 
     val fromTastyArgs =
-      "-from-tasty" ::
-      "-d" :: fromTastyOut.toString ::
-      insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.toString) :::
-      tastyFiles
+      "-from-tasty" +:
+      "-d" +: fromTastyOut.toString +:
+      (insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toVector, fromSourcesOut.toString) ++
+      tastyFiles)
 
     println("Compiling from .tasty sources")
     val compilation2 = dotc.Main.process(fromTastyArgs.toArray)
@@ -57,9 +57,9 @@ object Debug {
     Directory(tmpOut).deleteRecursively()
   }
 
-  private def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
+  private def insertClasspathInArgs(args: Vector[String], cp: String): Vector[String] = {
     val (beforeCp, fromCp) = args.span(_ != "-classpath")
     val classpath = fromCp.drop(1).headOption.fold(cp)(_ + JFile.pathSeparator + cp)
-    "-classpath" :: classpath :: beforeCp ::: fromCp.drop(2)
+    "-classpath" +: classpath +: (beforeCp ++ fromCp.drop(2))
   }
 }

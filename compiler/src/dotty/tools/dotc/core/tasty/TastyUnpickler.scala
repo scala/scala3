@@ -102,7 +102,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     val end = start + length
     def readSignedRest(original: TermName, target: TermName): TermName =
       val result = readName().toTypeName
-      val paramsSig = until(end)(readParamSig())
+      val paramsSig = until(end)(readParamSig()).toVector
       val sig = Signature(paramsSig, result)
       SignedName(original, sig, target)
 

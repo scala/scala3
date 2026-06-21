@@ -68,7 +68,7 @@ import scala.compiletime.uninitialized
  *                              owner: Symbol
  *                              flags: Flags
  *                              privateWithin: Symbol
- *                              annotations: List[Annotation]
+ *                              annotations: Vector[Annotation]
  *  ClassDenotation          A denotation representing a single class definition.
  */
 object Denotations {
@@ -245,10 +245,10 @@ object Denotations {
     inline def orElse(inline that: Denotation): Denotation = if (this.exists) this else that
 
     /** The set of alternative single-denotations making up this denotation */
-    final def alternatives: List[SingleDenotation] = altsWith(alwaysTrue)
+    final def alternatives: Vector[SingleDenotation] = altsWith(alwaysTrue)
 
     /** The alternatives of this denotation that satisfy the predicate `p`. */
-    def altsWith(p: Symbol => Boolean): List[SingleDenotation]
+    def altsWith(p: Symbol => Boolean): Vector[SingleDenotation]
 
     /** The unique alternative of this denotation that satisfies the predicate `p`,
      *  or NoDenotation if no satisfying alternative exists.
@@ -298,7 +298,7 @@ object Denotations {
     def requiredSymbol(kind: String,
                        name: Name,
                        site: Denotation = NoDenotation,
-                       args: List[Type] = Nil,
+                       args: Vector[Type] = Vector(),
                        generateStubs: Boolean = true)
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
@@ -323,18 +323,18 @@ object Denotations {
     def requiredMethodRef(name: PreName)(using Context): TermRef =
       requiredMethod(name).termRef
 
-    def requiredMethod(pname: PreName, argTypes: List[Type])(using Context): TermSymbol = {
+    def requiredMethod(pname: PreName, argTypes: Vector[Type])(using Context): TermSymbol = {
       val name = pname.toTermName
       info.member(name).requiredSymbol("method", name, this, argTypes) { x =>
         x.is(Method) && {
           x.info.paramInfoss match {
-            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
+            case paramInfos +: Vector() => paramInfos.corresponds(argTypes)(_ =:= _)
             case _ => false
           }
         }
       }.asTerm
     }
-    def requiredMethodRef(name: PreName, argTypes: List[Type])(using Context): TermRef =
+    def requiredMethodRef(name: PreName, argTypes: Vector[Type])(using Context): TermRef =
       requiredMethod(name, argTypes).termRef
 
     def requiredValue(pname: PreName)(using Context): TermSymbol = {
@@ -426,12 +426,12 @@ object Denotations {
         /** Does `owner1` come before `owner2` in the linearization of `pre`? */
         def linearScore(owner1: Symbol, owner2: Symbol): Int =
 
-          def searchBaseClasses(bcs: List[ClassSymbol]): Int = bcs match
-            case bc :: bcs1 =>
+          def searchBaseClasses(bcs: Vector[ClassSymbol]): Int = (bcs: @unchecked) match
+            case bc +: bcs1 =>
               if bc eq owner1 then 1
               else if bc eq owner2 then -1
               else searchBaseClasses(bcs1)
-            case Nil => 0
+            case Vector() => 0
 
           if owner1 eq owner2 then 0
           else if owner1.derivesFrom(owner2) then 1
@@ -529,9 +529,9 @@ object Denotations {
   /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
     *  otherwise generate new synthetic names.
     */
-  private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
+  private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): Vector[tp1.ThisName] =
     (for ((name1, name2, idx) <- tp1.paramNames.lazyZip(tp2.paramNames).lazyZip(tp1.paramNames.indices))
-      yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
+      yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toVector
 
   /** Normally, `tp1 & tp2`, with extra care taken to return `tp1` or `tp2` directly if that's
    *  a valid answer. Special cases for matching methods and classes, with
@@ -639,8 +639,8 @@ object Denotations {
 
     inline def orElse(inline that: SingleDenotation): SingleDenotation = if (this.exists) this else that
 
-    def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
-      if (exists && p(symbol)) this :: Nil else Nil
+    def altsWith(p: Symbol => Boolean): Vector[SingleDenotation] =
+      if (exists && p(symbol)) this +: Vector() else Vector()
 
     def suchThat(p: Symbol => Boolean)(using Context): SingleDenotation =
       if (exists && p(symbol)) this else NoDenotation
@@ -703,7 +703,7 @@ object Denotations {
         current
       }
 
-    def history: List[SingleDenotation] = {
+    def history: Vector[SingleDenotation] = {
       val b = new ListBuffer[SingleDenotation]
       var current = initial
       while ({
@@ -712,7 +712,7 @@ object Denotations {
         current ne initial
       })
       ()
-      b.toList
+      b.toVector
     }
 
     /** Invalidate all caches and fields that depend on base classes and their contents */
@@ -1210,7 +1210,7 @@ object Denotations {
    *  that were found but that do not qualify.
    *  Produced by staticRef, consumed by requiredSymbol.
    */
-  case class NoQualifyingRef(alts: List[SingleDenotation])(using Context) extends ErrorDenotation
+  case class NoQualifyingRef(alts: Vector[SingleDenotation])(using Context) extends ErrorDenotation
 
   /** A double definition
    */
@@ -1272,7 +1272,7 @@ object Denotations {
             denot2.atSignature(sig, targetName, site, relaxed))
     def current(using Context): Denotation =
       derivedUnionDenotation(denot1.current, denot2.current)
-    def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
+    def altsWith(p: Symbol => Boolean): Vector[SingleDenotation] =
       denot1.altsWith(p) ++ denot2.altsWith(p)
     def suchThat(p: Symbol => Boolean)(using Context): SingleDenotation = {
       val sd1 = denot1.suchThat(p)

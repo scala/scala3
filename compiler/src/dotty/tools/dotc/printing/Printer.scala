@@ -153,7 +153,7 @@ abstract class Printer {
   /** Textual representation of all symbols in given list,
    *  using `dclText` for displaying each.
    */
-  def dclsText(syms: List[Symbol], sep: String = "\n"): Text
+  def dclsText(syms: Vector[Symbol], sep: String = "\n"): Text
 
   /** Textual representation of all definitions in a scope using `dclText` for each */
   def toText(sc: Scope): Text

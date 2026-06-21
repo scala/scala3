@@ -83,8 +83,9 @@ class CompletionProvider(
           .setCompilationUnit(unit)
           .setProfiler(Profiler()(using ctx))
           .withPhase(Phases.typerPhase(using ctx))
-        val tpdPath0 = Interactive.pathTo(unit.tpdTree, pos.span)(using newctx)
-        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath0, pos)(using newctx)
+        val tpdPathVector = Interactive.pathTo(unit.tpdTree, pos.span)(using newctx)
+        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPathVector, pos)(using newctx).toList
+        val tpdPath0 = tpdPathVector.toList
 
         val tpdPath = tpdPath0 match
           case Select(qual, name) :: tail
@@ -123,7 +124,7 @@ class CompletionProvider(
           completionPos.toSourcePosition,
           text,
           unit.tpdTree,
-          unit.comments,
+          unit.comments.toList,
           indexedCtx,
           config
         )
@@ -141,8 +142,8 @@ class CompletionProvider(
             config,
             folderPath,
             autoImportsGen,
-            unit.comments,
-            driver.settings,
+            unit.comments.toList,
+            driver.settings.toList,
             referenceCounter
           ).completions()
 

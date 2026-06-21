@@ -181,10 +181,10 @@ object JSSymUtils {
       if (sym.isTerm) sym.asTerm.name.unexpandedName.getterName.toString()
       else sym.name.unexpandedName.stripModuleClassSuffix.toString()
 
-    def jsParamInfos(using Context): List[JSParamInfo] = {
+    def jsParamInfos(using Context): Vector[JSParamInfo] = {
       assert(sym.is(Method), s"trying to take JS param info of non-method: $sym")
 
-      def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
+      def paramNamesAndTypes(using Context): Vector[(Names.TermName, Type)] =
         sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
       val paramInfosAtElimRepeated = atPhase(elimRepeatedPhase) {

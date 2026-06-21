@@ -210,7 +210,7 @@ object Scanners {
 
     if (rewrite) {
       val s = ctx.settings
-      val rewriteTargets = List(s.newSyntax, s.oldSyntax, s.indent, s.noindent)
+      val rewriteTargets = Vector(s.newSyntax, s.oldSyntax, s.indent, s.noindent)
       val enabled = rewriteTargets.filter(_.value)
       if (enabled.length > 1)
         error(em"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
@@ -245,7 +245,7 @@ object Scanners {
     private val commentBuf = new mutable.ListBuffer[Comment]
 
     /** Return a list of all the comments */
-    def comments: List[Comment] = commentBuf.toList
+    def comments: Vector[Comment] = commentBuf.toVector
 
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
@@ -308,8 +308,8 @@ object Scanners {
         token == EOF
         || (currentRegion eq lastRegion)
             && (isStatSep
-                || closingParens.contains(token) && lastRegion.toList.exists(_.closedBy == token)
-                || token == COMMA && lastRegion.toList.exists(_.commasExpected)
+                || closingParens.contains(token) && lastRegion.toVector.exists(_.closedBy == token)
+                || token == COMMA && lastRegion.toVector.exists(_.commasExpected)
                 || token == OUTDENT && indentWidth(offset) < lastKnownIndentWidth)
           // stop at OUTDENT if the new indentwidth is smaller than the indent width of
           // currentRegion. This corrects for the problem that sometimes we don't see an INDENT
@@ -1680,6 +1680,10 @@ object Scanners {
       val outer = this.outer
       this :: (if outer == null then Nil else outer.toList)
 
+    def toVector: Vector[Region] =
+      val outer = this.outer
+      this +: (if outer == null then Vector() else outer.toVector)
+
     private def delimiter = this match
       case _: InString => "}(in string)"
       case InParens(LPAREN, _) => ")"
@@ -1691,10 +1695,10 @@ object Scanners {
 
     /** Show open regions as list of lines with decreasing indentations */
     def visualize: String =
-      toList.map(r => s"${r.indentWidth.toPrefix}${r.delimiter}").mkString("\n")
+      toVector.map(r => s"${r.indentWidth.toPrefix}${r.delimiter}").mkString("\n")
 
     override def toString: String =
-      toList.map(r => s"(${r.indentWidth}, ${r.delimiter})").mkString(" in ")
+      toVector.map(r => s"(${r.indentWidth}, ${r.delimiter})").mkString(" in ")
   end Region
 
   case class InString(delimChar: Char, delimCount: Int, outer: Region) extends Region(RBRACE)

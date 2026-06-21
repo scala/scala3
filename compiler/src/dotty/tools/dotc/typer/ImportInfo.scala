@@ -22,8 +22,8 @@ object ImportInfo {
   def rootImport(ref: RootRef)(using Context): ImportInfo =
     var selectors =
       untpd.ImportSelector(untpd.Ident(nme.WILDCARD))  // import all normal members...
-      :: untpd.ImportSelector(untpd.Ident(nme.EMPTY))  // ... and also all given members
-      :: Nil
+      +: untpd.ImportSelector(untpd.Ident(nme.EMPTY))  // ... and also all given members
+      +: Vector()
 
     def sym(using Context) =
       val expr = tpd.Ident(ref.refFn()) // refFn must be called in the context of ImportInfo.sym
@@ -32,7 +32,7 @@ object ImportInfo {
     ImportInfo(sym, selectors, untpd.EmptyTree, isRootImport = true)
 
   extension (c: Context)
-    def withRootImports(rootRefs: List[RootRef])(using Context): Context =
+    def withRootImports(rootRefs: Vector[RootRef])(using Context): Context =
       rootRefs.foldLeft(c)((ctx, ref) => ctx.fresh.setImportInfo(rootImport(ref)))
 
     def withRootImports: Context =
@@ -49,7 +49,7 @@ object ImportInfo {
  *                         scala.Predef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context ?=> Symbol,
-                 val selectors: List[untpd.ImportSelector],
+                 val selectors: Vector[untpd.ImportSelector],
                  val qualifier: untpd.Tree,
                  val isRootImport: Boolean = false) extends Showable {
 
@@ -122,12 +122,12 @@ class ImportInfo(symf: Context ?=> Symbol,
     myWildcardBound
 
   /** The implicit references imported by this import clause */
-  def importedImplicits(using Context): List[ImplicitRef] =
+  def importedImplicits(using Context): Vector[ImplicitRef] =
     val pre = site
     if isWildcardImport then
       pre.implicitMembers.flatMap { ref =>
         val name = ref.name.toTermName
-        if excluded.contains(name) then Nil
+        if excluded.contains(name) then Vector()
         else
           val renamed = forwardMapping(ref.name)
           if renamed == null then // not explicitly named
@@ -136,10 +136,10 @@ class ImportInfo(symf: Context ?=> Symbol,
               || ctx.mode.is(Mode.FindHiddenImplicits)  // consider both implicits and givens for error reporting
               || ref.symbol.is(Implicit)                // a wildcard `_` import only pulls in implicits
             val bound = if isGivenImport then givenBound else wildcardBound
-            if isEligible && ref.denot.asSingleDenotation.matchesImportBound(bound) then ref :: Nil
-            else Nil
-          else if renamed == ref.name then ref :: Nil
-          else RenamedImplicitRef(ref, renamed) :: Nil
+            if isEligible && ref.denot.asSingleDenotation.matchesImportBound(bound) then ref +: Vector()
+            else Vector()
+          else if renamed == ref.name then ref +: Vector()
+          else RenamedImplicitRef(ref, renamed) +: Vector()
       }
     else
       for

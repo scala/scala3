@@ -32,11 +32,12 @@ object PositionPickler:
   def picklePositions(
       pickler: TastyPickler,
       addrOfTree: TreeToAddr,
-      treeAnnots: untpd.MemberDef => List[tpd.Tree],
-      typeAnnots: List[tpd.Tree],
+      treeAnnots: untpd.MemberDef => Vector[tpd.Tree],
+      typeAnnots: Vector[tpd.Tree],
       relativePathReference: String,
       source: SourceFile,
-      roots: List[Tree],
+      roots: Vector[Tree],
+      warnings: mutable.ListBuffer[Message],
       buf: TastyBuffer = new TastyBuffer(5000),
       pickledIndices: mutable.BitSet = new mutable.BitSet) =
 
@@ -129,9 +130,8 @@ object PositionPickler:
           traverse(x.productElement(n), x.source)
           n += 1
         }
-      case y :: ys =>
-        traverse(y, current)
-        traverse(ys, current)
+      case xs: Vector[?] =>
+        xs.foreach(traverse(_, current))
       case _ =>
     }
     for (root <- roots)
@@ -141,4 +141,3 @@ object PositionPickler:
       traverse(annotTree, NoSource)
   end picklePositions
 end PositionPickler
-

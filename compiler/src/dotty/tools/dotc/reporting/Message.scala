@@ -69,7 +69,7 @@ object Message:
 
   enum Disambiguation:
     case All
-    case AllExcept(strs: List[String])
+    case AllExcept(strs: Vector[String])
     case None
 
     def recordOK(str: String): Boolean = this match
@@ -88,7 +88,7 @@ object Message:
    */
   private class Seen(disambiguate: Disambiguation):
 
-    val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]].withDefaultValue(Nil)
+    val seen = new collection.mutable.HashMap[SeenKey, Vector[Recorded]].withDefaultValue(Vector())
 
     var nonSensical = false
 
@@ -114,8 +114,8 @@ object Message:
         //println(s"recording $str, $isType, $entry")
 
         /** If `e1` is an alias of another class of the same name, return the other
-         *  class symbol instead. This normalization avoids recording e.g. scala.List
-         *  and scala.collection.immutable.List as two different types
+         *  class symbol instead. This normalization avoids recording e.g. scala.Vector
+         *  and scala.collection.immutable.Vector as two different types
          */
         def followAlias(e1: Recorded): Recorded = e1 match {
           case e1: Symbol if e1.isAliasType =>
@@ -145,7 +145,7 @@ object Message:
         // The length of alts corresponds to the number of superscripts we need to print.
         var alts = existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt)))
         if alts.isEmpty then
-          alts = entry :: existing
+          alts = entry +: existing
           seen(key) = alts
 
         val suffix = alts.length match {
@@ -168,7 +168,7 @@ object Message:
     end record
 
     /** Create explanation for single `Recorded` type or symbol */
-    private def explanation(entry: AnyRef, keys: List[String])(using Context): String =
+    private def explanation(entry: AnyRef, keys: Vector[String])(using Context): String =
       def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
         if (bound.isRef(default)) "" else i"$cmp $bound"
 
@@ -205,7 +205,7 @@ object Message:
         case ref: RootCapability =>
           val relation =
             if keys.length > 1 then "refer to"
-            else if List("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
+            else if Vector("^", "=>", "?=>").exists(keys(0).startsWith) then "refers to"
             else "is"
           s"$relation ${ref.descr}"
     end explanation
@@ -221,10 +221,10 @@ object Message:
         case ref: Capability     => ref.isTerminalCapability
       }
 
-      val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
-        val res: List[(String, Recorded)] = kvs match {
-          case (key, entry :: Nil) =>
-            if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
+      val toExplain: Vector[(String, Recorded)] = seen.toVector.flatMap { kvs =>
+        val res: Vector[(String, Recorded)] = kvs match {
+          case (key, entry +: Vector()) =>
+            if (needsExplanation(entry)) (key.str, entry) +: Vector() else Vector()
           case (key, entries) =>
             for (alt <- entries) yield {
               val tickedString = record(key.str, key.isType, alt)
@@ -234,7 +234,7 @@ object Message:
         res // help the inferencer out
       }.sortBy(_._1)
 
-      def columnar(parts: List[(String, String)]): List[String] =
+      def columnar(parts: Vector[(String, String)]): Vector[String] =
         lazy val maxLen = parts.map(_._1.length).max
         parts.map: (leader, trailer) =>
           val variable = hl(leader)
@@ -243,7 +243,7 @@ object Message:
       // Group keys with the same Recorded entry together. We can't use groupBy here
       // since we want to maintain the order in which entries first appear in the
       //  original list.
-      val toExplainGrouped: List[(Recorded, List[String])] =
+      val toExplainGrouped: Vector[(Recorded, Vector[String])] =
         for entry <- toExplain.map(_._2).distinct
         yield (entry, for (key, e) <- toExplain if e == entry yield key)
       val explainParts = toExplainGrouped.map:
@@ -486,7 +486,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   /** A list of actions attached to this message to address the issue this
     * message represents.
     */
-  def actions(using Context): List[CodeAction] = List.empty
+  def actions(using Context): Vector[CodeAction] = Vector.empty
 
   override def toString = msg
 }
@@ -496,17 +496,17 @@ trait NoDisambiguation extends Message:
   withoutDisambiguation()
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-final class NoExplanation(msgFn: Context ?=> String, actions: List[CodeAction] = List.empty)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: Context ?=> String, actions: Vector[CodeAction] = Vector.empty)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
   def msg(using Context): String = msgFn
   def explain(using Context): String = ""
   val kind: MessageKind = MessageKind.NoKind
 
-  override def actions(using Context): List[CodeAction] = actions
+  override def actions(using Context): Vector[CodeAction] = actions
 
   override def toString(): String = msg
 
   def withActions(actions: CodeAction*): NoExplanation =
-    new NoExplanation(msgFn, actions.toList)
+    new NoExplanation(msgFn, actions.toVector)
 }
 
 /** The extractor for `NoExplanation` can be used to check whether any error

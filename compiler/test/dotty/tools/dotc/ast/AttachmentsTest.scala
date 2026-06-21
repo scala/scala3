@@ -16,7 +16,7 @@ class AttachmentsTests extends DottyTest {
   @Test
   def attachmentsAreNotCopiedOver: Unit = {
     checkCompile("typer", "class A") {
-      case (PackageDef(_, (clazz: tpd.TypeDef) :: Nil), context) =>
+      case (PackageDef(_, (clazz: tpd.TypeDef) +: Vector()), context) =>
         assertTrue("Attachment shouldn't be present", clazz.getAttachment(TestKey).isEmpty)
 
         val msg = "hello"
@@ -35,7 +35,7 @@ class AttachmentsTests extends DottyTest {
   @Test
   def stickyAttachmentsAreCopiedOver: Unit = {
     checkCompile("typer", "class A") {
-      case (PackageDef(_, (clazz: tpd.TypeDef) :: Nil), context) =>
+      case (PackageDef(_, (clazz: tpd.TypeDef) +: Vector()), context) =>
         assertTrue("Attachment shouldn't be present", clazz.getAttachment(StickyTestKey).isEmpty)
         assertTrue("Attachment shouldn't be present", clazz.getAttachment(StickyTestKey2).isEmpty)
         assertTrue("Attachment shouldn't be present", clazz.getAttachment(TestKey).isEmpty)

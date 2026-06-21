@@ -186,7 +186,7 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
 // Backported from scala/scala, commit sha: 724be0e9425b9ad07c244d25efdad695d75abbcf
 // https://github.com/scala/scala/blob/724be0e9425b9ad07c244d25efdad695d75abbcf/src/compiler/scala/tools/nsc/backend/jvm/analysis/BackendUtils.scala#L790
 abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSignatureVisitor(nestedOnly) {
-  def declaredNestedClasses(internalName: InternalName): List[T]
+  def declaredNestedClasses(internalName: InternalName): Vector[T]
   def getClassIfNested(internalName: InternalName): Option[T]
 
   val declaredInnerClasses = mutable.Set.empty[T]
@@ -320,4 +320,3 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
     visitDescriptor(handle.getDesc)
   }
 }
-

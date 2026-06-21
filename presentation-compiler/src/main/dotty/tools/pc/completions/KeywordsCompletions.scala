@@ -207,7 +207,7 @@ object KeywordsCompletions:
         template.derived.isEmpty
       )
 
-    val untpdPath = NavigateAST.untypedPath(pos.originalCursorPosition.span)
+    val untpdPath = NavigateAST.untypedPath(pos.originalCursorPosition.span).toList
 
     findLastSatisfyingTree(untpdPath).orElse {
       enclosing match

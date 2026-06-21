@@ -36,12 +36,12 @@ import dotty.tools.dotc.util.SourceFile
  *  target URI only if the same as the previous run.
  */
 class CachingDriver private (
-    override val settings: List[String],
+    pcSettings: List[String],
     precomputedSourcePackages: Option[LogicalPackage]
-) extends InteractiveDriver(settings, precomputedSourcePackages):
+) extends InteractiveDriver(pcSettings.toVector, precomputedSourcePackages):
 
   private var lastCompiledURI: URI = uninitialized
-  private var previousDiags = List.empty[Diagnostic]
+  private var previousDiags = Vector.empty[Diagnostic]
 
   private def alreadyCompiled(uri: URI, content: Array[Char]): Boolean =
     compilationUnits.get(uri) match
@@ -51,7 +51,7 @@ class CachingDriver private (
         true
       case _ => false
 
-  override def run(uri: URI, source: SourceFile): List[Diagnostic] =
+  override def run(uri: URI, source: SourceFile): Vector[Diagnostic] =
     if !alreadyCompiled(uri, source.content) then previousDiags = super.run(uri, source)
     lastCompiledURI = uri
     previousDiags

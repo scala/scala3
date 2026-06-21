@@ -153,7 +153,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
-  override protected def toTextParents(parents: List[Type]): Text =
+  override protected def toTextParents(parents: Vector[Type]): Text =
     Text(parents.map(toTextLocal).map(typeText), keywordStr(" with "))
 
   override protected def refinementNameString(tp: RefinedType): String =
@@ -184,11 +184,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case _ => (isPure, toTextGeneralCaptureSet(refs))
     arrow(isContextual, printPure) ~ refsText
 
-  private def toTextFunction(args: List[Type], res: Type, fn: MethodType | AppliedType,
+  private def toTextFunction(args: Vector[Type], res: Type, fn: MethodType | AppliedType,
       refs: GeneralCaptureSet | Null, isContextual: Boolean, isPure: Boolean): Text =
     changePrec(GlobalPrec):
       val argStr: Text = args match
-        case arg :: Nil if !defn.isDirectTupleNType(arg) && !isContextual =>
+        case arg +: Vector() if !defn.isDirectTupleNType(arg) && !isContextual =>
           atPrec(InfixPrec):
             argText(arg)
         case _=>
@@ -233,10 +233,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     recur(info, null)
 
   override def toText(tp: Type): Text = controlled {
-    def toTextTuple(args: List[Type]): Text =
+    def toTextTuple(args: Vector[Type]): Text =
       "(" ~ argsText(args) ~ ")"
 
-    def toTextNamedTuple(elems: List[(TermName, Type)]): Text =
+    def toTextNamedTuple(elems: Vector[(TermName, Type)]): Text =
       val elemsText = atPrec(GlobalPrec):
         Text(elems.map((name, tp) => toText(name) ~ " : " ~ argText(tp)), ", ")
       "(" ~ elemsText ~ ")"
@@ -278,11 +278,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val namedElems =
           try tp.namedTupleElementTypesUpTo(200, false, normalize = false)
           catch
-            case ex: TypeError => Nil
+            case ex: TypeError => Vector()
         if namedElems.nonEmpty then
           toTextNamedTuple(namedElems)
         else tp.tupleElementTypesUpTo(200, normalize = false) match
-          //case Some(types @ (defn.NamedTupleElem(_, _) :: _)) if !printDebug =>
+          //case Some(types @ (defn.NamedTupleElem(_, _) +: _)) if !printDebug =>
           //  toTextTuple(types)
           case Some(types) if types.size >= 2 && !printDebug =>
             toTextTuple(types)
@@ -291,7 +291,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
             else if defn.isFunctionSymbol(tsym) then toTextFunction(tp, null)
             else if isInfixType(tp) then
-              val l :: r :: Nil = args: @unchecked
+              val l +: r +: Vector() = args: @unchecked
               val opName = tyconName(tycon)
               toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
             else Str("")
@@ -378,14 +378,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def exprToText(tp: ExprType): Text =
     "=> " ~ toText(tp.resType)
 
-  protected def argsTreeText(args: List[untpd.Tree]): Text = args match
-    case dummyTreeOfType(tp) :: Nil if !tp.isRef(defn.NullClass) && !homogenizedView => toText(Constant(null)) ~ ": " ~ toText(tp)
+  protected def argsTreeText(args: Vector[untpd.Tree]): Text = args match
+    case dummyTreeOfType(tp) +: Vector() if !tp.isRef(defn.NullClass) && !homogenizedView => toText(Constant(null)) ~ ": " ~ toText(tp)
     case _                                                                           => toTextGlobal(args, ", ")
 
   protected def blockToText[T <: Untyped](block: Block[T]): Text =
     blockText(block.stats :+ block.expr)
 
-  protected def blockText[T <: Untyped](trees: List[Tree[T]]): Text =
+  protected def blockText[T <: Untyped](trees: Vector[Tree[T]]): Text =
     inContextBracket {
       ("{" ~ toText(trees, "\n") ~ "}").close
     }
@@ -426,7 +426,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => keywordStr("if ") ~ toText(tree)
     }
 
-    def forText(enums: List[untpd.Tree], expr: untpd.Tree, sep: String): Text = // DD
+    def forText(enums: Vector[untpd.Tree], expr: untpd.Tree, sep: String): Text = // DD
       changePrec(GlobalPrec) { keywordStr("for ") ~ Text(enums map enumText, "; ") ~ sep ~ toText(expr) }
 
     def cxBoundToText(bound: untpd.Tree): Text = bound match { // DD
@@ -450,11 +450,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def dropBlock(tree: Tree): Tree = tree match {
-      case Block(Nil, expr) => expr
+      case Block(Vector(), expr) => expr
       case _ => tree
     }
 
-    def importText(expr: Tree, selectors: List[untpd.ImportSelector]) =
+    def importText(expr: Tree, selectors: Vector[untpd.ImportSelector]) =
 
       def selectorText(sel: untpd.ImportSelector): Text =
         val id: Text =
@@ -472,7 +472,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         id ~ rename ~ bound
 
       val selectorsText: Text = selectors match
-        case (sel @ untpd.ImportSelector(name, EmptyTree, EmptyTree)) :: Nil =>
+        case (sel @ untpd.ImportSelector(name, EmptyTree, EmptyTree)) +: Vector() =>
           selectorText(sel)
         case _ =>
           "{" ~ Text(selectors.map(selectorText), ", ") ~ "}"
@@ -640,7 +640,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         then
           toText(tree.typeOpt)
         else args match
-          case arg :: _ if arg.isTerm =>
+          case arg +: _ if arg.isTerm =>
             toTextLocal(tpt) ~ "(" ~ Text(args.map(argText), ", ") ~ ")"
           case _ =>
             toTextLocal(tpt) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
@@ -741,7 +741,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case InterpolatedString(id, segments) =>
         def strText(str: Literal) = escapedString(str.const.stringValue)
         def segmentText(segment: Tree): Text = segment match {
-          case Thicket(List(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
+          case Thicket(Vector(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
           case str: Literal => strText(str)
         }
         toText(id) ~ "\"" ~ Text(segments map segmentText, "") ~ "\""
@@ -764,7 +764,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toText(arg)
         }
         val argsText = args match {
-          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg, erasedParams(0))
+          case (arg @ ValDef(_, tpt, _)) +: Vector() if tpt.isEmpty => argToText(arg, erasedParams(0))
           case _ =>
             "("
             ~ Text(args.zip(erasedParams).map(argToText), ", ")
@@ -808,7 +808,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               toText(tpt) ~ (" as " ~ toText(ownName) `provided` !ownName.isEmpty)
             case bounds => toText(bounds)
           cxBounds match
-            case bound :: Nil => ": " ~ boundsText(bound)
+            case bound +: Vector() => ": " ~ boundsText(bound)
             case _ => ": {" ~ Text(cxBounds.map(boundsText), ", ") ~ "}"
         else
           cxBounds.foldLeft(toText(bounds)) {(t, cxb) =>
@@ -994,15 +994,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   def paramsText[T <: Untyped](params: ParamClause[T]): Text = (params: @unchecked) match
-    case Nil =>
+    case Vector() =>
       "()"
-    case untpd.ValDefs(vparams @ (vparam :: _)) =>
+    case untpd.ValDefs(vparams @ (vparam +: _)) =>
       "(" ~ keywordText("using ").provided(vparam.mods.is(Given))
           ~ toText(vparams, ", ") ~ ")"
     case untpd.TypeDefs(tparams) =>
       "[" ~ toText(tparams, ", ") ~ "]"
 
-  def addParamssText[T <: Untyped](leading: Text, paramss: List[ParamClause[T]]): Text =
+  def addParamssText[T <: Untyped](leading: Text, paramss: Vector[ParamClause[T]]): Text =
     paramss.foldLeft(leading)((txt, params) => txt ~ paramsText(params))
 
   protected def valDefToText[T <: Untyped](tree: ValDef[T]): Text = {
@@ -1033,24 +1033,24 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
                 //     extension [A](using B)(c: C)(using D)
                 //       def %:[E](f: F)(g: G)(using H): Res = ???
                 //   will have the following values:
-                //   - leftTyParams = List(`[A]`)
-                //   - leadingUsing = List(`(using B)`)
-                //   - rightTyParams = List(`[E]`)
-                //   - rightParam = List(`(f: F)`)
-                //   - leftParam = List(`(c: C)`)
-                //   - trailingUsing = List(`(using D)`)
-                //   - rest = List(`(g: G)`, `(using H)`)
+                //   - leftTyParams = Vector(`[A]`)
+                //   - leadingUsing = Vector(`(using B)`)
+                //   - rightTyParams = Vector(`[E]`)
+                //   - rightParam = Vector(`(f: F)`)
+                //   - leftParam = Vector(`(c: C)`)
+                //   - trailingUsing = Vector(`(using D)`)
+                //   - rest = Vector(`(g: G)`, `(using H)`)
                 // we need to swap (rightTyParams ++ rightParam) with (leftParam ++ trailingUsing)
                 val (leftTyParams, rest1) = tree.paramss match
-                  case fst :: tail if isTypeParamClause(fst) => (List(fst), tail)
-                  case other => (List(), other)
+                  case fst +: tail if isTypeParamClause(fst) => (Vector(fst), tail)
+                  case other => (Vector(), other)
                 val (leadingUsing, rest2) = rest1.span(isUsingClause)
                 val (rightTyParams, rest3) = rest2.span(isTypeParamClause)
                 val (rightParam, rest4) = rest3.splitAt(1)
                 val (leftParam, rest5) = rest4.splitAt(1)
                 val (trailingUsing, rest6) = rest5.span(isUsingClause)
                 if leftParam.nonEmpty then
-                  leftTyParams ::: leadingUsing ::: leftParam ::: trailingUsing ::: rightTyParams ::: rightParam ::: rest6
+                  leftTyParams ++ leadingUsing ++ leftParam ++ trailingUsing ++ rightTyParams ++ rightParam ++ rest6
                 else
                   tree.paramss // it wasn't a binary operator, after all.
               else
@@ -1087,7 +1087,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val tparamsTxt = withEnclosingDef(constr) {
       paramsText(constr.leadingTypeParams) `provided` constr.leadingTypeParams.nonEmpty
     }
-    val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
+    val primaryConstrs = if (constr.rhs.isEmpty) Vector() else constr +: Vector()
     val prefix: Text =
       if (constr.trailingParamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
       else {
@@ -1096,7 +1096,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (constr.mods.hasAnnotations && !constr.mods.hasFlags) modsText = modsText ~~ " this"
         val ctorParamss =
           // for fake `(x$1: Unit): Foo` constructor, don't print the param (span is not reconstructed correctly)
-          if constr.symbol.isAllOf(JavaParsers.fakeFlags) then Nil else constr.trailingParamss
+          if constr.symbol.isAllOf(JavaParsers.fakeFlags) then Vector() else constr.trailingParamss
         withEnclosingDef(constr) { addParamssText(tparamsTxt ~~ modsText, ctorParamss) }
       }
     val parentsText = Text(impl.parents.map(constrText), if (ofNew) keywordStr(" with ") else ", ")
@@ -1121,12 +1121,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           params.filterNot(_.symbol.isAllOf(JavaParsers.fakeFlags | Param))
         else
           params
-      params0 ::: rest
+      params0 ++ rest
     }
     else impl.body
 
     val bodyText = inContextBracket(
-      " {" ~~ selfText ~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}")
+      " {" ~~ selfText ~ toTextGlobal(primaryConstrs ++ body, "\n") ~ "}")
 
     prefix ~
     keywordText(" extends").provided(!ofNew && impl.parents.nonEmpty) ~~ parentsText ~
@@ -1148,7 +1148,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def packageDefText(tree: PackageDef): Text = {
     val statsText = tree.stats match {
-      case (pdef: PackageDef) :: Nil => toText(pdef)
+      case (pdef: PackageDef) +: Vector() => toText(pdef)
       case _ => inContextBracket(toTextGlobal(tree.stats, "\n"))
     }
     val bodyText =
@@ -1163,7 +1163,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def annotText(sym: Symbol, tree: untpd.Tree): Text =
     def recur(t: untpd.Tree): Text = t match
-      case Apply(fn, Nil) => recur(fn)
+      case Apply(fn, Vector()) => recur(fn)
       case Apply(fn, args) =>
         val explicitArgs = args.filterNot(untpd.stripNamedArg(_).symbol.name.is(DefaultGetterName))
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"
@@ -1210,7 +1210,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def optText[T <: Untyped](tree: Tree[T])(encl: Text => Text): Text =
     if (tree.isEmpty) "" else encl(toText(tree))
 
-  def optText[T <: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
+  def optText[T <: Untyped](tree: Vector[Tree[T]])(encl: Text => Text): Text =
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym.is(TypeParam)

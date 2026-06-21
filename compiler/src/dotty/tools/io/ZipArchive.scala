@@ -189,7 +189,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
       }
     } finally {
       if (ZipArchive.closeZipFile) zipFile.close()
-      else closeables ::= zipFile
+      else closeables +:= zipFile
     }
     (root, dirs)
   }
@@ -212,10 +212,10 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
       false
   }
 
-  private var closeables: List[java.io.Closeable] = Nil
+  private var closeables: Vector[java.io.Closeable] = Vector()
   override def close(): Unit = {
     closeables.foreach(_.close)
-    closeables = Nil
+    closeables = Vector()
   }
 }
 
@@ -227,7 +227,7 @@ final class ManifestResources(val url: URL) extends ZipArchive(null, None) {
     val manifest = new Manifest(stream)
     val iter     = manifest.getEntries().keySet().iterator().asScala.filter(_.endsWith(".class")).map(new ZipEntry(_))
 
-    closeables ::= stream
+    closeables +:= stream
 
     for (zipEntry <- iter) {
       val dir = getDir(dirs, zipEntry)
@@ -279,9 +279,9 @@ final class ManifestResources(val url: URL) extends ZipArchive(null, None) {
     }
   }
 
-  private var closeables: List[java.io.Closeable] = Nil
+  private var closeables: Vector[java.io.Closeable] = Vector()
   override def close(): Unit = {
     closeables.foreach(_.close())
-    closeables = Nil
+    closeables = Vector()
   }
 }

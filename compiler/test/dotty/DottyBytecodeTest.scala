@@ -53,10 +53,10 @@ trait DottyBytecodeTest {
   }
 
   def checkBCode(scalaSource: String)(checkOutput: AbstractFile => Unit): Unit =
-    checkBCode(List(scalaSource))(checkOutput)
+    checkBCode(Vector(scalaSource))(checkOutput)
 
   /** Checks source code from raw strings */
-  def checkBCode(scalaSources: List[String], javaSources: List[String] = Nil)(checkOutput: AbstractFile => Unit): Unit = {
+  def checkBCode(scalaSources: Vector[String], javaSources: Vector[String] = Vector())(checkOutput: AbstractFile => Unit): Unit = {
     given Context = initCtx
 
     val compiler = new Compiler
@@ -66,7 +66,7 @@ trait DottyBytecodeTest {
     checkOutput(ctx.settings.outputDir.value)
   }
 
-  def compileCode(scalaSources: List[String], javaSources: List[String] = Nil): AbstractFile = {
+  def compileCode(scalaSources: Vector[String], javaSources: Vector[String] = Vector()): AbstractFile = {
     given Context = initCtx
 
     val compiler = new Compiler
@@ -75,15 +75,15 @@ trait DottyBytecodeTest {
     ctx.settings.outputDir.value
   }
 
-  def getGeneratedClassfiles(outDir: AbstractFile): List[(String, Array[Byte])] = {
+  def getGeneratedClassfiles(outDir: AbstractFile): Vector[(String, Array[Byte])] = {
     import scala.collection.mutable.ListBuffer
-    def files(dir: AbstractFile): List[(String, Array[Byte])] = {
+    def files(dir: AbstractFile): Vector[(String, Array[Byte])] = {
       val res = ListBuffer.empty[(String, Array[Byte])]
       for (f <- dir.iterator) {
         if (!f.isDirectory) res += ((f.name, f.toByteArray))
         else if (f.name != "." && f.name != "..") res ++= files(f)
       }
-      res.toList
+      res.toVector
     }
     files(outDir)
   }
@@ -111,18 +111,18 @@ trait DottyBytecodeTest {
     classNode.fields.asScala.find(_.name == name) getOrElse
       sys.error(s"Didn't find field '$name' in class '${classNode.name}'")
 
-  def getInstructions(c: ClassNode, name: String): List[Instruction] =
+  def getInstructions(c: ClassNode, name: String): Vector[Instruction] =
     instructionsFromMethod(getMethod(c, name))
 
-  def assertSameCode(method: MethodNode, expected: List[Instruction]): Unit =
+  def assertSameCode(method: MethodNode, expected: Vector[Instruction]): Unit =
     assertSameCode(instructionsFromMethod(method).dropNonOp, expected)
-  def assertSameCode(actual: List[Instruction], expected: List[Instruction]): Unit = {
+  def assertSameCode(actual: Vector[Instruction], expected: Vector[Instruction]): Unit = {
     assert(actual === expected, "\n" + diffInstructions(actual, expected))
   }
 
   def assertInvoke(m: MethodNode, receiver: String, method: String): Unit =
     assertInvoke(instructionsFromMethod(m), receiver, method)
-  def assertInvoke(l: List[Instruction], receiver: String, method: String): Unit = {
+  def assertInvoke(l: Vector[Instruction], receiver: String, method: String): Unit = {
     assert(l.exists {
       case Invoke(_, `receiver`, `method`, _, _) => true
       case _ => false
@@ -131,14 +131,14 @@ trait DottyBytecodeTest {
 
   def assertNoInvoke(m: MethodNode, receiver: String, method: String): Unit =
     assertNoInvoke(instructionsFromMethod(m), receiver, method)
-  def assertNoInvoke(l: List[Instruction], receiver: String, method: String): Unit = {
+  def assertNoInvoke(l: Vector[Instruction], receiver: String, method: String): Unit = {
     assert(!l.exists {
       case Invoke(_, `receiver`, `method`, _, _) => true
       case _ => false
     }, s"Found unexpected invoke of $receiver.$method in:\n${l.stringLines}")
   }
 
-  def diffInstructions(isa: List[Instruction], isb: List[Instruction]): String = {
+  def diffInstructions(isa: Vector[Instruction], isb: Vector[Instruction]): String = {
     val len = Math.max(isa.length, isb.length)
     val sb = new StringBuilder
     if (len > 0 ) {
@@ -182,7 +182,7 @@ trait DottyBytecodeTest {
   def similarBytecode(
     methA:   MethodNode,
     methB:   MethodNode,
-    similar: (List[Instruction], List[Instruction]) => Boolean
+    similar: (Vector[Instruction], Vector[Instruction]) => Boolean
   ) = {
     val isa = instructionsFromMethod(methA)
     val isb = instructionsFromMethod(methB)
@@ -259,7 +259,7 @@ trait DottyBytecodeTest {
     }
     .getOrElse(fail("Could not find constructor for object `Test`"))
 
-  private def boxingError(ins: List[?], source: String) =
+  private def boxingError(ins: Vector[?], source: String) =
     s"""|----------------------------------
         |${ins.mkString("\n")}
         |----------------------------------
@@ -276,7 +276,7 @@ trait DottyBytecodeTest {
     }
     .getOrElse(fail("Could not find constructor for object `Test`"))
 
-  protected def boxingInstructions(method: MethodNode): (List[?], Boolean) = {
+  protected def boxingInstructions(method: MethodNode): (Vector[?], Boolean) = {
     val ins = instructionsFromMethod(method)
     val boxed = ins.exists {
       case Invoke(op, owner, name, desc, itf) =>
@@ -298,5 +298,5 @@ trait DottyBytecodeTest {
 
 }
 object DottyBytecodeTest {
-  extension [T](l: List[T]) def stringLines = l.mkString("\n")
+  extension [T](l: Vector[T]) def stringLines = l.mkString("\n")
 }

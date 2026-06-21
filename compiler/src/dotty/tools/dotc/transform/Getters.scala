@@ -98,7 +98,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
     if !sym.setter.exists then
       newSetters += sym.copy(
         name = sym.name.setterName,
-        info = MethodType(sym.info.widenExpr :: Nil, defn.UnitType)
+        info = MethodType(sym.info.widenExpr +: Vector(), defn.UnitType)
       ).enteredAfter(thisPhase)
 
   override def transformValDef(tree: ValDef)(using Context): Tree =

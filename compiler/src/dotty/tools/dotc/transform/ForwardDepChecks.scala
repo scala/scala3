@@ -27,7 +27,7 @@ object ForwardDepChecks:
   }
 
   /** A class to help in forward reference checking */
-  class LevelInfo(val outer: OptLevelInfo, val owner: Symbol, stats: List[Tree])(using Context)
+  class LevelInfo(val outer: OptLevelInfo, val owner: Symbol, stats: Vector[Tree])(using Context)
   extends OptLevelInfo {
     override val levelAndIndex: LevelAndIndex =
       stats.foldLeft(outer.levelAndIndex, 0) {(mi, stat) =>
@@ -71,7 +71,7 @@ class ForwardDepChecks extends MiniPhase:
   override def initContext(ctx: FreshContext): Unit =
     LevelInfo = ctx.addLocation(NoLevelInfo)
 
-  override def prepareForStats(trees: List[Tree])(using Context): Context =
+  override def prepareForStats(trees: Vector[Tree])(using Context): Context =
     if (ctx.owner.isTerm)
       ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel, ctx.owner, trees))
     else ctx

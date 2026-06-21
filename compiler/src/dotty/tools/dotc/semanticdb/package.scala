@@ -34,12 +34,12 @@ package object semanticdb {
       uri = path,
       text = sourceCode,
       md5 = MD5.compute(sourceCode),
-      symbols = extractor.symbolInfos.toList,
-      occurrences = extractor.occurrences.toList
+      symbols = extractor.symbolInfos.toVector,
+      occurrences = extractor.occurrences.toVector
     )
 
   /** Gets SemanticDB symbols from the given name. */
-  def symbolsFromName(sym: String)(using ctx: Context): List[Symbol] =
+  def symbolsFromName(sym: String)(using ctx: Context): Vector[Symbol] =
     SemanticSymbolBuilder.inverseSymbol(sym)
 
   /** Gets the SemanticDB name of the given symbol. */

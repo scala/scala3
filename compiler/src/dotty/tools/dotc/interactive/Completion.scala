@@ -45,13 +45,13 @@ import java.util.logging.Logger
  *                      types, or the type for terms.
  * @param symbols       The symbols that are matched by this completion result.
  */
-case class Completion(label: String, description: String, symbols: List[Symbol])
+case class Completion(label: String, description: String, symbols: Vector[Symbol])
 
 object Completion:
 
   private val logger = Logger.getLogger(this.getClass.getName)
 
-  def scopeContext(pos: SourcePosition, tpdPath: List[tpd.Tree], completionContext: Context)(using Context): CompletionResult =
+  def scopeContext(pos: SourcePosition, tpdPath: Vector[tpd.Tree], completionContext: Context)(using Context): CompletionResult =
     inContext(completionContext):
       val untpdPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)
       // Lazy mode is to avoid too many checks as it's mostly for printing types
@@ -62,7 +62,7 @@ object Completion:
    *
    *  @return offset and list of symbols for possible completions
    */
-  def completions(pos: SourcePosition)(using Context): (Int, List[Completion]) =
+  def completions(pos: SourcePosition)(using Context): (Int, Vector[Completion]) =
     val tpdPath = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
     val completionContext = Interactive.contextOfPath(tpdPath).withPhase(Phases.typerPhase)
     inContext(completionContext):
@@ -81,8 +81,8 @@ object Completion:
     pos: SourcePosition,
     mode: Mode,
     rawPrefix: String,
-    tpdPath: List[tpd.Tree],
-    untpdPath: List[untpd.Tree],
+    tpdPath: Vector[tpd.Tree],
+    untpdPath: Vector[untpd.Tree],
     customMatcher: Option[Name => Boolean] = None,
     calculatedScopeContext: Option[CompletionResult] = None
   )(using Context): CompletionMap =
@@ -99,18 +99,18 @@ object Completion:
    *
    * Otherwise, provide no completion suggestion.
    */
-  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode = path match
+  def completionMode(path: Vector[untpd.Tree], pos: SourcePosition): Mode = path match
     // Ignore `package foo@@` and `package foo.bar@@`
-    case ((_: tpd.Select) | (_: tpd.Ident)):: (_ : tpd.PackageDef) :: _  => Mode.None
+    case ((_: tpd.Select) | (_: tpd.Ident))+: (_ : tpd.PackageDef) +: _  => Mode.None
     case GenericImportSelector(sel) =>
       if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
       else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
       else Mode.None // import scala.{util => u@@}
     case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
-    case untpd.InterpolatedString(_, untpd.Literal(Constants.Constant(_: String)) :: _) :: _ =>
+    case untpd.InterpolatedString(_, untpd.Literal(Constants.Constant(_: String)) +: _) +: _ =>
       Mode.Term | Mode.Scope
-    case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
-    case (ref: untpd.RefTree) :: _ =>
+    case untpd.Literal(Constants.Constant(_: String)) +: _ => Mode.Term | Mode.Scope // literal completions
+    case (ref: untpd.RefTree) +: _ =>
       val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
       if (ref.name.isTermName) Mode.Term | maybeSelectMembers
       else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
@@ -143,22 +143,22 @@ object Completion:
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
+  def completionPrefix(path: Vector[untpd.Tree], pos: SourcePosition)(using Context): String =
     path match
       case GenericImportSelector(sel) =>
-        if sel.isGiven then completionPrefix(sel.bound :: Nil, pos)
+        if sel.isGiven then completionPrefix(sel.bound +: Vector(), pos)
         else if sel.isWildcard then pos.source.content()(pos.point - 1).toString
-        else completionPrefix(sel.imported :: Nil, pos)
+        else completionPrefix(sel.imported +: Vector(), pos)
 
       // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
-      case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
+      case (select: untpd.Select) +: _ if select.name == nme.ERROR =>
         checkBacktickPrefix(select.source.content(), select.nameSpan.start, select.span.end)
 
       // import scala.util.chaining.`s<TAB> will result in a Ident(<error>)
-      case (ident: untpd.Ident) :: _ if ident.name == nme.ERROR =>
+      case (ident: untpd.Ident) +: _ if ident.name == nme.ERROR =>
         checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
 
-      case (tree: untpd.RefTree) :: _ if tree.name != nme.ERROR =>
+      case (tree: untpd.RefTree) +: _ if tree.name != nme.ERROR =>
         val nameStart = tree.span.point
         val start = if pos.source.content().lift(nameStart).contains('`') then nameStart + 1 else nameStart
         tree.name.toString.take(pos.span.point - start)
@@ -168,30 +168,30 @@ object Completion:
   end completionPrefix
 
   private object GenericImportSelector:
-    def unapply(path: List[untpd.Tree]): Option[untpd.ImportSelector] =
+    def unapply(path: Vector[untpd.Tree]): Option[untpd.ImportSelector] =
       path match
-        case untpd.Ident(_) :: (sel: untpd.ImportSelector) :: _ => Some(sel)
-        case (sel: untpd.ImportSelector) :: _ => Some(sel)
+        case untpd.Ident(_) +: (sel: untpd.ImportSelector) +: _ => Some(sel)
+        case (sel: untpd.ImportSelector) +: _ => Some(sel)
         case _ => None
 
   private object GenericImportOrExport:
-    def unapply(path: List[untpd.Tree]): Option[untpd.ImportOrExport] =
+    def unapply(path: Vector[untpd.Tree]): Option[untpd.ImportOrExport] =
       path match
-        case untpd.Ident(_) :: (importOrExport: untpd.ImportOrExport) :: _ => Some(importOrExport)
-        case (importOrExport: untpd.ImportOrExport) :: _ => Some(importOrExport)
+        case untpd.Ident(_) +: (importOrExport: untpd.ImportOrExport) +: _ => Some(importOrExport)
+        case (importOrExport: untpd.ImportOrExport) +: _ => Some(importOrExport)
         case _ => None
 
   private object StringContextApplication:
-    def unapply(path: List[tpd.Tree]): Option[tpd.Apply] =
+    def unapply(path: Vector[tpd.Tree]): Option[tpd.Apply] =
       path match
-        case tpd.Select(qual @ tpd.Apply(tpd.Select(tpd.Select(_, StdNames.nme.StringContext), _), _), _) :: _ =>
+        case tpd.Select(qual @ tpd.Apply(tpd.Select(tpd.Select(_, StdNames.nme.StringContext), _), _), _) +: _ =>
           Some(qual)
         case _ => None
 
   private object NamedTupleSelection:
-    def unapply(path: List[tpd.Tree])(using Context): Option[tpd.Tree] =
+    def unapply(path: Vector[tpd.Tree])(using Context): Option[tpd.Tree] =
       path match
-        case (tpd.Apply(tpd.Apply(tpd.TypeApply(fun, _), List(qual)), _)) :: _
+        case (tpd.Apply(tpd.Apply(tpd.TypeApply(fun, _), Vector(qual)), _)) +: _
           if fun.symbol.exists && fun.symbol.name == nme.apply &&
              fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
           Some(qual)
@@ -199,9 +199,9 @@ object Completion:
 
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
-  def completionOffset(untpdPath: List[untpd.Tree]): Int =
+  def completionOffset(untpdPath: Vector[untpd.Tree]): Int =
     untpdPath match
-      case (ref: untpd.RefTree) :: _ => ref.span.point
+      case (ref: untpd.RefTree) +: _ => ref.span.point
       case _ => 0
 
   /** Handle case when cursor position is inside extension method construct.
@@ -215,8 +215,8 @@ object Completion:
    *  @return Typed path to the parameter of the extension construct if found or tpdPath
    */
   private def typeCheckExtensionConstructPath(
-    untpdPath: List[untpd.Tree], tpdPath: List[tpd.Tree], pos: SourcePosition
-  )(using Context): List[tpd.Tree] =
+    untpdPath: Vector[untpd.Tree], tpdPath: Vector[tpd.Tree], pos: SourcePosition
+  )(using Context): Vector[tpd.Tree] =
     untpdPath.collectFirst:
       case untpd.ExtMethods(paramss, _) =>
         val enclosingParam = paramss.flatten
@@ -235,8 +235,8 @@ object Completion:
     pos: SourcePosition,
     mode: Mode,
     rawPrefix: String,
-    adjustedPath: List[tpd.Tree],
-    untpdPath: List[untpd.Tree],
+    adjustedPath: Vector[tpd.Tree],
+    untpdPath: Vector[untpd.Tree],
     matches: Option[Name => Boolean],
     calculatedScopeContext: Option[CompletionResult]
   )(using ctx: Context): CompletionMap =
@@ -262,11 +262,11 @@ object Completion:
     val result = adjustedPath match
       // Ignore synthetic select from `This` because in code it was `Ident`
       // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
-      case tpd.Select(qual @ tpd.This(_), _) :: _ if qual.span.isSynthetic      => scopeContextNames
+      case tpd.Select(qual @ tpd.This(_), _) +: _ if qual.span.isSynthetic      => scopeContextNames
       case StringContextApplication(qual) =>
         scopeContextNames ++ completer.selectionCompletions(qual)
-      case tpd.Select(qual, _) :: _                                             => completer.selectionCompletions(qual)
-      case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
+      case tpd.Select(qual, _) +: _                                             => completer.selectionCompletions(qual)
+      case (tree: tpd.ImportOrExport) +: _                                      => completer.directMemberCompletions(tree.expr)
       case NamedTupleSelection(qual)                                            => completer.selectionCompletions(qual)
       case _                                                                    => scopeContextNames
 
@@ -278,7 +278,7 @@ object Completion:
 
     result
 
-  def postProcessCompletions(path: List[untpd.Tree], completions: CompletionMap, rawPrefix: String)(using Context): (Int, List[Completion]) =
+  def postProcessCompletions(path: Vector[untpd.Tree], completions: CompletionMap, rawPrefix: String)(using Context): (Int, Vector[Completion]) =
     val describedCompletions = describeCompletions(completions)
     val hasBackTick = rawPrefix.headOption.contains('`')
     val backtickedCompletions =
@@ -323,12 +323,12 @@ object Completion:
    * Return the list of code completions with descriptions based on a mapping from names to the denotations they refer to.
    * If several denotations share the same name, each denotation will be transformed into a separate completion item.
    */
-  def describeCompletions(completions: CompletionMap)(using Context): List[Completion] =
+  def describeCompletions(completions: CompletionMap)(using Context): Vector[Completion] =
     for
-      (name, denots) <- completions.toList
+      (name, denots) <- completions.toVector
       denot <- denots
     yield
-      Completion(name.show, description(denot), List(denot.symbol))
+      Completion(name.show, description(denot), Vector(denot.symbol))
 
   def description(denot: SingleDenotation)(using Context): String =
     try
@@ -336,9 +336,9 @@ object Completion:
       else denot.info.widenTermRefExpr.show
     catch case _: Exception => denot.symbol.name.toString
 
-  def isInNewContext(untpdPath: List[untpd.Tree]): Boolean =
+  def isInNewContext(untpdPath: Vector[untpd.Tree]): Boolean =
     untpdPath match
-      case _ :: untpd.New(selectOrIdent: (untpd.Select | untpd.Ident)) :: _ => true
+      case _ +: untpd.New(selectOrIdent: (untpd.Select | untpd.Ident)) +: _ => true
       case _ => false
 
   /** Include in completion sets only symbols that
@@ -378,7 +378,7 @@ object Completion:
 
   given ScopeOrdering(using Context): Ordering[Seq[SingleDenotation]] with
     val order =
-      List(defn.ScalaPredefModuleClass, defn.ScalaPackageClass, defn.JavaLangPackageClass)
+      Vector(defn.ScalaPredefModuleClass, defn.ScalaPackageClass, defn.JavaLangPackageClass)
 
     override def compare(x: Seq[SingleDenotation], y: Seq[SingleDenotation]): Int =
       val owner0 = x.headOption.map(_.symbol.effectiveOwner).getOrElse(NoSymbol)
@@ -394,7 +394,7 @@ object Completion:
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  class Completer(val mode: Mode, pos: SourcePosition, untpdPath: List[untpd.Tree], matches: Name => Boolean)(using Context):
+  class Completer(val mode: Mode, pos: SourcePosition, untpdPath: Vector[untpd.Tree], matches: Name => Boolean)(using Context):
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -418,7 +418,7 @@ object Completion:
         def apply(denot: CompletionDenotation, ctx: Context, includeFn: SingleDenotation => Boolean): ScopedDenotations =
           ScopedDenotations(CompletionDenotation(denot.denots.filter(includeFn), denot.site), ctx)
 
-      val mappings = collection.mutable.Map.empty[Name, List[ScopedDenotations]].withDefaultValue(List.empty)
+      val mappings = collection.mutable.Map.empty[Name, Vector[ScopedDenotations]].withDefaultValue(Vector.empty)
       val renames = collection.mutable.Map.empty[Symbol, Name]
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
@@ -438,7 +438,7 @@ object Completion:
               addMapping(name, ScopedDenotations(CompletionDenotation(denots, Some(ctx.owner.thisType)), ctx, include(_, name)))
             }
         else if ctx.scope ne EmptyScope then
-          ctx.scope.toList.filter(symbol => include(symbol, symbol.name))
+          ctx.scope.toVector.filter(symbol => include(symbol, symbol.name))
             .flatMap(_.alternatives)
             .groupByName.foreach { (name, denots) =>
               addMapping(name, ScopedDenotations(CompletionDenotation(denots, None), ctx, include(_, name)))
@@ -558,10 +558,10 @@ object Completion:
             Map.empty
 
         val explicitMembers =
-          val importNamesInScope = imp.forwardMapping.toList.map(_._2)
+          val importNamesInScope = imp.forwardMapping.toVector.map(_._2)
           val duplicatedNames = importNamesInScope.diff(importNamesInScope.distinct)
           val discardedNames = duplicatedNames ++ imp.excluded
-          imp.reverseMapping.toList
+          imp.reverseMapping.toVector
             .filter { (nameInScope, _) => !discardedNames.contains(nameInScope) }
             .flatMap { (nameInScope, original) =>
               fromImport(original, nameInScope) ++
@@ -580,7 +580,7 @@ object Completion:
           val typingCtx = ctx.fresh
           inContext(typingCtx):
             val methodRefTree = tpd.ref(conversionTarget.ref, needLoad = false)
-            val convertedTree = ctx.typer.typedAheadExpr(untpd.Apply(untpd.TypedSplice(methodRefTree), untpd.TypedSplice(qual) :: Nil))
+            val convertedTree = ctx.typer.typedAheadExpr(untpd.Apply(untpd.TypedSplice(methodRefTree), untpd.TypedSplice(qual) +: Vector()))
             Inferencing.fullyDefinedType(convertedTree.tpe, "", pos)
         catch
           case error => conversionTarget.tree.tpe // fallback to not fully defined type
@@ -653,7 +653,7 @@ object Completion:
       // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
-      val extMethodsInScope = scopeCompletions.names.toList.flatMap:
+      val extMethodsInScope = scopeCompletions.names.toVector.flatMap:
         case (name, denot) =>
           denot.denots.collect:
             case d if d.isTerm && d.symbol.is(Extension) => (d.symbol.termRef, name.asTermName)
@@ -701,7 +701,7 @@ object Completion:
           val denot = SymDenotation(symbol, NoSymbol, name, flags, info)
           denot +: extractRefinements(parent)
         case tp: TypeProxy => extractRefinements(tp.superType)
-        case _ => List.empty
+        case _ => Vector.empty
 
     /** @param site The type to inspect.
      *  @return The members of `site` that are accessible and pass the include filter.
@@ -737,7 +737,7 @@ object Completion:
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span, Set.empty).allImplicits
 
-      interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
+      interactiv.println(i"implicit conversion targets considered: ${conversions.toVector}%, %")
       conversions
     } catch case ex: Exception =>
       logger.fine(

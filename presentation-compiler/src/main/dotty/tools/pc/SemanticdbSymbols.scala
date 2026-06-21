@@ -7,7 +7,7 @@ import dotty.tools.dotc.semanticdb
 object SemanticdbSymbols:
 
   def inverseSemanticdbSymbol(sym: String)(using ctx: Context): List[Symbol] =
-    semanticdb.symbolsFromName(sym)
+    semanticdb.symbolsFromName(sym).toList
 
   /** The semanticdb name of the given symbol */
   def symbolName(sym: Symbol)(using Context): String =

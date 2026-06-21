@@ -40,7 +40,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
     init(src)
   }
 
-  override def toString: String = super.toString + " - " + aliases.toList.filter(s => s != null && s.size > 1).map(_.toString).distinct.mkString(",")
+  override def toString: String = super.toString + " - " + aliases.toVector.filter(s => s != null && s.size > 1).map(_.toString).distinct.mkString(",")
 
   /**
    * For every value the set of values that are aliases of it.

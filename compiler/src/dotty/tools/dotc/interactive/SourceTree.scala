@@ -55,10 +55,10 @@ case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
 }
 
 object SourceTree {
-  def fromSymbol(sym: ClassSymbol, id: String = "")(using Context): List[SourceTree] =
+  def fromSymbol(sym: ClassSymbol, id: String = "")(using Context): Vector[SourceTree] =
     if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
         !sym.source.exists) // FIXME: We cannot deal with external projects yet
-      Nil
+      Vector()
     else {
       import ast.Trees.*
       def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
@@ -70,16 +70,16 @@ object SourceTree {
           None
       }
 
-      def sourceImports(tree: tpd.Tree, sourceFile: SourceFile): List[SourceTree] = tree match {
+      def sourceImports(tree: tpd.Tree, sourceFile: SourceFile): Vector[SourceTree] = tree match {
         case PackageDef(_, stats) => stats.flatMap(sourceImports(_, sourceFile))
-        case imp: tpd.Import => SourceTree(imp, sourceFile) :: Nil
-        case _ => Nil
+        case imp: tpd.Import => SourceTree(imp, sourceFile) +: Vector()
+        case _ => Vector()
       }
 
       val tree = sym.rootTreeContaining(id)
       sourceTreeOfClass(tree) match {
-        case Some(namedTree) => namedTree :: sourceImports(tree, namedTree.source)
-        case None => Nil
+        case Some(namedTree) => namedTree +: sourceImports(tree, namedTree.source)
+        case None => Vector()
       }
     }
 }

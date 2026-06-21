@@ -71,7 +71,7 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(using Context): List[Type] =
+  def EtaExpandIfHK(tparams: Vector[TypeParamInfo], args: Vector[Type])(using Context): Vector[Type] =
     if (tparams.isEmpty) args
     else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
 
@@ -110,7 +110,7 @@ object TypeApplications {
    *  result type. Using this mode, we can guarantee that `appliedTo` will never
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
-  class Reducer(tycon: TypeLambda, args: List[Type])(using Context) extends TypeMap {
+  class Reducer(tycon: TypeLambda, args: Vector[Type])(using Context) extends TypeMap {
     private var available = (0 until args.length).toSet
     var allReplaced: Boolean = true
     def hasWildcardArg(p: TypeParamRef): Boolean =
@@ -167,7 +167,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For a refinement type, the type parameters of its parent, dropping
    *  any type parameter that is-rebound by the refinement.
    */
-  final def typeParams(using Context): List[TypeParamInfo] = {
+  final def typeParams(using Context): Vector[TypeParamInfo] = {
     record("typeParams")
     def isTrivial(prefix: Type, tycon: Symbol) = prefix match {
       case prefix: ThisType =>
@@ -197,20 +197,20 @@ class TypeApplications(val self: Type) extends AnyVal {
           case _ => self.info.typeParams
         }
       case self: AppliedType =>
-        if (self.tycon.typeSymbol.isClass) Nil
+        if (self.tycon.typeSymbol.isClass) Vector()
         else self.superType.typeParams
       case self: ClassInfo =>
         self.cls.typeParams
       case self: HKTypeLambda =>
         self.typeParams
       case _: SingletonType | _: RefinedType | _: RecType =>
-        Nil
+        Vector()
       case self: WildcardType =>
         self.optBounds.typeParams
       case self: TypeProxy =>
         self.superType.typeParams
       case _ =>
-        Nil
+        Vector()
     }
     catch {
       case ex: Throwable => handleRecursive("type parameters of", self.show, ex)
@@ -218,25 +218,25 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Substitute in `self` the type parameters of `tycon` by some other types. */
-  final def substTypeParams(tycon: Type, to: List[Type])(using Context): Type =
+  final def substTypeParams(tycon: Type, to: Vector[Type])(using Context): Type =
     (tycon.typeParams: @unchecked) match
-      case LambdaParam(lam, _) :: _ => self.substParams(lam, to)
-      case params: List[Symbol @unchecked] => self.subst(params, to)
+      case LambdaParam(lam, _) +: _ => self.substParams(lam, to)
+      case params: Vector[Symbol @unchecked] => self.subst(params, to)
 
-  /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
-  final def hkTypeParams(using Context): List[TypeParamInfo] =
-    if (isLambdaSub) typeParams else Nil
+  /** If `self` is a higher-kinded type, its type parameters, otherwise Vector() */
+  final def hkTypeParams(using Context): Vector[TypeParamInfo] =
+    if (isLambdaSub) typeParams else Vector()
 
-  /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
-  final def typeParamSymbols(using Context): List[TypeSymbol] = typeParams match {
-    case tparams @ (_: Symbol) :: _ =>
+  /** If `self` is a generic class, its type parameter symbols, otherwise Vector() */
+  final def typeParamSymbols(using Context): Vector[TypeSymbol] = typeParams match {
+    case tparams @ (_: Symbol) +: _ =>
       assert(tparams.forall(_.isInstanceOf[Symbol]))
-      tparams.asInstanceOf[List[TypeSymbol]]
+      tparams.asInstanceOf[Vector[TypeSymbol]]
         // Note: Two successive calls to typeParams can yield different results here because
         // of different completion status. I.e. the first call might produce some symbols,
         // whereas the second call gives some LambdaParams. This was observed
         // for ticket0137.scala
-    case _ => Nil
+    case _ => Vector()
   }
 
   /** Is self type bounded by a type lambda or AnyKind? */
@@ -371,7 +371,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param  self   = `T`
    *  @param  args   = `U1,...,Un`
    */
-  final def appliedTo(args: List[Type])(using Context): Type = {
+  final def appliedTo(args: Vector[Type])(using Context): Type = {
     record("appliedTo")
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
@@ -442,10 +442,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  final def appliedTo(arg: Type)(using Context): Type = appliedTo(arg :: Nil)
-  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(arg1 :: arg2 :: Nil)
+  final def appliedTo(arg: Type)(using Context): Type = appliedTo(arg +: Vector())
+  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(arg1 +: arg2 +: Vector())
 
-  final def applyIfParameterized(args: List[Type])(using Context): Type =
+  final def applyIfParameterized(args: Vector[Type])(using Context): Type =
     if (typeParams.nonEmpty) appliedTo(args) else self
 
   /** A cycle-safe version of `appliedTo` where computing type parameters do not force
@@ -453,7 +453,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
-  final def safeAppliedTo(args: List[Type])(using Context): Type = self match {
+  final def safeAppliedTo(args: Vector[Type])(using Context): Type = self match {
     case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
       AppliedType(self, args)
     case _ =>
@@ -548,29 +548,29 @@ class TypeApplications(val self: Type) extends AnyVal {
       self
 
   /** If this is an encoding of a (partially) applied type, return its arguments,
-   *  otherwise return Nil.
+   *  otherwise return Vector().
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(using Context): List[Type] = self.stripped match
+  final def argInfos(using Context): Vector[Type] = self.stripped match
     case AppliedType(tycon, args) => args
     case tp: FlexibleType => tp.underlying.argInfos
-    case _ => Nil
+    case _ => Vector()
 
-  /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
+  /** If this is an encoding of a function type, return its arguments, otherwise return Vector().
    *  Handles poly functions gracefully.
    */
-  final def functionArgInfos(using Context): List[Type] = self.dealias match
+  final def functionArgInfos(using Context): Vector[Type] = self.dealias match
     case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
     case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
-  def argTypes(using Context): List[Type] = argInfos mapConserve noBounds
+  def argTypes(using Context): Vector[Type] = argInfos.mapConserve(noBounds)
 
   /** Argument types where existential types in arguments are approximated by their lower bound */
-  def argTypesLo(using Context): List[Type] = argInfos.mapConserve(_.loBound)
+  def argTypesLo(using Context): Vector[Type] = argInfos.mapConserve(_.loBound)
 
   /** Argument types where existential types in arguments are approximated by their upper bound  */
-  def argTypesHi(using Context): List[Type] = argInfos.mapConserve(_.hiBound)
+  def argTypesHi(using Context): Vector[Type] = argInfos.mapConserve(_.hiBound)
 
   /** If this is the image of a type argument; recover the type argument,
    *  otherwise NoType.

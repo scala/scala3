@@ -10,9 +10,9 @@ import org.junit.Assert.assertEquals
 class TypesTest extends DottyTest:
 
   @Test def tuple3TypeSize =
-    val tpe = defn.TupleType(3).nn.appliedTo(List(defn.IntType, defn.BooleanType, defn.DoubleType))
+    val tpe = defn.TupleType(3).nn.appliedTo(Vector(defn.IntType, defn.BooleanType, defn.DoubleType))
     assertEquals(3, tpe.typeSize)
 
   @Test def tuple3ConsTypeSize =
-    val tpe = TypeOps.nestedPairs(List(defn.IntType, defn.BooleanType, defn.DoubleType))
+    val tpe = TypeOps.nestedPairs(Vector(defn.IntType, defn.BooleanType, defn.DoubleType))
     assertEquals(3, tpe.typeSize)

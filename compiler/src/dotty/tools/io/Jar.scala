@@ -49,9 +49,9 @@ class Jar(file: File) {
   /** The manifest-defined classpath String if available. */
   def classPathString: Option[String] =
     for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH) if !cp.trim().isEmpty()) yield cp
-  def classPathElements: List[String] = classPathString match {
-    case Some(s)  => s.split("\\s+").toList
-    case _        => Nil
+  def classPathElements: Vector[String] = classPathString match {
+    case Some(s)  => s.split("\\s+").toVector
+    case _        => Vector()
   }
 
   def withJarInput[T](f: JarInputStream => T): T = {
@@ -63,8 +63,10 @@ class Jar(file: File) {
     new JarWriter(file, Jar.WManifest.apply(mainAttrs*).underlying)
   }
 
-  def toList: List[JarEntry] = withJarInput { in =>
-    Iterator.continually(in.getNextJarEntry()).takeWhile(_ != null).toList
+  def toList: List[JarEntry] = toVector.toList
+
+  def toVector: Vector[JarEntry] = withJarInput { in =>
+    Iterator.continually(in.getNextJarEntry()).takeWhile(_ != null).toVector
   }
 
   def getEntryStream(entry: JarEntry): java.io.InputStream | Null = jarFile.getInputStream(entry) match
@@ -155,12 +157,12 @@ object Jar {
 
   // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
   // for some ideas.
-  private val ZipMagicNumber = List[Byte](80, 75, 3, 4)
+  private val ZipMagicNumber = Vector[Byte](80, 75, 3, 4)
   private def magicNumberIsZip(f: Path) = f.isFile && {
     val in = f.toFile.inputStream()
     try
       val first4 = in.readNBytes(4)
-      first4.toList == ZipMagicNumber
+      first4.toVector == ZipMagicNumber
     finally
       in.close()
   }

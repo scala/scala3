@@ -12,5 +12,5 @@ import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 case class CodeAction(
   title: String,
   description: Option[String],
-  patches: List[ActionPatch]
+  patches: Vector[ActionPatch]
 )

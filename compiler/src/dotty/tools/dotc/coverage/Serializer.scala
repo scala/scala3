@@ -120,7 +120,7 @@ object Serializer:
       val branch: Boolean = lines.next().toBoolean
       val count: Int = lines.next().toInt
       val ignored: Boolean = lines.next().toBoolean
-      val desc = lines.toList.mkString("\n")
+      val desc = lines.toVector.mkString("\n")
       Statement(
         loc,
         id,

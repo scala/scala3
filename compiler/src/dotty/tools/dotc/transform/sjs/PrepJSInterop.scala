@@ -260,9 +260,9 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         cpy.Template(transformedTree)(
           transformedTree.constr,
           transformedTree.parents,
-          Nil,
+          Vector(),
           transformedTree.self,
-          transformedTree.body ::: exports.toList
+          transformedTree.body ++ exports.toVector
         )
       }
     }
@@ -296,7 +296,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           super.transform(tree)
 
         // Validate js.constructorOf[T]
-        case TypeApply(ctorOfTree, List(tpeArg))
+        case TypeApply(ctorOfTree, Vector(tpeArg))
             if ctorOfTree.symbol == jsdefn.JSPackage_constructorOf =>
           validateJSConstructorOf(tree, tpeArg)
           super.transform(tree)
@@ -304,7 +304,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         /* Rewrite js.ConstructorTag.materialize[T] into
          * runtime.newConstructorTag[T](js.constructorOf[T])
          */
-        case TypeApply(ctorOfTree, List(tpeArg))
+        case TypeApply(ctorOfTree, Vector(tpeArg))
             if ctorOfTree.symbol == jsdefn.JSConstructorTag_materialize =>
           validateJSConstructorOf(tree, tpeArg)
           val ctorOf = ref(jsdefn.JSPackage_constructorOf).appliedToTypeTree(tpeArg)
@@ -316,7 +316,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
          *   new DynamicImportThunk { def apply(): Any = body }
          * )
          */
-        case Apply(TypeApply(fun, List(tpeArg)), List(body))
+        case Apply(TypeApply(fun, Vector(tpeArg)), Vector(body))
             if fun.symbol == jsdefn.JSPackage_dynamicImport =>
           val span = tree.span
           val currentOwner = ctx.owner
@@ -326,14 +326,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           val enclosingClass = currentOwner.enclosingClass
 
           // new DynamicImportThunk { def apply(): Any = body }
-          val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
-            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
+          val dynamicImportThunkAnonClass = AnonClass(currentOwner, Vector(jsdefn.DynamicImportThunkType), span) { cls =>
+            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Vector(), Vector(), defn.AnyType), coord = span).entered
             val transformedBody = enterDynamicImportEnclosingClass(enclosingClass) {
               transform(body)
             }
             val newBody = transformedBody.changeOwnerAfter(currentOwner, applySym, thisPhase)
             val applyDefDef = DefDef(applySym, newBody)
-            List(applyDefDef)
+            Vector(applyDefDef)
           }
 
           // runtime.DynamicImport[A](new ...)
@@ -355,7 +355,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
               fun.symbol == jsdefn.JSDynamicLiteral_applyDynamicNamed =>
           // Check that the first argument list is a constant string "apply"
           nameArgs match {
-            case List(Literal(Constant(s: String))) =>
+            case Vector(Literal(Constant(s: String))) =>
               if (s != "apply")
                 report.error(em"js.Dynamic.literal does not have a method named $s", tree)
             case _ =>
@@ -716,7 +716,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           // Extract the Int argument if it is present
           val optIntArg = vd.rhs match {
             case _:Select | _:Ident      => None
-            case Apply(_, intArg :: Nil) => Some(intArg)
+            case Apply(_, intArg +: Vector()) => Some(intArg)
           }
 
           val defaultName = vd.name.getterName.encode.toString
@@ -945,7 +945,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
               tree.rhs match {
                 case sel: Select if sel.symbol == jsdefn.JSPackage_undefined =>
                   // ok
-                case Apply(Apply(TypeApply(fromTypeConstructorFun, _), (sel: Select) :: Nil), _)
+                case Apply(Apply(TypeApply(fromTypeConstructorFun, _), (sel: Select) +: Vector()), _)
                     if sel.symbol == jsdefn.JSPackage_undefined
                         && fromTypeConstructorFun.symbol == jsdefn.PseudoUnion_fromTypeConstructor =>
                   // ok: js.|.fromTypeConstructor(js.undefined)(...)
@@ -972,7 +972,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         } else if (sym.isConstructor) {
           // Force secondary ctor to have only a call to the primary ctor inside
           tree.rhs match {
-            case Block(List(Apply(trg, _)), Literal(Constant(())))
+            case Block(Vector(Apply(trg, _)), Literal(Constant(())))
                 if trg.symbol.isPrimaryConstructor && trg.symbol.owner == sym.owner =>
               // everything is fine here
             case _ =>
@@ -1252,7 +1252,7 @@ object PrepJSInterop {
 
     // There must be exactly one non-varargs, non-default parameter
     tpe.paramInfoss match {
-      case List(List(argInfo)) =>
+      case Vector(Vector(argInfo)) =>
         // Arg list is OK. Do additional checks.
         if (tpe.isVarArgsMethod)
           report.error(s"$typeStr setters may not have repeated params", pos)
@@ -1329,14 +1329,14 @@ object PrepJSInterop {
       else "Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport."
 
     annots match {
-      case Nil =>
+      case Vector() =>
         report.error(badAnnotCountMsg, pos)
         None
-      case result :: Nil =>
+      case result +: Vector() =>
         Some(result)
       case _ =>
         // Annotations are stored in reverse order, which we re-reverse now
-        val result :: duplicates = annots.reverse: @unchecked
+        val result +: duplicates = annots.reverse: @unchecked
         for (annot <- duplicates)
           report.error(badAnnotCountMsg, annot.tree)
         Some(result)

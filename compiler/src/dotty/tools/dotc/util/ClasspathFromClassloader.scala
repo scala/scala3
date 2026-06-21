@@ -13,7 +13,7 @@ object ClasspathFromClassloader {
    *  the wrong thing.
    */
   def apply(cl: ClassLoader): String = {
-    val classpathBuff = List.newBuilder[String]
+    val classpathBuff = Vector.newBuilder[String]
     def collectClassLoaderPaths(cl: ClassLoader): Unit = {
       if (cl != null) {
         cl match {

@@ -31,7 +31,7 @@ private[semanticdb] class SyntheticsExtractor:
             !tree.span.isZeroExtent &&
             (tree.fun match {
               // for `Bar[Int]` of `class Foo extends Bar[Int]`
-              // we'll have `TypeTree(Select(New(AppliedTypeTree(...))), List(Int))`
+              // we'll have `TypeTree(Select(New(AppliedTypeTree(...))), Vector(Int))`
               // in this case, don't register `*[Int]` to synthetics as we already have `[Int]` in source.
               case Select(New(AppliedTypeTree(_, _)), _) => false
 
@@ -44,7 +44,7 @@ private[semanticdb] class SyntheticsExtractor:
             }) =>
           visited.add(tree)
           val fnTree = tree.fun match
-            // Something like `List.apply[Int](1,2,3)`
+            // Something like `Vector.apply[Int](1,2,3)`
             case select @ Select(qual, _) if isSyntheticName(select) =>
               s.SelectTree(
                 s.OriginalTree(range(qual.span, tree.source)),
@@ -85,7 +85,7 @@ private[semanticdb] class SyntheticsExtractor:
             pos,
             s.ApplyTree(
               tree.fun.toSemanticTree,
-              arguments = List(
+              arguments = Vector(
                 s.OriginalTree(pos)
               )
             )

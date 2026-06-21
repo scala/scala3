@@ -15,7 +15,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.chaining.*
 
 /** Formatter string checker. */
-class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List[Tree])(using Context):
+class TypedFormatChecker(partsElems: Vector[Tree], parts: Vector[String], args: Vector[Tree])(using Context):
 
   val argTypes = args.map(_.tpe)
   val actuals = ListBuffer.empty[Tree]
@@ -65,7 +65,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
    *
    *  Returns normalized part strings and args, where args correspond to conversions in tail of parts.
    */
-  def checked: (List[String], List[Tree]) =
+  def checked: (Vector[String], Vector[Tree]) =
     val amended = ListBuffer.empty[String]
     val convert = ListBuffer.empty[Conversion]
 
@@ -107,19 +107,19 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     end checkPart
 
     @tailrec
-    def loop(remaining: List[String], n: Int): Unit = remaining match
-      case part0 :: remaining =>
+    def loop(remaining: Vector[String], n: Int): Unit = (remaining: @unchecked) match
+      case part0 +: remaining =>
         def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage, index = n, offset = 0))
         val part = try StringContext.processEscapes(part0) catch badPart
         checkPart(part, n)
         loop(remaining, n + 1)
-      case Nil =>
+      case Vector() =>
 
     loop(parts, n = 0)
-    if reported then (Nil, Nil) // on error, Transform.checked will revert to unamended inputs
+    if reported then (Vector(), Vector()) // on error, Transform.checked will revert to unamended inputs
     else
       assert(argc == actuals.size, s"Expected ${argc} args but got ${actuals.size} for [${parts.mkString(", ")}]")
-      (amended.toList, actuals.toList)
+      (amended.toVector, actuals.toVector)
   end checked
 
   extension (descriptor: Match)
@@ -244,17 +244,17 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
         checkIsStringify(arg): Unit
 
     // what arg type if any does the conversion accept
-    def acceptableVariants: List[Type] =
+    def acceptableVariants: Vector[Type] =
       kind match
-        case StringXn        => if hasFlag('#') then FormattableType :: Nil else defn.AnyType :: Nil
-        case BooleanXn       => defn.BooleanType :: defn.NullType :: defn.AnyType :: Nil // warn if not boolean
-        case HashXn          => defn.AnyType :: Nil
-        case CharacterXn     => defn.CharType :: defn.ByteType :: defn.ShortType :: defn.IntType :: Nil
-        case IntegralXn      => defn.IntType :: defn.LongType :: defn.ByteType :: defn.ShortType :: BigIntType :: Nil
-        case FloatingPointXn => defn.DoubleType :: defn.FloatType :: BigDecimalType :: Nil
-        case DateTimeXn      => defn.LongType :: CalendarType :: DateType :: Nil
-        case LiteralXn       => Nil
-        case ErrorXn         => Nil
+        case StringXn        => if hasFlag('#') then FormattableType +: Vector() else defn.AnyType +: Vector()
+        case BooleanXn       => defn.BooleanType +: defn.NullType +: defn.AnyType +: Vector() // warn if not boolean
+        case HashXn          => defn.AnyType +: Vector()
+        case CharacterXn     => defn.CharType +: defn.ByteType +: defn.ShortType +: defn.IntType +: Vector()
+        case IntegralXn      => defn.IntType +: defn.LongType +: defn.ByteType +: defn.ShortType +: BigIntType +: Vector()
+        case FloatingPointXn => defn.DoubleType +: defn.FloatType +: BigDecimalType +: Vector()
+        case DateTimeXn      => defn.LongType +: CalendarType +: DateType +: Vector()
+        case LiteralXn       => Vector()
+        case ErrorXn         => Vector()
 
     // what flags does the conversion accept?
     private def okFlags: String =

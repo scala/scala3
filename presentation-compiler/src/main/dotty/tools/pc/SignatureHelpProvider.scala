@@ -34,7 +34,7 @@ object SignatureHelpProvider:
       case Some(unit) =>
 
         val pos = driver.sourcePosition(params, isZeroExtent = false)
-        val path = Interactive.pathTo(unit.tpdTree, pos.span)(using driver.currentCtx)
+        val path = Interactive.pathTo(unit.tpdTree, pos.span)(using driver.currentCtx).toList
 
         val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
         val indexedContext = IndexedContext(pos, path, newctx)
@@ -42,7 +42,7 @@ object SignatureHelpProvider:
         given Context =
           newctx.setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext))
 
-        val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
+        val (paramN, callableN, alternatives) = Signatures.signatureHelp(path.toVector, pos.span)
 
         val infos = alternatives.flatMap: signature =>
           signature.denot.map(signature -> _)
@@ -113,8 +113,8 @@ object SignatureHelpProvider:
             case (_: Signatures.TypeParam) :: _ => (typeParamIndex + head.size, methodParamIndex)
             case _ => (typeParamIndex, methodParamIndex)
           updated :: updateParamss(tail, nextTypeParamIndex, nextMethodParamIndex)
-    val updatedParams = updateParamss(signature.paramss, 0, 0)
-    Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams))
+    val updatedParams = updateParamss(signature.paramss.map(_.toList).toList, 0, 0)
+    Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams.map(_.toVector).toVector))
   end withDocumentation
 
   private def signatureToSignatureInformation(

@@ -61,8 +61,8 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
 
   private def computeDiagnostics(
       sourceRoot: String,
-      warnings: Map[SourceFile, List[dotty.tools.dotc.reporting.Diagnostic]],
-      append: ((Path, List[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
+      warnings: Map[SourceFile, Vector[dotty.tools.dotc.reporting.Diagnostic]],
+      append: ((Path, Vector[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
     val unit = ctx.compilationUnit
     warnings.get(unit.source).foreach { ws =>
       val outputDir =
@@ -88,16 +88,16 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
       extractor.extract(unit.tpdTree)
       ExtractSemanticDB.write(
         unit.source,
-        extractor.occurrences.toList,
-        extractor.symbolInfos.toList,
-        extractor.synthetics.toList,
+        extractor.occurrences.toVector,
+        extractor.symbolInfos.toVector,
+        extractor.synthetics.toVector,
         outputDir,
         sourceRoot,
         writeSemanticdbText
       )
     }
 
-  override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: Vector[CompilationUnit])(using ctx: Context): Vector[CompilationUnit] = {
     val sourceRoot = ctx.settings.sourceroot.value
     val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
     val unitContexts = units.map(ctx.fresh.setCompilationUnit(_).withRootImports)
@@ -108,7 +108,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
         for unitCtx <- unitContexts if computeDiagnostics(sourceRoot, warningsAndInfos, buf += _)(using unitCtx)
         yield unitCtx.compilationUnit
       cancellable {
-        buf.toList.asJava.parallelStream().forEach { case (out, diagnostics) =>
+        buf.toVector.asJava.parallelStream().forEach { case (out, diagnostics) =>
           ExtractSemanticDB.appendDiagnostics(diagnostics, out)
         }
       }
@@ -155,9 +155,9 @@ private[semanticdb] object ExtractSemanticDB:
 
   private def write(
     source: SourceFile,
-    occurrences: List[SymbolOccurrence],
-    symbolInfos: List[SymbolInformation],
-    synthetics: List[Synthetic],
+    occurrences: Vector[SymbolOccurrence],
+    symbolInfos: Vector[SymbolInformation],
+    synthetics: Vector[Synthetic],
     outpath: Path,
     sourceRoot: String,
     semanticdbText: Boolean
@@ -173,7 +173,7 @@ private[semanticdb] object ExtractSemanticDB:
       occurrences = occurrences,
       synthetics = synthetics,
     )
-    val docs = TextDocuments(List(doc))
+    val docs = TextDocuments(Vector(doc))
     val out = Files.newOutputStream(outpath)
     try
       val stream = internal.SemanticdbOutputStream.newInstance(out)
@@ -322,7 +322,7 @@ private[semanticdb] object ExtractSemanticDB:
             tree match {
               case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
                 tree.rhs match
-                case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
+                case Block(TypeDef(_, template: Template) +: _, _) => // simple case with specialised extends clause
                   template.parents.filter(!_.span.isZeroExtent).foreach(traverse)
                 case _ => // calls $new
               case tree: ValDef if tree.symbol.isSelfSym =>
@@ -489,8 +489,8 @@ private[semanticdb] object ExtractSemanticDB:
     private object ReflectiveSelectableApply:
       def unapply(tree: Tree)(using Context): Option[(Tree, String, Select)] = tree match
         case Apply(
-            sel @ Select(Apply(Ident(reflSelectable), List(qual)), fun),
-            Literal(Constants.Constant(memberName: String)) :: args
+            sel @ Select(Apply(Ident(reflSelectable), Vector(qual)), fun),
+            Literal(Constants.Constant(memberName: String)) +: args
           ) if reflSelectable == nme.reflectiveSelectable &&
               (fun == nme.selectDynamic || fun == nme.applyDynamic) =>
             Some(qual, memberName, sel)
@@ -501,7 +501,7 @@ private[semanticdb] object ExtractSemanticDB:
 
       def unapply(tree: ValDef)(using Context): Option[(Tree, Tree)] = tree.rhs match
 
-        case Match(Typed(selected: Tree, tpt: TypeTree), CaseDef(pat: Tree, _, _) :: Nil)
+        case Match(Typed(selected: Tree, tpt: TypeTree), CaseDef(pat: Tree, _, _) +: Vector())
         if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUncheckedOrRuntimeChecked =>
           Some((pat, selected))
 
@@ -513,21 +513,21 @@ private[semanticdb] object ExtractSemanticDB:
             annot.symbol == defn.UncheckedAnnot || annot.symbol == defn.RuntimeCheckedAnnot
           case _                             => false
 
-      def collectPats(pat: Tree): List[Tree] =
+      def collectPats(pat: Tree): Vector[Tree] =
 
         @tailrec
-        def impl(acc: List[Tree], pats: List[Tree]): List[Tree] = pats match
+        def impl(acc: Vector[Tree], pats: Vector[Tree]): Vector[Tree] = (pats: @unchecked) match
 
-          case pat::pats => pat match
-            case Typed(UnApply(fun: Tree, _, args), tpt: Tree) => impl(fun::tpt::acc, args:::pats)
-            case Typed(obj: Ident, tpt: Tree)                  => impl(obj::tpt::acc, pats)
-            case UnApply(fun: Tree, _, args)                   => impl(fun::acc,      args:::pats)
-            case obj: Ident                                    => impl(obj::acc,      pats)
+          case pat+:pats => pat match
+            case Typed(UnApply(fun: Tree, _, args), tpt: Tree) => impl(fun+:tpt+:acc, args++pats)
+            case Typed(obj: Ident, tpt: Tree)                  => impl(obj+:tpt+:acc, pats)
+            case UnApply(fun: Tree, _, args)                   => impl(fun+:acc,      args++pats)
+            case obj: Ident                                    => impl(obj+:acc,      pats)
             case _                                             => impl(acc,           pats)
 
-          case Nil => acc
+          case Vector() => acc
 
-        impl(Nil, pat::Nil)
+        impl(Vector(), pat+:Vector())
 
     end PatternValDef
 
@@ -588,16 +588,16 @@ private[semanticdb] object ExtractSemanticDB:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    extension (list: List[List[ValDef]])
+    extension (list: Vector[Vector[ValDef]])
       private  inline def isSingleArg = list match
-        case (_::Nil)::Nil => true
+        case (_+:Vector())+:Vector() => true
         case _             => false
 
     extension (tree: DefDef)
       private def isSetterDef(using Context): Boolean =
         tree.name.isSetterName && tree.mods.is(Accessor) && tree.termParamss.isSingleArg
 
-    private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(using Context): Map[Names.TermName, ValDef] =
+    private def findGetters(ctorParams: Set[Names.TermName], body: Vector[Tree])(using Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty || body.isEmpty then
         Map.empty
       else
@@ -622,13 +622,13 @@ private[semanticdb] object ExtractSemanticDB:
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list
      */
-    extension (body: List[Tree])
-      @tailrec private def foreachUntilImport(op: Tree => Unit): List[Tree] = body match
-        case ((_: Import) :: rest) => rest
-        case stat :: rest =>
+    extension (body: Vector[Tree])
+      @tailrec private def foreachUntilImport(op: Tree => Unit): Vector[Tree] = (body: @unchecked) match
+        case ((_: Import) +: rest) => rest
+        case stat +: rest =>
           op(stat)
           rest.foreachUntilImport(op)
-        case Nil => Nil
+        case Vector() => Vector()
 
     extension (sym: Symbol)
       private def adjustIfCtorTyparam(using Context) =
@@ -667,7 +667,7 @@ private[semanticdb] object ExtractSemanticDB:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[List[ValDef]], tparams: List[TypeDef], body: List[Tree])(using Context): Unit =
+      vparamss: Vector[Vector[ValDef]], tparams: Vector[TypeDef], body: Vector[Tree])(using Context): Unit =
       @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss

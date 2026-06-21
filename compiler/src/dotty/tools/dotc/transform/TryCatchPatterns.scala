@@ -82,7 +82,7 @@ class TryCatchPatterns extends MiniPhase {
       false
   }
 
-  private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], span: Span)(
+  private def mkFallbackPatterMatchCase(patternMatchCases: Vector[CaseDef], span: Span)(
       implicit ctx: Context): Option[CaseDef] =
     if (patternMatchCases.isEmpty) None
     else {
@@ -94,7 +94,7 @@ class TryCatchPatterns extends MiniPhase {
       Some(CaseDef(
           Bind(fallbackSelector, Underscore(fallbackSelector.info).withSpan(span)),
           EmptyTree,
-          transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))
+          transformFollowing(Match(sel, patternMatchCases :+ rethrow)))
       )
     }
 }

@@ -235,7 +235,7 @@ final class JSDefinitions() {
   @threadUnsafe lazy val LinkTimePropertyAnnotType: TypeRef = requiredClassRef("scala.scalajs.annotation.linkTimeProperty")
   def LinkTimePropertyAnnot(using Context) = LinkTimePropertyAnnotType.symbol.asClass
 
-  @threadUnsafe lazy val ScalaRunTime_isArrayR = defn.ScalaRuntimeModule.requiredMethodRef("isArray", List(???, ???))
+  @threadUnsafe lazy val ScalaRunTime_isArrayR = defn.ScalaRuntimeModule.requiredMethodRef("isArray", Vector(???, ???))
   def ScalaRunTime_isArray(using Context): Symbol = ScalaRunTime_isArrayR.symbol
 
   @threadUnsafe lazy val BoxesRunTime_boxToCharacterR = defn.BoxesRunTimeModule.requiredMethodRef("boxToCharacter")
@@ -273,10 +273,10 @@ final class JSDefinitions() {
   private var allRefClassesCache: Set[Symbol] = uninitialized
   def allRefClasses(using Context): Set[Symbol] = {
     if (allRefClassesCache == null) {
-      val baseNames = List("Object", "Boolean", "Character", "Byte", "Short",
+      val baseNames = Vector("Object", "Boolean", "Character", "Byte", "Short",
           "Int", "Long", "Float", "Double")
       val fullNames = baseNames.flatMap { base =>
-        List(s"scala.runtime.${base}Ref", s"scala.runtime.Volatile${base}Ref")
+        Vector(s"scala.runtime.${base}Ref", s"scala.runtime.Volatile${base}Ref")
       }
       allRefClassesCache = fullNames.map(name => requiredClass(name)).toSet
     }
@@ -292,16 +292,16 @@ final class JSDefinitions() {
 
     @threadUnsafe lazy val EnumerationClass = requiredClass("scala.Enumeration")
       @threadUnsafe lazy val Enumeration_Value_NoArg = EnumerationClass.requiredValue(nmeValue)
-      @threadUnsafe lazy val Enumeration_Value_IntArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType))
-      @threadUnsafe lazy val Enumeration_Value_StringArg = EnumerationClass.requiredMethod(nmeValue, List(OrNull(defn.StringType)))
-      @threadUnsafe lazy val Enumeration_Value_IntStringArg = EnumerationClass.requiredMethod(nmeValue, List(defn.IntType, OrNull(defn.StringType)))
+      @threadUnsafe lazy val Enumeration_Value_IntArg = EnumerationClass.requiredMethod(nmeValue, Vector(defn.IntType))
+      @threadUnsafe lazy val Enumeration_Value_StringArg = EnumerationClass.requiredMethod(nmeValue, Vector(OrNull(defn.StringType)))
+      @threadUnsafe lazy val Enumeration_Value_IntStringArg = EnumerationClass.requiredMethod(nmeValue, Vector(defn.IntType, OrNull(defn.StringType)))
       @threadUnsafe lazy val Enumeration_nextName = EnumerationClass.requiredMethod(termName("nextName"))
 
     @threadUnsafe lazy val EnumerationValClass = EnumerationClass.requiredClass("Val")
-      @threadUnsafe lazy val Enumeration_Val_NoArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Nil)
-      @threadUnsafe lazy val Enumeration_Val_IntArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType))
-      @threadUnsafe lazy val Enumeration_Val_StringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(OrNull(defn.StringType)))
-      @threadUnsafe lazy val Enumeration_Val_IntStringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, List(defn.IntType, OrNull(defn.StringType)))
+      @threadUnsafe lazy val Enumeration_Val_NoArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Vector())
+      @threadUnsafe lazy val Enumeration_Val_IntArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Vector(defn.IntType))
+      @threadUnsafe lazy val Enumeration_Val_StringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Vector(OrNull(defn.StringType)))
+      @threadUnsafe lazy val Enumeration_Val_IntStringArg = EnumerationValClass.requiredMethod(nme.CONSTRUCTOR, Vector(defn.IntType, OrNull(defn.StringType)))
 
     def isValueMethod(sym: Symbol)(using Context): Boolean =
       sym.name == nmeValue && sym.owner == EnumerationClass

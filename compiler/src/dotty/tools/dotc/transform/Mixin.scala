@@ -153,7 +153,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     else if (sym.isConstructor && ownerIsTrait)
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
-        info = MethodType(Nil, sym.info.resultType))
+        info = MethodType(Vector(), sym.info.resultType))
     else if sym.is(Trait, butNot = JavaDefined) then
       val classInfo = sym.asClass.classInfo
       lazy val decls1 = classInfo.decls.cloneScope
@@ -191,22 +191,22 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     getter.copy(
       name = Mixin.traitSetterName(getter),
       flags = Method | Accessor | Deferred,
-      info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
+      info = MethodType(getter.info.resultType +: Vector(), defn.UnitType))
 
   override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops.*
 
-    def traitDefs(stats: List[Tree]): List[Tree] = {
+    def traitDefs(stats: Vector[Tree]): Vector[Tree] = {
       stats.flatMap {
         case stat: DefDef if needsTraitSetter(stat.symbol) =>
           // add a trait setter for this getter
-          stat :: DefDef(stat.symbol.traitSetter.asTerm, EmptyTree) :: Nil
+          stat +: DefDef(stat.symbol.traitSetter.asTerm, EmptyTree) +: Vector()
         case stat: DefDef if stat.symbol.isSetter =>
-          cpy.DefDef(stat)(rhs = EmptyTree) :: Nil
+          cpy.DefDef(stat)(rhs = EmptyTree) +: Vector()
         case stat =>
-          stat :: Nil
+          stat +: Vector()
       }
     }
 
@@ -216,7 +216,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
      *     due to reorderings with named and/or default parameters).
      *   - a list of arguments to be used as initializers of trait parameters
      */
-    def transformConstructor(tree: Tree): (Tree, List[Tree], List[Tree]) = tree match {
+    def transformConstructor(tree: Tree): (Tree, Vector[Tree], Vector[Tree]) = tree match {
       case Block(stats, expr) =>
         val (scall, inits, args) = transformConstructor(expr)
         if args.isEmpty then
@@ -232,30 +232,30 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               stat.symbol.enteredAfter(thisPhase)
             case _ =>
           }
-          (scall, stats ::: inits, args)
+          (scall, stats ++ inits, args)
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree: @unchecked
-        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-        (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Nil, initArgs)
+        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Vector(), args) else (args, Vector())
+        (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Vector(), initArgs)
     }
 
-    val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], List[Tree])] = (
+    val superCallsAndArgs: Map[Symbol, (Tree, Vector[Tree], Vector[Tree])] = (
       for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
       yield constr.owner -> transformConstructor(p)
     ).toMap
 
-    def superCallOpt(baseCls: Symbol): List[Tree] = superCallsAndArgs.get(baseCls) match
+    def superCallOpt(baseCls: Symbol): Vector[Tree] = superCallsAndArgs.get(baseCls) match
       case Some((call, _, _)) =>
-        if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.isAllOf(NoInitsTrait)) Nil
-        else call :: Nil
+        if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.isAllOf(NoInitsTrait)) Vector()
+        else call +: Vector()
       case None =>
         if baseCls.isAllOf(NoInitsTrait) || defn.NoInitClasses.contains(baseCls) || defn.isFunctionClass(baseCls) then
-          Nil
+          Vector()
         else
           //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
-          transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
+          transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) +: Vector()
 
-    def traitInits(mixin: ClassSymbol): List[Tree] = {
+    def traitInits(mixin: ClassSymbol): Vector[Tree] = {
       val argsIt = superCallsAndArgs.get(mixin) match
         case Some((_, _, args)) => args.iterator
         case _ => Iterator.empty
@@ -272,7 +272,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           EmptyTree
 
       for
-        getter <- mixin.info.decls.toList
+        getter <- mixin.info.decls.toVector
         if getter.isGetter
            && !wasOneOf(getter, Deferred)
            && !getter.isConstExprFinalVal
@@ -292,7 +292,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
                       cls.srcPos)
                 transformFollowing(superRef(getter).appliedToNone)
               else
-                New(getter.info.resultType, List(This(cls)))
+                New(getter.info.resultType, Vector(This(cls)))
             else
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
@@ -310,7 +310,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else EmptyTree
     }
 
-    def setters(mixin: ClassSymbol): List[Tree] =
+    def setters(mixin: ClassSymbol): Vector[Tree] =
       val mixinSetters = mixin.info.decls.filter { sym =>
         sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName))
       }
@@ -322,7 +322,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         copied
       })
 
-    def mixinForwarders(mixin: ClassSymbol): List[Tree] =
+    def mixinForwarders(mixin: ClassSymbol): Vector[Tree] =
       for meth <- mixin.info.decls.filter(d => needsMixinForwarder(mixin, d))
       yield
         util.Stats.record("mixin forwarders")
@@ -347,7 +347,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     cpy.Template(impl)(
       constr =
-        if (cls.is(Trait)) cpy.DefDef(impl.constr)(paramss = Nil :: Nil)
+        if (cls.is(Trait)) cpy.DefDef(impl.constr)(paramss = Vector() +: Vector())
         else impl.constr,
       parents = impl.parents.map(p => TypeTree(p.tpe).withSpan(p.span)),
       body =
@@ -356,16 +356,16 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           val mixInits = mixins.flatMap { mixin =>
             val prefix = superCallsAndArgs.get(mixin) match
               case Some((_, inits, _)) => inits
-              case _ => Nil
+              case _ => Vector()
             prefix
-            ::: flatten(traitInits(mixin))
-            ::: superCallOpt(mixin)
-            ::: setters(mixin)
-            ::: mixinForwarders(mixin)
+            ++ flatten(traitInits(mixin))
+            ++ superCallOpt(mixin)
+            ++ setters(mixin)
+            ++ mixinForwarders(mixin)
           }
           superCallOpt(superCls)
-          ::: mixInits
-          ::: impl.body
+          ++ mixInits
+          ++ impl.body
         }
         else impl.body)
   }

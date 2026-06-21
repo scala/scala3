@@ -22,6 +22,7 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
     acc
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
+  final def toVector: Vector[Elem] = iterator.toVector
   def nth(n: Int): Elem
 
   final def isEmpty: Boolean = size == 0

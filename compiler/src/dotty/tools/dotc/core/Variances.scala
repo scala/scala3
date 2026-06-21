@@ -57,10 +57,10 @@ object Variances {
    *  of corresponding type parameters `tparams2`?
    *  This is only the case if `tparams1` and `tparams2` have the same length.
    */
-  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(using Context): Boolean =
+  def variancesConform(tparams1: Vector[TypeParamInfo], tparams2: Vector[TypeParamInfo])(using Context): Boolean =
     val needsDetailedCheck = tparams2 match
-      case (_: Symbol) :: _ => true
-      case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isDeclaredVarianceLambda
+      case (_: Symbol) +: _ => true
+      case LambdaParam(tl: HKTypeLambda, _) +: _ => tl.isDeclaredVarianceLambda
       case _ => false
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
     else tparams1.hasSameLengthAs(tparams2)

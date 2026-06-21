@@ -24,7 +24,7 @@ class ArrayApply extends MiniPhase {
     ctx.property(TransformListApplyBudgetKey).getOrElse(8) // default is 8, as originally implemented in nsc
 
   // A single-node `Vector1` holds up to `WIDTH` = 32 elements; longer `Seq(...)` literals are
-  // left for `Vector.from` to build a multi-level vector. Unlike the `List` cons rewrite (whose
+  // left for `Vector.from` to build a multi-level vector. Unlike the `Vector` cons rewrite (whose
   // budget bounds cons-chain code size), the `Vector` rewrite just hands off the array that the
   // varargs would build anyway, so it is bounded only by `Vector1`'s capacity.
   private inline val MaxVector1Length = 32
@@ -37,13 +37,13 @@ class ArrayApply extends MiniPhase {
   override def transformApply(tree: Apply)(using Context): Tree =
     if isArrayModuleApply(tree.symbol) then
       tree.args match
-        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) :: Nil)) :: ct :: Nil
+        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) +: Vector())) +: ct +: Vector()
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
 
-        case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) :: Nil)) :: Nil
+        case elem0 +: StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) +: Vector())) +: Vector()
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
-          JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
+          JavaSeqLiteral(elem0 +: seqLit.elems, seqLit.elemtpt)
 
         case _ =>
           tree
@@ -68,7 +68,7 @@ class ArrayApply extends MiniPhase {
           // `List(a, b, c)`, or `Seq(...)` against the stock 2.13 stdlib (`Seq` defaults to `List`)
           // ~> new ::(a, new ::(b, new ::(c, Nil)))
           val consed = elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
-            New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
+            New(defn.ConsType, Vector(elem.ensureConforms(defn.ObjectType), acc))
           consed.cast(tree.tpe)
         else
           tree
@@ -96,11 +96,11 @@ class ArrayApply extends MiniPhase {
       case _ => false
 
   private object SeqApplyArgs:
-    def unapply(tree: Apply)(using Context): Option[List[Tree]] =
+    def unapply(tree: Apply)(using Context): Option[Vector[Tree]] =
       if isSeqApply(tree) then
         tree.args match
           // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
-          case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
+          case StripAscription(Apply(wrapArrayMeth, Vector(StripAscription(rest: JavaSeqLiteral)))) +: Vector()
               if rest.elems.isEmpty || defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
             Some(rest.elems)
           case _ => None
@@ -113,7 +113,7 @@ class ArrayApply extends MiniPhase {
    *  - `ClassTag.XYZ` for primitive types
    */
   private def elideClassTag(ct: Tree)(using Context): Boolean = ct match {
-    case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
+    case Apply(_, rc +: Vector()) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
         case rc: RefTree if rc.name == nme.TYPE_ =>

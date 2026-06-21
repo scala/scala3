@@ -19,7 +19,7 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
   def transformSelf(vd: ValDef)(using Context): ValDef =
     cpy.ValDef(vd)(tpt = transform(vd.tpt))
 
-  private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
+  private def nestedScopeCtx(defs: Vector[Tree])(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     defs foreach {
       case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => nestedCtx.enter(d.symbol)
@@ -53,7 +53,7 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
         cpy.Template(tree)(
           transformSub(constr),
           transform(impl.parents)(using ctx.superCallContext),
-          Nil,
+          Vector(),
           transformSelf(self),
           transformStats(impl.body, tree.symbol))
       case tree: CaseDef =>

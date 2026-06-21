@@ -198,7 +198,7 @@ class PcInlayHintsProvider(
       tpe: Type,
       pos: SourcePosition
   ): List[LabelPart] =
-    val tpdPath = Interactive.pathTo(unit.tpdTree, pos.span)
+    val tpdPath = Interactive.pathTo(unit.tpdTree, pos.span).toList
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     val indexedCtx = IndexedContext(pos, tpdPath, newctx)
     import indexedCtx.ctx
@@ -255,12 +255,13 @@ class PcInlayHintsProvider(
       tpe: Type,
       usedRenames: Map[Symbol, String]
   ): List[LabelPart] =
-    NamedPartsAccumulator(_ => true)(Nil, tpe)
+    NamedPartsAccumulator(_ => true)(Vector.empty, tpe)
       .filter(_.symbol != NoSymbol)
       .map { t =>
         val label = usedRenames.get(t.symbol).getOrElse(t.symbol.decodedName)
         labelPart(t.symbol, label)
       }
+      .toList
 
   private def isErrorTpe(tpe: Type): Boolean = tpe.isError
 end PcInlayHintsProvider
@@ -270,10 +271,10 @@ object ImplicitConversion:
     if params.implicitConversions() then
       tree match
         case Apply(fun: Ident, args) if isSynthetic(fun) && args.exists(!_.span.isZeroExtent) =>
-          implicitConversion(fun, args)
+          implicitConversion(fun, args.toList)
         case Apply(Select(fun, name), args)
             if name == nme.apply && isSynthetic(fun) && args.exists(!_.span.isZeroExtent) =>
-          implicitConversion(fun, args)
+          implicitConversion(fun, args.toList)
         case _ => None
     else None
   private def isSynthetic(tree: Tree)(using Context) =
@@ -291,8 +292,8 @@ object ImplicitParameters:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context) =
     if params.implicitParameters() then
       tree match
-        case Apply(_, args) if hasImplicitArgs(tree, args) => implicitArgs(args)
-        case Inlined(Apply(_, args), _, _) if hasImplicitArgs(tree, args) => implicitArgs(args)
+        case Apply(_, args) if hasImplicitArgs(tree, args.toList) => implicitArgs(args.toList)
+        case Inlined(Apply(_, args), _, _) if hasImplicitArgs(tree, args.toList) => implicitArgs(args.toList)
         case _ => None
     else None
 
@@ -342,7 +343,7 @@ object ImplicitParameters:
             case Apply(fun, args) =>
               val applyLabel = (fun.symbol.decodedName, Some(fun.symbol))
               recurseImplicitArgs(
-                args,
+                args.toList,
                 remainingArgs :: remainingArgsLists,
                 ("(", None) :: applyLabel :: parts
               )
@@ -398,9 +399,9 @@ object TypeParameters:
             if sel.isForComprehensionMethod || sel.isInfix ||
               sel.symbol.name == nme.unapply =>
           None
-        case TypeApply(fun, args) if inferredTypeArgs(args) =>
+        case TypeApply(fun, args) if inferredTypeArgs(args.toList) =>
           val tpes = args.map(_.tpe.stripTypeVar.widen.finalResultType)
-          Some((tpes, fun.sourcePos.endPos, fun))
+          Some((tpes.toList, fun.sourcePos.endPos, fun))
         case _ => None
     else None
 
@@ -510,14 +511,14 @@ object Parameters:
             val paramInfos = funTp.paramInfoss.flatten
 
             Some(
-              isInfixFun(fun, args) || underlyingFun.isInfix,
+              isInfixFun(fun, args.toList) || underlyingFun.isInfix,
               args
                 .zip(paramNames)
                 .zip(paramInfos)
                 .collect {
                   case ((arg, paramName), paramInfo) if !arg.span.isZeroExtent && !isDefaultArg(arg) =>
                     (paramName.fieldName, arg.sourcePos, paramInfo.isByName)
-                }
+                }.toList
             )
         case _ => None
     else None

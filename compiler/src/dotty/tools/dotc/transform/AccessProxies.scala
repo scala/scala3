@@ -62,8 +62,8 @@ abstract class AccessProxies {
     )
 
   /** Add all needed accessors to the `body` of class `cls` */
-  def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = {
-    val accDefs = accessorDefs(cls).toList
+  def addAccessorDefs(cls: Symbol, body: Vector[Tree])(using Context): Vector[Tree] = {
+    val accDefs = accessorDefs(cls).toVector
     transforms.println(i"add accessors for $cls: $accDefs%, %")
     if (accDefs.isEmpty) body else body ++ accDefs
   }
@@ -118,7 +118,7 @@ abstract class AccessProxies {
           case getterInfo: LambdaType =>
             getterInfo.derivedLambdaType(resType = toSetterInfo(getterInfo.resType))
           case _ =>
-            MethodType(getterInfo :: Nil, defn.UnitType)
+            MethodType(getterInfo +: Vector(), defn.UnitType)
         }
         val setterInfo = toSetterInfo(getter.info.widenExpr)
         val setter = accessorSymbol(getter.owner, setterName, setterInfo, accessed)

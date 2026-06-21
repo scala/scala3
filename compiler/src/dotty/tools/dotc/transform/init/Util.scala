@@ -41,14 +41,14 @@ object Util:
 
   object Call:
 
-    def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Arg]])] =
+    def unapply(tree: Tree)(using Context): Option[(Tree, Vector[Vector[Arg]])] =
       tree match
       case Apply(fn, args) =>
         val argTps = fn.tpe.widen match
           case mt: MethodType => mt.paramInfos
         if (args.size != argTps.size)
           report.warning("[Internal error] Number of arguments do not match number of argument types in " + tree.symbol.name)
-        val normArgs: List[Arg] = args.zip(argTps).map {
+        val normArgs: Vector[Arg] = args.zip(argTps).map {
           case (arg, _: ExprType) => ByNameArg(arg)
           case (arg, _)           => arg
         }
@@ -60,16 +60,16 @@ object Util:
         unapply(fn)
 
       case ref: RefTree if ref.symbol.is(Flags.Method) =>
-        Some((ref, Nil))
+        Some((ref, Vector()))
 
       case ref: RefTree if ref.tpe.widenSingleton.isInstanceOf[MethodicType] =>
         // for polymorphic method with no `apply` symbol; see tests/init/pos/interleaving-overload.scala
-        Some((ref, Nil))
+        Some((ref, Vector()))
 
       case _ => None
 
   object NewExpr:
-    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Arg]])] =
+    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, Vector[Vector[Arg]])] =
       tree match
       case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
         val tref = typeRefOf(newTree.tpe)
@@ -79,7 +79,7 @@ object Util:
   object PolyFun:
     def unapply(tree: Tree)(using Context): Option[DefDef] =
       tree match
-      case Block((cdef: TypeDef) :: Nil, Typed(NewExpr(tref, _, _, _), _))
+      case Block((cdef: TypeDef) +: Vector(), Typed(NewExpr(tref, _, _, _), _))
       if tref.symbol.isAnonymousClass && tref <:< defn.PolyFunctionType
       =>
         val body = cdef.rhs.asInstanceOf[Template].body

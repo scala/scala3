@@ -40,7 +40,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
 
   override def findClass(name: String): Class[?] = {
     var file: AbstractFile = root
-    val pathParts = name.split("[./]").toList
+    val pathParts = name.split("[./]").toVector
     for (dirPart <- pathParts.init) {
       val subFile = file.lookupName(dirPart, true)
       if (subFile == null) {

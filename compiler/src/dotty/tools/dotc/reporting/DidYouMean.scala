@@ -105,7 +105,7 @@ object DidYouMean:
         else (dist(j - 1)(i) min dist(j)(i - 1) min dist(j - 1)(i - 1)) + 1
     dist(s2.length)(s1.length)
 
-  /** List of possible candidate names with their Levenshtein distances
+  /** Vector of possible candidate names with their Levenshtein distances
    *  to the name `from` of the missing member.
    *  @param maxDist  Maximal number of differences to be considered for a hint
    *                  A distance qualifies if it is at most `maxDist`, shorter than
@@ -113,12 +113,12 @@ object DidYouMean:
    *                  and not greater than half the average of those lengths.
    */
   extension [S <: Symbol | Binding](candidates: collection.Set[S])
-    def closestTo(str: String, maxDist: Int = 3)(using Context): List[(Int, S)] =
+    def closestTo(str: String, maxDist: Int = 3)(using Context): Vector[(Int, S)] =
       def nameStr(cand: S): String = cand match
         case sym: Symbol => sym.name.show
         case bdg: Binding => bdg.name.show
       candidates
-        .toList
+        .toVector
         .map(cand => (distance(nameStr(cand), str), cand))
         .filter((d, cand) =>
           d <= maxDist
@@ -127,7 +127,7 @@ object DidYouMean:
           && d < nameStr(cand).length)
         .sortBy((d, cand) => (d, nameStr(cand)))  // sort by distance first, alphabetically second
 
-  def didYouMean(candidates: List[(Int, Binding)], proto: Type, prefix: String)(using Context): String =
+  def didYouMean(candidates: Vector[(Int, Binding)], proto: Type, prefix: String)(using Context): String =
 
     def qualifies(b: Binding)(using Context): Boolean =
       try
@@ -143,14 +143,14 @@ object DidYouMean:
       if sym.is(ModuleClass) then s"${name.show}.type"
       else name.show
 
-    def alternatives(distance: Int, candidates: List[(Int, Binding)]): List[Binding] = candidates match
-      case (d, b) :: rest if d == distance =>
-        if qualifies(b) then b :: alternatives(distance, rest) else alternatives(distance, rest)
+    def alternatives(distance: Int, candidates: Vector[(Int, Binding)]): Vector[Binding] = candidates match
+      case (d, b) +: rest if d == distance =>
+        if qualifies(b) then b +: alternatives(distance, rest) else alternatives(distance, rest)
       case _ =>
-        Nil
+        Vector()
 
-    def recur(candidates: List[(Int, Binding)]): String = candidates match
-      case (d, b) :: rest
+    def recur(candidates: Vector[(Int, Binding)]): String = candidates match
+      case (d, b) +: rest
       if d != 0 || b.sym.is(ModuleClass) => // Avoid repeating the same name in "did you mean"
         if qualifies(b) then
           def hint(b: Binding) = prefix ++ showName(b.name, b.sym)

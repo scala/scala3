@@ -23,7 +23,7 @@ class EqHashMapTest:
   def newEmpty: Unit =
     val m = EqHashMap[Id, Int]()
     assert(m.size == 0)
-    assert(m.iterator.toList == Nil)
+    assert(m.iterator.toVector == Vector())
 
   @Test
   def update: Unit =
@@ -75,7 +75,7 @@ class EqHashMapTest:
   @Test
   def iterator: Unit =
     val m = fullMap()
-    assert(m.iterator.toList.sorted == List(id1 -> 1,id2 -> 2))
+    assert(m.iterator.toVector.sorted == Vector(id1 -> 1,id2 -> 2))
 
   @Test
   def clear: Unit =

@@ -24,9 +24,9 @@ class DesugarTests extends DottyTest {
     checkCompile("typer", "case class Foo(x: Int, y: String)") { (tree, context) =>
       given Context = context
       val ccTree = tree.find(tree => tree.symbol.name == typeName("Foo")).get
-      val List(_, foo) = defPath(ccTree.symbol, tree).map(_.symbol.info)
+      val Vector(_, foo) = defPath(ccTree.symbol, tree).map(_.symbol.info)
 
-      val x :: y :: rest = foo.decls.toList: @unchecked
+      val x +: y +: rest = foo.decls.toVector: @unchecked
 
       // Make sure we extracted the correct values from foo:
       assert(x.name == termName("x"))
@@ -39,7 +39,7 @@ class DesugarTests extends DottyTest {
     checkCompile("typer", "case class Foo(x: Int, y: String)") { (tree, context) =>
       given Context = context
       val ccTree = tree.find(tree => tree.symbol.name == termName("Foo")).get
-      val List(_, foo) = defPath(ccTree.symbol, tree).map(_.symbol.info)
+      val Vector(_, foo) = defPath(ccTree.symbol, tree).map(_.symbol.info)
 
       foo.decls.foreach(validSym)
     }

@@ -75,7 +75,7 @@ class DropForMap extends MiniPhase:
             bindings.collectFirst:
               case vd: ValDef if f.sameTree(vd.rhs) =>
                 expansion.find:
-                  case Inlined(Thicket(Nil), Nil, id @ Ident(vd.name)) => id.symbol eq vd.symbol
+                  case Inlined(Thicket(Vector()), Vector(), id @ Ident(vd.name)) => id.symbol eq vd.symbol
                   case _ => false
                 .getOrElse(expansion)
             .getOrElse(expansion)
@@ -100,8 +100,8 @@ object DropForMap:
    *  If `map` is an extension method, the nominal receiver is `args.head`.
    */
   private object Unmapped:
-    private def loop(tree: Tree)(using Context): Option[(Tree, Symbol, List[Tree])] = tree match
-      case Apply(fun, args @ Lambda(_ :: Nil, _) :: Nil) =>
+    private def loop(tree: Tree)(using Context): Option[(Tree, Symbol, Vector[Tree])] = tree match
+      case Apply(fun, args @ Lambda(_ +: Vector(), _) +: Vector()) =>
         tree.removeAttachment(TrailingForMap) match
         case Some(_) =>
           fun match
@@ -115,33 +115,33 @@ object DropForMap:
       case TypeApply(fun, _) => loop(fun)
       case _ => None
     end loop
-    def unapply(tree: Apply)(using Context): Option[(Tree, Symbol, List[Tree])] =
+    def unapply(tree: Apply)(using Context): Option[(Tree, Symbol, Vector[Tree])] =
       tree.tpe match
       case _: MethodOrPoly => None
       case _ => loop(tree)
 
   private object Lambda:
-    def unapply(tree: Tree)(using Context): Option[(List[ValDef], Tree)] = tree match
-      case Block(List(defdef: DefDef), Closure(Nil, ref, _))
+    def unapply(tree: Tree)(using Context): Option[(Vector[ValDef], Tree)] = tree match
+      case Block(Vector(defdef: DefDef), Closure(Vector(), ref, _))
       if ref.symbol == defdef.symbol && !defdef.paramss.exists(_.forall(_.isType)) =>
         Some((defdef.termParamss.flatten, defdef.rhs))
       case _ => None
 
   private object MapCall:
-    def unapply(tree: Tree)(using Context): Option[(Tree, Symbol, List[Tree])] =
-      def loop(tree: Tree, args: List[Tree]): Option[(Tree, Symbol, List[Tree])] =
+    def unapply(tree: Tree)(using Context): Option[(Tree, Symbol, Vector[Tree])] =
+      def loop(tree: Tree, args: Vector[Tree]): Option[(Tree, Symbol, Vector[Tree])] =
         tree match
         case Ident(nme.map) if tree.symbol.is(Extension) => Some((EmptyTree, tree.symbol, args))
         case Select(f, nme.map) => Some((f, tree.symbol, args))
         case Apply(fn, args) => loop(fn, args)
         case TypeApply(fn, _) => loop(fn, args)
         case _ => None
-      loop(tree, Nil)
+      loop(tree, Vector())
 
   private object Converted:
     def unapply(tree: Tree)(using Context): Option[Tree] = tree match
       case Apply(fn @ Apply(_, _), _) => unapply(fn)
-      case Apply(fn, r :: Nil)
+      case Apply(fn, r +: Vector())
       if fn.symbol.is(Implicit)
       || fn.symbol.name == nme.apply && fn.symbol.owner.derivesFrom(defn.ConversionClass)
       => Some(r)

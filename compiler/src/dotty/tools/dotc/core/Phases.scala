@@ -64,17 +64,17 @@ object Phases {
       override def lastPhaseId(using Context): PhaseId = id
     }
 
-    final def phasePlan: List[List[Phase]] = this.phasesPlan
-    final def setPhasePlan(phasess: List[List[Phase]]): Unit = this.phasesPlan = phasess
+    final def phasePlan: Vector[Vector[Phase]] = this.phasesPlan
+    final def setPhasePlan(phasess: Vector[Vector[Phase]]): Unit = this.phasesPlan = phasess
 
     /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
-    final def fusePhases(phasess: List[List[Phase]],
-                           phasesToSkip: List[String],
-                           stopBeforePhases: List[String],
-                           YCheckAfter: List[String])(using Context): List[Phase] = {
+    final def fusePhases(phasess: Vector[Vector[Phase]],
+                           phasesToSkip: Vector[String],
+                           stopBeforePhases: Vector[String],
+                           YCheckAfter: Vector[String])(using Context): Vector[Phase] = {
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
 
@@ -108,7 +108,7 @@ object Phases {
                   case _ =>
                     assert(false, s"Only tree transforms can be fused, ${phase.phaseName} can not be fused")
                 }
-              val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
+              val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[Vector[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
             }
@@ -127,14 +127,14 @@ object Phases {
 
         i += 1
       }
-      fusedPhases.toList
+      fusedPhases.toVector
     }
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
      *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
-    final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
+    final def usePhases(phasess: Vector[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
       myRecheckPhaseIds = 0L
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -143,7 +143,7 @@ object Phases {
         case _ => flatPhases += p
       })
 
-      phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
+      phases = (NoPhase +: (flatPhases.toVector :+ new TerminalPhase)).toArray
       setSpecificPhases()
       var phasesAfter: Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
@@ -208,15 +208,15 @@ object Phases {
       }
 
       if (fuse)
-        this.fusedPhases = (NoPhase :: phasess).toArray
+        this.fusedPhases = (NoPhase +: phasess).toArray
       else
         this.fusedPhases = this.phases
 
       if myCheckCapturesPhase.exists then
         myCheckCapturesPhaseId = myCheckCapturesPhase.id
 
-      config.println(s"Phases = ${phases.toList}")
-      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
+      config.println(s"Phases = ${phases.toVector}")
+      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toVector}")
     }
 
     /** Unlink `phase` from Denot transformer chain. This means that
@@ -363,11 +363,11 @@ object Phases {
     /** If set, implicit search is enabled */
     def allowsImplicitSearch: Boolean = false
 
-    /** List of names of phases that should precede this phase */
+    /** Vector of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
 
     /** for purposes of progress tracking, overridden in TyperPhase */
-    def subPhases: List[Run.SubPhase] = Nil
+    def subPhases: Vector[Run.SubPhase] = Vector()
     final def traversals: Int = if subPhases.isEmpty then 1 else subPhases.length
 
     /** skip the phase for a Java compilation unit, may depend on -Xjava-tasty */
@@ -388,8 +388,8 @@ object Phases {
     protected def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
-      val buf = List.newBuilder[CompilationUnit]
+    def runOn(units: Vector[CompilationUnit])(using runCtx: Context): Vector[CompilationUnit] =
+      val buf = Vector.newBuilder[CompilationUnit]
 
       // Test that we are in a state where we need to check if the phase should be skipped for a java file,
       // this prevents checking the expensive `unit.typedAsJava` unnecessarily.
@@ -584,7 +584,7 @@ object Phases {
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */
-  private def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
+  private def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => Vector[Phase], current: Vector[Vector[Phase]]): Vector[Vector[Phase]] =
     current.map(_.flatMap(phase =>
-      if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
+      if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase +: Vector()))
 }

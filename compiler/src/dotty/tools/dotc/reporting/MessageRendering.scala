@@ -38,7 +38,7 @@ trait MessageRendering {
     *
     * @return (lines before error, lines after error, line numbers offset)
     */
-  private def sourceLines(pos: SourcePosition)(using Context, Level, Offset): (List[String], List[String], Int) = {
+  private def sourceLines(pos: SourcePosition)(using Context, Level, Offset): (Vector[String], Vector[String], Int) = {
     assert(pos.exists && pos.source.file.exists)
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
@@ -50,14 +50,14 @@ trait MessageRendering {
       lnum + line.stripLineEnd
     }
 
-    def linesFrom(arr: Array[Char]): List[String] = {
+    def linesFrom(arr: Array[Char]): Vector[String] = {
       def pred(c: Char) = (c: @switch) match {
         case LF | CR | FF | SU => true
         case _ => false
       }
       val (line, rest0) = arr.span(!pred(_))
       val (_, rest) = rest0.span(pred)
-      new String(line) :: { if (rest.isEmpty) Nil else linesFrom(rest) }
+      new String(line) +: { if (rest.isEmpty) Vector() else linesFrom(rest) }
     }
 
     val syntax =
@@ -67,13 +67,13 @@ trait MessageRendering {
     val lines = linesFrom(syntax)
     val (before, after) = pos.beforeAndAfterPoint
 
-    def compress(offsetsAndLines: List[(Int, String)]): List[(Int, String)] =
+    def compress(offsetsAndLines: Vector[(Int, String)]): Vector[(Int, String)] =
       if offsetsAndLines.isEmpty then offsetsAndLines
       else
         val compressedLines =
           if offsetsAndLines.length > maxRenderedLinesAfterPoint then
             offsetsAndLines.take(maxRenderedLinesAfterPoint - 2)
-            ++ List(
+            ++ Vector(
                 (offsetsAndLines(maxRenderedLinesAfterPoint - 2)._1, "..."),
                 offsetsAndLines.last)
           else offsetsAndLines
@@ -287,7 +287,7 @@ trait MessageRendering {
     given Level = Level(dia.level)
     given Offset =
       val maxLineNumber =
-        if pos.exists then (pos1 :: inlineStack).map(_.endLine).max + 1
+        if pos.exists then (pos1 +: inlineStack).map(_.endLine).max + 1
         else 0
       Offset(maxLineNumber.toString.length + 2)
     val sb = StringBuilder()
@@ -297,7 +297,7 @@ trait MessageRendering {
       val (srcBefore, srcAfter, offset) = sourceLines(pos1)
       val marker = positionMarker(pos1)
       val err = errorMsg(pos1, msg.message, srcAfter.nonEmpty)
-      sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+      sb.append((srcBefore ++ (marker +: err +: srcAfter)).mkString(EOL))
 
       if inlineStack.nonEmpty then
         sb.append(EOL).append(newBox())
@@ -308,7 +308,7 @@ trait MessageRendering {
           if inlinedPos.source.file.exists then
             val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
             val marker = positionMarker(inlinedPos)
-            sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+            sb.append(EOL).append((srcBefore ++ (marker +: srcAfter)).mkString(EOL))
         sb.append(EOL).append(endBox)
       end if
     else sb.append(msg.message)

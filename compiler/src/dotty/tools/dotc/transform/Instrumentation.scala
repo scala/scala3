@@ -29,7 +29,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
   override def isEnabled(using Context) =
     ctx.settings.Yinstrument.value
 
-  private val collectionNamesOfInterest = List(
+  private val collectionNamesOfInterest = Vector(
     "map", "flatMap", "filter", "filterNot", "withFilter", "collect", "flatten", "foldLeft", "foldRight", "take",
     "reverse", "zip", "++", ":::", ":+", "distinct", "dropRight", "takeRight", "groupBy", "groupMap", "init", "inits",
     "interect", "mkString", "partition", "reverse_:::", "scanLeft", "scanRight",
@@ -38,8 +38,8 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "mapConserve", "mapconserve", "filterConserve", "zipWithConserve", "mapWithIndexConserve"
   )
 
-  private val namesOfInterest = collectionNamesOfInterest ++ List(
-    "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
+  private val namesOfInterest = collectionNamesOfInterest ++ Vector(
+    "::", "+:", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
     "slice", "staticRef", "requiredClass")
 
   private var namesToRecord: Set[Name] = uninitialized
@@ -84,24 +84,24 @@ class Instrumentation extends MiniPhase { thisPhase =>
     then
       def icall = record(i"method/${sym.fullName}", tree)
       def rhs1 = tree.rhs match
-        case rhs @ Block(stats, expr) => cpy.Block(rhs)(icall :: stats, expr)
-        case _: Match | _: If | _: Try | _: Labeled => cpy.Block(tree.rhs)(icall :: Nil, tree.rhs)
+        case rhs @ Block(stats, expr) => cpy.Block(rhs)(icall +: stats, expr)
+        case _: Match | _: If | _: Try | _: Labeled => cpy.Block(tree.rhs)(icall +: Vector(), tree.rhs)
         case rhs => rhs
       cpy.DefDef(tree)(rhs = rhs1)
     else tree
 
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
-      cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
+      cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) +: Vector(), tree)
     case ref: RefTree if namesToRecord.contains(ref.name) && ok =>
-      cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, recordSize(tree))
+      cpy.Block(tree)(record(i"call/${ref.name}", tree) +: Vector(), recordSize(tree))
     case _ =>
       tree
   }
 
   override def transformBlock(tree: Block)(using Context): Block = tree.expr match {
     case _: Closure =>
-      cpy.Block(tree)(record("closure/", tree) :: tree.stats, tree.expr)
+      cpy.Block(tree)(record("closure/", tree) +: tree.stats, tree.expr)
     case _ =>
       tree
   }

@@ -138,17 +138,17 @@ object SymbolLoaders {
       scope: Scope = EmptyScope)(using Context): Unit =
     if src.exists && !src.isDirectory then
       val completer = new SourcefileLoader(src)
-      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
+      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toVector
 
-      def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
-        case Ident(name: TermName) => name :: path
-        case Select(qual: RefTree, name: TermName) => name :: addPrefix(qual, path)
+      def addPrefix(pid: RefTree, path: Vector[TermName]): Vector[TermName] = pid match {
+        case Ident(name: TermName) => name +: path
+        case Select(qual: RefTree, name: TermName) => name +: addPrefix(qual, path)
         case _ => path
       }
 
       def enterScanned(unit: CompilationUnit)(using Context) = {
 
-        def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
+        def checkPathMatches(path: Vector[TermName], what: String, tree: NameTree): Boolean = {
           // Ignore empty packages if necessary so we don't warn on top-level package objects
           // (such as `package object scala` in the top-level "package.scala" of the standard library)
           val ok = filePath == path || filePath == path.filter(_ != nme.EMPTY_PACKAGE)
@@ -169,7 +169,7 @@ object SymbolLoaders {
           case _ =>
             tree
 
-        def traverse(tree: Tree, path: List[TermName]): Unit = simpleDesugar(tree) match {
+        def traverse(tree: Tree, path: Vector[TermName]): Unit = simpleDesugar(tree) match {
           case tree @ PackageDef(pid, body) =>
             val path1 = addPrefix(pid, path)
             for (stat <- body) traverse(stat, path1)
@@ -187,7 +187,7 @@ object SymbolLoaders {
         traverse(
           if (unit.isJava) new OutlineJavaParser(unit.source).parse()
           else new OutlineParser(unit.source).parse(),
-          Nil)
+          Vector())
       }
 
       val unit = CompilationUnit(ctx.getSource(src))
@@ -314,7 +314,7 @@ object SymbolLoaders {
     def doComplete(root: SymDenotation)(using Context): Unit = {
       assert(root.is(PackageClass), root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre.select(sourceModule))
+      root.info = ClassInfo(pre, root.symbol.asClass, Vector(), currentDecls, pre.select(sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
 

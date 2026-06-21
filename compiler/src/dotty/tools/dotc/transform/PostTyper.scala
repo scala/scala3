@@ -96,7 +96,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
 
-  override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+  override def runOn(units: Vector[CompilationUnit])(using runCtx: Context): Vector[CompilationUnit] =
     if Feature.ccEnabledSomewhere then
       SafeRefs.init()(using ctx.withPhase(thisPhase))
     super.runOn(units)
@@ -170,7 +170,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           true
       })
 
-    def withNoCheckNews[T](ts: List[New])(op: => T): T = {
+    def withNoCheckNews[T](ts: Vector[New])(op: => T): T = {
       val saved = noCheckNews
       noCheckNews ++= ts
       try op finally noCheckNews = saved
@@ -183,7 +183,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *  This info is used in phase ParamForwarding
      */
     private def forwardParamAccessors(impl: Template)(using Context): Unit = impl.parents match
-      case superCall @ Apply(fn, superArgs) :: _
+      case superCall @ Apply(fn, superArgs) +: _
       if superArgs.nonEmpty && fn.symbol.isPrimaryConstructor =>
         fn.tpe.widen match
           case MethodType(superParamNames) =>
@@ -212,7 +212,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       Stats.trackTime("Annotations copySymbols"):
         val ttm =
           new TreeTypeMap:
-            override def withMappedSyms(syms: List[Symbol]) =
+            override def withMappedSyms(syms: Vector[Symbol]) =
               withMappedSyms(syms, mapSymbols(syms, this, true))
         ttm(tree)
 
@@ -311,7 +311,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       case _ =>
 
 
-    private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
+    private def transformSelect(tree: Select, targs: Vector[Tree])(using Context): Tree = {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
         case pkg: PackageClassDenotation =>
@@ -331,31 +331,31 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       case pt: PolyType => // wait for more arguments coming
         tree
       case _ =>
-        def decompose(tree: TypeApply): (Tree, List[Tree]) = tree.fun match {
+        def decompose(tree: TypeApply): (Tree, Vector[Tree]) = tree.fun match {
           case fun: TypeApply =>
             val (tycon, args) = decompose(fun)
             (tycon, args ++ tree.args)
           case _ =>
             (tree.fun, tree.args)
         }
-        def reorderArgs(pnames: List[Name], namedArgs: List[NamedArg], otherArgs: List[Tree]): List[Tree] = pnames match {
-          case pname :: pnames1 =>
+        def reorderArgs(pnames: Vector[Name], namedArgs: Vector[NamedArg], otherArgs: Vector[Tree]): Vector[Tree] = pnames match {
+          case pname +: pnames1 =>
             namedArgs.partition(_.name == pname) match {
-              case (NamedArg(_, arg) :: _, namedArgs1) =>
-                arg :: reorderArgs(pnames1, namedArgs1, otherArgs)
+              case (NamedArg(_, arg) +: _, namedArgs1) =>
+                arg +: reorderArgs(pnames1, namedArgs1, otherArgs)
               case _ =>
-                val otherArg :: otherArgs1 = otherArgs: @unchecked
-                otherArg :: reorderArgs(pnames1, namedArgs, otherArgs1)
+                val otherArg +: otherArgs1 = otherArgs: @unchecked
+                otherArg +: reorderArgs(pnames1, namedArgs, otherArgs1)
             }
           case nil =>
             assert(namedArgs.isEmpty && otherArgs.isEmpty)
-            Nil
+            Vector()
         }
         val (tycon, args) = decompose(tree)
         tycon.tpe.widen match {
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
-            val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
+            val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[Vector[NamedArg]], otherArgs)
             TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
@@ -396,7 +396,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case Select(qual, _) => check(qual)
         // simple select _n                    Select(qual, _n)
         // generic select .apply[T](n)         Apply(TypeApply(Select(qual, _), _), _)
-        // context closure x ?=> f(using x)    Block(List(DefDef($anonfun, _, _, Apply(Select(Select(qual, _n), _), _)))
+        // context closure x ?=> f(using x)    Block(Vector(DefDef($anonfun, _, _, Apply(Select(Select(qual, _n), _), _)))
 
     def checkNotPackage(tree: Tree)(using Context): Tree =
       if !tree.symbol.is(Package) then tree
@@ -472,7 +472,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         tp match
           case FunctionOrMethod(formals, res) =>
             val rhs1 = formals match
-              case (_: TypeBounds) :: _ => rhs
+              case (_: TypeBounds) +: _ => rhs
               case _ => mdef.rhs
             val formals1 = formals.mapConserve(makeFormalDeclared)
             tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))
@@ -483,7 +483,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *  non-idempotent expressions (not just the spreads) and apply `within` to the resulting
      *  pure references. Otherwise apply `within` to the original trees.
      */
-    private def evalSpreadsOnce(trees: List[Tree])(within: List[Tree] => Tree)(using Context): Tree =
+    private def evalSpreadsOnce(trees: Vector[Tree])(within: Vector[Tree] => Tree)(using Context): Tree =
       if trees.exists:
         case spread(elem) => !(exprPurity(elem) >= TreeInfo.Idempotent)
         case _ => false
@@ -499,12 +499,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             lifted += vdef
             Ident(vdef.namedType).withSpan(tree.span)
         val pureTrees = trees.mapConserve(liftIfImpure)
-        Block(lifted.toList, within(pureTrees))
+        Block(lifted.toVector, within(pureTrees))
       else within(trees)
 
     /** Translate sequence literal containing spread operators. Example:
      *
-     *    val xs, ys: List[Int]
+     *    val xs, ys: Vector[Int]
      *    [1, xs*, 2, ys*]
      *
      *  Here the sequence literal is translated at typer to
@@ -586,7 +586,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
           else
             checkUsableAsValue(tree) match
-              case tree1: Select => transformSelect(tree1, Nil)
+              case tree1: Select => transformSelect(tree1, Vector())
               case tree1 => tree1
         case app: Apply =>
           val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
@@ -614,7 +614,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 // which would not be reflected as `tree.tpe`
                 checkClassType(nu.tpe, stablePrefixReq = false)
               Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
-              withNoCheckNews(nu :: Nil)(app1)
+              withNoCheckNews(nu +: Vector())(app1)
             case _ =>
               app1
         case UnApply(fun, implicits, patterns) =>
@@ -798,7 +798,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           throw ex
       }
 
-    override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
+    override def transformStats[T](trees: Vector[Tree], exprOwner: Symbol, wrapResult: Vector[Tree] => Context ?=> T)(using Context): T =
       Checking.checkAndAdaptExperimentalImports(trees)
       super.transformStats(trees, exprOwner, wrapResult)
 
@@ -835,7 +835,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               parents1 = parents1 :+ TypeTree(defn.SerializableType)
             argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
               case Some(args) if parents1.head.symbol.owner == defn.ObjectClass =>
-                parents1 = New(defn.AbstractFunctionClass(1).typeRef).select(nme.CONSTRUCTOR).appliedToTypes(args).ensureApplied :: parents1.tail
+                parents1 = New(defn.AbstractFunctionClass(1).typeRef).select(nme.CONSTRUCTOR).appliedToTypes(args).ensureApplied +: parents1.tail
               case _ =>
             val impl1 = cpy.Template(impl)(parents = parents1)
             cpy.TypeDef(tree)(rhs = impl1)
@@ -853,13 +853,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         parents1 = parents1 :+ defn.SerializableType
       argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
         case Some(args) if parents1.head.typeSymbol == defn.ObjectClass =>
-          parents1 = defn.AbstractFunctionClass(1).typeRef.appliedTo(args) :: parents1.tail
+          parents1 = defn.AbstractFunctionClass(1).typeRef.appliedTo(args) +: parents1.tail
         case _ =>
       if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
       else tp
     case _ => tp
 
-  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
+  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[Vector[Type]] =
     val companionClass = sym.companionClass
     if companionClass.is(CaseClass)
       && !companionClass.primaryConstructor.is(Private)
@@ -868,8 +868,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       sym.info.decl(nme.apply).info match
         case info: MethodType =>
           info.paramInfos match
-            case arg :: Nil =>
-              Some(arg :: info.resultType :: Nil)
+            case arg +: Vector() =>
+              Some(arg +: info.resultType +: Vector())
             case args => None
         case _ => None
     else

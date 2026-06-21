@@ -86,9 +86,9 @@ object ScriptTestEnv {
   def envPath: String = envOrElse("PATH", "")
   // remove duplicate entries in path
   def supplementedPath: String = s"$packBinDir$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm
-  def adjustedPathEntries: List[String] = supplementedPath.norm.split(psep).toList.distinct
+  def adjustedPathEntries: Vector[String] = supplementedPath.norm.split(psep).toVector.distinct
   def adjustedPath: String = adjustedPathEntries.mkString(psep)
-  def envPathEntries: List[String] = envPath.split(psep).toList.distinct
+  def envPathEntries: Vector[String] = envPath.split(psep).toVector.distinct
 
   def bashExe: String = envOrElse("TEST_BASH", whichBash)
 
@@ -140,8 +140,8 @@ object ScriptTestEnv {
    * stdout: Seq[String]  - the lines captured from STDOUT
    * stderr: Seq[String]  - the lines captured from STDERR
    */
-  def bashCommand(cmdstr: String, additionalEnvPairs: List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
-    var (stdout, stderr) = (List.empty[String], List.empty[String])
+  def bashCommand(cmdstr: String, additionalEnvPairs: Vector[(String, String)] = Vector()): (Boolean, Int, Seq[String], Seq[String]) = {
+    var (stdout, stderr) = (Vector.empty[String], Vector.empty[String])
     if bashExe.toFile.exists then
       def q = "\""
       printf("bashCmd: %s -c %s\n", bashExe, s"$q$cmdstr$q")
@@ -149,8 +149,8 @@ object ScriptTestEnv {
       val envPairs = testEnvPairs ++ additionalEnvPairs
       val proc = Process(cmd, None, envPairs *)
       val exitVal = proc ! ProcessLogger (
-        (out: String) => stdout ::= out,
-        (err: String) => stderr ::= err
+        (out: String) => stdout +:= out,
+        (err: String) => stderr +:= err
       )
       // a misconfigured environment (e.g., script is not executable) can prevent script execution
       val validTest = !stderr.exists(_.contains("Permission denied"))
@@ -160,11 +160,11 @@ object ScriptTestEnv {
 
       (validTest, exitVal, stdout.reverse, stderr.reverse)
     else
-      (false, -1, Nil, Nil)
+      (false, -1, Vector(), Vector())
   }
 
   def execCmd(command: String, options: String *): Seq[String] =
-    val cmd = (command :: options.toList).toSeq
+    val cmd = (command +: options.toVector).toSeq
     for {
       line <- Process(cmd).lazyLines_!
     } yield line
@@ -186,12 +186,12 @@ object ScriptTestEnv {
       sys.error(s"no $packVersionFile found")
   }
 
-  def listJars(dir: String): List[File] =
+  def listJars(dir: String): Vector[File] =
     val packlibDir = Paths.get(dir).toFile
     if packlibDir.isDirectory then
-      packlibDir.listFiles.toList.filter { _.getName.endsWith(".jar") }
+      packlibDir.listFiles.toVector.filter { _.getName.endsWith(".jar") }
     else
-      Nil
+      Vector()
 
   // script output expected as "<tag>: <value>"
   def findTaggedLine(tag: String, lines: Seq[String]): String =
@@ -207,7 +207,7 @@ object ScriptTestEnv {
     lazy val colorsRegex = "(\u001b|\u2190)\\[[0-9;]*m|ï»¿".r
     colorsRegex.replaceAllIn(line,"")
 
-  def exec(cmd: String *): Seq[String] = Process(cmd).lazyLines_!.toList
+  def exec(cmd: String *): Seq[String] = Process(cmd).lazyLines_!.toVector
 
   def script2jar(scriptFile: File) =
     val jarName = s"${scriptFile.getName.dropExtension}.jar"
@@ -286,7 +286,7 @@ object ScriptTestEnv {
     def norm: String = f.toPath.normalize.norm
     def absPath: String = f.getAbsolutePath.norm
     def relpath: Path = f.toPath.relpath
-    def files: Seq[File] = f.listFiles.toList
+    def files: Seq[File] = f.listFiles.toVector
     def parentDir: Path = f.toPath.getParent
   }
 
@@ -318,19 +318,19 @@ object ScriptTestEnv {
   // remove xtrace, if present, add :igncr: if not present
   lazy val shellopts: String = {
     val value: String = envOrElse("SHELLOPTS", "braceexpand:hashall:igncr:ignoreeof:monitor:vi")
-    val list: List[String] = value.split(":").toList
+    val list: Vector[String] = value.split(":").toVector
     val minlist = list.filter {
       case "igncr" | "xtrace" => false
       case _ => true
     }
     if isWin then
-      "igncr" :: minlist
+      "igncr" +: minlist
     else
       minlist
   }.mkString(":")
 
   lazy val testEnvPairs = {
-    val pairs = List(
+    val pairs = Vector(
       ("JAVA_HOME", envJavaHome),
       ("SCALA_HOME", envScalaHome),
       ("PATH", adjustedPath),

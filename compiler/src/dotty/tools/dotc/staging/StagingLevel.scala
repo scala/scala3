@@ -42,7 +42,7 @@ object StagingLevel {
       case None => 0
 
   /** Context with the current staging level set for the symbols */
-  def symbolsInCurrentLevel(syms: List[Symbol])(using Context): Context =
+  def symbolsInCurrentLevel(syms: Vector[Symbol])(using Context): Context =
     if level == 0 then ctx
     else
       val levelOfMap = ctx.property(LevelOfKey).getOrElse(Map.empty)

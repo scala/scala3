@@ -74,12 +74,12 @@ object BetaReduce:
    */
   def apply(tree: Tree)(using Context): Tree =
     val bindingsBuf = new ListBuffer[DefTree]
-    def recur(fn: Tree, argss: List[List[Tree]]): Option[Tree] = fn match
-      case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
+    def recur(fn: Tree, argss: Vector[Vector[Tree]]): Option[Tree] = fn match
+      case Block((ddef : DefDef) +: Vector(), closure: Closure) if ddef.symbol == closure.meth.symbol =>
         reduceApplication(ddef, argss, bindingsBuf)
-      case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
+      case Block((TypeDef(_, template: Template)) +: Vector(), Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
         template.body match
-          case (ddef: DefDef) :: Nil => reduceApplication(ddef, argss, bindingsBuf)
+          case (ddef: DefDef) +: Vector() => reduceApplication(ddef, argss, bindingsBuf)
           case _ => None
       case Block(stats, expr) if stats.forall(isPureBinding) =>
         recur(expr, argss).map(cpy.Block(fn)(stats, _))
@@ -87,20 +87,20 @@ object BetaReduce:
         recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
       case Typed(expr, tpt) =>
         recur(expr, argss)
-      case TypeApply(Select(expr, nme.asInstanceOfPM), List(tpt)) =>
+      case TypeApply(Select(expr, nme.asInstanceOfPM), Vector(tpt)) =>
         recur(expr, argss)
       case _ => None
     tree match
       case Apply(Select(fn, nme.apply), args) if defn.isFunctionNType(fn.tpe) =>
-        recur(fn, List(args)) match
+        recur(fn, Vector(args)) match
           case Some(reduced) =>
-            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+            seq(bindingsBuf.result().toVector, reduced).withSpan(tree.span)
           case None =>
             tree
       case Apply(TypeApply(Select(fn, nme.apply), targs), args) if fn.tpe.typeSymbol eq dotc.core.Symbols.defn.PolyFunctionClass =>
-        recur(fn, List(targs, args)) match
+        recur(fn, Vector(targs, args)) match
           case Some(reduced) =>
-            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+            seq(bindingsBuf.result().toVector, reduced).withSpan(tree.span)
           case None =>
             tree
       case _ =>
@@ -110,16 +110,16 @@ object BetaReduce:
    *  @return optionally, the expanded call, or none if the actual argument
    *          lists do not match in shape the formal parameters
    */
-  def reduceApplication(ddef: DefDef, argss: List[List[Tree]], bindings: ListBuffer[DefTree])
+  def reduceApplication(ddef: DefDef, argss: Vector[Vector[Tree]], bindings: ListBuffer[DefTree])
       (using Context): Option[Tree] =
     val (targs, args) = argss.flatten.partition(_.isType)
     val tparams = ddef.leadingTypeParams
     val vparams = ddef.termParamss.flatten
 
-    def shapeMatch(paramss: List[ParamClause], argss: List[List[Tree]]): Boolean = (paramss, argss) match
-      case (params :: paramss1, args :: argss1) if params.length == args.length =>
+    def shapeMatch(paramss: Vector[ParamClause], argss: Vector[Vector[Tree]]): Boolean = (paramss, argss) match
+      case (params +: paramss1, args +: argss1) if params.length == args.length =>
         shapeMatch(paramss1, argss1)
-      case (Nil, Nil) => true
+      case (Vector(), Vector()) => true
       case _ => false
 
     val targSyms =
@@ -158,10 +158,10 @@ object BetaReduce:
       // function with wrong apply method by hand which causes `shapeMatch` to fail.
       // See neg/i21952.scala
       val expansion = TreeTypeMap(
-        oldOwners = ddef.symbol :: Nil,
-        newOwners = ctx.owner :: Nil,
-        substFrom = (tparams ::: vparams).map(_.symbol),
-        substTo = targSyms ::: argSyms
+        oldOwners = ddef.symbol +: Vector(),
+        newOwners = ctx.owner +: Vector(),
+        substFrom = (tparams ++ vparams).map(_.symbol),
+        substTo = targSyms ++ argSyms
       ).transform(ddef.rhs)
 
       val expansion1 = new TreeMap {

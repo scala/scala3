@@ -58,7 +58,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
   private def validCurrentClass(using Context): Boolean =
     ctx.owner.enclosingClass != invalidEnclClass
 
-  /** List buffers for new accessor definitions, indexed by class */
+  /** Vector buffers for new accessor definitions, indexed by class */
   private val accDefs = MutableSymbolMap[mutable.ListBuffer[Tree]]()
 
   /** A super accessor call corresponding to `sel` */
@@ -172,7 +172,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     (sym eq defn.Any_##)
 
   /** Transform select node, adding super and protected accessors as needed */
-  def transformSelect(tree: Tree, targs: List[Tree])(using Context): Tree = {
+  def transformSelect(tree: Tree, targs: Vector[Tree])(using Context): Tree = {
     val sel @ Select(qual, name) = tree: @unchecked
     val sym = sel.symbol
 

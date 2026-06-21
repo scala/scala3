@@ -10,7 +10,7 @@ import org.junit.Test
 
 class ScannerTest extends DottyTest {
 
-  val excluded = List(
+  val excluded = Vector(
       "/scaladoc/scala/tools/nsc/doc/html/page/Index.scala",
       "/scaladoc/scala/tools/nsc/doc/html/page/Template.scala"
     )

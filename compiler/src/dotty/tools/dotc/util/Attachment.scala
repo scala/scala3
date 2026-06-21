@@ -87,9 +87,9 @@ object Attachment {
     }
 
     /** The list of all keys and values attached to this container. */
-    final def allAttachments: List[(Key[?], Any)] = {
+    final def allAttachments: Vector[(Key[?], Any)] = {
       val nx = next
-      if (nx == null) Nil else (nx.key, nx.value) :: nx.allAttachments
+      if (nx == null) Vector() else (nx.key, nx.value) +: nx.allAttachments
     }
   }
 

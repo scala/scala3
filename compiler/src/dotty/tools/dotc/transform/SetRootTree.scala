@@ -32,7 +32,7 @@ class SetRootTree extends Phase {
           if (td.symbol.isClass) {
             val sym = td.symbol.asClass
             tpd.sliceTopLevel(ctx.compilationUnit.tpdTree, sym) match {
-              case (pkg: tpd.PackageDef) :: Nil =>
+              case (pkg: tpd.PackageDef) +: Vector() =>
                 sym.rootTreeOrProvider = pkg
               case _ =>
                 sym.rootTreeOrProvider = td

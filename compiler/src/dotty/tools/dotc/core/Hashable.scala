@@ -64,21 +64,21 @@ trait Hashable {
     finishHash(bs, hashing.mix(seed, elemHash), arity + 1, tp2)
   }
 
-  protected def finishHash(bs: Binders, seed: Int, arity: Int, tps: List[Type]): Int = {
+  protected def finishHash(bs: Binders, seed: Int, arity: Int, tps: Vector[Type]): Int = {
     var h = seed
-    var xs = tps
     var len = arity
-    while (!xs.isEmpty) {
-      val elemHash = typeHash(bs, xs.head)
+    var idx = 0
+    while (idx < tps.length) {
+      val elemHash = typeHash(bs, tps(idx))
       if (elemHash == NotCached) return NotCached
       h = hashing.mix(h, elemHash)
-      xs = xs.tail
       len += 1
+      idx += 1
     }
     finishHash(h, len)
   }
 
-  protected def finishHash(bs: Binders, seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
+  protected def finishHash(bs: Binders, seed: Int, arity: Int, tp: Type, tps: Vector[Type]): Int = {
     val elemHash = typeHash(bs, tp)
     if (elemHash == NotCached) return NotCached
     finishHash(bs, hashing.mix(seed, elemHash), arity + 1, tps)
@@ -106,10 +106,10 @@ trait Hashable {
   protected final def doHash(bs: Binders, x1: Any, tp2: Type, tp3: Type): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tp3)
 
-  protected final def doHash(bs: Binders, tp1: Type, tps2: List[Type]): Int =
+  protected final def doHash(bs: Binders, tp1: Type, tps2: Vector[Type]): Int =
     finishHash(bs, hashSeed, 0, tp1, tps2)
 
-  protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: List[Type]): Int =
+  protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: Vector[Type]): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
   protected final def doHash(x1: Int, x2: Int): Int =

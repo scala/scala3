@@ -32,7 +32,7 @@ object ApplyExtractor:
             case (app: Apply) :: _ => Some(app)
             // fun(arg@@), where fun(argn: Context ?=> SomeType)
             // recursively matched for multiple context arguments, e.g. Context1 ?=> Context2 ?=> SomeType
-            case (_: DefDef) :: Block(List(_), _: Closure) :: rest =>
+            case (_: DefDef) :: Block(Vector(_), _: Closure) :: rest =>
               getApplyForContextFunctionParam(rest)
             case _ => None
         for
@@ -50,15 +50,15 @@ object ApplyArgsExtractor:
     def collectArgss(a: Apply): List[List[Tree]] =
       def stripContextFuntionArgument(argument: Tree): List[Tree] =
         argument match
-          case Block(List(d: DefDef), _: Closure) =>
+          case Block(Vector(d: DefDef), _: Closure) =>
             d.rhs match
               case app: Apply =>
-                app.args
-              case b @ Block(List(_: DefDef), _: Closure) =>
+                app.args.toList
+              case b @ Block(Vector(_: DefDef), _: Closure) =>
                 stripContextFuntionArgument(b)
               case _ => Nil
           case v => List(v)
-      val args = a.args.flatMap(stripContextFuntionArgument)
+      val args = a.args.flatMap(stripContextFuntionArgument).toList
       a.fun match
         case app: Apply => collectArgss(app) :+ args
         case _ => List(args)
@@ -89,7 +89,7 @@ object ApplyArgsExtractor:
               else Try(symbol.info.classSymbol).toOption
             ownerSymbol.map(sym => sym.info.member(name)).collect {
               case single: SingleDenotation => List(single.symbol)
-              case multi: MultiDenotation => multi.allSymbols
+              case multi: MultiDenotation => multi.allSymbols.toList
             }.getOrElse(Nil)
           case Apply(fun, _) => matchingMethodsSymbols(indexedContext, fun)
           case _ => Nil
@@ -107,9 +107,9 @@ object ApplyArgsExtractor:
               .reverse
               .zipWithIndex
               .forall { case (pair, index) =>
-                FuzzyArgMatcher(potentialMatch.tparams)
+                FuzzyArgMatcher(potentialMatch.tparams.toList)
                   .doMatch(allArgsProvided = index != 0, span)
-                  .tupled(pair)
+                  .tupled((pair._1.toList, pair._2))
               }
         yield potentialMatch
 
@@ -158,7 +158,7 @@ object ApplyArgsExtractor:
         vparamss.zip(argss).lastOption.getOrElse((Nil, Nil))
 
       val baseParams: List[ParamSymbol] =
-        def defaultBaseParams = baseParams0.map(JustSymbol(_))
+        def defaultBaseParams = baseParams0.map(JustSymbol(_)).toList
 
         @tailrec
         def getRefinedParams(refinedType: Type, level: Int): List[ParamSymbol] =
@@ -176,7 +176,7 @@ object ApplyArgsExtractor:
               case RefinedType(AppliedType(_, args), _, MethodType(ri)) =>
                 baseParams0.zip(ri).zip(args).map { case ((sym, name), arg) =>
                   RefinedSymbol(sym, name, arg)
-                }
+                }.toList
               case _ => defaultBaseParams
 
         // finds param refinements for lambda expressions

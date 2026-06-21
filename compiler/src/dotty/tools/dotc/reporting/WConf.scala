@@ -47,7 +47,7 @@ enum MessageFilter:
 enum Action:
   case Error, Warning, Verbose, Info, Silent, Default
 
-final case class WConf(confs: List[(List[MessageFilter], Action)]):
+final case class WConf(confs: Vector[(Vector[MessageFilter], Action)]):
   def action(message: Diagnostic): Action =
     confs.collectFirst:
       case (filters, action) if filters.forall(_.matches(message)) => action
@@ -57,15 +57,15 @@ object WConf:
   import Action.*
   import MessageFilter.*
 
-  private type Conf = (List[MessageFilter], Action)
+  private type Conf = (Vector[MessageFilter], Action)
 
-  def parseAction(s: String): Either[List[String], Action] = s match
+  def parseAction(s: String): Either[Vector[String], Action] = s match
     case "error"   | "e" => Right(Error)
     case "warning" | "w" => Right(Warning)
     case "verbose" | "v" => Right(Verbose)
     case "info"    | "i" => Right(Info)
     case "silent"  | "s" => Right(Silent)
-    case _               => Left(List(s"unknown action: `$s`"))
+    case _               => Left(Vector(s"unknown action: `$s`"))
 
   private def regex(s: String) =
     try Right(s.r)
@@ -74,11 +74,11 @@ object WConf:
   @sharable val Splitter = raw"([^=]+)=(.+)".r
   @sharable val ErrorId = raw"E?(\d+)".r
 
-  def parseFilters(s: String): Either[List[String], List[MessageFilter]] =
+  def parseFilters(s: String): Either[Vector[String], Vector[MessageFilter]] =
     // TODO: don't split on escaped \&
-    val (parseErrors, filters) = s.split('&').toList.partitionMap(parseFilter)
+    val (parseErrors, filters) = s.split('&').toVector.partitionMap(parseFilter)
     if parseErrors.nonEmpty then Left(parseErrors)
-    else if filters.isEmpty then Left(List("no filters or no action defined"))
+    else if filters.isEmpty then Left(Vector("no filters or no action defined"))
     else Right(filters)
 
   def parseFilter(s: String): Either[String, MessageFilter] = s match
@@ -118,7 +118,7 @@ object WConf:
     def cached = ctx.base.wConfCache
     if cached == null || cached._1 != setting then
       val conf = fromSettings(setting)
-      ctx.base.wConfCache = (setting, conf.getOrElse(WConf(Nil)))
+      ctx.base.wConfCache = (setting, conf.getOrElse(WConf(Vector())))
       conf.swap.foreach(msgs =>
         val multiHelp =
           if setting.sizeIs > 1 then
@@ -129,12 +129,12 @@ object WConf:
         report.warning(s"Failed to parse `-Wconf` configuration: ${ctx.settings.Wconf.value.mkString(",")}\n${msgs.mkString("\n")}$multiHelp"))
     cached._2
 
-  def fromSettings(settings: List[String]): Either[List[String], WConf] =
-    if (settings.isEmpty) Right(WConf(Nil))
+  def fromSettings(settings: Vector[String]): Either[Vector[String], WConf] =
+    if (settings.isEmpty) Right(WConf(Vector()))
     else
-      val parsedConfs: List[Either[List[String], (List[MessageFilter], Action)]] = settings.reverse.map(conf =>
+      val parsedConfs: Vector[Either[Vector[String], (Vector[MessageFilter], Action)]] = settings.reverse.map(conf =>
         val filtersAndAction = conf.split(':')
-        if filtersAndAction.length != 2 then Left(List("exactly one `:` expected (<filter>&...&<filter>:<action>)"))
+        if filtersAndAction.length != 2 then Left(Vector("exactly one `:` expected (<filter>&...&<filter>:<action>)"))
         else
           parseFilters(filtersAndAction(0)).flatMap(filters =>
             parseAction(filtersAndAction(1)).map((filters, _))))
@@ -142,7 +142,7 @@ object WConf:
       if (parseErrorss.nonEmpty) Left(parseErrorss.flatten)
       else Right(WConf(configs))
 
-class Suppression(val annotPos: SourcePosition, val filters: List[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
+class Suppression(val annotPos: SourcePosition, val filters: Vector[MessageFilter], val start: Int, val end: Int, val verbose: Boolean):
   inline def unusedState = 0
   inline def usedState = 1
   inline def supersededState = 2

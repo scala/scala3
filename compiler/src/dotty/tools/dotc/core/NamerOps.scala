@@ -26,22 +26,22 @@ object NamerOps:
    *  action instead.
    */
   trait CompleterWithCleanup extends LazyType:
-    private var cleanupActions: List[() => Unit] = Nil
+    private var cleanupActions: Vector[() => Unit] = Vector()
     def addCleanupAction(op: () => Unit): Unit =
-      cleanupActions = op :: cleanupActions
+      cleanupActions = op +: cleanupActions
     def cleanup(): Unit =
       if cleanupActions.nonEmpty then
         cleanupActions.reverse.foreach(_())
-        cleanupActions = Nil
+        cleanupActions = Vector()
   end CompleterWithCleanup
 
   /** The type of the constructed instance is returned
    *
    *  @param ctor the constructor
    */
-  def effectiveResultType(ctor: Symbol, paramss: List[List[Symbol]])(using Context): Type =
+  def effectiveResultType(ctor: Symbol, paramss: Vector[Vector[Symbol]])(using Context): Type =
     paramss match
-      case TypeSymbols(tparams) :: rest =>
+      case TypeSymbols(tparams) +: rest =>
         addParamRefinements(ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef)), rest)
       case _ =>
         addParamRefinements(ctor.owner.typeRef, paramss)
@@ -52,7 +52,7 @@ object NamerOps:
    *  since without it there are no tracked parameters. Parameter refinements are added for
    *  constructors and given companion methods.
    */
-  def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
+  def addParamRefinements(resType: Type, paramss: Vector[Vector[Symbol]])(using Context): Type =
     paramss.flatten.foldLeft(resType): (rt, param) =>
       if param.is(Tracked) then RefinedType.precise(rt, param.name, param.termRef)
       else rt
@@ -86,29 +86,29 @@ object NamerOps:
    * implicitRewritePosition, if included, will point to where `()` should be added if rewriting
    * with -Yimplicit-to-given
    */
-  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean, implicitRewritePosition: Option[Span] = None)(using Context): List[List[Symbol]] =
+  def normalizeIfConstructor(paramss: Vector[Vector[Symbol]], isConstructor: Boolean, implicitRewritePosition: Option[Span] = None)(using Context): Vector[Vector[Symbol]] =
     if !isConstructor then paramss
     else paramss match
-      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor, implicitRewritePosition)
-      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) =>
+      case TypeSymbols(tparams) +: paramss1 => tparams +: normalizeIfConstructor(paramss1, isConstructor, implicitRewritePosition)
+      case TermSymbols(vparam +: _) +: _ if vparam.is(Implicit) =>
         implicitRewritePosition match
           case Some(position) if ctx.settings.YimplicitToGiven.value => patch(position, "()")
           case _ => ()
-        Nil :: paramss
+        Vector() +: paramss
       case _ =>
         if paramss.forall {
           case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
           case _ => true
         }
-        then paramss :+ Nil
+        then paramss :+ Vector()
         else paramss
 
   /** The method type corresponding to given parameters and result type */
-  def methodType(paramss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
-    def recur(paramss: List[List[Symbol]]): Type = (paramss: @unchecked) match
-      case Nil =>
+  def methodType(paramss: Vector[Vector[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
+    def recur(paramss: Vector[Vector[Symbol]]): Type = (paramss: @unchecked) match
+      case Vector() =>
         resultType
-      case TermSymbols(params) :: paramss1 =>
+      case TermSymbols(params) +: paramss1 =>
         val (isContextual, isImplicit) =
           if params.isEmpty then (false, false)
           else (params.head.is(Given), params.head.is(Implicit))
@@ -117,7 +117,7 @@ object NamerOps:
           for param <- params do
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType
         make.fromSymbols(params, recur(paramss1))
-      case TypeSymbols(tparams) :: paramss1 =>
+      case TypeSymbols(tparams) +: paramss1 =>
         PolyType.fromParams(tparams, recur(paramss1))
 
     if paramss.isEmpty then ExprType(resultType) else recur(paramss)
@@ -205,7 +205,7 @@ object NamerOps:
       def complete(denot: SymDenotation)(using Context): Unit =
         val prefix = modcls.owner.thisType
         denot.info = ClassInfo(
-          prefix, modcls, defn.AnyType :: Nil,
+          prefix, modcls, defn.AnyType +: Vector(),
           addConstructorApplies(newScope, cls, modcls), TermRef(prefix, modul))
     }.withSourceModule(modul)
 
@@ -281,7 +281,7 @@ object NamerOps:
   def linkConstructorParams(sym: Symbol)(using Context): Context =
     if sym.isConstructor && !sym.isPrimaryConstructor then
       sym.rawParamss match
-        case (tparams @ (tparam :: _)) :: _ if tparam.isType =>
+        case (tparams @ (tparam +: _)) +: _ if tparam.isType =>
           val rhsCtx = ctx.fresh.setFreshGADTBounds
           linkConstructorParams(sym, tparams, rhsCtx)
           rhsCtx
@@ -293,7 +293,7 @@ object NamerOps:
    *  that their type parameters are aliases of the class type parameters. This is done
    *  by (ab?)-using GADT constraints. See pos/i941.scala.
    */
-  def linkConstructorParams(sym: Symbol, tparams: List[Symbol], rhsCtx: Context)(using Context): Unit =
+  def linkConstructorParams(sym: Symbol, tparams: Vector[Symbol], rhsCtx: Context)(using Context): Unit =
     rhsCtx.gadtState.addToConstraint(tparams)
     tparams.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
       val tr = tparam.typeRef
@@ -319,7 +319,7 @@ object NamerOps:
    *
    *  The companion has the same access flags as the original type.
    */
-  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: List[TermName], params: List[Symbol])(using Context): Unit =
+  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: Vector[TermName], params: Vector[Symbol])(using Context): Unit =
     val prefix = ctx.owner.thisType
     val companionName = tsym.name.toTermName
     val witnessRefs =
@@ -350,7 +350,7 @@ object NamerOps:
           if ann.symbol == defn.WitnessNamesAnnot then
             ann.tree match
               case ast.tpd.WitnessNamesAnnot(witnessNames) =>
-                addContextBoundCompanionFor(sym, witnessNames, Nil)
+                addContextBoundCompanionFor(sym, witnessNames, Vector())
 
   /** Add a dummy term symbol for a type def that has capture parameter flag.
    *  The dummy symbol has the same name as the original type symbol and is stable.

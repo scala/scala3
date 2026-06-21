@@ -53,7 +53,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
          |}
          """.stripMargin
 
-    val sources = List(
+    val sources = Vector(
       mkSource("assert(true)", "()"),
       mkSource("assert(true, ???)", "()"),
       mkSource("assert(false)", "scala.runtime.Scala3RunTime.assertFailed()")
@@ -103,7 +103,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val main = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(main)
       val expected =
-        List(
+        Vector(
           Label(0),
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
@@ -167,7 +167,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val main = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(main)
       val expected =
-        List(
+        Vector(
           Label(0),
           LineNumber(7, Label(0)),
           VarOp(ALOAD, 0),
@@ -226,7 +226,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val main = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(main)
       val expected =
-        List(
+        Vector(
           Label(0),
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
@@ -286,7 +286,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val main = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(main)
       val expected =
-        List(
+        Vector(
           Label(0),
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
@@ -334,7 +334,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
       val expected =
-        List(
+        Vector(
           IntOp(BIPUSH, 10),
           VarOp(ISTORE, 1),
           Incr(IINC, 1, 1),
@@ -362,7 +362,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
       val expected =
-        List(
+        Vector(
           VarOp(ALOAD, 0),
           Invoke(INVOKEVIRTUAL, "Test", "given_Int", "()I", false),
           VarOp(ISTORE, 1),
@@ -388,7 +388,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(Invoke(INVOKESTATIC, "Foo", "f$proxy1$1", "()V", false), Op(RETURN))
+      val expected = Vector(Invoke(INVOKESTATIC, "Foo", "f$proxy1$1", "()V", false), Op(RETURN))
       assert(instructions == expected,
         "`inlined` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 
@@ -409,7 +409,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(
+      val expected = Vector(
         Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
         Ldc(LDC, "zero"),
         Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
@@ -433,7 +433,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(Ldc(LDC, 5.0), Op(DRETURN))
+      val expected = Vector(Ldc(LDC, 5.0), Op(DRETURN))
       assert(instructions == expected,
         "`divide` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
     }
@@ -452,12 +452,12 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(Op(ICONST_3), Op(IRETURN))
+      val expected = Vector(Op(ICONST_3), Op(IRETURN))
       assert(instructions == expected,
         "`a and b were not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 
-      val methods = clsNode.methods.asScala.toList.map(_.name)
-      assert(methods == List("<init>", "a", "test"), clsNode.methods.asScala.toList.map(_.name))
+      val methods = clsNode.methods.asScala.toVector.map(_.name)
+      assert(methods == Vector("<init>", "a", "test"), clsNode.methods.asScala.toVector.map(_.name))
     }
   }
 
@@ -476,7 +476,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
       val expected =
-        List(
+        Vector(
           Ldc(LDC, "a"),
           Op(ARETURN)
         )
@@ -503,7 +503,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
       val expected =
-        List(
+        Vector(
           Op(ICONST_3),
           VarOp(ISTORE, 1),
           Op(ICONST_2),
@@ -531,7 +531,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
       val expected =
-        List(
+        Vector(
           Op(ICONST_2),
           VarOp(ISTORE, 1),
           VarOp(ILOAD, 1),
@@ -560,7 +560,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
       val expected =
-        List(
+        Vector(
           Field(GETSTATIC, "foo$", "MODULE$", "Lfoo$;"),
           VarOp(ASTORE, 1),
           VarOp(ALOAD, 1),
@@ -592,7 +592,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
       val expected =
-        List(
+        Vector(
           IntOp(BIPUSH, 6),
           Op(IRETURN),
         )
@@ -641,7 +641,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val clsIn      = dir.lookupName("Test.class", directory = false).input
       val clsNode    = loadClassNode(clsIn)
 
-      for cls <- List("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
+      for cls <- Vector("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
         val meth1      = getMethod(clsNode, s"test$cls")
         val meth2      = getMethod(clsNode, s"test${cls}Expected")
 
@@ -693,7 +693,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val clsIn      = dir.lookupName("Test.class", directory = false).input
       val clsNode    = loadClassNode(clsIn)
 
-      for cls <- List("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
+      for cls <- Vector("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
         val meth1      = getMethod(clsNode, s"test$cls")
         val meth2      = getMethod(clsNode, s"test${cls}Expected")
 
@@ -717,7 +717,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(Op(RETURN))
+      val expected = Vector(Op(RETURN))
 
       assert(instructions == expected,
         "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
@@ -743,7 +743,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(
+      val expected = Vector(
         Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
         Ldc(LDC, "scrutinee"),
         Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),

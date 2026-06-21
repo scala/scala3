@@ -49,19 +49,19 @@ class EtaReduce extends MiniPhase:
         fn
       case TypeApply(Select(qual, _), _) if rhs.symbol.isTypeCast && rhs.span.isSynthetic =>
         tryReduce(mdef, qual)
-      case Apply(_, arg :: Nil) if Erasure.Boxing.isUnbox(rhs.symbol) && rhs.span.isSynthetic =>
+      case Apply(_, arg +: Vector()) if Erasure.Boxing.isUnbox(rhs.symbol) && rhs.span.isSynthetic =>
         tryReduce(mdef, arg)
-      case Block(call :: Nil, unit @ Literal(Constants.Constant(()))) if unit.span.isSynthetic =>
+      case Block(call +: Vector(), unit @ Literal(Constants.Constant(()))) if unit.span.isSynthetic =>
         tryReduce(mdef, call)
       case _ =>
         tree
 
     tree match
-      case Block((meth: DefDef) :: Nil, expr) if meth.symbol.isAnonymousFunction =>
+      case Block((meth: DefDef) +: Vector(), expr) if meth.symbol.isAnonymousFunction =>
         expr match
           case closure: Closure if meth.symbol == closure.meth.symbol =>
             tryReduce(meth, meth.rhs)
-          case Block((adapted: DefDef) :: Nil, closure: Closure)
+          case Block((adapted: DefDef) +: Vector(), closure: Closure)
           if adapted.name.is(AdaptedClosureName) && adapted.symbol == closure.meth.symbol =>
             tryReduce(meth, meth.rhs)
           case _ =>

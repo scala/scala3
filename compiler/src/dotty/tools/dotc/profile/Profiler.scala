@@ -137,7 +137,7 @@ private [profile] object NoOpProfiler extends Profiler {
 private [profile] object RealProfiler {
   private val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
   private val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
-  private val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
+  private val gcMx: Vector[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toVector
   private val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
   private val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
   private val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy

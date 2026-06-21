@@ -27,7 +27,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   import tpd.*
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
-  private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
+  private val forwardSymRefs = Symbols.MutableSymbolMap[Vector[Addr]]()
   private val pickledTypes = util.EqHashMap[Type, Addr]()
 
   /** A list of annotation trees for every member definition, so that later
@@ -51,11 +51,11 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   private val isOutlinePickle: Boolean = attributes.isOutline
   private val isJavaPickle: Boolean = attributes.isJava
 
-  def treeAnnots(tree: untpd.MemberDef): List[Tree] =
+  def treeAnnots(tree: untpd.MemberDef): Vector[Tree] =
     val ts = annotTrees.lookup(tree)
-    if ts == null then Nil else ts.toList
+    if ts == null then Vector() else ts.toVector
 
-  def typeAnnots: List[Tree] = annotatedTypeTrees.toList
+  def typeAnnots: Vector[Tree] = annotatedTypeTrees.toVector
 
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
@@ -117,7 +117,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   private def pickleForwardSymRef(sym: Symbol)(using Context) = {
     val ref = reserveRef(relative = false)
     assert(!sym.is(Flags.Package), sym)
-    forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
+    forwardSymRefs(sym) = ref +: forwardSymRefs.getOrElse(sym, Vector())
   }
 
   private def isLocallyDefined(sym: Symbol)(using Context) =
@@ -413,12 +413,12 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     }
   }
 
-  def pickleParams(trees: List[Tree])(using Context): Unit = {
+  def pickleParams(trees: Vector[Tree])(using Context): Unit = {
     trees.foreach(preRegister)
     trees.foreach(pickleParam)
   }
 
-  def pickleStats(stats: List[Tree])(using Context): Unit = {
+  def pickleStats(stats: Vector[Tree])(using Context): Unit = {
     stats.foreach(preRegister)
     stats.foreach(stat => if (!stat.isEmpty) pickleTree(stat))
   }
@@ -650,15 +650,15 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         case tree: ValDef =>
           pickleDef(VALDEF, tree, tree.tpt, tree.rhs)
         case tree: DefDef =>
-          def pickleParamss(paramss: List[ParamClause]): Unit = paramss match
-            case Nil =>
-            case Nil :: rest =>
+          def pickleParamss(paramss: Vector[ParamClause]): Unit = (paramss: @unchecked) match
+            case Vector() =>
+            case Vector() +: rest =>
               writeByte(EMPTYCLAUSE)
               pickleParamss(rest)
-            case (params @ (param1 :: _)) :: rest =>
+            case (params @ (param1 +: _)) +: rest =>
               pickleParams(params)
               rest match
-                case (param2 :: _) :: _
+                case (param2 +: _) +: _
                 if param1.isInstanceOf[untpd.TypeDef] == param2.isInstanceOf[untpd.TypeDef] =>
                   writeByte(SPLITCLAUSE)
                 case _ =>
@@ -697,9 +697,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 writeByte(SPLITCLAUSE)
                 pickleStats(rest0)
               else
-                pickleStats(tree.constr :: rest0)
+                pickleStats(tree.constr +: rest0)
             else
-              pickleStats(tree.constr :: rest)
+              pickleStats(tree.constr +: rest)
           }
         case Import(expr, selectors) =>
           writeByte(IMPORT)
@@ -768,7 +768,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
               pickleTree(hi)
               pickleTree(alias)
           }
-        case tree @ Quote(body, Nil) =>
+        case tree @ Quote(body, Vector()) =>
           assert(body.isTerm,
             """Quote with type should not be pickled.
               |Quote with type should only exists after staging phase at staging level 0.""".stripMargin)
@@ -830,7 +830,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       }
   }
 
-  def pickleSelectors(selectors: List[untpd.ImportSelector])(using Context): Unit =
+  def pickleSelectors(selectors: Vector[untpd.ImportSelector])(using Context): Unit =
     for sel <- selectors do
       pickleSelector(IMPORTED, sel.imported)
       sel.renamed match
@@ -943,14 +943,14 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
 
 // ---- main entry points ---------------------------------------
 
-  def pickle(trees: List[Tree])(using Context): Unit = {
+  def pickle(trees: Vector[Tree])(using Context): Unit = {
     profile = Profile.current
     for tree <- trees do
       if !tree.isEmpty then pickleTree(tree)
 
     def missing = forwardSymRefs.keysIterator
       .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")
-      .toList
+      .toVector
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 

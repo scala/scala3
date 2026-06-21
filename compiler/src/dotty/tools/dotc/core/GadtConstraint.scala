@@ -24,7 +24,7 @@ class GadtConstraint private (
   private val wasConstrained: Boolean,
 ) extends Showable:
   def constraint: Constraint        = myConstraint
-  def symbols: List[Symbol]         = mapping.keys
+  def symbols: Vector[Symbol]         = mapping.keys
   def withConstraint(c: Constraint) = copy(myConstraint = c)
   def withWasConstrained            = copy(wasConstrained = true)
 
@@ -182,8 +182,8 @@ sealed trait GadtState {
    *
    * @see [[ConstraintHandling.addToConstraint]]
    */
-  def addToConstraint(sym: Symbol)(using Context): Boolean = addToConstraint(sym :: Nil)
-  def addToConstraint(params: List[Symbol])(using Context): Boolean = {
+  def addToConstraint(sym: Symbol)(using Context): Boolean = addToConstraint(sym +: Vector())
+  def addToConstraint(params: Vector[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
 
     val poly1 = PolyType(params.map { sym => DepParamName.fresh(sym.name.toTypeName) })(

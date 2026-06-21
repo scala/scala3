@@ -25,7 +25,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
 
   override def description: String = SpecializeApplyMethods.description
 
-  private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol = {
+  private def specApplySymbol(sym: Symbol, args: Vector[Type], ret: Type)(using Context): Symbol = {
     val name = nme.apply.specializedFunction(ret, args)
     // Create the symbol at the next phase, so that it is a valid member of the
     // corresponding function for all valid periods of its SymDenotations.
@@ -66,17 +66,17 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
     case tp: ClassInfo =>
       if sym == defn.Function0 then
         val scope = tp.decls.cloneScope
-        specFun0 { r => scope.enter(specApplySymbol(sym, Nil, r)) }
+        specFun0 { r => scope.enter(specApplySymbol(sym, Vector(), r)) }
         tp.derivedClassInfo(decls = scope)
 
       else if sym == defn.Function1 then
         val scope = tp.decls.cloneScope
-        specFun1 { (t1, r) => scope.enter(specApplySymbol(sym, t1 :: Nil, r)) }
+        specFun1 { (t1, r) => scope.enter(specApplySymbol(sym, t1 +: Vector(), r)) }
         tp.derivedClassInfo(decls = scope)
 
       else if sym == defn.Function2 then
         val scope = tp.decls.cloneScope
-        specFun2 { (t1, t2, r) => scope.enter(specApplySymbol(sym, t1 :: t2 :: Nil, r)) }
+        specFun2 { (t1, t2, r) => scope.enter(specApplySymbol(sym, t1 +: t2 +: Vector(), r)) }
         tp.derivedClassInfo(decls = scope)
 
       else tp
@@ -88,7 +88,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   override def transformTemplate(tree: Template)(using Context) = {
     val cls = tree.symbol.owner.asClass
 
-    def synthesizeApply(names: List[TermName]): Tree = {
+    def synthesizeApply(names: Vector[TermName]): Tree = {
       val applyBuf = new mutable.ListBuffer[DefDef]
       names.foreach { name =>
         val applySym = cls.info.decls.lookup(name)

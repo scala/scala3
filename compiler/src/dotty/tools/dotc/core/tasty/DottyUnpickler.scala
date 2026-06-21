@@ -90,7 +90,7 @@ class DottyUnpickler(
   ): TreeSectionUnpickler =
     new TreeSectionUnpickler(compilationUnitInfo, posUnpicklerOpt, commentUnpicklerOpt, withBestEffortTasty)
 
-  protected def computeRootTrees(using Context): List[Tree] = treeUnpickler.unpickle(mode)
+  protected def computeRootTrees(using Context): Vector[Tree] = treeUnpickler.unpickle(mode)
 
   private var ids: Array[String] | Null = null
 

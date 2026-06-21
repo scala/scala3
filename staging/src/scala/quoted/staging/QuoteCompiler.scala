@@ -37,15 +37,16 @@ private class QuoteCompiler extends Compiler:
   /** Either `Left` with name of the classfile generated or `Right` with the value contained in the expression */
   private var result: Either[String, Any] = uninitialized
 
-  override protected def frontendPhases: List[List[Phase]] =
-    List(List(new QuotedFrontend))
+  override protected def frontendPhases: Vector[Vector[Phase]] =
+    Vector(Vector(new QuotedFrontend))
 
-  override protected def picklerPhases: List[List[Phase]] =
-    List(new Inlining) ::
-    List(new Staging) ::
-    List(new Splicing) ::
-    List(new PickleQuotes) ::
-    Nil
+  override protected def picklerPhases: Vector[Vector[Phase]] =
+    Vector(
+      Vector(new Inlining),
+      Vector(new Staging),
+      Vector(new Splicing),
+      Vector(new PickleQuotes),
+    )
 
   override def newRun(implicit ctx: Context): ExprRun =
     reset()
@@ -65,7 +66,7 @@ private class QuoteCompiler extends Compiler:
 
     def phaseName: String = "quotedFrontend"
 
-    override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+    override def runOn(units: Vector[CompilationUnit])(implicit ctx: Context): Vector[CompilationUnit] =
       // NOTE: although this is a phase, there is no need to track xsbti.CompileProgress here.
       units.flatMap {
         case exprUnit: ExprCompilationUnit =>
@@ -78,7 +79,7 @@ private class QuoteCompiler extends Compiler:
           // Places the contents of expr in a compilable tree for a class with the following format.
           // `package __root__ { class ' { def apply: Any = <expr> } }`
           val cls = newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
-            defn.ObjectType :: Nil, newScope, coord = pos, compUnitInfo = compUnitInfo).entered.asClass
+            Vector(defn.ObjectType), newScope, coord = pos, compUnitInfo = compUnitInfo).entered.asClass
           cls.enter(newDefaultConstructor(cls), EmptyScope)
           val meth = newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
@@ -95,8 +96,8 @@ private class QuoteCompiler extends Compiler:
               None // Stop copilation here we already have the result
             case None =>
               val run = DefDef(meth, quoted)
-              val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
-              val tree = PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withSpan(pos)
+              val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), Vector(run))
+              val tree = PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], Vector(classTree)).withSpan(pos)
               val source = SourceFile.virtual("<quoted.Expr>", "")
               val unitInfo = CompilationUnitInfo(source.file, tastyInfo = None)
               result = Left(outputClassName.toString)
@@ -107,8 +108,8 @@ private class QuoteCompiler extends Compiler:
     @tailrec private def getLiteral(tree: Tree): Option[Any] =
       tree match
         case Literal(lit) => Some(lit.value)
-        case Block(Nil, expr) => getLiteral(expr)
-        case Inlined(_, Nil, expr) => getLiteral(expr)
+        case Block(Vector(), expr) => getLiteral(expr)
+        case Inlined(_, Vector(), expr) => getLiteral(expr)
         case _ => None
 
     def run(implicit ctx: Context): Unit = unsupported("run")
@@ -120,7 +121,7 @@ private class QuoteCompiler extends Compiler:
      *  Returns either `Left` with name of the classfile generated or `Right` with the value contained in the expression.
      */
     def compileExpr(exprBuilder:  Quotes => Expr[?]): Either[String, Any] =
-      val units = new ExprCompilationUnit(exprBuilder) :: Nil
+      val units = Vector(new ExprCompilationUnit(exprBuilder))
       compileUnits(units)
       result
 

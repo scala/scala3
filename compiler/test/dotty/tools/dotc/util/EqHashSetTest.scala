@@ -23,7 +23,7 @@ class EqHashSetTest:
   def newEmpty: Unit =
     val s = EqHashSet[Id]()
     assert(s.size == 0)
-    assert(s.iterator.toList == Nil)
+    assert(s.iterator.toVector == Vector())
 
   @Test
   def put: Unit =
@@ -37,7 +37,7 @@ class EqHashSetTest:
     s.put(id2)
     assert(s.size == 2 && s.contains(id1) && s.contains(id2))
     // put id3
-    s ++= List(id3)
+    s ++= Vector(id3)
     assert(s.size == 3 && s.contains(id1) && s.contains(id2) && s.contains(id3))
 
   @Test
@@ -53,13 +53,13 @@ class EqHashSetTest:
 
   @Test
   def construct: Unit =
-    val s = EqHashSet.from(List(id1,id2,id3))
+    val s = EqHashSet.from(Vector(id1,id2,id3))
     assert(s.size == 3)
     assert(s.contains(id1) && s.contains(id2) && s.contains(id3))
 
   @Test
   def remove: Unit =
-    val s = EqHashSet.from(List(id1,id2,id3))
+    val s = EqHashSet.from(Vector(id1,id2,id3))
     // remove id2
     s.remove(id2)
     assert(s.size == 2)
@@ -69,30 +69,30 @@ class EqHashSetTest:
     assert(s.size == 1)
     assert(!s.contains(id1) && !s.contains(id2) && s.contains(id3))
     // remove id3
-    s --= List(id3)
+    s --= Vector(id3)
     assert(s.size == 0)
     assert(!s.contains(id1) && !s.contains(id2) && !s.contains(id3))
 
   @Test
   def lookup: Unit =
-    val s = EqHashSet.from(List(id1, id2))
+    val s = EqHashSet.from(Vector(id1, id2))
     assert(s.lookup(id1) eq id1)
     assert(s.lookup(id2) eq id2)
     assert(s.lookup(id3) eq null)
 
   @Test
   def iterator: Unit =
-    val s = EqHashSet.from(List(id1,id2,id3))
-    assert(s.iterator.toList.sorted == List(id1,id2,id3))
+    val s = EqHashSet.from(Vector(id1,id2,id3))
+    assert(s.iterator.toVector.sorted == Vector(id1,id2,id3))
 
   @Test
   def clear: Unit =
     locally:
-      val s1 = EqHashSet.from(List(id1,id2,id3))
+      val s1 = EqHashSet.from(Vector(id1,id2,id3))
       s1.clear()
       assert(s1.size == 0)
     locally:
-      val s2 = EqHashSet.from(List(id1,id2,id3))
+      val s2 = EqHashSet.from(Vector(id1,id2,id3))
       s2.clear(resetToInitial = false)
       assert(s2.size == 0)
 
@@ -111,7 +111,7 @@ class EqHashSetTest:
     assert(i1.equals(i2)) // structural equality
     assert(i1 ne i2) // reference inequality
 
-    val s = EqHashSet.from(List(i1,i2))
+    val s = EqHashSet.from(Vector(i1,i2))
 
     assert(s.size == 2 && s.contains(i1) && s.contains(i2))
     assert(s.iterator.toSet == Set(i1)) // scala.Set delegates to universal equality

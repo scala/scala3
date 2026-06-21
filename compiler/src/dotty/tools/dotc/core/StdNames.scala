@@ -159,13 +159,14 @@ object StdNames {
     final val Short: N   = "Short"
     final val Unit: N    = "Unit"
 
-    final val ScalaValueNames: _root_.scala.List[N] =
-      _root_.scala.List(Byte, Char, Short, Int, Long, Float, Double, Boolean, Unit)
+    final val ScalaValueNames: _root_.scala.Vector[N] =
+      _root_.scala.Vector(Byte, Char, Short, Int, Long, Float, Double, Boolean, Unit)
 
     // some types whose companions we utilize
     final val AnyRef: N     = "AnyRef"
     final val Array: N      = "Array"
     final val List: N       = "List"
+    final val Vector: N     = "Vector"
     final val Seq: N        = "Seq"
     final val Symbol: N     = "Symbol"
     final val ClassTag: N   = "ClassTag"

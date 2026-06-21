@@ -10,9 +10,6 @@ import StdNames.*
 import dotty.tools.dotc.ast.tpd
 
 
-import scala.collection.immutable.::
-
-
 /** This phase rewrites calls to array constructors to newArray method in Dotty.runtime.Arrays module.
  *
  * It assummes that generic arrays have already been handled by typer(see Applications.convertNewGenericArray).
@@ -26,18 +23,18 @@ class ArrayConstructors extends MiniPhase {
   override def description: String = ArrayConstructors.description
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree = {
-    def expand(elemType: Type, dims: List[Tree]) =
+    def expand(elemType: Type, dims: Vector[Tree]) =
       val elemTypeNonVoid =
         if elemType.isValueSubType(defn.UnitType) then defn.BoxedUnitClass.typeRef
         else elemType
       tpd.newArray(elemTypeNonVoid, tree.tpe, tree.span, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
-      val TypeApply(tycon, targ :: Nil) = tree.fun: @unchecked
+      val TypeApply(tycon, targ +: Vector()) = tree.fun: @unchecked
       expand(targ.tpe, tree.args)
     }
     else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModuleClass) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
-      val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree: @unchecked
+      val Apply(Apply(TypeApply(_, Vector(tp)), _), _) = tree: @unchecked
       val cs = tp.tpe.classSymbol
       tree.fun match {
         case Apply(TypeApply(t: Ident, targ), dims)
@@ -45,7 +42,7 @@ class ArrayConstructors extends MiniPhase {
           expand(targ.head.tpe, dims)
         case Apply(TypeApply(t: Select, targ), dims)
           if !TypeErasure.isGeneric(targ.head.tpe) && !cs.isDerivedValueClass =>
-          Block(t.qualifier :: Nil, expand(targ.head.tpe, dims))
+          Block(t.qualifier +: Vector(), expand(targ.head.tpe, dims))
         case _ => tree
       }
     }

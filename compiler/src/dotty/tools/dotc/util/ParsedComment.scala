@@ -26,7 +26,7 @@ class ParsedComment(val comment: Comment) {
   val content: String = comment.expandedBody.getOrElse(comment.raw)
 
   /** An index that marks all sections boundaries */
-  private lazy val tagIndex: List[Bounds] = CommentParsing.tagIndex(content)
+  private lazy val tagIndex: Vector[Bounds] = CommentParsing.tagIndex(content)
 
   /**
    * Maps a parameter name to the bounds of its doc
@@ -39,9 +39,9 @@ class ParsedComment(val comment: Comment) {
    * The "main" documentation for this comment. That is, the comment before any section starts.
    */
   lazy val mainDoc: String = {
-    val doc = tagIndex match {
-      case Nil => content.stripSuffix("*/")
-      case (start, _) :: _ => content.slice(0, start)
+    val doc = (tagIndex: @unchecked) match {
+      case Vector() => content.stripSuffix("*/")
+      case (start, _) +: _ => content.slice(0, start)
     }
     clean(doc.stripPrefix("/**"))
   }
@@ -136,9 +136,9 @@ object ParsedComment {
    * @param items The items to format into a list.
    * @return A markdown list of descriptions.
    */
-  private def toDescriptionList(ctx: Context, items: List[String]): String = inContext(ctx) {
+  private def toDescriptionList(ctx: Context, items: Vector[String]): String = inContext(ctx) {
     val formattedItems = items.map { p =>
-      val name :: rest = p.split(" ", 2).toList: @unchecked
+      val name +: rest = p.split(" ", 2).toVector: @unchecked
       s"${bold(name)} ${rest.mkString("").trim}"
     }
     toMarkdownList(ctx, formattedItems)
@@ -150,7 +150,7 @@ object ParsedComment {
    * @param items The items to put in a list.
    * @return The list of items, in markdown.
    */
-  private def toMarkdownList(ctx: Context, items: List[String]): String = {
+  private def toMarkdownList(ctx: Context, items: Vector[String]): String = {
     val formattedItems = items.map(_.linesIterator.mkString(System.lineSeparator + "   "))
     formattedItems.mkString(" - ", System.lineSeparator + " - ", "")
   }
@@ -165,7 +165,7 @@ object ParsedComment {
    * @return A markdown list of code fences.
    * @see toCodeFence
    */
-  private def toCodeFences(language: String)(ctx: Context, snippets: List[String]): String =
+  private def toCodeFences(language: String)(ctx: Context, snippets: Vector[String]): String =
     toMarkdownList(ctx, snippets.map(toCodeFence(language)(ctx, _)))
 
   /**
@@ -192,7 +192,7 @@ object ParsedComment {
    * @param title The title to give to the formatted items.
    * @param fn    The formatting function to use.
    */
-  private case class TagFormatter(title: String, fn: (Context, List[String]) => String) {
+  private case class TagFormatter(title: String, fn: (Context, Vector[String]) => String) {
 
     /**
      * Format `item` using `fn` if `items` is not empty.
@@ -200,8 +200,8 @@ object ParsedComment {
      * @param items The items to format
      * @return If items is not empty, the items formatted using `fn`.
      */
-    def apply(items: List[String])(using Context): Option[String] = items match {
-      case Nil =>
+    def apply(items: Vector[String])(using Context): Option[String] = items match {
+      case Vector() =>
         None
       case items =>
         Some(s"""${bold(title)}
