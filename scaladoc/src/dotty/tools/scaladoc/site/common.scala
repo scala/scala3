@@ -94,7 +94,7 @@ def loadTemplateFile(file: File, defaultTitle: Option[TemplateName] = None)(usin
   val settings = Map("page" -> inner) ++ global
 
   def stringSetting(settings: Map[String, Object], name: String): Option[String] = settings.get(name).map {
-    case List(elem: String) => elem
+    case Seq(elem: String) => elem
     case elem: String => elem
     case other => throw new RuntimeException(s"Expected a string setting for $name in $file but got $other")
   }.map(_.stripPrefix("\"").stripSuffix("\""))
