@@ -1,5 +1,5 @@
 class IO
-val io: IO^ = IO()
+val io: IO^ = new IO
 def test() =
   class C:
     def foo() = () =>

@@ -9,14 +9,14 @@ class IO extends SharedCapability:
   def readLine(): String = scala.io.StdIn.readLine()
 
 class Clazz(val console: Console^):
-  val io: IO^ = IO()
+  val io: IO^ = new IO
   lazy val memberLazy: () ->{io} String = {
     console.println("Computing memberLazy")
     () => "Member Lazy Value" + io.readLine()
   }
 
 def client(c: Clazz^): Unit =
-  val io: IO^ = IO()
+  val io: IO^ = new IO
   trait Trait:
     lazy val memberLazy: () ->{io} String
     def memberMethod(): String
@@ -44,7 +44,7 @@ def client(c: Clazz^): Unit =
   val v8: () ->{t, c.console} String = () => anotherFunky() // ok
 
   class Clazz2(val console: Console^):
-    val io: IO^ = IO()
+    val io: IO^ = new IO
     final lazy val memberLazy: () ->{io} String = {
       console.println("Computing memberLazy")
       () => "Member Lazy Value" + io.readLine()

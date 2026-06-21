@@ -25,7 +25,7 @@ def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U]^{it, f} = new
 class IO extends SharedCapability:
   def write(x: Any): Unit = ()
 
-val io: IO = IO()
+val io: IO = new IO
 
 def test() =
   def proc: Int => Int = i => { io.write(i); i * i }
