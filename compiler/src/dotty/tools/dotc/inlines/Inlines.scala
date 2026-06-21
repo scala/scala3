@@ -922,7 +922,7 @@ object Inlines:
                                                    // See: inline-trait-multiple-stages-generic-defs.
             paramAccessorsMapper.getParamAccessorName(qual.symbol, name) match {
                 case Some(newName) => Select(this(qual), newName).withSpan(parent.span)
-                case None => Select(this(qual), name)
+                case None => cpy.Select(sel)(this(qual), name)
             }
           }
         case ident: Ident if ident.isType =>
