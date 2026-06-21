@@ -210,7 +210,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
 
   // `scala.Seq` now defaults to constructing `Vector`s, so `Seq(a, b, c)` is no longer
   // rewritten to a cons-cell `List` literal. Instead it is built directly via
-  // `Vector.fromArrayUnsafe`, which takes ownership of the backing array — avoiding the
+  // `Vector.fromArray1Unsafe`, which takes ownership of the backing array — avoiding the
   // intermediate `ArraySeq` wrapper and the dispatch inside `Vector.from`. The former
   // `testSeqApplyAvoidsIntermediateArray{,2,3}` tests asserted the removed cons rewrite
   // and have been replaced by the checks below.
@@ -224,26 +224,47 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
   @Test def testCollectionSeqApplyBuildsVectorDirectly =
     checkSeqApplyBuildsVectorDirectly("import scala.collection.Seq")
 
-  private def checkSeqApplyBuildsVectorDirectly(imp: String) = {
-    val source =
+  // A single `Vector1` holds up to 32 elements, so a 32-element `Seq(...)` is still built directly.
+  @Test def testSeqApply32BuildsVectorDirectly = {
+    val elems = (1 to 32).map(i => s""""$i"""").mkString(", ")
+    checkInvokes(s"""class Foo { def test: Seq[String] = Seq($elems) }""",
+      mustContain = "scala/collection/immutable/Vector$.fromArray1Unsafe",
+      mustNotContain = Seq("wrapRefArray", "arrayseq"))
+  }
+
+  // Beyond 32 elements the literal cannot fit a single `Vector1`, so the optimization backs off
+  // and the call routes through the `Seq.apply` factory (which builds a multi-level `Vector`).
+  @Test def testSeqApply33FallsBack = {
+    val elems = (1 to 33).map(i => s""""$i"""").mkString(", ")
+    checkInvokes(s"""class Foo { def test: Seq[String] = Seq($elems) }""",
+      mustContain = "scala/collection/immutable/Seq$.apply",
+      mustNotContain = Seq("fromArray1Unsafe"))
+  }
+
+  // `Seq()` is built as the empty `Vector` directly.
+  @Test def testEmptySeqApplyBuildsEmptyVector =
+    checkInvokes("""class Foo { def test: Seq[String] = Seq() }""",
+      mustContain = "scala/collection/immutable/Vector$.empty",
+      mustNotContain = Seq("wrapRefArray", "arrayseq"))
+
+  private def checkSeqApplyBuildsVectorDirectly(imp: String) =
+    checkInvokes(
       s"""$imp
-         |class Foo {
-         |  def test: Seq[String] = Seq("1", "2", "3")
-         |}
-       """.stripMargin
+         |class Foo { def test: Seq[String] = Seq("1", "2", "3") }""".stripMargin,
+      mustContain = "scala/collection/immutable/Vector$.fromArray1Unsafe",
+      mustNotContain = Seq("wrapRefArray", "arrayseq"))
+
+  private def checkInvokes(source: String, mustContain: String, mustNotContain: Seq[String]) =
     checkBCode(source) { dir =>
       val clsNode = loadClassNode(dir.lookupName("Foo.class", directory = false).nn.input)
       val invoked = instructionsFromMethod(getMethod(clsNode, "test")).collect {
         case Invoke(_, owner, name, _, _) => s"$owner.$name"
       }
-      assert(invoked.contains("scala/collection/immutable/Vector$.fromArrayUnsafe"),
-        s"expected a Vector.fromArrayUnsafe call, got: $invoked")
-      assert(!invoked.exists(_.contains("wrapRefArray")),
-        s"Seq(...) should not build an intermediate wrapped array, got: $invoked")
-      assert(!invoked.exists(_.toLowerCase.contains("arrayseq")),
-        s"Seq(...) should not build an intermediate ArraySeq, got: $invoked")
+      assert(invoked.contains(mustContain), s"expected a $mustContain call, got: $invoked")
+      for bad <- mustNotContain do
+        assert(!invoked.exists(_.toLowerCase.contains(bad.toLowerCase)),
+          s"did not expect $bad, got: $invoked")
     }
-  }
 
   @Test def testListApplyAvoidsIntermediateArray_max1 = {
     checkApplyAvoidsIntermediateArray_examples("max1"):

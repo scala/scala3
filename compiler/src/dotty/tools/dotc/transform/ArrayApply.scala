@@ -23,6 +23,12 @@ class ArrayApply extends MiniPhase {
   private def transformListApplyBudget(using Context) =
     ctx.property(TransformListApplyBudgetKey).getOrElse(8) // default is 8, as originally implemented in nsc
 
+  // A single-node `Vector1` holds up to `WIDTH` = 32 elements; longer `Seq(...)` literals are
+  // left for `Vector.from` to build a multi-level vector. Unlike the `List` cons rewrite (whose
+  // budget bounds cons-chain code size), the `Vector` rewrite just hands off the array that the
+  // varargs would build anyway, so it is bounded only by `Vector1`'s capacity.
+  private inline val MaxVector1Length = 32
+
   override def prepareForApply(tree: Apply)(using Context): Context = tree match
     case SeqApplyArgs(elems) =>
       ctx.fresh.setProperty(TransformListApplyBudgetKey, transformListApplyBudget - elems.length)
@@ -43,21 +49,29 @@ class ArrayApply extends MiniPhase {
           tree
 
     else tree match
-      // A `Seq(...)` whose target `scala-library` defaults `Seq` to `Vector` (and so provides
-      // `Vector.fromArrayUnsafe`) is built directly as a `Vector`. `List(...)`, and `Seq(...)`
-      // against the stock 2.13 stdlib (where `Seq` defaults to `List`), are built as cons cells.
-      case SeqApplyArgs(elems) if transformListApplyBudget > 0 || elems.isEmpty =>
-        if !isListApply(tree) && defn.Vector_fromArrayUnsafe.exists then
-          // Seq(a, b, c) ~> Vector.fromArrayUnsafe([a, b, c]): builds the backing array directly
-          // and wraps it into a `Vector1`, avoiding the intermediate `ArraySeq` wrapper and the
-          // dispatch inside `Vector.from`.
-          val arr = JavaSeqLiteral(elems.map(_.ensureConforms(defn.ObjectType)), TypeTree(defn.ObjectType))
-          ref(defn.Vector_fromArrayUnsafe).appliedTo(arr).cast(tree.tpe)
-        else
-          // List(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil)))
+      case SeqApplyArgs(elems) =>
+        if !isListApply(tree) && defn.Vector_fromArray1Unsafe.exists then
+          // `Seq(...)` against a `scala-library` whose `Seq` defaults to `Vector`. The literal's
+          // length is statically known, so we emit the exact `Vector` node directly with no
+          // runtime length check.
+          if elems.isEmpty then
+            ref(defn.Vector_empty).ensureApplied.cast(tree.tpe) // Seq() ~> Vector.empty
+          else if elems.length <= MaxVector1Length then
+            // Seq(a, b, c) ~> Vector.fromArray1Unsafe([a, b, c]): builds the backing array
+            // directly and wraps it in a single `Vector1`, avoiding the intermediate `ArraySeq`
+            // wrapper and the dispatch inside `Vector.from`.
+            val arr = JavaSeqLiteral(elems.map(_.ensureConforms(defn.ObjectType)), TypeTree(defn.ObjectType))
+            ref(defn.Vector_fromArray1Unsafe).appliedTo(arr).cast(tree.tpe)
+          else
+            tree // more than WIDTH elements: leave `Seq.apply`, which routes to `Vector.from`
+        else if transformListApplyBudget > 0 || elems.isEmpty then
+          // `List(a, b, c)`, or `Seq(...)` against the stock 2.13 stdlib (`Seq` defaults to `List`)
+          // ~> new ::(a, new ::(b, new ::(c, Nil)))
           val consed = elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
             New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
           consed.cast(tree.tpe)
+        else
+          tree
       case _ => tree
 
   private def isArrayModuleApply(sym: Symbol)(using Context): Boolean =
