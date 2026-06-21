@@ -36,6 +36,7 @@ sealed trait CommunityProject:
   val docCommand: String
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
+  def testCommandArgs: List[String] = List(testCommand)
   val environment: Map[String, String] = Map.empty
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
@@ -59,7 +60,7 @@ sealed trait CommunityProject:
 
   final def build(): Int = exec(projectDir, binaryName, buildCommands, environment)
 
-  final def buildCommands = runCommandsArgs :+ testCommand
+  final def buildCommands = runCommandsArgs ++ testCommandArgs
 
 end CommunityProject
 
@@ -68,12 +69,15 @@ sealed case class MillCommunityProject(
     baseCommand: String,
     ignoreDocs: Boolean = false,
     executeTests: Boolean = true,
+    selectedTests: List[String] = Nil,
   ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = {
-     if executeTests then s"$baseCommand.test"
+     if selectedTests.nonEmpty then s"$baseCommand.test.testOnly"
+     else if executeTests then s"$baseCommand.test"
      else s"$baseCommand.test.compile"
   }
+  override def testCommandArgs: List[String] = testCommand +: selectedTests
   override val publishCommand = s"$baseCommand.publishLocal"
   override val docCommand = null
     // uncomment once mill is released
@@ -144,11 +148,80 @@ object projects:
       (in +: projects).map(p => s"($p/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value").mkString(" ++ ")
     s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
 
+  private val utestSelectedTests = List(
+    // AssertsTests.assert.failureEquals expects captured Seq(...) values to render as List(...).
+    "test.utest.AfterEachOnFailureTest",
+    "test.utest.AssertsTestsVersionSpecific",
+    "test.utest.BeforeAfterAllFailureTest",
+    "test.utest.BeforeAfterEachFailureTests",
+    "test.utest.ByNameTests",
+    "test.utest.DisablePrint2Tests",
+    "test.utest.DisablePrintTests",
+    "test.utest.FrameworkAsyncTests",
+    "test.utest.FrameworkTests",
+    "test.utest.FutureCrashTest",
+    "test.utest.FutureTest",
+    "test.utest.GoldenFixTests",
+    "test.utest.HelperTest",
+    "test.utest.LineNumbersTests",
+    "test.utest.LocalRetryTests",
+    "test.utest.MergeTestsTest",
+    "test.utest.Parallel",
+    "test.utest.QueryTests",
+    "test.utest.SelectorTest",
+    "test.utest.SuiteManualRetryTests",
+    "test.utest.SuiteRetryAfterEachFailedTests",
+    "test.utest.SuiteRetryBeforeAllTests",
+    "test.utest.SuiteRetryBeforeEachFailedTests",
+    "test.utest.SuiteRetryBeforeEachTests",
+    "test.utest.SuiteRetryTests",
+    "test.utest.TestDiscoveryTests",
+    "test.utest.examples.BeforeAfterAllSimpleTests",
+    "test.utest.examples.BeforeAfterAllTests",
+    "test.utest.examples.BeforeAfterEachTests",
+    "test.utest.examples.HelloTests",
+    "test.utest.examples.NestedTests",
+    "test.utest.examples.SeparateSetupTests",
+    "test.utest.examples.SharedFixturesTests",
+    "test.utest.examples.TestPathTests",
+  )
+
+  private val oslibSelectedTests = List(
+    // ProcessPipelineTests pattern-matches OS-Lib subprocess internals as List-shaped pipelines.
+    "os.SegmentsFromStringTests",
+    "test.os.CheckerTests",
+    "test.os.ExampleTests",
+    "test.os.FilesystemMetadataTests",
+    "test.os.FilesystemPermissionsTests",
+    "test.os.ListingWalkingTests",
+    "test.os.ManipulatingFilesFoldersTests",
+    "test.os.OpTests",
+    "test.os.OpTestsJvmOnly",
+    "test.os.PathTests",
+    "test.os.PathTestsCustomFilesystem",
+    "test.os.PathTestsJvmOnly",
+    "test.os.ReadingWritingTests",
+    "test.os.SourceTests",
+    "test.os.SpawningSubprocessesNewTests",
+    "test.os.SpawningSubprocessesTests",
+    "test.os.SubprocessTests",
+    "test.os.ZipOpJvmTests",
+    "test.os.ZipOpTests",
+  )
+
+  private val pprintSelectedTests = List(
+    // Rendering golden tests in DerivationTests, HorizontalTests, and VerticalTests expect List(...).
+    "pprint.TPrintTests",
+    "test.pprint.AdvancedTests",
+    "test.pprint.HorizontalVersionSpecificTests",
+    "test.pprint.UnitTests",
+  )
+
   lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
     ignoreDocs = true,
-    executeTests = false, // TODO: re-enable once uTest accepts Seq(...) rendering as Vector(...)
+    selectedTests = utestSelectedTests,
   )
 
   lazy val sourcecode = new MillCommunityProject(
@@ -164,7 +237,7 @@ object projects:
   lazy val oslib = MillCommunityProject(
     project = "os-lib",
     baseCommand = s"os.jvm[$compilerVersion]",
-    executeTests = false, // TODO: re-enable once OS-Lib handles Seq-backed pipelines as Vector(...)
+    selectedTests = oslibSelectedTests,
   )
 
   lazy val oslibWatch = MillCommunityProject(
@@ -213,7 +286,7 @@ object projects:
     project = "PPrint",
     baseCommand = s"pprint.jvm[$compilerVersion]",
     ignoreDocs = true,
-    executeTests = false, // TODO: re-enable once PPrint accepts Seq(...) rendering as Vector(...)
+    selectedTests = pprintSelectedTests,
   )
 
   lazy val requests = MillCommunityProject(
