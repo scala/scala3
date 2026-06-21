@@ -25,7 +25,7 @@ class FactoriesTest {
     def cloneElements[A, C](xs: Iterable[A])(cb: Factory[A, C]): C =
       cb.fromSpecific(xs)
 
-    assertEquals("List", cloneElements(seq)(Seq).collectionClassName)
+    assertEquals("Vector", cloneElements(seq)(Seq).collectionClassName)
   }
 
   def apply(factory: IterableFactory[Iterable]): Unit = {
@@ -264,10 +264,18 @@ class FactoriesTest {
     assert(IndexedSeq().isInstanceOf[Vector[?]], "IndexedSeq.apply should delegate to Vector.apply")
     assert(IndexedSeq(1,2,3).isInstanceOf[Vector[?]], "IndexedSeq.apply should delegate to Vector.apply")
 
-    assert(im.Seq().isInstanceOf[List[?]], "immutable.Seq.apply should delegate to List.apply")
-    assert(im.Seq(1,2,3).isInstanceOf[List[?]], "immutable.Seq.apply should delegate to List.apply")
-    assert(Seq().isInstanceOf[List[?]], "Seq.apply should delegate to List.apply")
-    assert(Seq(1,2,3).isInstanceOf[List[?]], "Seq.apply should delegate to List.apply")
+    // `Seq(...)` / `im.Seq(...)` literals are rewritten at the call site by the compiler's
+    // `ArrayApply` intrinsic, which bypasses the library factory — and rewrites them differently
+    // depending on whether the reference compiler (non-bootstrapped build) or the freshly-built
+    // compiler (bootstrapped build) compiles this test. Route the creation through a factory value
+    // bound to a local identifier so the intrinsic does not fire and the real library `Seq.apply`
+    // (which now builds a `Vector`) is exercised in both builds.
+    val imSeqFactory: IterableFactory[im.Seq] = im.Seq
+    val seqFactory: IterableFactory[Seq] = Seq
+    assert(imSeqFactory().isInstanceOf[Vector[?]], "immutable.Seq.apply should delegate to Vector.apply")
+    assert(imSeqFactory(1,2,3).isInstanceOf[Vector[?]], "immutable.Seq.apply should delegate to Vector.apply")
+    assert(seqFactory().isInstanceOf[Vector[?]], "Seq.apply should delegate to Vector.apply")
+    assert(seqFactory(1,2,3).isInstanceOf[Vector[?]], "Seq.apply should delegate to Vector.apply")
 
     assert(im.LinearSeq().isInstanceOf[List[?]], "immutable.LinearSeq.apply should delegate to List.apply")
     assert(im.LinearSeq(1,2,3).isInstanceOf[List[?]], "immutable.LinearSeq.apply should delegate to List.apply")
