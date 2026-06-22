@@ -105,7 +105,7 @@ class CodeSnippets:
     }
     def runButton = {
       val runButton = button(cls := "run-button icon-button")(
-        i(cls := "fas fa-play")
+        span("▶")
       )
       runButton.addEventListener("click", e =>
         val popup = div(cls := "snippet-popup")(
