@@ -167,7 +167,9 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
    */
   @throws(classOf[IOException])
   def toByteArray: Array[Byte] =
-    input.readAllBytes()
+    val is = input
+    try is.readAllBytes()
+    finally is.close()
 
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator: Iterator[AbstractFile]

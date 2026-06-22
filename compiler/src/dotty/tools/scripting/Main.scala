@@ -72,10 +72,13 @@ object Main:
       (Name.CLASS_PATH, cpString),
     )
     val jarArchive = JarArchive.open(dotty.tools.io.Path(jarPath), create = true)
-    given FileWriters.ReadOnlyContext = FileWriters.ReadOnlyContext.eager
-    val writer = FileWriters.FileWriter(jarArchive, manifestAttributes*)
+    val writer = FileWriters.FileWriter(jarArchive, manifestAttributes)
     try
-      dotty.tools.io.Directory(outDir).list.foreach(f => writer.writeFile(f.name, f.toFile.inputStream().readAllBytes()))
+      dotty.tools.io.Directory(outDir).list.foreach(f => {
+        val input = f.toFile.inputStream()
+        try writer.writeFile(f.name, input.readAllBytes())
+        finally input.close()
+      })
     finally
       writer.close()
   end writeJarfile
