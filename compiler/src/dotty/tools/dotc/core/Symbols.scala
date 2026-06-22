@@ -26,7 +26,7 @@ import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile, Lst}
 
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -849,8 +849,8 @@ object Symbols extends SymUtils {
   def newConstructor(
       cls: ClassSymbol,
       flags: FlagSet,
-      paramNames: List[TermName],
-      paramTypes: List[Type],
+      paramNames: Lst[TermName],
+      paramTypes: Lst[Type],
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord)(using Context): TermSymbol =
     newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
@@ -861,7 +861,7 @@ object Symbols extends SymUtils {
 
   /** Create an empty default constructor symbol for given class `cls`. */
   def newDefaultConstructor(cls: ClassSymbol)(using Context): TermSymbol =
-    newConstructor(cls, EmptyFlags, Nil, Nil)
+    newConstructor(cls, EmptyFlags, Lst(), Lst())
 
   def newLazyImplicit(info: Type, coord: Coord = NoCoord)(using Context): TermSymbol =
     newSymbol(ctx.owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
@@ -879,22 +879,17 @@ object Symbols extends SymUtils {
    */
   def newTypeParams(
     owner: Symbol,
-    names: List[TypeName],
+    names: Lst[TypeName],
     flags: FlagSet,
-    boundsFn: List[TypeRef] => List[Type])(using Context): List[TypeSymbol] = {
+    boundsFn: Lst[TypeRef] => Lst[Type])(using Context): Lst[TypeSymbol] = {
 
-    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
-    val trefBuf = new mutable.ListBuffer[TypeRef]
-    for (name <- names) {
-      val tparam = newSymbol(
-        owner, name, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
-      tparamBuf += tparam
-      trefBuf += TypeRef(owner.thisType, tparam)
-    }
-    val tparams = tparamBuf.toList
-    val bounds = boundsFn(trefBuf.toList)
-    for (tparam, bound) <- tparams.lazyZip(bounds) do
-      tparam.info = bound
+    val tparams = names.map:
+      newSymbol(owner, _, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
+    val trefs = tparams.map:
+      TypeRef(owner.thisType, _)
+    val bounds = boundsFn(trefs)
+    for i <- 0 until tparams.length do
+      tparams(i).info = bounds(i)
     tparams
   }
 

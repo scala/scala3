@@ -54,7 +54,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
       catch
         case ex: Exception =>
           if ctx.debug then ex.printStackTrace()
-          report.error(em"Error while emitting $internalName\n${ex.getMessage}")
+          report.error(em"Error while ?emitting $internalName\n${ex.getMessage}")
           null
 
     if bytes != null then

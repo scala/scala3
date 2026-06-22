@@ -96,10 +96,10 @@ trait Deriving {
         val resultType = typeClassType.appliedTo(instanceTypes)
         val monoInfo =
           if evidenceParamInfos.isEmpty then resultType
-          else ImplicitMethodType(evidenceParamInfos.map(typeClassType.appliedTo), resultType)
+          else ImplicitMethodType(evidenceParamInfos.mapToLst(typeClassType.appliedTo), resultType)
         val derivedInfo =
           if derivedParams.isEmpty then monoInfo
-          else PolyType.fromParams(derivedParams, monoInfo)
+          else PolyType.fromParams(derivedParams.toLst, monoInfo)
         addDerivedInstance(originalTypeClassTree, originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
       }
 
@@ -169,9 +169,9 @@ trait Deriving {
             else {
               val derivedParamTypes = derivedParams.map(_.typeRef)
 
-              HKTypeLambda(typeClassParamInfos.map(_.paramName))(
-                tl => typeClassParamInfos.map(_.paramInfo.bounds),
-                tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity)))
+              HKTypeLambda(typeClassParamInfos.mapToLst(_.paramName))(
+                tl => typeClassParamInfos.mapToLst(_.paramInfo.bounds),
+                tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity).toIterable))
             }
 
           addInstance(derivedParams, Nil, List(instanceType))
@@ -272,14 +272,14 @@ trait Deriving {
       def typeclassInstance(sym: Symbol)(using Context): List[List[tpd.Tree]] => tpd.Tree =
         (paramRefss: List[List[tpd.Tree]]) =>
           val (tparamRefs, vparamRefss) = splitArgs(paramRefss)
-          val tparamTypes = tparamRefs.tpes
+          val tparamTypes = tparamRefs.mapToLst(_.tpe)
           val tparams = tparamTypes.map(_.typeSymbol.asType)
           val vparams = if (vparamRefss.isEmpty) Nil else vparamRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
           vparams.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
             case info: PolyType => instantiated(info.instantiate(tparamTypes))
-            case info: MethodType => info.instantiate(vparams.map(_.termRef))
+            case info: MethodType => info.instantiate(vparams.mapToLst(_.termRef))
             case info => info.widenExpr
           }
           def companionRef(tp: Type): TermRef = tp match {
@@ -294,17 +294,17 @@ trait Deriving {
           val rhs = untpd.Select(module, nme.derived)
           val derivedMember = companion.member(nme.derived)
 
-          if !companion.termSymbol.exists then 
+          if !companion.termSymbol.exists then
             errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
-          else if hasExplicitParams(derivedMember.symbol) then 
+          else if hasExplicitParams(derivedMember.symbol) then
             errorTree(rhs, em"""derived instance $resultType failed to generate:
             |method `derived` from object ${module} takes explicit term parameters""")
-          else 
+          else
             typed(rhs, resultType)
       end typeclassInstance
 
       // checks whether any of the params of 'sym' is explicit
-      def hasExplicitParams(sym: Symbol) = 
+      def hasExplicitParams(sym: Symbol) =
         !sym.paramSymss.flatten.forall(sym => sym.isType || sym.is(Flags.Given) || sym.is(Flags.Implicit))
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {

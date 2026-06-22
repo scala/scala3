@@ -24,6 +24,7 @@ import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbo
 import typer.ProtoTypes.{ViewProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
+import util.{Lst, SourcePosition, SourceFile}
 import StdNames.nme
 import Formatting.{hl, delay}
 import scala.util.matching.Regex
@@ -32,8 +33,6 @@ import cc.CaptureSet
 import cc.Capabilities.Capability
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 import Message.{Disambiguation, Note}
@@ -2087,7 +2086,7 @@ class DuplicateNamedTypeParameter(name: Name)(using Context)
   def explain(using Context) = ""
 }
 
-class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(using Context)
+class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: Lst[Name])(using Context)
   extends SyntaxMsg(UndefinedNamedTypeParameterID) {
   def msg(using Context) = i"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
   def explain(using Context) = ""
@@ -3168,7 +3167,7 @@ class MissingImplicitArgument(
      */
     def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
       val params = alt.ref.underlying match {
-        case p: PolyType => p.paramNames.map(_.toString)
+        case p: PolyType => p.paramNamesList.map(_.toString)
         case _           => Nil
       }
       def resolveTypes(targs: List[tpd.Tree])(using Context) =

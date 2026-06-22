@@ -25,7 +25,7 @@ import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import typer.Nullables.*
 import util.Spans.*
-import util.{SourceFile, Property}
+import util.{SourceFile, Property, Lst, LstBuffer}
 import ast.{Trees, tpd, untpd}
 import Trees.*
 import Decorators.*
@@ -288,12 +288,16 @@ class TreeUnpickler(reader: TastyReader,
       (names, mods)
 
     /** Read `n` parameter types or bounds which are interleaved with names */
-    def readParamTypes[T <: Type](n: Int)(using Context): List[T] =
-      if n == 0 then Nil
+    def readParamTypes[T <: Type](n: Int)(using Context): Lst[T] =
+      if n == 0 then Lst()
       else
-        val t = readType().asInstanceOf[T]
-        readNat() // skip name
-        t :: readParamTypes(n - 1)
+        val ts = LstBuffer[T](n)
+        var i = 0
+        while i < n do
+          ts += readType().asInstanceOf[T]
+          readNat() // skip name
+          i += 1
+        ts.toLst
 
     /** Read reference to definition and return symbol created at that definition */
     def readSymRef()(using Context): Symbol = symbolAt(readAddr())
@@ -367,7 +371,7 @@ class TreeUnpickler(reader: TastyReader,
               nameReader.skipTree() // skip result
               val paramReader = nameReader.fork
               val (paramNames, mods) = nameReader.readParamNamesAndMods(end)
-              companionOp(mods)(paramNames.map(nameMap))(
+              companionOp(mods)(paramNames.toLst.map(nameMap))(
                 pt => registeringType(pt, paramReader.readParamTypes[PInfo](paramNames.length)),
                 pt => readType())
             })
@@ -1426,7 +1430,7 @@ class TreeUnpickler(reader: TastyReader,
         methType match
           case methType: MethodType =>
             val formalNames = methType.paramNames
-            val sizeCmp = args.sizeCompare(formalNames)
+            val sizeCmp = args.length - formalNames.length
 
             def makeDefault(name: TermName, tpe: Type): NamedArg =
               NamedArg(name, Underscore(tpe))
@@ -1434,9 +1438,9 @@ class TreeUnpickler(reader: TastyReader,
             def extendOnly(args: List[NamedArg]): List[NamedArg] =
               if sizeCmp < 0 then
                 val argsSize = args.size
-                val additionalArgs: List[NamedArg] =
-                  formalNames.drop(argsSize).lazyZip(methType.paramInfos.drop(argsSize)).map(makeDefault(_, _))
-                args ::: additionalArgs
+                val additionalArgs: Lst[NamedArg] =
+                  formalNames.drop(argsSize).zipWith(methType.paramInfos.drop(argsSize))(makeDefault(_, _))
+                args ++ additionalArgs.toList
               else
                 args // fast path
 
@@ -1478,7 +1482,7 @@ class TreeUnpickler(reader: TastyReader,
                   // something's wrong; don't touch anything
                   args
                 else
-                  reconstructedArgs
+                  reconstructedArgs.toList
 
           case _ =>
             args

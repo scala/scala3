@@ -34,7 +34,7 @@ import ValueClasses.*
 import ContextFunctionResults.*
 import ExplicitOuter.*
 import core.Mode
-import util.Property
+import util.{Property, Lst, Lst1}
 import reporting.*
 import scala.annotation.tailrec
 
@@ -55,7 +55,7 @@ class Erasure extends Phase with DenotTransformer {
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
           atPhase(ctx.phase.next)(symd.info) match {
-            case MethodType(nme.ALLARGS :: Nil) => true
+            case MethodType(Lst1(nme.ALLARGS)) => true
             case _                              => false
           }
         }
@@ -147,7 +147,7 @@ class Erasure extends Phase with DenotTransformer {
   private def erasedClassInfo(cls: ClassSymbol)(using Context) =
     cls.classInfo.derivedClassInfo(
       declaredParents = defn.ObjectClass.typeRef :: Nil,
-      decls = newScopeWith(newConstructor(cls, Flags.EmptyFlags, Nil, Nil)))
+      decls = newScopeWith(newConstructor(cls, Flags.EmptyFlags, Lst(), Lst())))
 
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     assertErased(tree)
@@ -231,10 +231,10 @@ object Erasure {
    */
   def expandedMethodType(mt: MethodType, origFun: Tree)(using Context): MethodType =
     mt.paramInfos match
-      case JavaArrayType(elemType) :: Nil if elemType.isRef(defn.ObjectClass) =>
+      case Lst1(JavaArrayType(elemType)) if elemType.isRef(defn.ObjectClass) =>
         val origArity = totalParamCount(origFun.symbol)(using preErasureCtx)
         if origArity > MaxImplementedFunctionArity then
-          MethodType(List.fill(origArity)(defn.ObjectType), mt.resultType)
+          MethodType(Lst.fill(origArity)(defn.ObjectType), mt.resultType)
         else mt
       case _ => mt
 
@@ -499,7 +499,7 @@ object Erasure {
           inContext(ctx.withOwner(bridge)) {
             val List(bridgeParams) = bridgeParamss
             assert(ctx.typer.isInstanceOf[Erasure.Typer])
-            val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
+            val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes.toList).map(ctx.typer.adapt(_, _)))
             ctx.typer.adapt(rhs, bridgeType.resultType)
           },
           targetType = functionalInterface).withSpan(tree.span)
@@ -782,7 +782,7 @@ object Erasure {
           fun1.tpe.widen match {
             case funTpe: PolyType =>
               val args1 = args.mapconserve(typedType(_))
-              untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.tpes))
+              untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.mapToLst(_.tpe)))
             case _ => fun1
           }
         case _ => typedExpr(ntree, pt)
@@ -825,7 +825,7 @@ object Erasure {
               (xmt, xmt ne mt, outer.args(origFun))
 
           val args0 = outers ::: ownArgs
-          val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
+          val args1 = args0.zipWithConserve(xmt.paramInfosList)(typedExpr)
 
           def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
             val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
@@ -946,8 +946,8 @@ object Erasure {
     private def outerParamDefs(constr: Symbol)(using Context): List[ValDef] =
       if constr.isConstructor && needsOuterParam(constr.owner.asClass) then
         constr.info match
-          case MethodTpe(outerName :: _, outerType :: _, _) =>
-            val outerSym = newSymbol(constr, outerName, Flags.Param | Flags.SyntheticArtifact, outerType)
+          case MethodTpe(pnames, ptypes, _) =>
+            val outerSym = newSymbol(constr, pnames(0), Flags.Param | Flags.SyntheticArtifact, ptypes(0))
             ValDef(outerSym) :: Nil
           case _ =>
             // There's a possible race condition that a constructor was looked at

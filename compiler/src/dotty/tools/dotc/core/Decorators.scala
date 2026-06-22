@@ -9,6 +9,7 @@ import Contexts.*, Names.*, Phases.*, Symbols.*, Types.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
+import util.{Lst, LstBuffer}
 
 /** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
@@ -90,7 +91,7 @@ object Decorators {
      */
     def withCleanParamNames(using Context): Type = tp match
       case mt: MethodType if mt.allParamNamesSynthetic =>
-        val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
+        val newNames = Lst.tabulate(mt.paramNames.length)(i => termName("x" + i))
         mt.derivedLambdaType(newNames, mt.paramInfos, mt.resType.withCleanParamNames)
       case mt: MethodType =>
         mt.derivedLambdaType(mt.paramNames, mt.paramInfos, mt.resType.withCleanParamNames)
@@ -261,6 +262,24 @@ object Decorators {
       case nil => None
   end extension
 
+  extension [T <: AnyRef](xss: List[Lst[T]])
+
+    def flattenLst: Lst[T] =
+      xss match
+        case Nil => Lst()
+        case xs :: Nil => xs
+        case xs :: yss if xs.isEmpty => yss.flattenLst
+        case _ =>
+          val totalSize = xss.foldLeft(0): (s, xs) =>
+            s + xs.length
+          val buf = LstBuffer[T](totalSize)
+          xss.foreach(buf ++= _)
+          buf.toLst
+
+    def nestedExistsLst(p: T => Boolean): Boolean = xss match
+      case xs :: xss1 => xs.exists(p) || xss1.nestedExistsLst(p)
+      case nil => false
+
   extension (text: Text)
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value)
 
@@ -340,4 +359,21 @@ object Decorators {
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
+  extension [T <: AnyRef](xs: Seq[T])
+    def toLst: Lst[T] =
+      val buf = LstBuffer[T](xs.length)
+      for x <- xs do buf += x
+      buf.toLst
+
+    def mapToLst[U <: AnyRef](f: T => U): Lst[U] =
+      val buf = LstBuffer[U](xs.length)
+      for x <- xs do buf += f(x)
+      buf.toLst
+
+  extension [T <: AnyRef](xs: Array[Object])
+    def freeze: Lst[T] = xs.asInstanceOf[Lst[T]]
+
+  extension [T](xs: Iterable[T])
+    def lazyZip[U <: AnyRef](that: Lst[U]): collection.LazyZip2[T, U, xs.type] =
+      xs.lazyZip(that.toIterable)
 }

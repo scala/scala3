@@ -17,7 +17,7 @@ import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
-import util.Stats
+import util.{Stats, Lst}
 import java.util.WeakHashMap
 import config.Config
 import reporting.*
@@ -348,13 +348,13 @@ object SymDenotations {
             if info.isContextualMethod then Given | SyntheticParam
             else if info.isImplicitMethod then Implicit | SyntheticParam
             else SyntheticParam
-          val params = info.paramNames.lazyZip(info.paramInfos).map: (pname, ptype) =>
+          val params = info.paramNames.zipWith(info.paramInfos): (pname, ptype) =>
             val flags = if ptype.hasAnnotation(defn.ErasedParamAnnot) then commonFlags | Erased else commonFlags
             newSymbol(symbol, pname, flags, ptype)
           val prefs = params.map(_.namedType)
           for param <- params do
             param.info = param.info.substParams(info, prefs)
-          params :: recurWithoutParamss(info.instantiate(prefs))
+          params.toList :: recurWithoutParamss(info.instantiate(prefs))
         case _ =>
           Nil
 
@@ -468,7 +468,7 @@ object SymDenotations {
       info match
         case info: AliasingBounds if isOpaqueAlias && owner.isClass =>
           setAlias(info.alias)
-          HKTypeLambda.boundsFromParams(tparams, bounds(rhs))
+          HKTypeLambda.boundsFromParams(tparams.toLst, bounds(rhs))
         case _ =>
           info
     end opaqueToBounds
@@ -1551,6 +1551,8 @@ object SymDenotations {
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(using Context): List[TypeSymbol] = Nil
 
+    def typeParamsLst(using Context): Lst[TypeSymbol] = Lst()
+
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(using Context): Type = NoPrefix
 
@@ -1869,6 +1871,7 @@ object SymDenotations {
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] | Null = null
+    private var myTypeParamsLst: Lst[TypeSymbol] | Null = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
     private var myMemberCache: EqHashMap[Name, PreDenotation] | Null = null
@@ -1974,6 +1977,10 @@ object SymDenotations {
           }
       myTypeParams.nn
     }
+
+    override final def typeParamsLst(using Context): Lst[TypeSymbol] =
+      if myTypeParamsLst == null then myTypeParamsLst = typeParams.toLst
+      myTypeParamsLst.nn
 
     override protected[dotc] final def info_=(tp: Type): Unit = {
       if (changedClassParents(infoOrCompleter, tp, completersMatter = true))

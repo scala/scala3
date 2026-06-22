@@ -3,6 +3,7 @@ package core
 
 import Types.*, Symbols.*, Contexts.*, Decorators.i
 import cc.Capabilities.{Capability, ResultCap}
+import util.Lst
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -147,7 +148,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap | Null)(using Context): Type =
+  final def substParams(tp: Type, from: BindingType, to: Lst[Type], theMap: SubstParamsMap | Null)(using Context): Type =
     tp match {
       case tp: ParamRef =>
         if (tp.binder == from) to(tp.paramNum) else tp
@@ -240,7 +241,7 @@ object Substituters:
     def apply(tp: Type): Type = substParam(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
+  final class SubstParamsMap(from: BindingType, to: Lst[Type])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
   }
 

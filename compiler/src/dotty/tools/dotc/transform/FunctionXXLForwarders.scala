@@ -11,6 +11,7 @@ import StdNames.*
 import Symbols.*
 import MegaPhase.*
 import Types.*
+import util.Lst
 
 
 /** This phase adds forwarder for XXL functions `apply` methods that are implemented with a method
@@ -37,7 +38,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
       val argss = receiver.tpe.widenDealias.paramInfoss.map(_.map { param =>
         idx += 1
         argsApply.appliedToTermArgs(List(Literal(Constant(idx)))).cast(param)
-      })
+      }.toList)
       ref(receiver.symbol).appliedToArgss(argss).cast(defn.ObjectType)
     }
 
@@ -52,7 +53,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
       }
       yield {
         val xsType = defn.ArrayType.appliedTo(List(defn.ObjectType))
-        val methType = MethodType(List(nme.args))(_ => List(xsType), _ => defn.ObjectType)
+        val methType = MethodType(Lst(nme.args))(_ => Lst(xsType), _ => defn.ObjectType)
         val meth = newSymbol(ddef.symbol.owner, nme.apply, Synthetic | Method, methType)
         DefDef(meth, paramss => forwarderRhs(ddef, paramss.head.head))
       }

@@ -12,7 +12,7 @@ import typer.ProtoTypes.constrained
 import ast.untpd
 import config.Feature
 
-import util.Property
+import util.{Property, Lst}
 import util.Spans.Span
 import config.Printers.derive
 import NullOpsDecorator.*
@@ -446,11 +446,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def writeReplaceDef(clazz: ClassSymbol)(using Context): TermSymbol =
     newSymbol(clazz, nme.writeReplace, PrivateMethod | Synthetic,
-        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+        MethodType(Lst(), defn.AnyRefType), coord = clazz.coord).entered.asTerm
 
   private def readResolveDef(clazz: ClassSymbol)(using Context): TermSymbol =
     newSymbol(clazz, nme.readResolve, PrivateMethod | Synthetic,
-        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+        MethodType(Lst(), defn.AnyRefType), coord = clazz.coord).entered.asTerm
 
   /** If this is a static object `Foo`, add the method:
    *
@@ -554,7 +554,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val tvars = constrained(tl)
           val targs = for tvar <- tvars yield
             tvar.instantiate(fromBelow = false)
-          (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType], symss(1))
+          (AppliedType(classRef, targs), tl.instantiate(targs.toLst).asInstanceOf[MethodType], symss(1))
         case mt: MethodType =>
           (classRef, mt, symss.head)
 
@@ -571,10 +571,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
     // Create symbols for the vals corresponding to each parameter
     // If there are dependent parameters, the infos won't be correct yet.
-    val bindingSyms = constrMeth.paramRefs.map: pref =>
+    val bindingSyms = constrMeth.paramRefsList.map: pref =>
       newSymbol(ctx.owner, pref.paramName.freshened, Synthetic,
         pref.underlying.translateFromRepeated(toArray = false), coord = ctx.owner.span.focus)
-    val bindingRefs = bindingSyms.map(TermRef(NoPrefix, _))
+    val bindingRefs = bindingSyms.mapToLst(TermRef(NoPrefix, _))
     // Fix the infos for dependent parameters. We also need to include false dependencies that would
     // be fixed by de-aliasing since we do no such de-aliasing here. See i22944.scala.
     if constrMeth.looksParamDependent then
@@ -599,12 +599,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       ).ensureConforms(bindingSym.info)
       ValDef(bindingSym, rhs)
 
-    val newArgs = bindingRefs.lazyZip(constrMeth.paramInfos).map: (bindingRef, paramInfo) =>
+    val newArgs = bindingRefs.lazyZip(constrMeth.paramInfosList).map: (bindingRef, paramInfo) =>
       val refTree = ref(bindingRef)
       if paramInfo.isRepeatedParam then ctx.typer.seqToRepeated(refTree) else refTree
     Block(
       arityDef.toList ::: bindingDefs,
-      New(newPrefix, newArgs)
+      New(newPrefix, newArgs.toList)
     )
   end fromProductBody
 
@@ -692,12 +692,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       addParent(defn.Mirror_SingletonClass.typeRef)
     def makeProductMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfProduct]) = {
       addParent(defn.Mirror_ProductClass.typeRef)
-      addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
+      addMethod(nme.fromProduct, MethodType(Lst(defn.ProductClass.typeRef), monoType.typeRef), cls,
         fromProductBody(_, _, optInfo).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
     }
     def makeSumMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfSum]) = {
       addParent(defn.Mirror_SumClass.typeRef)
-      addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
+      addMethod(nme.ordinal, MethodType(Lst(monoType.typeRef), defn.IntType), cls,
         ordinalBody(_, _, optInfo))
     }
 

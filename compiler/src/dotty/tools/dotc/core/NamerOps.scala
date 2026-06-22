@@ -116,9 +116,9 @@ object NamerOps:
         if isJava then
           for param <- params do
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType
-        make.fromSymbols(params, recur(paramss1))
+        make.fromSymbols(params.toLst, recur(paramss1))
       case TypeSymbols(tparams) :: paramss1 =>
-        PolyType.fromParams(tparams, recur(paramss1))
+        PolyType.fromParams(tparams.toLst, recur(paramss1))
 
     if paramss.isEmpty then ExprType(resultType) else recur(paramss)
   end methodType

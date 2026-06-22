@@ -77,7 +77,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       /** The parameter references defined by the constructor info */
       def allParamRefs(tp: Type): List[ParamRef] = tp match {
-        case tp: LambdaType => tp.paramRefs ++ allParamRefs(tp.resultType)
+        case tp: LambdaType => tp.paramRefsList ++ allParamRefs(tp.resultType)
         case _              => Nil
       }
 
@@ -97,7 +97,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         // local parameter accessors
         val abstractedArgType =
           if lifted.isEmpty then argTypeWrtConstr
-          else MethodType.fromSymbols(lifted, argTypeWrtConstr)
+          else MethodType.fromSymbols(lifted.toLst, argTypeWrtConstr)
         newSymbol(
           owner = methOwner,
           name = SuperArgName.fresh(cls.name.toTermName),

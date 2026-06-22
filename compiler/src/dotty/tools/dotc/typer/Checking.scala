@@ -19,8 +19,7 @@ import util.Spans.Span
 import Phases.refchecksPhase
 import Constants.Constant
 
-import util.SrcPos
-import util.Spans.Span
+import util.{SrcPos, Lst}
 import rewrites.Rewrites.patch
 import inlines.Inlines
 import Decorators.*
@@ -66,10 +65,10 @@ object Checking {
    *              or (in case it is inferred) containing the type.
    *  See TypeOps.boundsViolations for an explanation of the first four parameters.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
-    instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
+  def checkBounds(args: List[tpd.Tree], boundss: Lst[TypeBounds],
+    instantiate: (Type, Lst[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
     if !isCaptureChecking then
-      args.lazyZip(boundss).foreach { (arg, bound) =>
+      args.lazyZip(boundss.toList).foreach { (arg, bound) =>
         if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
           errorTree(arg,
             showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
@@ -114,12 +113,12 @@ object Checking {
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
-    val tparams = tycon.tpe.typeParams
+    val tparams = tycon.tpe.typeParams.toLst
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
-    def instantiate(bound: Type, args: List[Type]) =
-      tparams match
-        case LambdaParam(lam, _) :: _ =>
-          HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
+    def instantiate(bound: Type, args: Lst[Type]) =
+      tparams.headOption match
+        case Some(LambdaParam(lam, _)) =>
+          HKTypeLambda.fromParams(tparams, bound).appliedTo(args.toList)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
     if !ctx.mode.is(Mode.Pattern)           // no bounds checking in patterns
@@ -524,11 +523,12 @@ object Checking {
     def info = sym match
       case sym: ClassSymbol => sym.primaryConstructor.info
       case _ => sym.info
-    def paramName = info.firstParamNames match
-      case pname :: _ => pname.show
+    def paramName =
+      info.firstParamNames.headOption match
+      case Some(pname) => pname.show
       case _ => "x"
-    def paramTypeStr = info.firstParamTypes match
-      case pinfo :: _ => pinfo.show
+    def paramTypeStr = info.firstParamTypes.headOption match
+      case Some(pinfo) => pinfo.show
       case _ => "T"
     def toFunctionStr(info: Type): String = info match
       case ExprType(resType) =>

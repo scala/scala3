@@ -977,7 +977,7 @@ object CheckUnused:
       case UnApply(fun, _, args) =>
         val unapplied = tree.tpe.finalResultType.dealias.typeSymbol
         if unapplied.is(CaseClass) then
-          allowVariableBindings(unapplied.primaryConstructor.info.firstParamNames, args)
+          allowVariableBindings(unapplied.primaryConstructor.info.firstParamNames.toList, args)
         else if fun.symbol == defn.PairClass_unapply then
           val ok = fun.symbol.info match
             case PolyType(tycon, MethodTpe(_, _, AppliedType(_, tprefs))) =>

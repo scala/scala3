@@ -13,8 +13,7 @@ import Symbols.*
 import Constants.*
 import Decorators.*
 import DenotTransformers.*
-
-
+import util.Lst
 
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
@@ -58,8 +57,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
           tp.derivedLambdaType(resType = addConstrParams(restpe))
         case _ =>
           tp.derivedLambdaType(
-            paramNames = tp.paramNames ++ List(nameParamName, ordinalParamName),
-            paramInfos = tp.paramInfos ++ List(defn.StringType, defn.IntType))
+            paramNames = tp.paramNames ++ Lst(nameParamName, ordinalParamName),
+            paramInfos = tp.paramInfos ++ Lst(defn.StringType, defn.IntType))
       }
   }
 
@@ -119,7 +118,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         // Scala.js has no support for <clinit> so we must avoid assigning static fields in the enum class.
         // However, since the public contract for reading static fields in the IR ABI is to call "static getters",
         // we achieve the right contract with static forwarders instead.
-        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info)), body)
+        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Lst(), enumValue.info)), body)
       else
         val sym = forwarderSym(EnumValue | JavaStatic | Mutable, enumValue.info)
         forwarderSyms += sym

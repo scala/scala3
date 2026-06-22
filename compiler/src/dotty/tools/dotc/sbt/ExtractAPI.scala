@@ -452,7 +452,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     def tparamList(pt: TypeLambda): List[api.TypeParameter] =
       pt.paramNames.lazyZip(pt.paramInfos).map((pname, pbounds) =>
         apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi)
-      )
+      ).toList
 
     def paramList(mt: MethodType, params: List[Symbol]): api.ParameterList =
       val apiParams = params.lazyZip(mt.paramInfos).map((param, ptype) =>
@@ -465,7 +465,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
       case pt: TypeLambda =>
         paramLists(pt.resultType, paramss.drop(1))
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
-        assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
+        assert(paramss.nonEmpty && paramss.head.length == pnames.length,
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
         paramList(mt, paramss.head) :: paramLists(restpe, paramss.tail)
       case _ =>

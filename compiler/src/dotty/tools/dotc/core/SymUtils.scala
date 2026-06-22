@@ -139,7 +139,7 @@ class SymUtils:
      */
     def isOldStyleImplicitConversion(directOnly: Boolean = false, forImplicitClassOnly: Boolean = false)(using Context): Boolean =
       self.is(Implicit) && self.info.stripPoly.match
-        case mt @ MethodType(_ :: Nil) if !mt.isImplicitMethod =>
+        case mt @ MethodType(pnames) if pnames.length == 1 && !mt.isImplicitMethod =>
           if self.isCoDefinedGiven(mt.finalResultType.typeSymbol)
           then !directOnly
           else !forImplicitClassOnly
@@ -442,9 +442,9 @@ class SymUtils:
       else
         def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
           case info: PolyType =>
-            instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
+            instantiateRT(info.instantiateWithList(psymss.head.map(_.typeRef)), psymss.tail)
           case info: MethodType =>
-            instantiateRT(info.instantiate(psymss.head.map(_.termRef)), psymss.tail)
+            instantiateRT(info.instantiateWithList(psymss.head.map(_.termRef)), psymss.tail)
           case info =>
             info.widenExpr
         instantiateRT(self.info, self.paramSymss)
@@ -466,7 +466,7 @@ class SymUtils:
         if ift.exists then
           ift.nonPrivateMember(nme.apply).info match
             case appType: MethodType =>
-              instantiateCFT(appType.instantiate(paramss.head.map(_.termRef)), paramss.tail)
+              instantiateCFT(appType.instantiateWithList(paramss.head.map(_.termRef)), paramss.tail)
         else pt
 
       def iftParamss = ctx.owner.ownersIterator

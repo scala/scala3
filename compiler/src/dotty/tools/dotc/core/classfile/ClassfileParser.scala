@@ -482,8 +482,8 @@ final class ClassfileParser(
       def normalizeConstructorParams() = innerClasses.get(currentClassName.toString) match {
         case Some(entry) if !isStatic(entry.jflags) =>
           val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info: @unchecked
-          var normalizedParamNames = paramNames.tail
-          var normalizedParamTypes = paramTypes.tail
+          var normalizedParamNames = paramNames.drop(1)
+          var normalizedParamTypes = paramTypes.drop(1)
           if ((jflags & JAVA_ACC_SYNTHETIC) != 0) {
             // SI-7455 strip trailing dummy argument ("access constructor tag") from synthetic constructors which
             // are added when an inner class needs to access a private constructor.
@@ -684,8 +684,8 @@ final class ClassfileParser(
             true
           end isRepeatedParam
 
-          val paramtypes = new ListBuffer[Type]()
-          var paramnames = new ListBuffer[TermName]()
+          val paramtypes = new util.LstBuffer[Type]()
+          var paramnames = new util.LstBuffer[TermName]()
           while !isMethodEnd(index) do
             paramnames += nme.syntheticParamName(paramtypes.length)
             paramtypes += {
@@ -700,7 +700,7 @@ final class ClassfileParser(
 
           index += 1
           val restype = sig2type(skiptvs = false)
-          MethodType(paramnames.toList, paramtypes.toList, restype)
+          MethodType(paramnames.toLst, paramtypes.toLst, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
@@ -940,7 +940,7 @@ final class ClassfileParser(
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
-          mt.derivedLambdaType(List.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
+          mt.derivedLambdaType(Lst.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
         case pt: PolyType if namedParams.nonEmpty =>
           pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
@@ -1075,8 +1075,8 @@ final class ClassfileParser(
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
       val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
-      val paramNames = attrs.map(_.name.asTermName)
-      val paramTypes = attrs.map(_.info.resultType)
+      val paramNames = attrs.mapToLst(_.name.asTermName)
+      val paramTypes = attrs.mapToLst(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
     }
   }

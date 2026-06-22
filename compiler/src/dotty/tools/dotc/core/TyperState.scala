@@ -236,7 +236,7 @@ class TyperState() {
       val res = other.domainLambdas.forall(tl =>
         // Integrate the type lambdas from `other`
         constraint.contains(tl) || other.isRemovable(tl) || {
-          val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
+          val tvars = tl.paramRefsList.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
           if this.isCommittable then
             tvars.foreach(tvar =>
               if !tvar.isPermanentlyInstantiated && !isOwnedAnywhere(this, tvar) then includeVar(tvar))

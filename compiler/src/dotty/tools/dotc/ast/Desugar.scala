@@ -9,7 +9,7 @@ import Decorators.*
 import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
-import util.{Chars, NoSourcePosition, Property, SourceFile, SourcePosition, SrcPos}
+import util.{Chars, NoSourcePosition, Property, SourceFile, SourcePosition, SrcPos, Lst}
 import config.{Feature, Config}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion.*
@@ -757,7 +757,7 @@ object desugar {
       }
       else originalVparamss.nestedMap(toMethParam(_, KeepAnnotations.All, keepDefault = true))
     val derivedTparams =
-      constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
+      constrTparams.zipWithConserve(impliedTparams.toList)((tparam, impliedParam) =>
         derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
     val derivedVparamss =
       constrVparamss.nestedMap: vparam =>

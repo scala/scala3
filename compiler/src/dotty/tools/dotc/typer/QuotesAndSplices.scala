@@ -382,11 +382,11 @@ object QuotesAndSplices {
     def apply(typeargs: List[Type], args: List[Type], resultType: Type)(using Context): Type =
       val typeargs1 = PolyType.syntheticParamNames(typeargs.length)
 
-      val bounds = typeargs map (_ => TypeBounds.empty)
+      val bounds = typeargs.mapToLst(_ => TypeBounds.empty)
       val resultTypeExp = (pt: PolyType) => {
         val fromSymbols = typeargs map (_.typeSymbol)
-        val args1 = args map (_.subst(fromSymbols, pt.paramRefs))
-        val resultType1 = resultType.subst(fromSymbols, pt.paramRefs)
+        val args1 = args.toLst.map(_.subst(fromSymbols, pt.paramRefsList))
+        val resultType1 = resultType.subst(fromSymbols, pt.paramRefsList)
         MethodType(args1, resultType1)
       }
       defn.PolyFunctionOf(PolyType(typeargs1)(_ => bounds, resultTypeExp))

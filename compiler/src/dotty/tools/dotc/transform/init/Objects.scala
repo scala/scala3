@@ -14,7 +14,7 @@ import NameKinds.SuperAccessorName
 import Decorators.*
 
 import ast.tpd.*
-import util.{ SourcePosition, NoSourcePosition }
+import util.{ SourcePosition, NoSourcePosition, Lst }
 import config.Printers.init as printer
 import reporting.StoreReporter
 import reporting.trace as log
@@ -1827,9 +1827,9 @@ class Objects(using Context @constructorOnly):
   def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
     // expected member types for `unapplySeq`
     def lengthType = ExprType(defn.IntType)
-    def lengthCompareType = MethodType(List(defn.IntType), defn.IntType)
-    def applyType(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
-    def dropType(elemTp: Type) = MethodType(List(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
+    def lengthCompareType = MethodType(Lst(defn.IntType), defn.IntType)
+    def applyType(elemTp: Type) = MethodType(Lst(defn.IntType), elemTp)
+    def dropType(elemTp: Type) = MethodType(Lst(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
     def toSeqType(elemTp: Type) = ExprType(defn.CollectionSeqType.appliedTo(elemTp))
 
     def getMemberMethod(receiver: Type, name: TermName, tp: Type): Denotation =
@@ -2205,7 +2205,7 @@ class Objects(using Context @constructorOnly):
             // The parameter check of traits comes late in the mixin phase.
             // To avoid crash we supply hot values for erroneous parent calls.
             // See tests/neg/i16438.scala.
-            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty, EmptyTree))
+            val args: List[ArgInfo] = ctor.info.paramInfoss.flattenLst.map(_ => new ArgInfo(Bottom, Trace.empty, EmptyTree)).toList
             extendTrace(superParent) {
               superCall(tref, ctor, args, tasks)
             }

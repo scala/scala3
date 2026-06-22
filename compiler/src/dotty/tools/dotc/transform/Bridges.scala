@@ -142,7 +142,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           val mtWithoutErasedParams = atPhase(erasurePhase) {
             val defn.ContextFunctionType(argTypes, resType) = tp.dealias: @unchecked
             val paramInfos = argTypes.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
-            MethodType(paramInfos, resType)
+            MethodType(paramInfos.toLst, resType)
           }
           val anonFun = newAnonFun(ctx.owner, mtWithoutErasedParams, coord = ctx.owner.coord)
           anonFun.info = transformInfo(anonFun, anonFun.info)
@@ -151,10 +151,10 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
             val refs :: Nil = refss: @unchecked
             val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
               case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                mtWithoutErasedParams.paramInfos.indices.toList.map(n =>
+                List.tabulate(mtWithoutErasedParams.paramInfos.length): n =>
                   bunchedParam
                     .select(nme.primitive.arrayApply)
-                    .appliedTo(Literal(Constant(n))))
+                    .appliedTo(Literal(Constant(n)))
               case refs1 => refs1
             expand(args ::: expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
 

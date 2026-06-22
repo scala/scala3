@@ -6,7 +6,7 @@ import core.*
 import Types.*, Contexts.*, Constants.*, Names.*, Flags.*
 import dotty.tools.dotc.typer.ProtoTypes
 import Symbols.*, StdNames.*, Trees.*
-import util.{Property, SourceFile, NoSource}
+import util.{Property, SourceFile, NoSource, Lst}
 import util.Spans.Span
 import annotation.constructorOnly
 import annotation.internal.sharable

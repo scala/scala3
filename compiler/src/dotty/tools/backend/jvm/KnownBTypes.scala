@@ -4,6 +4,7 @@ import dotty.tools.dotc.core.Symbols.*
 
 import scala.tools.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.util.Lst
 
 import scala.annotation.constructorOnly
 
@@ -25,7 +26,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     srLambdaDeserializeInternalName,
     "bootstrap",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
+      Lst(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false
@@ -35,7 +36,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     jliLambdaMetafactoryInternalName,
     "metafactory",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
+      Lst(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false
@@ -45,7 +46,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     jliLambdaMetafactoryInternalName,
     "altMetafactory",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
+      Lst(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false
@@ -55,7 +56,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     jliStringConcatFactoryInternalName,
     "makeConcatWithConstants",
     MethodBType(
-      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
+      Lst(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false

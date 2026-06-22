@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types.*
+import util.Lst
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import annotation.tailrec
 
@@ -78,12 +79,29 @@ trait Hashable {
     finishHash(h, len)
   }
 
+  protected def finishHash(bs: Binders, seed: Int, arity: Int, tps: Lst[Type]): Int =
+    var h = seed
+    var i = 0
+    var len = arity
+    while i < tps.length do
+      val elemHash = typeHash(bs, tps(i))
+      if (elemHash == NotCached) return NotCached
+      h = hashing.mix(h, elemHash)
+      i += 1
+      len += 1
+    finishHash(h, len)
+
   protected def finishHash(bs: Binders, seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
     val elemHash = typeHash(bs, tp)
     if (elemHash == NotCached) return NotCached
     finishHash(bs, hashing.mix(seed, elemHash), arity + 1, tps)
   }
 
+  protected def finishHash(bs: Binders, seed: Int, arity: Int, tp: Type, tps: Lst[Type]): Int = {
+    val elemHash = typeHash(bs, tp)
+    if (elemHash == NotCached) return NotCached
+    finishHash(bs, hashing.mix(seed, elemHash), arity + 1, tps)
+  }
 
   protected final def doHash(x: Any): Int =
     finishHash(hashing.mix(hashSeed, x.hashCode), 1)
@@ -109,7 +127,13 @@ trait Hashable {
   protected final def doHash(bs: Binders, tp1: Type, tps2: List[Type]): Int =
     finishHash(bs, hashSeed, 0, tp1, tps2)
 
+  protected final def doHash(bs: Binders, tp1: Type, tps2: Lst[Type]): Int =
+    finishHash(bs, hashSeed, 0, tp1, tps2)
+
   protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: List[Type]): Int =
+    finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
+
+  protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: Lst[Type]): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
   protected final def doHash(x1: Int, x2: Int): Int =
@@ -124,3 +148,4 @@ trait Hashable {
     else if (h == HashUnknown) HashUnknownAlt
     else h
 }
+

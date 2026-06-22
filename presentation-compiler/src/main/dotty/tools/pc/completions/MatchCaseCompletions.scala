@@ -97,11 +97,11 @@ object CaseKeywordCompletion:
           /* Parent is a function expecting a case match expression */
           case TreeApply(fun, _) if !fun.tpe.isErroneous =>
             fun.tpe.paramInfoss match
-              case (head :: Nil) :: _
-                  if definitions.isFunctionType(head) || head.isRef(
-                    definitions.PartialFunctionClass
-                  ) =>
-                val args = head.argTypes.init
+              case pinfos :: _
+                  if pinfos.length == 1
+                    && (definitions.isFunctionType(pinfos(0))
+                      || pinfos(0).isRef(definitions.PartialFunctionClass)) =>
+                val args = pinfos(0).argTypes.init
                 if args.length > 1 then
                   Some(definitions.tupleType(args).widen.deepDealiasAndSimplify)
                 else args.headOption.map(_.widen.deepDealiasAndSimplify)

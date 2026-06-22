@@ -6,6 +6,7 @@ import TypeErasure.ErasedValueType
 import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*, SymDenotations.*
 import Names.{Name, TermName}
 import Constants.Constant
+import util.Lst
 
 import Names.Name
 import StdNames.nme
@@ -49,7 +50,7 @@ class TypeUtils:
 
     def ensureMethodic(using Context): Type = self match {
       case self: MethodicType => self
-      case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
+      case _ => if (ctx.erasedTypes) MethodType(Lst(), self) else ExprType(self)
     }
 
     def widenToParents(using Context): Type = self.parents match {
@@ -264,9 +265,9 @@ class TypeUtils:
         def recur(ctpe: Type): Boolean = ctpe match
           case ctpe: PolyType =>
             if argTypes.isEmpty then recur(ctpe.resultType) // no need to know instances
-            else recur(ctpe.instantiate(self.argTypes))
+            else recur(ctpe.instantiate(self.argTypes.toLst))
           case ctpe: MethodType =>
-            var paramInfos = ctpe.paramInfos
+            var paramInfos = ctpe.paramInfosList
             if adaptVarargs && paramInfos.length == argTypes.length + 1
               && atPhaseNoLater(Phases.elimRepeatedPhase)(constr.info.isVarArgsMethod)
             then // accept missing argument for varargs parameter

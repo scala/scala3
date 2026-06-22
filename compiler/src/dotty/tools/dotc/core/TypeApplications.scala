@@ -84,7 +84,7 @@ object TypeApplications {
         // are empty anyway.
       || {
         val tparams = fn.typeParams
-        val paramRefs = tparams.map(_.paramRef)
+        val paramRefs = tparams.mapToLst(_.paramRef)
         val prefix = fn.normalizedPrefix
         val owner = fn.typeSymbol.maybeOwner
         tp.typeParams.corresponds(tparams) { (param1, param2) =>
@@ -256,7 +256,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Substitute in `self` the type parameters of `tycon` by some other types. */
   final def substTypeParams(tycon: Type, to: List[Type])(using Context): Type =
     (tycon.typeParams: @unchecked) match
-      case LambdaParam(lam, _) :: _ => self.substParams(lam, to)
+      case LambdaParam(lam, _) :: _ => self.substParams(lam, to.toLst)
       case params: List[Symbol @unchecked] => self.subst(params, to)
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
@@ -354,6 +354,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def etaExpand(using Context): Type =
     val tparams = self.typeParams
+    val tparamsLst = tparams.toLst
     val resType = self.appliedTo(tparams.map(_.paramRef))
     self.dealias match
       case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
@@ -370,11 +371,11 @@ class TypeApplications(val self: Type) extends AnyVal {
         // But eta-expanding M2.F should have type parameters with an upper-bound of M2.A.
         // So we take the prefix M2.type and the F symbol's owner, M1,
         // to call asSeenFrom on T's info.
-        HKTypeLambda(tparams.map(_.paramName))(
-          tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo.asSeenFrom(self.prefix, owner)))),
-          tl => tl.integrate(tparams, resType))
+        HKTypeLambda(tparamsLst.map(_.paramName))(
+          tl => tparamsLst.map(p => HKTypeLambda.toPInfo(tl.integrate(tparamsLst, p.paramInfo.asSeenFrom(self.prefix, owner)))),
+          tl => tl.integrate(tparamsLst, resType))
       case _ =>
-        HKTypeLambda.fromParams(tparams, resType)
+        HKTypeLambda.fromParams(tparamsLst, resType)
 
   /** If self is not lambda-bound, eta expand it. */
   def ensureLambdaSub(using Context): Type =
@@ -424,7 +425,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                   // just eta-reduction (ignoring variance annotations).
                   // See i2201*.scala for examples where more aggressive
                   // reduction would break type inference.
-                  dealiased.paramRefs == dealiasedArgs ||
+                  dealiased.paramRefsList == dealiasedArgs ||
                   defn.isCompiletimeAppliedType(tyconBody.typeSymbol)
                 case _ => false
               }
@@ -436,7 +437,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                 AppliedType(self, args)
               else
                 try
-                  val instantiated = dealiased.instantiate(args)
+                  val instantiated = dealiased.instantiate(args.toLst)
                   if (followAlias) instantiated.normalized else instantiated
                 catch
                   case ex: Throwable => handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
@@ -461,7 +462,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                   else AppliedType(dealiased, args)
         tryReduce
       case dealiased: PolyType =>
-        dealiased.instantiate(args)
+        dealiased.instantiate(args.toLst)
       case dealiased: AndType =>
         dealiased.derivedAndType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: OrType =>
@@ -599,7 +600,13 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Handles poly functions gracefully.
    */
   final def functionArgInfos(using Context): List[Type] = self.dealias match
-    case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
+    case defn.PolyFunctionOf(mt: MethodType) =>
+      var infos = mt.resultType :: Nil
+      var i = mt.paramInfos.length
+      while i > 0 do
+        i -= 1
+        infos = mt.paramInfos(i) :: infos
+      infos
     case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */

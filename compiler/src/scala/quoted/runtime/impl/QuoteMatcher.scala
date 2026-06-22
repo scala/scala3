@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.TreeTypeMap
+import dotty.tools.dotc.util.Lst
 
 import scala.util.boundary
 
@@ -637,8 +638,8 @@ class QuoteMatcher(debug: Boolean) {
       case MatchResult.ClosedTree(tree) =>
         new ExprImpl(tree, spliceScope)
       case MatchResult.OpenTree(tree, patternTpe, argIds, argTypes, typeArgs, Env(termEnv, typeEnv)) =>
-        val names: List[TermName] = argIds.map(_.symbol.name.asTermName)
-        val paramTypes = argTypes.map(tpe => mapTypeHoles(tpe.widenTermRefExpr))
+        val names: Lst[TermName] = argIds.mapToLst(_.symbol.name.asTermName)
+        val paramTypes = argTypes.mapToLst(tpe => mapTypeHoles(tpe.widenTermRefExpr))
         val ptTypeVarSymbols = typeArgs.map(_.typeSymbol)
         val isNotPoly = typeArgs.isEmpty
 
@@ -646,10 +647,10 @@ class QuoteMatcher(debug: Boolean) {
           MethodType(names)(_ => paramTypes, _ => mapTypeHoles(patternTpe))
         else
           val typeArgs1 = PolyType.syntheticParamNames(typeArgs.length)
-          val bounds = typeArgs map (_ => TypeBounds.empty)
+          val bounds = typeArgs.mapToLst(_ => TypeBounds.empty)
           val resultTypeExp = (pt: PolyType) => {
-            val argTypes1 = paramTypes.map(_.subst(ptTypeVarSymbols, pt.paramRefs))
-            val resultType1 = mapTypeHoles(patternTpe).subst(ptTypeVarSymbols, pt.paramRefs)
+            val argTypes1 = paramTypes.map(_.subst(ptTypeVarSymbols, pt.paramRefsList))
+            val resultType1 = mapTypeHoles(patternTpe).subst(ptTypeVarSymbols, pt.paramRefsList)
             MethodType(argTypes1, resultType1)
           }
           PolyType(typeArgs1)(_ => bounds, resultTypeExp)

@@ -20,6 +20,7 @@ import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 import SymbolUtils.given
 import dotty.tools.dotc.core.NameOps.isStaticConstructorName
+import dotty.tools.dotc.util.Lst
 import tpd.*
 
 import scala.compiletime.uninitialized
@@ -147,11 +148,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
-    def paramTKs(app: Apply, take: Int = -1)(using Context): List[BType] = app match {
+    def paramTKs(app: Apply, take: Int = -1)(using Context): Lst[BType] = app match
       case Apply(fun, _) =>
-      val funSym = fun.symbol
-      funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
-    }
+        val funSym = fun.symbol
+        funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
 
     def symInfoTK(sym: Symbol)(using Context): BType = {
       bTypeLoader.bTypeFromType(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
@@ -213,7 +213,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             claszSymbol,
             nme.STATIC_CONSTRUCTOR,
             JavaStatic | Method,
-            MethodType(Nil)(_ => Nil, _ => defn.UnitType),
+            MethodType(Lst())(_ => Lst(), _ => defn.UnitType),
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
           )

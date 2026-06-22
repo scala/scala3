@@ -10,7 +10,7 @@ import typer.{ConstFold, ProtoTypes}
 import transform.{Erasure, ExplicitOuter}
 import config.{Feature, Printers}
 import Printers.typr
-import util.{Property, SourceFile, Spans}
+import util.{Property, SourceFile, Spans, Lst}
 import Spans.*
 
 import scala.annotation.tailrec
@@ -265,11 +265,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tp: PolyType =>
         val (tparams: List[TypeSymbol], remaining1) = remaining match
           case tparams :: remaining1 =>
-            assert(tparams.hasSameLengthAs(tp.paramNames) && tparams.head.isType)
+            assert(tparams.length == tp.paramNames.length && tparams.head.isType)
             (tparams.asInstanceOf[List[TypeSymbol]], remaining1)
           case nil =>
-            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), Nil)
-        val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
+            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)).toList,
+             Nil)
+        val (rtp, paramss) = recur(tp.instantiate(tparams.mapToLst(_.typeRef)), remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
         val previousParamRefs: mutable.ListBuffer[TermRef] | Null =
@@ -285,7 +286,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
           if previousParamRefs ne null then
-            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
+            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList.toLst))
             previousParamRefs += sym.termRef
             sym
           else makeSym(origInfo)
@@ -295,11 +296,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           if tp.paramNames.isEmpty then (Nil, remaining)
           else remaining match
             case vparams :: remaining1 =>
-              assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
+              assert(vparams.length == tp.paramNames.length && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Nil)
-        val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
+              (List.tabulate(tp.paramNames.length): i =>
+                valueParam(tp.paramNames(i), tp.paramInfos(i), tp.erasedPositions.contains(i)),
+               Nil)
+        val (rtp, paramss) = recur(tp.instantiate(vparams.mapToLst(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
         assert(remaining.isEmpty)
@@ -328,7 +331,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def adaptedSuperArgs(ctpe: Type): List[Tree] = ctpe match
       case ctpe: PolyType =>
-        adaptedSuperArgs(ctpe.instantiate(firstParent.argTypes))
+        adaptedSuperArgs(ctpe.instantiate(firstParent.argTypes.toLst))
       case ctpe: MethodType
       if ctpe.paramInfos.length == superArgs.length + 1 =>
         // last argument must be a vararg, otherwise isApplicable would have failed
@@ -418,7 +421,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     var flags = Synthetic | Final
     if Feature.ccEnabled then flags |= CaptureChecked
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, flags, parents1, coord = coord)
-    val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
+    val constr = newConstructor(cls, Synthetic, Lst(), Lst()).entered
     val cdef = ClassDef(cls, DefDef(constr), body(cls), Nil, adaptVarargs)
     Block(cdef :: Nil, New(cls.typeRef, Nil))
 
@@ -1220,7 +1223,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case defn.ContextFunctionType(argTypes, resType) =>
           val anonFun = newAnonFun(
             ctx.owner,
-            MethodType.companion(isContextual = true)(argTypes, resType),
+            MethodType.companion(isContextual = true)(argTypes.toLst, resType),
             coord = ctx.owner.coord)
           def lambdaBody(refss: List[List[Tree]]) =
             expand(target.select(nme.apply).appliedToArgss(refss), resType)(

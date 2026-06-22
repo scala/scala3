@@ -88,8 +88,8 @@ object LambdaLift:
       case MethodTpe(pnames, ptypes, restpe) =>
         val ps = proxies(local)
         MethodType(
-          ps.map(_.name.asTermName) ++ pnames,
-          ps.map(_.info) ++ ptypes,
+          ps.mapToLst(_.name.asTermName) ++ pnames,
+          ps.mapToLst(_.info) ++ ptypes,
           restpe)
       case info => info
     }

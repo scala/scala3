@@ -90,7 +90,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     // Similarly, Java serialization won't take into account a readResolve/writeReplace default method.
     def generateSerializationForwarder: Boolean =
-       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
+       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flattenLst.isEmpty
 
     !meth.isConstructor
     && meth.is(Method, butNot = PrivateOrAccessorOrDeferred)

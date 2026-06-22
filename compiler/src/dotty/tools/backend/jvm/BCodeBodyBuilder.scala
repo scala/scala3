@@ -24,7 +24,7 @@ import dotty.tools.dotc.ast.Trees.SyntheticUnit
 import dotty.tools.dotc.ast.Positioned
 import tpd.*
 import SymbolUtils.given
-import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.util.{SrcPos, Lst}
 
 /*
  *
@@ -753,7 +753,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
          */
         for (i <- args.length until dims) elemKind = ArrayBType(elemKind)
       }
-      genLoadArguments(args, List.fill(args.size)(INT))
+      genLoadArguments(args, Lst.fill(args.size)(INT))
       (argsSize /*: @switch*/) match {
         case 1 => bc.newarray(elemKind)
         case _ =>
@@ -1254,20 +1254,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       }
     }
 
-    def genLoadArguments(args: List[Tree], btpes: List[BType])(using Context): Unit =
-      @tailrec def loop(args: List[Tree], btpes: List[BType]): Unit =
+    def genLoadArguments(args: List[Tree], btpes: Lst[BType])(using Context): Unit =
+      @tailrec def loop(args: List[Tree], i: Int): Unit =
         args match
-          case arg :: args1 =>
-            btpes match
-              case btpe :: btpes1 =>
-                genLoad(arg, btpe)
-                stack.push(btpe)
-                loop(args1, btpes1)
-              case _ =>
+          case arg :: args1 if i < btpes.length =>
+            genLoad(arg, btpes(i))
+            stack.push(btpes(i))
+            loop(args1, i + 1)
           case _ =>
 
       val savedStackSize = stack.recordSize()
-      loop(args, btpes)
+      loop(args, 0)
       stack.restoreSize(savedStackSize)
     end genLoadArguments
 
@@ -1495,7 +1492,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       if (style == Super) {
         val ownerBType = bTypeLoader.bTypeFromType(method.owner.info)
         if (isInterface && !method.is(JavaDefined)) {
-          val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
+          val staticDesc = MethodBType(ownerBType +: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = SymbolUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
@@ -1803,7 +1800,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       val (a,b) = lambdaTarget.info.firstParamTypes.splitAt(environmentSize)
       var (capturedParamsTypes, lambdaParamTypes) = (a,b)
 
-      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
+      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info +: capturedParamsTypes
 
       // TODO: this comment seems to indicate this is very old and could be removed? this lib isn't recommended since >=2.13
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath

@@ -332,7 +332,7 @@ object PrepJSExports {
       isJSAny(sym.owner) || (sym.isConstructor && isJSAny(sym.owner.owner))
 
     def hasIllegalRepeatedParam: Boolean = {
-      val paramInfos = sym.info.paramInfoss.flatten
+      val paramInfos = sym.info.paramInfoss.flattenLst
       paramInfos.nonEmpty && paramInfos.init.exists(_.isRepeatedParam)
     }
 

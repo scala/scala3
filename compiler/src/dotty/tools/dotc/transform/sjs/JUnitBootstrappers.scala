@@ -13,6 +13,7 @@ import Scopes.*
 import Symbols.*
 import StdNames.*
 import Types.*
+import util.Lst
 import Decorators.em
 
 import dotty.tools.dotc.transform.MegaPhase.*
@@ -190,7 +191,7 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(using Context): DefDef = {
     val sym = newSymbol(owner, name, Synthetic | Method,
-      MethodType(Nil, Nil, defn.UnitType)).entered
+      MethodType(Lst(), Lst(), defn.UnitType)).entered
 
     DefDef(sym, {
       if (module.exists) {
@@ -205,7 +206,7 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(using Context): DefDef = {
     val sym = newSymbol(owner, name, Synthetic | Method,
-      MethodType(junitNme.instance :: Nil, defn.ObjectType :: Nil, defn.UnitType)).entered
+      MethodType(Lst(junitNme.instance), Lst(defn.ObjectType), defn.UnitType)).entered
 
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
       val List(List(instanceParamRef)) = paramRefss
@@ -219,7 +220,7 @@ class JUnitBootstrappers extends MiniPhase {
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.tests, Synthetic | Method,
-      MethodType(Nil, defn.ArrayOf(junitdefn.TestMetadataType))).entered
+      MethodType(Lst(), defn.ArrayOf(junitdefn.TestMetadataType))).entered
 
     DefDef(sym, {
       val metadata = for (test <- tests) yield {
@@ -255,7 +256,7 @@ class JUnitBootstrappers extends MiniPhase {
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
-      MethodType(List(junitNme.instance, junitNme.name), List(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
+      MethodType(Lst(junitNme.instance, junitNme.name), Lst(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
 
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
       val List(List(instanceParamRef, nameParamRef)) = paramRefss
@@ -295,7 +296,7 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(using Context): DefDef = {
     val sym = newSymbol(owner, junitNme.newInstance, Synthetic | Method,
-      MethodType(Nil, defn.ObjectType)).entered
+      MethodType(Lst(), defn.ObjectType)).entered
 
     DefDef(sym, New(testClass.typeRef, Nil))
   }
