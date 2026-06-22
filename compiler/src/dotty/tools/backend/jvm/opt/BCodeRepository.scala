@@ -31,15 +31,15 @@ import scala.tools.asm.{Attribute, ClassReader, Type}
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation
  * classpath. Parsed classes are cached in the `classes` map.
  */
-class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
+class BCodeRepository(classPath: ClassPath, indyTracker: IndyLambdaImplTracker) {
 
-  type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
+  private type ClassAndModuleNodes = (ClassNode, Option[ModuleNode])
 
   /**
    * Contains ClassNodes and the canonical path of the source file path of classes being compiled in
    * the current compilation run.
    */
-  val compilingClasses: concurrent.Map[InternalName, (ClassAndModuleNodes, String)] = concurrent.TrieMap.empty
+  val compilingClasses: concurrent.Map[InternalName, (ClassNode, String)] = concurrent.TrieMap.empty
 
   /**
   * Prevent the code repository from growing too large. Profiling reveals that the average size
@@ -57,10 +57,8 @@ class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
   private val parsedClasses: mutable.Map[InternalName, Either[ClassNotFound, ClassAndModuleNodes]] =
     FifoCache[InternalName, Either[ClassNotFound, ClassAndModuleNodes]](maxCacheSize, threadsafe = true)
 
-  def add(classNode: ClassNode, sourceFilePath: Option[String]): Unit = sourceFilePath match {
-    case Some(path) if path != "<no file>" => compilingClasses(classNode.name) = ((classNode, None), path)
-    case _                                 => parsedClasses(classNode.name) = Right(classNode, None)
-  }
+  def add(classNode: ClassNode, sourceFilePath: String): Unit =
+    compilingClasses(classNode.name) = (classNode, sourceFilePath)
 
   private def parsedClassNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     parsedClasses.getOrElseUpdate(internalName, parseClass(internalName))
@@ -72,7 +70,7 @@ class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
    */
   def classNodeAndSourceFilePath(internalName: InternalName): Either[ClassNotFound, (ClassAndModuleNodes, Option[String])] = {
     compilingClasses.get(internalName) match {
-      case Some((c, p)) => Right((c, Some(p)))
+      case Some((c, p)) => Right(((c, None), Some(p)))
       case _            => parsedClassNode(internalName).map((_, None))
     }
   }
@@ -83,7 +81,7 @@ class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
    */
   def classNode(internalName: InternalName): Either[ClassNotFound, ClassAndModuleNodes] = {
     compilingClasses.get(internalName) match {
-      case Some((c, _)) => Right(c)
+      case Some((c, _)) => Right((c, None))
       case None         => parsedClassNode(internalName)
     }
   }
@@ -273,7 +271,7 @@ class BCodeRepository(classPath: ClassPath, optimizerUtils: OptimizerUtils) {
             iter.remove()
           case AbstractInsnNode.INVOKE_DYNAMIC_INSN => insn match {
             case LambdaMetaFactoryCall(indy, _, implMethod, _, _) =>
-              optimizerUtils.addIndyLambdaImplMethod(classNode.name, m, indy, implMethod)
+              indyTracker.add(classNode.name, m, indy, implMethod)
             case _ =>
           }
           case _ =>

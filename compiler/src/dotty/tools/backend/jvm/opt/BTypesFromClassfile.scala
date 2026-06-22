@@ -23,7 +23,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
 
-class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTypeLoader) extends InlineInfoLoader {
+class BTypesFromClassfile(byteCodeRepository: BCodeRepository, cache: ClassBType.Cache) extends InlineInfoLoader {
 
   /**
    * Obtain the BType for a type descriptor or internal name. For class descriptors, the ClassBType
@@ -62,7 +62,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
    * be found in the `byteCodeRepository`, the `info` of the resulting ClassBType is undefined.
    */
   def classBTypeFromParsedClassfile(internalName: InternalName): Either[OptimizerWarning, ClassBType] = {
-    bTypeLoader.classBType(internalName) { _ =>
+    cache(internalName) { _ =>
       byteCodeRepository.classNode(internalName) match {
         case Left(msg) => Left(NoClassBTypeInfo(msg))
         case Right(c, m) => computeClassInfoFromClassNode(c, m)
@@ -74,7 +74,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
    * Construct the [[BTypes.ClassBType]] for a parsed classfile.
    */
   def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassBType] = {
-    bTypeLoader.classBType(classNode.name) { _ =>
+    cache(classNode.name) { _ =>
       computeClassInfoFromClassNode(classNode, moduleNode)
     }
   }

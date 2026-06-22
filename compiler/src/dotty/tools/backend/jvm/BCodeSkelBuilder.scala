@@ -23,6 +23,8 @@ import dotty.tools.dotc.core.NameOps.isStaticConstructorName
 import tpd.*
 
 import scala.compiletime.uninitialized
+import scala.tools.asm.{Handle, Opcodes}
+import scala.tools.asm.tree.ClassNode
 
 /*
  *
@@ -30,7 +32,7 @@ import scala.compiletime.uninitialized
  *  @version 1.0
  *
  */
-trait BCodeSkelBuilder extends BCodeHelpers {
+trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
 
   final class BTypesStack:
     // Anecdotally, growing past 16 to 32 is common; growing past 32 is rare
@@ -138,6 +140,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     // current class
     private var cnode: ClassNode1  = uninitialized
     private var thisName: String   = uninitialized // the internal name of the class being emitted
+    protected var serializableLambdas: List[Handle] = uninitialized
 
     protected var claszSymbol: Symbol = uninitialized
     private var isCZStaticModule    = false
@@ -161,13 +164,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef)(using Context): ClassNode1 = (cd0: @unchecked) match {
+    def genPlainClass(cd0: TypeDef, topLevel: Boolean = false)(using Context): ClassNode1 = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
-      assert(cnode == null, "GenBCode detected nested methods.")
+      assert(topLevel || cnode == null, "GenBCode detected nested methods.")
 
       claszSymbol       = cd0.symbol
       isCZStaticModule  = claszSymbol.isStaticModuleClass
       thisName          = bTypeLoader.classBTypeFromSymbol(claszSymbol).internalName
+      serializableLambdas = Nil
 
       cnode = new ClassNode1()
 
@@ -286,11 +290,80 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // This needs to wait until now since it uses `superCallTargets` which is populating while emitting the class body
       initJClass(cnode)
 
+      addLambdaDeserialize(cnode, serializableLambdas)
+
       TraceUtils.traceClassIfRequested(cnode)
 
       assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
       cnode
     } // end of method genPlainClass()
+
+
+    /*
+    * Add:
+    *
+    * private static Object $deserializeLambda$(SerializedLambda l) {
+    *   try return indy[scala.runtime.LambdaDeserialize.bootstrap, targetMethodGroup$0](l)
+    *   catch {
+    *     case i: IllegalArgumentException =>
+    *       try return indy[scala.runtime.LambdaDeserialize.bootstrap, targetMethodGroup$1](l)
+    *       catch {
+    *         case i: IllegalArgumentException =>
+    *           ...
+    *             return indy[scala.runtime.LambdaDeserialize.bootstrap, targetMethodGroup${NUM_GROUPS-1}](l)
+    *       }
+    *   }
+    * }
+    *
+    * We use invokedynamic here to enable caching within the deserializer without needing to
+    * host a static field in the enclosing class. This allows us to add this method to interfaces
+    * that define lambdas in default methods.
+    *
+    * SI-10232 we can't pass arbitrary number of method handles to the final varargs parameter of the bootstrap
+    * method due to a limitation in the JVM. Instead, we emit a separate invokedynamic bytecode for each group of target
+    * methods.
+    */
+    private def addLambdaDeserialize(classNode: ClassNode, serializableLambdas: List[Handle]): Unit = {
+      if serializableLambdas.isEmpty then
+        return
+
+      val cw = classNode
+      // Make sure to reference the ClassBTypes of all types that are used in the code generated
+      // here (e.g. java/util/Map) are initialized. Initializing a ClassBType adds it to
+      // `classBTypeFromInternalNameMap`. When writing the classfile, the asm ClassWriter computes
+      // stack map frames and invokes the `getCommonSuperClass` method. This method expects all
+      // ClassBTypes mentioned in the source code to exist in the map.
+      val serializedLambdaObjDesc = s"(Ljava/lang/invoke/SerializedLambda;)L${ClassBType.javaLangObjectInternalName};"
+      val mv = cw.visitMethod(Opcodes.ACC_PRIVATE + Opcodes.ACC_STATIC + Opcodes.ACC_SYNTHETIC, "$deserializeLambda$", serializedLambdaObjDesc, null, null)
+
+      def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
+        mv.visitVarInsn(Opcodes.ALOAD, 0)
+        mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLambdaObjDesc, bTypes.jliLambdaDeserializeBootstrapHandle, targetMethods *)
+      }
+
+      val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See MAX_MH_ARITY in CallSite.java
+      val groups = serializableLambdas.grouped(targetMethodGroupLimit).toArray
+      val numGroups = groups.length
+
+      import scala.tools.asm.Label
+      val initialLabels = Array.fill(numGroups - 1)(new Label())
+      val terminalLabel = new Label
+
+      def nextLabel(i: Int) = if (i == numGroups - 2) terminalLabel else initialLabels(i + 1)
+
+      for ((label, i) <- initialLabels.iterator.zipWithIndex) {
+        mv.visitTryCatchBlock(label, nextLabel(i), nextLabel(i), "java/lang/IllegalArgumentException")
+      }
+      for ((label, i) <- initialLabels.iterator.zipWithIndex) {
+        mv.visitLabel(label)
+        emitLambdaDeserializeIndy(groups(i).toIndexedSeq)
+        mv.visitInsn(Opcodes.ARETURN)
+      }
+      mv.visitLabel(terminalLabel)
+      emitLambdaDeserializeIndy(groups(numGroups - 1).toIndexedSeq)
+      mv.visitInsn(Opcodes.ARETURN)
+    }
+
 
     /*
      * must-single-thread
