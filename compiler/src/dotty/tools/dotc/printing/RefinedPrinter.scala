@@ -748,27 +748,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case fn @ Function(args, body) =>
         var implicitSeen: Boolean = false
         var isGiven: Boolean = false
-        val erasedParams = fn match {
-          case fn: FunctionWithMods => fn.erasedParams
-          case _ => fn.args.map(_ => false)
-        }
-        def argToText(arg: Tree, isErased: Boolean) = arg match {
+        def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
               if ((arg.mods.is(Given))) { isGiven = true; "" }
               else if ((arg.mods.is(Implicit)) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
-            val erasedText = if isErased then keywordStr("erased ") else ""
+            val erasedText = if arg.mods.is(Erased) then keywordStr("erased ") else ""
             implicitText ~ erasedText ~ toText(name) ~ optAscription(tpt)
           case _ =>
             toText(arg)
         }
         val argsText = args match {
-          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg, erasedParams(0))
-          case _ =>
-            "("
-            ~ Text(args.zip(erasedParams).map(argToText), ", ")
-            ~ ")"
+          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
+          case _ => "(" ~ Text(args.map(argToText), ", ") ~ ")"
         }
         val isPure =
           Feature.pureFunsEnabled

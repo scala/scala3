@@ -78,13 +78,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** A function type or closure with `implicit` or `given` modifiers and information on which parameters are `erased` */
-  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers, val erasedParams: List[Boolean])(implicit @constructorOnly src: SourceFile)
-    extends Function(args, body) {
-      assert(args.length == erasedParams.length)
-
-      def hasErasedParams = erasedParams.contains(true)
-      override def toString = s"FunctionWithMods($args, $body, $mods, $erasedParams)"
-    }
+  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
+  extends Function(args, body) {
+      override def toString = s"FunctionWithMods($args, $body, $mods)"
+  }
 
   /** A polymorphic function type */
   case class PolyFunction(targs: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -676,7 +673,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
       case _ =>
         val tree1 = tree match
-          case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods, tree.erasedParams)(using tree.source)
+          case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods)(using tree.source)
           case _ => untpd.Function(args, body)(using tree.source)
         finalize(tree, tree1)
     }
