@@ -18,6 +18,10 @@
   line-height: 20px;
 }
 
+.snippet pre code {
+  font-family: 'DejaVu Sans Mono', monospace;
+}
+
 .snippet pre code > span {
   padding-right: calc(2* var(--base-spacing));
 }
@@ -364,6 +368,20 @@ dd .snippet {
 .snippet-popup .tok-deleted { color: var(--code-syntax-highlighting-deletion) !important; }
 .snippet-popup .tok-inserted { color: var(--code-syntax-highlighting-addition) !important; }
 .snippet-popup .tok-invalid { color: var(--code-syntax-highlighting-deletion) !important; text-decoration: underline wavy; }
+
+/* Force the popup's editor to use the exact same font (and weight) scaladoc
+ * uses for in-document snippets. Without this Scastie's CodeMirror falls
+ * back to whatever Fira Code variant is on the system, which renders with
+ * subtly different stroke weight than scaladoc's font, making
+ * identical CSS colors look brighter or thinner side-by-side. */
+.snippet-popup .scastie .cm-editor,
+.snippet-popup .scastie .cm-scroller,
+.snippet-popup .scastie .cm-content,
+.snippet-popup .scastie .cm-line,
+.snippet-popup .scastie .inline {
+  font-family: 'DejaVu Sans Mono', monospace !important;
+  font-weight: 400 !important;
+}
 
 /* Scastie UI chrome: the Run button, Console pane, top bar, resize handler,
  * and editor-buttons icons all default to solarized blue/teal. Re-theme them
