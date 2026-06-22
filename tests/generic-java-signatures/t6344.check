@@ -71,6 +71,8 @@ public int C5.f4(java.lang.Integer)
 public int C5.f4(java.lang.Integer)
 public int C5.f5(java.lang.Integer)
 public int C5.f5(java.lang.Integer)
+public int C5.f5(java.lang.Integer,int)
+public int C5.f5(java.lang.Integer,int)
 
 C6
 public java.lang.Object C6.f1(int,java.lang.Object,java.lang.String,java.lang.Object)

@@ -1,0 +1,4 @@
+public void MyAbstract.MyTrait$_setter_$foo_$eq(scala.collection.mutable.Map)
+public void MyAbstract.MyTrait$_setter_$foo_$eq(scala.collection.mutable.Map<S, java.lang.String>)
+public scala.collection.mutable.Map MyAbstract.foo()
+public scala.collection.mutable.Map<S, java.lang.String> MyAbstract.foo()
